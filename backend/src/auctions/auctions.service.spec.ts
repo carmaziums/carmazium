@@ -44,6 +44,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
             auction: {
                 findUnique: jest.fn(),
                 update: jest.fn().mockResolvedValue({}),
+                create: jest.fn().mockResolvedValue({}),
                 $transaction: jest.fn(),
             },
             bid: {
@@ -238,6 +239,79 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
             expect.objectContaining({
                 data: expect.objectContaining({ buyItNowPendingBuyerId: 'buyer-new' }),
             }),
+        );
+    });
+});
+
+describe('AuctionsService — create', () => {
+    let service: AuctionsService;
+    let prisma: any;
+
+    const makeDto = (overrides: Record<string, any> = {}) => ({
+        listingId: 'listing-1',
+        startTime: new Date().toISOString(),
+        reservePrice: 20000,
+        startingBid: 7000,
+        minIncrement: 100,
+        ...overrides,
+    });
+
+    beforeEach(async () => {
+        prisma = {
+            listing: {
+                findUnique: jest.fn().mockResolvedValue({
+                    id: 'listing-1',
+                    sellerId: 'seller-1',
+                    deletedAt: null,
+                    status: 'ACTIVE',
+                    type: 'CLASSIFIED',
+                    price: 10000,
+                }),
+                update: jest.fn(),
+            },
+            auction: {
+                findUnique: jest.fn().mockResolvedValue(null),
+                create: jest.fn().mockResolvedValue({ id: 'auction-1' }),
+                update: jest.fn().mockResolvedValue({ id: 'auction-1' }),
+            },
+        };
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                AuctionsService,
+                { provide: PrismaService, useValue: prisma },
+                { provide: NotificationsService, useValue: { create: jest.fn() } },
+                { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
+                { provide: AuctionGateway, useValue: {} },
+                { provide: EmailService, useValue: {} },
+            ],
+        }).compile();
+
+        service = module.get<AuctionsService>(AuctionsService);
+    });
+
+    it('rejects a starting bid above 70% of the listing asking price', async () => {
+        // Asking price 10000 -> max allowed starting bid is 7000
+        await expect(service.create(makeDto({ startingBid: 7001 }), 'seller-1')).rejects.toThrow(BadRequestException);
+        expect(prisma.auction.create).not.toHaveBeenCalled();
+    });
+
+    it('accepts a starting bid at exactly 70% of the listing asking price', async () => {
+        await expect(service.create(makeDto({ startingBid: 7000 }), 'seller-1')).resolves.toEqual({ id: 'auction-1' });
+        expect(prisma.auction.create).toHaveBeenCalled();
+    });
+
+    it('persists buyItNowPrice on the created auction', async () => {
+        await service.create(makeDto({ buyItNowPrice: 12000 }), 'seller-1');
+        expect(prisma.auction.create).toHaveBeenCalledWith(
+            expect.objectContaining({ data: expect.objectContaining({ buyItNowPrice: 12000 }) }),
+        );
+    });
+
+    it('persists a null buyItNowPrice when none is provided', async () => {
+        await service.create(makeDto(), 'seller-1');
+        expect(prisma.auction.create).toHaveBeenCalledWith(
+            expect.objectContaining({ data: expect.objectContaining({ buyItNowPrice: null }) }),
         );
     });
 });

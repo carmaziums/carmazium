@@ -309,6 +309,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         reservePrice: '',
         startingBid: '',
         minIncrement: '100',
+        buyItNowPrice: '',
     })
 
 
@@ -583,6 +584,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 if (!auctionSchedule.reservePrice || parseFloat(auctionSchedule.reservePrice) <= 0) return false
                 if (!auctionSchedule.startingBid || parseFloat(auctionSchedule.startingBid) <= 0) return false
                 if (!auctionSchedule.minIncrement || parseFloat(auctionSchedule.minIncrement) <= 0) return false
+                const askingPrice = parseFloat(formData.priceAsking)
+                if (askingPrice > 0 && parseFloat(auctionSchedule.startingBid) > askingPrice * 0.7) return false
                 return true
             }
             default: return true
@@ -793,6 +796,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             reservePrice: parseFloat(auctionSchedule.reservePrice),
                             startingBid: parseFloat(auctionSchedule.startingBid),
                             minIncrement: parseFloat(auctionSchedule.minIncrement),
+                            ...(auctionSchedule.buyItNowPrice ? { buyItNowPrice: parseFloat(auctionSchedule.buyItNowPrice) } : {}),
                         }),
                     })
                 }
@@ -870,6 +874,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             reservePrice: parseFloat(auctionSchedule.reservePrice),
                             startingBid: parseFloat(auctionSchedule.startingBid),
                             minIncrement: parseFloat(auctionSchedule.minIncrement),
+                            ...(auctionSchedule.buyItNowPrice ? { buyItNowPrice: parseFloat(auctionSchedule.buyItNowPrice) } : {}),
                         }),
                     })
                 }
@@ -2651,17 +2656,23 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1">
                                         Starting Bid *
-                                        <InfoTooltip text="The opening bid price shown to buyers. Should be at or below your reserve price." />
+                                        <InfoTooltip text="The opening bid price shown to buyers. Must be at least 30% below the asking price so the auction has room to run." />
                                     </label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
                                         <Input type="number" placeholder="e.g. 10000"
                                             value={auctionSchedule.startingBid}
                                             onChange={e => setAuctionSchedule(prev => ({ ...prev, startingBid: e.target.value }))}
-                                            className={`${inputCls} pl-8 h-14 ${hasAttemptedNext && !auctionSchedule.startingBid ? 'border-red-500' : ''}`}
+                                            className={`${inputCls} pl-8 h-14 ${(hasAttemptedNext && !auctionSchedule.startingBid) || (auctionSchedule.startingBid && parseFloat(formData.priceAsking) > 0 && parseFloat(auctionSchedule.startingBid) > parseFloat(formData.priceAsking) * 0.7) ? 'border-red-500' : ''}`}
                                         />
                                     </div>
-                                    <p className="text-[10px] text-[var(--text-secondary)]">Opening bid shown publicly</p>
+                                    {parseFloat(formData.priceAsking) > 0 && (
+                                        auctionSchedule.startingBid && parseFloat(auctionSchedule.startingBid) > parseFloat(formData.priceAsking) * 0.7 ? (
+                                            <p className="text-[10px] text-red-500">Must be at least 30% below the £{parseFloat(formData.priceAsking).toLocaleString()} asking price (max £{(parseFloat(formData.priceAsking) * 0.7).toLocaleString(undefined, { maximumFractionDigits: 0 })})</p>
+                                        ) : (
+                                            <p className="text-[10px] text-[var(--text-secondary)]">Opening bid shown publicly — max £{(parseFloat(formData.priceAsking) * 0.7).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                                        )
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
@@ -2679,6 +2690,23 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </div>
                                     <p className="text-[10px] text-[var(--text-secondary)]">Minimum amount each bid must exceed by</p>
                                 </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1">
+                                    <Zap size={14} /> Buy It Now Price
+                                    <span className="normal-case text-[var(--text-secondary)] font-normal tracking-normal ml-1">— optional</span>
+                                    <InfoTooltip text="Lets a buyer request to end the auction immediately at this price. You'll still need to confirm the request." />
+                                </label>
+                                <div className="relative max-w-xs">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
+                                    <Input type="number" placeholder="Leave blank to disable"
+                                        value={auctionSchedule.buyItNowPrice}
+                                        onChange={e => setAuctionSchedule(prev => ({ ...prev, buyItNowPrice: e.target.value }))}
+                                        className={`${inputCls} pl-8 h-14`}
+                                    />
+                                </div>
+                                <p className="text-[10px] text-[var(--text-secondary)]">A buyer can request to buy it now at this price — you approve or decline the request</p>
                             </div>
 
                             {/* Summary card */}

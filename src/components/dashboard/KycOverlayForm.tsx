@@ -592,6 +592,102 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
     );
   }
 
+  // ─── Render "Payment Outstanding" State ──────────────────────────────────────
+  // status === PENDING but stripeChargedAt is null: the dealer already filled out
+  // and saved their KYC details — they just never completed (or their card was
+  // declined on, or they closed the tab during) the Stripe Checkout redirect.
+  // This must NOT look like a fresh, unstarted application — it's one click away
+  // from being submitted, not a re-do.
+  if (kycData && kycData.status === "PENDING" && !kycData.stripeChargedAt) {
+    const handleResumePayment = async () => {
+      setErrorMsg("");
+      setCheckoutLoading(true);
+      try {
+        const checkout = await createKycCheckoutSession();
+        if (checkout.alreadyPaid) {
+          setKycData({ ...kycData, stripeChargedAt: checkout.chargedAt ?? new Date().toISOString() } as DealerKycData);
+          setCheckoutLoading(false);
+          return;
+        }
+        if (checkout.url) {
+          window.location.href = checkout.url;
+          return; // navigating away — leave checkoutLoading true
+        }
+        setErrorMsg("Failed to start the payment. Please try again.");
+        setCheckoutLoading(false);
+      } catch (err: any) {
+        setErrorMsg(err.message || "Failed to start the payment. Please try again.");
+        setCheckoutLoading(false);
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-body)] backdrop-blur-xl p-4 overflow-y-auto">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
+
+        <div className="dealer-glass-card max-w-xl w-full p-8 md:p-10 border border-[var(--border-default)] relative overflow-hidden flex flex-col items-center text-center">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-blue-500 to-primary" />
+
+          <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+            <button
+              onClick={handleSkip}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] hover:bg-white/10 text-xs font-bold text-[var(--text-muted)] transition-colors"
+            >
+              Skip for now
+            </button>
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] hover:bg-white/10 text-xs font-bold text-[var(--text-secondary)] transition-colors"
+            >
+              <LogOut size={14} />
+              Sign Out
+            </button>
+          </div>
+
+          <div className="w-20 h-20 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center mb-6">
+            <Lock size={40} className="text-primary" />
+          </div>
+
+          <h2 className="text-2xl md:text-3xl font-black font-heading text-[var(--text-primary)] tracking-tight mb-3">
+            ALMOST THERE — PAYMENT NEEDED
+          </h2>
+
+          <p className="text-[var(--text-secondary)] text-sm leading-relaxed mb-6">
+            Your KYC details are saved. The only thing left is the £1 verification payment — it looks like your last
+            attempt didn&rsquo;t go through (card declined, or the checkout page was closed before it finished). No
+            need to re-fill anything.
+          </p>
+
+          {errorMsg && (
+            <div className="w-full bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6 text-left">
+              <p className="text-xs text-red-400 leading-relaxed">{errorMsg}</p>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
+            <button
+              onClick={handleResumePayment}
+              disabled={checkoutLoading}
+              className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-neon disabled:opacity-50"
+            >
+              {checkoutLoading ? <Loader2 className="animate-spin" size={14} /> : <Lock size={14} />}
+              {checkoutLoading ? "Redirecting to Stripe..." : "Complete Payment (£1)"}
+            </button>
+            <button
+              onClick={handleSwitchToBuyer}
+              disabled={switchingRole}
+              className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 font-bold text-xs uppercase tracking-widest transition-all cursor-pointer disabled:opacity-50"
+            >
+              {switchingRole ? <Loader2 className="animate-spin" size={14} /> : <User size={14} />}
+              Become a Buyer / Seller
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ─── Render 3-Step Form Overlay ──────────────────────────────────────────────
   return (
     <div className="fixed inset-0 z-50 bg-[var(--bg-body)] backdrop-blur-xl overflow-y-auto custom-scrollbar">

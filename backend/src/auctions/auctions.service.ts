@@ -59,6 +59,16 @@ export class AuctionsService {
             throw new BadRequestException('This listing has already been sold');
         }
 
+        // The opening/starting bid must be meaningfully below the asking price
+        // (at least 30% lower) so the auction has room to actually run — otherwise
+        // the very first bid could already meet or exceed retail.
+        const maxStartingBid = Number(listing.price) * 0.7;
+        if (createAuctionDto.startingBid > maxStartingBid) {
+            throw new BadRequestException(
+                `Starting bid must be at least 30% below the asking price of £${Number(listing.price).toLocaleString()} (max £${maxStartingBid.toLocaleString(undefined, { maximumFractionDigits: 2 })})`,
+            );
+        }
+
         const existing = await this.prisma.auction.findUnique({
             where: { listingId: createAuctionDto.listingId },
         });
@@ -86,6 +96,7 @@ export class AuctionsService {
                     reservePrice: createAuctionDto.reservePrice,
                     startingBid: createAuctionDto.startingBid,
                     minIncrement: createAuctionDto.minIncrement,
+                    buyItNowPrice: createAuctionDto.buyItNowPrice ?? null,
                     status: 'SCHEDULED',
                     deletedAt: null,
                     winnerId: null,
@@ -96,6 +107,8 @@ export class AuctionsService {
                     handoverSubmittedAt: null,
                     sellerBonusReleased: false,
                     sellerBonusReleasedAt: null,
+                    buyItNowPendingBuyerId: null,
+                    buyItNowPendingAt: null,
                 },
             });
         }
@@ -108,6 +121,7 @@ export class AuctionsService {
                 reservePrice: createAuctionDto.reservePrice,
                 startingBid: createAuctionDto.startingBid,
                 minIncrement: createAuctionDto.minIncrement,
+                buyItNowPrice: createAuctionDto.buyItNowPrice ?? null,
                 status: 'SCHEDULED',
             },
         });

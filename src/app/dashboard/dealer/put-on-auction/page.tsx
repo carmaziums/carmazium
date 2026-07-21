@@ -66,6 +66,10 @@ export default function PutOnAuctionPage() {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         if (!listingId || !startTime || !reserve || !startBid) return
+        if (listing?.price && parseFloat(startBid) > Number(listing.price) * 0.7) {
+            setSubmitError(`Starting bid must be at least 30% below the £${Number(listing.price).toLocaleString()} retail price.`)
+            return
+        }
         setSubmitting(true)
         setSubmitError(null)
         try {
@@ -230,9 +234,15 @@ export default function PutOnAuctionPage() {
                                                 value={startBid}
                                                 onChange={e => setStartBid(e.target.value)}
                                                 required
-                                                className="bg-[var(--bg-input)] border-[var(--border-default)] h-11"
+                                                className={`bg-[var(--bg-input)] border-[var(--border-default)] h-11 ${startBid && listing?.price && parseFloat(startBid) > Number(listing.price) * 0.7 ? 'border-red-500' : ''}`}
                                             />
-                                            <p className="text-xs text-gray-600 mt-1">Opening bid amount.</p>
+                                            {listing?.price && (
+                                                startBid && parseFloat(startBid) > Number(listing.price) * 0.7 ? (
+                                                    <p className="text-xs text-red-500 mt-1">Must be at least 30% below the £{Number(listing.price).toLocaleString()} retail price (max £{(Number(listing.price) * 0.7).toLocaleString(undefined, { maximumFractionDigits: 0 })})</p>
+                                                ) : (
+                                                    <p className="text-xs text-gray-600 mt-1">Opening bid amount — max £{(Number(listing.price) * 0.7).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                                                )
+                                            )}
                                         </div>
                                     </div>
 

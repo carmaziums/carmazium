@@ -38,6 +38,7 @@ describe('ListingsService', () => {
             },
             dealerStaff: { findFirst: jest.fn() },
             user: { findUnique: jest.fn() },
+            auction: { create: jest.fn() },
             $transaction: jest.fn(async (cb: any) => cb(prisma)),
         };
         sellers = { incrementListings: jest.fn(), incrementSales: jest.fn() };
@@ -187,6 +188,48 @@ describe('ListingsService', () => {
                 where: { sellerId: 'owner-1' },
                 _sum: { soldPrice: true },
             });
+        });
+    });
+
+    describe('alsoAuction', () => {
+        const baseSource = {
+            id: 'listing-1',
+            sellerId: 'seller-1',
+            type: 'CLASSIFIED',
+            linkedListingId: null,
+            price: 10000,
+            title: 'BMW M3',
+            slug: 'bmw-m3',
+            images: [],
+            videoUrls: [],
+        };
+
+        it('rejects a starting bid above 70% of the retail listing price', async () => {
+            prisma.listing.findUnique.mockResolvedValue(baseSource);
+
+            await expect(
+                service.alsoAuction('listing-1', 'seller-1', {
+                    startTime: new Date(Date.now() + 60_000).toISOString(),
+                    reservePrice: 9000,
+                    startingBid: 7001,
+                }),
+            ).rejects.toThrow('Starting bid must be at least 30% below');
+            expect(prisma.auction.create).not.toHaveBeenCalled();
+        });
+
+        it('accepts a starting bid at exactly 70% of the retail listing price', async () => {
+            prisma.listing.findUnique.mockResolvedValue(baseSource);
+            prisma.listing.create = jest.fn().mockResolvedValue({ id: 'auction-listing-1' });
+            prisma.auction.create.mockResolvedValue({ id: 'auction-1' });
+            prisma.listing.update.mockResolvedValue({});
+
+            const result = await service.alsoAuction('listing-1', 'seller-1', {
+                startTime: new Date(Date.now() + 60_000).toISOString(),
+                reservePrice: 9000,
+                startingBid: 7000,
+            });
+
+            expect(result).toEqual({ linkedListingId: 'auction-listing-1', auctionId: 'auction-1' });
         });
     });
 });

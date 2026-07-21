@@ -1187,6 +1187,12 @@ export class ListingsService {
                 `Reserve price (£${dto.reservePrice.toLocaleString('en-GB')}) cannot exceed the retail listing price (£${Number(source.price).toLocaleString('en-GB')}). Lower the reserve or raise the retail price first.`,
             );
         }
+        const maxStartingBid = Number(source.price) * 0.7;
+        if (dto.startingBid > maxStartingBid) {
+            throw new BadRequestException(
+                `Starting bid must be at least 30% below the retail listing price of £${Number(source.price).toLocaleString('en-GB')} (max £${maxStartingBid.toLocaleString('en-GB', { maximumFractionDigits: 2 })})`,
+            );
+        }
 
         const startTime = new Date(dto.startTime);
         if (isNaN(startTime.getTime()) || startTime.getTime() < Date.now() - 60_000) {
