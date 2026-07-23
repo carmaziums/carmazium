@@ -119,3 +119,46 @@ export async function apiClient<T>(
 
     return response.json();
 }
+
+/**
+ * Downloads a binary (e.g. PDF) endpoint that requires auth and triggers a
+ * browser download — via an authenticated `fetch` + blob, not `window.open`.
+ *
+ * `window.open(url)` navigates the backend's own domain directly as a fresh
+ * top-level page load. Since the frontend and backend are on separate
+ * domains, that request has no Authorization header (browsers don't let you
+ * attach one to a plain navigation) and depends entirely on the session
+ * cookie surviving a cross-site top-level navigation — which mobile Safari's
+ * ITP and Chrome's third-party-cookie restrictions can silently drop. Every
+ * other authenticated call in this app goes through `apiClient`'s
+ * `fetch(..., credentials:'include')` + Bearer token, which works reliably;
+ * this mirrors that so downloads authenticate the same way.
+ */
+export async function downloadAuthenticatedFile(endpoint: string, filename: string): Promise<void> {
+    const token = await getAccessToken();
+
+    const response = await fetch(`${API_URL}${endpoint}`, {
+        credentials: 'include',
+        headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+        },
+    });
+
+    if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+            redirectToLogin();
+            throw new Error('AUTH_REDIRECT');
+        }
+        throw new Error(`Download failed (HTTP ${response.status})`);
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+}

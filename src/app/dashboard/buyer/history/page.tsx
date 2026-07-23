@@ -5,6 +5,7 @@ import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getMyTransactions, formatPrice, type Transaction } from "@/lib/listingApi"
+import { downloadAuthenticatedFile } from "@/lib/apiClient"
 import { Loader2, ShoppingBag, AlertCircle, Download } from "lucide-react"
 
 const TX_TYPE_LABEL: Record<string, string> = {
@@ -17,12 +18,15 @@ const TX_TYPE_LABEL: Record<string, string> = {
     BOOST: "Featured Boost",
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || ""
-
 function downloadReceipt(transactionId: string) {
-    // Opens the PDF endpoint in a new window; browser handles the attachment.
-    const url = `${API_BASE}/transactions/${transactionId}/receipt.pdf`
-    window.open(url, "_blank", "noopener,noreferrer")
+    downloadAuthenticatedFile(
+        `/transactions/${transactionId}/receipt.pdf`,
+        `carmazium-receipt-${transactionId.slice(0, 8)}.pdf`,
+    ).catch((err) => {
+        if ((err as Error).message !== "AUTH_REDIRECT") {
+            console.error("Receipt download failed:", err)
+        }
+    })
 }
 
 export default function BuyerHistoryPage() {

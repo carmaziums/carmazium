@@ -9,6 +9,7 @@ import {
 import { getPaymentHistory } from "@/lib/paymentApi"
 import { getDealerKyc } from "@/lib/dealerApi"
 import { formatPrice } from "@/lib/listingApi"
+import { downloadAuthenticatedFile } from "@/lib/apiClient"
 
 const TYPE_LABELS: Record<string, string> = {
     DEPOSIT: 'Deposit',
@@ -39,14 +40,20 @@ interface ReceiptEntry {
     vehicle?: { title: string; image?: string; make: string | null; model: string | null; year: number | null }
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
-
 function downloadReceiptPdf(transactionId: string) {
     // Backend endpoint renders the receipt on the Carmazium letterhead.
-    // Synthetic entries (like the KYC fee) that have no backing transaction
-    // fall back to the previous inline-print flow — see caller.
-    const url = `${API_BASE}/transactions/${transactionId}/receipt.pdf`
-    window.open(url, '_blank', 'noopener,noreferrer')
+    // Fetched as an authenticated blob (not window.open) — the frontend and
+    // backend are on separate domains, and a plain cross-site navigation
+    // can silently drop the session cookie on mobile Safari/Chrome, unlike
+    // the Bearer-token-backed fetch every other authenticated call here uses.
+    downloadAuthenticatedFile(
+        `/transactions/${transactionId}/receipt.pdf`,
+        `carmazium-receipt-${transactionId.slice(0, 8)}.pdf`,
+    ).catch((err) => {
+        if ((err as Error).message !== 'AUTH_REDIRECT') {
+            console.error('Receipt download failed:', err)
+        }
+    })
 }
 
 export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
