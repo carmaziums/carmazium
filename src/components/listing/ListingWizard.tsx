@@ -1444,14 +1444,19 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         // getModelsForMake is already case-insensitive
                                         const models = getModelsForMake(formData.make)
                                         if (models.length === 0) {
+                                            const modelMissing = hasAttemptedNext && !formData.model
                                             return (
-                                                <Input placeholder="e.g. M4 Competition" value={formData.model}
-                                                    onChange={(e) => { set("model", e.target.value); set("variant", "") }} className={inputCls} />
+                                                <>
+                                                    <Input placeholder="e.g. M4 Competition" value={formData.model}
+                                                        onChange={(e) => { set("model", e.target.value); set("variant", "") }} className={`${inputCls} ${modelMissing ? 'border-red-500' : ''}`} />
+                                                    {modelMissing && <p className="text-xs text-red-400">Model is required.</p>}
+                                                </>
                                             )
                                         }
                                         const matchedModel = models.find(m => m.toLowerCase() === formData.model.trim().toLowerCase())
                                         const isCustomModel = formData.model.trim() !== "" && !matchedModel
                                         const selectValue = matchedModel ?? (isCustomModel ? "__other__" : "")
+                                        const modelMissing = hasAttemptedNext && !formData.model
                                         return (
                                             <>
                                                 <select
@@ -1460,7 +1465,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                         if (e.target.value === "__other__") { set("model", ""); set("variant", "") }
                                                         else { set("model", e.target.value); set("variant", "") }
                                                     }}
-                                                    className="w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-[var(--border-default)]"
+                                                    className={`w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${modelMissing ? 'border-red-500' : 'border-[var(--border-default)]'}`}
                                                 >
                                                     <option value="">Select model</option>
                                                     {models.map(m => <option key={m} value={m}>{m}</option>)}
@@ -1468,8 +1473,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 </select>
                                                 {isCustomModel && (
                                                     <Input placeholder="e.g. M4 Competition" value={formData.model}
-                                                        onChange={(e) => { set("model", e.target.value); set("variant", "") }} className={inputCls} />
+                                                        onChange={(e) => { set("model", e.target.value); set("variant", "") }} className={`${inputCls} ${modelMissing ? 'border-red-500' : ''}`} />
                                                 )}
+                                                {modelMissing && <p className="text-xs text-red-400">Model is required.</p>}
                                             </>
                                         )
                                     })()}
@@ -1648,9 +1654,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             {/* Location */}
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1.5"><MapPin size={13} /> Location</label>
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1.5"><MapPin size={13} /> Location *</label>
                                 <div className="flex gap-3">
-                                    <Input placeholder="e.g. London, Manchester" value={formData.location} onChange={(e) => set("location", e.target.value)} className={`${inputCls} flex-1`} />
+                                    <Input placeholder="e.g. London, Manchester" value={formData.location} onChange={(e) => set("location", e.target.value)} className={`${inputCls} flex-1 ${hasAttemptedNext && !formData.location ? 'border-red-500' : ''}`} />
                                     <Button type="button" variant="outline" disabled={geoLoading}
                                         onClick={async () => {
                                             if (!navigator.geolocation) { alert("Geolocation is not supported by your browser."); return }
@@ -1676,6 +1682,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         <span className="hidden md:inline">Use my location</span>
                                     </Button>
                                 </div>
+                                {hasAttemptedNext && !formData.location && (
+                                    <p className="text-xs text-red-400">Location is required.</p>
+                                )}
                             </div>
                         </div>
                     )}
