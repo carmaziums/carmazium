@@ -1133,7 +1133,6 @@ export function VehicleDetailPageClient({ params }: { params: Promise<{ id: stri
                                     { label: "Fuel Type", value: listing.fuelType },
                                     { label: "Body Type", value: listing.bodyType },
                                     { label: "Condition", value: listing.condition },
-                                    { label: "Exterior Grade", value: listing.exteriorGrade ? `Grade ${listing.exteriorGrade} of 5` : null },
                                     { label: "VRM", value: listing.vrm },
                                     { label: "MOT Status", value: listing.motStatus ? `${listing.motStatus}${listing.motExpiryDate ? ` (exp. ${listing.motExpiryDate})` : ''}` : null },
                                     { label: "Tax Status", value: listing.taxStatus ? `${listing.taxStatus}${listing.taxDueDate ? ` (due ${listing.taxDueDate})` : ''}` : null },

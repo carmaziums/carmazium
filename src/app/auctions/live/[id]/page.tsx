@@ -1051,7 +1051,6 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                             ["Colour",      auction.listing.color],
                                                             ["Mileage",     auction.listing.mileage ? `${auction.listing.mileage.toLocaleString()} mi` : null],
                                                             ["Condition",   auction.listing.condition?.replace(/_/g, " ")],
-                                                            ["Exterior Grade", auction.listing.exteriorGrade ? `Grade ${auction.listing.exteriorGrade} of 5` : null],
                                                             ["Registration",auction.listing.vrm],
                                                             ["Reg. Date",   auction.listing.monthOfFirstRegistration],
                                                             ["Location",    auction.listing.location],
@@ -1140,10 +1139,25 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         )}
 
                                         {/* ── Condition & Damage — always shown, even with zero reported damage ── */}
+                                        {(() => {
+                                            // exteriorGrade is computed server-side from the seller's marked
+                                            // damage zones. Same value shown as a chip on cards + the /vehicle
+                                            // and /buy-cars detail pages, so grade only appears in one place per
+                                            // page (this pill) rather than duplicated in the spec grid too.
+                                            const grade = auction.listing.exteriorGrade ?? 1
+                                            const gradeLabel = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Average'][grade]
+                                            const gradeColor = ['', 'text-emerald-400', 'text-green-400', 'text-yellow-400', 'text-orange-400', 'text-red-400'][grade]
+                                            const gradeBg = ['', 'bg-emerald-500/10 border-emerald-500/20', 'bg-green-500/10 border-green-500/20', 'bg-yellow-500/10 border-yellow-500/20', 'bg-orange-500/10 border-orange-500/20', 'bg-red-500/10 border-red-500/20'][grade]
+                                            return (
                                         <div className="rounded-xl border border-amber-500/20 bg-[var(--bg-input)] p-4">
-                                            <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider mb-1 border-l-2 border-amber-500 pl-2.5">
-                                                Condition &amp; Damage
-                                            </h4>
+                                            <div className="flex items-start justify-between gap-3 mb-1">
+                                                <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider border-l-2 border-amber-500 pl-2.5">
+                                                    Condition &amp; Damage
+                                                </h4>
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold shrink-0 ${gradeBg} ${gradeColor}`}>
+                                                    Grade {grade} — {gradeLabel}
+                                                </span>
+                                            </div>
                                             <p className="text-[10px] text-[var(--text-muted)] mb-4 pl-3">
                                                 {damageRecords.length > 0
                                                     ? `${damageRecords.length} zone${damageRecords.length !== 1 ? "s" : ""} marked by seller — click a zone to see details`
@@ -1191,6 +1205,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                 </div>
                                             )}
                                         </div>
+                                            )
+                                        })()}
 
                                         {/* ── Auction parameters ───────────────────────────── */}
                                         <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
