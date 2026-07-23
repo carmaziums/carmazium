@@ -67,7 +67,6 @@ export interface CreateListingRequest {
     zeroTo60Mph?: number
     combinedMpg?: number
     extraUrbanMpg?: number
-    exteriorGrade?: number
     bannerLabel?: string
     videoUrls?: string[]
     isDepartedSale?: boolean

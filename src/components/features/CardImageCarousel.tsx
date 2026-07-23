@@ -17,16 +17,18 @@ interface Props {
     imageClassName?: string
 }
 
-const SWIPE_THRESHOLD_PX = 24
-const TAP_MOVE_TOLERANCE_PX = 8
-
 /**
  * A lightweight, dependency-free image carousel for use inside vehicle cards.
- * - Pointer-based swipe (touch + mouse) with tap/swipe disambiguation so a swipe
- *   never triggers the card's click-through.
- * - Only the current + adjacent images are actually mounted — the rest render as
- *   placeholder <div>s until the user pages through.
- * - Arrow buttons on desktop; dots (≤5) or N/M counter (>5) as indicator.
+ * - Native horizontal scroll-snap drives navigation — real touch/momentum
+ *   scrolling on mobile, not a custom pointer-drag reimplementation. A tap
+ *   (no scroll movement) still reaches the underlying Link normally; browsers
+ *   don't fire a click after a scroll-drag, so no manual gesture/tap
+ *   disambiguation is needed.
+ * - Arrow buttons (desktop only — hover-revealed, which never applies on
+ *   touch) call scrollTo() on the same track so mouse and touch users land
+ *   on identical state.
+ * - Only the current image loads eagerly; the rest use native lazy-loading,
+ *   so a grid of many cards doesn't fetch all 8 images per card up front.
  */
 export function CardImageCarousel({
     images,
@@ -40,78 +42,25 @@ export function CardImageCarousel({
 }: Props) {
     const bounded = React.useMemo(() => images.filter(Boolean).slice(0, maxImages), [images, maxImages])
     const [index, setIndex] = React.useState(0)
-    const [loaded, setLoaded] = React.useState<Set<number>>(() => new Set([0]))
-    const dragRef = React.useRef<{ startX: number; startY: number; moved: boolean } | null>(null)
-    const suppressClickRef = React.useRef(false)
-
-    React.useEffect(() => {
-        setLoaded((prev) => {
-            const next = new Set(prev)
-            next.add(index)
-            if (index > 0) next.add(index - 1)
-            if (index < bounded.length - 1) next.add(index + 1)
-            return next
-        })
-    }, [index, bounded.length])
-
-    const go = React.useCallback(
-        (delta: number) => {
-            setIndex((i) => {
-                const next = i + delta
-                if (next < 0) return 0
-                if (next >= bounded.length) return bounded.length - 1
-                return next
-            })
-        },
-        [bounded.length],
-    )
-
+    const trackRef = React.useRef<HTMLDivElement>(null)
     const hasMultiple = bounded.length > 1
 
-    // ── Pointer + click disambiguation ───────────────────────────────────────
-    // Pointer handlers detect the gesture; a click handler with `capture: true`
-    // suppresses the anchor's navigation whenever we just paged the carousel.
-    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-        dragRef.current = { startX: e.clientX, startY: e.clientY, moved: false }
-    }
+    const scrollToIndex = React.useCallback((i: number) => {
+        const el = trackRef.current
+        if (!el) return
+        const clamped = Math.max(0, Math.min(bounded.length - 1, i))
+        el.scrollTo({ left: clamped * el.clientWidth, behavior: "smooth" })
+    }, [bounded.length])
 
-    const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (!dragRef.current) return
-        const dx = e.clientX - dragRef.current.startX
-        const dy = e.clientY - dragRef.current.startY
-        if (Math.abs(dx) > TAP_MOVE_TOLERANCE_PX || Math.abs(dy) > TAP_MOVE_TOLERANCE_PX) {
-            dragRef.current.moved = true
-        }
-    }
+    const go = React.useCallback((delta: number) => scrollToIndex(index + delta), [index, scrollToIndex])
 
-    const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-        const state = dragRef.current
-        dragRef.current = null
-        if (!state) return
-
-        const dx = e.clientX - state.startX
-        if (Math.abs(dx) >= SWIPE_THRESHOLD_PX && hasMultiple) {
-            suppressClickRef.current = true
-            if (dx < 0) go(1)
-            else go(-1)
-            return
-        }
-        if (state.moved) {
-            // Any drag beyond tap tolerance but below swipe threshold — cancel the tap.
-            suppressClickRef.current = true
-        }
-    }
-
-    const handlePointerCancel = () => {
-        dragRef.current = null
-    }
-
-    const handleClickCapture = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (suppressClickRef.current) {
-            suppressClickRef.current = false
-            e.preventDefault()
-            e.stopPropagation()
-        }
+    // Native scroll (touch swipe, momentum, or a programmatic scrollTo from the
+    // arrow buttons) is the single source of truth for which slide is current.
+    const handleScroll = () => {
+        const el = trackRef.current
+        if (!el || el.clientWidth === 0) return
+        const i = Math.round(el.scrollLeft / el.clientWidth)
+        setIndex((prev) => (prev === i ? prev : i))
     }
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -129,55 +78,42 @@ export function CardImageCarousel({
 
     return (
         <div
-            className={`relative w-full h-full select-none ${className}`}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerCancel}
-            onClickCapture={handleClickCapture}
+            className={`relative w-full h-full ${className}`}
             onKeyDown={handleKeyDown}
             tabIndex={hasMultiple ? 0 : -1}
             role={hasMultiple ? "group" : undefined}
             aria-roledescription={hasMultiple ? "carousel" : undefined}
             aria-label={hasMultiple ? `${alt} — ${bounded.length} photos` : undefined}
         >
-            {/* Base link — receives taps. Swipes are cancelled via onClickCapture above. */}
-            {href && (
-                <Link
-                    href={href}
-                    className="absolute inset-0 z-0"
-                    draggable={false}
-                    onDragStart={(e) => e.preventDefault()}
-                >
-                    <span className="sr-only">{alt}</span>
-                </Link>
-            )}
-
-            {/* Image layer — non-interactive so pointer events reach us, and drag can't start on the img element. */}
-            <div className="absolute inset-0 pointer-events-none z-10">
-                {bounded.map((src, i) => (
-                    loaded.has(i) ? (
+            <div
+                ref={trackRef}
+                onScroll={handleScroll}
+                className="absolute inset-0 flex overflow-x-auto snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                style={{ overscrollBehaviorX: "contain" }}
+            >
+                {bounded.length > 0 ? bounded.map((src, i) => (
+                    <div key={`${src}-${i}`} className="relative w-full h-full flex-shrink-0 snap-start snap-always">
+                        {href && (
+                            <Link href={href} className="absolute inset-0 z-0" draggable={false}>
+                                <span className="sr-only">{alt}</span>
+                            </Link>
+                        )}
                         <Image
-                            key={`${src}-${i}`}
                             src={src}
                             alt={i === 0 ? alt : `${alt} — image ${i + 1}`}
                             fill
                             sizes={sizes}
-                            className={`${imageClassName} transition-opacity duration-300 ${i === index ? "opacity-100" : "opacity-0"}`}
+                            className={imageClassName}
                             loading={i === 0 ? "eager" : "lazy"}
                             draggable={false}
                         />
-                    ) : (
-                        <div
-                            key={`ph-${i}`}
-                            aria-hidden
-                            className={`absolute inset-0 bg-[var(--bg-input)] ${i === index ? "opacity-100" : "opacity-0"}`}
-                        />
-                    )
-                ))}
+                    </div>
+                )) : (
+                    <div className="relative w-full h-full flex-shrink-0 bg-[var(--bg-input)]" />
+                )}
             </div>
 
-            {/* Overlay slot (badges) — parent controls z-index for nested content */}
+            {/* Overlay slot (badges) — sits above the scroll track, stays fixed while it scrolls */}
             {children}
 
             {hasMultiple && (
@@ -190,10 +126,8 @@ export function CardImageCarousel({
                             e.stopPropagation()
                             go(-1)
                         }}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onPointerUp={(e) => e.stopPropagation()}
                         disabled={index === 0}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 z-30 h-8 w-8 rounded-full bg-black/50 backdrop-blur border border-white/10 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 z-30 h-8 w-8 rounded-full bg-black/50 backdrop-blur border border-white/10 text-white items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                         <ChevronLeft size={16} />
                     </button>
@@ -205,10 +139,8 @@ export function CardImageCarousel({
                             e.stopPropagation()
                             go(1)
                         }}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onPointerUp={(e) => e.stopPropagation()}
                         disabled={index === bounded.length - 1}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 z-30 h-8 w-8 rounded-full bg-black/50 backdrop-blur border border-white/10 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-30 h-8 w-8 rounded-full bg-black/50 backdrop-blur border border-white/10 text-white items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                         <ChevronRight size={16} />
                     </button>
@@ -232,11 +164,6 @@ export function CardImageCarousel({
                         </span>
                     )}
                 </div>
-            )}
-
-            {/* Single-image fallback (no images array; keeps SSR-friendly markup) */}
-            {!hasMultiple && !bounded[0] && (
-                <div className="absolute inset-0 bg-[var(--bg-input)]" />
             )}
         </div>
     )

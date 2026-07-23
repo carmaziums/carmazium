@@ -8,10 +8,12 @@ import {
     Gavel, Flame, Calendar, Zap, Users, Search, RefreshCw,
     Clock, Shield, MessageSquare, Trophy, CheckCircle,
     ChevronRight, Timer, Gauge, Fuel, Car, MapPin,
+    BadgeCheck, ShieldCheck, Star, Truck,
 } from "lucide-react"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
 import { CardImageCarousel } from "@/components/features/CardImageCarousel"
 import { WishlistButton } from "@/components/features/WishlistButton"
+import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS } from "@/lib/vehicleLabels"
 import {
     getActiveAuctions, getScheduledAuctions, getCurrentBid,
@@ -39,7 +41,7 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
     const image = auction.listing.images?.[0] ?? "/assets/images/hero-bg.png"
     const vehicle = `${auction.listing.year ?? ""} ${auction.listing.make ?? ""} ${auction.listing.model ?? ""}`.trim()
     const l = auction.listing
-    const hasSpecs = l.year || l.mileage != null || l.fuelType || l.bodyType || l.location
+    const hasSpecs = l.year || l.mileage != null || l.fuelType || l.bodyType || l.location || l.deliveryAvailable
     const grade = auction.listing.exteriorGrade
     const gradeStyle: { dot: string; text: string; border: string; bg: string; label: string } | null =
         grade === 1 ? { dot: 'bg-emerald-500', text: 'text-emerald-300', border: 'border-emerald-500/40', bg: 'bg-emerald-500/15', label: 'Excellent — minimal/no wear' } :
@@ -79,21 +81,36 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-transparent pointer-events-none z-10" />
 
-                    {/* Status badge */}
-                    <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
-                        {isActive ? (
-                            <span className="flex items-center gap-1.5 bg-red-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(220,38,38,0.5)]">
-                                <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> LIVE
-                            </span>
-                        ) : (
-                            <span className="flex items-center gap-1.5 bg-black/60 backdrop-blur text-slate-300 text-[10px] font-bold px-2.5 py-1 rounded-full border border-[var(--border-default)]">
-                                <Clock size={9} /> {formatStartsIn(auction.startTime)}
-                            </span>
-                        )}
-                        {antiSnipe && (
-                            <span className="flex items-center gap-1 bg-amber-500/90 text-white text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse">
-                                <Zap size={8} /> SNIPE
-                            </span>
+                    {/* Featured Badge — matches Buy Cars card treatment */}
+                    {auction.listing.isFeatured && <FeaturedBadge />}
+
+                    {/* Status badge + trust badges stack */}
+                    <div className="absolute top-3 left-3 z-10 flex flex-col items-start gap-1.5">
+                        <div className="flex items-center gap-2">
+                            {isActive ? (
+                                <span className="flex items-center gap-1.5 bg-red-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(220,38,38,0.5)]">
+                                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> LIVE
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-1.5 bg-black/60 backdrop-blur text-slate-300 text-[10px] font-bold px-2.5 py-1 rounded-full border border-[var(--border-default)]">
+                                    <Clock size={9} /> {formatStartsIn(auction.startTime)}
+                                </span>
+                            )}
+                            {antiSnipe && (
+                                <span className="flex items-center gap-1 bg-amber-500/90 text-white text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse">
+                                    <Zap size={8} /> SNIPE
+                                </span>
+                            )}
+                        </div>
+                        {(l.badgeTier === 'STANDARD' || l.badgeTier === 'PREMIUM') && (
+                            <div className="flex flex-col gap-1.5 drop-shadow-md">
+                                <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md text-emerald-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-emerald-500/30">
+                                    <ShieldCheck size={12} className="text-emerald-500" /> Verified
+                                </div>
+                                <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md text-blue-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-blue-500/30">
+                                    <BadgeCheck size={12} className="text-blue-500" /> VIN Report
+                                </div>
+                            </div>
                         )}
                     </div>
 
@@ -149,6 +166,31 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
                         </div>
                     </div>
 
+                    {/* Badge Tier Label — mirrors the Buy Cars card treatment */}
+                    {l.badgeTier && l.badgeTier !== 'FREE' && (
+                        <div className="flex items-center gap-2 mb-2">
+                            {l.badgeTier === 'PREMIUM' && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                                    <Star size={10} className="fill-amber-400" /> Premium
+                                </span>
+                            )}
+                            {l.badgeTier === 'STANDARD' && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide bg-blue-500/15 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full">
+                                    <ShieldCheck size={10} /> Standard
+                                </span>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Estate chip — mirrors the Buy Cars card treatment */}
+                    {l.isDepartedSale && (
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide bg-slate-500/10 dark:bg-[var(--bg-card)] text-slate-600 dark:text-[var(--text-muted)] border border-slate-500/20 dark:border-[var(--border-default)] px-2 py-0.5 rounded-full">
+                                Estate
+                            </span>
+                        </div>
+                    )}
+
                     {/* Specs Tags — mirrors the Buy Cars card treatment */}
                     {hasSpecs && (
                         <div className="flex flex-wrap gap-1.5 mb-3">
@@ -175,6 +217,11 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
                             {l.location && (
                                 <span className="inline-flex items-center gap-1 bg-slate-500/10 dark:bg-[var(--bg-card)] border border-slate-500/20 dark:border-[var(--border-default)] text-slate-600 dark:text-[var(--text-muted)] text-[10px] font-semibold px-2 py-1 rounded-md">
                                     <MapPin size={10} /> {l.location.split(',')[0].trim()}
+                                </span>
+                            )}
+                            {l.deliveryAvailable && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                    <Truck size={11} /> Delivery
                                 </span>
                             )}
                         </div>

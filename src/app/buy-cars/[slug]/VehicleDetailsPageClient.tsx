@@ -997,8 +997,10 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
 
                         {/* Damage Report Section */}
                         {damageRecords.length > 0 && (() => {
-                            const count = damageRecords.length
-                            const grade = count <= 2 ? 1 : count <= 4 ? 2 : count <= 6 ? 3 : count <= 9 ? 4 : 5
+                            // exteriorGrade is computed automatically by the platform from the
+                            // seller's reported damage zones (see backend DamageAnalysisService) —
+                            // not seller-chosen. Same value drives the "Grade N" chip on the card.
+                            const grade = listing.exteriorGrade ?? 1
                             const gradeLabel = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Average'][grade]
                             const gradeColor = ['', 'text-emerald-400', 'text-green-400', 'text-yellow-400', 'text-orange-400', 'text-red-400'][grade]
                             const gradeBg = ['', 'bg-emerald-500/10 border-emerald-500/20', 'bg-green-500/10 border-green-500/20', 'bg-yellow-500/10 border-yellow-500/20', 'bg-orange-500/10 border-orange-500/20', 'bg-red-500/10 border-red-500/20'][grade]
@@ -1007,10 +1009,10 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                 <div className="flex items-start justify-between mb-2">
                                     <h3 className="text-xl font-bold border-l-4 border-amber-500 pl-4">Condition &amp; Damage</h3>
                                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold ${gradeBg} ${gradeColor}`}>
-                                        Condition: {gradeLabel}
+                                        Grade {grade} — {gradeLabel}
                                     </span>
                                 </div>
-                                <p className="text-xs text-[var(--text-muted)] mb-4 pl-5">{count} zone{count !== 1 ? 's' : ''} marked by seller — click a zone to see details</p>
+                                <p className="text-xs text-[var(--text-muted)] mb-4 pl-5">{damageRecords.length} zone{damageRecords.length !== 1 ? 's' : ''} marked by seller — click a zone to see details</p>
 
                                 {/* WebGL isn't guaranteed on every device (in-app
                                     browsers, low-power mode, older phones) — wrap

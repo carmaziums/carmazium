@@ -49,6 +49,11 @@ export interface AuctionListing {
     co2Emissions: number | null;
     // Exterior grade (1 best → 5 worst) — Motorway-style
     exteriorGrade: number | null;
+    // Trust/promo — same fields the Buy Cars card reads
+    badgeTier?: string | null;
+    isFeatured?: boolean;
+    deliveryAvailable?: boolean;
+    isDepartedSale?: boolean | null;
     // Identity
     vrm: string | null;
     vin: string | null;

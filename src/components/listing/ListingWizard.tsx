@@ -72,7 +72,6 @@ interface FormData {
     zeroTo60Mph: string
     combinedMpg: string
     extraUrbanMpg: string
-    exteriorGrade: string // "1"–"5" or "" (unset)
     // Legal declarations (Write-Off & Compliance)
     writeOffCategory: 'CAT_A' | 'CAT_B' | 'CAT_S' | 'CAT_N' | 'NONE' | ''
     stolenRecovered: boolean | null
@@ -164,7 +163,7 @@ const INITIAL_FORM: FormData = {
     condition: "", serviceHistory: "", owners: "", isDepartedSale: false, departedRelationship: "", isImported: false,
     deliveryAvailable: false, deliveryPricePerMile: '', deliveryMaxMiles: '',
     variant: "", driveType: "", numberOfKeys: "",
-    torqueNm: "", topSpeedMph: "", zeroTo60Mph: "", combinedMpg: "", extraUrbanMpg: "", exteriorGrade: "",
+    torqueNm: "", topSpeedMph: "", zeroTo60Mph: "", combinedMpg: "", extraUrbanMpg: "",
     writeOffCategory: "", stolenRecovered: null, hasOutstandingFinance: null, isLegalRegisteredKeeper: null, notOwnerRelationship: "", declarationAcknowledged: false,
     ulezCompliant: null, euroStandard: "", co2Emissions: "",
     motStatus: "", taxStatus: "", motExpiryDate: "", taxDueDate: "",
@@ -393,7 +392,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     zeroTo60Mph: l.zeroTo60Mph ? String(l.zeroTo60Mph) : '',
                     combinedMpg: l.combinedMpg ? String(l.combinedMpg) : '',
                     extraUrbanMpg: l.extraUrbanMpg ? String(l.extraUrbanMpg) : '',
-                    exteriorGrade: l.exteriorGrade ? String(l.exteriorGrade) : '',
                     deliveryAvailable: l.deliveryAvailable ?? false,
                     deliveryPricePerMile: l.deliveryPricePerMile ? String(l.deliveryPricePerMile) : '',
                     deliveryMaxMiles: l.deliveryMaxMiles ? String(l.deliveryMaxMiles) : '',
@@ -696,7 +694,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 zeroTo60Mph: formData.zeroTo60Mph ? parseFloat(formData.zeroTo60Mph) : undefined,
                 combinedMpg: formData.combinedMpg ? parseFloat(formData.combinedMpg) : undefined,
                 extraUrbanMpg: formData.extraUrbanMpg ? parseFloat(formData.extraUrbanMpg) : undefined,
-                exteriorGrade: formData.exteriorGrade ? parseInt(formData.exteriorGrade) : undefined,
                 bannerLabel: formData.bannerLabel || undefined,
                 videoUrls: formData.videoUrls.length > 0 ? formData.videoUrls : undefined,
                 isDepartedSale: formData.isDepartedSale || undefined,
@@ -1564,30 +1561,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             ))}
                                         </div>
                                     </div>
-                                    {/* Exterior Grade (1–5) */}
-                                    <div className="space-y-2 md:col-span-2">
-                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Exterior Grade — Optional</label>
-                                        <p className="text-xs text-[var(--text-muted)]">1 = excellent (minimal wear) · 5 = poor (heavy damage). Shown as a chip on your card.</p>
-                                        <div className="grid grid-cols-5 gap-2">
-                                            {([
-                                                { g: "1", active: "border-emerald-500 bg-emerald-500/10 text-emerald-400" },
-                                                { g: "2", active: "border-lime-500 bg-lime-500/10 text-lime-400" },
-                                                { g: "3", active: "border-amber-500 bg-amber-500/10 text-amber-400" },
-                                                { g: "4", active: "border-orange-500 bg-orange-500/10 text-orange-400" },
-                                                { g: "5", active: "border-red-500 bg-red-500/10 text-red-400" },
-                                            ] as const).map(({ g, active }) => {
-                                                const isActive = formData.exteriorGrade === g
-                                                return (
-                                                    <button key={g} type="button"
-                                                        onClick={() => set("exteriorGrade", isActive ? "" : g)}
-                                                        className={`py-2.5 rounded-lg border text-sm font-bold transition-all ${isActive ? active : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"}`}
-                                                    >
-                                                        Grade {g}
-                                                    </button>
-                                                )
-                                            })}
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
 
@@ -2391,36 +2364,49 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     {/* ── STEP 3: Pricing ───────────────────────────────────────────────── */}
                     {currentStep === 3 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4">Pricing</h2>
+                            <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4">{isAuction ? "Vehicle Value" : "Pricing"}</h2>
 
 
 
                             <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-                                <p className="text-xs text-primary font-semibold mb-1">💰 Set Your Price Range</p>
-                                <p className="text-xs text-[var(--text-muted)]">Define your price points for your vehicle. The <strong className="text-[var(--text-primary)]">Asking Price</strong> is displayed publicly. The <strong className="text-[var(--text-primary)]">Lower (Min)</strong> defines your acceptable offer floor.</p>
+                                {isAuction ? (
+                                    <>
+                                        <p className="text-xs text-primary font-semibold mb-1">📊 Estimated Market Value</p>
+                                        <p className="text-xs text-[var(--text-muted)]">This isn&apos;t shown to bidders — it&apos;s only used to cap your <strong className="text-[var(--text-primary)]">Starting Bid</strong> at a sensible level (max 70% of this value). Set the auction&apos;s actual starting bid, reserve, and Buy It Now price on the next step.</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-xs text-primary font-semibold mb-1">💰 Set Your Price Range</p>
+                                        <p className="text-xs text-[var(--text-muted)]">Define your price points for your vehicle. The <strong className="text-[var(--text-primary)]">Asking Price</strong> is displayed publicly. The <strong className="text-[var(--text-primary)]">Lower (Min)</strong> defines your acceptable offer floor.</p>
+                                    </>
+                                )}
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Lower (Minimum) */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1">
-                                        Lower (Min)
-                                        <InfoTooltip text="The minimum price you'd accept. Bids below this are rejected. Not shown publicly." />
-                                    </label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
-                                        <Input type="number" placeholder="e.g. 18000" value={formData.priceMin}
-                                            onChange={(e) => set("priceMin", e.target.value)}
-                                            className={`${inputCls} pl-8 text-lg h-14 ${formData.priceMin && formData.priceAsking && parseFloat(formData.priceMin) > parseFloat(formData.priceAsking) ? 'border-red-500' : ''}`} />
+                            <div className={`grid grid-cols-1 ${isAuction ? '' : 'md:grid-cols-2'} gap-4`}>
+                                {/* Lower (Minimum) — classified listings only; auctions use bids, not offers */}
+                                {!isAuction && (
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1">
+                                            Lower (Min)
+                                            <InfoTooltip text="The minimum price you'd accept. Bids below this are rejected. Not shown publicly." />
+                                        </label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
+                                            <Input type="number" placeholder="e.g. 18000" value={formData.priceMin}
+                                                onChange={(e) => set("priceMin", e.target.value)}
+                                                className={`${inputCls} pl-8 text-lg h-14 ${formData.priceMin && formData.priceAsking && parseFloat(formData.priceMin) > parseFloat(formData.priceAsking) ? 'border-red-500' : ''}`} />
+                                        </div>
+                                        <p className="text-[10px] text-[var(--text-secondary)]">Floor price — not visible to buyers</p>
                                     </div>
-                                    <p className="text-[10px] text-[var(--text-secondary)]">Floor price — not visible to buyers</p>
-                                </div>
+                                )}
 
-                                {/* Asking Price (Main) */}
+                                {/* Asking Price / Estimated Market Value */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-primary flex items-center gap-1">
-                                        Asking Price *
-                                        <InfoTooltip text="This is the price displayed on your listing. Buyers will see this as the advertised price." />
+                                        {isAuction ? "Estimated Market Value *" : "Asking Price *"}
+                                        <InfoTooltip text={isAuction
+                                            ? "Your best estimate of the car's market value. Used only to cap the starting bid — never shown to bidders."
+                                            : "This is the price displayed on your listing. Buyers will see this as the advertised price."} />
                                     </label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary text-lg font-bold">£</span>
@@ -2428,15 +2414,15 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             onChange={(e) => set("priceAsking", e.target.value)}
                                             className={`${inputCls} pl-8 text-lg h-14 border-primary/30 focus:border-primary ring-1 ring-primary/10`} />
                                     </div>
-                                    <p className="text-[10px] text-primary/60 font-semibold">Displayed on listing — required</p>
+                                    <p className="text-[10px] text-primary/60 font-semibold">{isAuction ? "Internal reference only — required" : "Displayed on listing — required"}</p>
                                 </div>
                             </div>
 
-                            {formData.priceMin && formData.priceAsking && parseFloat(formData.priceMin) > parseFloat(formData.priceAsking) && (
+                            {!isAuction && formData.priceMin && formData.priceAsking && parseFloat(formData.priceMin) > parseFloat(formData.priceAsking) && (
                                 <p className="text-xs text-red-400 flex items-center gap-1"><AlertTriangle size={12} /> Lower price cannot be higher than the asking price.</p>
                             )}
 
-                            {formData.priceAsking && (() => {
+                            {!isAuction && formData.priceAsking && (() => {
                                 const pMin = parseFloat(formData.priceMin) || 0
                                 const pAsk = parseFloat(formData.priceAsking) || 0
                                 if (pAsk <= 0) return null

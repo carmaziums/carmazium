@@ -49,16 +49,28 @@ export class DamageAnalysisService {
   }
 
   async saveDamageRecords(listingId: string, detections: DamageDetection[]) {
-    return (this.prisma as any).damageRecord.createMany({
-      data: detections.map(d => ({
-        listingId,
-        part: d.part,
-        type: d.type,
-        size: d.size,
-        coords: d.coords as any,
-        imageUrl: d.imageUrl,
-      })),
-    });
+    // Replace, not append — the wizard resubmits the seller's *complete* current
+    // set of marked zones each time (e.g. after editing), not just new ones.
+    // Without deleting first, re-saving would duplicate every previously-saved
+    // record and inflate the automatic grade computed below.
+    const [, , updatedListing] = await this.prisma.$transaction([
+      (this.prisma as any).damageRecord.deleteMany({ where: { listingId } }),
+      (this.prisma as any).damageRecord.createMany({
+        data: detections.map(d => ({
+          listingId,
+          part: d.part,
+          type: d.type,
+          size: d.size,
+          coords: d.coords as any,
+          imageUrl: d.imageUrl,
+        })),
+      }),
+      this.prisma.listing.update({
+        where: { id: listingId },
+        data: { exteriorGrade: computeExteriorGrade(detections) },
+      }),
+    ]);
+    return updatedListing;
   }
 
   async getDamageRecords(listingId: string) {
@@ -66,4 +78,37 @@ export class DamageAnalysisService {
       where: { listingId },
     });
   }
+}
+
+/**
+ * Automatic exterior grading (1 = best, 5 = worst) from a vehicle's reported
+ * damage — sellers never choose a grade directly. Mirrors the platform's
+ * published grading definitions:
+ *   Grade 1 — negligible damage (e.g. 2 small scratches)
+ *   Grade 2 — Grade 1 + a few additional minor damages (e.g. 3 items)
+ *   Grade 3 — Grade 1-2 + noticeable moderate damage (e.g. 5 items)
+ *   Grade 4 — Grade 1-3 + multiple additional moderate damages (e.g. 12 items)
+ *   Grade 5 — Grade 1-4 + excessive wear / major damage, regardless of count
+ *
+ * Zone *count* is the primary signal (matches how the in-app 3D damage mapper
+ * is actually used — sellers mark zones without picking a severity today).
+ * Any zone explicitly reported as large/major/severe forces Grade 5 outright,
+ * so more detailed damage data (e.g. from AI photo analysis) still ranks a
+ * vehicle correctly even when its zone count alone wouldn't.
+ */
+export function computeExteriorGrade(records: { size?: string }[]): number {
+  if (!records || records.length === 0) return 1;
+
+  const hasMajorDamage = records.some((r) => {
+    const size = (r.size || '').toUpperCase();
+    return size.includes('LARGE') || size.includes('MAJOR') || size.includes('SEVERE') || size.includes('15CM+') || size.includes('EXTENSIVE');
+  });
+  if (hasMajorDamage) return 5;
+
+  const count = records.length;
+  if (count <= 2) return 1;
+  if (count === 3) return 2;
+  if (count <= 6) return 3;
+  if (count <= 14) return 4;
+  return 5;
 }

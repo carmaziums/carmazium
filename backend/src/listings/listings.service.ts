@@ -302,7 +302,10 @@ export class ListingsService {
                 zeroTo60Mph: createListingDto.zeroTo60Mph ?? null,
                 combinedMpg: createListingDto.combinedMpg ?? null,
                 extraUrbanMpg: createListingDto.extraUrbanMpg ?? null,
-                exteriorGrade: createListingDto.exteriorGrade ?? null,
+                // Exterior grade is never seller-set — it's computed automatically from
+                // marked damage zones (see DamageAnalysisService.saveDamageRecords). A
+                // fresh listing with no damage reported yet starts at the best grade.
+                exteriorGrade: 1,
                 bannerLabel: createListingDto.bannerLabel ?? null,
                 // Phase 13: departed/estate sale
                 isDepartedSale: createListingDto.isDepartedSale ?? false,
@@ -770,7 +773,8 @@ export class ListingsService {
         if (updateListingDto.zeroTo60Mph !== undefined) updateData.zeroTo60Mph = updateListingDto.zeroTo60Mph;
         if (updateListingDto.combinedMpg !== undefined) updateData.combinedMpg = updateListingDto.combinedMpg;
         if (updateListingDto.extraUrbanMpg !== undefined) updateData.extraUrbanMpg = updateListingDto.extraUrbanMpg;
-        if (updateListingDto.exteriorGrade !== undefined) updateData.exteriorGrade = updateListingDto.exteriorGrade ?? null;
+        // exteriorGrade is intentionally not settable here — it's computed automatically
+        // from damage records (see DamageAnalysisService.saveDamageRecords).
         if (updateListingDto.bannerLabel !== undefined) updateData.bannerLabel = updateListingDto.bannerLabel;
         // Phase 13: departed/estate sale
         if (updateListingDto.isDepartedSale !== undefined) updateData.isDepartedSale = updateListingDto.isDepartedSale;
