@@ -1007,7 +1007,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                 <div className="flex items-start justify-between mb-2">
                                     <h3 className="text-xl font-bold border-l-4 border-amber-500 pl-4">Condition &amp; Damage</h3>
                                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold ${gradeBg} ${gradeColor}`}>
-                                        Grade {grade} — {gradeLabel}
+                                        Condition: {gradeLabel}
                                     </span>
                                 </div>
                                 <p className="text-xs text-[var(--text-muted)] mb-4 pl-5">{count} zone{count !== 1 ? 's' : ''} marked by seller — click a zone to see details</p>
