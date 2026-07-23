@@ -45,16 +45,17 @@ const LAYOUT = {
     billToStartY: 1238,
 
     // Table body — single line item drawn at this row; multi-line items stack downward.
-    tableRowStartY: 1092,
-    tableRowHeight: 24,
+    // The empty row sits directly below the DESCRIPTION/QTY/PRICE/AMOUNT header band.
+    tableRowStartY: 1005,
+    tableRowHeight: 26,
     tableColDescriptionX: 95,
     tableColQtyX: 545,
     tableColPriceX: 705,
     tableColAmountX: 900,
 
-    // Total value (right side of the total-row band)
-    totalValueX: 970,
-    totalValueY: 1002,
+    // Total value (baseline inside the TOTAL band at the bottom of the invoice grid)
+    totalValueX: 1020,
+    totalValueY: 940,
 
     // White cover-rectangles over the letterhead's pre-printed sample values
     // (they need to be blanked before we overlay our own text).
@@ -65,8 +66,8 @@ const LAYOUT = {
         { x: 900, y: 1260, w: 170, h: 28 },
         // 29/07/2026 sample due date
         { x: 900, y: 1230, w: 170, h: 28 },
-        // £0.00 sample total
-        { x: 900, y: 995, w: 170, h: 32 },
+        // £0.00 sample total (right-hand side of the TOTAL band)
+        { x: 890, y: 928, w: 190, h: 40 },
     ],
 };
 
@@ -204,8 +205,13 @@ export class ReceiptPdfService {
 
         // Blank out the letterhead's sample data (INV00001, dates, £0.00) so
         // our real values sit on a clean background rather than doubling up.
-        for (const box of LAYOUT.coverBoxes) {
-            page.drawRectangle({ x: box.x, y: box.y, width: box.w, height: box.h, color: WHITE });
+        // Header fields sit on the white paper (cover in white); the TOTAL band
+        // is navy with white text (cover in navy, then draw white on top).
+        const covers = LAYOUT.coverBoxes;
+        for (let i = 0; i < covers.length; i++) {
+            const box = covers[i];
+            const color = i === covers.length - 1 ? NAVY : WHITE; // last box = TOTAL band cover
+            page.drawRectangle({ x: box.x, y: box.y, width: box.w, height: box.h, color });
         }
 
         // ── Header values ────────────────────────────────────────────────────
@@ -251,15 +257,15 @@ export class ReceiptPdfService {
         });
 
         // ── Total ────────────────────────────────────────────────────────────
+        // The letterhead's TOTAL band is a solid navy bar with white text — mirror that.
         const totalLabel = this.formatMoney(data.totalAmount, data.currency);
-        // Right-align the total by measuring text width and offsetting left.
         const totalWidth = helveticaBold.widthOfTextAtSize(totalLabel, 22);
         page.drawText(totalLabel, {
             x: LAYOUT.totalValueX - totalWidth,
             y: LAYOUT.totalValueY,
             size: 22,
             font: helveticaBold,
-            color: NAVY,
+            color: WHITE,
         });
 
         const pdfBytes = await pdf.save();
