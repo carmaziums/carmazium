@@ -7,11 +7,12 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
     Gavel, Flame, Calendar, Zap, Users, Search, RefreshCw,
     Clock, Shield, MessageSquare, Trophy, CheckCircle,
-    ChevronRight, Timer,
+    ChevronRight, Timer, Gauge, Fuel, Car, MapPin,
 } from "lucide-react"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
 import { CardImageCarousel } from "@/components/features/CardImageCarousel"
 import { WishlistButton } from "@/components/features/WishlistButton"
+import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS } from "@/lib/vehicleLabels"
 import {
     getActiveAuctions, getScheduledAuctions, getCurrentBid,
     getBidCount, isAntiSnipeActive, type Auction,
@@ -37,6 +38,8 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
     const isActive = auction.status === "ACTIVE"
     const image = auction.listing.images?.[0] ?? "/assets/images/hero-bg.png"
     const vehicle = `${auction.listing.year ?? ""} ${auction.listing.make ?? ""} ${auction.listing.model ?? ""}`.trim()
+    const l = auction.listing
+    const hasSpecs = l.year || l.mileage != null || l.fuelType || l.bodyType || l.location
     const grade = auction.listing.exteriorGrade
     const gradeStyle: { dot: string; text: string; border: string; bg: string; label: string } | null =
         grade === 1 ? { dot: 'bg-emerald-500', text: 'text-emerald-300', border: 'border-emerald-500/40', bg: 'bg-emerald-500/15', label: 'Excellent — minimal/no wear' } :
@@ -145,6 +148,37 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
                             )}
                         </div>
                     </div>
+
+                    {/* Specs Tags — mirrors the Buy Cars card treatment */}
+                    {hasSpecs && (
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                            {l.year && (
+                                <span className="inline-flex items-center gap-1 bg-slate-500/10 dark:bg-[var(--bg-card)] border border-slate-500/20 dark:border-[var(--border-default)] text-slate-600 dark:text-[var(--text-muted)] text-[10px] font-semibold px-2 py-1 rounded-md">
+                                    <Calendar size={10} /> {l.year}
+                                </span>
+                            )}
+                            {l.mileage != null && (
+                                <span className="inline-flex items-center gap-1 bg-slate-500/10 dark:bg-[var(--bg-card)] border border-slate-500/20 dark:border-[var(--border-default)] text-slate-600 dark:text-[var(--text-muted)] text-[10px] font-semibold px-2 py-1 rounded-md">
+                                    <Gauge size={10} /> {l.mileage.toLocaleString()} mi
+                                </span>
+                            )}
+                            {l.fuelType && FUEL_TYPE_LABELS[l.fuelType] && (
+                                <span className="inline-flex items-center gap-1 bg-slate-500/10 dark:bg-[var(--bg-card)] border border-slate-500/20 dark:border-[var(--border-default)] text-slate-600 dark:text-[var(--text-muted)] text-[10px] font-semibold px-2 py-1 rounded-md">
+                                    <Fuel size={10} /> {FUEL_TYPE_LABELS[l.fuelType]}
+                                </span>
+                            )}
+                            {l.bodyType && BODY_TYPE_LABELS[l.bodyType] && (
+                                <span className="inline-flex items-center gap-1 bg-slate-500/10 dark:bg-[var(--bg-card)] border border-slate-500/20 dark:border-[var(--border-default)] text-slate-600 dark:text-[var(--text-muted)] text-[10px] font-semibold px-2 py-1 rounded-md">
+                                    <Car size={10} /> {BODY_TYPE_LABELS[l.bodyType]}
+                                </span>
+                            )}
+                            {l.location && (
+                                <span className="inline-flex items-center gap-1 bg-slate-500/10 dark:bg-[var(--bg-card)] border border-slate-500/20 dark:border-[var(--border-default)] text-slate-600 dark:text-[var(--text-muted)] text-[10px] font-semibold px-2 py-1 rounded-md">
+                                    <MapPin size={10} /> {l.location.split(',')[0].trim()}
+                                </span>
+                            )}
+                        </div>
+                    )}
 
                     <div className="flex items-center justify-between pt-3 border-t border-[var(--border-default)]">
                         {auction.buyItNowPrice ? (
