@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/Input"
 import { AccordionItem } from "@/components/ui/Accordion"
 import dynamic from "next/dynamic"
 const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
+const ThreeDVehicleViewer = dynamic(() => import("@/components/listing/ThreeDVehicleViewer").then(m => m.ThreeDVehicleViewer), { ssr: false })
+import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
 import {
     ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon,
     MapPin, Share2, Heart, Scale, Loader2, AlertTriangle, X, Tag,
@@ -444,6 +446,7 @@ export function VehicleDetailPageClient({ params }: { params: Promise<{ id: stri
     const [showEnquireModal, setShowEnquireModal] = React.useState(false)
     const [latestOffer, setLatestOffer] = React.useState<LatestOffer | null>(null)   // most recent offer on listing (any buyer) — public display
     const [myOffer, setMyOffer] = React.useState<LatestOffer | null>(null)            // this user's own offer — drives button state
+    const [selectedDamageZone, setSelectedDamageZone] = React.useState<string | null>(null)
     const [offerSuccess, setOfferSuccess] = React.useState(false)
     const [isWatchlisted, setIsWatchlisted] = React.useState(false)
     const [watchlistLoading, setWatchlistLoading] = React.useState(false)
@@ -1130,6 +1133,7 @@ export function VehicleDetailPageClient({ params }: { params: Promise<{ id: stri
                                     { label: "Fuel Type", value: listing.fuelType },
                                     { label: "Body Type", value: listing.bodyType },
                                     { label: "Condition", value: listing.condition },
+                                    { label: "Exterior Grade", value: listing.exteriorGrade ? `Grade ${listing.exteriorGrade} of 5` : null },
                                     { label: "VRM", value: listing.vrm },
                                     { label: "MOT Status", value: listing.motStatus ? `${listing.motStatus}${listing.motExpiryDate ? ` (exp. ${listing.motExpiryDate})` : ''}` : null },
                                     { label: "Tax Status", value: listing.taxStatus ? `${listing.taxStatus}${listing.taxDueDate ? ` (due ${listing.taxDueDate})` : ''}` : null },
@@ -1184,52 +1188,95 @@ export function VehicleDetailPageClient({ params }: { params: Promise<{ id: stri
                             </div>
                         )}
 
-                        {/* Seller-Reported Damage */}
-                        {Array.isArray((listing as any).damageRecords) && (listing as any).damageRecords.length > 0 && (
-                            <div className="bg-[var(--bg-card)] backdrop-blur-md border border-amber-500/20 rounded-xl p-8">
-                                <h3 className="text-xl font-bold mb-1 border-l-4 border-amber-500 pl-4 flex items-center gap-2">
-                                    <Wrench size={18} className="text-amber-400" />
-                                    Seller-Reported Damage
-                                </h3>
-                                <p className="text-xs text-[var(--text-muted)] mb-6 pl-6">The seller has disclosed the following known damage areas.</p>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    {((listing as any).damageRecords as any[]).map((record: any, i: number) => {
-                                        const isKebabId = /^[a-z][a-z-]*$/.test(record.part ?? '')
-                                        const zoneLabel = record.part
-                                            ? isKebabId
-                                                ? record.part.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
-                                                : record.part
-                                            : 'Unknown Area'
-                                        const view = record.coords?.view ?? null
-                                        return (
-                                            <div key={record.id ?? i} className="flex gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/15">
-                                                {record.imageUrl && (
-                                                    <div className="w-20 h-16 rounded-lg overflow-hidden shrink-0 border border-[var(--border-default)] relative">
-                                                        <Image src={record.imageUrl} alt={zoneLabel} fill sizes="80px" className="object-cover" />
-                                                    </div>
-                                                )}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
-                                                            {zoneLabel}
-                                                        </span>
-                                                        {record.size && record.size !== 'MEDIUM' && (
-                                                            <span className="text-[10px] text-[var(--text-secondary)] font-medium">{record.size}</span>
-                                                        )}
-                                                        {view && (
-                                                            <span className="text-[10px] text-gray-700">{view}</span>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-sm text-[var(--text-secondary)] leading-snug line-clamp-3">
-                                                        {record.type || 'No description provided.'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
+                        {/* Condition & Damage — always shown (same 3D model + auto grade as the Buy Cars page), even with zero reported damage */}
+                        {(() => {
+                            const damageRecords = Array.isArray((listing as any).damageRecords) ? (listing as any).damageRecords as any[] : []
+                            // exteriorGrade is computed automatically by the platform from the
+                            // seller's reported damage zones — not seller-chosen. Same value
+                            // drives the "Grade N" chip on the card and the Buy Cars detail page.
+                            const grade = listing.exteriorGrade ?? 1
+                            const gradeLabel = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Average'][grade]
+                            const gradeColor = ['', 'text-emerald-400', 'text-green-400', 'text-yellow-400', 'text-orange-400', 'text-red-400'][grade]
+                            const gradeBg = ['', 'bg-emerald-500/10 border-emerald-500/20', 'bg-green-500/10 border-green-500/20', 'bg-yellow-500/10 border-yellow-500/20', 'bg-orange-500/10 border-orange-500/20', 'bg-red-500/10 border-red-500/20'][grade]
+                            return (
+                            <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
+                                <div className="flex items-start justify-between mb-2">
+                                    <h3 className="text-xl font-bold border-l-4 border-amber-500 pl-4 flex items-center gap-2">
+                                        <Wrench size={18} className="text-amber-400" />
+                                        Condition &amp; Damage
+                                    </h3>
+                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold ${gradeBg} ${gradeColor}`}>
+                                        Grade {grade} — {gradeLabel}
+                                    </span>
                                 </div>
+                                <p className="text-xs text-[var(--text-muted)] mb-4 pl-5">
+                                    {damageRecords.length > 0
+                                        ? `${damageRecords.length} zone${damageRecords.length !== 1 ? 's' : ''} marked by seller — click a zone to see details`
+                                        : 'No damage reported by the seller'}
+                                </p>
+
+                                <ThreeDErrorBoundary
+                                    fallback={
+                                        <div className="w-full rounded-2xl border border-white/8 bg-slate-950/80 flex flex-col items-center justify-center gap-2 text-center px-6" style={{ height: 400 }}>
+                                            <AlertTriangle className="text-amber-400" size={22} />
+                                            <p className="text-sm font-bold text-white">3D preview isn&apos;t available on this device</p>
+                                            {damageRecords.length > 0 && <p className="text-xs text-[var(--text-muted)] max-w-xs">No problem — the damage details are listed below.</p>}
+                                        </div>
+                                    }
+                                >
+                                    <ThreeDVehicleViewer
+                                        bodyType={listing.bodyType ?? undefined}
+                                        markedZones={damageRecords.map((r: any) => r.part)}
+                                        selectedZone={selectedDamageZone}
+                                        onZoneClick={(id) => setSelectedDamageZone(prev => prev === id ? null : id)}
+                                    />
+                                </ThreeDErrorBoundary>
+
+                                {damageRecords.length > 0 && (
+                                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {damageRecords.map((record: any, i: number) => {
+                                            const isKebabId = /^[a-z][a-z-]*$/.test(record.part ?? '')
+                                            const zoneLabel = record.part
+                                                ? isKebabId
+                                                    ? record.part.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+                                                    : record.part
+                                                : 'Unknown Area'
+                                            const view = record.coords?.view ?? null
+                                            return (
+                                                <button
+                                                    key={record.id ?? i}
+                                                    onClick={() => setSelectedDamageZone(prev => prev === record.part ? null : record.part)}
+                                                    className={`text-left flex gap-3 p-4 rounded-xl border transition-colors ${selectedDamageZone === record.part ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-500/5 border-amber-500/15 hover:border-amber-500/30'}`}
+                                                >
+                                                    {record.imageUrl && (
+                                                        <div className="w-20 h-16 rounded-lg overflow-hidden shrink-0 border border-[var(--border-default)] relative">
+                                                            <Image src={record.imageUrl} alt={zoneLabel} fill sizes="80px" className="object-cover" />
+                                                        </div>
+                                                    )}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                                            <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
+                                                                {zoneLabel}
+                                                            </span>
+                                                            {record.size && record.size !== 'MEDIUM' && (
+                                                                <span className="text-[10px] text-[var(--text-secondary)] font-medium">{record.size}</span>
+                                                            )}
+                                                            {view && (
+                                                                <span className="text-[10px] text-gray-700">{view}</span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-sm text-[var(--text-secondary)] leading-snug line-clamp-3">
+                                                            {record.type || 'No description provided.'}
+                                                        </p>
+                                                    </div>
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                )}
                             </div>
-                        )}
+                            )
+                        })()}
 
 
 

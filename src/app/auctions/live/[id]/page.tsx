@@ -1138,31 +1138,33 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             </div>
                                         )}
 
-                                        {/* ── Damage Report ───────────────────────────────── */}
-                                        {damageRecords.length > 0 && (
-                                            <div className="rounded-xl border border-amber-500/20 bg-[var(--bg-input)] p-4">
-                                                <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider mb-1 border-l-2 border-amber-500 pl-2.5">
-                                                    Reported Damage
-                                                </h4>
-                                                <p className="text-[10px] text-[var(--text-muted)] mb-4 pl-3">
-                                                    {damageRecords.length} zone{damageRecords.length !== 1 ? "s" : ""} marked by seller — click a zone to see details
-                                                </p>
-                                                <ThreeDErrorBoundary
-                                                    fallback={
-                                                        <div className="w-full rounded-xl border border-[var(--border-default)] bg-slate-950/80 flex flex-col items-center justify-center gap-2 text-center px-6 py-10">
-                                                            <TriangleAlert className="text-amber-400" size={20} />
-                                                            <p className="text-sm font-bold text-white">3D preview unavailable on this device</p>
-                                                            <p className="text-xs text-[var(--text-muted)]">Damage details are listed below.</p>
-                                                        </div>
-                                                    }
-                                                >
-                                                    <ThreeDVehicleViewer
-                                                        bodyType={auction.listing.bodyType ?? undefined}
-                                                        markedZones={damageRecords.map((r: any) => r.part)}
-                                                        selectedZone={selectedDamageZone}
-                                                        onZoneClick={(id) => setSelectedDamageZone(prev => prev === id ? null : id)}
-                                                    />
-                                                </ThreeDErrorBoundary>
+                                        {/* ── Condition & Damage — always shown, even with zero reported damage ── */}
+                                        <div className="rounded-xl border border-amber-500/20 bg-[var(--bg-input)] p-4">
+                                            <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider mb-1 border-l-2 border-amber-500 pl-2.5">
+                                                Condition &amp; Damage
+                                            </h4>
+                                            <p className="text-[10px] text-[var(--text-muted)] mb-4 pl-3">
+                                                {damageRecords.length > 0
+                                                    ? `${damageRecords.length} zone${damageRecords.length !== 1 ? "s" : ""} marked by seller — click a zone to see details`
+                                                    : "No damage reported by the seller"}
+                                            </p>
+                                            <ThreeDErrorBoundary
+                                                fallback={
+                                                    <div className="w-full rounded-xl border border-[var(--border-default)] bg-slate-950/80 flex flex-col items-center justify-center gap-2 text-center px-6 py-10">
+                                                        <TriangleAlert className="text-amber-400" size={20} />
+                                                        <p className="text-sm font-bold text-white">3D preview unavailable on this device</p>
+                                                        {damageRecords.length > 0 && <p className="text-xs text-[var(--text-muted)]">Damage details are listed below.</p>}
+                                                    </div>
+                                                }
+                                            >
+                                                <ThreeDVehicleViewer
+                                                    bodyType={auction.listing.bodyType ?? undefined}
+                                                    markedZones={damageRecords.map((r: any) => r.part)}
+                                                    selectedZone={selectedDamageZone}
+                                                    onZoneClick={(id) => setSelectedDamageZone(prev => prev === id ? null : id)}
+                                                />
+                                            </ThreeDErrorBoundary>
+                                            {damageRecords.length > 0 && (
                                                 <div className="mt-4 space-y-2">
                                                     {damageRecords.map((record: any, i: number) => (
                                                         <button
@@ -1186,8 +1188,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                         </button>
                                                     ))}
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
 
                                         {/* ── Auction parameters ───────────────────────────── */}
                                         <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
@@ -1199,6 +1201,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                         ? ["Buy it now",  `£${Number(auction.buyItNowPrice).toLocaleString()}`]
                                                         : null,
                                                     ["Min Increment", `£${Number(auction.minIncrement).toLocaleString()}`],
+                                                    auction.listing.exteriorGrade
+                                                        ? ["Exterior Grade", `Grade ${auction.listing.exteriorGrade} of 5`]
+                                                        : null,
                                                     ["Starts",        startTime ? startTime.toLocaleString("en-GB") : "—"],
                                                     ["Ends",          endTime   ? endTime.toLocaleString("en-GB")   : "—"],
                                                 ].filter(Boolean) as [string, string][]).map(([k, v]) => (

@@ -995,8 +995,8 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                             </div>
                         </div>
 
-                        {/* Damage Report Section */}
-                        {damageRecords.length > 0 && (() => {
+                        {/* Condition & Damage — always shown, even with zero reported damage */}
+                        {(() => {
                             // exteriorGrade is computed automatically by the platform from the
                             // seller's reported damage zones (see backend DamageAnalysisService) —
                             // not seller-chosen. Same value drives the "Grade N" chip on the card.
@@ -1012,7 +1012,11 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                         Grade {grade} — {gradeLabel}
                                     </span>
                                 </div>
-                                <p className="text-xs text-[var(--text-muted)] mb-4 pl-5">{damageRecords.length} zone{damageRecords.length !== 1 ? 's' : ''} marked by seller — click a zone to see details</p>
+                                <p className="text-xs text-[var(--text-muted)] mb-4 pl-5">
+                                    {damageRecords.length > 0
+                                        ? `${damageRecords.length} zone${damageRecords.length !== 1 ? 's' : ''} marked by seller — click a zone to see details`
+                                        : 'No damage reported by the seller'}
+                                </p>
 
                                 {/* WebGL isn't guaranteed on every device (in-app
                                     browsers, low-power mode, older phones) — wrap
@@ -1023,7 +1027,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                         <div className="w-full rounded-2xl border border-white/8 bg-slate-950/80 flex flex-col items-center justify-center gap-2 text-center px-6" style={{ height: 400 }}>
                                             <AlertTriangle className="text-amber-400" size={22} />
                                             <p className="text-sm font-bold text-white">3D preview isn&apos;t available on this device</p>
-                                            <p className="text-xs text-[var(--text-muted)] max-w-xs">No problem — the damage details are listed below.</p>
+                                            {damageRecords.length > 0 && <p className="text-xs text-[var(--text-muted)] max-w-xs">No problem — the damage details are listed below.</p>}
                                         </div>
                                     }
                                 >
@@ -1036,25 +1040,27 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                 </ThreeDErrorBoundary>
 
                                 {/* Damage list */}
-                                <div className="mt-4 space-y-2">
-                                    {damageRecords.map((record: any, i: number) => (
-                                        <button
-                                            key={i}
-                                            onClick={() => setSelectedDamageZone(prev => prev === record.part ? null : record.part)}
-                                            className={`w-full text-left flex items-start gap-3 p-3 rounded-lg border transition-colors ${selectedDamageZone === record.part ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[var(--bg-input)] border-[var(--border-default)] hover:border-[var(--border-default)]'}`}
-                                        >
-                                            {record.imageUrl && (
-                                                <div className="relative w-12 h-12 rounded-md overflow-hidden flex-shrink-0 border border-[var(--border-default)]">
-                                                    <Image src={record.imageUrl} alt={record.part} fill className="object-cover" sizes="48px" />
+                                {damageRecords.length > 0 && (
+                                    <div className="mt-4 space-y-2">
+                                        {damageRecords.map((record: any, i: number) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => setSelectedDamageZone(prev => prev === record.part ? null : record.part)}
+                                                className={`w-full text-left flex items-start gap-3 p-3 rounded-lg border transition-colors ${selectedDamageZone === record.part ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[var(--bg-input)] border-[var(--border-default)] hover:border-[var(--border-default)]'}`}
+                                            >
+                                                {record.imageUrl && (
+                                                    <div className="relative w-12 h-12 rounded-md overflow-hidden flex-shrink-0 border border-[var(--border-default)]">
+                                                        <Image src={record.imageUrl} alt={record.part} fill className="object-cover" sizes="48px" />
+                                                    </div>
+                                                )}
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold text-[var(--text-primary)]">{record.part.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
+                                                    <p className="text-xs text-[var(--text-muted)]">{record.type}{record.size ? ` — ${record.size}` : ''}</p>
                                                 </div>
-                                            )}
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-semibold text-[var(--text-primary)]">{record.part.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
-                                                <p className="text-xs text-[var(--text-muted)]">{record.type}{record.size ? ` — ${record.size}` : ''}</p>
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                             )
                         })()}
