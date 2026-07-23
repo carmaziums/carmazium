@@ -1051,6 +1051,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                             ["Colour",      auction.listing.color],
                                                             ["Mileage",     auction.listing.mileage ? `${auction.listing.mileage.toLocaleString()} mi` : null],
                                                             ["Condition",   auction.listing.condition?.replace(/_/g, " ")],
+                                                            ["Exterior Grade", auction.listing.exteriorGrade ? `Grade ${auction.listing.exteriorGrade} of 5` : null],
                                                             ["Registration",auction.listing.vrm],
                                                             ["Reg. Date",   auction.listing.monthOfFirstRegistration],
                                                             ["Location",    auction.listing.location],
@@ -1201,9 +1202,6 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                         ? ["Buy it now",  `£${Number(auction.buyItNowPrice).toLocaleString()}`]
                                                         : null,
                                                     ["Min Increment", `£${Number(auction.minIncrement).toLocaleString()}`],
-                                                    auction.listing.exteriorGrade
-                                                        ? ["Exterior Grade", `Grade ${auction.listing.exteriorGrade} of 5`]
-                                                        : null,
                                                     ["Starts",        startTime ? startTime.toLocaleString("en-GB") : "—"],
                                                     ["Ends",          endTime   ? endTime.toLocaleString("en-GB")   : "—"],
                                                 ].filter(Boolean) as [string, string][]).map(([k, v]) => (
