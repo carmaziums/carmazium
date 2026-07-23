@@ -24,54 +24,68 @@ type ReceiptData = {
 };
 
 // Positions are given in PDF space (origin bottom-left, page size 1080 x 1526).
-// They map visually onto the letterhead's pre-printed labels & rows. If any
-// value drifts on top of a letterhead element, nudge the coordinate here.
+// Derived by parsing the letterhead's own (Flate-decoded) content stream —
+// not estimated from a screenshot — so these line up with the template's
+// actual text/rectangle boxes. The page applies a top-down flip
+// (`1 0 0 -1 0 1526 cm`) internally; every number below is already converted
+// back to standard bottom-up PDF space. If a value ever drifts, re-derive by
+// decoding the content stream rather than eyeballing a render.
 const LAYOUT = {
     pageWidth: 1080,
     pageHeight: 1526,
 
     // Values on the "Invoice #" / "Creation date" / "Due date" column (right side of header)
-    invoiceValueX: 935,
-    invoiceValueY: 1298,
-    creationDateValueX: 935,
-    creationDateValueY: 1268,
-    dueDateValueX: 935,
-    dueDateValueY: 1238,
+    invoiceValueX: 904,
+    invoiceValueY: 1212,
+    creationDateValueX: 887,
+    creationDateValueY: 1178,
+    dueDateValueX: 887,
+    dueDateValueY: 1144,
 
-    // Bill-to block (left side of header)
-    billToX: 95,
-    billToNameY: 1268,
+    // Bill-to block (left side of header) — template has no pre-printed sample
+    // here, so these just need to sit below the "BILL TO" heading (box ends
+    // at y≈1203) and above the table (starts at y≈1047). Aligned to the same
+    // rows as creation/due date for a clean two-column header.
+    billToX: 72,
+    billToNameY: 1178,
     billToLineHeight: 22,
-    billToStartY: 1238,
+    billToStartY: 1144,
 
     // Table body — single line item drawn at this row; multi-line items stack downward.
-    // The empty row sits directly below the DESCRIPTION/QTY/PRICE/AMOUNT header band.
-    tableRowStartY: 1005,
+    // Empty row spans y 1047–979 (top-down 479–547); baseline picked near its vertical center.
+    tableRowStartY: 1007,
     tableRowHeight: 26,
-    tableColDescriptionX: 95,
+    tableColDescriptionX: 84,
     tableColQtyX: 545,
     tableColPriceX: 705,
     tableColAmountX: 900,
 
-    // Total value (baseline inside the TOTAL band at the bottom of the invoice grid)
-    totalValueX: 1020,
-    totalValueY: 940,
+    // Total value — right-edge of the amount cell inside the TOTAL band (x=997),
+    // right-aligned by subtracting the rendered text's width from this X.
+    totalValueX: 997,
+    totalValueY: 935,
 
-    // White cover-rectangles over the letterhead's pre-printed sample values
-    // (they need to be blanked before we overlay our own text).
+    // Cover rectangles over the letterhead's pre-printed sample values, sized
+    // generously so a longer real value (e.g. a 9-digit invoice number) can't
+    // peek out from under the old sample text.
     coverBoxes: [
-        // INV00001 sample value
-        { x: 900, y: 1290, w: 170, h: 30 },
-        // 22/07/2026 sample creation date
-        { x: 900, y: 1260, w: 170, h: 28 },
-        // 29/07/2026 sample due date
-        { x: 900, y: 1230, w: 170, h: 28 },
-        // £0.00 sample total (right-hand side of the TOTAL band)
-        { x: 890, y: 928, w: 190, h: 40 },
+        // INV00001 sample value — white background
+        { x: 895, y: 1200, w: 130, h: 40, fill: 'white' as const },
+        // 22/07/2026 sample creation date — white background
+        { x: 878, y: 1166, w: 140, h: 40, fill: 'white' as const },
+        // 29/07/2026 sample due date — white background
+        { x: 878, y: 1132, w: 140, h: 40, fill: 'white' as const },
+        // £0.00 sample total — sits on the navy TOTAL band, must be covered
+        // with the band's own colour (not white) or the patch shows as a seam.
+        { x: 840, y: 916, w: 178, h: 62, fill: 'brand' as const },
     ],
 };
 
-const NAVY = rgb(0.18, 0.19, 0.44);
+// Exact brand colour parsed from the letterhead's own content stream
+// (".2549 .251 .5922 rg") — used for the table header bar, the TOTAL band,
+// and the column divider lines. Must match exactly or the TOTAL cover patch
+// shows a visible border against the surrounding band.
+const BRAND = rgb(0.2549, 0.251, 0.5922);
 const BLACK = rgb(0, 0, 0);
 const WHITE = rgb(1, 1, 1);
 
@@ -205,12 +219,11 @@ export class ReceiptPdfService {
 
         // Blank out the letterhead's sample data (INV00001, dates, £0.00) so
         // our real values sit on a clean background rather than doubling up.
-        // Header fields sit on the white paper (cover in white); the TOTAL band
-        // is navy with white text (cover in navy, then draw white on top).
-        const covers = LAYOUT.coverBoxes;
-        for (let i = 0; i < covers.length; i++) {
-            const box = covers[i];
-            const color = i === covers.length - 1 ? NAVY : WHITE; // last box = TOTAL band cover
+        // Header fields sit on the white paper (cover white); the TOTAL band
+        // is filled with the letterhead's own brand colour (cover brand, then
+        // draw white text on top) so the patch is invisible against the band.
+        for (const box of LAYOUT.coverBoxes) {
+            const color = box.fill === 'brand' ? BRAND : WHITE;
             page.drawRectangle({ x: box.x, y: box.y, width: box.w, height: box.h, color });
         }
 
