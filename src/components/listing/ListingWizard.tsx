@@ -72,6 +72,7 @@ interface FormData {
     zeroTo60Mph: string
     combinedMpg: string
     extraUrbanMpg: string
+    exteriorGrade: string // "1"–"5" or "" (unset)
     // Legal declarations (Write-Off & Compliance)
     writeOffCategory: 'CAT_A' | 'CAT_B' | 'CAT_S' | 'CAT_N' | 'NONE' | ''
     stolenRecovered: boolean | null
@@ -163,7 +164,7 @@ const INITIAL_FORM: FormData = {
     condition: "", serviceHistory: "", owners: "", isDepartedSale: false, departedRelationship: "", isImported: false,
     deliveryAvailable: false, deliveryPricePerMile: '', deliveryMaxMiles: '',
     variant: "", driveType: "", numberOfKeys: "",
-    torqueNm: "", topSpeedMph: "", zeroTo60Mph: "", combinedMpg: "", extraUrbanMpg: "",
+    torqueNm: "", topSpeedMph: "", zeroTo60Mph: "", combinedMpg: "", extraUrbanMpg: "", exteriorGrade: "",
     writeOffCategory: "", stolenRecovered: null, hasOutstandingFinance: null, isLegalRegisteredKeeper: null, notOwnerRelationship: "", declarationAcknowledged: false,
     ulezCompliant: null, euroStandard: "", co2Emissions: "",
     motStatus: "", taxStatus: "", motExpiryDate: "", taxDueDate: "",
@@ -392,6 +393,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     zeroTo60Mph: l.zeroTo60Mph ? String(l.zeroTo60Mph) : '',
                     combinedMpg: l.combinedMpg ? String(l.combinedMpg) : '',
                     extraUrbanMpg: l.extraUrbanMpg ? String(l.extraUrbanMpg) : '',
+                    exteriorGrade: l.exteriorGrade ? String(l.exteriorGrade) : '',
                     deliveryAvailable: l.deliveryAvailable ?? false,
                     deliveryPricePerMile: l.deliveryPricePerMile ? String(l.deliveryPricePerMile) : '',
                     deliveryMaxMiles: l.deliveryMaxMiles ? String(l.deliveryMaxMiles) : '',
@@ -694,6 +696,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 zeroTo60Mph: formData.zeroTo60Mph ? parseFloat(formData.zeroTo60Mph) : undefined,
                 combinedMpg: formData.combinedMpg ? parseFloat(formData.combinedMpg) : undefined,
                 extraUrbanMpg: formData.extraUrbanMpg ? parseFloat(formData.extraUrbanMpg) : undefined,
+                exteriorGrade: formData.exteriorGrade ? parseInt(formData.exteriorGrade) : undefined,
                 bannerLabel: formData.bannerLabel || undefined,
                 videoUrls: formData.videoUrls.length > 0 ? formData.videoUrls : undefined,
                 isDepartedSale: formData.isDepartedSale || undefined,
@@ -1553,6 +1556,30 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     className={`flex-1 py-2.5 rounded-lg border text-sm font-bold transition-all ${formData.numberOfKeys === k ? "border-primary bg-primary/10 text-primary" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"}`}
                                                 >{k} {k === "3" ? "+" : ""} {parseInt(k) === 1 ? "Key" : "Keys"}</button>
                                             ))}
+                                        </div>
+                                    </div>
+                                    {/* Exterior Grade (1–5) */}
+                                    <div className="space-y-2 md:col-span-2">
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Exterior Grade — Optional</label>
+                                        <p className="text-xs text-[var(--text-muted)]">1 = excellent (minimal wear) · 5 = poor (heavy damage). Shown as a chip on your card.</p>
+                                        <div className="grid grid-cols-5 gap-2">
+                                            {([
+                                                { g: "1", active: "border-emerald-500 bg-emerald-500/10 text-emerald-400" },
+                                                { g: "2", active: "border-lime-500 bg-lime-500/10 text-lime-400" },
+                                                { g: "3", active: "border-amber-500 bg-amber-500/10 text-amber-400" },
+                                                { g: "4", active: "border-orange-500 bg-orange-500/10 text-orange-400" },
+                                                { g: "5", active: "border-red-500 bg-red-500/10 text-red-400" },
+                                            ] as const).map(({ g, active }) => {
+                                                const isActive = formData.exteriorGrade === g
+                                                return (
+                                                    <button key={g} type="button"
+                                                        onClick={() => set("exteriorGrade", isActive ? "" : g)}
+                                                        className={`py-2.5 rounded-lg border text-sm font-bold transition-all ${isActive ? active : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"}`}
+                                                    >
+                                                        Grade {g}
+                                                    </button>
+                                                )
+                                            })}
                                         </div>
                                     </div>
                                 </div>

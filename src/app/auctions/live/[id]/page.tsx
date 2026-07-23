@@ -764,7 +764,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             ) : endedPayload?.reserveMet === false ? (
                                 <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm">
                                     <AlertCircle size={15} className="text-amber-400 shrink-0" />
-                                    <p>Auction ended — reserve price was not met. <span className="text-[var(--text-muted)] text-xs">No sale was completed.</span></p>
+                                    <p>Auction ended — the vehicle didn't reach the seller's minimum. <span className="text-[var(--text-muted)] text-xs">No sale was completed.</span></p>
                                 </div>
                             ) : endedPayload?.winnerId ? (
                                 <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm">
@@ -864,11 +864,6 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 <p className="text-4xl md:text-5xl font-black text-white font-mono leading-none drop-shadow-2xl">
                                     £{currentBid.toLocaleString()}
                                 </p>
-                                {reserveMet && (
-                                    <div className="flex items-center gap-1 mt-2 text-emerald-400 text-[10px] font-bold">
-                                        <ShieldCheck size={11} /> Reserve Met
-                                    </div>
-                                )}
                             </div>
 
                             <div className="flex flex-col items-end gap-2">
@@ -1198,13 +1193,15 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
                                             <h4 className="text-xs font-bold text-primary uppercase tracking-wider mb-3 flex items-center gap-1.5"><Gavel size={11} /> Auction Details</h4>
                                             <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                                                {[
+                                                {([
                                                     ["Starting Bid",  `£${Number(auction.startingBid).toLocaleString()}`],
-                                                    ["Reserve Price", `£${Number(auction.reservePrice).toLocaleString()}`],
+                                                    auction.buyItNowPrice
+                                                        ? ["Buy it now",  `£${Number(auction.buyItNowPrice).toLocaleString()}`]
+                                                        : null,
                                                     ["Min Increment", `£${Number(auction.minIncrement).toLocaleString()}`],
                                                     ["Starts",        startTime ? startTime.toLocaleString("en-GB") : "—"],
                                                     ["Ends",          endTime   ? endTime.toLocaleString("en-GB")   : "—"],
-                                                ].map(([k, v]) => (
+                                                ].filter(Boolean) as [string, string][]).map(([k, v]) => (
                                                     <div key={k} className="text-xs">
                                                         <p className="text-[var(--text-muted)] mb-0.5">{k}</p>
                                                         <p className="text-[var(--text-primary)] font-bold font-mono">{v}</p>

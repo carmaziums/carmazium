@@ -11,6 +11,7 @@ import { DeliveryModule } from '../delivery/delivery.module';
 import { DeliveryExpiryService } from '../delivery/delivery-expiry.service';
 import { EmailModule } from '../email/email.module';
 import { DbBackupService } from './db-backup.service';
+import { WatchlistReminderService } from './watchlist-reminder.service';
 
 @Module({
     imports: [
@@ -22,6 +23,6 @@ import { DbBackupService } from './db-backup.service';
         DeliveryModule,
         EmailModule,
     ],
-    providers: [ImageCleanupService, FeaturedBoostExpiryService, AuctionLifecycleService, DeliveryExpiryService, DbBackupService],
+    providers: [ImageCleanupService, FeaturedBoostExpiryService, AuctionLifecycleService, DeliveryExpiryService, DbBackupService, WatchlistReminderService],
 })
 export class TasksModule { }

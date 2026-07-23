@@ -39,47 +39,14 @@ interface ReceiptEntry {
     vehicle?: { title: string; image?: string; make: string | null; model: string | null; year: number | null }
 }
 
-function printReceipt(receipt: ReceiptEntry, receiptNum: number) {
-    const w = window.open('', '_blank')
-    if (!w) return
-    w.document.write(`<!DOCTYPE html><html><head><title>CarMazium Receipt #${receiptNum}</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Courier New', monospace; padding: 48px; max-width: 640px; margin: 0 auto; color: #111; }
-  h1 { font-size: 22px; letter-spacing: 4px; margin-bottom: 4px; }
-  .sub { color: #555; font-size: 13px; margin-bottom: 32px; }
-  hr { border: none; border-top: 1px dashed #ccc; margin: 24px 0; }
-  table { width: 100%; border-collapse: collapse; }
-  td { padding: 8px 0; font-size: 14px; }
-  td:last-child { text-align: right; }
-  .total td { font-weight: bold; font-size: 16px; padding-top: 16px; }
-  .footer { margin-top: 40px; color: #888; font-size: 11px; line-height: 1.6; }
-  @media print { body { padding: 24px; } }
-</style></head><body>
-<h1>CARMAZIUM</h1>
-<p class="sub">UK's Trusted Car Marketplace — carmazium.vercel.app</p>
-<hr/>
-<p style="font-size:13px;margin-bottom:4px"><strong>RECEIPT #${receiptNum}</strong></p>
-<p style="font-size:12px;color:#555">${new Date(receipt.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-<hr/>
-<table>
-  <tr><td>Transaction Type</td><td>${TYPE_LABELS[receipt.type] || receipt.type}</td></tr>
-  ${receipt.vehicle ? `<tr><td>Vehicle</td><td>${receipt.vehicle.title}</td></tr>` : ''}
-  ${receipt.description ? `<tr><td>Description</td><td>${receipt.description}</td></tr>` : ''}
-  <tr><td>Status</td><td>${receipt.status}</td></tr>
-  ${receipt.stripePaymentId ? `<tr><td>Payment Reference</td><td style="font-size:11px">${receipt.stripePaymentId}</td></tr>` : ''}
-</table>
-<hr/>
-<table>
-  <tr class="total"><td>Amount Paid (inc. VAT)</td><td>£${Number(receipt.amount).toFixed(2)}</td></tr>
-</table>
-<div class="footer">
-  <p>This receipt confirms your payment to CarMazium. For support, contact us at support@carmazium.com.</p>
-  <p style="margin-top:8px">VAT may apply. Prices shown are in GBP (£).</p>
-</div>
-</body></html>`)
-    w.document.close()
-    setTimeout(() => w.print(), 300)
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
+
+function downloadReceiptPdf(transactionId: string) {
+    // Backend endpoint renders the receipt on the Carmazium letterhead.
+    // Synthetic entries (like the KYC fee) that have no backing transaction
+    // fall back to the previous inline-print flow — see caller.
+    const url = `${API_BASE}/transactions/${transactionId}/receipt.pdf`
+    window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
@@ -221,10 +188,12 @@ export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
                         <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                             <p className="text-lg font-black">{formatPrice(receipt.amount)}</p>
                             <button
-                                onClick={() => printReceipt(receipt, receiptNum)}
+                                onClick={() => downloadReceiptPdf(receipt.id)}
                                 className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-primary transition-colors"
+                                disabled={isKyc}
+                                title={isKyc ? 'Not available for synthetic KYC receipt' : 'Download PDF receipt'}
                             >
-                                <Download size={10} /> Print receipt
+                                <Download size={10} /> Download PDF
                             </button>
                         </div>
                     </div>

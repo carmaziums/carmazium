@@ -1154,10 +1154,13 @@ function SearchPageContent() {
                                     <CarCard
                                         key={listing.id}
                                         title={listing.title}
+                                        make={listing.make}
+                                        model={listing.model}
                                         price={formatPrice(listing.price)}
                                         priceMin={listing.priceMin}
                                         priceMax={listing.priceMax}
                                         image={getListingImage(listing)}
+                                        images={listing.images ?? []}
                                         href={`/buy-cars/${listing.slug}`}
                                         year={listing.year ?? undefined}
                                         mileage={listing.mileage ?? undefined}
@@ -1174,6 +1177,7 @@ function SearchPageContent() {
                                         hasLinkedAuction={!!listing.linkedListingId}
                                         isDepartedSale={listing.isDepartedSale ?? false}
                                         deliveryAvailable={listing.deliveryAvailable ?? false}
+                                        exteriorGrade={listing.exteriorGrade}
                                     />
                                 ))}
                             </div>
@@ -1189,10 +1193,13 @@ function SearchPageContent() {
                                 <CarCard
                                     key={listing.id}
                                     title={listing.title}
+                                    make={listing.make}
+                                    model={listing.model}
                                     price={formatPrice(listing.price)}
                                     priceMin={listing.priceMin}
                                     priceMax={listing.priceMax}
                                     image={getListingImage(listing)}
+                                    images={listing.images ?? []}
                                     href={`/buy-cars/${listing.slug}`}
                                     year={listing.year ?? undefined}
                                     mileage={listing.mileage ?? undefined}
@@ -1209,6 +1216,7 @@ function SearchPageContent() {
                                     hasLinkedAuction={!!listing.linkedListingId}
                                     isDepartedSale={listing.isDepartedSale ?? false}
                                     deliveryAvailable={listing.deliveryAvailable ?? false}
+                                    exteriorGrade={listing.exteriorGrade}
                                 />
                             ))}
                         </div>

@@ -5,7 +5,25 @@ import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getMyTransactions, formatPrice, type Transaction } from "@/lib/listingApi"
-import { Loader2, ShoppingBag, AlertCircle } from "lucide-react"
+import { Loader2, ShoppingBag, AlertCircle, Download } from "lucide-react"
+
+const TX_TYPE_LABEL: Record<string, string> = {
+    DEPOSIT: "Deposit",
+    FULL_PAYMENT: "Full Payment",
+    COMMISSION: "Commission",
+    REFUND: "Refund",
+    HPI_REPORT: "HPI Report",
+    LISTING_FEE: "Listing Fee",
+    BOOST: "Featured Boost",
+}
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || ""
+
+function downloadReceipt(transactionId: string) {
+    // Opens the PDF endpoint in a new window; browser handles the attachment.
+    const url = `${API_BASE}/transactions/${transactionId}/receipt.pdf`
+    window.open(url, "_blank", "noopener,noreferrer")
+}
 
 export default function BuyerHistoryPage() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -68,9 +86,11 @@ export default function BuyerHistoryPage() {
                                         <tr>
                                             <th className="pb-3 text-[var(--text-muted)] font-medium text-sm">Order</th>
                                             <th className="pb-3 text-[var(--text-muted)] font-medium text-sm">Vehicle</th>
+                                            <th className="pb-3 text-[var(--text-muted)] font-medium text-sm">Type</th>
                                             <th className="pb-3 text-[var(--text-muted)] font-medium text-sm">Date</th>
                                             <th className="pb-3 text-[var(--text-muted)] font-medium text-sm">Amount</th>
                                             <th className="pb-3 text-[var(--text-muted)] font-medium text-sm">Status</th>
+                                            <th className="pb-3 text-[var(--text-muted)] font-medium text-sm text-right">Receipt</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-[var(--border-default)]">
@@ -85,6 +105,7 @@ export default function BuyerHistoryPage() {
                                                         <span className="font-medium">{tx.listing?.title || "Vehicle"}</span>
                                                     </div>
                                                 </td>
+                                                <td className="py-3 text-[var(--text-secondary)] text-sm">{TX_TYPE_LABEL[tx.type] || tx.type}</td>
                                                 <td className="py-3 text-[var(--text-muted)] text-sm">{new Date(tx.createdAt).toLocaleDateString()}</td>
                                                 <td className="py-3 font-medium">{formatPrice(Number(tx.amount))}</td>
                                                 <td className="py-3">
@@ -93,6 +114,16 @@ export default function BuyerHistoryPage() {
                                                             tx.status === "FAILED" ? "bg-red-500/20 text-red-400" :
                                                                 "bg-gray-500/20 text-[var(--text-muted)]"
                                                         }`}>{tx.status}</span>
+                                                </td>
+                                                <td className="py-3 text-right">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => downloadReceipt(tx.id)}
+                                                        className="inline-flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-primary transition-colors"
+                                                        aria-label="Download PDF receipt"
+                                                    >
+                                                        <Download size={12} /> PDF
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))}

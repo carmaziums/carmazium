@@ -10,6 +10,8 @@ import {
     ChevronRight, Timer,
 } from "lucide-react"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
+import { CardImageCarousel } from "@/components/features/CardImageCarousel"
+import { WishlistButton } from "@/components/features/WishlistButton"
 import {
     getActiveAuctions, getScheduledAuctions, getCurrentBid,
     getBidCount, isAntiSnipeActive, type Auction,
@@ -35,6 +37,14 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
     const isActive = auction.status === "ACTIVE"
     const image = auction.listing.images?.[0] ?? "/assets/images/hero-bg.png"
     const vehicle = `${auction.listing.year ?? ""} ${auction.listing.make ?? ""} ${auction.listing.model ?? ""}`.trim()
+    const grade = auction.listing.exteriorGrade
+    const gradeStyle: { dot: string; text: string; border: string; bg: string; label: string } | null =
+        grade === 1 ? { dot: 'bg-emerald-500', text: 'text-emerald-300', border: 'border-emerald-500/40', bg: 'bg-emerald-500/15', label: 'Excellent — minimal/no wear' } :
+        grade === 2 ? { dot: 'bg-lime-500',    text: 'text-lime-300',    border: 'border-lime-500/40',    bg: 'bg-lime-500/15',    label: 'Very good — light wear' } :
+        grade === 3 ? { dot: 'bg-amber-500',   text: 'text-amber-300',   border: 'border-amber-500/40',   bg: 'bg-amber-500/15',   label: 'Good — moderate damage' } :
+        grade === 4 ? { dot: 'bg-orange-500',  text: 'text-orange-300',  border: 'border-orange-500/40',  bg: 'bg-orange-500/15',  label: 'Fair — noticeable damage' } :
+        grade === 5 ? { dot: 'bg-red-500',     text: 'text-red-300',     border: 'border-red-500/40',     bg: 'bg-red-500/15',     label: 'Poor — heavy damage' } :
+        null
 
     return (
         <motion.div
@@ -48,14 +58,23 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
             >
                 {/* Image */}
                 <div className="relative h-52 overflow-hidden">
-                    <Image
-                        src={image}
-                        alt={auction.listing.title}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 33vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-transparent" />
+                    {auction.listing.images && auction.listing.images.length > 1 ? (
+                        <CardImageCarousel
+                            images={auction.listing.images}
+                            alt={auction.listing.title}
+                            sizes="(max-width: 768px) 100vw, 33vw"
+                            imageClassName="object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                    ) : (
+                        <Image
+                            src={image}
+                            alt={auction.listing.title}
+                            fill
+                            sizes="(max-width: 768px) 100vw, 33vw"
+                            className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-transparent pointer-events-none z-10" />
 
                     {/* Status badge */}
                     <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
@@ -75,9 +94,21 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
                         )}
                     </div>
 
-                    {/* Bid count */}
-                    <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-black/50 backdrop-blur px-2.5 py-1 rounded-full border border-[var(--border-default)] text-white text-[10px] font-bold">
-                        <Users size={10} className="text-slate-400" /> {bidCount}
+                    {/* Top-right stack: wishlist, bid count, grade */}
+                    <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-1.5">
+                        <WishlistButton listingId={auction.listing.id} />
+                        <div className="flex items-center gap-1 bg-black/50 backdrop-blur px-2.5 py-1 rounded-full border border-[var(--border-default)] text-white text-[10px] font-bold">
+                            <Users size={10} className="text-slate-400" /> {bidCount}
+                        </div>
+                        {gradeStyle && (
+                            <span
+                                title={gradeStyle.label}
+                                className={`inline-flex items-center gap-1.5 backdrop-blur ${gradeStyle.bg} ${gradeStyle.text} border ${gradeStyle.border} px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide`}
+                            >
+                                <span className={`w-1.5 h-1.5 rounded-full ${gradeStyle.dot}`} />
+                                Grade {grade}
+                            </span>
+                        )}
                     </div>
 
                     {/* Vehicle label bottom */}
@@ -116,7 +147,11 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
                     </div>
 
                     <div className="flex items-center justify-between pt-3 border-t border-[var(--border-default)]">
-                        <span className="text-[10px] text-[var(--text-muted)]">Reserve: £{Number(auction.reservePrice).toLocaleString()}</span>
+                        {auction.buyItNowPrice ? (
+                            <span className="text-[10px] text-[var(--text-muted)]">Buy it now: £{Number(auction.buyItNowPrice).toLocaleString()}</span>
+                        ) : (
+                            <span />
+                        )}
                         <span className={`flex items-center gap-1 text-xs font-bold transition-colors ${isActive ? "text-primary group-hover:text-red-400" : "text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]"}`}>
                             {isActive ? "Bid Now" : "View"} <ChevronRight size={12} />
                         </span>

@@ -295,8 +295,11 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
               >
                 <CarCard
                   title={listing.title}
+                  make={listing.make}
+                  model={listing.model}
                   price={formatPrice(listing.price)}
                   image={listing.images?.[0] || "/assets/images/featured-sports.png"}
+                  images={listing.images ?? []}
                   href={`/vehicle/${listing.slug}`}
                   year={listing.year ?? undefined}
                   mileage={listing.mileage ?? undefined}
@@ -309,6 +312,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
                   hasLinkedAuction={!!listing.linkedListingId}
                   isDepartedSale={listing.isDepartedSale ?? false}
                   deliveryAvailable={listing.deliveryAvailable ?? false}
+                  exteriorGrade={listing.exteriorGrade}
                 />
               </motion.div>
             ))}

@@ -1,19 +1,24 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/Button"
-import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck, Star, Sparkles, MapPin, Gavel, Truck } from "lucide-react"
+import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck, Star, MapPin, Gavel, Truck } from "lucide-react"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
+import { CardImageCarousel } from "@/components/features/CardImageCarousel"
 import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS } from "@/lib/vehicleLabels"
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
 interface CarCardProps {
     title: string
+    make?: string | null
+    model?: string | null
     price: string
     priceMin?: string | number | null
     priceMax?: string | number | null
     image: string
+    /** Full image list — enables the carousel when >1. Falls back to `image` when empty/missing. */
+    images?: string[]
     href?: string
     year?: number
     mileage?: number
@@ -30,6 +35,16 @@ interface CarCardProps {
     hasLinkedAuction?: boolean
     isDepartedSale?: boolean
     deliveryAvailable?: boolean
+    exteriorGrade?: number | null
+}
+
+// Motorway-style exterior grade colors: 1 best → 5 worst
+const GRADE_STYLES: Record<number, { dot: string; text: string; border: string; bg: string; label: string }> = {
+    1: { dot: 'bg-emerald-500', text: 'text-emerald-400', border: 'border-emerald-500/30', bg: 'bg-emerald-500/10', label: 'Excellent — minimal/no wear' },
+    2: { dot: 'bg-lime-500',    text: 'text-lime-400',    border: 'border-lime-500/30',    bg: 'bg-lime-500/10',    label: 'Very good — light wear' },
+    3: { dot: 'bg-amber-500',   text: 'text-amber-400',   border: 'border-amber-500/30',   bg: 'bg-amber-500/10',   label: 'Good — moderate damage' },
+    4: { dot: 'bg-orange-500',  text: 'text-orange-400',  border: 'border-orange-500/30',  bg: 'bg-orange-500/10',  label: 'Fair — noticeable damage' },
+    5: { dot: 'bg-red-500',     text: 'text-red-400',     border: 'border-red-500/30',     bg: 'bg-red-500/10',     label: 'Poor — heavy damage' },
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -49,11 +64,14 @@ const BANNER_COLORS: Record<string, string> = {
 const DEFAULT_BANNER_COLOR = 'bg-primary'
 
 export function CarCard({
-    title, price, priceMin, priceMax, image, href = "#",
+    title, make, model, price, priceMin, priceMax, image, images, href = "#",
     year, mileage, fuelType, bodyType, location, distanceMi,
     sellerId, sellerScore, isFeatured = false, badgeTier, status, bannerLabel, hasLinkedAuction,
-    isDepartedSale, deliveryAvailable
+    isDepartedSale, deliveryAvailable, exteriorGrade
 }: CarCardProps) {
+    const makeModelLine = [make, model].filter(Boolean).join(" ").trim()
+    const gradeStyle = exteriorGrade && exteriorGrade >= 1 && exteriorGrade <= 5 ? GRADE_STYLES[exteriorGrade] : null
+    const gallery = (images && images.length > 0 ? images : image ? [image] : []).filter(Boolean)
     const hasSpecs = year || mileage || fuelType || bodyType
 
     // Tier-based styling
@@ -110,15 +128,25 @@ export function CarCard({
                 <div className="absolute inset-0 bg-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-3xl rounded-full scale-150 mix-blend-screen" />
 
                 <div className="relative z-10 w-full h-full">
-                    <Link href={href} className="cursor-pointer block relative w-full h-full">
-                        <Image
-                            src={image}
+                    {gallery.length > 1 ? (
+                        <CardImageCarousel
+                            images={gallery}
                             alt={title}
-                            fill
+                            href={href}
+                            imageClassName={`object-contain drop-shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:-rotate-1 ${status === 'SOLD' ? 'opacity-30 grayscale' : ''}`}
                             sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px"
-                            className={`object-contain drop-shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:-rotate-1 ${status === 'SOLD' ? 'opacity-30 grayscale' : ''}`}
                         />
-                    </Link>
+                    ) : (
+                        <Link href={href} className="cursor-pointer block relative w-full h-full">
+                            <Image
+                                src={gallery[0] ?? image}
+                                alt={title}
+                                fill
+                                sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px"
+                                className={`object-contain drop-shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:-rotate-1 ${status === 'SOLD' ? 'opacity-30 grayscale' : ''}`}
+                            />
+                        </Link>
+                    )}
                 </div>
 
                 {/* Banner Label Ribbon */}
@@ -155,7 +183,12 @@ export function CarCard({
                 style={{ borderColor: 'var(--border-default)' }}
             >
                 <div className="flex justify-between items-start mb-2 gap-2">
-                    <h3 className="text-lg md:text-xl font-bold font-heading tracking-wide group-hover:text-primary transition-colors duration-300 line-clamp-2">{title}</h3>
+                    <div className="min-w-0 flex-1">
+                        <h3 className="text-lg md:text-xl font-bold font-heading tracking-wide group-hover:text-primary transition-colors duration-300 line-clamp-2">{title}</h3>
+                        {makeModelLine && (
+                            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mt-0.5 line-clamp-1">{makeModelLine}</p>
+                        )}
+                    </div>
                     {sellerId && sellerScore !== undefined ? (
                         <SellerBadge score={sellerScore} sellerUserId={sellerId} size="sm" showLabel />
                     ) : (
@@ -198,6 +231,19 @@ export function CarCard({
                     <div className="flex items-center gap-2 mb-3">
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide bg-slate-500/10 dark:bg-[var(--bg-card)] text-slate-600 dark:text-[var(--text-muted)] border border-slate-500/20 dark:border-[var(--border-default)] px-2 py-0.5 rounded-full">
                             Estate
+                        </span>
+                    </div>
+                )}
+
+                {/* Grade chip (Motorway-style exterior grade 1–5) */}
+                {gradeStyle && (
+                    <div className="flex items-center gap-2 mb-3">
+                        <span
+                            title={gradeStyle.label}
+                            className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide ${gradeStyle.bg} ${gradeStyle.text} border ${gradeStyle.border} px-2 py-0.5 rounded-full`}
+                        >
+                            <span className={`w-1.5 h-1.5 rounded-full ${gradeStyle.dot}`} />
+                            Grade {exteriorGrade}
                         </span>
                     </div>
                 )}

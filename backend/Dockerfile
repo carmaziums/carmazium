@@ -45,6 +45,9 @@ COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 # Copy compiled NestJS app
 COPY --from=builder /app/dist ./dist
 
+# Static assets bundled with the app (letterhead PDF template, etc.)
+COPY --from=builder /app/assets ./assets
+
 EXPOSE 8080
 
 CMD ["node", "dist/main"]

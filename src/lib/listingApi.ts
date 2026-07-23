@@ -67,6 +67,7 @@ export interface CreateListingRequest {
     zeroTo60Mph?: number
     combinedMpg?: number
     extraUrbanMpg?: number
+    exteriorGrade?: number
     bannerLabel?: string
     videoUrls?: string[]
     isDepartedSale?: boolean
@@ -191,6 +192,7 @@ export interface Listing {
     zeroTo60Mph: number | null
     combinedMpg: number | null
     extraUrbanMpg: number | null
+    exteriorGrade: number | null
     bannerLabel: string | null
     isDepartedSale?: boolean | null
     departedRelationship?: string | null
@@ -796,7 +798,7 @@ export interface Transaction {
     id: string
     listingId: string
     amount: string | number
-    type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'REFUND'
+    type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'REFUND' | 'HPI_REPORT' | 'LISTING_FEE' | 'BOOST'
     status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED'
     stripePaymentId: string | null
     description: string | null

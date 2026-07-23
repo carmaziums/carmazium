@@ -454,6 +454,14 @@ export class CreateListingDto {
     @IsOptional()
     extraUrbanMpg?: number;
 
+    @ApiProperty({ description: 'Exterior grade (1 = best condition, 5 = heaviest damage), Motorway-style', example: 2, required: false, minimum: 1, maximum: 5 })
+    @Type(() => Number)
+    @IsInt()
+    @Min(1)
+    @Max(5)
+    @IsOptional()
+    exteriorGrade?: number;
+
     @ApiProperty({ description: 'Attention label shown as a ribbon on the vehicle card', example: 'Below Market Value', required: false })
     @IsString()
     @IsOptional()

@@ -47,6 +47,8 @@ export interface AuctionListing {
     ulezCompliant: boolean | null;
     euroStandard: string | null;
     co2Emissions: number | null;
+    // Exterior grade (1 best → 5 worst) — Motorway-style
+    exteriorGrade: number | null;
     // Identity
     vrm: string | null;
     vin: string | null;

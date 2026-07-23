@@ -660,6 +660,8 @@ model Listing {
   zeroTo60Mph              Float?    // 0-60 mph time in seconds
   combinedMpg              Float?    // Combined fuel economy MPG
   extraUrbanMpg            Float?    // Extra urban MPG
+  // Exterior grade — 1 (best) to 5 (worst), Motorway-style. Seller-supplied. Rendered on cards.
+  exteriorGrade            Int?      @db.SmallInt
   // Attention attribute — buyer-facing label shown as a ribbon on the vehicle card
   bannerLabel              String?
 
@@ -953,6 +955,8 @@ model WatchlistItem {
   userId    String
   listingId String
   createdAt DateTime @default(now())
+  // Idempotency guard for the "auction ends in 24h" reminder
+  reminded24hAt DateTime?
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
