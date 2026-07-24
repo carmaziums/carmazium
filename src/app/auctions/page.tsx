@@ -8,7 +8,7 @@ import {
     Gavel, Flame, Calendar, Zap, Users, Search, RefreshCw,
     Clock, Shield, MessageSquare, Trophy, CheckCircle,
     ChevronRight, Timer, Gauge, Fuel, Car, MapPin,
-    BadgeCheck, ShieldCheck, Star, Truck,
+    BadgeCheck, ShieldCheck, Star, Truck, Key,
 } from "lucide-react"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
 import { CardImageCarousel } from "@/components/features/CardImageCarousel"
@@ -372,16 +372,38 @@ export default function AuctionsPage() {
                             initial={{ opacity: 0, y: 16 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.12 }}
-                            className="text-slate-400 text-lg max-w-lg leading-relaxed mb-8"
+                            className="text-slate-400 text-lg max-w-lg leading-relaxed mb-6"
                         >
                             Real-time bidding on verified vehicles. Compete live, win fairly, connect with sellers instantly.
                         </motion.p>
+
+                        {/* £100 sell-through-auction promo */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 16 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.16 }}
+                            className="mb-8 max-w-lg"
+                        >
+                            <Link
+                                href="/sell"
+                                className="group flex items-center gap-4 rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/15 via-red-600/5 to-transparent px-5 py-4 hover:border-primary/40 hover:from-primary/20 transition-colors"
+                            >
+                                <div className="shrink-0 h-11 w-11 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center">
+                                    <Key size={20} className="text-primary" />
+                                </div>
+                                <p className="text-sm text-slate-300 leading-snug">
+                                    Turn your keys into cash — sell your car through auction and earn{" "}
+                                    <span className="text-primary font-black text-base">£100</span>.
+                                </p>
+                                <ChevronRight size={16} className="ml-auto shrink-0 text-slate-500 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                            </Link>
+                        </motion.div>
 
                         {/* Stats row */}
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            transition={{ delay: 0.2 }}
+                            transition={{ delay: 0.24 }}
                             className="flex flex-wrap items-center gap-x-8 gap-y-3"
                         >
                             {[

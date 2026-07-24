@@ -4,6 +4,7 @@ import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { ConditionalFooter } from "@/components/layout/ConditionalFooter";
 import { MaziumWidgetLoader } from "@/components/features/MaziumWidgetLoader";
+import { MarketingPopup } from "@/components/features/MarketingPopup";
 import { AutoDealerJsonLd } from "@/components/seo/JsonLd";
 
 import { Providers } from "@/components/providers/Providers";
@@ -103,6 +104,7 @@ export default function RootLayout({
                     </main>
                     <ConditionalFooter />
                     <MaziumWidgetLoader />
+                    <MarketingPopup />
                   </div>
                 </LocationProvider>
               </CompareProvider>
