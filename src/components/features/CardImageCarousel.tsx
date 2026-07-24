@@ -103,18 +103,12 @@ export function CardImageCarousel({
             >
                 {bounded.length > 0 ? bounded.map((src, i) => (
                     <div key={`${src}-${i}`} className="relative w-full h-full flex-shrink-0 snap-start snap-always">
-                        {lightboxOnTap ? (
-                            <button
-                                type="button"
-                                onClick={() => setLightboxOpen(true)}
-                                className="absolute inset-0 z-0 cursor-zoom-in"
-                                aria-label={`Preview ${alt} images`}
-                            />
-                        ) : href ? (
-                            <Link href={href} className="absolute inset-0 z-0" draggable={false}>
-                                <span className="sr-only">{alt}</span>
-                            </Link>
-                        ) : null}
+                        {/* Image first, then interactive overlay ON TOP of it.
+                            Next's <Image fill> renders as position:absolute — if the
+                            <button>/<Link> came first in DOM it would be visually
+                            below the image and clicks would land on the img element
+                            (which has no handler). z-10 on the overlay guarantees
+                            hit-testing reaches it. */}
                         <Image
                             src={src}
                             alt={i === 0 ? alt : `${alt} — image ${i + 1}`}
@@ -124,6 +118,18 @@ export function CardImageCarousel({
                             loading={i === 0 ? "eager" : "lazy"}
                             draggable={false}
                         />
+                        {lightboxOnTap ? (
+                            <button
+                                type="button"
+                                onClick={() => setLightboxOpen(true)}
+                                className="absolute inset-0 z-10 cursor-zoom-in bg-transparent"
+                                aria-label={`Preview ${alt} images`}
+                            />
+                        ) : href ? (
+                            <Link href={href} className="absolute inset-0 z-10" draggable={false}>
+                                <span className="sr-only">{alt}</span>
+                            </Link>
+                        ) : null}
                     </div>
                 )) : (
                     <div className="relative w-full h-full flex-shrink-0 bg-[var(--bg-input)]" />
