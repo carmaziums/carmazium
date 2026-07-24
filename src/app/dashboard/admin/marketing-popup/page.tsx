@@ -157,7 +157,7 @@ export default function AdminMarketingPopupPage() {
                             className={`relative shrink-0 w-14 h-8 rounded-full transition-colors disabled:opacity-50 ${config?.enabled ? "bg-emerald-500" : "bg-[var(--bg-input)] border border-[var(--border-default)]"}`}
                         >
                             <span
-                                className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-transform ${config?.enabled ? "translate-x-7" : "translate-x-1"}`}
+                                className={`absolute top-1 left-1 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${config?.enabled ? "translate-x-6" : "translate-x-0"}`}
                             />
                         </button>
                     </div>
