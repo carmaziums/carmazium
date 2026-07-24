@@ -77,7 +77,7 @@ export default function AdminMarketingPopupPage() {
         setUploading(true)
         setError(null)
         try {
-            const url = await uploadImage(file, 'site-assets', 'marketing-popup')
+            const url = await uploadImage(file, 'listings', 'marketing-popup')
             const updated = await updateMarketingPopupConfig({ imageUrl: url })
             setConfig(updated)
             flashSaved('Image updated')
