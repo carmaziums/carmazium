@@ -79,7 +79,7 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
                             className="object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-transparent pointer-events-none z-10" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-slate-900/10 to-transparent pointer-events-none z-10" />
 
                     {/* Featured Badge — matches Buy Cars card treatment */}
                     {auction.listing.isFeatured && <FeaturedBadge />}
@@ -131,15 +131,16 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
                         )}
                     </div>
 
-                    {/* Vehicle label bottom */}
-                    <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
-                        <p className="text-slate-400 text-[10px] uppercase tracking-widest font-bold mb-0.5">{vehicle}</p>
-                        <h3 className="text-white font-bold text-base leading-tight line-clamp-1">{auction.listing.title}</h3>
-                    </div>
                 </div>
 
                 {/* Footer */}
                 <div className="px-4 pt-3 pb-4">
+                    {/* Vehicle label — moved out of the image so it can't collide with the carousel counter */}
+                    <div className="mb-3">
+                        <p className="text-[var(--text-muted)] text-[10px] uppercase tracking-widest font-bold mb-0.5">{vehicle}</p>
+                        <h3 className="text-[var(--text-primary)] font-bold text-base leading-tight line-clamp-1">{auction.listing.title}</h3>
+                    </div>
+
                     <div className="flex items-center justify-between mb-3">
                         <div>
                             <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold">
@@ -403,14 +404,14 @@ export default function AuctionsPage() {
 
             {/* ── Filter bar ───────────────────────────────────────────────── */}
             <div className="sticky top-[80px] z-30 backdrop-blur-xl border-b" style={{ background: 'var(--bg-header)', borderColor: 'var(--border-default)' }}>
-                <div className="container mx-auto px-6 h-14 flex items-center justify-between gap-4">
+                <div className="container mx-auto px-4 md:px-6 py-3 md:py-0 md:h-14 flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
                     {/* Tabs */}
-                    <div className="flex items-center gap-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl p-1">
+                    <div className="flex items-center gap-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl p-1 self-start md:self-auto">
                         {(["live", "upcoming"] as const).map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
-                                className={`relative px-5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                                className={`relative px-3 md:px-5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
                                     activeTab === tab ? "text-primary" : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
                                 }`}
                             >
@@ -421,7 +422,7 @@ export default function AuctionsPage() {
                                         transition={{ type: "spring", bounce: 0.2, duration: 0.3 }}
                                     />
                                 )}
-                                <span className="relative z-10 flex items-center gap-2">
+                                <span className="relative z-10 flex items-center gap-1.5 md:gap-2">
                                     {tab === "live" ? <Flame size={11} className={activeTab === tab ? "text-red-400" : ""} /> : <Calendar size={11} />}
                                     {tab}
                                     <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${activeTab === tab ? "bg-primary/30 text-red-300" : "bg-[var(--bg-card)] text-[var(--text-muted)]"}`}>
@@ -432,9 +433,9 @@ export default function AuctionsPage() {
                         ))}
                     </div>
 
-                    {/* Search + refresh */}
-                    <div className="flex items-center gap-2 flex-1 max-w-xs">
-                        <div className="relative flex-1">
+                    {/* Search + refresh — full width on mobile, capped on md+ */}
+                    <div className="flex items-center gap-2 w-full md:w-auto md:flex-1 md:max-w-xs">
+                        <div className="relative flex-1 min-w-0">
                             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                             <input
                                 type="text"
@@ -447,7 +448,7 @@ export default function AuctionsPage() {
                         <button
                             onClick={load}
                             disabled={loading}
-                            className="p-2 rounded-xl border border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:border-primary/30 transition-all"
+                            className="shrink-0 p-2 rounded-xl border border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:border-primary/30 transition-all"
                             title="Refresh"
                         >
                             <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
