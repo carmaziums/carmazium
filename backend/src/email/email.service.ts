@@ -354,7 +354,7 @@ export class EmailService {
             </div>
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; text-align: center; margin-top: 20px;">
                 <p style="margin: 0; font-size: 12px; color: #475569; line-height: 1.5;">
-                    If you weren't expecting this, please contact us at support@carmazium.com.
+                    If you weren't expecting this, please contact us at Help@carmazium.com.
                 </p>
             </div>
         `;

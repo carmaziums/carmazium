@@ -211,7 +211,7 @@ export default function AboutPage() {
                         <div>
                             <h3 className="text-lg font-bold mb-2">Contact Us</h3>
                             <p className="text-[var(--text-muted)] mb-1">
-                                <a href="tel:+442034757619" className="hover:text-primary transition-colors">+44 2034 757619</a>
+                                <a href="tel:+441218385040" className="hover:text-primary transition-colors">0121 838 5040</a>
                             </p>
                             <p className="text-[var(--text-faint)] text-sm">Monday – Friday, 9am – 6pm GMT</p>
                         </div>

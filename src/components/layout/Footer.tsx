@@ -47,10 +47,12 @@ export function Footer() {
                         <h3 className="text-xl font-bold font-heading uppercase tracking-wide">Contact Us</h3>
                         <ul className="space-y-3 text-gray-400">
                             <li className="flex items-center gap-3 hover:text-primary transition-colors">
-                                <Mail size={18} className="text-primary shrink-0" /> support@carmazium.com
+                                <Mail size={18} className="text-primary shrink-0" />
+                                <a href="mailto:info@carmazium.com">info@carmazium.com</a>
                             </li>
                             <li className="flex items-center gap-3 hover:text-primary transition-colors">
-                                <Phone size={18} className="text-primary shrink-0" /> +44 2034 757619
+                                <Phone size={18} className="text-primary shrink-0" />
+                                <a href="tel:+441218385040">0121 838 5040</a>
                             </li>
                             <li className="flex items-start gap-3">
                                 <MapPin size={18} className="text-primary shrink-0 mt-0.5" />

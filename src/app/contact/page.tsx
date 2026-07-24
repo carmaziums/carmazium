@@ -47,14 +47,14 @@ export default function ContactPage() {
                             <MapPin className="text-primary shrink-0" />
                             <div>
                                 <h4 className="font-bold mb-1">Visit Us</h4>
-                                <p className="text-[var(--text-muted)] text-sm">123 Luxury Lane<br />Mayfair, London<br />W1J 7NW, UK</p>
+                                <p className="text-[var(--text-muted)] text-sm">181-187 Hunters Rd<br />Lozells, Birmingham<br />B19 1ES, United Kingdom</p>
                             </div>
                         </div>
                         <div className="glass-card p-6 flex items-start gap-4">
                             <Phone className="text-primary shrink-0" />
                             <div>
                                 <h4 className="font-bold mb-1">Call Us</h4>
-                                <p className="text-[var(--text-muted)] text-sm">+44 (0) 20 1234 5678</p>
+                                <p className="text-[var(--text-muted)] text-sm"><a href="tel:+441218385040" className="hover:text-primary transition-colors">0121 838 5040</a></p>
                                 <p className="text-[var(--text-faint)] text-xs mt-1">Mon - Fri: 9am - 6pm</p>
                             </div>
                         </div>
@@ -62,7 +62,7 @@ export default function ContactPage() {
                             <Mail className="text-primary shrink-0" />
                             <div>
                                 <h4 className="font-bold mb-1">Email Us</h4>
-                                <p className="text-[var(--text-muted)] text-sm">support@carmazium.com</p>
+                                <p className="text-[var(--text-muted)] text-sm"><a href="mailto:info@carmazium.com" className="hover:text-primary transition-colors">info@carmazium.com</a></p>
                             </div>
                         </div>
                     </div>
