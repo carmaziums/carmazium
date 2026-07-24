@@ -4,6 +4,7 @@ import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ImageLightbox } from "./ImageLightbox"
 
 interface Props {
     images: string[]
@@ -15,6 +16,13 @@ interface Props {
     /** Overlay content — badges positioned inside the image area. */
     children?: React.ReactNode
     imageClassName?: string
+    /**
+     * When true, tapping an image opens a full-screen lightbox of the
+     * whole gallery instead of navigating to `href`. Use on cards that
+     * have a separate "View Details" button so users don't lose the
+     * detail-page path.
+     */
+    lightboxOnTap?: boolean
 }
 
 /**
@@ -39,9 +47,11 @@ export function CardImageCarousel({
     className = "",
     children,
     imageClassName = "object-cover",
+    lightboxOnTap = false,
 }: Props) {
     const bounded = React.useMemo(() => images.filter(Boolean).slice(0, maxImages), [images, maxImages])
     const [index, setIndex] = React.useState(0)
+    const [lightboxOpen, setLightboxOpen] = React.useState(false)
     const trackRef = React.useRef<HTMLDivElement>(null)
     const hasMultiple = bounded.length > 1
 
@@ -93,11 +103,18 @@ export function CardImageCarousel({
             >
                 {bounded.length > 0 ? bounded.map((src, i) => (
                     <div key={`${src}-${i}`} className="relative w-full h-full flex-shrink-0 snap-start snap-always">
-                        {href && (
+                        {lightboxOnTap ? (
+                            <button
+                                type="button"
+                                onClick={() => setLightboxOpen(true)}
+                                className="absolute inset-0 z-0 cursor-zoom-in"
+                                aria-label={`Preview ${alt} images`}
+                            />
+                        ) : href ? (
                             <Link href={href} className="absolute inset-0 z-0" draggable={false}>
                                 <span className="sr-only">{alt}</span>
                             </Link>
-                        )}
+                        ) : null}
                         <Image
                             src={src}
                             alt={i === 0 ? alt : `${alt} — image ${i + 1}`}
@@ -164,6 +181,16 @@ export function CardImageCarousel({
                         </span>
                     )}
                 </div>
+            )}
+
+            {lightboxOnTap && (
+                <ImageLightbox
+                    images={bounded}
+                    alt={alt}
+                    startIndex={index}
+                    open={lightboxOpen}
+                    onClose={() => setLightboxOpen(false)}
+                />
             )}
         </div>
     )

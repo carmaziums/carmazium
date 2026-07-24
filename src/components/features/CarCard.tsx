@@ -1,5 +1,4 @@
 import Link from "next/link"
-import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck, Star, MapPin, Gavel, Truck } from "lucide-react"
 import { SellerBadge } from "@/components/ui/SellerBadge"
@@ -128,25 +127,16 @@ export function CarCard({
                 <div className="absolute inset-0 bg-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-3xl rounded-full scale-150 mix-blend-screen" />
 
                 <div className="relative z-10 w-full h-full">
-                    {gallery.length > 1 ? (
-                        <CardImageCarousel
-                            images={gallery}
-                            alt={title}
-                            href={href}
-                            imageClassName={`object-contain drop-shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:-rotate-1 ${status === 'SOLD' ? 'opacity-30 grayscale' : ''}`}
-                            sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px"
-                        />
-                    ) : (
-                        <Link href={href} className="cursor-pointer block relative w-full h-full">
-                            <Image
-                                src={gallery[0] ?? image}
-                                alt={title}
-                                fill
-                                sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px"
-                                className={`object-contain drop-shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:-rotate-1 ${status === 'SOLD' ? 'opacity-30 grayscale' : ''}`}
-                            />
-                        </Link>
-                    )}
+                    {/* Tap the image → full-screen gallery preview. The card's
+                        "View Details" button below is the way to reach the
+                        detail page, so image taps are freed up for previewing. */}
+                    <CardImageCarousel
+                        images={gallery.length > 0 ? gallery : [image]}
+                        alt={title}
+                        lightboxOnTap
+                        imageClassName={`object-contain drop-shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:-rotate-1 ${status === 'SOLD' ? 'opacity-30 grayscale' : ''}`}
+                        sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px"
+                    />
                 </div>
 
                 {/* Banner Label Ribbon */}

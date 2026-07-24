@@ -9,6 +9,7 @@ import {
     BarChart3,
     Users,
     Settings,
+    Heart,
     LucideIcon
 } from "lucide-react"
 
@@ -105,5 +106,12 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Auctions",
         subHeader: "Manage live vehicle auctions & bidding",
         icon: Gavel
+    },
+    {
+        href: "/dashboard/dealer/wishlist",
+        label: "Wishlist",
+        title: "Wishlist",
+        subHeader: "Vehicles you're tracking across the marketplace",
+        icon: Heart
     }
 ]
