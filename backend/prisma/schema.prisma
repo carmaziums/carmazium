@@ -1219,6 +1219,21 @@ model DamageRecord {
 }
 
 // ============================================================================
+// MARKETING POPUP (admin-configurable, singleton row)
+// ============================================================================
+
+model MarketingPopup {
+  id        String   @id @default("singleton")
+  enabled   Boolean  @default(true)
+  imageUrl  String?
+  linkUrl   String   @default("/auctions")
+  updatedAt DateTime @updatedAt
+  updatedBy String?  // admin user id who last changed it
+
+  @@map("marketing_popup")
+}
+
+// ============================================================================
 // SALES RECORDS (Revenue Tracking)
 // ============================================================================
 

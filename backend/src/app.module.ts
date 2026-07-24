@@ -34,6 +34,7 @@ import { EmailModule } from './email/email.module';
 import { DamageAnalysisModule } from './damage/damage.module';
 import { HpiModule } from './hpi/hpi.module';
 import { DeliveryModule } from './delivery/delivery.module';
+import { MarketingModule } from './marketing/marketing.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { DeliveryModule } from './delivery/delivery.module';
     DamageAnalysisModule,
     HpiModule,
     DeliveryModule,
+    MarketingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
