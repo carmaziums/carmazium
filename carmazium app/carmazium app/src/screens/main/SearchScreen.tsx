@@ -614,6 +614,19 @@ export const SearchScreen: React.FC = () => {
               Filters{filterCount > 0 ? ` (${filterCount})` : ''}
             </Text>
           </TouchableOpacity>
+          {/* One-tap Clear — surfaces the Reset action outside the modal so a
+              user can wipe applied filters without opening the sheet first. */}
+          {filterCount > 0 && (
+            <TouchableOpacity
+              style={s.filterClearBtn}
+              onPress={resetFilters}
+              activeOpacity={0.7}
+              accessibilityLabel="Clear all filters"
+            >
+              <Ionicons name="close" size={14} color={Colors.textSecondary} />
+              <Text style={s.filterClearBtnText}>Clear</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Sort dropdown */}
@@ -722,7 +735,7 @@ export const SearchScreen: React.FC = () => {
       </BottomSheet>
 
       {/* ── Advanced Filters Modal ── */}
-      <BottomSheet visible={filterOpen} onClose={() => setFilterOpen(false)} maxHeightPercent={92}>
+      <BottomSheet visible={filterOpen} onClose={() => setFilterOpen(false)} maxHeightPercent={92} avoidKeyboard>
         {/* Custom header (with Reset) kept as content — BottomSheet's own title
             row doesn't support a second right-side action. */}
         <View style={s.modalHeader}>
@@ -1373,6 +1386,8 @@ const s = StyleSheet.create({
   filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: Colors.bgSecondary, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
   filterBtnActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   filterBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
+  filterClearBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 7, backgroundColor: 'transparent', borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha10 },
+  filterClearBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
   sortDropdown: { position: 'absolute', top: 36, right: 0, backgroundColor: Colors.bgTertiary, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderSubtle, padding: 4, zIndex: 99, minWidth: 160, shadowColor: Colors.black, shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
   sortOption: { paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 8 },
   sortOptionActive: { backgroundColor: Colors.accentAlpha08 },

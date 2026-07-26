@@ -50,6 +50,12 @@ interface BottomSheetProps {
   /** Wrap content in KeyboardAvoidingView — enable for sheets with text inputs. */
   avoidKeyboard?: boolean;
   maxHeightPercent?: number;
+  /** Sheets whose top-level child uses `flex: 1` (multi-step wizards, embedded
+   * FlatLists that fill the sheet) need a *definite* height on the sheet —
+   * Yoga collapses `flex: 1` children to 0 when the parent height is only
+   * bounded by `maxHeight`. When true, the sheet renders at exactly
+   * `maxHeightPercent` of the screen instead of shrink-to-fit. */
+  fillHeight?: boolean;
 }
 
 const DISMISS_DISTANCE = 80;
@@ -62,6 +68,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   children,
   avoidKeyboard = false,
   maxHeightPercent = 92,
+  fillHeight = false,
 }) => {
   const insets = useSafeAreaInsets();
   const translateY = useSharedValue(0);
@@ -103,7 +110,9 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       <Animated.View
         style={[
           styles.sheet,
-          { maxHeight: `${maxHeightPercent}%`, paddingBottom: Math.max(insets.bottom, 20) + 12 },
+          fillHeight
+            ? { height: `${maxHeightPercent}%`, paddingBottom: Math.max(insets.bottom, 20) + 12 }
+            : { maxHeight: `${maxHeightPercent}%`, paddingBottom: Math.max(insets.bottom, 20) + 12 },
           sheetAnimatedStyle,
         ]}
       >

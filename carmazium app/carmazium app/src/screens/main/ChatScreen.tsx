@@ -746,11 +746,13 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   dealerBubbleWrapper: {
+    width: '100%',
     flexDirection: 'row',
     justifyContent: 'flex-start',
     marginBottom: 12,
   },
   userBubbleWrapper: {
+    width: '100%',
     flexDirection: 'row',
     justifyContent: 'flex-end',
     marginBottom: 12,
@@ -760,6 +762,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 16,
     maxWidth: '82%',
+    flexShrink: 1,
   },
   bubbleDealer: {
     backgroundColor: Colors.deepBlue_1c1d26,
@@ -798,9 +801,11 @@ const styles = StyleSheet.create({
   // Bubble stack (bubble + Instagram-style "Seen" row underneath)
   bubbleStackRight: {
     alignItems: 'flex-end',
+    flexShrink: 1,
   },
   bubbleStackLeft: {
     alignItems: 'flex-start',
+    flexShrink: 1,
   },
   msgFooter: {
     flexDirection: 'row',
@@ -860,6 +865,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
     padding: 16,
     maxWidth: '82%',
+    flexShrink: 1,
   },
   offerTagHeader: {
     flexDirection: 'row',

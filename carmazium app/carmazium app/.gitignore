@@ -37,3 +37,8 @@ Downloads/
 *.jpg
 *.jpeg
 !assets/**/*.jpg
+
+# Scratch/manual APK patching work + QA docs — not source, not for git
+scratch_apk_work/
+scratch_bundle_out/
+*.docx

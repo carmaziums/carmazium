@@ -440,7 +440,7 @@ export const CompareScreen: React.FC = () => {
                     return (
                       <View key={idx} style={styles.cellCol}>
                         <View style={[styles.cellValBox, isWinner && styles.cellValBoxWinner]}>
-                          <Text style={[styles.rowVal, isWinner && styles.rowValWinner]}>{value}</Text>
+                          <Text style={[styles.rowValThreeCol, isWinner && styles.rowValWinner]}>{value}</Text>
                         </View>
                       </View>
                     );
@@ -513,6 +513,7 @@ export const CompareScreen: React.FC = () => {
         onClose={() => setSelectModalVisible(false)}
         title="Select Vehicle"
         maxHeightPercent={75}
+        avoidKeyboard
       >
         <View style={styles.pickerSearchWrap}>
           <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
@@ -910,11 +911,14 @@ const styles = StyleSheet.create({
   },
   cellCol: {
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cellValBox: {
-    paddingHorizontal: 12,
+    width: '100%',
+    paddingHorizontal: 6,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
@@ -933,6 +937,17 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size12,
     color: Colors.white,
     textAlign: 'center',
+  },
+  // Used instead of `rowVal` inside the 3-car cellValBox — that box is the
+  // sole flex child of `cellCol` (not a row of siblings sharing space like
+  // 2-car mode), so `flex: 1` there fights the box's own sizing instead of
+  // just letting the text wrap within the width cellCol already gives it.
+  rowValThreeCol: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.white,
+    textAlign: 'center',
+    flexShrink: 1,
   },
   rowValWinner: {
     color: Colors.white,

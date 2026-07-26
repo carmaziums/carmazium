@@ -21,6 +21,15 @@ export const VerifyEmailScreen: React.FC = () => {
   const [resent, setResent] = useState(false);
   const [checking, setChecking] = useState(false);
   const [notVerifiedYet, setNotVerifiedYet] = useState(false);
+  // Matches web's onboarding/page.tsx 60s cooldown between resend taps to
+  // prevent hammering Supabase's rate-limited /auth/v1/otp endpoint.
+  const [cooldownSec, setCooldownSec] = useState(0);
+
+  useEffect(() => {
+    if (cooldownSec <= 0) return;
+    const t = setTimeout(() => setCooldownSec((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldownSec]);
 
   // ── Listen for Supabase SIGNED_IN event (fired when the user clicks the
   //    verification link and the deep-link hands control back to the app).
@@ -38,11 +47,12 @@ export const VerifyEmailScreen: React.FC = () => {
   }, [initializeAuth]);
 
   const handleResend = async () => {
-    if (!user?.email || resending) return;
+    if (!user?.email || resending || cooldownSec > 0) return;
     setResending(true);
     try {
       await supabase.auth.resend({ type: 'signup', email: user.email });
       setResent(true);
+      setCooldownSec(60);
     } catch {
       // Silent — resend is best-effort
     } finally {
@@ -109,16 +119,20 @@ export const VerifyEmailScreen: React.FC = () => {
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.secondaryBtn, (resending || resent) && styles.secondaryBtnDisabled]}
+        style={[styles.secondaryBtn, (resending || cooldownSec > 0) && styles.secondaryBtnDisabled]}
         onPress={handleResend}
-        disabled={resending || resent}
+        disabled={resending || cooldownSec > 0}
         activeOpacity={0.8}
       >
         {resending ? (
           <ActivityIndicator size="small" color={Colors.textSecondary} />
         ) : (
           <Text style={styles.secondaryBtnText}>
-            {resent ? '✓ Email resent' : 'Resend verification email'}
+            {cooldownSec > 0
+              ? `Resend in ${cooldownSec}s`
+              : resent
+              ? '✓ Email resent — tap again if you didn’t get it'
+              : 'Resend verification email'}
           </Text>
         )}
       </TouchableOpacity>

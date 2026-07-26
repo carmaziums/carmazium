@@ -1,7 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { Colors } from '../constants/colors';
-import { FontFamily } from '../constants/typography';
+import { View, StyleSheet, ViewStyle } from 'react-native';
+import { Image } from 'expo-image';
+
+// Real brand asset from the web app (public/assets/images/logo.png) — the
+// mobile app previously rendered a hand-approximated "red circle + CAR/MAZIUM"
+// glyph that didn't match the real logo's stylized C-cutout mark. Using the
+// actual PNG here keeps mobile and web visually identical.
+// Source dimensions: 370 x 82 (aspect ratio ≈ 4.51:1).
+const LOGO_ASPECT = 370 / 82;
+const LOGO_SOURCE = require('../../assets/images/logo.png');
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -9,51 +16,19 @@ interface LogoProps {
 }
 
 export const Logo: React.FC<LogoProps> = ({ size = 'md', style }) => {
-  const isSm = size === 'sm';
-  const isLg = size === 'lg';
-
-  const circleSize = isSm ? 24 : isLg ? 60 : 40;
-  const fontSize = isSm ? 16 : isLg ? 36 : 24;
-  const gap = isSm ? 6 : isLg ? 14 : 10;
-  const letterSpacing = isSm ? 1 : isLg ? 3 : 2;
+  // Widths chosen to preserve the visual footprint of the old hand-drawn
+  // component at each preset (which was circleSize + gap + text width).
+  const width = size === 'sm' ? 120 : size === 'lg' ? 260 : 180;
+  const height = width / LOGO_ASPECT;
 
   return (
-    <View style={[styles.container, { gap }, style]}>
-      {/* Red circle with white C */}
-      <View
-        style={[
-          styles.circle,
-          {
-            width: circleSize,
-            height: circleSize,
-            borderRadius: circleSize / 2,
-          },
-        ]}
-      >
-        <Text
-          style={[
-            styles.circleText,
-            {
-              fontSize: circleSize * 0.55,
-              lineHeight: circleSize,
-              // Offset slightly for optical centering
-              marginTop: isSm ? -1 : isLg ? -3 : -2,
-            },
-          ]}
-        >
-          C
-        </Text>
-      </View>
-
-      {/* CARMAZIUM Text split into CAR (white) and MAZIUM (red) */}
-      <View style={styles.textContainer}>
-        <Text style={[styles.textBase, { fontSize, letterSpacing }, styles.textWhite]}>
-          CAR
-        </Text>
-        <Text style={[styles.textBase, { fontSize, letterSpacing }, styles.textRed]}>
-          MAZIUM
-        </Text>
-      </View>
+    <View style={[styles.container, style]}>
+      <Image
+        source={LOGO_SOURCE}
+        style={{ width, height }}
+        contentFit="contain"
+        accessibilityLabel="Carmazium"
+      />
     </View>
   );
 };
@@ -63,28 +38,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  circle: {
-    backgroundColor: Colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  circleText: {
-    fontFamily: FontFamily.extraBold,
-    color: Colors.white,
-    textAlign: 'center',
-  },
-  textContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  textBase: {
-    fontFamily: FontFamily.extraBold,
-  },
-  textWhite: {
-    color: Colors.white,
-  },
-  textRed: {
-    color: Colors.accent,
   },
 });
