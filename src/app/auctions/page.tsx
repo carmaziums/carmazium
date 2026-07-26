@@ -386,16 +386,16 @@ export default function AuctionsPage() {
                         >
                             <Link
                                 href="/auctions/how-it-works"
-                                className="group relative flex items-center gap-4 rounded-2xl border border-white/10 bg-slate-950/60 backdrop-blur-xl px-5 py-4 shadow-[0_8px_24px_rgba(0,0,0,0.35)] hover:border-primary/40 hover:bg-slate-950/75 hover:shadow-[0_8px_30px_rgba(237,28,36,0.15)] transition-all duration-300"
+                                className="group relative flex items-center gap-4 rounded-2xl border border-black/10 dark:border-white/10 bg-white/85 dark:bg-slate-950/60 backdrop-blur-xl px-5 py-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)] hover:border-primary/40 hover:bg-white/95 dark:hover:bg-slate-950/75 hover:shadow-[0_8px_30px_rgba(237,28,36,0.15)] transition-all duration-300"
                             >
-                                <div className="shrink-0 h-12 w-12 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center group-hover:scale-105 group-hover:shadow-[0_0_18px_rgba(237,28,36,0.35)] transition-all duration-300">
+                                <div className="shrink-0 h-12 w-12 rounded-xl bg-primary/10 dark:bg-primary/15 border border-primary/25 dark:border-primary/30 flex items-center justify-center group-hover:scale-105 group-hover:shadow-[0_0_18px_rgba(237,28,36,0.35)] transition-all duration-300">
                                     <Key size={21} className="text-primary" />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-[15px] font-bold text-white leading-snug">
+                                    <p className="text-[15px] font-bold text-slate-900 dark:text-white leading-snug">
                                         Turn your keys into cash <span className="text-primary">— earn £100</span>
                                     </p>
-                                    <span className="inline-flex items-center gap-1 text-xs text-slate-400 group-hover:text-primary/90 mt-0.5 transition-colors">
+                                    <span className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400 group-hover:text-primary/90 mt-0.5 transition-colors">
                                         Free to list, no obligation — see how it works
                                         <ChevronRight size={12} className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
                                     </span>

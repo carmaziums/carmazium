@@ -90,14 +90,14 @@ const BUYER_STEPS = [
 ]
 
 const RULES = [
-    { term: "24-Hour Auctions", def: "Every live auction runs for exactly 24 hours." },
-    { term: "Anti-Snipe Rule", def: "A bid in the last 3 minutes extends the auction by 3 minutes — repeats until bidding settles." },
-    { term: "Reserve Price", def: "Set privately by the seller. If it isn't met, there's no sale and nothing is owed by anyone." },
-    { term: "Buy It Now", def: "Optional — sellers can set an instant-buy price. Buyers can request it; the seller has 24 hours to confirm or decline." },
-    { term: "Free to List", def: "Listing a car for auction costs nothing." },
-    { term: "£100 Seller Bonus", def: "Paid once Carmazium approves your submitted handover proof." },
-    { term: "£125 Buyer Fee", def: "Charged only when you win an auction — unlocks direct chat with the seller to arrange handover." },
-    { term: "Verified Bidders Only", def: "Every bidder is a KYC-verified trade dealer." },
+    { icon: Clock, term: "24-Hour Auctions", def: "Every live auction runs for exactly 24 hours." },
+    { icon: Zap, term: "Anti-Snipe Rule", def: "A bid in the last 3 minutes extends the auction by 3 minutes — repeats until bidding settles." },
+    { icon: Lock, term: "Reserve Price", def: "Set privately by the seller. If it isn't met, there's no sale and nothing is owed by anyone." },
+    { icon: Trophy, term: "Buy It Now", def: "Optional — sellers can set an instant-buy price. Buyers can request it; the seller has 24 hours to confirm or decline." },
+    { icon: FileText, term: "Free to List", def: "Listing a car for auction costs nothing." },
+    { icon: Banknote, term: "£100 Seller Bonus", def: "Paid once Carmazium approves your submitted handover proof." },
+    { icon: CreditCard, term: "£125 Buyer Fee", def: "Charged only when you win an auction — unlocks direct chat with the seller to arrange handover." },
+    { icon: ShieldCheck, term: "Verified Bidders Only", def: "Every bidder is a KYC-verified trade dealer." },
 ]
 
 const TRUST = [
@@ -137,15 +137,15 @@ function StepTimeline({ steps }: { steps: { icon: React.ComponentType<{ size?: n
             {steps.map((step, i) => (
                 <li key={step.title} className="relative pl-16 pb-8 last:pb-0">
                     {i < steps.length - 1 && (
-                        <span className="absolute left-[19px] top-10 bottom-0 w-px bg-[var(--border-default)]" aria-hidden />
+                        <span className="absolute left-[21px] top-11 bottom-0 w-px bg-gradient-to-b from-primary/40 via-[var(--border-default)] to-transparent" aria-hidden />
                     )}
-                    <span className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-full border-2 border-primary/40 bg-[var(--bg-card)] text-primary">
-                        <step.icon size={17} />
-                    </span>
-                    <span className="absolute left-7 top-7 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-black text-white tabular-nums">
+                    <span className="absolute left-0 top-0 flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white font-black text-sm tabular-nums shadow-[0_4px_14px_rgba(237,28,36,0.3)]">
                         {i + 1}
                     </span>
-                    <h4 className="font-heading font-bold text-[15px] mb-1">{step.title}</h4>
+                    <div className="flex items-center gap-2 mb-1">
+                        <step.icon size={14} className="text-primary shrink-0" />
+                        <h4 className="font-heading font-bold text-[15px]">{step.title}</h4>
+                    </div>
                     <p className="text-sm text-[var(--text-muted)] leading-relaxed max-w-lg">{step.desc}</p>
                 </li>
             ))}
@@ -264,6 +264,31 @@ export default function AuctionHowItWorksPage() {
                             ))}
                         </motion.div>
                     </div>
+
+                    {/* Signature element: the deal in one glance — what a seller nets vs. what a buyer pays */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20, rotate: 6 }}
+                        animate={{ opacity: 1, y: 0, rotate: 3 }}
+                        transition={{ delay: 0.3, duration: 0.7, ease: "easeOut" }}
+                        className="hidden lg:block absolute right-10 top-1/2 -translate-y-1/2 w-72"
+                    >
+                        <div className="relative rounded-2xl border border-white/15 bg-slate-950/70 backdrop-blur-xl shadow-2xl p-6">
+                            <span className="absolute -left-2.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full" style={{ background: "var(--bg-body)" }} aria-hidden />
+                            <span className="absolute -right-2.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full" style={{ background: "var(--bg-body)" }} aria-hidden />
+                            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4 pb-4 border-b border-dashed border-white/15">
+                                <span>Auction Ticket</span>
+                                <Gavel size={13} className="text-primary" />
+                            </div>
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-sm text-slate-300">Seller earns</span>
+                                <span className="text-2xl font-black font-heading text-emerald-400">£100</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-slate-300">Buyer pays</span>
+                                <span className="text-2xl font-black font-heading text-primary">£125</span>
+                            </div>
+                        </div>
+                    </motion.div>
                 </div>
 
                 <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
@@ -333,14 +358,19 @@ export default function AuctionHowItWorksPage() {
                     <h2 className="text-3xl md:text-4xl font-black font-heading tracking-tight mb-3">The Rules, Explained</h2>
                     <p className="text-[var(--text-muted)]">The fine print, in plain English.</p>
                 </div>
-                <dl className="max-w-3xl mx-auto rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] divide-y divide-[var(--border-default)] overflow-hidden">
+                <div className="max-w-4xl mx-auto grid sm:grid-cols-2 gap-4">
                     {RULES.map((rule) => (
-                        <div key={rule.term} className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-8 px-6 py-4">
-                            <dt className="sm:w-52 shrink-0 font-heading font-bold text-sm">{rule.term}</dt>
-                            <dd className="text-sm text-[var(--text-muted)] leading-relaxed">{rule.def}</dd>
+                        <div key={rule.term} className="flex items-start gap-3.5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 hover:border-primary/25 transition-colors">
+                            <div className="shrink-0 w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+                                <rule.icon size={16} className="text-primary" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="font-heading font-bold text-sm mb-1">{rule.term}</p>
+                                <p className="text-xs text-[var(--text-muted)] leading-relaxed">{rule.def}</p>
+                            </div>
                         </div>
                     ))}
-                </dl>
+                </div>
             </section>
 
             {/* ── Trust & Transparency ─────────────────────────────────────── */}
