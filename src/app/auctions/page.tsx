@@ -8,7 +8,7 @@ import {
     Gavel, Flame, Calendar, Zap, Users, Search, RefreshCw,
     Clock, Shield, MessageSquare, Trophy, CheckCircle,
     ChevronRight, Timer, Gauge, Fuel, Car, MapPin,
-    BadgeCheck, ShieldCheck, Star, Truck,
+    BadgeCheck, ShieldCheck, Star, Truck, Key,
 } from "lucide-react"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
 import { CardImageCarousel } from "@/components/features/CardImageCarousel"
@@ -377,6 +377,33 @@ export default function AuctionsPage() {
                             Real-time bidding on verified vehicles. Compete live, win fairly, connect with sellers instantly.
                         </motion.p>
 
+                        {/* Turn your keys into cash — sell-through-auction promo, links to the auction how-it-works explainer */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 16 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.16 }}
+                            className="mb-8 max-w-lg"
+                        >
+                            <Link
+                                href="/auctions/how-it-works"
+                                className="group flex items-center gap-4 rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/15 via-red-600/5 to-transparent px-5 py-4 hover:border-primary/40 hover:from-primary/20 transition-colors"
+                            >
+                                <div className="shrink-0 h-11 w-11 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center group-hover:scale-105 transition-transform">
+                                    <Key size={20} className="text-primary" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm text-slate-300 leading-snug">
+                                        Turn your keys into cash — sell through auction and earn{" "}
+                                        <span className="text-primary font-black text-base">£100</span>.
+                                    </p>
+                                    <span className="inline-flex items-center gap-1 text-xs font-bold text-primary/90 mt-1 group-hover:text-primary transition-colors">
+                                        See how it works
+                                        <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+                                    </span>
+                                </div>
+                            </Link>
+                        </motion.div>
+
                         {/* Stats row */}
                         <motion.div
                             initial={{ opacity: 0 }}
@@ -387,7 +414,7 @@ export default function AuctionsPage() {
                             {[
                                 { icon: Flame, label: `${liveAuctions.length} Live`, color: "text-red-400" },
                                 { icon: Calendar, label: `${scheduledAuctions.length} Upcoming`, color: "text-slate-400" },
-                                { icon: Timer, label: "6-Hour Sprints", color: "text-slate-400" },
+                                { icon: Timer, label: "24-Hour Auctions", color: "text-slate-400" },
                                 { icon: Zap, label: "Anti-Snipe Rule", color: "text-amber-400" },
                                 { icon: CheckCircle, label: "Free to List", color: "text-emerald-400" },
                             ].map(({ icon: Icon, label, color }) => (
@@ -566,7 +593,7 @@ export default function AuctionsPage() {
                                 Put your car under the gavel
                             </h2>
                             <p className="text-[var(--text-muted)] text-sm max-w-md mx-auto mb-6 leading-relaxed">
-                                Free to list. 6-hour sprint. Set your reserve, schedule your time, and let buyers compete for your car.
+                                Free to list. 24-hour auction. Set your reserve, schedule your time, and let buyers compete for your car.
                             </p>
                             <div className="flex flex-wrap items-center justify-center gap-2 mb-7">
                                 {["Free to list", "Set your reserve", "Anti-snipe protection", "Auto-connect with winner"].map(f => (
