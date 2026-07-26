@@ -264,31 +264,6 @@ export default function AuctionHowItWorksPage() {
                             ))}
                         </motion.div>
                     </div>
-
-                    {/* Signature element: the deal in one glance — what a seller nets vs. what a buyer pays */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20, rotate: 6 }}
-                        animate={{ opacity: 1, y: 0, rotate: 3 }}
-                        transition={{ delay: 0.3, duration: 0.7, ease: "easeOut" }}
-                        className="hidden lg:block absolute right-10 top-1/2 -translate-y-1/2 w-72"
-                    >
-                        <div className="relative rounded-2xl border border-white/15 bg-slate-950/70 backdrop-blur-xl shadow-2xl p-6">
-                            <span className="absolute -left-2.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full" style={{ background: "var(--bg-body)" }} aria-hidden />
-                            <span className="absolute -right-2.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full" style={{ background: "var(--bg-body)" }} aria-hidden />
-                            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4 pb-4 border-b border-dashed border-white/15">
-                                <span>Auction Ticket</span>
-                                <Gavel size={13} className="text-primary" />
-                            </div>
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="text-sm text-slate-300">Seller earns</span>
-                                <span className="text-2xl font-black font-heading text-emerald-400">£100</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-300">Buyer pays</span>
-                                <span className="text-2xl font-black font-heading text-primary">£125</span>
-                            </div>
-                        </div>
-                    </motion.div>
                 </div>
 
                 <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
