@@ -382,23 +382,22 @@ export default function AuctionsPage() {
                             initial={{ opacity: 0, y: 16 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.16 }}
-                            className="mb-8 max-w-lg"
+                            className="mb-8 max-w-md"
                         >
                             <Link
                                 href="/auctions/how-it-works"
-                                className="group flex items-center gap-4 rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/15 via-red-600/5 to-transparent px-5 py-4 hover:border-primary/40 hover:from-primary/20 transition-colors"
+                                className="group relative flex items-center gap-4 rounded-2xl border border-white/10 bg-slate-950/60 backdrop-blur-xl px-5 py-4 shadow-[0_8px_24px_rgba(0,0,0,0.35)] hover:border-primary/40 hover:bg-slate-950/75 hover:shadow-[0_8px_30px_rgba(237,28,36,0.15)] transition-all duration-300"
                             >
-                                <div className="shrink-0 h-11 w-11 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center group-hover:scale-105 transition-transform">
-                                    <Key size={20} className="text-primary" />
+                                <div className="shrink-0 h-12 w-12 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center group-hover:scale-105 group-hover:shadow-[0_0_18px_rgba(237,28,36,0.35)] transition-all duration-300">
+                                    <Key size={21} className="text-primary" />
                                 </div>
-                                <div className="min-w-0">
-                                    <p className="text-sm text-slate-300 leading-snug">
-                                        Turn your keys into cash — sell through auction and earn{" "}
-                                        <span className="text-primary font-black text-base">£100</span>.
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[15px] font-bold text-white leading-snug">
+                                        Turn your keys into cash <span className="text-primary">— earn £100</span>
                                     </p>
-                                    <span className="inline-flex items-center gap-1 text-xs font-bold text-primary/90 mt-1 group-hover:text-primary transition-colors">
-                                        See how it works
-                                        <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+                                    <span className="inline-flex items-center gap-1 text-xs text-slate-400 group-hover:text-primary/90 mt-0.5 transition-colors">
+                                        Free to list, no obligation — see how it works
+                                        <ChevronRight size={12} className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
                                     </span>
                                 </div>
                             </Link>
