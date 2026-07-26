@@ -1,31 +1,160 @@
-# Carmazium Mobile — Project Context
+# Carmazium Mobile — Project Context & Handover
 
-Read this before starting work, especially on a machine you haven't worked from before (like the build machine). See `CLAUDE.md` in this same directory for conventions and rules to follow while coding.
+**Read this first, then `CLAUDE.md` in the same directory.** `CLAUDE.md` is the "how to work in this codebase" doc (conventions, stack rules, source-of-truth pointers). This doc is the "what's the current state, how do you build and ship it, and what still hurts" doc.
 
-## What this app is
+---
 
-React Native/Expo mobile app for Carmazium — a UK vehicle marketplace with retail listings and live auctions. Buyer, seller, and dealer flows. Same backend as the web app (`https://carmazium-hjoh9w.fly.dev`), which lives at the repo root (`src\`, sibling of `backend\` and this directory — resolve relative to wherever the repo is checked out; this used to say `D:\carmazium\src\`, which was stale on other machines) as a separate Next.js codebase — this mobile app is `<repo-root>\carmazium app\carmazium app\`.
+## 1. What this app is
 
-## Where things stand (as of 2026-07-06)
+A React Native / Expo mobile app for **Carmazium** — a UK vehicle marketplace with retail classifieds *and* live auctions. Same backend as the web app (`https://carmazium-hjoh9w.fly.dev`); the web app lives in `<repo-root>\src\` as a sibling of this directory.
 
-A batch of fixes landed this session, in this order — useful to know the shape of what changed if something looks unfamiliar:
+Roles supported in-app: `buyer`, `seller`, `dealer`. The DB also has `admin`, `finance_partner`, `insurance_partner`, `service_provider` — **none of those have mobile dashboards** and their web equivalents are considered intentional gaps (admins/partners use web).
 
-1. **3D vehicle viewer was fake** — it was a flat SVG car silhouette, not an actual 3D model. Rebuilt as a WebView + Three.js viewer loading `src/assets/3d/vehicle.glb`, with orbit-drag rotation, tap-to-mark-damage hotspots, and per-zone hide/photo actions.
-2. **EAS Update/OTA pipeline was non-functional** — the build machine only ever ran raw `gradlew.bat`, never `eas build`, so no update channel was ever embedded in the shipped APK, and no channel existed on the EAS backend anyway. Fixed `app.json` (`updates.requestHeaders`, `runtimeVersion.policy: "sdkVersion"`), created a real `production` channel, and published to it.
-3. **Listing publish was broken** — the backend rejects unknown DTO fields, and the mobile payload was sending several the web app never does (`declarationAcknowledged`, `priceAsking`, `damageRecords`, `dateOfLastV5CIssued`). Fixed both listing screens that existed at the time.
-4. **Payment screen froze on a black screen** — `Linking.openURL` was handing off to the system browser with no way back. Switched to `expo-web-browser`'s `openAuthSessionAsync`, an in-app auth sheet that returns control to the app.
-5. **Two separate, drifted listing-creation screens** (`SellCarsScreen.tsx` and `SellCarFlowScreen.tsx`) were independently maintained and had diverged — one had the 3D viewer and no auction support, the other had auction support and a flat 2D damage grid with no 3D model at all, and AI description generation was broken/inconsistent between them. Consolidated to a single canonical flow: `SellCarFlowScreen.tsx` now has everything (3D viewer, auction scheduling, condition field, AI description enrichment, banner presets, departed-sale field, consistent damage-zone naming with web). `SellCarsScreen.tsx` was deleted; all navigation repointed.
-6. **`expo-dev-client` added (this step)** — see "Dev workflow" below. This is new; previously the only way to test a code change was a full release rebuild.
+`buyer` and `seller` are treated as the same unified entity in the drawer (matches web's `formatRole()` → "Buyer/Seller Account"). Dealer keeps its own separate DEALER CONTROLS group.
 
-If you're picking this up fresh and something references `SellCarsScreen` — it no longer exists. The listing/auction flow is `SellCarFlowScreen.tsx`, reached via the `SellCarFlow` route.
+---
 
-## Dev workflow — two separate paths
+## 2. Handover checklist — first day on this project
 
-### Fast loop (day-to-day iteration) — use this unless you have a reason not to
+1. `cd "C:\ca\carmazium\carmazium app\carmazium app" && git pull && npm install`
+2. Read this file top-to-bottom, then read `CLAUDE.md`
+3. Verify the build machine is set up:
+   - `adb devices` shows at least one device/emulator
+   - `keystores\release.jks` and `keystores\release.keystore.properties` both exist (release signing)
+   - `.env` has `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+4. Run `npx tsc --noEmit` from the app root — must be clean before you start touching code
+5. Verify build-machine setup — see §4 (JDK, Android SDK, keystore, `.env`)
+6. Try the fast-loop path once (§5a) to confirm the dev client installs and Metro connects
+7. Skim §6 for the current shipped state so you don't re-implement things that already exist
+8. Skim §8 for open issues so you don't accidentally step on them
 
-Requires an Android SDK + emulator/device, which this dev machine (wherever you're reading this from, if it's `D:\carmazium`) does **not** have. The build machine (`C:\ca\carmazium\`) does, since it already runs `gradlew.bat` successfully there.
+---
 
-**One-time** (or whenever a native dependency / `app.json` permission-scheme-plugin change lands):
+## 3. Repo layout
+
+```
+<repo-root>\                          ← the git repo root
+├── src\                              ← WEB app (Next.js 14 App Router) — source of truth for parity
+├── backend\                          ← NestJS backend, shared by web + mobile
+│   └── src\                          ← controllers here define every API endpoint
+└── carmazium app\                    ← the outer folder is not the project, it's a container
+    └── carmazium app\                ← ← this Expo project (yes, the doubled name is real)
+        ├── src\                      ← all mobile source lives here
+        │   ├── screens\              ← one file per screen, grouped by area
+        │   ├── components\           ← shared UI (BottomSheet, IconButton, VehicleCard, etc.)
+        │   ├── lib\                  ← apiClient + thin wrappers (paymentsApi, chatApi, etc.)
+        │   ├── store\                ← Zustand (authStore, watchlistStore, sellWizardStore)
+        │   ├── navigation\           ← RootNavigator, MainStackNavigator, TabNavigator
+        │   ├── constants\            ← Colors, FontFamily/FontSize, spacing
+        │   └── context\              ← ChatContext, DrawerContext, LocationContext
+        ├── android\                  ← generated by expo prebuild — GITIGNORED, never edit by hand
+        ├── ios\                      ← same, gitignored
+        ├── assets\images\            ← app assets (icons, splash, logo.png, logo-light.png, onboarding cars)
+        ├── keystores\                ← release.jks + release.keystore.properties (git-ignored)
+        ├── app.json                  ← Expo config (permissions, plugins, updates channel, runtimeVersion)
+        ├── .env                      ← EXPO_PUBLIC_* env vars, auto-loaded by Expo
+        ├── CLAUDE.md                 ← conventions doc (read alongside this)
+        └── CONTEXT.md                ← this file
+```
+
+---
+
+## 4. Build machine setup (this device: `C:\ca\carmazium\`)
+
+This machine is the *only* box in the setup that can build and sign the mobile app. The web/backend dev machine (`D:\carmazium`) doesn't have the Android SDK. If you're taking this device over, verify each of these is present before you touch code.
+
+### 4.0. Installed toolchain (versions currently working)
+
+| Tool | Version | Where |
+|------|---------|-------|
+| Node.js | v24.16.0 | System PATH |
+| npm | 11.13.0 | with Node |
+| Git | 2.54 for Windows | System PATH |
+| JDK | OpenJDK 21.0.10 (Android Studio JBR) | `C:\Program Files\Android\Android Studio\jbr\` |
+| Android SDK | (root: `C:\Users\SG\AppData\Local\Android\Sdk`) | `%LOCALAPPDATA%\Android\Sdk` |
+| SDK Build Tools | 35.0.0, 36.0.0, 36.1.0, 37.0.0 | `%LOCALAPPDATA%\Android\Sdk\build-tools\*` |
+| Android NDK | 27.1.12297006 | `%LOCALAPPDATA%\Android\Sdk\ndk\*` |
+| adb | 1.0.41 (Version 37.0.0) | `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe` |
+| Gradle | 8.14.3 (via wrapper `android\gradlew.bat`) | project-local |
+| Expo CLI | 54.0.25 (via `npx expo`) | project-local |
+| EAS CLI | **not installed globally** — install if you need `eas update` / `eas build` | via `npm i -g eas-cli` |
+
+**Required environment variables** (verify with `echo %JAVA_HOME%` etc. in cmd.exe):
+
+```
+JAVA_HOME  = C:\Program Files\Android\Android Studio\jbr
+ANDROID_HOME = C:\Users\SG\AppData\Local\Android\Sdk
+Path additions:
+  %ANDROID_HOME%\platform-tools     (for adb)
+  %ANDROID_HOME%\emulator            (if using emulator)
+  %JAVA_HOME%\bin                    (for the gradlew JVM)
+```
+
+`ANDROID_SDK_ROOT` is not currently set on this machine — Gradle picks `ANDROID_HOME` up fine either way, but if you install a newer SDK to a different location, set both.
+
+If any of the above is missing, install/set it before running the build recipe below. Missing `JAVA_HOME` is the most common cause of `gradlew.bat` failing before it even prints its first task.
+
+### 4.1. Release signing (keystore) — **CRITICAL, back this up**
+
+Signing keystore lives at:
+
+```
+carmazium app\carmazium app\keystores\release.jks
+carmazium app\carmazium app\keystores\release.keystore.properties
+```
+
+Both files are in `.gitignore` and **exist only on this machine**. There is no second copy. If you lose them, users cannot install any future release APK over an existing install of this app — they'd have to uninstall first. Back both up to a password manager attachment or encrypted external drive **before doing anything else** on this device.
+
+`release.keystore.properties` contains (in this order):
+- `MYAPP_RELEASE_STORE_FILE=release.jks` (relative to the `keystores\` folder)
+- `MYAPP_RELEASE_KEY_ALIAS=carmazium-release`
+- `MYAPP_RELEASE_STORE_PASSWORD=…` (redacted here — read from the file)
+- `MYAPP_RELEASE_KEY_PASSWORD=…` (identical to store password — PKCS12 keystores don't support separate ones)
+
+The properties file is consumed by `plugins/withAndroidReleaseSigning.js` during `expo prebuild`; you don't need to point Gradle at it manually.
+
+### 4.2. Environment file (`.env`)
+
+Located at `carmazium app\carmazium app\.env`. Also gitignored — never commit it. Required keys (exact names, all `EXPO_PUBLIC_*` prefix so Expo bakes them into the client bundle):
+
+```
+EXPO_PUBLIC_API_URL              = https://carmazium-hjoh9w.fly.dev
+EXPO_PUBLIC_SUPABASE_URL         = https://bwtnzmevjlowwronylxm.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY    = (Supabase anon/public key — read from Supabase project settings)
+EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY = pk_live_… (live Stripe publishable key — do NOT swap for pk_test in a real build)
+```
+
+The Stripe key is a **live** key. Any release APK built on this machine will process real card charges. If you need to test with test cards, temporarily swap to `pk_test_…` and don't commit or ship that build.
+
+The anon Supabase key is safe to embed in the client (that's what it's for). The Stripe *secret* key never touches this app — it lives in `backend\.env`.
+
+### 4.3. EAS / Expo project identity
+
+- Owner: `pizn-01s-team`
+- Slug: `carmazium`
+- EAS project ID: `f0ab914b-3433-4816-80a2-0a94e6c6a066`
+- OTA update URL: `https://u.expo.dev/f0ab914b-3433-4816-80a2-0a94e6c6a066`
+- `runtimeVersion.policy: sdkVersion` — every Expo SDK bump invalidates the OTA channel and requires a fresh binary rollout
+- Channel currently used: `production`
+
+To publish an OTA update from this machine, log into EAS once (`npx eas login` — the token persists in `~/.expo/`) and then `npx eas update --branch production --message "..."`. See §5c for the cache-invalidation caveat.
+
+### 4.4. On-device Android debugging (physical device)
+
+Enable Developer Options on the phone (tap Build Number 7 times in Settings → About), turn on USB Debugging, connect via USB, and confirm with `adb devices`. If `adb devices` shows the device as "unauthorized", accept the "Allow USB debugging?" prompt on the phone; if it shows nothing at all, cycle `adb kill-server && adb start-server` and re-plug the cable. This machine has intermittently lost the connection mid-session before — a cold plug re-detect fixes it.
+
+---
+
+## 5. Dev workflow
+
+Two paths. **Use the fast loop unless you're actually shipping a signed APK.**
+
+### 5a. Fast loop (day-to-day iteration)
+
+Requires an Android SDK + emulator or USB-connected device. The build machine (`C:\ca\carmazium\`) has this set up.
+
+**One-time**, or whenever a native dependency / `app.json` change (permissions, deep-link scheme, plugins) lands:
+
 ```cmd
 cd "C:\ca\carmazium\carmazium app\carmazium app"
 git pull
@@ -33,155 +162,170 @@ npm install
 npx expo prebuild --clean --platform android
 npx expo run:android
 ```
-This builds a debug APK with the dev client baked in and installs+launches it on whatever `adb devices` sees (emulator or a USB-connected device with debugging enabled). It loads `.env` automatically — no manual env vars needed for this path.
+
+Builds a debug APK with the dev client baked in, installs and launches it on whatever `adb devices` sees. Auto-loads `.env` — no manual env vars needed on this path.
 
 **Every day after that:**
+
 ```cmd
 npm start
 ```
-Open the already-installed app; it reconnects to Metro automatically. Every JS/TSX save hot-reloads instantly.
 
-### Release build (only when actually shipping to real users)
+Open the already-installed dev-client app; it reconnects to Metro automatically. JS/TSX saves hot-reload instantly.
+
+### 5b. Release build (only when shipping to real users)
+
+This is the recipe that works reliably on the current build machine. The naive `gradlew.bat assembleRelease` hangs occasionally (flaky NDK compiler crashes, most likely antivirus interference) — the args below have been tested through many rebuilds.
+
+```powershell
+Set-Location "C:\ca\carmazium\carmazium app\carmazium app\android"
+
+# 1. Wipe stale intermediate outputs — mandatory for JS-only changes
+Remove-Item -Recurse -Force "app\build\generated" -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force "app\build\intermediates\assets" -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force "app\build\intermediates\merged_assets" -ErrorAction SilentlyContinue
+
+# 2. Bake env vars into the bundle (gradle → Expo bundler → JS bundle)
+$env:EXPO_PUBLIC_API_URL = "https://carmazium-hjoh9w.fly.dev"
+$env:EXPO_PUBLIC_SUPABASE_URL = "https://bwtnzmevjlowwronylxm.supabase.co"
+$env:NODE_ENV = "production"
+# Pull the two secret keys from .env — DO NOT commit them anywhere
+$envFile = Get-Content "..\.env" -Raw
+if ($envFile -match 'EXPO_PUBLIC_SUPABASE_ANON_KEY=(.+)') { $env:EXPO_PUBLIC_SUPABASE_ANON_KEY = $matches[1].Trim() }
+if ($envFile -match 'EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=(.+)') { $env:EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY = $matches[1].Trim() }
+
+# 3. Build — arm64-v8a only (covers ~all real devices from the last 7 years),
+#    single-arch to dodge the flaky armeabi-v7a compiler crashes on this box.
+#    --max-workers 2 avoids parallelism-related NDK crashes.
+#    --no-daemon keeps the JVM ephemeral (a stale daemon has hung the build before).
+.\gradlew.bat assembleRelease `
+  -PreactNativeArchitectures=arm64-v8a `
+  --max-workers 2 `
+  --no-daemon
+```
+
+**Typical build time:** ~5-9 minutes with intermediates cached from a prior successful run. First-ever build or after a full clean is closer to 12-15 minutes.
+
+**Signed with:** `keystores\release.jks`, alias `carmazium-release`. Password lives in `keystores\release.keystore.properties` (git-ignored). The APK ends up at `android\app\build\outputs\apk\release\app-release.apk` (~65-68 MB).
+
+**When the build hangs:** compare `Get-Process java | Select CPU` (actual CPU seconds) against wall-clock elapsed. A healthy build climbs steadily; a hang flatlines. Kill via `Get-Process java, node | Stop-Process -Force` and retry with the same args.
+
+### 5c. OTA update path (JS-only changes, no native changes)
 
 ```cmd
-cd "C:\ca\carmazium\carmazium app\carmazium app"
-git pull
-npm install
-npx expo prebuild --clean --platform android
-cd android
-set EXPO_PUBLIC_API_URL=https://carmazium-hjoh9w.fly.dev
-set EXPO_PUBLIC_SUPABASE_URL=https://bwtnzmevjlowwronylxm.supabase.co
-set EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3dG56bWV2amxvd3dyb255bHhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwNzU0ODYsImV4cCI6MjA2NDY1MTQ4Nn0.afLqKj5aWzeVulSBWbmVypA9Zs2Z3uCUkWgUJn7mE0o
-set EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_51SCdEd8rAGPNUbOXb0oOcVdPeNpLV4ktAiej1pc8zMxn2YKAcWZOtymIYBvMbmr6P36uzRVQTjEBQdUZdqmfXbC7004ZlbIrGS
-rmdir /s /q app\build\generated
-rmdir /s /q app\build\intermediates\assets
-rmdir /s /q app\build\intermediates\merged_assets
-.\gradlew.bat assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers 2 --no-daemon
+eas update --branch production --message "..."
 ```
-The `prebuild --clean` step is mandatory here too — `android/` is gitignored and never auto-updates from `git pull` alone; skipping prebuild is why bugs used to "persist even after reinstalling" a fresh release APK.
 
-Either path can also publish JS-only fixes (no new native module) via `eas update --branch production --message "..."` instead of a full rebuild — faster, but unsafe if a native dependency changed since the last real build (the running binary won't have it compiled in).
+Faster than a full rebuild but **unsafe if any native dependency changed** since the last real build (the running binary won't have it compiled in). App config: `updates.checkAutomatically: "ON_LOAD"`, `runtimeVersion.policy: "sdkVersion"`, real EAS URL `https://u.expo.dev/f0ab914b-3433-4816-80a2-0a94e6c6a066`. This means a cached OTA update in app-private storage will silently override an embedded-bundle APK patch on the same runtime version — if you need to force the embedded bundle after a patch, clear app data (`adb shell pm clear uk.carmazium.app`) or uninstall+reinstall. `adb install -r` preserves app data.
 
-## Starting point checklist — build machine, first time after this update
+---
 
-1. `cd "C:\ca\carmazium\carmazium app\carmazium app" && git pull && npm install`
-2. Read this file and `CLAUDE.md` if you haven't already (you're doing that now)
-3. Confirm an emulator or device is available: `adb devices` should list at least one
-4. Run the one-time dev-client build: `npx expo prebuild --clean --platform android && npx expo run:android`
-5. From then on, `npm start` + editing code is the loop — no more rebuild-per-change
+## 6. What's currently shipped (state of the mobile app as of 2026-07-21)
 
-## Where to look for more detail
+**All the following are on `main` and included in the latest release APK.** If you find yourself thinking about building any of these, they're already done — go look before duplicating.
 
-- `FEATURE_AUDIT.md` (repo root) — web feature reference the mobile app is audited against
-- `.planning/phases/mobile-app-parity/mobile-CONTEXT.md` — older GSD planning doc covering UI polish scope (animations, skeleton states, etc.) — some of it (e.g. "3D viewer not surfaced") is now stale given item 1 above; treat as historical, not current truth
+### Fixed bugs (recent)
+- **Chat bubble text wraps horizontally** — was rendering character-by-character on the sender/dealer side. Root cause was missing explicit `width: '100%'` on the outer `dealerBubbleWrapper`/`userBubbleWrapper` row containers (percentage `maxWidth` on nested containers computes unreliably against an auto-width parent on Android's first layout pass). Fix in [ChatScreen.tsx](src/screens/main/ChatScreen.tsx).
+- **3-car Compare screen text wraps mid-word** — added new `rowValThreeCol` style with `flexShrink: 1` (deliberately not touching the shared `rowVal` used by the 2-car mode). [CompareScreen.tsx](src/screens/main/CompareScreen.tsx).
+- **Dealer "My Listings" cards not tappable** — [MyListingDashboardScreen.tsx](src/screens/sell/MyListingDashboardScreen.tsx) `ListingRow` was a plain `<View>`; wrapped in `TouchableOpacity` navigating to `SellCarFlow` for editing.
+- **Search "Filters" sheet freeze** — was a false alarm from testing methodology (ADB ESCAPE key vs real hardware BACK); no code change needed.
+- **Buyer offer +/- buttons not moving the visible amount** — [VehicleDetailScreen.tsx](src/screens/vehicle/VehicleDetailScreen.tsx). Root cause: `adjustOffer` updated `offerAmount` but the TextInput binds to a separate `offerAmountDraft` string, which only synced on modal-open. Fix: update both in `adjustOffer`.
+- **Keyboard covering UI** — added `avoidKeyboard` to the Make Offer sheet, Search filters sheet, Compare vehicle picker sheet. Also wrapped BuyerOffersScreen's inline counter-back / delivery-address inputs in a `KeyboardAvoidingView` (they aren't inside a modal). Audited every `BottomSheet` / `Modal` in the app; these were the only remaining gaps.
+- **Create Auction sheet rendering empty** — the sheet opened but content had zero height. Root cause: `modalContainer` uses `flex: 1`, and Yoga collapses `flex: 1` children to 0 when the parent has only `maxHeight` (not `height`). Fix: added `fillHeight` prop to `BottomSheet` that switches to `height: X%` when opted in. Only the Create Auction sheet uses it currently; other sheets keep shrink-to-fit.
+- **Delivery request modal stayed open silently on success** — now closes on success + shows an Alert confirmation.
+- **Handover proof upload had no user-visible acknowledgment** — added Alert on success.
+- **Bid placement had no confirmation** — added a 3-second green "Bid accepted — £X" banner on `AuctionDetailScreen`.
+- **VerifyEmail resend button had no cooldown** — matches web's 60s cooldown now.
 
-## Known issues / backend follow-ups (2026-07-12)
+### Features added
+- **Buyer/Seller unified drawer** — [GlobalDrawer.tsx](src/components/GlobalDrawer.tsx). Both roles see a "MY DASHBOARD" group with Dashboard, My listings, My sent offers, Incoming offers, My auctions, Watchlist, Earnings, Performance analytics. Dealer stays separate with DEALER CONTROLS.
+- **WatchlistScreen** — [WatchlistScreen.tsx](src/screens/main/WatchlistScreen.tsx). Previously users could heart listings but had no screen to view them.
+- **Handover verification (seller side)** — already fully implemented on mobile matching web exactly (`SellerAuctionsScreen`'s upload flow, Supabase `listings` bucket with `handover/` prefix, `POST /auctions/:id/handover-proof`, admin approval → £100 seller bonus release). Added the missing £100/£25/£125 fee-breakdown row for parity with web's `dashboard/seller/auctions/page.tsx`.
+- **Cross-listing (retail ↔ auction) indicators** on inventory rows — both [MyListingDashboardScreen.tsx](src/screens/sell/MyListingDashboardScreen.tsx) and [DealerInventoryScreen.tsx](src/screens/main/DealerInventoryScreen.tsx) show either a "🔗 Linked auction — LIVE" chip (tappable → opens `SellerAuctions`) or an "Also list on auction" quick-action for eligible ACTIVE listings.
+- **Real brand logo** — [Logo.tsx](src/components/Logo.tsx) now renders the actual `logo.png` (370x82) via `expo-image` instead of the hand-drawn "red circle + CAR/MAZIUM" glyph. `assets/images/logo.png` and `logo-light.png` copied from web's `public/assets/images/`.
+- **Listing status banners** on VehicleDetail — SOLD (red), DRAFT / PENDING_REVIEW / REJECTED (amber). Sticky "Make Offer" CTA disables + relabels when status !== ACTIVE.
+- **Last-offer teaser** — "Last offer: £X · date" on VehicleDetail for sellers/public viewers.
+- **Offer status chip** on VehicleDetail — buyer's own offer status (PENDING / REJECTED / ACCEPTED / WITHDRAWN / COUNTERED) with web-aligned copy. COUNTERED chip is tappable → navigates to BuyerOffers.
+- **Search "× Clear" button** — surfaces the Reset action outside the filter modal.
+- **Offer range hint** — Make Offer modal shows "Range: £X – £Y" upfront.
+- **Handover proof fee breakdown** — £100 bonus / £25 platform fee / £125 buyer paid cells above the upload button on SellerAuctions.
 
-- **RESOLVED 2026-07-12 (damage zone-id web-parity verification,
-  `mobile-audit-plan.md` Stage 3 / `mobile-production-readiness-plan.md`):** `damageZones.ts`
-  used to carry a comment saying 23 of 33 zone ids were "UNVERIFIED best-effort guesses"
-  because the web repo wasn't reachable from whatever machine wrote that comment (the
-  `D:\carmazium` path issue, since fixed). Diffed all 33 ids programmatically against the
-  web's authoritative `ALL_ZONES` (`src/components/listing/ThreeDVehicleViewer.tsx`) — **14
-  were actually wrong** (not the 23 flagged as suspect; most of those 23 turned out fine).
-  Corrected: `headlight-ns/-os`→`ns-headlight`/`os-headlight`, `front-wing-ns/-os`→`nsf-wing`/
-  `osf-wing`, `windscreen-rear`→`rear-windshield`, `sill-ns/-os`→`ns-sill`/`os-sill`,
-  `rear-qtr-ns/-os`→`nsr-quarter`/`osr-quarter`, `rear-light-ns/-os`→`ns-rear-light`/
-  `os-rear-light`, `drivers-seat`→`driver-seat`, `passengers-seat`→`passenger-seat`,
-  `rear-seats`→`rear-seat`. Confirmed via repo-wide search that nothing else hardcodes the old
-  (wrong) strings, so this is fully contained to `damageZones.ts`. **Low, unverified risk:**
-  if a live listing already saved a damage record under one of the 14 wrong ids, it'll now
-  silently fail to match a known zone (handled gracefully by `DamageMapViewer.tsx`'s existing
-  defensive guard — dropped pin, not a crash) — the file's own history suggests this is
-  unlikely but wasn't re-checked against live data this session.
+### Icons & assets
+- **33 previously-broken icons fixed** — [BrandIcon.tsx](src/components/BrandIcon.tsx) maps Ionicons/MaterialCommunityIcons names → Lucide equivalents. Any unmapped name silently fell back to `HelpCircle` (question mark). Added 33 missing mappings (analytics-outline, arrow-redo-outline, business-outline, calculator-outline, car-sport, cash-outline, close-circle, download-outline, globe-outline, hourglass-outline, information-circle, link-outline, locate, mail-open-outline, notifications-off-outline, paper-plane-outline, person-add-outline, person-circle-outline, play-circle, pound, radio-outline, remove, return-down-back-outline, rocket-launch-outline, timer-outline, trending-up-outline, videocam-outline, and a few more). If you see a `?` icon on a new screen, check `ICON_MAP` first.
 
-- **RESOLVED 2026-07-12 (`SellerAuctionsScreen.tsx` BottomSheet migration,
-  `mobile-production-readiness-plan.md` / `mobile-ui-ux-plan.md` Stage 3):** the schedule-auction
-  create modal (2-step wizard, listing picker + auction settings form) was the last remaining
-  hand-rolled `presentationStyle="fullScreen"` `<Modal>` flagged as the "biggest single win" in
-  the BottomSheet migration plan. Migrated to `<BottomSheet>` — no `title` prop, since the modal
-  needs its own custom header (conditional back-chevron, step-dependent title, close button)
-  plus a step-indicator row, rendered as sheet content instead. `maxHeightPercent={95}`
-  approximates the old full-screen feel. Removed the screen's own `KeyboardAvoidingView`/
-  `StatusBar`/top-inset-spacer, now handled by `BottomSheet`'s `avoidKeyboard` prop and the fact
-  it's a transparent overlay rather than a separate native fullscreen window. `Modal` and
-  `KeyboardAvoidingView` became unused imports and were removed. `tsc`/`eslint` clean. **Not
-  on-device verified** — confirm the listing-picker `FlatList` (step 1) actually scrolls
-  correctly within the sheet's `maxHeight`-bounded `flex: 1` before shipping.
+---
 
-- **RESOLVED 2026-07-12 (F6, `mobile-production-readiness-plan.md`):**
-  `PaymentsService.createCheckoutSession` (the web-facing `/payments/checkout` Stripe Checkout
-  Session endpoint) had the identical client-trusted-amount gap that F2 fixed in the sibling
-  `createPaymentSheet` method. Fixed the same way: `FULL_PAYMENT` → `listing.price`,
-  `COMMISSION` → `AUCTION_BUYER_FEE`, `DEPOSIT` → `DEPOSIT_AMOUNT` (reusing the constants F2
-  already added). No `LISTING_FEE` case needed — that type never reaches this method
-  (`CreateCheckoutSessionDto` only allows `DEPOSIT`/`FULL_PAYMENT`/`COMMISSION`; the web's
-  listing-fee flow uses the separate `createListingSession`, which already derived its amount
-  server-side from `badgeTier` before any of this work started). Covered by 3 new unit tests
-  (`payments.service.spec.ts` now 12 total). Both `amount`-accepting methods in
-  `PaymentsService` now re-derive the charge server-side — no known remaining payment-integrity
-  gap in this service.
+## 7. Architecture at a glance
 
-- **RESOLVED 2026-07-12 (F2, `mobile-production-readiness-plan.md`):**
-  `PaymentsService.createPaymentSheet` (the backend method behind mobile's `/payments/intent`)
-  used to trust the client-supplied `amount` verbatim for every payment type — a modified
-  mobile client could have requested a Payment Sheet for an arbitrary amount against a real
-  listing/auction. Fixed by re-deriving `amount` server-side per `type`: `FULL_PAYMENT` →
-  `listing.price`, `LISTING_FEE` → `LISTING_FEES[badgeTier]`, `COMMISSION` →
-  `AUCTION_BUYER_FEE`, `DEPOSIT` → a new fixed `DEPOSIT_AMOUNT = 500` constant matching the web
-  checkout page's own `DEPOSIT_AMOUNT`. The client's `amount` is now only used for a
-  mismatch-detection log line, never the actual charge. Covered by 5 new unit tests in
-  `payments.service.spec.ts` (now 9 total). **Found in the process, still open:**
-  `PaymentsService.createCheckoutSession` (the web-facing `/payments/checkout` Stripe Checkout
-  Session endpoint) has the identical unfixed gap — same class of bug, different method, not
-  part of this fix. See `mobile-production-readiness-plan.md` finding F6.
+- **Navigation**: React Navigation 7. Root switches by auth state: `Auth` → `VerifyEmail` → `PostSignupOnboarding` → `Main`. `Main` is a native stack with a `Tabs` navigator inside (Home / Search / Live / Sell / Saved / Profile-drawer-trigger). See [RootNavigator.tsx](src/navigation/RootNavigator.tsx), [MainStackNavigator.tsx](src/navigation/MainStackNavigator.tsx).
+- **State**: Zustand — `authStore` (user, isAuthenticated, role, accountRole), `watchlistStore` (savedIds, savedListings, hydrateFromApi), `sellWizardStore` (the multi-step sell flow's persisted draft).
+- **API**: everything through [apiClient.ts](src/lib/apiClient.ts) which handles the Supabase Bearer token + JSON body/response. Never raw `fetch()` in a screen. Domain wrappers: `paymentsApi.ts`, `aiApi.ts`, `chatApi.ts`, `dvlaApi.ts`, `auctionApi.ts`, `listingsApi.ts`, `watchlistApi.ts`, `storageHelper.ts`, `deliveryApi.ts`.
+- **Realtime**: Socket.IO on `/auctions` (bid updates, viewer counts, extension events), `/chat` (message stream), `/notifications`. Sockets live in `context/ChatContext.tsx` and inline in `AuctionDetailScreen.tsx`.
+- **Payments**: `@stripe/stripe-react-native` for the native Payment Sheet path (`/payments/intent`), and an in-app WebView modal (`StripeCheckoutModal`) for Stripe hosted-checkout URLs (used by HPI report purchase, dealer KYC £1 fee, listing-tier fee, and handover flows). Never `Linking.openURL` for Stripe — the payment screen used to freeze on a black screen when the system browser handed off; the in-app patterns fix that.
+- **Auth**: Supabase. User's Bearer token is stored via `expo-secure-store` and attached inside `apiClient`. Deep links back from Stripe/email verification handled via `expo-linking` + `expo-web-browser`'s `openAuthSessionAsync`.
+- **Chat**: Socket.IO + REST. Rooms fetched via `/chat/rooms`, messages via `/chat/rooms/:id/messages`, sent via socket. Message rendering in `ChatScreen.tsx` — special-message parsing (`parseSpecialMessage`) surfaces offer / counter cards inline in the message stream.
 
-- **RESOLVED 2026-07-12 (F3, `mobile-production-readiness-plan.md`):** `DealerKYCScreen.tsx`
-  never called the £1 verification-fee Stripe checkout (`POST /dealers/kyc/checkout`) that the
-  backend added — it only ever posted the form to `POST /dealers/kyc`, so `stripeChargedAt`
-  never got set for any mobile-only dealer, and the screen's "Under Review" gate
-  (`isPending`) didn't check for it either, so a dealer who submitted saw "Under Review"
-  immediately with no way to actually pay. The mobile form also still had the **retired**
-  manual-bank-transfer fields (`paymentReference` text input, `paymentScreenshot` upload, and
-  "£1 bank transfer to CARMAZIUM TRADING LTD..." copy) — confirmed retired by checking the
-  web app's `KycOverlayForm.tsx` (`src/components/dashboard/KycOverlayForm.tsx`), which has
-  zero references to either field and is fully Stripe-checkout-driven. Fix mirrors web exactly:
-  removed the two retired fields/copy, added `alreadyPaid`/`paidAt` state driven by
-  `existingKyc.stripeChargedAt`, changed `isPending` to require `stripeChargedAt` (not just
-  `status === 'PENDING'`) so an unpaid submission falls through to the payment step instead of
-  a dead-end "Under Review" banner, and after a successful form submit now calls
-  `POST /dealers/kyc/checkout` and opens the returned Stripe Checkout URL in
-  `StripeCheckoutModal` (the same in-app WebView pattern already used for the HPI report
-  checkout on `VehicleDetailScreen.tsx` — not `Linking.openURL`, which is the black-screen bug
-  pattern this app already fixed once before). **Not yet done:** on-device verification of a
-  real £1 charge completing and `stripeChargedAt` landing — do this before considering dealer
-  KYC production-ready on mobile.
+---
 
-- **RESOLVED 2026-07-12 (Stage 0, `mobile-production-readiness-plan.md` F1):** `/payments/intent`
-  was rejecting every `type: 'LISTING_FEE'` request outright — `CreatePaymentSheetDto`'s
-  `@IsIn(['DEPOSIT','FULL_PAYMENT','COMMISSION'])` didn't include `'LISTING_FEE'`, and the
-  global `ValidationPipe` 400'd the request before it ever reached `PaymentsService`. This
-  meant **every mobile attempt to publish a paid-tier (BASIC/STANDARD/PREMIUM) classified
-  listing failed** — confirmed by reading `backend/src/payments/` directly (this doc's prior
-  version couldn't verify this because it was written without backend source access; that's
-  fixed too, see below). Three call sites were affected: `SellCarFlowScreen.tsx` (main sell
-  flow), `ImportListingModal.tsx` (import-from-URL), and `SellerAuctionsScreen.tsx`
-  (also-list-retail). Fix: added `'LISTING_FEE'` to the DTO's allowed types, added a
-  `badgeTier` field (required when `type === 'LISTING_FEE'`) so the `payment_intent.succeeded`
-  webhook branch — which didn't exist before this fix — knows which tier to activate the
-  listing at (mirrors what the web's `checkout.session.completed` handler already did for its
-  own `LISTING_FEE` case). All three mobile call sites now send `badgeTier`. Covered by
-  `backend/src/payments/payments.service.spec.ts` (new file — `PaymentsService` had zero test
-  coverage before this).
-  **Still open, deliberately deferred (F2 in the plan doc):** `/payments/intent` still trusts
-  the client-supplied `amount` for `DEPOSIT`/`FULL_PAYMENT`/`COMMISSION`/`LISTING_FEE` — it
-  doesn't re-derive the real price server-side the way the web's Stripe Checkout Session flow
-  does. This is a payment-integrity gap, not just a listing-fee-tier question — scoped out of
-  this fix on purpose to keep it reviewable; do it as its own follow-up.
+## 8. Known issues, open gaps, and follow-ups
 
-- **Doc path fix (2026-07-12):** this file and `CLAUDE.md` used to hardcode the web app's
-  location as `D:\carmazium\src\`, which doesn't exist on every machine this repo is checked
-  out on (confirmed stale on the machine this fix was written on — the actual path was
-  `<repo-root>\src\`). Both docs now describe the path relative to the repo root instead of a
-  hardcoded drive letter. If you're reading this and the path is wrong again, fix it the same
-  way rather than re-hardcoding a machine-specific path.
+### Backend-blocked (won't ship without backend work)
+- **Proxy / max-bid (eBay-style auto-bid)** on auctions — web doesn't have it either. Needs a new schema field on `Bid` (or an `AutoBid` entity), a service to auto-place bids when outbid, socket updates. Roughly a full-stack feature, not a mobile patch. Genuine feature request from UX audit.
+
+### Mobile-only, deferred
+- **Partner-role dashboards** (Service Provider, Finance Partner, Insurance Partner) — web has them (`/dashboard/service/*`, `/dashboard/finance/*`, `/dashboard/insurance/*`), mobile has zero support. `authStore` role type only allows `buyer | seller | dealer`. Deferred by user decision — those roles use web.
+- **Admin dashboard** — intentional gap on mobile.
+- **Guest browsing** — mobile gates the entire app behind `isAuthenticated` (`RootNavigator.tsx`); web supports unauthenticated browsing for SEO. Sign-in-modal-on-Make-Offer is mooted by this. To close, would need a guest route surface.
+- **Loading-state consistency** — some action buttons show ActivityIndicator, others just fade via opacity, others do nothing. No standardization done yet.
+- **Empty-state CTAs** — several list screens (Search-no-results, Live-no-upcoming, Saved-empty, Watchlist-empty) show an icon + text but no "Browse by category" or "See all X" CTA to guide the next step.
+- **Skeleton vs spinner parity** — mobile uses `<Skeleton>` on auction and chat screens; web uses `Loader2` overlays. No single pattern.
+
+### Verified on-device but keep an eye out
+- Every screen with a text input inside a `BottomSheet` needs `avoidKeyboard` on the sheet — the pattern is one keyboard-avoidance fix at a time, not a global config. If you add a new sheet with a `TextInput`, remember to pass the prop.
+- If a new sheet uses `flex: 1` on its top-level child (e.g. because it embeds a `FlatList` that needs to fill the sheet), pass `fillHeight` too — otherwise you'll get the "empty sheet with a stub at the bottom" symptom.
+
+### Not verified
+- No automated tests beyond `npx tsc --noEmit`. No CI. The `src/components/__tests__/VehicleCard.test.tsx` file has jest type errors that predate this session and don't get run.
+- On-device verification is done manually via a physical Android device connected to the build machine (`adb devices`). No emulator recipe documented.
+
+---
+
+## 9. Where to look for more detail
+
+- `CLAUDE.md` (same directory) — conventions, source-of-truth pointers, stack constraints
+- `FEATURE_AUDIT.md` (repo root) — running list of web features audited against mobile
+- `.planning/phases/mobile-app-parity/mobile-CONTEXT.md` — older planning doc; parts of it are stale (e.g. mentions of "3D viewer not surfaced" — it's now the default). Treat as historical.
+- `src\components\listing\ListingWizard.tsx` (web) — canonical listing-creation payload shape; check this before touching `SellCarFlowScreen.tsx`'s `/listings` POST body
+- `backend\src\<module>\<module>.controller.ts` — every mobile API endpoint is defined here; grep for the route path before assuming behavior
+
+---
+
+## 10. History log (compressed)
+
+### 2026-07-21 — This handover session
+- Unified buyer/seller drawer; built WatchlistScreen; swapped hand-drawn Logo for real PNG
+- Fixed 33 unmapped icons rendering as question marks
+- Wave 1 UX quick-wins: resend cooldown, status banners, last-offer teaser, offer status chip, offer range hint, delivery/handover Alerts, bid-accepted flash, tappable COUNTERED chip, search Clear button, offer +/- state sync
+- Cross-listing indicators added to MyListingDashboard and DealerInventory rows
+- Root-caused and fixed Create Auction sheet rendering empty (added `fillHeight` prop to BottomSheet)
+- Two UX/feature audits run against web via Haiku subagents; findings deduped and prioritized
+
+### 2026-07-19/20 — Prior QA session
+- Chat bubble character-by-character wrapping fixed on sender side
+- 3-car Compare mid-word text wrapping fixed
+- Dealer "My Listings" cards made tappable
+
+### 2026-07-12
+- Damage zone-ids diffed against web `ALL_ZONES` — 14 were wrong (not the 23 previously flagged), all corrected in `damageZones.ts`
+- SellerAuctionsScreen Create Auction modal migrated from hand-rolled full-screen `<Modal>` to shared `<BottomSheet>` (the same modal whose `flex: 1` bug was root-caused on 2026-07-21 above)
+- Backend `PaymentsService`: F1 (LISTING_FEE 400'd at DTO validation), F2 (`createPaymentSheet` trusted client amount), F3 (dealer KYC £1 fee never called), F6 (`createCheckoutSession` had the same client-trust gap as F2) — all fixed with unit tests
+- `DealerKYCScreen`: removed retired manual-bank-transfer fields; now calls `/dealers/kyc/checkout` and opens returned URL in `StripeCheckoutModal`
+- Doc path corrected — web app location now described relative to repo root, not a hardcoded `D:\` path
+
+### 2026-07-06
+- 3D vehicle viewer rewritten as WebView + Three.js loading a real `.glb` model (previously a flat SVG car silhouette)
+- EAS Update / OTA pipeline made functional (channel created, embedded in shipped binary)
+- Backend `forbidNonWhitelisted` DTO rejection root-caused; removed four fields (`declarationAcknowledged`, `priceAsking`, `damageRecords`, `dateOfLastV5CIssued`) from listing publish payload
+- Payment screen black-screen bug fixed — switched from `Linking.openURL` to `expo-web-browser`'s `openAuthSessionAsync` (in-app auth sheet)
+- Two drifted listing-creation screens consolidated into a single canonical `SellCarFlowScreen.tsx`; the duplicate `SellCarsScreen.tsx` was deleted
+- `expo-dev-client` added — enabled the fast-loop dev workflow described in §5a

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
 } from 'react-native';
 // expo-image over react-native's Image: caching/recycling for cards rendered
 // repeatedly in horizontal scroll lists (see VehicleCard.tsx for rationale).
-import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import Animated, {
   useSharedValue,
@@ -21,6 +20,9 @@ import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
 import { useLocation } from '../context/LocationContext';
 import { haversineDistanceMiles } from '../lib/distance';
+import { ImageCarousel } from './ImageCarousel';
+import { ImageLightbox } from './ImageLightbox';
+import { GradeChip } from './GradeChip';
 
 import { IconButton } from './IconButton';
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
@@ -39,6 +41,16 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
   const { isSaved, toggle } = useWatchlistStore();
   const saved = isSaved(listing.id);
   const scale = useSharedValue(1);
+
+  // Tapping the thumbnail opens a full-screen lightbox instead of
+  // navigating — matches web's CarCard.tsx (lightboxOnTap). Navigation
+  // still happens via the rest of the row.
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const openLightbox = (index: number) => {
+    setLightboxIndex(index);
+    setLightboxOpen(true);
+  };
 
   const handleToggle = () => {
     toggle(listing);
@@ -76,6 +88,7 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
   };
 
   return (
+    <>
     <AnimatedTouchable
       entering={FadeIn.duration(220)}
       style={[styles.card, animatedStyle]}
@@ -86,12 +99,11 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
     >
       {/* Left: Image container */}
       <View style={styles.imageContainer}>
-        <Image
-          source={{ uri: listing.images[0] }}
-          style={styles.image}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="memory-disk"
+        <ImageCarousel
+          images={listing.images}
+          width={90}
+          height={90}
+          onPress={openLightbox}
         />
 
         {/* Banner label takes priority over the tier badge — same corner, tight space */}
@@ -128,16 +140,26 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
           {listing.year} · {formatMileage(listing.mileage)} · {listing.fuelType}
         </Text>
 
-        {/* Bottom: Price & Heart Bookmark */}
+        {/* Bottom: Price, Grade & Heart Bookmark */}
         <View style={styles.bottomRow}>
-          <View style={styles.priceWrapper}>
-            <Text style={styles.priceText}>{formatPrice(listing.price)}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
+            <View style={styles.priceWrapper}>
+              <Text style={styles.priceText}>{formatPrice(listing.price)}</Text>
+            </View>
+            <GradeChip grade={listing.exteriorGrade} />
           </View>
 
           <IconButton style={styles.bookmarkBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
         </View>
       </View>
     </AnimatedTouchable>
+    <ImageLightbox
+      visible={lightboxOpen}
+      images={listing.images}
+      initialIndex={lightboxIndex}
+      onClose={() => setLightboxOpen(false)}
+    />
+    </>
   );
 };
 
@@ -160,10 +182,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: Colors.bgTertiary,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
   },
   premiumBadge: {
     position: 'absolute',

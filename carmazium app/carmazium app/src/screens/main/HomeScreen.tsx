@@ -23,6 +23,11 @@ import { Colors } from '../../constants/colors';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
+import { ImageCarousel } from '../../components/ImageCarousel';
+import { ImageLightbox } from '../../components/ImageLightbox';
+import { GradeChip } from '../../components/GradeChip';
+import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/AuctionCardBadges';
+import { WishlistHeart } from '../../components/WishlistHeart';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -53,19 +58,25 @@ function useCountdown(targetIso: string) {
 const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }> = ({ auction, onPress }) => {
   const timeLeft = useCountdown(auction.endTime);
   const l = auction.listing as any;
-  const image = l?.images?.[0] ?? '';
+  const images: string[] = l?.images ?? [];
   const currentBid = Number(auction.winningBidAmount ?? auction.startingBid ?? 0);
   const bids = l?._count?.bids ?? l?.bids?.length ?? 0;
 
   return (
     <TouchableOpacity style={s.auctionCard} onPress={onPress} activeOpacity={0.9}>
       <View style={s.cardImgWrap}>
-        {image ? <Image source={{ uri: image }} style={s.cardImg} contentFit="cover" transition={200} cachePolicy="memory-disk" /> : <View style={s.cardImgEmpty} />}
-        <View style={s.livePill}>
+        {images.length > 0
+          ? <ImageCarousel images={images} width={282} height={150} onPress={onPress} showIndicator={false} />
+          : <View style={s.cardImgEmpty} />}
+        <View style={s.livePill} pointerEvents="none">
           <View style={s.liveDot} />
           <Text style={s.livePillText}>LIVE</Text>
         </View>
-        <View style={s.bidOverlay}>
+        <View style={{ position: 'absolute', top: 34, left: 10, right: 10 }} pointerEvents="none">
+          <AuctionCardTrustBadges badgeTier={l?.badgeTier} isFeatured={l?.isFeatured} isDepartedSale={l?.isDepartedSale} />
+        </View>
+        <WishlistHeart listing={auctionToListingParam(auction)} />
+        <View style={s.bidOverlay} pointerEvents="none">
           <View style={{ flex: 1 }}>
             <Text style={s.overlayLabel}>CURRENT BID</Text>
             <Text style={s.overlayVal}>{formatPrice(currentBid)}</Text>
@@ -81,8 +92,17 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
           {l?.year}{l?.transmission ? ` · ${l.transmission === 'MANUAL' ? 'Manual' : 'Auto'}` : ''}
           {l?.mileage ? ` · ${Number(l.mileage).toLocaleString('en-GB')} mi` : ''}
         </Text>
-        <Text style={s.cardTitle} numberOfLines={1}>{l?.make ?? ''} {l?.model ?? ''}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={1}>{l?.make ?? ''} {l?.model ?? ''}</Text>
+          <GradeChip grade={l?.exteriorGrade} />
+        </View>
+        <AuctionCardChips
+          fuelType={l?.fuelType}
+          bodyType={l?.bodyType}
+          location={l?.location}
+          deliveryAvailable={l?.deliveryAvailable}
+        />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
           <Ionicons name="hammer-outline" size={11} color={Colors.textSecondary} />
           <Text style={s.cardMeta}>{bids} bid{bids !== 1 ? 's' : ''}</Text>
           <Text style={s.cardMeta}> · </Text>
@@ -98,18 +118,24 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
 const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }> = ({ auction, onPress }) => {
   const startsIn = useCountdown(auction.startTime);
   const l = auction.listing as any;
-  const image = l?.images?.[0] ?? '';
+  const images: string[] = l?.images ?? [];
   const startingBid = Number(auction.startingBid ?? 0);
 
   return (
     <TouchableOpacity style={s.auctionCard} onPress={onPress} activeOpacity={0.9}>
       <View style={s.cardImgWrap}>
-        {image ? <Image source={{ uri: image }} style={s.cardImg} contentFit="cover" transition={200} cachePolicy="memory-disk" /> : <View style={s.cardImgEmpty} />}
-        <View style={[s.livePill, { backgroundColor: 'rgba(59,130,246,0.9)' }]}>
+        {images.length > 0
+          ? <ImageCarousel images={images} width={282} height={150} onPress={onPress} showIndicator={false} />
+          : <View style={s.cardImgEmpty} />}
+        <View style={[s.livePill, { backgroundColor: 'rgba(59,130,246,0.9)' }]} pointerEvents="none">
           <Ionicons name="calendar-outline" size={9} color={Colors.white} />
           <Text style={s.livePillText}>UPCOMING</Text>
         </View>
-        <View style={s.bidOverlay}>
+        <View style={{ position: 'absolute', top: 34, left: 10, right: 10 }} pointerEvents="none">
+          <AuctionCardTrustBadges badgeTier={l?.badgeTier} isFeatured={l?.isFeatured} isDepartedSale={l?.isDepartedSale} />
+        </View>
+        <WishlistHeart listing={auctionToListingParam(auction)} />
+        <View style={s.bidOverlay} pointerEvents="none">
           <View style={{ flex: 1 }}>
             <Text style={s.overlayLabel}>STARTING BID</Text>
             <Text style={s.overlayVal}>{formatPrice(startingBid)}</Text>
@@ -124,11 +150,24 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
         <Text style={s.cardSpecs}>
           {l?.year}{l?.mileage ? ` · ${Number(l.mileage).toLocaleString('en-GB')} mi` : ''}
         </Text>
-        <Text style={s.cardTitle} numberOfLines={1}>{l?.make ?? ''} {l?.model ?? ''}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name="calendar-outline" size={11} color={Colors.textSecondary} />
-          <Text style={s.cardMeta}>Reserve: {formatPrice(Number(auction.reservePrice ?? 0))}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={1}>{l?.make ?? ''} {l?.model ?? ''}</Text>
+          <GradeChip grade={l?.exteriorGrade} />
         </View>
+        <AuctionCardChips
+          fuelType={l?.fuelType}
+          bodyType={l?.bodyType}
+          location={l?.location}
+          deliveryAvailable={l?.deliveryAvailable}
+        />
+        {/* Reserve price is never shown to buyers — it's enforced server-side.
+            Only surface a Buy it now price when the seller set one. */}
+        {!!auction.buyItNowPrice && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+            <Ionicons name="flash-outline" size={11} color={Colors.textSecondary} />
+            <Text style={s.cardMeta}>Buy it now: {formatPrice(Number(auction.buyItNowPrice))}</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -142,35 +181,58 @@ const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => void; onToggle: (id: string) => void; saved: boolean }>(({
   listing, onPress, onToggle, saved
-}) => (
-  <AnimatedTouchable entering={FadeIn.duration(220)} style={s.listingCard} onPress={() => onPress(listing.id)} activeOpacity={0.9}>
-    <View style={s.cardImgWrap}>
-      {listing.images?.[0]
-        ? <Image source={{ uri: listing.images[0] }} style={s.cardImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-        : <View style={s.cardImgEmpty} />
-      }
-      {listing.isFeatured && (
-        <View style={s.featuredBadge}><Text style={s.featuredBadgeText}>FEATURED</Text></View>
-      )}
-      <TouchableOpacity
-        style={s.heartBtn}
-        onPress={() => onToggle(listing.id)}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'}
-        accessibilityRole="button"
-      >
-        <Ionicons name={saved ? 'heart' : 'heart-outline'} size={15} color={saved ? Colors.accent : Colors.white} />
-      </TouchableOpacity>
-    </View>
-    <View style={s.cardBody}>
-      <Text style={s.cardSpecs}>
-        {listing.year} · {String(listing.fuelType || '').replace(/_/g, ' ').toUpperCase()} · {Number(listing.mileage || 0).toLocaleString('en-GB')} MI
-      </Text>
-      <Text style={s.cardTitle} numberOfLines={1}>{listing.make} {listing.model}</Text>
-      <Text style={s.cardPrice}>{formatPrice(listing.price)}</Text>
-    </View>
-  </AnimatedTouchable>
-));
+}) => {
+  // Tapping the image opens a full-screen lightbox instead of navigating —
+  // matches web's CarCard.tsx (lightboxOnTap). Navigation still happens via
+  // the rest of the card.
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const openLightbox = (index: number) => {
+    setLightboxIndex(index);
+    setLightboxOpen(true);
+  };
+
+  return (
+    <>
+    <AnimatedTouchable entering={FadeIn.duration(220)} style={s.listingCard} onPress={() => onPress(listing.id)} activeOpacity={0.9}>
+      <View style={s.cardImgWrap}>
+        {listing.images?.length
+          ? <ImageCarousel images={listing.images} width={240} height={150} onPress={openLightbox} />
+          : <View style={s.cardImgEmpty} />
+        }
+        {listing.isFeatured && (
+          <View style={s.featuredBadge} pointerEvents="none"><Text style={s.featuredBadgeText}>FEATURED</Text></View>
+        )}
+        <TouchableOpacity
+          style={s.heartBtn}
+          onPress={() => onToggle(listing.id)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'}
+          accessibilityRole="button"
+        >
+          <Ionicons name={saved ? 'heart' : 'heart-outline'} size={15} color={saved ? Colors.accent : Colors.white} />
+        </TouchableOpacity>
+      </View>
+      <View style={s.cardBody}>
+        <Text style={s.cardSpecs}>
+          {listing.year} · {String(listing.fuelType || '').replace(/_/g, ' ').toUpperCase()} · {Number(listing.mileage || 0).toLocaleString('en-GB')} MI
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={1}>{listing.make} {listing.model}</Text>
+          <GradeChip grade={listing.exteriorGrade} />
+        </View>
+        <Text style={s.cardPrice}>{formatPrice(listing.price)}</Text>
+      </View>
+    </AnimatedTouchable>
+    <ImageLightbox
+      visible={lightboxOpen}
+      images={listing.images ?? []}
+      initialIndex={lightboxIndex}
+      onClose={() => setLightboxOpen(false)}
+    />
+    </>
+  );
+});
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 

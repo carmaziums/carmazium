@@ -36,6 +36,7 @@ import { getAccessToken } from '../../lib/supabase';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { haptics } from '../../lib/haptics';
 import { BuyerDamageViewer } from '../../components/damage/BuyerDamageViewer';
+import { GradeChip } from '../../components/GradeChip';
 import { Button } from '../../components/Button';
 
 import { IconButton } from '../../components/IconButton';
@@ -139,6 +140,15 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [bidAmount, setBidAmount] = useState('');
   const [bidLoading, setBidLoading] = useState(false);
   const [bidError, setBidError] = useState<string | null>(null);
+  // Non-blocking success flash shown right after a successful placeBid — kept
+  // separate from bidError since the two states must coexist correctly (an
+  // error should always clear the last flash).
+  const [bidJustAccepted, setBidJustAccepted] = useState<number | null>(null);
+  useEffect(() => {
+    if (bidJustAccepted == null) return;
+    const t = setTimeout(() => setBidJustAccepted(null), 3000);
+    return () => clearTimeout(t);
+  }, [bidJustAccepted]);
 
   // ── Auction lifecycle ──
   const [endedPayload, setEndedPayload] = useState<AuctionEndPayload | null>(null);
@@ -476,6 +486,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     try {
       await placeBid(auction.listingId, parsed);
       setBidAmount('');
+      // Show an inline "bid accepted" flash for a couple seconds so the user
+      // has a clear confirmation, not just watching their bid appear in the
+      // history list. Auto-clears via effect below.
+      setBidJustAccepted(parsed);
     } catch (err: any) {
       setBidError(err.message ?? 'Failed to place bid.');
     } finally {
@@ -915,7 +929,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <>
               <Ionicons name="alert-circle-outline" size={14} color={Colors.warning} />
               <Text style={[s.bannerText, { color: Colors.textSecondary }]}>
-                Auction ended — reserve price was not met. No sale completed.
+                Auction ended — the vehicle didn't reach the seller's minimum. No sale completed.
               </Text>
             </>
           ) : endedPayload?.winnerId ? (
@@ -995,12 +1009,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <View style={{ flex: 1 }}>
               <Text style={s.heroBidLabel}>{isEnded ? 'FINAL BID' : isScheduled ? 'STARTING BID' : 'CURRENT BID'}</Text>
               <Text style={[s.heroBid, { fontFamily: FontFamily.mono }]}>{fmt(currentBid)}</Text>
-              {reserveMet && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                  <Ionicons name="shield-checkmark" size={11} color={Colors.accentGreen} />
-                  <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accentGreen }}>Reserve Met</Text>
-                </View>
-              )}
+              {/* Reserve status is never shown to buyers — enforced
+                  server-side (Ground Rules). The seller-only reserve panel
+                  further down (isSeller branch) still shows it to sellers. */}
             </View>
           </View>
         </View>
@@ -1130,6 +1141,20 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   ['Transmission', (auction?.listing?.transmission ?? listing.transmission)?.replace(/_/g, ' ')],
                   ['Engine', (auction?.listing as any)?.engineSize ? `${((auction!.listing as any).engineSize / 1000).toFixed(1)}L (${(auction!.listing as any).engineSize}cc)` : null],
                   ['Power', (auction?.listing as any)?.bhp ? `${(auction!.listing as any).bhp} bhp` : (listing.bhp ? `${listing.bhp} bhp` : null)],
+                  // Real API fields, same class of gap fixed on VehicleDetailScreen
+                  // (mobile audit M2 finding: data exists, just wasn't rendered).
+                  ['0-60 mph', (auction?.listing as any)?.zeroToSixty ? `${(auction!.listing as any).zeroToSixty}s` : null],
+                  ['Top Speed', ((auction?.listing as any)?.topSpeed ?? (auction?.listing as any)?.topSpeedMph) ? `${(auction!.listing as any).topSpeed ?? (auction!.listing as any).topSpeedMph} mph` : null],
+                  ['Torque', (auction?.listing as any)?.torqueNm ? `${(auction!.listing as any).torqueNm} Nm` : null],
+                  ['Fuel Economy', (() => {
+                    const l = auction?.listing as any;
+                    if (!l) return null;
+                    const parts = [
+                      l.combinedMpg != null ? `${l.combinedMpg} mpg combined` : null,
+                      l.extraUrbanMpg != null ? `${l.extraUrbanMpg} mpg extra-urban` : null,
+                    ].filter(Boolean);
+                    return parts.length ? parts.join(' · ') : null;
+                  })()],
                   ['Doors', (auction?.listing as any)?.doors],
                   ['Seats', (auction?.listing as any)?.seats],
                 ].filter(([, v]) => v).map(([k, v]) => (
@@ -1182,9 +1207,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   <Text style={[s.cardSectionTitle, { color: Colors.accent, marginBottom: 0 }]}>Auction Details</Text>
                 </View>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 0 }}>
+                  {/* Reserve Price is deliberately excluded — never shown to
+                      buyers, enforced server-side (Ground Rules). Buy it now
+                      only appears when the seller set buyItNowPrice. */}
                   {[
                     ['Starting Bid', fmt(Number(auction.startingBid))],
-                    ['Reserve Price', fmt(Number(auction.reservePrice))],
+                    ...(auction.buyItNowPrice ? [['Buy It Now', fmt(Number(auction.buyItNowPrice))]] : []),
                     ['Min Increment', fmt(Number(auction.minIncrement))],
                     ['Starts', fmtDate(auction.startTime)],
                     ['Ends', fmtDate(auction.endTime)],
@@ -1198,11 +1226,16 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
             )}
 
-            {/* Damage report — parity with VehicleDetailScreen */}
+            {/* Condition & Damage — always renders (Prompt 6), parity with
+                VehicleDetailScreen. Grade pill is the only place
+                exteriorGrade appears on this screen. */}
             <View style={s.card}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                <Ionicons name="warning-outline" size={13} color={Colors.warning} />
-                <Text style={[s.cardSectionTitle, { marginBottom: 0 }]}>Damage Report</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="warning-outline" size={13} color={Colors.warning} />
+                  <Text style={[s.cardSectionTitle, { marginBottom: 0 }]}>Condition & Damage</Text>
+                </View>
+                <GradeChip grade={(auction?.listing as any)?.exteriorGrade} variant="pill" />
               </View>
               <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />
             </View>
@@ -1547,6 +1580,14 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <View style={[s.banner, s.bannerRed, { marginTop: -4 }]}>
                 <Ionicons name="alert-circle-outline" size={12} color={Colors.accent} />
                 <Text style={[s.bannerText, { color: Colors.paleRed_fca5a5 }]} numberOfLines={2} ellipsizeMode="tail">{bidError}</Text>
+              </View>
+            )}
+            {bidJustAccepted != null && !bidError && (
+              <View style={[s.banner, { marginTop: -4, backgroundColor: Colors.accentGreen + '18', borderColor: Colors.accentGreen + '55', borderWidth: 1 }]}>
+                <Ionicons name="checkmark-circle" size={12} color={Colors.accentGreen} />
+                <Text style={[s.bannerText, { color: Colors.accentGreen }]} numberOfLines={1}>
+                  Bid accepted — {fmt(bidJustAccepted)}
+                </Text>
               </View>
             )}
 

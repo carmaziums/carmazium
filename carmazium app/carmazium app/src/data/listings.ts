@@ -35,6 +35,13 @@ export interface CarListing {
   doors?: number | null;
   seats?: number | null;
   co2Emissions?: number | null;
+  // Performance fields — real columns on ApiListing/the backend response,
+  // same class of "typed but dropped by the mapper" gap as the ones above
+  // (mobile-audit.md M2 finding: VehicleDetailScreen's spec grid never had
+  // these to show, not because the data doesn't exist).
+  torqueNm?: number | null;
+  combinedMpg?: number | null;
+  extraUrbanMpg?: number | null;
   location: string;
   latitude?: number | null;
   longitude?: number | null;
@@ -49,6 +56,9 @@ export interface CarListing {
   features?: string[];
   seller?: { id: string };
   isDepartedSale?: boolean;
+  // Auto-computed server-side from DamageRecord count on every damage save —
+  // never seller-set, no mobile picker exists or should exist for this.
+  exteriorGrade?: number | null;
   importedFromUrl?: string | null;
   importedSource?: string | null;
   linkedListingId?: string | null;
@@ -91,8 +101,13 @@ export interface AuctionListing extends CarListing {
   endsAt: Date;
   isLive: boolean;
   viewers: number;
+  // reserve/reserveMet are kept for internal gating only (e.g. hiding the Buy
+  // It Now card once reserve is met) — never render their value directly to
+  // a buyer. Buyer-facing UI shows buyItNowPrice instead. See Ground Rules:
+  // "Reserve Price" is hidden from all buyer-facing UI.
   reserve: number;
   reserveMet: boolean;
+  buyItNowPrice?: number | null;
 }
 
 export const formatPrice = (price: number): string =>

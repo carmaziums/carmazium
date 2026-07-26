@@ -6,6 +6,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { ThreeDVehicleViewer } from './ThreeDVehicleViewer';
 import { DAMAGE_ZONES_3D } from './damageZones';
+import { DamageViewerErrorBoundary } from './DamageViewerErrorBoundary';
 
 interface DamageRecord {
   id: string;
@@ -68,18 +69,6 @@ export const BuyerDamageViewer: React.FC<Props> = ({ records, isLoading, bodyTyp
     );
   }
 
-  if (records.length === 0) {
-    return (
-      <View style={styles.emptyState}>
-        <Ionicons name="shield-checkmark-outline" size={22} color={Colors.success} />
-        <View style={styles.emptyTextBlock}>
-          <Text style={styles.emptyTitle}>No damage recorded</Text>
-          <Text style={styles.emptySubtitle}>Vehicle checked clean</Text>
-        </View>
-      </View>
-    );
-  }
-
   const markedZoneLabels = records
     .map(r => DAMAGE_ZONES_3D.find(z => z.id === r.part)?.label)
     .filter((l): l is string => !!l);
@@ -87,49 +76,72 @@ export const BuyerDamageViewer: React.FC<Props> = ({ records, isLoading, bodyTyp
   const toggleZone = (label: string) =>
     setSelectedZone(prev => (prev === label ? null : label));
 
+  // The 3D model always renders — even with zero damage records — so the
+  // section never looks broken/missing. Copy adapts instead of the model
+  // disappearing (Prompt 6). There's only one GLB model in the app
+  // regardless of body type (CLAUDE.md); bodyTypeLabel is just the on-screen
+  // text badge, so "defaulting to a generic body model" is already the only
+  // behavior that exists.
   return (
     <View>
-      <ThreeDVehicleViewer
-        zones={DAMAGE_ZONES_3D}
-        selectedZone={selectedZone}
-        markedZones={markedZoneLabels}
-        onZoneClick={toggleZone}
-        bodyTypeLabel={bodyTypeLabel}
-        readOnly
-      />
+      <DamageViewerErrorBoundary height={280}>
+        <ThreeDVehicleViewer
+          zones={DAMAGE_ZONES_3D}
+          selectedZone={selectedZone}
+          markedZones={markedZoneLabels}
+          onZoneClick={toggleZone}
+          bodyTypeLabel={bodyTypeLabel}
+          readOnly
+        />
+      </DamageViewerErrorBoundary>
 
-      <View style={styles.list}>
-        {records.map(record => {
-          const zone = DAMAGE_ZONES_3D.find(z => z.id === record.part);
-          const isSelected = !!zone && selectedZone === zone.label;
-          return (
-            <TouchableOpacity
-              key={record.id}
-              style={[styles.listRow, isSelected && styles.listRowSelected]}
-              activeOpacity={0.75}
-              onPress={() => zone && toggleZone(zone.label)}
-              disabled={!zone}
-            >
-              {record.imageUrl ? (
-                <Image
-                  source={{ uri: record.imageUrl }}
-                  style={styles.thumb}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                />
-              ) : (
-                <View style={[styles.pinDot, { backgroundColor: getPinColor(record.type) }]} />
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>{formatPart(record.part)}</Text>
-                <Text style={styles.rowSub}>
-                  {record.type}{record.size ? ` — ${record.size}` : ''}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      {records.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="shield-checkmark-outline" size={22} color={Colors.success} />
+          <View style={styles.emptyTextBlock}>
+            <Text style={styles.emptyTitle}>No damage reported by the seller</Text>
+            <Text style={styles.emptySubtitle}>Vehicle checked clean</Text>
+          </View>
+        </View>
+      ) : (
+        <>
+          <Text style={styles.listHeading}>
+            {records.length} zone{records.length !== 1 ? 's' : ''} marked by seller — tap a zone to see details
+          </Text>
+          <View style={styles.list}>
+            {records.map(record => {
+              const zone = DAMAGE_ZONES_3D.find(z => z.id === record.part);
+              const isSelected = !!zone && selectedZone === zone.label;
+              return (
+                <TouchableOpacity
+                  key={record.id}
+                  style={[styles.listRow, isSelected && styles.listRowSelected]}
+                  activeOpacity={0.75}
+                  onPress={() => zone && toggleZone(zone.label)}
+                  disabled={!zone}
+                >
+                  {record.imageUrl ? (
+                    <Image
+                      source={{ uri: record.imageUrl }}
+                      style={styles.thumb}
+                      contentFit="cover"
+                      cachePolicy="memory-disk"
+                    />
+                  ) : (
+                    <View style={[styles.pinDot, { backgroundColor: getPinColor(record.type) }]} />
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.rowTitle}>{formatPart(record.part)}</Text>
+                    <Text style={styles.rowSub}>
+                      {record.type}{record.size ? ` — ${record.size}` : ''}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </>
+      )}
     </View>
   );
 };
@@ -149,6 +161,14 @@ const styles = StyleSheet.create({
     borderColor: Colors.successAlpha20,
     borderRadius: 12,
     padding: 16,
+    marginTop: 12,
+  },
+  listHeading: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size12,
+    color: Colors.textMuted,
+    marginTop: 12,
+    marginBottom: 8,
   },
   errorState: {
     flexDirection: 'row',
@@ -181,7 +201,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   list: {
-    marginTop: 12,
     gap: 8,
   },
   listRow: {

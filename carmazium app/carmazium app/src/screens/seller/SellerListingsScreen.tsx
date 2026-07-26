@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
   Alert,
@@ -221,7 +222,21 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     }
   }, [activeTab]);
 
-  useEffect(() => { fetchListings(); }, [fetchListings]);
+  // Refetch on every focus (initial mount + return-from-child, e.g. after
+  // editing a listing in SellCarFlow). Silent on returns so the whole screen
+  // doesn't blank out with a skeleton every time. Also fires when activeTab
+  // changes (since fetchListings identity depends on it).
+  const isFirstFocus = useRef(true);
+  useFocusEffect(useCallback(() => {
+    if (isFirstFocus.current) {
+      fetchListings();
+      isFirstFocus.current = false;
+    } else {
+      // Refresh in the background — reuse the pull-to-refresh code path
+      // (setRefreshing true) rather than the full loading spinner.
+      fetchListings(true);
+    }
+  }, [fetchListings]));
 
   // ─── tab counts ───────────────────────────────────────────────
 
@@ -443,6 +458,14 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     if (isNaN(reserve) || reserve <= 0) { setAuctionError('Enter a valid reserve price.'); return; }
     if (isNaN(starting) || starting <= 0) { setAuctionError('Enter a valid starting bid.'); return; }
     if (starting > reserve) { setAuctionError('Starting bid must be ≤ reserve price.'); return; }
+    // Backend rejects startingBid > 70% of the retail listing price on
+    // POST /listings/:id/also-auction — check here so the user sees this
+    // before submit instead of a raw 400 from the server.
+    const askingPrice = alsoAuctionListing.price ? Number(alsoAuctionListing.price) : 0;
+    if (askingPrice > 0 && starting > askingPrice * 0.7) {
+      setAuctionError(`Starting bid must be at least 30% below the asking price of £${askingPrice.toLocaleString()} (max £${(askingPrice * 0.7).toLocaleString(undefined, { maximumFractionDigits: 0 })}).`);
+      return;
+    }
 
     setAuctionSubmitting(true);
     setAuctionError(null);
@@ -847,6 +870,11 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   <Text style={styles.dualCurrency}>£</Text>
                   <TextInput style={styles.dualInput} value={auctionStartingBid} onChangeText={v => { setAuctionStartingBid(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="0" placeholderTextColor={Colors.textMuted} />
                 </View>
+                {!!alsoAuctionListing?.price && (
+                  <Text style={styles.dualFieldHint}>
+                    Max £{(Number(alsoAuctionListing.price) * 0.7).toLocaleString(undefined, { maximumFractionDigits: 0 })} (30% below £{Number(alsoAuctionListing.price).toLocaleString()} asking)
+                  </Text>
+                )}
 
                 {/* Min increment */}
                 <Text style={[styles.dualFieldLabel, { marginTop: 14 }]}>MIN INCREMENT (£)</Text>
@@ -1220,6 +1248,7 @@ const styles = StyleSheet.create({
   // ── Dual-channel modal (Also Put in Auction) ──
   dualModalSub: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted, marginTop: 2 },
   dualFieldLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.textMuted, letterSpacing: 0.8, marginBottom: 6 },
+  dualFieldHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size9, color: Colors.textMuted, marginTop: 4 },
   dualPriceRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.inputBg, borderWidth: 1, borderColor: Colors.inputBorder, borderRadius: 10, paddingHorizontal: 12 },
   dualCurrency: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.textMuted, marginRight: 4 },
   dualInput: { flex: 1, fontFamily: FontFamily.mono, fontSize: FontSize.base, color: Colors.textPrimary, paddingVertical: 11 },

@@ -64,55 +64,70 @@ const ITEMS: MenuItem[] = [
   { id: 'terms',    label: 'Terms of Service', icon: 'document-text-outline', iconLib: 'ion', stackScreen: 'Terms' },
 ];
 
-const SELLER_ITEMS: MenuItem[] = [
+// Web (DashboardSidebar.tsx) treats BUYER and SELLER as the same unified
+// entity — same 9-tab dashboard, same "Buyer/Seller Account" label. Mobile
+// previously hid this whole group from buyers. This is now shown to both
+// roles so buyers can reach their own sent offers, watchlist, earnings-if-any
+// etc. — every entry here is backed by a role-agnostic screen that fetches
+// by the current user's id (SellerListingsScreen shows the caller's listings
+// whether that's zero or many, SellerOffersScreen shows incoming offers on
+// the caller's listings, etc.).
+const USER_ITEMS: MenuItem[] = [
   {
-    id: 'seller-dashboard',
-    label: 'Seller dashboard',
+    id: 'user-dashboard',
+    label: 'Dashboard',
     icon: 'speedometer-outline',
     iconLib: 'ion',
     stackScreen: 'SellerDashboard',
   },
   {
-    id: 'seller-listings',
+    id: 'user-listings',
     label: 'My listings',
     icon: 'car-outline',
     iconLib: 'ion',
     stackScreen: 'SellerListings',
   },
   {
-    id: 'seller-offers',
+    id: 'user-sent-offers',
+    label: 'My sent offers',
+    icon: 'send-outline',
+    iconLib: 'ion',
+    stackScreen: 'BuyerOffers',
+  },
+  {
+    id: 'user-incoming-offers',
     label: 'Incoming offers',
     icon: 'pricetag-outline',
     iconLib: 'ion',
     stackScreen: 'SellerOffers',
   },
   {
-    id: 'seller-auctions',
+    id: 'user-auctions',
     label: 'My auctions',
     icon: 'gavel',
     iconLib: 'mci',
     stackScreen: 'SellerAuctions',
   },
   {
-    id: 'seller-earnings',
+    id: 'user-watchlist',
+    label: 'Watchlist',
+    icon: 'heart-outline',
+    iconLib: 'ion',
+    stackScreen: 'Watchlist',
+  },
+  {
+    id: 'user-earnings',
     label: 'Earnings',
     icon: 'wallet-outline',
     iconLib: 'ion',
     stackScreen: 'Earnings',
   },
   {
-    id: 'seller-performance',
+    id: 'user-performance',
     label: 'Performance analytics',
     icon: 'bar-chart-outline',
     iconLib: 'ion',
     stackScreen: 'SellerPerformance',
-  },
-  {
-    id: 'seller-apply-dealer',
-    label: 'Apply for dealer account',
-    icon: 'trail-sign-outline',
-    iconLib: 'ion',
-    stackScreen: 'DealerOnboarding',
   },
 ];
 
@@ -150,12 +165,25 @@ const DEALER_ITEMS: MenuItem[] = [
     iconLib: 'ion', 
     stackScreen: 'DealerLeads',
   },
-  { 
-    id: 'dealer-inventory', 
-    label: 'Dealer inventory', 
-    icon: 'albums-outline',  
-    iconLib: 'ion', 
+  {
+    id: 'dealer-inventory',
+    label: 'Dealer inventory',
+    icon: 'albums-outline',
+    iconLib: 'ion',
     stackScreen: 'DealerInventory',
+  },
+  {
+    // Same screen the buyer/seller group's "Watchlist" entry (id:
+    // user-watchlist, above) already points at — the watchlist backend
+    // (GET/DELETE /watchlist) and WatchlistScreen.tsx are both role-agnostic,
+    // matching web's dealer wishlist page reusing the same endpoints rather
+    // than introducing a separate one. Dealers previously had no entry point
+    // to this screen at all.
+    id: 'dealer-wishlist',
+    label: 'Wishlist',
+    icon: 'heart-outline',
+    iconLib: 'ion',
+    stackScreen: 'Watchlist',
   },
   {
     id: 'dealer-analytics',
@@ -303,7 +331,9 @@ export const GlobalDrawer: React.FC = () => {
   // The role-based fallback strings below only apply while `user` is still
   // loading (e.g. right after login, before /users/me resolves).
   const realName  = user ? (`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email) : null;
-  const userName  = realName || (role === 'dealer' ? 'Dealer Account' : role === 'seller' ? 'Seller Account' : 'Guest');
+  // Matches web's formatRole(): buyer and seller share the "Buyer/Seller Account"
+  // label since they're the same unified entity across the platform.
+  const userName  = realName || (role === 'dealer' ? 'Dealer Account' : role === 'seller' ? 'Buyer/Seller Account' : 'Guest');
   const userEmail = user?.email || '';
   const initial   = userName.charAt(0).toUpperCase();
 
@@ -402,11 +432,14 @@ export const GlobalDrawer: React.FC = () => {
             );
           })}
 
-          {role === 'seller' && (
+          {/* Unified Buyer/Seller toolset — web treats BUYER and SELLER as the
+              same entity with one shared dashboard, so mobile does too now.
+              Dealer keeps its own dedicated DEALER CONTROLS group below. */}
+          {(role === 'buyer' || role === 'seller') && (
             <>
               <View style={styles.divider} />
-              <Text style={[styles.groupLabel, styles.groupLabelSeller]}>SELLER TOOLS</Text>
-              {SELLER_ITEMS.map((item) => (
+              <Text style={[styles.groupLabel, styles.groupLabelSeller]}>MY DASHBOARD</Text>
+              {USER_ITEMS.map((item) => (
                 <TouchableOpacity
                   key={item.id}
                   style={styles.row}

@@ -111,7 +111,11 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
       // AUCTION_* type uniformly — WON, ENDED, ENDING all carry the same
       // fields), then type-specific data (chat room id), then a plain
       // type-string fallback for everything else.
-      if (n.entityType === 'AUCTION' && n.entityId) {
+      // Case-insensitive — most backend services send entityType: 'AUCTION'
+      // but WatchlistReminderService (WATCHLIST_ENDING_24H) sends 'auction'
+      // lowercase. Handling both here rather than requiring a backend fix
+      // for a display-only mismatch.
+      if (n.entityType?.toUpperCase() === 'AUCTION' && n.entityId) {
         try {
           const auction = await getAuction(n.entityId);
           navigation?.navigate('LiveAuctionDetailed', { listing: auctionToListingParam(auction) });

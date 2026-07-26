@@ -4,6 +4,8 @@ import {
   Alert,
   Dimensions,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -860,47 +862,57 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
       </View>
 
       {/* ── Content ── */}
-      {loading || (offers.length === 0 && !error) ? (
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => fetchData(true)}
-              tintColor={Colors.accent}
-              colors={[Colors.accent]}
-            />
-          }
-        >
-          {error && !loading && (
-            <ErrorBanner message={error} onRetry={() => fetchData()} />
-          )}
-          {loading ? renderSkeleton() : renderEmptyState()}
-        </ScrollView>
-      ) : (
-        // FlatList so a long offer history virtualizes instead of mounting every
-        // card at once (mobile-audit.md P3).
-        <FlatList
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => fetchData(true)}
-              tintColor={Colors.accent}
-              colors={[Colors.accent]}
-            />
-          }
-          data={offers}
-          keyExtractor={(item) => item.id}
-          renderItem={renderOfferCard}
-          ListHeaderComponent={error ? <ErrorBanner message={error} onRetry={() => fetchData()} /> : null}
-          ListFooterComponent={<View style={{ height: 40 }} />}
-        />
-      )}
+      {/* Cards below have inline (non-modal) counter-back and delivery-address
+          TextInputs — wrapping the list in KeyboardAvoidingView keeps whichever
+          card is expanded from being covered by the keyboard, matching the
+          avoidKeyboard behavior BottomSheet gives every modal-based input. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={insets.top}
+      >
+        {loading || (offers.length === 0 && !error) ? (
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => fetchData(true)}
+                tintColor={Colors.accent}
+                colors={[Colors.accent]}
+              />
+            }
+          >
+            {error && !loading && (
+              <ErrorBanner message={error} onRetry={() => fetchData()} />
+            )}
+            {loading ? renderSkeleton() : renderEmptyState()}
+          </ScrollView>
+        ) : (
+          // FlatList so a long offer history virtualizes instead of mounting every
+          // card at once (mobile-audit.md P3).
+          <FlatList
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => fetchData(true)}
+                tintColor={Colors.accent}
+                colors={[Colors.accent]}
+              />
+            }
+            data={offers}
+            keyExtractor={(item) => item.id}
+            renderItem={renderOfferCard}
+            ListHeaderComponent={error ? <ErrorBanner message={error} onRetry={() => fetchData()} /> : null}
+            ListFooterComponent={<View style={{ height: 40 }} />}
+          />
+        )}
+      </KeyboardAvoidingView>
     </View>
   );
 };

@@ -10,11 +10,15 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
+import { getAccessToken } from '../../lib/supabase';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -23,12 +27,24 @@ import { IconButton } from '../../components/IconButton';
 // ─────────────────────────── types ───────────────────────────────
 
 type TxStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+type TxType = 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'REFUND' | 'HPI_REPORT' | 'LISTING_FEE' | 'BOOST';
+
+const TX_TYPE_LABEL: Record<TxType, string> = {
+  DEPOSIT: 'Deposit',
+  FULL_PAYMENT: 'Full Payment',
+  COMMISSION: 'Commission',
+  REFUND: 'Refund',
+  HPI_REPORT: 'HPI Report',
+  LISTING_FEE: 'Listing Fee',
+  BOOST: 'Featured Boost',
+};
 
 interface HistoryItem {
   id: string;
   price: number;
   status: TxStatus;
-  listing: { title: string };
+  type: TxType;
+  listing: { title: string; image?: string };
   listingId: string;
   createdAt: string;
 }
@@ -36,14 +52,17 @@ interface HistoryItem {
 // Raw shape from GET /transactions/my — same dedicated endpoint web uses
 // (getMyTransactions), replacing the non-paginated history[] slice off
 // /dashboard/buyer, which had no status field at all (every row silently
-// rendered as "COMPLETED" regardless of real payment state).
+// rendered as "COMPLETED" regardless of real payment state). Field names
+// match the Transaction Prisma model exactly (backend/prisma/schema.prisma)
+// — there is no `currency` column, every amount is implicitly GBP.
 interface RawTransaction {
   id: string;
   listingId: string;
   amount: number | string;
   status: TxStatus;
+  type: TxType;
   createdAt: string;
-  listing?: { id: string; title: string };
+  listing?: { id: string; title: string; images?: string[] };
 }
 
 interface TransactionsResponse {
@@ -111,29 +130,40 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tappingId, setTappingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  // ── pagination ────────────────────────────────────────────────
+  const PAGE_LIMIT = 20;
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Total Spent only counts money actually taken — a PENDING or FAILED
   // transaction hasn't been paid yet and shouldn't inflate this figure.
   const completedItems = history.filter((h) => h.status === 'COMPLETED');
   const totalSpent = completedItems.reduce((sum, h) => sum + h.price, 0);
 
+  const mapRow = (tx: RawTransaction): HistoryItem => ({
+    id: tx.id,
+    price: Number(tx.amount),
+    status: tx.status,
+    type: tx.type,
+    listing: { title: tx.listing?.title ?? 'Vehicle', image: tx.listing?.images?.[0] },
+    listingId: tx.listingId,
+    createdAt: tx.createdAt,
+  });
+
   // ── fetch ──────────────────────────────────────────────────────
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
+    else setLoading(true);
     setError(null);
     try {
-      const res = await apiClient<TransactionsResponse>('/transactions/my?page=1&limit=20');
+      const res = await apiClient<TransactionsResponse>(`/transactions/my?page=1&limit=${PAGE_LIMIT}`);
       if (res.success) {
-        setHistory(
-          (res.data || []).map((tx) => ({
-            id: tx.id,
-            price: Number(tx.amount),
-            status: tx.status,
-            listing: { title: tx.listing?.title ?? 'Vehicle' },
-            listingId: tx.listingId,
-            createdAt: tx.createdAt,
-          })),
-        );
+        setHistory((res.data || []).map(mapRow));
+        setPage(1);
+        setTotalPages(res.pagination?.totalPages ?? 1);
       }
     } catch {
       setError('Could not load purchase history. Please try again.');
@@ -143,9 +173,58 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
     }
   }, []);
 
+  const handleLoadMore = useCallback(async () => {
+    if (loadingMore || page >= totalPages) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const res = await apiClient<TransactionsResponse>(`/transactions/my?page=${nextPage}&limit=${PAGE_LIMIT}`);
+      if (res.success) {
+        setHistory((prev) => [...prev, ...(res.data || []).map(mapRow)]);
+        setPage(nextPage);
+        setTotalPages(res.pagination?.totalPages ?? nextPage);
+      }
+    } catch {
+      // Non-fatal — the user can retap "Load more" to retry.
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [page, totalPages, loadingMore]);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // ── receipt download ──────────────────────────────────────────
+  // Must NOT use Linking.openURL() — it hands off to the OS browser as a
+  // fresh anonymous request with no Bearer token attached, so the
+  // authenticated PDF endpoint 401s (the exact bug the web app hit first).
+  // FileSystem.downloadAsync lets us attach the header directly.
+  const handleDownloadReceipt = async (item: HistoryItem) => {
+    setDownloadingId(item.id);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not signed in.');
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
+      const fileUri = `${FileSystem.cacheDirectory}carmazium-receipt-${item.id.slice(0, 8)}.pdf`;
+      const result = await FileSystem.downloadAsync(
+        `${API_URL}/transactions/${item.id}/receipt.pdf`,
+        fileUri,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (result.status !== 200) throw new Error(`Download failed (${result.status})`);
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(result.uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf' });
+      } else {
+        Alert.alert('Downloaded', `Receipt saved to: ${fileUri}`);
+      }
+    } catch (err: any) {
+      Alert.alert('Download Failed', err?.message ?? 'Could not download the receipt. Please try again.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   // ── navigate to vehicle ──────────────────────────────────────
   const handleViewVehicle = async (item: HistoryItem) => {
@@ -202,24 +281,29 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
 
   const renderHistoryCard = (item: HistoryItem) => {
     const isNavigating = tappingId === item.id;
+    const isDownloading = downloadingId === item.id;
     const cfg = STATUS_CFG[item.status] ?? STATUS_CFG.COMPLETED;
 
     return (
-      <TouchableOpacity
-        key={item.id}
-        activeOpacity={0.75}
-        onPress={() => handleViewVehicle(item)}
-        disabled={isNavigating}
-      >
-        <View style={[styles.historyCard, isNavigating && { opacity: 0.6 }]}>
-          {/* Left icon circle */}
-          <View style={[styles.iconCircle, { backgroundColor: cfg.iconBg, borderColor: cfg.iconBorder }]}>
-            {isNavigating ? (
-              <ActivityIndicator size="small" color={cfg.color} />
-            ) : (
-              <Ionicons name={cfg.icon as any} size={20} color={cfg.color} />
-            )}
-          </View>
+      <View key={item.id} style={[styles.historyCard, isNavigating && { opacity: 0.6 }]}>
+        <TouchableOpacity
+          style={styles.historyTopRow}
+          activeOpacity={0.75}
+          onPress={() => handleViewVehicle(item)}
+          disabled={isNavigating}
+        >
+          {/* Left: thumbnail or status icon */}
+          {item.listing.image ? (
+            <Image source={{ uri: item.listing.image }} style={styles.thumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+          ) : (
+            <View style={[styles.iconCircle, { backgroundColor: cfg.iconBg, borderColor: cfg.iconBorder }]}>
+              {isNavigating ? (
+                <ActivityIndicator size="small" color={cfg.color} />
+              ) : (
+                <Ionicons name={cfg.icon as any} size={20} color={cfg.color} />
+              )}
+            </View>
+          )}
 
           {/* Center text */}
           <View style={styles.historyCenter}>
@@ -227,7 +311,7 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
               {item.listing?.title ?? 'Vehicle'}
             </Text>
             <Text style={styles.historyDate}>
-              {cfg.verb} {formatDate(item.createdAt)}
+              {TX_TYPE_LABEL[item.type] ?? item.type} · {formatDate(item.createdAt)}
             </Text>
           </View>
 
@@ -240,8 +324,25 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
               <Text style={[styles.completedChipText, { color: cfg.color }]}>{item.status}</Text>
             </View>
           </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+
+        {/* Download Receipt */}
+        <TouchableOpacity
+          style={[styles.receiptBtn, isDownloading && { opacity: 0.6 }]}
+          activeOpacity={0.75}
+          onPress={() => handleDownloadReceipt(item)}
+          disabled={isDownloading}
+        >
+          {isDownloading ? (
+            <ActivityIndicator size="small" color={Colors.textSecondary} />
+          ) : (
+            <Ionicons name="download-outline" size={14} color={Colors.textSecondary} />
+          )}
+          <Text style={styles.receiptBtnText}>
+            {isDownloading ? 'Preparing receipt…' : 'Download Receipt'}
+          </Text>
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -304,6 +405,21 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
           : history.length === 0 && !error
           ? renderEmptyState()
           : history.map(renderHistoryCard)}
+
+        {!loading && page < totalPages && (
+          <TouchableOpacity
+            style={[styles.loadMoreBtn, loadingMore && { opacity: 0.6 }]}
+            activeOpacity={0.75}
+            onPress={handleLoadMore}
+            disabled={loadingMore}
+          >
+            {loadingMore ? (
+              <ActivityIndicator size="small" color={Colors.textSecondary} />
+            ) : (
+              <Text style={styles.loadMoreBtnText}>Load more</Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         <View style={{ height: 110 }} />
       </ScrollView>
@@ -440,12 +556,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 14,
+    gap: 10,
+  },
+  historyTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
 
-  // Icon circle
+  // Thumbnail / icon circle
+  thumb: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: Colors.bgTertiary,
+    flexShrink: 0,
+  },
   iconCircle: {
     width: 40,
     height: 40,
@@ -456,6 +582,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+  },
+  receiptBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 10,
+    backgroundColor: Colors.whiteAlpha04,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha08,
+  },
+  receiptBtnText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: FontSize.size12,
+    color: Colors.textSecondary,
   },
 
   // Center
@@ -494,5 +636,22 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size9,
     color: Colors.success,
+  },
+
+  // ── Load more ──
+  loadMoreBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginTop: 4,
+    borderRadius: 12,
+    backgroundColor: Colors.whiteAlpha04,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha08,
+  },
+  loadMoreBtnText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
   },
 });

@@ -5,14 +5,22 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated as RNAnimated,
+  Dimensions,
 } from 'react-native';
-// expo-image over react-native's Image: caching/recycling for cards rendered
-// repeatedly in scroll lists (see VehicleCard.tsx for rationale).
-import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { AuctionListing, formatPrice, formatMileage } from '../data/listings';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
+import { ImageCarousel } from './ImageCarousel';
+import { GradeChip } from './GradeChip';
+import { AuctionCardChips, AuctionCardTrustBadges } from './AuctionCardBadges';
+import { WishlistHeart } from './WishlistHeart';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// This card renders full-width inside its parent's own horizontal padding —
+// no fixed width prop exists on the component, so mirror the same
+// 24px-each-side convention LiveScreen.tsx uses for its own full-width cards.
+const CARD_IMG_WIDTH = SCREEN_WIDTH - 48;
 
 interface LiveBidCardProps {
   auction: AuctionListing;
@@ -90,28 +98,38 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
     >
       {/* Car image */}
       <View style={styles.imageWrapper}>
-        <Image
-          source={{ uri: auction.images[0] }}
-          style={styles.image}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="memory-disk"
+        <ImageCarousel
+          images={auction.images}
+          width={CARD_IMG_WIDTH}
+          height={160}
+          onPress={onPress}
+          showIndicator={false}
         />
-        <View style={styles.imageOverlay} />
+        <View style={styles.imageOverlay} pointerEvents="none" />
 
         {/* Live / upcoming badge */}
-        <View style={[styles.liveBadge, !auction.isLive && styles.upcomingBadge]}>
+        <View style={[styles.liveBadge, !auction.isLive && styles.upcomingBadge]} pointerEvents="none">
           {auction.isLive && <View style={styles.liveDot} />}
           <Text style={styles.liveText}>{auction.isLive ? 'LIVE' : 'UPCOMING'}</Text>
         </View>
 
         {/* Viewers */}
         {auction.isLive && (
-          <View style={styles.viewersBadge}>
+          <View style={styles.viewersBadge} pointerEvents="none">
             <Ionicons name="eye-outline" size={11} color="rgba(255,255,255,0.8)" />
             <Text style={styles.viewersText}>{auction.viewers}</Text>
           </View>
         )}
+
+        <WishlistHeart listing={auction} />
+
+        <View style={{ position: 'absolute', top: 34, left: 10, right: 10 }} pointerEvents="none">
+          <AuctionCardTrustBadges
+            badgeTier={auction.badgeTier}
+            isFeatured={auction.isFeatured}
+            isDepartedSale={auction.isDepartedSale}
+          />
+        </View>
       </View>
 
       {/* Content */}
@@ -119,10 +137,22 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
         {/* Car title */}
         <View style={styles.carTitle}>
           <Text style={styles.makeText}>{auction.make}</Text>
-          <Text style={styles.modelText}>
-            {auction.model} {auction.variant}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.modelText}>
+              {auction.model} {auction.variant}
+            </Text>
+            <GradeChip grade={auction.exteriorGrade} />
+          </View>
         </View>
+
+        <AuctionCardChips
+          year={auction.year}
+          mileage={auction.mileage}
+          fuelType={auction.fuelType}
+          bodyType={auction.category}
+          location={auction.location}
+          deliveryAvailable={auction.deliveryAvailable}
+        />
 
         {/* Bid section */}
         <View style={styles.bidSection}>
@@ -132,12 +162,12 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
             <View style={styles.bidMeta}>
               <Ionicons name="people-outline" size={11} color={Colors.textMuted} />
               <Text style={styles.bidCount}>{auction.totalBids} bids</Text>
-              {auction.reserveMet ? (
-                <View style={styles.reserveMet}>
-                  <Text style={styles.reserveMetText}>Reserve met</Text>
+              {/* Reserve status is never shown to buyers (Ground Rules: reserve
+                  is enforced server-side, display-only shows "Buy it now"). */}
+              {!!auction.buyItNowPrice && (
+                <View style={styles.binBadge}>
+                  <Text style={styles.binBadgeText}>Buy it now: {formatPrice(auction.buyItNowPrice)}</Text>
                 </View>
-              ) : (
-                <Text style={styles.reserveNotMet}>Reserve not met</Text>
               )}
             </View>
           </View>
@@ -185,10 +215,6 @@ const styles = StyleSheet.create({
   imageWrapper: {
     height: 160,
     position: 'relative',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
   },
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -289,7 +315,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.textMuted,
   },
-  reserveMet: {
+  binBadge: {
     backgroundColor: Colors.successAlpha15,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -297,16 +323,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.successAlpha25,
   },
-  reserveMetText: {
+  binBadgeText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.size9,
     color: Colors.success,
     letterSpacing: 0.3,
-  },
-  reserveNotMet: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.size9,
-    color: Colors.textMuted,
   },
   // Countdown
   countdown: {

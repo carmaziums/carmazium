@@ -10,7 +10,6 @@ import {
   StatusBar,
   RefreshControl,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -24,6 +23,10 @@ import { getActiveAuctions, getScheduledAuctions, AuctionDetail } from '../../li
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../store/authStore';
+import { ImageCarousel } from '../../components/ImageCarousel';
+import { GradeChip } from '../../components/GradeChip';
+import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/AuctionCardBadges';
+import { WishlistHeart } from '../../components/WishlistHeart';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -131,6 +134,7 @@ export const LiveScreen: React.FC = () => {
           viewers: a.listing.viewCount || 0,
           reserve: Number(a.reservePrice),
           reserveMet: latestBid >= Number(a.reservePrice),
+          buyItNowPrice: a.buyItNowPrice ?? null,
         } as AuctionListing;
       });
 
@@ -288,41 +292,66 @@ export const LiveScreen: React.FC = () => {
 
         {filteredActive.map((auction) => {
           const secsLeft = getRemainingSeconds(auction.endsAt);
-          const reserveDiff = auction.currentBid - auction.reserve;
-          const reserveText = reserveDiff >= 0
-            ? `${formatPrice(reserveDiff)} above reserve`
-            : `${formatPrice(Math.abs(reserveDiff))} below reserve`;
+          // Reserve is never shown to buyers — enforced server-side (Ground
+          // Rules). Show Buy It Now instead when the seller set one.
 
           return (
             <View key={auction.id} style={styles.auctionCard}>
               {/* Image Block */}
               <View style={styles.imageBlock}>
-                <Image
-                  source={{ uri: auction.images[0] }}
-                  style={styles.cardImage}
-                  contentFit="cover"
-                  transition={200}
-                  cachePolicy="memory-disk"
+                <ImageCarousel
+                  images={auction.images}
+                  width={SCREEN_WIDTH - 48}
+                  height={196}
+                  onPress={() => navigation.navigate('LiveAuctionDetailed', { listing: auction })}
+                  // The bottom strip is already occupied by the make/model
+                  // name overlay below — showing the dots/counter there too
+                  // would collide with that text.
+                  showIndicator={false}
                 />
-                <View style={styles.imageGradient} />
+                <View style={styles.imageGradient} pointerEvents="none" />
 
-                <View style={styles.liveBadge}>
+                <View style={styles.liveBadge} pointerEvents="none">
                   <View style={styles.liveDot} />
                   <Text style={styles.liveBadgeText}>LIVE</Text>
                 </View>
-                <View style={styles.viewerBadge}>
+                <View style={styles.viewerBadge} pointerEvents="none">
                   <Ionicons name="eye-outline" size={10} color={Colors.textSecondary} />
                   <Text style={styles.viewerCount}>{auction.viewers}</Text>
                 </View>
+                <WishlistHeart listing={auction} />
+                {/* Trust badges sit below the LIVE pill, same left offset */}
+                <View style={{ position: 'absolute', top: 38, left: 12, right: 12 }} pointerEvents="none">
+                  <AuctionCardTrustBadges
+                    badgeTier={auction.badgeTier}
+                    isFeatured={auction.isFeatured}
+                    isDepartedSale={auction.isDepartedSale}
+                  />
+                </View>
 
-                <View style={styles.imageNameContainer}>
-                  <Text style={styles.imageCarMake}>
-                    {auction.make.toUpperCase()}
-                  </Text>
+                <View style={styles.imageNameContainer} pointerEvents="none">
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.imageCarMake}>
+                      {auction.make.toUpperCase()}
+                    </Text>
+                    <GradeChip grade={auction.exteriorGrade} />
+                  </View>
                   <Text style={styles.imageCarModel}>
                     {auction.model} {auction.variant}
                   </Text>
                 </View>
+              </View>
+
+              {/* Meta chips — year / mileage / fuel / body / location / delivery */}
+              <View style={{ paddingHorizontal: 18, paddingTop: 14 }}>
+                <AuctionCardChips
+                  year={auction.year}
+                  mileage={auction.mileage}
+                  fuelType={auction.fuelType}
+                  bodyType={auction.category}
+                  location={auction.location}
+                  deliveryAvailable={auction.deliveryAvailable}
+                />
               </View>
 
               {/* Stats Row */}
@@ -330,9 +359,11 @@ export const LiveScreen: React.FC = () => {
                 <View style={styles.statsLeft}>
                   <Text style={styles.statsLabel}>CURRENT BID</Text>
                   <Text style={styles.statsPrice}>{formatPrice(auction.currentBid)}</Text>
-                  <View style={styles.statsSubRow}>
-                    <Text style={styles.statsAboveReserve}>{reserveText}</Text>
-                  </View>
+                  {!!auction.buyItNowPrice && (
+                    <View style={styles.statsSubRow}>
+                      <Text style={styles.statsAboveReserve}>Buy it now: {formatPrice(auction.buyItNowPrice)}</Text>
+                    </View>
+                  )}
                 </View>
                 <View style={styles.statsRight}>
                   <Text style={styles.statsLabel}>ENDS IN</Text>
@@ -375,7 +406,12 @@ export const LiveScreen: React.FC = () => {
 
         {filteredUpcoming.length > 0 ? (
           filteredUpcoming.map((auc, idx) => {
-            const estPriceRange = `Est. £${Math.round(Number(auc.startingBid) / 1000)}k – £${Math.round(Number(auc.reservePrice) / 1000)}k`;
+            // Reserve price is never shown to buyers — it's enforced
+            // server-side (Ground Rules). Show Buy It Now if the seller set
+            // one, otherwise just the starting bid.
+            const estPriceRange = auc.buyItNowPrice
+              ? `From £${Math.round(Number(auc.startingBid) / 1000)}k · Buy Now £${Math.round(Number(auc.buyItNowPrice) / 1000)}k`
+              : `Starting at £${Math.round(Number(auc.startingBid) / 1000)}k`;
             const startTimeDate = new Date(auc.startTime);
             const timeText = `Starts ${startTimeDate.toLocaleDateString('en-GB')} ${startTimeDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
 
@@ -424,15 +460,19 @@ export const LiveScreen: React.FC = () => {
                 activeOpacity={0.9}
                 onPress={() => navigation.navigate('LiveAuctionDetailed', { listing: mappedListing })}
               >
-                <Image
-                  source={{
-                    uri: auc.listing.images[0] || 'https://images.unsplash.com/photo-1614162692292-7ac56d7f7f1e?w=500&q=80',
-                  }}
-                  style={styles.upcomingImage}
-                  contentFit="cover"
-                  transition={200}
-                  cachePolicy="memory-disk"
-                />
+                <View style={styles.upcomingImage}>
+                  <ImageCarousel
+                    images={auc.listing.images?.length ? auc.listing.images : ['https://images.unsplash.com/photo-1614162692292-7ac56d7f7f1e?w=500&q=80']}
+                    width={58}
+                    height={58}
+                    onPress={() => navigation.navigate('LiveAuctionDetailed', { listing: mappedListing })}
+                    showIndicator={false}
+                  />
+                  <WishlistHeart
+                    listing={mappedListing}
+                    style={{ top: 2, right: 2, width: 20, height: 20, borderRadius: 6 }}
+                  />
+                </View>
                 <View style={styles.upcomingInfo}>
                   <View style={styles.upcomingTitleRow}>
                     <Text style={styles.upcomingCarName} numberOfLines={1}>
@@ -469,10 +509,11 @@ export const LiveScreen: React.FC = () => {
             <View style={styles.marketAiBody}>
               <Text style={styles.marketAiTitle}>MARKET INSIGHT</Text>
               <Text style={styles.marketAiText}>
+                {/* Reserve status is seller-only info — never surfaced here
+                    (Ground Rules: reserve is enforced server-side, display-only). */}
                 {topActiveAuction.make} {topActiveAuction.model} is currently leading at{' '}
                 {formatPrice(topActiveAuction.currentBid)}
-                {topActiveAuction.reserveMet ? ' — reserve met, strong bidding momentum.' : ' — reserve not yet met.'}
-                {' '}{topActiveAuction.totalBids} bid{topActiveAuction.totalBids === 1 ? '' : 's'} so far.
+                {' '}— {topActiveAuction.totalBids} bid{topActiveAuction.totalBids === 1 ? '' : 's'} so far.
               </Text>
             </View>
           </View>
@@ -867,6 +908,8 @@ const styles = StyleSheet.create({
     height: 58,
     borderRadius: 11,
     marginRight: 14,
+    overflow: 'hidden',
+    position: 'relative',
   },
   upcomingInfo: {
     flex: 1,

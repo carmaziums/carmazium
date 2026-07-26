@@ -71,6 +71,7 @@ export function notifStyle(type: string): { icon: string; color: string; bg: str
     case 'OFFER_WITHDRAWN':   return { icon: 'arrow-back', color: Colors.iconMuted, bg: Colors.whiteAlpha04 };
     case 'MESSAGE_RECEIVED':  return { icon: 'chatbubble-outline', color: Colors.infoBlue, bg: Colors.infoBlueAlpha12 };
     case 'DEAL_CLOSED':       return { icon: 'checkmark-circle', color: Colors.accentGreen, bg: Colors.accentGreenAlpha12 };
+    case 'WATCHLIST_ENDING_24H': return { icon: 'heart', color: Colors.warning, bg: Colors.warningAlpha12 };
     default:                  return { icon: 'notifications-outline', color: Colors.textSecondary, bg: Colors.whiteAlpha04 };
   }
 }

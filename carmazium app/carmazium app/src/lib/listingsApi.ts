@@ -38,6 +38,7 @@ export interface ApiListing {
     sellerProfile?: { totalSales?: number } | null;
   } | null;
   isDepartedSale?: boolean | null;
+  exteriorGrade?: number | null;
   importedFromUrl?: string | null;
   importedSource?: string | null;
   linkedListingId?: string | null;
@@ -212,6 +213,9 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
     doors:        l.doors        ?? null,
     seats:        l.seats        ?? null,
     co2Emissions: l.co2Emissions ?? null,
+    torqueNm:       l.torqueNm       ?? null,
+    combinedMpg:    l.combinedMpg    ?? null,
+    extraUrbanMpg:  l.extraUrbanMpg  ?? null,
     location:     l.location     ?? '',
     latitude:     l.latitude     ?? null,
     longitude:    l.longitude    ?? null,
@@ -223,6 +227,7 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
     features:     l.features     ?? undefined,
     seller:         l.seller?.id ? { id: l.seller.id } : undefined,
     isDepartedSale: l.isDepartedSale  ?? false,
+    exteriorGrade:  l.exteriorGrade   ?? null,
     importedFromUrl:  l.importedFromUrl  ?? null,
     importedSource:   l.importedSource   ?? null,
     linkedListingId:  l.linkedListingId  ?? null,

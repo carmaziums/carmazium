@@ -22,9 +22,33 @@ export const GlobalToastProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // ── Watchlist toasts ──────────────────────────────────────────────────────────
   const savedIds = useWatchlistStore((s) => s.savedIds);
+  const hydrateWatchlist = useWatchlistStore((s) => s.hydrateFromApi);
   const prevCount = React.useRef(savedIds.size);
+  // While true, the savedIds-diff effect below updates its baseline silently
+  // instead of toasting — otherwise the one-time hydration on app start
+  // (0 -> N saved items) would fire a false "Vehicle saved to your
+  // watchlist" toast on every cold start.
+  const suppressToastRef = React.useRef(true);
+
+  // One-time hydration on auth-ready so heart state on Home/Live/Search is
+  // correct immediately after a cold start — previously hydrateFromApi() was
+  // only called from the Watchlist/Saved screens themselves, so a heart
+  // toggled before the last app close showed as unsaved until the user
+  // happened to open the Watchlist tab.
+  const hydratedOnceRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!isAuthenticated || hydratedOnceRef.current) return;
+    hydratedOnceRef.current = true;
+    hydrateWatchlist().finally(() => {
+      suppressToastRef.current = false;
+    });
+  }, [isAuthenticated, hydrateWatchlist]);
 
   React.useEffect(() => {
+    if (suppressToastRef.current) {
+      prevCount.current = savedIds.size;
+      return;
+    }
     if (savedIds.size > prevCount.current) {
       show('Vehicle saved to your watchlist', 'saved');
     } else if (savedIds.size < prevCount.current) {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
 // and progressive loading for free — these cards render in long scrollable
 // lists across Home/Search/Saved/Live, where plain Image re-fetches on every
 // re-render and causes visible jank, especially on mid-range Android.
-import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import Animated, {
   useSharedValue,
@@ -21,6 +20,9 @@ import Animated, {
 import { CarListing, formatPrice, formatMileage } from '../data/listings';
 import { useWatchlistStore } from '../store/watchlistStore';
 import { SpecBadge } from './SpecBadge';
+import { ImageCarousel } from './ImageCarousel';
+import { ImageLightbox } from './ImageLightbox';
+import { GradeChip } from './GradeChip';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
 import { useLocation } from '../context/LocationContext';
@@ -50,6 +52,17 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
   const { isSaved, toggle } = useWatchlistStore();
   const saved = isSaved(listing.id);
   const scale = useSharedValue(1);
+
+  // Tapping the image opens a full-screen lightbox instead of navigating —
+  // matches web's CarCard.tsx (lightboxOnTap). Navigation still happens via
+  // the rest of the card (title/price/footer), same as web's separate
+  // "View Details" tap target.
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const openLightbox = (index: number) => {
+    setLightboxIndex(index);
+    setLightboxOpen(true);
+  };
 
   // Distance chip — only shown when both sides have coordinates. The user's
   // postcode gets geocoded via LocationContext on first entry; the listing's
@@ -83,6 +96,7 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
   const imageHeight = compact ? 140 : 180;
 
   return (
+    <>
     <AnimatedTouchable
       entering={FadeIn.duration(220)}
       style={[styles.card, { width }, animatedStyle]}
@@ -93,12 +107,11 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
     >
       {/* Image */}
       <View style={[styles.imageContainer, { height: imageHeight }]}>
-        <Image
-          source={{ uri: listing.images[0] }}
-          style={styles.image}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="memory-disk"
+        <ImageCarousel
+          images={listing.images}
+          width={width}
+          height={imageHeight}
+          onPress={openLightbox}
         />
         {/* Gradient overlay on image */}
         <View style={styles.imageGradient} />
@@ -164,13 +177,17 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
               {listing.model} {listing.variant}
             </Text>
           </View>
-          {/* Rating — only shown when a real aggregate rating exists */}
-          {listing.rating != null && (
-            <View style={styles.ratingBadge}>
-              <Ionicons name="star" size={10} color={Colors.warning} />
-              <Text style={styles.ratingText}>{listing.rating}</Text>
-            </View>
-          )}
+          {/* Rating + Grade — badges sit alongside the model line, never
+              replace it (Prompt 3: model always visible regardless of badges). */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {listing.rating != null && (
+              <View style={styles.ratingBadge}>
+                <Ionicons name="star" size={10} color={Colors.warning} />
+                <Text style={styles.ratingText}>{listing.rating}</Text>
+              </View>
+            )}
+            <GradeChip grade={listing.exteriorGrade} />
+          </View>
         </View>
 
         {/* Spec row */}
@@ -202,6 +219,13 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
         )}
       </View>
     </AnimatedTouchable>
+    <ImageLightbox
+      visible={lightboxOpen}
+      images={listing.images}
+      initialIndex={lightboxIndex}
+      onClose={() => setLightboxOpen(false)}
+    />
+    </>
   );
 };
 
@@ -219,10 +243,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     backgroundColor: Colors.bgTertiary,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
   },
   imageGradient: {
     position: 'absolute',

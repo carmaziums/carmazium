@@ -308,6 +308,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       await submitHandoverProof(auctionId, proofUrl);
       haptics.success();
       setHandoverUploaded(prev => ({ ...prev, [auctionId]: true }));
+      Alert.alert(
+        'Handover proof uploaded',
+        'Your proof is now awaiting admin approval — the £100 seller bonus will be released once verified.',
+      );
     } catch (err: any) {
       setHandoverError(prev => ({ ...prev, [auctionId]: err.message ?? 'Upload failed' }));
     } finally {
@@ -716,6 +720,13 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     if (isNaN(reserve) || reserve <= 0) { setCreateError('Enter a valid reserve price.'); return; }
     if (isNaN(starting) || starting <= 0) { setCreateError('Enter a valid starting bid.'); return; }
     if (starting > reserve) { setCreateError('Starting bid must be ≤ reserve price.'); return; }
+    // Backend rejects startingBid > 70% of the listing's asking price on
+    // POST /auctions — check here so the user sees this before submit.
+    const askingPrice = selectedListing.price ? Number(selectedListing.price) : 0;
+    if (askingPrice > 0 && starting > askingPrice * 0.7) {
+      setCreateError(`Starting bid must be at least 30% below the asking price of £${askingPrice.toLocaleString()} (max £${(askingPrice * 0.7).toLocaleString(undefined, { maximumFractionDigits: 0 })}).`);
+      return;
+    }
 
     setCreateSubmitting(true);
     setCreateError(null);
@@ -915,6 +926,24 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         {/* Handover proof upload for ENDED auctions with a winner */}
         {isEnded ? (
           <View style={styles.handoverSection}>
+            {/* Fee breakdown — matches web's three-stat grid on the seller
+                auctions page (fixed flat fees, not a % of the winning bid). */}
+            {!item.sellerBonusReleased && (
+              <View style={styles.handoverFeeRow}>
+                <View style={styles.handoverFeeCell}>
+                  <Text style={styles.handoverFeeLabel}>YOUR BONUS</Text>
+                  <Text style={[styles.handoverFeeValue, { color: Colors.lightGreen_4ade80 }]}>£100</Text>
+                </View>
+                <View style={styles.handoverFeeCell}>
+                  <Text style={styles.handoverFeeLabel}>PLATFORM FEE</Text>
+                  <Text style={styles.handoverFeeValue}>£25</Text>
+                </View>
+                <View style={styles.handoverFeeCell}>
+                  <Text style={styles.handoverFeeLabel}>BUYER PAID</Text>
+                  <Text style={styles.handoverFeeValue}>£125</Text>
+                </View>
+              </View>
+            )}
             {item.stripePayoutError ? (
               <View style={styles.payoutFailPill}>
                 <Ionicons name="alert-circle-outline" size={13} color={Colors.paleRed_fca5a5} />
@@ -1420,6 +1449,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         onClose={() => { setCreateModalVisible(false); resetCreateModal(); }}
         avoidKeyboard
         maxHeightPercent={95}
+        fillHeight
       >
         <View style={styles.modalContainer}>
           {/* Modal header */}
@@ -1544,7 +1574,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               {/* STARTING BID */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>STARTING BID (£) *</Text>
-                <Text style={styles.formHint}>First bid must be at least this amount · Must be ≤ reserve</Text>
+                <Text style={styles.formHint}>
+                  First bid must be at least this amount · Must be ≤ reserve
+                  {selectedListing?.price ? ` · Max £${(Number(selectedListing.price) * 0.7).toLocaleString(undefined, { maximumFractionDigits: 0 })} (30% below £${Number(selectedListing.price).toLocaleString()} asking)` : ''}
+                </Text>
                 <View style={styles.formInputRow}>
                   <Text style={styles.formCurrency}>£</Text>
                   <TextInput
@@ -2017,6 +2050,32 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: Colors.whiteAlpha06,
+  },
+  handoverFeeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  handoverFeeCell: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: Colors.whiteAlpha04,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    borderRadius: 10,
+    paddingVertical: 8,
+  },
+  handoverFeeLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: Colors.textFaint,
+    letterSpacing: 0.4,
+    marginBottom: 3,
+  },
+  handoverFeeValue: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    color: Colors.white,
   },
   handoverButton: {
     backgroundColor: Colors.accent,

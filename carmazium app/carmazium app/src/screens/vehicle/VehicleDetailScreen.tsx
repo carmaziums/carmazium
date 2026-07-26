@@ -13,6 +13,7 @@ import {
   TextInput,
   ActivityIndicator,
   Linking,
+  LayoutAnimation,
 } from 'react-native';
 // expo-image: caching/recycling for the swipeable photo gallery + thumbnail
 // strip — users flick through many high-res car photos per listing here.
@@ -38,6 +39,7 @@ import { getListingById } from '../../lib/listingsApi';
 import { createChatRoom } from '../../lib/chatApi';
 import { useChat } from '../../context/ChatContext';
 import { BuyerDamageViewer } from '../../components/damage/BuyerDamageViewer';
+import { GradeChip } from '../../components/GradeChip';
 import { useAuthStore } from '../../store/authStore';
 import { haptics } from '../../lib/haptics';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -106,6 +108,13 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     { id: '1', text: `Hi there! How can we help you with the ${listing.make} ${listing.model} today?`, isUser: false },
   ]);
   const [isTyping, setIsTyping] = useState(false);
+
+  // Vehicle Features dropdown — collapsed by default (Prompt M1)
+  const [featuresExpanded, setFeaturesExpanded] = useState(false);
+  const toggleFeatures = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setFeaturesExpanded(prev => !prev);
+  };
 
   // HPI
   const [hpiData, setHpiData] = useState<any>(null);
@@ -214,12 +223,20 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const OFFER_MAX = listing.price;
   const clampOffer = (v: number) => Math.min(OFFER_MAX, Math.max(OFFER_MIN, v));
 
-  const adjustOffer = (amount: number) => {
-    setOfferAmount((prev) => clampOffer(prev + amount));
-  };
-
   const [offerAmountDraft, setOfferAmountDraft] = useState(String(offerAmount));
   useEffect(() => { setOfferAmountDraft(String(offerAmount)); }, [offerModalVisible]);
+
+  const adjustOffer = (amount: number) => {
+    // Must update BOTH the numeric state and the visible-text state — the
+    // TextInput binds to offerAmountDraft (a raw-digit string), so updating
+    // only offerAmount would change the internal number without ever
+    // repainting the input the user sees.
+    setOfferAmount((prev) => {
+      const next = clampOffer(prev + amount);
+      setOfferAmountDraft(String(next));
+      return next;
+    });
+  };
 
   const handleOfferAmountChange = (text: string) => {
     const digits = text.replace(/[^0-9]/g, '');
@@ -350,12 +367,37 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // Fetch the current user's offer status for this listing (to gate "Request Delivery")
   const { user: currentUser } = useAuthStore();
+  // Full offer object — kept alongside offerStatus so we can render the
+  // OfferStatusChip on this screen with the amount, matching web
+  // VehicleDetailPageClient.tsx L31-90 wording.
+  const [myOffer, setMyOffer] = useState<{ amount: number; status: string } | null>(null);
   useEffect(() => {
     if (!listing.id || !currentUser) return;
-    apiClient<{ data: { status: string } | null }>(`/offers/my/${listing.id}`)
-      .then(res => { if (res?.data?.status) setOfferStatus(res.data.status); })
+    apiClient<{ data: { status: string; amount: number } | null }>(`/offers/my/${listing.id}`)
+      .then(res => {
+        if (res?.data?.status) {
+          setOfferStatus(res.data.status);
+          setMyOffer({ amount: res.data.amount, status: res.data.status });
+        }
+      })
       .catch(() => {});
   }, [listing.id, currentUser]);
+
+  // "Last offer" teaser — public / seller-facing signal that negotiation is
+  // active on this listing (matches web VehicleDetailPageClient.tsx L650-657).
+  // Hidden from the buyer themselves since they see their own offer chip.
+  const [latestOffer, setLatestOffer] = useState<{ amount: number; createdAt: string; buyerId: string } | null>(null);
+  useEffect(() => {
+    if (!listing.id) return;
+    apiClient<{ data: { items?: Array<{ amount: number; createdAt: string; buyerId: string }> } }>(`/offers/listing/${listing.id}?limit=1`)
+      .then(res => {
+        const first = res?.data?.items?.[0];
+        if (first) setLatestOffer(first);
+      })
+      .catch(() => {});
+  }, [listing.id]);
+  const showLatestOfferTeaser =
+    !!latestOffer && (!currentUser || latestOffer.buyerId !== currentUser.id);
 
   const handleDeliveryRequest = async () => {
     if (!deliveryStreet.trim() || !deliveryCity.trim() || !deliveryPostcode.trim()) {
@@ -376,6 +418,11 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       });
       haptics.success();
       setDeliverySubmitted(true);
+      // Close the modal so the user actually sees the "Delivery request sent"
+      // success row (rendered further down the page) — previously the modal
+      // stayed open with the same form fields and no visible acknowledgement.
+      setDeliveryModalVisible(false);
+      Alert.alert('Delivery request sent', 'The seller will confirm and arrange logistics — you can track the status on this page.');
     } catch (err: any) {
       setDeliveryError(err?.message ?? 'Could not request delivery. Please try again.');
     } finally {
@@ -653,6 +700,34 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={styles.locationText}>{listing.location}</Text>
           </View>
 
+          {/* Listing status warning banner — mirrors web's VehicleDetailPageClient
+              behavior (SOLD is prominent red, DRAFT/PENDING_REVIEW/REJECTED show
+              amber "not yet live" banners). Buyers must see immediately when a
+              listing is unavailable or in review; otherwise they might try to
+              make an offer that will silently fail. */}
+          {listing.status && listing.status !== 'ACTIVE' && (() => {
+            const s = String(listing.status);
+            const isSold = s === 'SOLD';
+            const label =
+              s === 'DRAFT' ? 'Preview only — Draft (not live yet)' :
+              s === 'PENDING_REVIEW' ? 'Under admin review — not live yet' :
+              s === 'REJECTED' ? 'Rejected — not listed' :
+              isSold ? 'SOLD — this vehicle is no longer available' :
+              s;
+            return (
+              <View style={[styles.statusBanner, isSold ? styles.statusBannerSold : styles.statusBannerWarning]}>
+                <Ionicons
+                  name={isSold ? 'close-circle' : 'alert-circle-outline'}
+                  size={18}
+                  color={isSold ? Colors.error : Colors.warning}
+                />
+                <Text style={[styles.statusBannerText, { color: isSold ? Colors.error : Colors.warning }]}>
+                  {label}
+                </Text>
+              </View>
+            );
+          })()}
+
           {/* Price & Monthly Pricing */}
           <View style={styles.priceContainerRow}>
             <Text style={styles.priceText}>
@@ -664,6 +739,67 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 : `or £${Math.round(calcMonthlyPayment()).toLocaleString('en-GB')}/mo`}
             </Text>
           </View>
+          {showLatestOfferTeaser && latestOffer && (
+            <View style={styles.lastOfferTeaser}>
+              <Ionicons name="pricetag" size={11} color={Colors.warning} />
+              <Text style={styles.lastOfferTeaserText}>
+                Last offer: <Text style={styles.lastOfferTeaserAmount}>{formatPrice(latestOffer.amount)}</Text>
+                {'  ·  '}
+                {new Date(latestOffer.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </Text>
+            </View>
+          )}
+
+          {/* Buyer's own offer status chip — copy mirrors web's OfferStatusChip
+              (VehicleDetailPageClient.tsx L31-90). Hidden on the buyer's own
+              listings and when there's no offer yet. */}
+          {myOffer && listing.seller?.id !== currentUser?.id && (() => {
+            const amt = formatPrice(myOffer.amount);
+            const s = myOffer.status;
+            const config =
+              s === 'PENDING' ? {
+                icon: 'time-outline', color: Colors.warning,
+                text: `Your offer of ${amt} is awaiting the seller's response.`,
+              } :
+              s === 'REJECTED' ? {
+                icon: 'close-circle', color: Colors.error,
+                text: `Your offer of ${amt} was declined. You may submit a new one.`,
+              } :
+              s === 'ACCEPTED' ? {
+                icon: 'checkmark-circle', color: Colors.success,
+                text: `🎉 Your offer of ${amt} was accepted! Contact the seller to proceed.`,
+              } :
+              s === 'WITHDRAWN' ? {
+                icon: 'close-circle', color: Colors.textMuted,
+                text: `Your previous offer of ${amt} was withdrawn. You can make a new offer.`,
+              } :
+              s === 'COUNTERED' ? {
+                icon: 'time-outline', color: Colors.infoBlue,
+                text: 'The seller countered your offer. Tap to review it in your dashboard.',
+              } : null;
+            if (!config) return null;
+            const isCounter = s === 'COUNTERED';
+            const chipInner = (
+              <>
+                <Ionicons name={config.icon} size={13} color={config.color} />
+                <Text style={[styles.offerStatusChipText, { color: config.color }]}>{config.text}</Text>
+                {isCounter && <Ionicons name="chevron-forward" size={13} color={config.color} />}
+              </>
+            );
+            return isCounter ? (
+              <TouchableOpacity
+                style={[styles.offerStatusChip, { borderColor: config.color + '55', backgroundColor: config.color + '18' }]}
+                onPress={() => navigation.navigate('BuyerOffers')}
+                activeOpacity={0.75}
+              >
+                {chipInner}
+              </TouchableOpacity>
+            ) : (
+              <View style={[styles.offerStatusChip, { borderColor: config.color + '55', backgroundColor: config.color + '18' }]}>
+                {chipInner}
+              </View>
+            );
+          })()}
 
           {/* Imported-from badge — links to the original listing on the external platform */}
           {listing.importedFromUrl ? (
@@ -739,6 +875,41 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             )}
           </View>
 
+          {/* Section: Vehicle Features — collapsed by default, same label web
+              uses (VehicleDetailsPageClient.tsx: "Vehicle Features"). Web
+              always shows the full list; mobile collapses it since feature
+              lists can run long on a small screen (Prompt M1). */}
+          {listing.features && listing.features.length > 0 && (
+            <View style={styles.sectionContainer}>
+              <TouchableOpacity
+                style={styles.featuresHeaderRow}
+                activeOpacity={0.7}
+                onPress={toggleFeatures}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: featuresExpanded }}
+              >
+                <Text style={[styles.sectionHeaderTitle, { marginBottom: 0 }]}>
+                  VEHICLE FEATURES ({listing.features.length})
+                </Text>
+                <Ionicons
+                  name={featuresExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={Colors.textMuted}
+                />
+              </TouchableOpacity>
+              {featuresExpanded && (
+                <View style={styles.featuresGrid}>
+                  {listing.features.map((feature, idx) => (
+                    <View key={`${feature}-${idx}`} style={styles.featureChip}>
+                      <Ionicons name="checkmark-circle" size={12} color={Colors.accentGreen} />
+                      <Text style={styles.featureChipText}>{feature}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+
           {/* Section: Videos — YouTube gets a tappable thumbnail, other
               platforms (Instagram/Facebook/X) get a labelled link chip */}
           {listing.videoUrls != null && listing.videoUrls.length > 0 && (
@@ -809,6 +980,22 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Text style={styles.specRowLabel}>0-60 mph</Text>
                 <Text style={styles.specRowValue}>{listing.zeroToSixty}s</Text>
               </View>
+              {/* Performance fields — real API data (torqueNm/combinedMpg/
+                  extraUrbanMpg/topSpeed) that reaches CarListing via the
+                  mapper but had no row in this grid until now (mobile
+                  audit M2 finding: not a missing endpoint, just unrendered). */}
+              {!!listing.topSpeed && (
+                <View style={styles.specRow}>
+                  <Text style={styles.specRowLabel}>Top speed</Text>
+                  <Text style={styles.specRowValue}>{listing.topSpeed} mph</Text>
+                </View>
+              )}
+              {listing.torqueNm != null && (
+                <View style={styles.specRow}>
+                  <Text style={styles.specRowLabel}>Torque</Text>
+                  <Text style={styles.specRowValue}>{listing.torqueNm} Nm</Text>
+                </View>
+              )}
               <View style={styles.specRow}>
                 <Text style={styles.specRowLabel}>Doors / Seats</Text>
                 <Text style={styles.specRowValue}>
@@ -823,6 +1010,16 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   {listing.co2Emissions != null ? `${listing.co2Emissions} g/km` : 'Not disclosed'}
                 </Text>
               </View>
+              {(listing.combinedMpg != null || listing.extraUrbanMpg != null) && (
+                <View style={styles.specRow}>
+                  <Text style={styles.specRowLabel}>Fuel economy</Text>
+                  <Text style={styles.specRowValue}>
+                    {listing.combinedMpg != null ? `${listing.combinedMpg} mpg combined` : ''}
+                    {listing.combinedMpg != null && listing.extraUrbanMpg != null ? ' · ' : ''}
+                    {listing.extraUrbanMpg != null ? `${listing.extraUrbanMpg} mpg extra-urban` : ''}
+                  </Text>
+                </View>
+              )}
               <View style={styles.specRow}>
                 <Text style={styles.specRowLabel}>Owners</Text>
                 <Text style={styles.specRowValue}>
@@ -978,9 +1175,14 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             )}
           </View>
 
-          {/* Section: Damage Assessment */}
+          {/* Section: Condition & Damage — always renders (Prompt 6). Grade
+              pill is the ONLY place exteriorGrade appears on this screen —
+              never duplicated in the specs grid above. */}
           <View style={styles.sectionContainer}>
-            <Text style={styles.sectionHeaderTitle}>DAMAGE ASSESSMENT</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <Text style={[styles.sectionHeaderTitle, { marginBottom: 0 }]}>CONDITION & DAMAGE</Text>
+              <GradeChip grade={listing.exteriorGrade} variant="pill" />
+            </View>
             <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />
           </View>
 
@@ -1343,14 +1545,34 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             }
           }} accessibilityLabel="Message seller" />
 
-        <TouchableOpacity
-          style={styles.makeOfferButton}
-          activeOpacity={0.8}
-          onPress={() => setOfferModalVisible(true)}
-        >
-          <Text style={styles.makeOfferText}>MAKE AN OFFER</Text>
-          <Ionicons name="arrow-forward" size={18} color={Colors.white} style={styles.offerArrow} />
-        </TouchableOpacity>
+        {/* Disable the offer CTA when the listing isn't ACTIVE, matching web —
+            web disables + relabels the button for SOLD/DRAFT/PENDING_REVIEW/
+            REJECTED (VehicleDetailPageClient.tsx L679-683) so a buyer can't
+            submit an offer that the backend will reject. */}
+        {(() => {
+          const s = listing.status ? String(listing.status) : 'ACTIVE';
+          const isActive = s === 'ACTIVE';
+          const disabledLabel =
+            s === 'SOLD' ? 'SOLD' :
+            s === 'DRAFT' ? 'PREVIEW ONLY (DRAFT)' :
+            s === 'PENDING_REVIEW' ? 'UNDER ADMIN REVIEW' :
+            s === 'REJECTED' ? 'REJECTED — NOT LISTED' :
+            s;
+          return isActive ? (
+            <TouchableOpacity
+              style={styles.makeOfferButton}
+              activeOpacity={0.8}
+              onPress={() => setOfferModalVisible(true)}
+            >
+              <Text style={styles.makeOfferText}>MAKE AN OFFER</Text>
+              <Ionicons name="arrow-forward" size={18} color={Colors.white} style={styles.offerArrow} />
+            </TouchableOpacity>
+          ) : (
+            <View style={[styles.makeOfferButton, styles.makeOfferButtonDisabled]}>
+              <Text style={styles.makeOfferText}>{disabledLabel}</Text>
+            </View>
+          );
+        })()}
       </View>
 
       {/* DYNAMIC MAKE AN OFFER MODAL */}
@@ -1358,6 +1580,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         visible={offerModalVisible}
         onClose={closeOfferFlow}
         title="Make an Offer"
+        avoidKeyboard
       >
         {!offerSubmitted ? (
           <View style={styles.modalBody}>
@@ -1375,7 +1598,13 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <View style={styles.offerAdjusterContainer}>
               <Text style={styles.offerLabel}>YOUR OFFER</Text>
               <View style={styles.adjusterRow}>
-                <IconButton style={styles.adjustBtn} icon={<Ionicons name="remove" size={20} color={Colors.white} />} onPress={() => adjustOffer(-500)} accessibilityLabel="Decrease offer by £500" />
+                <IconButton
+                  style={styles.adjustBtn}
+                  icon={<Ionicons name="remove" size={20} color={Colors.white} />}
+                  onPress={() => adjustOffer(-500)}
+                  disabled={offerAmount <= OFFER_MIN}
+                  accessibilityLabel="Decrease offer by £500"
+                />
 
                 <View style={styles.offerAmountInputWrap}>
                   <Text style={styles.offerAmountCurrency}>£</Text>
@@ -1392,8 +1621,23 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   />
                 </View>
 
-                <IconButton style={styles.adjustBtn} icon={<Ionicons name="add" size={20} color={Colors.white} />} onPress={() => adjustOffer(500)} accessibilityLabel="Increase offer by £500" />
+                <IconButton
+                  style={styles.adjustBtn}
+                  icon={<Ionicons name="add" size={20} color={Colors.white} />}
+                  onPress={() => adjustOffer(500)}
+                  disabled={offerAmount >= OFFER_MAX}
+                  accessibilityLabel="Increase offer by £500"
+                />
               </View>
+              <Text style={styles.offerRangeHint}>
+                Range: {formatPrice(OFFER_MIN)} – {formatPrice(OFFER_MAX)}
+              </Text>
+              {offerAmount >= OFFER_MAX && (
+                <Text style={styles.offerLimitHint}>You've reached the asking price</Text>
+              )}
+              {offerAmount <= OFFER_MIN && (
+                <Text style={styles.offerLimitHint}>You've reached the minimum offer we'll forward</Text>
+              )}
             </View>
 
             <TouchableOpacity
@@ -1931,6 +2175,34 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     lineHeight: 22,
   },
+  // Vehicle Features dropdown
+  featuresHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  featuresGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14,
+  },
+  featureChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.whiteAlpha04,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha08,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  featureChipText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size12,
+    color: Colors.textSecondary,
+  },
   // Videos
   videoThumbWrap: {
     width: 160,
@@ -2350,6 +2622,67 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  makeOfferButtonDisabled: {
+    backgroundColor: Colors.whiteAlpha10,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+  },
+  statusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  statusBannerWarning: {
+    backgroundColor: 'rgba(255,170,0,0.08)',
+    borderColor: 'rgba(255,170,0,0.28)',
+  },
+  statusBannerSold: {
+    backgroundColor: 'rgba(239,68,68,0.10)',
+    borderColor: 'rgba(239,68,68,0.32)',
+  },
+  statusBannerText: {
+    flex: 1,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    letterSpacing: 0.2,
+  },
+  lastOfferTeaser: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  lastOfferTeaserText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+  },
+  lastOfferTeaserAmount: {
+    fontFamily: FontFamily.bold,
+    color: Colors.warning,
+  },
+  offerStatusChip: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 12,
+  },
+  offerStatusChipText: {
+    flex: 1,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.sm,
+    lineHeight: 18,
+  },
   makeOfferText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
@@ -2414,6 +2747,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 4,
+  },
+  offerLimitHint: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size10,
+    color: Colors.textFaint,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  offerRangeHint: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size10,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    marginTop: 8,
   },
   adjustBtn: {
     width: 36,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -29,13 +30,25 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // Hoisted + memoized so FlatList only re-renders the row whose props
 // actually changed, instead of recreating this JSX inline in renderItem on
 // every parent re-render (mobile-audit.md P3/P4).
-const ListingRow: React.FC<{ item: any }> = React.memo(({ item }) => {
+const ListingRow: React.FC<{
+  item: any;
+  onPress: () => void;
+  onPutOnAuction?: () => void;
+  onOpenLinkedAuction?: () => void;
+}> = React.memo(({ item, onPress, onPutOnAuction, onOpenLinkedAuction }) => {
   const listingTitle = item.title || `${item.make ?? ''} ${item.model ?? ''}`.trim() || 'Vehicle';
   const listingImage = item.images?.[0];
   const statusColor = item.status === 'ACTIVE' ? Colors.accentGreen : item.status === 'SOLD' ? Colors.warning : Colors.textSecondary;
+  // Cross-listing state — a retail listing can also be running as an auction
+  // (or vice versa). Backend exposes this as item.linkedListing with the
+  // linked side's id + type + auction status when applicable.
+  const linkedAuctionStatus = item.linkedListing?.auction?.status as string | undefined;
+  const hasLinkedAuction = !!item.linkedListingId && (item.linkedListing?.type === 'AUCTION' || !!linkedAuctionStatus);
+  const linkedAuctionLive = linkedAuctionStatus === 'ACTIVE';
+  const canPutOnAuction = item.status === 'ACTIVE' && !hasLinkedAuction;
 
   return (
-    <View style={styles.listingCard}>
+    <TouchableOpacity style={styles.listingCard} onPress={onPress} activeOpacity={0.75}>
       {listingImage ? (
         <Image source={{ uri: listingImage }} style={styles.listingImage} contentFit="cover" transition={200} cachePolicy="memory-disk" />
       ) : (
@@ -63,8 +76,34 @@ const ListingRow: React.FC<{ item: any }> = React.memo(({ item }) => {
             </>
           ) : null}
         </View>
+        {/* Cross-listing row: either shows the linked auction chip, or a
+            "Put on auction" shortcut when eligible. */}
+        {hasLinkedAuction ? (
+          <TouchableOpacity
+            style={[styles.crossListingChip, linkedAuctionLive && styles.crossListingChipLive]}
+            onPress={onOpenLinkedAuction}
+            activeOpacity={0.7}
+            accessibilityLabel="Open linked auction"
+          >
+            <Ionicons name="gavel" size={11} color={linkedAuctionLive ? Colors.accentGreen : Colors.textMuted} />
+            <Text style={[styles.crossListingChipText, linkedAuctionLive && { color: Colors.accentGreen }]}>
+              {linkedAuctionLive ? 'Linked auction — LIVE' : `Linked auction${linkedAuctionStatus ? ` — ${linkedAuctionStatus}` : ''}`}
+            </Text>
+            <Ionicons name="chevron-forward" size={12} color={Colors.iconMuted} />
+          </TouchableOpacity>
+        ) : canPutOnAuction && onPutOnAuction ? (
+          <TouchableOpacity
+            style={styles.putOnAuctionInline}
+            onPress={onPutOnAuction}
+            activeOpacity={0.7}
+            accessibilityLabel="Also list this vehicle on auction"
+          >
+            <Ionicons name="gavel" size={11} color={Colors.accent} />
+            <Text style={styles.putOnAuctionInlineText}>Also list on auction</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 });
 
@@ -78,23 +117,30 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
   const [boostCheckoutUrl, setBoostCheckoutUrl] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [listingsRes, statsRes] = await Promise.all([
-          apiClient<any>('/listings/my?page=1&limit=20'),
-          apiClient<any>('/listings/stats').catch(() => null),
-        ]);
-        setListings(listingsRes?.data || []);
-        setStats(statsRes?.data || statsRes || null);
-      } catch (e) {
-        console.warn('Failed to load listings:', e);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    load();
+  const loadListings = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setIsLoading(true);
+    try {
+      const [listingsRes, statsRes] = await Promise.all([
+        apiClient<any>('/listings/my?page=1&limit=20'),
+        apiClient<any>('/listings/stats').catch(() => null),
+      ]);
+      setListings(listingsRes?.data || []);
+      setStats(statsRes?.data || statsRes || null);
+    } catch (e) {
+      console.warn('Failed to load listings:', e);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  // Refetch on every focus (initial mount + every return-from-child, e.g.
+  // after editing a listing in SellCarFlow). Silent on returns so the whole
+  // screen doesn't blank out with a spinner every time.
+  const isFirstFocus = React.useRef(true);
+  useFocusEffect(useCallback(() => {
+    loadListings({ silent: !isFirstFocus.current });
+    isFirstFocus.current = false;
+  }, [loadListings]));
 
   const navTab = (tabName: string) => {
      navigation?.navigate('Tabs', { screen: tabName });
@@ -130,12 +176,10 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
     haptics.success();
     // Was "7 days" — backend's BOOST_DURATION_DAYS is actually 28.
     setToast('Boosted for 28 days');
-    // Refetch the primary listing so the isFeatured flag/UI updates on this
-    // screen once the Stripe webhook has flipped the boost status.
-    try {
-      const res = await apiClient<any>('/listings/my?page=1&limit=20');
-      setListings(res?.data || []);
-    } catch { /* non-fatal */ }
+    // Refetch so the isFeatured flag/UI updates on this screen once the
+    // Stripe webhook has flipped the boost status. Silent refresh — the
+    // toast is the primary success signal.
+    loadListings({ silent: true });
     setTimeout(() => setToast(null), 3000);
   };
 
@@ -171,7 +215,23 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
     }
   };
 
-  const renderListingRow = useCallback(({ item }: { item: any }) => <ListingRow item={item} />, []);
+  const renderListingRow = useCallback(
+    ({ item }: { item: any }) => (
+      <ListingRow
+        item={item}
+        onPress={() => navigation?.navigate('SellCarFlow', { listingId: item.id })}
+        onPutOnAuction={() =>
+          // SellerAuctionsScreen accepts preselectListingId — same shortcut
+          // dealers already use from DealerInventoryScreen's "PUT ON AUCTION".
+          navigation?.navigate('SellerAuctions', { preselectListingId: item.id })
+        }
+        onOpenLinkedAuction={() =>
+          navigation?.navigate('SellerAuctions', { preselectListingId: item.linkedListingId })
+        }
+      />
+    ),
+    [navigation]
+  );
   const keyExtractor = useCallback((item: any, idx: number) => item.id ?? String(idx), []);
 
   const renderTabBar = () => (
@@ -657,6 +717,48 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
     color: Colors.iconMuted,
+  },
+  crossListingChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    backgroundColor: Colors.whiteAlpha04,
+  },
+  crossListingChipLive: {
+    borderColor: Colors.accentGreen + '55',
+    backgroundColor: Colors.accentGreen + '15',
+  },
+  crossListingChipText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size10,
+    letterSpacing: 0.3,
+    color: Colors.textMuted,
+  },
+  putOnAuctionInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.accent + '55',
+    backgroundColor: Colors.accentAlpha10,
+  },
+  putOnAuctionInlineText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size10,
+    letterSpacing: 0.3,
+    color: Colors.accent,
   },
   toast: {
     position: 'absolute',

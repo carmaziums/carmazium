@@ -35,11 +35,27 @@ export interface AuctionListingDetail {
   fuelType: string;
   transmission: string;
   category?: string | null;
+  bodyType?: string | null;
   condition?: string | null;
   colour?: string | null;
+  // Card-parity fields (Buy Cars ↔ Auction card parity) — all real fields
+  // already returned on the listing payload, just not previously typed here.
+  deliveryAvailable?: boolean | null;
+  isDepartedSale?: boolean | null;
+  badgeTier?: 'FREE' | 'BASIC' | 'STANDARD' | 'PREMIUM' | null;
+  isFeatured?: boolean | null;
+  // Auto-computed server-side from DamageRecord count — never seller-set.
+  exteriorGrade?: number | null;
   bhp?: number | null;
   zeroToSixty?: number | null;
   topSpeed?: number | null;
+  topSpeedMph?: number | null;
+  torqueNm?: number | null;
+  combinedMpg?: number | null;
+  extraUrbanMpg?: number | null;
+  engineSize?: number | null;
+  doors?: number | null;
+  seats?: number | null;
   location?: string | null;
   variant?: string | null;
   owners?: string | null;

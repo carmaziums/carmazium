@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   StatusBar, TextInput, ActivityIndicator, Alert,
-  Switch, Dimensions, Platform, BackHandler,
+  Switch, Dimensions, Platform, BackHandler, KeyboardAvoidingView,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -635,14 +635,20 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [reservePrice, setReservePrice] = useState('');
   const [startingBid, setStartingBid] = useState('');
   const [minIncrement, setMinIncrement] = useState('100');
+  const [buyItNowPrice, setBuyItNowPrice] = useState('');
 
   // ── Per-image upload progress ──
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
   // ── Publishing ──
   const [isPublishing, setIsPublishing] = useState(false);
-  const [editMode] = useState<boolean>(!!(route?.params?.listingId));
-  const [editListingId] = useState<string | null>(route?.params?.listingId ?? null);
+  // Derive editMode/editListingId from route.params directly, NOT from useState
+  // initializers. If this screen instance gets reused with new params (which
+  // React Navigation does when navigating back to a still-mounted screen with
+  // a different listingId), stateful init only runs once — the form would keep
+  // showing the previous listing's data and reads as "buttons don't respond."
+  const editListingId: string | null = route?.params?.listingId ?? null;
+  const editMode = !!editListingId;
   // Gates the form while the existing listing loads in edit mode — without this,
   // editing a listing used to open a blank form and Save would silently overwrite
   // the real listing with defaults (mobile-audit.md, critical finding).
@@ -849,6 +855,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     if (key === 'make' && !make.trim()) return 'Required';
     if (key === 'model' && !model.trim()) return 'Required';
     if (key === 'year' && !year.trim()) return 'Required';
+    // Web now requires + red-highlights Location on submit (ListingWizard.tsx) —
+    // mobile previously had no validation on this field at all.
+    if (key === 'location' && !location.trim()) return 'Required';
     if (key === 'condition' && !condition) return 'Required';
     if (key === 'owners' && !owners) return 'Required';
     if (key === 'departedRelationship' && isDepartedSale && !departedRelationship.trim()) return 'Required';
@@ -860,7 +869,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     if (key === 'declAcknowledged' && !declAcknowledged) return 'You must acknowledge this declaration to continue';
     if (key === 'auctionStartDate' && auctionStartMode === 'SCHEDULED' && !auctionStartDate.trim()) return 'Required';
     if (key === 'reservePrice' && (!reservePrice.trim() || parseFloat(reservePrice) <= 0)) return 'Enter a valid reserve price';
-    if (key === 'startingBid' && (!startingBid.trim() || parseFloat(startingBid) <= 0)) return 'Enter a valid starting bid';
+    if (key === 'startingBid') {
+      if (!startingBid.trim() || parseFloat(startingBid) <= 0) return 'Enter a valid starting bid';
+      // Backend rejects startingBid > 70% of asking price on both POST /auctions
+      // and POST /listings/:id/also-auction — mirror that here so the user sees
+      // the problem before submit instead of a raw 400 from the server.
+      const askNum = parseFloat(priceAsking.replace(/[^0-9.]/g, '')) || 0;
+      if (askNum > 0 && parseFloat(startingBid) > askNum * 0.7) {
+        return `Starting bid must be at least 30% below the asking price of £${askNum.toLocaleString()} (max £${(askNum * 0.7).toLocaleString(undefined, { maximumFractionDigits: 0 })})`;
+      }
+    }
     if (key === 'minIncrement' && (!minIncrement.trim() || parseFloat(minIncrement) <= 0)) return 'Enter a valid minimum increment';
     return null;
   };
@@ -876,7 +894,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // All field keys validated per step — used to force every field's error to show
   // (mark touched) when Next is tapped, and to know which keys to check.
-  const STEP1_FIELD_KEYS = ['make', 'model', 'year', 'mileage', 'title', 'condition', 'owners', 'departedRelationship', 'writeOffCat', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper', 'notOwnerRelationship', 'declAcknowledged'];
+  const STEP1_FIELD_KEYS = ['make', 'model', 'year', 'mileage', 'title', 'location', 'condition', 'owners', 'departedRelationship', 'writeOffCat', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper', 'notOwnerRelationship', 'declAcknowledged'];
   const STEP3_FIELD_KEYS = ['priceAsking'];
   const STEP4_AUCTION_FIELD_KEYS = ['auctionStartDate', 'reservePrice', 'startingBid', 'minIncrement'];
 
@@ -888,7 +906,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // Step 1 has invalid touched fields?
   const step1HasErrors = (): boolean => {
-    return !!fieldError('mileage') || !!fieldError('title');
+    return !!fieldError('mileage') || !!fieldError('title') || !!fieldError('location');
   };
 
   // Step 3 has invalid touched fields?
@@ -1425,7 +1443,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         Alert.alert(
           damageSaved ? 'Updated!' : 'Updated — damage details not saved',
           damageSaved ? 'Your listing has been updated.' : DAMAGE_SAVE_FAILED_MSG,
-          [{ text: 'Done', onPress: () => navigation?.navigate('SellerListings') }],
+          // goBack (not navigate('SellerListings')) — the caller may be
+          // MyListingDashboard, SellerListings, DealerInventory, or a detail
+          // page. Popping this screen off the stack returns the user to
+          // whichever it was, unmounts SellCarFlow (so the next edit is a
+          // fresh mount with fresh params), and lets the caller's
+          // useFocusEffect refetch the updated listing.
+          [{ text: 'Done', onPress: () => navigation?.goBack() }],
         );
       } else {
         // If an HPI check already created a draft for this listing, finish
@@ -1450,6 +1474,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             reservePrice: parseFloat(reservePrice),
             startingBid: parseFloat(startingBid),
             minIncrement: parseFloat(minIncrement),
+            ...(buyItNowPrice.trim() ? { buyItNowPrice: parseFloat(buyItNowPrice) } : {}),
           };
           if (auctionStartMode === 'NOW') {
             auctionPayload.startTime = new Date().toISOString();
@@ -1808,8 +1833,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         </SectionBox>
 
         {/* Location */}
-        <SectionBox title="Location">
-          <FieldInput label="LOCATION" value={location} onChange={setLocation} placeholder="e.g. London" />
+        <SectionBox title="Location *">
+          <FieldInput
+            label="LOCATION *"
+            value={location}
+            onChange={v => { setLocation(v); if (touched.location) setTouched(prev => ({ ...prev, location: true })); }}
+            placeholder="e.g. London"
+            required
+            error={fieldError('location') ?? undefined}
+          />
           <TouchableOpacity style={s.locateMeBtn} onPress={handleLocateMe} activeOpacity={0.7} disabled={locatingMe}>
             {locatingMe
               ? <ActivityIndicator size="small" color={Colors.accent} />
@@ -2320,32 +2352,45 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     return (
       <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
 
-        <SectionBox title="Set Your Price Range" accent={Colors.accent}>
-          <Text style={s.fieldHint}>
-            The <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Asking Price</Text> is displayed publicly.
-            The <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Lower (Min)</Text> defines your acceptable offer floor.
-          </Text>
+        <SectionBox title={isAuction ? 'Set Your Estimated Market Value' : 'Set Your Price Range'} accent={Colors.accent}>
+          {isAuction ? (
+            <Text style={s.fieldHint}>
+              The <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Estimated Market Value</Text> is internal reference only — it caps your Starting Bid at 70% of this value and is never shown to bidders.
+            </Text>
+          ) : (
+            <Text style={s.fieldHint}>
+              The <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Asking Price</Text> is displayed publicly.
+              The <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Lower (Min)</Text> defines your acceptable offer floor.
+            </Text>
+          )}
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <View style={{ flex: 1 }}>
-              <SL label="LOWER (MIN)" />
-              <Text style={s.fieldHint}>Floor price — not visible to buyers</Text>
-              <View style={[s.priceInputWrap, touched.priceMin ? { borderColor: fieldBorderColor('priceMin') } : {}]}>
-                <Text style={s.priceCurrency}>£</Text>
-                <TextInput
-                  style={s.priceInput}
-                  value={priceMin}
-                  onChangeText={v => { setPriceMin(v); if (touched.priceMin) setTouched(prev => ({ ...prev, priceMin: true })); }}
-                  onBlur={fieldTouched('priceMin')}
-                  placeholder="0"
-                  placeholderTextColor={Colors.borderMuted}
-                  keyboardType="number-pad"
-                />
+            {/* Lower (Min) is an offer-negotiation floor — meaningless in
+                auction mode (auctions use bidding, not offers), so it's
+                hidden entirely rather than shown-and-ignored. */}
+            {!isAuction && (
+              <View style={{ flex: 1 }}>
+                <SL label="LOWER (MIN)" />
+                <Text style={s.fieldHint}>Floor price — not visible to buyers</Text>
+                <View style={[s.priceInputWrap, touched.priceMin ? { borderColor: fieldBorderColor('priceMin') } : {}]}>
+                  <Text style={s.priceCurrency}>£</Text>
+                  <TextInput
+                    style={s.priceInput}
+                    value={priceMin}
+                    onChangeText={v => { setPriceMin(v); if (touched.priceMin) setTouched(prev => ({ ...prev, priceMin: true })); }}
+                    onBlur={fieldTouched('priceMin')}
+                    placeholder="0"
+                    placeholderTextColor={Colors.borderMuted}
+                    keyboardType="number-pad"
+                  />
+                </View>
+                {fieldError('priceMin') ? <Text style={s.inlineError}>{fieldError('priceMin')}</Text> : null}
               </View>
-              {fieldError('priceMin') ? <Text style={s.inlineError}>{fieldError('priceMin')}</Text> : null}
-            </View>
+            )}
             <View style={{ flex: 1 }}>
-              <SL label="ASKING PRICE *" required />
-              <Text style={s.fieldHintRed}>Displayed on listing — required</Text>
+              <SL label={isAuction ? 'ESTIMATED MARKET VALUE *' : 'ASKING PRICE *'} required />
+              <Text style={s.fieldHintRed}>
+                {isAuction ? 'Internal only — not shown to bidders' : 'Displayed on listing — required'}
+              </Text>
               <View style={[s.priceInputWrap, s.priceInputWrapActive, touched.priceAsking ? { borderColor: fieldBorderColor('priceAsking') } : {}]}>
                 <Text style={[s.priceCurrency, { color: Colors.accent }]}>£</Text>
                 <TextInput
@@ -2362,8 +2407,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             </View>
           </View>
 
-          {/* Price Range Visual */}
-          {(minVal > 0 || askVal > 0) && (
+          {/* Price Range Visual — only meaningful when there's a Lower(Min)
+              to compare the Asking Price against; auction mode has neither
+              concept. */}
+          {!isAuction && (minVal > 0 || askVal > 0) && (
             <View style={{ marginTop: 16 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
                 <Text style={[s.fieldHint, { color: Colors.warning }]}>YOUR PRICE RANGE</Text>
@@ -2595,6 +2642,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // ─── Step 4 — Auction Schedule (auction only) ────────────────────────────────
 
   function renderAuctionSchedule() {
+    const askNum = parseFloat(priceAsking.replace(/[^0-9.]/g, '')) || 0;
+    const maxStartingBid = askNum > 0 ? askNum * 0.7 : 0;
     return (
       <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
 
@@ -2660,7 +2709,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             placeholder="Opening bid amount"
             keyboardType="number-pad"
             required
-            hint="The first bid placed must be at least this amount."
+            hint={
+              askNum > 0
+                ? `The first bid placed must be at least this amount. Max £${maxStartingBid.toLocaleString(undefined, { maximumFractionDigits: 0 })} (30% below £${askNum.toLocaleString()} asking).`
+                : 'The first bid placed must be at least this amount.'
+            }
             error={fieldError('startingBid') ?? undefined}
           />
           <FieldInput
@@ -2672,6 +2725,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             required
             hint="Each subsequent bid must raise the price by at least this amount."
             error={fieldError('minIncrement') ?? undefined}
+          />
+          <FieldInput
+            label="BUY IT NOW PRICE (£)"
+            value={buyItNowPrice}
+            onChange={v => setBuyItNowPrice(v)}
+            placeholder="Leave blank to disable"
+            keyboardType="number-pad"
+            hint="Optional — lets a buyer request an immediate purchase at this price. The seller must confirm before the auction ends."
           />
         </SectionBox>
 
@@ -2793,12 +2854,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </TouchableOpacity>
         }>
           <View style={s.reviewGrid}>
+            {!isAuction && (
+              <View style={s.reviewCell}>
+                <Text style={s.reviewCellLabel}>LOWER (MIN)</Text>
+                <Text style={s.reviewCellValue}>{minNum > 0 ? `£${minNum.toLocaleString()}` : '—'}</Text>
+              </View>
+            )}
             <View style={s.reviewCell}>
-              <Text style={s.reviewCellLabel}>LOWER (MIN)</Text>
-              <Text style={s.reviewCellValue}>{minNum > 0 ? `£${minNum.toLocaleString()}` : '—'}</Text>
-            </View>
-            <View style={s.reviewCell}>
-              <Text style={s.reviewCellLabel}>ASKING PRICE</Text>
+              <Text style={s.reviewCellLabel}>{isAuction ? 'ESTIMATED MARKET VALUE' : 'ASKING PRICE'}</Text>
               <Text style={[s.reviewCellValue, { color: Colors.white, fontFamily: FontFamily.extraBold, fontSize: FontSize.lg }]}>
                 {askNum > 0 ? `£${askNum.toLocaleString()}` : '—'}
               </Text>
@@ -2893,13 +2956,25 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         <>
           {renderStepper()}
 
-          <View style={{ flex: 1 }}>
+          {/* Step 3 (Pricing)'s Delivery section has TextInputs low enough on
+              the page that, with no keyboard handling, the keyboard covers
+              them with no resize on iOS — reads as the page "closing" behind
+              the keyboard. Same KeyboardAvoidingView pattern already proven
+              on BuyerOffersScreen's inline delivery-address inputs. Wrapping
+              only this flex:1 content area (not the header/bottomBar
+              siblings) keeps the header pinned and Next/Back buttons in
+              place, matching prior behavior for every other step. */}
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={insets.top + 14}
+          >
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
             {step === 4 && isAuction && renderAuctionSchedule()}
             {((step === 4 && !isAuction) || step === 5) && renderStep4()}
-          </View>
+          </KeyboardAvoidingView>
 
           {/* Bottom Actions */}
           <View style={[s.bottomBar, { paddingBottom: insets.bottom || 20 }]}>

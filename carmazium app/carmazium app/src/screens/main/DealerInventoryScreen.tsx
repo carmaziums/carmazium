@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -54,6 +55,8 @@ interface Listing {
   images: string[];
   offersStatus: string;
   visibility: string;
+  linkedListingId?: string | null;
+  linkedAuctionStatus?: string | null;
 }
 
 // ─── API mapping helper ──────────────────────────────────────────────────────
@@ -70,6 +73,8 @@ const mapApiListing = (l: any): Listing => ({
   leads: l._count?.leads ?? 0,
   offers: l._count?.offers ?? 0,
   status: (l.status === 'ACTIVE' ? 'LIVE' : l.status === 'DRAFT' ? 'PENDING' : 'SOLD') as StatusTag,
+  linkedListingId: l.linkedListingId ?? null,
+  linkedAuctionStatus: l.linkedListing?.auction?.status ?? null,
   images: l.images || [],
   offersStatus: '',
   visibility: l.status ?? '',
@@ -417,8 +422,16 @@ const ListingDetail: React.FC<{
 
 // ─── Inventory row — hoisted + memoized so FlatList only re-renders the row
 // whose own props changed (mobile-audit.md P3/P4). ──
-const InventoryRow: React.FC<{ listing: Listing; onPress: (id: string) => void }> = React.memo(({ listing, onPress }) => {
+const InventoryRow: React.FC<{
+  listing: Listing;
+  onPress: (id: string) => void;
+  onPutOnAuction?: (id: string) => void;
+  onOpenLinkedAuction?: (linkedId: string) => void;
+}> = React.memo(({ listing, onPress, onPutOnAuction, onOpenLinkedAuction }) => {
   const s = STATUS_STYLE[listing.status];
+  const hasLinkedAuction = !!listing.linkedListingId;
+  const linkedAuctionLive = listing.linkedAuctionStatus === 'ACTIVE';
+  const canPutOnAuction = listing.status === 'LIVE' && !hasLinkedAuction;
   return (
     <TouchableOpacity
       style={styles.listingCard}
@@ -458,6 +471,27 @@ const InventoryRow: React.FC<{ listing: Listing; onPress: (id: string) => void }
             </>
           )}
         </View>
+        {hasLinkedAuction ? (
+          <TouchableOpacity
+            style={[styles.rowCrossListChip, linkedAuctionLive && styles.rowCrossListChipLive]}
+            onPress={() => listing.linkedListingId && onOpenLinkedAuction?.(listing.linkedListingId)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="gavel" size={10} color={linkedAuctionLive ? Colors.accentGreen : Colors.textMuted} />
+            <Text style={[styles.rowCrossListChipText, linkedAuctionLive && { color: Colors.accentGreen }]}>
+              {linkedAuctionLive ? 'Linked auction — LIVE' : `Linked auction${listing.linkedAuctionStatus ? ` · ${listing.linkedAuctionStatus}` : ''}`}
+            </Text>
+          </TouchableOpacity>
+        ) : canPutOnAuction && onPutOnAuction ? (
+          <TouchableOpacity
+            style={styles.rowPutOnAuction}
+            onPress={() => onPutOnAuction(listing.id)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="gavel" size={10} color={Colors.accent} />
+            <Text style={styles.rowPutOnAuctionText}>Also list on auction</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {/* Chevron */}
@@ -543,7 +577,19 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
     finally { setLoading(false); setRefreshing(false); }
   };
 
-  useEffect(() => { fetchListings(); }, []);
+  // Refetch on every focus (initial mount + return-from-child, e.g. after
+  // editing a listing in SellCarFlow). Silent on returns so the whole screen
+  // doesn't blank out with a skeleton every time.
+  const isFirstInventoryFocus = useRef(true);
+  useFocusEffect(useCallback(() => {
+    if (isFirstInventoryFocus.current) {
+      fetchListings();
+      isFirstInventoryFocus.current = false;
+    } else {
+      fetchListings(true); // background refresh via refreshing spinner path
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []));
 
   // Stable id-keyed handler so InventoryRow's React.memo isn't busted by a fresh
   // closure every render (mobile-audit.md P4) — identity only changes when
@@ -554,9 +600,22 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
     const l = listings.find((x) => x.id === id);
     if (l) setSelectedListing(l);
   }, [listings]);
+  const handlePutOnAuction = useCallback((listingId: string) => {
+    navigation?.navigate('SellerAuctions', { preselectListingId: listingId });
+  }, [navigation]);
+  const handleOpenLinkedAuction = useCallback((linkedId: string) => {
+    navigation?.navigate('SellerAuctions', { preselectListingId: linkedId });
+  }, [navigation]);
   const renderInventoryRow = useCallback(
-    ({ item }: { item: Listing }) => <InventoryRow listing={item} onPress={handleRowPress} />,
-    [handleRowPress],
+    ({ item }: { item: Listing }) => (
+      <InventoryRow
+        listing={item}
+        onPress={handleRowPress}
+        onPutOnAuction={handlePutOnAuction}
+        onOpenLinkedAuction={handleOpenLinkedAuction}
+      />
+    ),
+    [handleRowPress, handlePutOnAuction, handleOpenLinkedAuction],
   );
   const renderInventoryGrid = useCallback(
     ({ item }: { item: Listing }) => <InventoryGridCard listing={item} onPress={handleRowPress} />,
@@ -926,6 +985,48 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size12,
     color: Colors.accent,
     marginLeft: 4,
+  },
+  rowCrossListChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    backgroundColor: Colors.whiteAlpha04,
+  },
+  rowCrossListChipLive: {
+    borderColor: Colors.accentGreen + '55',
+    backgroundColor: Colors.accentGreen + '15',
+  },
+  rowCrossListChipText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    letterSpacing: 0.3,
+    color: Colors.textMuted,
+  },
+  rowPutOnAuction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.accent + '55',
+    backgroundColor: Colors.accentAlpha10,
+  },
+  rowPutOnAuctionText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    letterSpacing: 0.3,
+    color: Colors.accent,
   },
   // Grid view — compact thumbnail-forward alternative to the row view
   // (mobile-ui-ux-audit.md §C9).

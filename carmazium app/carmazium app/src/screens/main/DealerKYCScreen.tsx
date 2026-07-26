@@ -400,6 +400,37 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
     // without re-entering any fields (createKycCheckoutSession is idempotent).
   };
 
+  // Re-triggers the £1 Stripe checkout for a PENDING-but-unpaid application
+  // without touching the saved form fields — used by the "Payment Outstanding"
+  // state below. Mirrors web's KycOverlayForm.tsx handleResumePayment.
+  const handleResumePayment = async () => {
+    setSubmitError(null);
+    setCheckoutLoading(true);
+    try {
+      const checkout = await apiClient<{ success: boolean; data: { url?: string; alreadyPaid: boolean; chargedAt?: string } }>(
+        '/dealers/kyc/checkout',
+        { method: 'POST' },
+      );
+      if (checkout.data?.alreadyPaid) {
+        setAlreadyPaid(true);
+        setPaidAt(checkout.data.chargedAt ?? null);
+        setExistingKyc((prev: any) => (prev ? { ...prev, stripeChargedAt: checkout.data.chargedAt ?? new Date().toISOString() } : prev));
+        haptics.success();
+        setCheckoutLoading(false);
+        return;
+      }
+      if (checkout.data?.url) {
+        setKycCheckoutUrl(checkout.data.url);
+        return; // WebView modal takes over; handleKycCheckoutSuccess/Cancel resets checkoutLoading
+      }
+      setSubmitError('Failed to start the payment. Please try again.');
+      setCheckoutLoading(false);
+    } catch (err: any) {
+      setSubmitError(err.message || 'Failed to start the payment. Please try again.');
+      setCheckoutLoading(false);
+    }
+  };
+
   // ── Loading state ───────────────────────────────────────────────────────────
   if (initialLoading) {
     return (
@@ -430,6 +461,11 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
   // behind this hard "Under Review" gate with no way to pay. Mirrors web's
   // KycOverlayForm.tsx identical gate.
   const isPending = (kycStatus === 'PENDING' || kycStatus === 'UNDER_REVIEW') && !!existingKyc?.stripeChargedAt;
+  // Distinct from isPending above: fields were saved on a previous visit but the
+  // dealer never completed (or cancelled, or was declined on) the £1 Stripe
+  // checkout. Must not look like a fresh, unstarted application — it's one tap
+  // away from being submitted. Mirrors web's KycOverlayForm.tsx identical gate.
+  const isPaymentOutstanding = kycStatus === 'PENDING' && !existingKyc?.stripeChargedAt;
 
   // ── Status banner config ────────────────────────────────────────────────────
   const getBannerConfig = () => {
@@ -487,8 +523,39 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
         <HamburgerButton />
       </View>
 
-      {/* PENDING STATE — replaces the form when under review */}
-      {isPending ? (
+      {/* PAYMENT OUTSTANDING STATE — details saved, £1 fee never cleared */}
+      {isPaymentOutstanding ? (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.scrollContent, { flexGrow: 1, justifyContent: 'center' }]}
+        >
+          <View style={styles.paymentOutstandingContainer}>
+            <View style={styles.paymentOutstandingIconCircle}>
+              <Ionicons name="lock-closed-outline" size={36} color={Colors.accent} />
+            </View>
+            <Text style={styles.pendingHeading}>Almost there — payment needed</Text>
+            <Text style={styles.pendingBody}>
+              Your details are saved — just complete the £1 verification payment. It looks like
+              your last attempt didn't go through (card declined, or the checkout page was closed
+              before it finished). No need to re-enter anything.
+            </Text>
+
+            {submitError ? (
+              <View style={{ width: '100%', marginTop: 4, marginBottom: 8 }}>
+                <ErrorBanner message={submitError} />
+              </View>
+            ) : null}
+
+            <PrimaryCTA
+              label={checkoutLoading ? 'REDIRECTING TO PAYMENT...' : 'COMPLETE PAYMENT (£1)'}
+              onPress={handleResumePayment}
+              isLoading={checkoutLoading}
+              disabled={checkoutLoading}
+              style={{ width: '100%', marginTop: 20 }}
+            />
+          </View>
+        </ScrollView>
+      ) : isPending ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
@@ -1011,6 +1078,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 40,
     paddingHorizontal: 20,
+  },
+  paymentOutstandingContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+  },
+  paymentOutstandingIconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: Colors.accentAlpha10,
+    borderWidth: 1,
+    borderColor: Colors.accentAlpha25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
   },
   pendingIconCircle: {
     width: 96,
