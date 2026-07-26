@@ -388,10 +388,10 @@ export default function AuctionHowItWorksPage() {
                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(237,28,36,0.08)_0%,transparent_70%)] pointer-events-none" />
                     <div className="relative">
                         <h2 className="text-2xl md:text-3xl font-black font-heading mb-6">Ready to turn your keys into cash?</h2>
-                        <Link href="/sell">
-                            <Button size="lg" shape="pill" className="px-10 shadow-neon group">
+                        <Link href="/sell" className="inline-block w-full sm:w-auto">
+                            <Button size="lg" shape="pill" className="w-full sm:w-auto px-6 sm:px-10 text-sm sm:text-lg shadow-neon group">
                                 List Your Car for Auction
-                                <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                <ArrowRight className="ml-2 w-4 h-4 shrink-0 group-hover:translate-x-1 transition-transform" />
                             </Button>
                         </Link>
                     </div>
