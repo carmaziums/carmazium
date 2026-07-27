@@ -33,29 +33,27 @@ export class ChatService {
             },
         });
 
-        if (existingRoom) {
-            return existingRoom;
+        // ChatRoom is unique per (initiatorId, participantId) pair — the same
+        // two users always get the same room, even across unrelated deals on
+        // different vehicles. `listingId` used to be frozen at whatever it
+        // was on the room's very first creation and silently ignored on every
+        // later findOrCreateRoom call, so a buyer/seller pair who transacted
+        // on a second vehicle would still see the first vehicle's title/image
+        // and (worse) have the auction-winner fee gate evaluated against the
+        // wrong, possibly already-settled auction. Re-point the room at the
+        // newly-referenced listing instead of leaving it stuck on the first one.
+        if (listingId) {
+            await this.assertCanReferenceListing(userId, listingId);
         }
 
-        // Gate auction rooms: the winner must have paid the £125 fee before chatting
-        if (listingId) {
-            const listing = await this.prisma.listing.findUnique({
-                where: { id: listingId },
-                select: {
-                    sellerId: true,
-                    type: true,
-                    auction: { select: { winnerId: true, buyerFeePaid: true } },
-                },
-            });
-
-            if (listing?.type === 'AUCTION' && listing.auction?.winnerId) {
-                const isWinner = listing.auction.winnerId === userId;
-                if (isWinner && !listing.auction.buyerFeePaid) {
-                    throw new ForbiddenException(
-                        'You must pay the £125 completion fee before messaging the seller.',
-                    );
-                }
+        if (existingRoom) {
+            if (listingId && listingId !== existingRoom.listingId) {
+                return this.prisma.chatRoom.update({
+                    where: { id: existingRoom.id },
+                    data: { listingId },
+                });
             }
+            return existingRoom;
         }
 
         // Create new room
@@ -66,6 +64,32 @@ export class ChatService {
                 listingId,
             },
         });
+    }
+
+    /**
+     * Gate auction rooms: the winner must have paid the £125 fee before
+     * chatting about that specific auction. Runs whenever a listingId is
+     * about to be attached to a room — both on first creation and when an
+     * existing room is being re-pointed at a new listing.
+     */
+    private async assertCanReferenceListing(userId: string, listingId: string): Promise<void> {
+        const listing = await this.prisma.listing.findUnique({
+            where: { id: listingId },
+            select: {
+                sellerId: true,
+                type: true,
+                auction: { select: { winnerId: true, buyerFeePaid: true } },
+            },
+        });
+
+        if (listing?.type === 'AUCTION' && listing.auction?.winnerId) {
+            const isWinner = listing.auction.winnerId === userId;
+            if (isWinner && !listing.auction.buyerFeePaid) {
+                throw new ForbiddenException(
+                    'You must pay the £125 completion fee before messaging the seller.',
+                );
+            }
+        }
     }
 
     /**
