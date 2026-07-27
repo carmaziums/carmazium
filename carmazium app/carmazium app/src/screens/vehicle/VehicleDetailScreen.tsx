@@ -694,11 +694,14 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {listing.make} {listing.model}
           </Text>
 
-          {/* Location row */}
-          <View style={styles.locationRow}>
-            <Ionicons name="location-outline" size={14} color={Colors.textFaint} />
-            <Text style={styles.locationText}>{listing.location}</Text>
-          </View>
+          {/* Location row — hidden entirely (not a dangling icon) when the
+              listing has no location, same pattern as GradeChip's null case */}
+          {!!listing.location && (
+            <View style={styles.locationRow}>
+              <Ionicons name="location-outline" size={14} color={Colors.textFaint} />
+              <Text style={styles.locationText}>{listing.location}</Text>
+            </View>
+          )}
 
           {/* Listing status warning banner — mirrors web's VehicleDetailPageClient
               behavior (SOLD is prominent red, DRAFT/PENDING_REVIEW/REJECTED show
@@ -2594,7 +2597,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 86,
+    minHeight: 86,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 24,

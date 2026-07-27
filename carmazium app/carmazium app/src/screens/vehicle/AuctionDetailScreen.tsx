@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Dimensions, StatusBar, TextInput, ActivityIndicator,
-  Share, Alert,
+  Share, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 // expo-image: caching/recycling for the hero auction photo (large, full-bleed,
 // shown on a screen users keep open while live-bidding).
@@ -706,7 +706,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <View style={s.container}>
+    // Wraps the whole screen (not just the bid console) so the sticky bottom
+    // bid input reliably clears the keyboard on first focus — react-native-screens
+    // hosts each stack screen in its own Android Fragment, which doesn't always
+    // pick up the Activity's adjustResize on the very first keyboard show
+    // (same fix already applied in ChatScreen.tsx for its message input bar).
+    <KeyboardAvoidingView style={s.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Anti-snipe floating toast */}
@@ -1632,7 +1637,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         )}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

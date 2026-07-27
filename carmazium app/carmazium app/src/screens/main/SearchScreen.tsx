@@ -1372,7 +1372,7 @@ const s = StyleSheet.create({
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgSecondary, borderRadius: 14, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, height: 52, gap: 10 },
   searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white },
 
-  quickScroll: { height: 48, marginBottom: 4 },
+  quickScroll: { minHeight: 48, marginBottom: 4 },
   quickRow: { paddingHorizontal: 24, gap: 10, alignItems: 'center', flexDirection: 'row' },
   quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
   quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },

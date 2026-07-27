@@ -277,6 +277,7 @@ const styles = StyleSheet.create({
     color: Colors.white,
   },
   bookmarkBtn: {
-    padding: 4,
+    width: 28,
+    height: 28,
   },
 });
