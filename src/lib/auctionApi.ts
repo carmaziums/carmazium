@@ -164,6 +164,16 @@ export async function getMyAuctions(): Promise<Auction[]> {
     return [];
 }
 
+export async function getWonAuctions(page = 1, limit = 50): Promise<Auction[]> {
+    const res = await apiClient<unknown>(`${API}/auctions/my/won?page=${page}&limit=${limit}`);
+    // Backend wraps in StandardResponse ({data:{data,total}}); older test envs return the array directly.
+    const r = res as { data?: { data?: Auction[] } | Auction[] } | Auction[];
+    if (Array.isArray(r)) return r;
+    if (r?.data && Array.isArray(r.data)) return r.data;
+    if (r?.data && "data" in r.data && Array.isArray(r.data.data)) return r.data.data;
+    return [];
+}
+
 export async function getAuction(id: string): Promise<Auction> {
     const res = await apiClient<{ data: Auction }>(`${API}/auctions/${id}`);
     return res.data;

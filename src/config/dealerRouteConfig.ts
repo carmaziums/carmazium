@@ -10,6 +10,7 @@ import {
     Users,
     Settings,
     Heart,
+    Trophy,
     LucideIcon
 } from "lucide-react"
 
@@ -106,6 +107,13 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Auctions",
         subHeader: "Manage live vehicle auctions & bidding",
         icon: Gavel
+    },
+    {
+        href: "/dashboard/dealer/auctions/won",
+        label: "Won Auctions",
+        title: "Won Auctions",
+        subHeader: "Everything you've won — track your handover from fee to completion",
+        icon: Trophy
     },
     {
         href: "/dashboard/dealer/wishlist",
