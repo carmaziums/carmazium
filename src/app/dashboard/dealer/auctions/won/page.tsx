@@ -5,177 +5,282 @@ import Link from "next/link"
 import Image from "next/image"
 import {
     Loader2, Trophy, Car, MessageSquare, CreditCard, CheckCircle2, XCircle,
-    Clock, FileSearch, ChevronRight, AlertTriangle, Gavel,
+    Clock, AlertTriangle, Gavel, Radio, TrendingUp,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { useAuth } from "@/context/AuthContext"
 import { getWonAuctions, type Auction } from "@/lib/auctionApi"
+import { getMyBids, type Bid } from "@/lib/listingApi"
 
-// ─── Status derivation ────────────────────────────────────────────────────────
+// This page is the single stop for everything about a dealer's auction bidding —
+// bids currently in play and every won auction's handover status — instead of
+// spreading that across a browse tab, individual auction pages, and a separate
+// wins list. One row shape, one clear button per row, ordered by what needs you
+// most urgently first.
+
+function formatCountdown(target: Date): string {
+    const diff = target.getTime() - Date.now()
+    if (diff <= 0) return "Ending now"
+    const h = Math.floor(diff / 3_600_000)
+    const m = Math.floor((diff % 3_600_000) / 60_000)
+    if (h > 24) return `${Math.floor(h / 24)}d ${h % 24}h left`
+    if (h > 0) return `${h}h ${m}m left`
+    return `${m}m left`
+}
+
+// ─── Handover status derivation ───────────────────────────────────────────────
 //
 // Each stage below maps 1:1 to backend state on the Auction row so a buyer can
 // always see exactly where they are in the flow they started when they won.
 
 type HandoverStage =
     | "fee_due"           // won but hasn't paid the £125 buyer fee yet
-    | "awaiting_seller"   // fee paid, seller hasn't uploaded handover proof
-    | "under_review"      // proof uploaded, admin hasn't reviewed
+    | "in_progress"       // fee paid, handover not yet verified (awaiting proof or under review)
     | "complete"          // admin approved, sellerBonusReleased = true
     | "denied"            // admin denied — refund on the way (or errored, admin alerted)
 
 function stageFor(a: Auction): HandoverStage {
     if (!a.buyerFeePaid) return "fee_due"
     if (a.sellerBonusReleased) return "complete"
-    // Denial clears handoverProofUrl AND handoverSubmittedAt. If those are null
-    // but the buyer fee was paid, we're back in "awaiting seller" or "denied".
-    // The two are only distinguishable by whether a stripeRefundError was set
-    // (kept on the record for admin visibility). Absent that, treat missing
-    // proof-after-fee as awaiting seller — same practical UX for the buyer.
-    if (a.handoverSubmittedAt) return "under_review"
-    return "awaiting_seller"
+    return "in_progress"
 }
 
 const STAGE_LABELS: Record<HandoverStage, { label: string; hint: string; icon: React.ComponentType<{ size?: number; className?: string }>; tint: string }> = {
     fee_due: {
-        label: "£125 fee due",
-        hint: "Pay to unlock messaging & handover.",
+        label: "Payment needed",
+        hint: "Pay the £125 fee to unlock messaging with the seller and start the handover.",
         icon: CreditCard,
         tint: "bg-amber-500/10 text-amber-400 border-amber-500/25",
     },
-    awaiting_seller: {
-        label: "Awaiting seller proof",
-        hint: "Seller has to submit handover proof — you can chat while you wait.",
+    in_progress: {
+        label: "Handover in progress",
+        hint: "You can message the seller now. We'll update this once they submit proof of handover.",
         icon: Clock,
         tint: "bg-blue-500/10 text-blue-400 border-blue-500/25",
     },
-    under_review: {
-        label: "Under review",
-        hint: "Seller has submitted handover proof. Our team is reviewing it.",
-        icon: FileSearch,
-        tint: "bg-violet-500/10 text-violet-400 border-violet-500/25",
-    },
     complete: {
-        label: "Handover complete",
-        hint: "Verified and closed. The seller has been paid the £100 bonus.",
+        label: "All done",
+        hint: "Handover verified and closed.",
         icon: CheckCircle2,
         tint: "bg-emerald-500/10 text-emerald-400 border-emerald-500/25",
     },
     denied: {
-        label: "Denied — refund on the way",
-        hint: "The submitted proof wasn't accepted. £100 of your fee is being refunded.",
+        label: "Refund in progress",
+        hint: "The submitted proof wasn't accepted. £100 of your £125 fee is being refunded to you.",
         icon: XCircle,
         tint: "bg-red-500/10 text-red-400 border-red-500/25",
     },
 }
 
-// ─── Row ──────────────────────────────────────────────────────────────────────
+// ─── Shared row shell — every section uses this same shape ───────────────────
 
-function WonAuctionRow({ auction }: { auction: Auction }) {
-    const l = auction.listing
-    const stage = stageFor(auction)
-    const s = STAGE_LABELS[stage]
-    const winAmount = Number(auction.winningBidAmount ?? 0)
-    const image = l.images?.[0] ?? "/assets/images/hero-bg.png"
-    const seller = l.seller
-    const sellerName = seller?.dealerProfile?.companyName
-        || `${seller?.firstName ?? ""} ${seller?.lastName ?? ""}`.trim()
-        || "Seller"
-
+function Row({
+    image, title, meta, badge, hint, rightLabel, rightValue, rightValueClass, cta,
+}: {
+    image: string
+    title: string
+    meta: React.ReactNode
+    badge: { label: string; icon: React.ComponentType<{ size?: number; className?: string }>; tint: string }
+    hint: string
+    rightLabel: string
+    rightValue: string
+    rightValueClass: string
+    cta: React.ReactNode
+}) {
     return (
         <div className="dealer-glass-card p-4 md:p-5">
             <div className="flex flex-col md:flex-row md:items-center gap-4">
-                {/* Image */}
                 <div className="relative w-full md:w-40 h-32 md:h-24 rounded-xl overflow-hidden shrink-0 bg-black/30">
-                    <Image src={image} alt={l.title} fill sizes="(max-width: 768px) 100vw, 160px" className="object-cover" />
+                    <Image src={image} alt={title} fill sizes="(max-width: 768px) 100vw, 160px" className="object-cover" />
                 </div>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
-                    <p className="text-base font-black text-[var(--text-primary)] truncate">{l.title}</p>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--text-muted)] mt-1">
-                        {l.year && <span className="font-bold">{l.year}</span>}
-                        {l.mileage != null && <span>{Number(l.mileage).toLocaleString()} mi</span>}
-                        <span className="opacity-40">·</span>
-                        <span>Sold by <span className="text-[var(--text-primary)] font-bold">{sellerName}</span></span>
-                    </div>
+                    <p className="text-lg font-black text-[var(--text-primary)] truncate">{title}</p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--text-muted)] mt-1">{meta}</div>
 
-                    {/* Stage + hint */}
                     <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border ${s.tint}`}>
-                            <s.icon size={11} /> {s.label}
+                        <span className={`inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border ${badge.tint}`}>
+                            <badge.icon size={12} /> {badge.label}
                         </span>
-                        <span className="text-xs text-[var(--text-muted)]">{s.hint}</span>
                     </div>
+                    <p className="text-sm text-[var(--text-muted)] mt-2 max-w-xl leading-relaxed">{hint}</p>
                 </div>
 
-                {/* Amounts + CTA */}
-                <div className="flex md:flex-col items-end md:items-end justify-between md:justify-center gap-2 shrink-0 md:w-56">
+                <div className="flex md:flex-col items-end md:items-end justify-between md:justify-center gap-3 shrink-0 md:w-56">
                     <div className="text-right">
-                        <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Winning bid</p>
-                        <p className="text-lg font-black text-amber-400">£{winAmount.toLocaleString()}</p>
+                        <p className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">{rightLabel}</p>
+                        <p className={`text-xl font-black ${rightValueClass}`}>{rightValue}</p>
                     </div>
-
-                    {stage === "fee_due" ? (
-                        <Link
-                            href={`/checkout?listing_id=${auction.listingId}&mode=auction_fee`}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-black transition-colors"
-                        >
-                            <CreditCard size={12} /> Pay £125 Fee
-                        </Link>
-                    ) : (
-                        <Link
-                            href={`/auctions/won/${auction.id}`}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--border-default)] text-[var(--text-primary)] text-xs font-bold hover:bg-primary/5 dark:hover:bg-white/5 transition-colors"
-                        >
-                            <MessageSquare size={12} /> Open Handover
-                            <ChevronRight size={12} />
-                        </Link>
-                    )}
+                    {cta}
                 </div>
             </div>
         </div>
     )
 }
 
+function PrimaryButton({ href, icon: Icon, children }: { href: string; icon: React.ComponentType<{ size?: number }>; children: React.ReactNode }) {
+    return (
+        <Link
+            href={href}
+            className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary hover:bg-red-600 text-white text-sm font-black transition-colors w-full md:w-auto"
+        >
+            <Icon size={15} /> {children}
+        </Link>
+    )
+}
+
+function SecondaryButton({ href, icon: Icon, children }: { href: string; icon: React.ComponentType<{ size?: number }>; children: React.ReactNode }) {
+    return (
+        <Link
+            href={href}
+            className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-[var(--border-default)] text-[var(--text-primary)] text-sm font-bold hover:bg-primary/5 dark:hover:bg-white/5 transition-colors w-full md:w-auto"
+        >
+            <Icon size={15} /> {children}
+        </Link>
+    )
+}
+
+// ─── Section 1: Won auctions, grouped by handover stage ───────────────────────
+
+function WonAuctionRow({ auction }: { auction: Auction }) {
+    const l = auction.listing
+    const stage = stageFor(auction)
+    const s = STAGE_LABELS[stage]
+    const winAmount = Number(auction.winningBidAmount ?? 0)
+    const seller = l.seller
+    const sellerName = seller?.dealerProfile?.companyName
+        || `${seller?.firstName ?? ""} ${seller?.lastName ?? ""}`.trim()
+        || "the seller"
+
+    return (
+        <Row
+            image={l.images?.[0] ?? "/assets/images/hero-bg.png"}
+            title={l.title}
+            meta={<>
+                {l.year && <span className="font-bold">{l.year}</span>}
+                {l.mileage != null && <span>{Number(l.mileage).toLocaleString()} mi</span>}
+                <span className="opacity-40">·</span>
+                <span>Sold by <span className="text-[var(--text-primary)] font-bold">{sellerName}</span></span>
+            </>}
+            badge={s}
+            hint={s.hint}
+            rightLabel="Winning bid"
+            rightValue={`£${winAmount.toLocaleString()}`}
+            rightValueClass="text-amber-400"
+            cta={
+                stage === "fee_due" ? (
+                    <PrimaryButton href={`/checkout?listing_id=${auction.listingId}&mode=auction_fee`} icon={CreditCard}>
+                        Pay the £125 fee
+                    </PrimaryButton>
+                ) : (
+                    <SecondaryButton href={`/auctions/won/${auction.id}`} icon={MessageSquare}>
+                        Open handover
+                    </SecondaryButton>
+                )
+            }
+        />
+    )
+}
+
+// ─── Section 2: Live auctions currently being bid on ──────────────────────────
+
+function ActiveBidRow({ bid, tick }: { bid: Bid; tick: number }) {
+    const l = bid.listing
+    const auction = l.auction!
+    void tick // re-renders the countdown text every second without changing its own state
+    const timeLeft = formatCountdown(new Date(auction.endTime))
+    const badge = bid.isWinning
+        ? { label: "You're winning", icon: TrendingUp, tint: "bg-emerald-500/10 text-emerald-400 border-emerald-500/25" }
+        : { label: "You've been outbid", icon: Radio, tint: "bg-amber-500/10 text-amber-400 border-amber-500/25" }
+
+    return (
+        <Row
+            image={l.images?.[0] ?? "/assets/images/hero-bg.png"}
+            title={l.title}
+            meta={<>
+                {l.year && <span className="font-bold">{l.year}</span>}
+                <span className="opacity-40">·</span>
+                <span className="flex items-center gap-1"><Clock size={11} /> {timeLeft}</span>
+            </>}
+            badge={badge}
+            hint={bid.isWinning
+                ? "You're currently the highest bidder. We'll notify you the moment someone else bids."
+                : "Someone else has placed a higher bid. Go back to the auction to bid again before time runs out."}
+            rightLabel="Your bid"
+            rightValue={`£${Number(bid.amount).toLocaleString()}`}
+            rightValueClass={bid.isWinning ? "text-emerald-400" : "text-amber-400"}
+            cta={
+                bid.isWinning ? (
+                    <SecondaryButton href={`/auctions/live/${auction.id}`} icon={Gavel}>
+                        View auction
+                    </SecondaryButton>
+                ) : (
+                    <PrimaryButton href={`/auctions/live/${auction.id}`} icon={Gavel}>
+                        Bid again
+                    </PrimaryButton>
+                )
+            }
+        />
+    )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function WonAuctionsPage() {
+export default function MyBidsPage() {
     const { user, loading: authLoading } = useAuth()
-    const [auctions, setAuctions] = React.useState<Auction[] | null>(null)
+    const [wonAuctions, setWonAuctions] = React.useState<Auction[] | null>(null)
+    const [activeBids, setActiveBids] = React.useState<Bid[] | null>(null)
     const [loadError, setLoadError] = React.useState<string | null>(null)
+    const [tick, setTick] = React.useState(0)
 
     React.useEffect(() => {
         if (authLoading || !user) return
-        getWonAuctions()
-            .then(setAuctions)
-            .catch(() => setLoadError("Couldn't load your won auctions."))
+        Promise.all([getWonAuctions(), getMyBids(1, 50)])
+            .then(([won, bidsRes]) => {
+                setWonAuctions(won)
+                // One row per auction, not per bid — keep only their latest bid on
+                // each auction that's still ACTIVE (already-ended auctions surface
+                // through wonAuctions instead, so no duplicate rows).
+                const seen = new Set<string>()
+                const active: Bid[] = []
+                for (const b of bidsRes.data ?? []) {
+                    if (b.listing.auction?.status !== "ACTIVE") continue
+                    if (seen.has(b.listingId)) continue
+                    seen.add(b.listingId)
+                    active.push(b)
+                }
+                setActiveBids(active)
+            })
+            .catch(() => setLoadError("Couldn't load your bids and wins."))
     }, [authLoading, user])
 
-    const grouped = React.useMemo(() => {
-        if (!auctions) return null
-        const buckets: Record<HandoverStage, Auction[]> = {
-            fee_due: [],
-            awaiting_seller: [],
-            under_review: [],
-            complete: [],
-            denied: [],
-        }
-        for (const a of auctions) buckets[stageFor(a)].push(a)
-        return buckets
-    }, [auctions])
+    // Tick every 30s so "2h 14m left" style countdowns stay roughly current
+    // without a per-second re-render cost on a list page.
+    React.useEffect(() => {
+        const id = setInterval(() => setTick(t => t + 1), 30_000)
+        return () => clearInterval(id)
+    }, [])
 
-    const isLoading = authLoading || auctions === null
-    const isEmpty = !isLoading && !loadError && auctions !== null && auctions.length === 0
+    const grouped = React.useMemo(() => {
+        if (!wonAuctions) return null
+        const buckets: Record<HandoverStage, Auction[]> = { fee_due: [], in_progress: [], complete: [], denied: [] }
+        for (const a of wonAuctions) buckets[stageFor(a)].push(a)
+        return buckets
+    }, [wonAuctions])
+
+    const isLoading = authLoading || wonAuctions === null || activeBids === null
+    const isEmpty = !isLoading && !loadError && wonAuctions !== null && activeBids !== null
+        && wonAuctions.length === 0 && activeBids.length === 0
 
     return (
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" />
-                <main className="flex-1 space-y-6">
+                <main className="flex-1 space-y-8">
                     <PageHeader
-                        title="Won Auctions"
-                        subHeader="Everything you've won — track your handover from fee to completion"
+                        title="My Bids"
+                        subHeader="Every auction you're bidding on or have won, and exactly what to do next"
                     />
 
                     {isLoading ? (
@@ -193,48 +298,93 @@ export default function WonAuctionsPage() {
                                 <Trophy size={22} className="text-[var(--text-muted)]" />
                             </div>
                             <div>
-                                <p className="text-base font-black text-[var(--text-primary)]">No wins yet</p>
+                                <p className="text-base font-black text-[var(--text-primary)]">You haven&apos;t placed a bid yet</p>
                                 <p className="text-sm text-[var(--text-muted)] mt-1 max-w-md">
-                                    Auctions you win will show up here with your handover status —
-                                    fee due, awaiting seller proof, under review, or complete.
+                                    Once you bid on a live auction, it&apos;ll show up here — and if you win,
+                                    you&apos;ll see exactly what to do next to complete the handover.
                                 </p>
                             </div>
                             <Link
                                 href="/auctions"
-                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm font-bold hover:border-primary/40 hover:text-primary transition-colors"
+                                className="inline-flex items-center gap-1.5 px-5 py-3 rounded-xl bg-primary hover:bg-red-600 text-white text-sm font-black transition-colors"
                             >
-                                <Gavel size={13} /> Browse live auctions
+                                <Gavel size={14} /> Browse live auctions
                             </Link>
                         </div>
                     ) : (
-                        <div className="space-y-8">
-                            {(["fee_due", "under_review", "awaiting_seller", "complete", "denied"] as HandoverStage[]).map((stage) => {
-                                const list = grouped?.[stage] ?? []
-                                if (list.length === 0) return null
-                                const s = STAGE_LABELS[stage]
-                                return (
-                                    <section key={stage}>
-                                        <div className="flex items-baseline justify-between mb-3 px-1">
-                                            <div className="flex items-center gap-2">
-                                                <s.icon size={13} className={s.tint.split(" ")[1]} />
-                                                <h2 className="text-xs font-black uppercase tracking-widest">{s.label}</h2>
-                                            </div>
-                                            <span className="text-xs text-[var(--text-muted)] font-bold">{list.length}</span>
-                                        </div>
-                                        <div className="space-y-3">
-                                            {list.map(a => <WonAuctionRow key={a.id} auction={a} />)}
-                                        </div>
-                                    </section>
-                                )
-                            })}
+                        <div className="space-y-10">
+                            {/* 1. Fee due — most urgent, always first */}
+                            {grouped && grouped.fee_due.length > 0 && (
+                                <section>
+                                    <div className="flex items-baseline justify-between mb-3 px-1">
+                                        <h2 className="text-sm font-black uppercase tracking-widest">Needs your attention</h2>
+                                        <span className="text-sm text-[var(--text-muted)] font-bold">{grouped.fee_due.length}</span>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {grouped.fee_due.map(a => <WonAuctionRow key={a.id} auction={a} />)}
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* 2. Currently bidding */}
+                            {activeBids && activeBids.length > 0 && (
+                                <section>
+                                    <div className="flex items-baseline justify-between mb-3 px-1">
+                                        <h2 className="text-sm font-black uppercase tracking-widest">Auctions you&apos;re bidding on</h2>
+                                        <span className="text-sm text-[var(--text-muted)] font-bold">{activeBids.length}</span>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {activeBids.map(b => <ActiveBidRow key={b.listingId} bid={b} tick={tick} />)}
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* 3. Handover in progress */}
+                            {grouped && grouped.in_progress.length > 0 && (
+                                <section>
+                                    <div className="flex items-baseline justify-between mb-3 px-1">
+                                        <h2 className="text-sm font-black uppercase tracking-widest">Handover in progress</h2>
+                                        <span className="text-sm text-[var(--text-muted)] font-bold">{grouped.in_progress.length}</span>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {grouped.in_progress.map(a => <WonAuctionRow key={a.id} auction={a} />)}
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* 4. Refund in progress */}
+                            {grouped && grouped.denied.length > 0 && (
+                                <section>
+                                    <div className="flex items-baseline justify-between mb-3 px-1">
+                                        <h2 className="text-sm font-black uppercase tracking-widest">Refund in progress</h2>
+                                        <span className="text-sm text-[var(--text-muted)] font-bold">{grouped.denied.length}</span>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {grouped.denied.map(a => <WonAuctionRow key={a.id} auction={a} />)}
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* 5. Completed — deprioritized, at the bottom */}
+                            {grouped && grouped.complete.length > 0 && (
+                                <section>
+                                    <div className="flex items-baseline justify-between mb-3 px-1">
+                                        <h2 className="text-sm font-black uppercase tracking-widest text-[var(--text-muted)]">Completed</h2>
+                                        <span className="text-sm text-[var(--text-muted)] font-bold">{grouped.complete.length}</span>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {grouped.complete.map(a => <WonAuctionRow key={a.id} auction={a} />)}
+                                    </div>
+                                </section>
+                            )}
                         </div>
                     )}
 
                     {/* Legend / footnote */}
-                    {auctions && auctions.length > 0 && (
-                        <div className="dealer-glass-card p-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] text-[var(--text-muted)]">
-                            <span className="flex items-center gap-1.5"><Car size={12} /> Winning bid is paid directly to the seller, not through Carmazium.</span>
-                            <span className="flex items-center gap-1.5"><CreditCard size={12} /> £125 buyer fee is Carmazium&apos;s fee — refundable up to £100 if handover is denied.</span>
+                    {!isEmpty && !isLoading && !loadError && (
+                        <div className="dealer-glass-card p-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[var(--text-muted)]">
+                            <span className="flex items-center gap-1.5"><Car size={13} /> The winning bid itself is paid directly to the seller, not through Carmazium.</span>
+                            <span className="flex items-center gap-1.5"><CreditCard size={13} /> The £125 buyer fee is Carmazium&apos;s fee — up to £100 of it is refunded if handover is denied.</span>
                         </div>
                     )}
                 </main>

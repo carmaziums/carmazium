@@ -110,9 +110,9 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/dealer/auctions/won",
-        label: "Won Auctions",
-        title: "Won Auctions",
-        subHeader: "Everything you've won — track your handover from fee to completion",
+        label: "My Bids",
+        title: "My Bids",
+        subHeader: "Every auction you're bidding on or have won, and exactly what to do next",
         icon: Trophy
     },
     {

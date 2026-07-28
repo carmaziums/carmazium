@@ -722,43 +722,43 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             <p className="text-[var(--text-muted)] text-xs">Winning bid: <span className="text-[var(--text-primary)] font-bold">£{Number(endedPayload?.winningBidAmount).toLocaleString()}</span></p>
                                         </div>
                                     </div>
-                                    {/* Buyer fee + chat actions */}
+                                    {/* Buyer fee + chat — one clear action at a time: pay first, then message */}
                                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
-                                        <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs">
-                                            <p className="text-amber-400 font-black text-[10px] uppercase tracking-widest mb-0.5">Buyer Fee Due</p>
-                                            <div className="flex items-baseline gap-1">
-                                                <span className="text-[var(--text-primary)] font-black text-base">£125</span>
+                                        {!auction.buyerFeePaid && (
+                                            <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs">
+                                                <p className="text-amber-400 font-black text-[10px] uppercase tracking-widest mb-0.5">Buyer Fee Due</p>
+                                                <div className="flex items-baseline gap-1">
+                                                    <span className="text-[var(--text-primary)] font-black text-base">£125</span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="flex flex-col gap-1.5">
+                                        )}
+                                        {!auction.buyerFeePaid ? (
                                             <Link href={`/checkout?listing_id=${auction.listingId}&mode=auction_fee`}>
-                                                <Button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black text-xs h-9 flex items-center gap-1.5">
-                                                    <CreditCard size={13} /> Pay £125 Fee
+                                                <Button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black text-sm h-11 flex items-center gap-1.5">
+                                                    <CreditCard size={14} /> Pay the £125 fee
                                                 </Button>
                                             </Link>
+                                        ) : (
                                             <Button
-                                                variant="outline"
-                                                className="w-full border-[var(--border-default)] text-[var(--text-muted)] font-bold text-xs h-9 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-                                                disabled={connectingChat || !auction.buyerFeePaid}
-                                                title={!auction.buyerFeePaid ? 'Pay the £125 fee first to unlock messaging' : undefined}
+                                                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm h-11 flex items-center gap-1.5"
+                                                disabled={connectingChat}
                                                 onClick={async () => {
                                                     const sellerId = auction.listing.sellerId
-                                                    if (!sellerId || !auction.buyerFeePaid) return
+                                                    if (!sellerId) return
                                                     setConnectingChat(true)
                                                     try {
                                                         const room = await createChatRoom(sellerId, auction.listingId)
-                                                        window.location.href = `/dashboard/buyer/messages?room=${room.id}`
+                                                        window.location.href = `/dashboard/dealer/messages?room=${room.id}`
                                                     } catch {
-                                                        window.location.href = "/dashboard/buyer/messages"
+                                                        window.location.href = "/dashboard/dealer/messages"
                                                     } finally {
                                                         setConnectingChat(false)
                                                     }
                                                 }}
                                             >
-                                                <MessageSquare size={13} />
-                                                {auction.buyerFeePaid ? 'Message Seller' : 'Pay Fee to Chat'}
+                                                <MessageSquare size={14} /> Message seller
                                             </Button>
-                                        </div>
+                                        )}
                                     </div>
                                 </>
                             ) : endedPayload?.reserveMet === false ? (
@@ -1409,9 +1409,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                     {userWon ? "You won! 🏆" : "Auction Ended"}
                                 </p>
                                 {userWon && (
-                                    <Link href="/dashboard/buyer/messages">
+                                    <Link href="/dashboard/dealer/auctions/won">
                                         <Button className="w-full mt-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs h-10 flex items-center gap-2">
-                                            <MessageSquare size={13} /> Message Seller
+                                            <Trophy size={13} /> View in My Bids
                                         </Button>
                                     </Link>
                                 )}
