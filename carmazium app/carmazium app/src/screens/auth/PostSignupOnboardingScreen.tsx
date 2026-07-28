@@ -5,8 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StatusBar,
   ActivityIndicator,
@@ -20,6 +18,7 @@ import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
+import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Logo } from '../../components/Logo';
 
 type Step = 0 | 1 | 2 | 3;
@@ -335,10 +334,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.flex}
-      >
+      <KeyboardStickyView behavior="padding" style={styles.flex}>
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
@@ -625,7 +621,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
 
           <View style={styles.bottomSpacer} />
         </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardStickyView>
     </View>
   );
 };

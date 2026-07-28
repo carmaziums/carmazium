@@ -139,7 +139,12 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
         case 'OFFER_RECEIVED':
         case 'OFFER_COUNTERED':
-          if (role === 'seller' || role === 'dealer') {
+          // Dealers have their own "Direct Offers" screen/endpoint — routing
+          // them to SellerOffers (a different data source scoped to individual
+          // sellers) landed on a screen with no matching data at all.
+          if (role === 'dealer') {
+            navigation?.navigate('DealerOffers');
+          } else if (role === 'seller') {
             navigation?.navigate('SellerOffers');
           } else {
             navigation?.navigate('BuyerOffers');
@@ -153,7 +158,11 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
           break;
 
         case 'DEAL_CLOSED':
-          navigation?.navigate('SellerOffers');
+          if (role === 'dealer') {
+            navigation?.navigate('DealerOffers');
+          } else {
+            navigation?.navigate('SellerOffers');
+          }
           break;
 
         case 'PAYOUT_FAILED':

@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
   FlatList,
-  KeyboardAvoidingView,
   Platform,
   RefreshControl,
   ScrollView,
@@ -18,11 +17,13 @@ import {
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { CounterLedger } from '../../components/offers/CounterLedger';
 import { haptics } from '../../lib/haptics';
 import {
@@ -220,9 +221,20 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
     }
   }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  // Refetch on every focus (not just mount) — a notification tap that lands
+  // on an already-mounted screen instance was showing stale/empty data
+  // because this only ever ran once on the initial mount.
+  const isFirstOffersFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstOffersFocus.current) {
+        fetchData();
+        isFirstOffersFocus.current = false;
+      } else {
+        fetchData(true);
+      }
+    }, [fetchData]),
+  );
 
   // ─────────────── actions ────────────────
 
@@ -459,6 +471,17 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
     const isActioning = actionLoading === offer.id;
     const listingTitle = offer.listing?.title ?? 'Vehicle listing';
     const isCountered = offer.status === 'COUNTERED';
+    // Matches web's isBuyerTurn (dashboard/user/page.tsx) — a COUNTERED offer
+    // only needs the buyer's response when the SELLER made the last counter.
+    // Previously this screen showed live Decline/Accept/Counter Back buttons
+    // for every COUNTERED offer regardless of whose turn it was — right
+    // after the buyer counters back, the offer is still COUNTERED, so the
+    // buyer could tap Accept/Decline/Counter-Back again and hit the
+    // backend's "Awaiting the seller's response to your previous counter."
+    // 400 instead of the buttons being hidden proactively.
+    const isBuyerTurn = isCountered && offer.lastCounteredBy === 'SELLER';
+    // Backend rejects a 6th buyer counter (offers.service.ts respondToCounterOffer).
+    const buyerCounterLocked = (offer.counterAttemptsBuyer ?? 0) >= 5;
     // Canonical counter amount from the seller (fall back to legacy field for old records)
     const displayedCounter = offer.sellerCounterAmount ?? offer.counterAmount ?? null;
     const counterDiff =
@@ -603,9 +626,24 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
           </>
         )}
 
-        {/* Actions: COUNTERED — decline / accept / counter back */}
-        {isCountered && (
+        {/* Info-only state: buyer already countered, awaiting the seller —
+            mirrors SellerOffersScreen.tsx's "Counter sent" chip. */}
+        {isCountered && !isBuyerTurn && (
+          <View style={styles.counterSentChip}>
+            <Ionicons name="time-outline" size={12} color={Colors.infoBlue} />
+            <Text style={styles.counterSentText}>Counter sent — awaiting seller response</Text>
+          </View>
+        )}
+
+        {/* Actions: COUNTERED + seller's turn ended (isBuyerTurn) — decline / accept / counter back */}
+        {isBuyerTurn && (
           <>
+            {buyerCounterLocked && (
+              <View style={styles.counterLockedBanner}>
+                <Ionicons name="lock-closed-outline" size={12} color={Colors.warning} />
+                <Text style={styles.counterLockedText}>Counter limit reached — Accept or Decline.</Text>
+              </View>
+            )}
             {/* Primary row: Decline + Accept */}
             <View style={styles.actionsRow}>
               <TouchableOpacity
@@ -630,8 +668,8 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
               </TouchableOpacity>
             </View>
 
-            {/* Counter-back button — visible when expand is closed */}
-            {counterBackOfferId !== offer.id && (
+            {/* Counter-back button — visible when expand is closed and buyer hasn't hit the limit */}
+            {counterBackOfferId !== offer.id && !buyerCounterLocked && (
               <TouchableOpacity
                 style={[styles.actionBtn, styles.actionBtnCounterBack]}
                 activeOpacity={0.75}
@@ -863,12 +901,12 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
 
       {/* ── Content ── */}
       {/* Cards below have inline (non-modal) counter-back and delivery-address
-          TextInputs — wrapping the list in KeyboardAvoidingView keeps whichever
-          card is expanded from being covered by the keyboard, matching the
-          avoidKeyboard behavior BottomSheet gives every modal-based input. */}
-      <KeyboardAvoidingView
+          TextInputs — wrapping the list keeps whichever card is expanded from
+          being covered by the keyboard, matching the avoidKeyboard behavior
+          BottomSheet gives every modal-based input. */}
+      <KeyboardStickyView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
         keyboardVerticalOffset={insets.top}
       >
         {loading || (offers.length === 0 && !error) ? (
@@ -912,7 +950,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
             ListFooterComponent={<View style={{ height: 40 }} />}
           />
         )}
-      </KeyboardAvoidingView>
+      </KeyboardStickyView>
     </View>
   );
 };
@@ -1138,6 +1176,41 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size12,
     color: Colors.textSecondary,
+  },
+  counterSentChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.infoBlueAlpha10,
+    borderWidth: 1,
+    borderColor: Colors.infoBlueAlpha25,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  counterSentText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.infoBlue,
+  },
+  counterLockedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.warningAlpha10,
+    borderWidth: 1,
+    borderColor: Colors.warningAlpha30,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  counterLockedText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.warning,
   },
   actionBtnDeclineCounter: {
     flex: 1,

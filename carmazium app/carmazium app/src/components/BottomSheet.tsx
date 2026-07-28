@@ -20,6 +20,7 @@ import Animated, {
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 
 import { IconButton } from './IconButton';
 // Shared bottom-sheet shell. Before this component, every modal in the app
@@ -72,6 +73,9 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const translateY = useSharedValue(0);
+  // See useKeyboardHeight.ts — Android-only; iOS keeps the native
+  // KeyboardAvoidingView path below, which already works reliably there.
+  const androidKeyboardHeight = useKeyboardHeight();
 
   // Reset drag position on every fresh open — otherwise re-opening after a
   // drag-dismiss would start the sheet already translated off-screen.
@@ -139,16 +143,24 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
           ternary) would create a new component identity on every render,
           forcing React to unmount/remount the whole subtree — including any
           focused TextInput — on every keystroke from a sibling field. */}
-      {avoidKeyboard ? (
-        // RN's Modal opens a separate native Window on Android that the
-        // Activity's automatic keyboard-resize handling doesn't reach, so
-        // KeyboardAvoidingView must actively shrink content itself here —
-        // 'height' (not the no-op `undefined`) is required on Android.
-        <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      {avoidKeyboard && Platform.OS === 'ios' ? (
+        // RN's Modal opens a separate native Window that the Activity's
+        // automatic keyboard-resize handling doesn't reach, so something
+        // has to actively shrink content here. iOS's KeyboardAvoidingView
+        // already does this reliably.
+        <KeyboardAvoidingView style={styles.overlay} behavior="padding">
           {sheetContent}
         </KeyboardAvoidingView>
       ) : (
-        <View style={styles.overlay}>{sheetContent}</View>
+        // Android: KeyboardAvoidingView computes its shift from a view frame
+        // captured on layout, which races with react-native-screens' Fragment
+        // inset delivery under the edge-to-edge display Expo SDK 54 forces on
+        // — that race is exactly the "covers the field, fixed after you back
+        // out and back in" bug. Driving paddingBottom straight off the native
+        // keyboard-show event sidesteps the race entirely.
+        <View style={[styles.overlay, avoidKeyboard && { paddingBottom: androidKeyboardHeight }]}>
+          {sheetContent}
+        </View>
       )}
     </Modal>
   );

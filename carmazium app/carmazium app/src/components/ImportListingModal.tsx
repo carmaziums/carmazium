@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -22,6 +21,7 @@ import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
 import { haptics } from '../lib/haptics';
 import { previewImport, importFromUrl, type ScrapedListingPreview } from '../lib/listingsApi';
+import { KeyboardStickyView } from './KeyboardStickyView';
 import { createPaymentSheet } from '../lib/paymentsApi';
 
 import { IconButton } from './IconButton';
@@ -276,10 +276,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
           ))}
         </View>
 
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
+        <KeyboardStickyView style={{ flex: 1 }} behavior="padding">
           {/* ── STEP 1 — URL Input ── */}
           {step === 1 && (
             <ScrollView
@@ -524,7 +521,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
               </TouchableOpacity>
             </ScrollView>
           )}
-        </KeyboardAvoidingView>
+        </KeyboardStickyView>
       </View>
     </Modal>
   );

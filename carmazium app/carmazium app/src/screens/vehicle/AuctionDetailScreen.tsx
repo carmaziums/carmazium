@@ -20,6 +20,7 @@ import Animated, {
   cancelAnimation,
   interpolateColor,
 } from 'react-native-reanimated';
+import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
@@ -125,6 +126,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { listing } = route.params;
   const listingObj = listing as any;
   const insets = useSafeAreaInsets();
+  // See useKeyboardHeight.ts — Android-only; iOS keeps the native
+  // KeyboardAvoidingView path below, which already works reliably there.
+  const androidKeyboardHeight = useKeyboardHeight();
   const { user: currentUser, role } = useAuthStore();
 
   // ── Auction state ──
@@ -705,13 +709,18 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
+  // Wraps the whole screen (not just the bid console) so the sticky bottom
+  // bid input reliably clears the keyboard on first focus. iOS keeps the
+  // native KeyboardAvoidingView path; Android drives its shift from
+  // androidKeyboardHeight instead (see useKeyboardHeight.ts — same fix
+  // applied in ChatScreen.tsx for its message input bar).
+  const ScreenWrapper = Platform.OS === 'ios' ? KeyboardAvoidingView : View;
+  const screenWrapperProps = Platform.OS === 'ios'
+    ? { style: s.container, behavior: 'padding' as const }
+    : { style: [s.container, { marginBottom: androidKeyboardHeight }] };
+
   return (
-    // Wraps the whole screen (not just the bid console) so the sticky bottom
-    // bid input reliably clears the keyboard on first focus — react-native-screens
-    // hosts each stack screen in its own Android Fragment, which doesn't always
-    // pick up the Activity's adjustResize on the very first keyboard show
-    // (same fix already applied in ChatScreen.tsx for its message input bar).
-    <KeyboardAvoidingView style={s.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScreenWrapper {...screenWrapperProps}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Anti-snipe floating toast */}
@@ -1637,7 +1646,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         )}
       </View>
-    </KeyboardAvoidingView>
+    </ScreenWrapper>
   );
 };
 

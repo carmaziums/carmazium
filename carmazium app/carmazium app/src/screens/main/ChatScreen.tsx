@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
 import { useChat } from '../../context/ChatContext';
 import { useAuthStore } from '../../store/authStore';
 import { getChatMessages, markMessagesAsRead, type ChatMessage, type ChatRoom, type ChatUser } from '../../lib/chatApi';
@@ -184,6 +185,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ msg, isOwn, is
 
 export const ChatScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  // See useKeyboardHeight.ts — Android-only; iOS keeps the native
+  // KeyboardAvoidingView path below, which already works reliably there.
+  const androidKeyboardHeight = useKeyboardHeight();
   const route = useRoute<any>();
   const navigation = useNavigation<NavProp>();
   const { threadId } = route.params;
@@ -470,11 +474,17 @@ export const ChatScreen: React.FC = () => {
     (m) => m.senderId === user?.id && m.content.startsWith("I accept the counter-offer"),
   );
 
+  // iOS keeps the native KeyboardAvoidingView path, which already works
+  // reliably there. Android drives its shift from androidKeyboardHeight
+  // (see useKeyboardHeight.ts) instead — same component reference every
+  // render since Platform.OS never changes at runtime.
+  const ScreenWrapper = Platform.OS === 'ios' ? KeyboardAvoidingView : View;
+  const screenWrapperProps = Platform.OS === 'ios'
+    ? { style: styles.container, behavior: 'padding' as const }
+    : { style: [styles.container, { marginBottom: androidKeyboardHeight }] };
+
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <ScreenWrapper {...screenWrapperProps}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Top Header */}
@@ -644,7 +654,7 @@ export const ChatScreen: React.FC = () => {
           <IconButton style={[styles.sendBtn, !inputVal.trim() && styles.sendBtnDisabled]} icon={<Ionicons name="send" size={15} color={Colors.white} />} onPress={handleSend} disabled={!inputVal.trim()} accessibilityLabel="Send message" />
         </View>
       )}
-    </KeyboardAvoidingView>
+    </ScreenWrapper>
   );
 };
 
@@ -989,8 +999,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
   },
+  // minHeight + explicit lineHeight matter here: with only a maxHeight cap,
+  // a short first message ("Hi") has this multiline Android EditText grow
+  // from an unset/near-zero initial measurement, and its wrap width isn't
+  // always settled by the time those first few characters paint — they
+  // render stacked instead of side-by-side. A longer message forces a real
+  // multi-line wrap, which triggers a full relayout against the correct
+  // (by-then-settled) width and self-corrects. Giving it a fixed floor
+  // height from the very first frame means there's no "grow into it" step
+  // for short text to race against.
   textInput: {
     flex: 1,
+    minHeight: 40,
     backgroundColor: Colors.deepBlue_16161c,
     borderRadius: 18,
     borderWidth: 1,
@@ -999,6 +1019,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     fontFamily: FontFamily.regular,
     fontSize: FontSize.size14,
+    lineHeight: 20,
     color: Colors.white,
     maxHeight: 80,
   },

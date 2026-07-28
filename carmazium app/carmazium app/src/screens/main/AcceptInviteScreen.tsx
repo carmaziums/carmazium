@@ -7,8 +7,6 @@ import {
   ScrollView,
   StatusBar,
   TextInput,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
@@ -16,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
+import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
@@ -74,7 +73,7 @@ export const AcceptInviteScreen: React.FC = () => {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardStickyView style={styles.container} behavior="padding">
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
@@ -144,7 +143,7 @@ export const AcceptInviteScreen: React.FC = () => {
           </>
         )}
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardStickyView>
   );
 };
 

@@ -8,8 +8,6 @@ import {
   FlatList,
   StatusBar,
   TextInput,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
   RefreshControl,
   Alert,
@@ -31,6 +29,7 @@ import { createChatRoom } from '../../lib/chatApi';
 import { haptics } from '../../lib/haptics';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { BottomSheet } from '../../components/BottomSheet';
+import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Button } from '../../components/Button';
 
 import { IconButton } from '../../components/IconButton';
@@ -191,10 +190,7 @@ const LeadDetail: React.FC<{
         end={{ x: 1, y: 0.5 }}
       />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <KeyboardStickyView style={{ flex: 1 }} behavior="padding">
         {/* Header */}
         <View style={[styles.detailHeader, { paddingTop: insets.top + 14 }]}>
           <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={onBack} accessibilityLabel="Go back" />
@@ -376,7 +372,7 @@ const LeadDetail: React.FC<{
             })}
           </ScrollView>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardStickyView>
     </View>
   );
 };

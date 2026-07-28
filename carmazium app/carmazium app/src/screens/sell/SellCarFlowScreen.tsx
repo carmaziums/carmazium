@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   StatusBar, TextInput, ActivityIndicator, Alert,
-  Switch, Dimensions, Platform, BackHandler, KeyboardAvoidingView,
+  Switch, Dimensions, Platform, BackHandler,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -14,6 +14,7 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
 import { BODY_TYPE_ICONS } from '../../constants/bodyTypes';
 import { IconButton } from '../../components/IconButton';
+import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
@@ -2959,14 +2960,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           {/* Step 3 (Pricing)'s Delivery section has TextInputs low enough on
               the page that, with no keyboard handling, the keyboard covers
               them with no resize on iOS — reads as the page "closing" behind
-              the keyboard. Same KeyboardAvoidingView pattern already proven
-              on BuyerOffersScreen's inline delivery-address inputs. Wrapping
-              only this flex:1 content area (not the header/bottomBar
-              siblings) keeps the header pinned and Next/Back buttons in
-              place, matching prior behavior for every other step. */}
-          <KeyboardAvoidingView
+              the keyboard. Same pattern already proven on BuyerOffersScreen's
+              inline delivery-address inputs. Wrapping only this flex:1
+              content area (not the header/bottomBar siblings) keeps the
+              header pinned and Next/Back buttons in place, matching prior
+              behavior for every other step. */}
+          <KeyboardStickyView
             style={{ flex: 1 }}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior="padding"
             keyboardVerticalOffset={insets.top + 14}
           >
             {step === 1 && renderStep1()}
@@ -2974,7 +2975,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             {step === 3 && renderStep3()}
             {step === 4 && isAuction && renderAuctionSchedule()}
             {((step === 4 && !isAuction) || step === 5) && renderStep4()}
-          </KeyboardAvoidingView>
+          </KeyboardStickyView>
 
           {/* Bottom Actions */}
           <View style={[s.bottomBar, { paddingBottom: insets.bottom || 20 }]}>

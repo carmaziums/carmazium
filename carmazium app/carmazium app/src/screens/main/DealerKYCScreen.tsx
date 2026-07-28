@@ -7,10 +7,8 @@ import {
   ScrollView,
   StatusBar,
   Alert,
-  KeyboardAvoidingView,
   TextInput,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +19,7 @@ import { apiClient } from '../../lib/apiClient';
 import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
 import { useAuthStore } from '../../store/authStore';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
+import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -583,10 +582,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
           <View style={{ height: 60 }} />
         </ScrollView>
       ) : (
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
+        <KeyboardStickyView style={{ flex: 1 }} behavior="padding">
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
@@ -854,7 +850,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
             {/* Bottom spacer for tab bar */}
             <View style={{ height: 110 }} />
           </ScrollView>
-        </KeyboardAvoidingView>
+        </KeyboardStickyView>
       )}
 
       {/* £1 VERIFICATION FEE CHECKOUT MODAL — hosted Stripe checkout, same

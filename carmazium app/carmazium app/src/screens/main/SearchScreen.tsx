@@ -1372,11 +1372,23 @@ const s = StyleSheet.create({
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgSecondary, borderRadius: 14, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, height: 52, gap: 10 },
   searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white },
 
-  quickScroll: { minHeight: 48, marginBottom: 4 },
+  // No explicit height/minHeight here — a horizontal ScrollView's cross-axis
+  // size is NOT auto-grown by its scrollable content the way a plain View
+  // would be (content only reflows in the scroll direction), so a fixed
+  // height acts as a hard clip on the pill's cross-axis, not a floor. That's
+  // why the previous `height: 48` (and later `minHeight: 48`, which resolves
+  // identically here — nothing was ever pushing it taller) clipped the pill
+  // text: `aiSearchBtn` right above uses the exact same font/size with no
+  // lineHeight and renders fine, because it's a plain unconstrained
+  // TouchableOpacity, not inside a height-locked ScrollView. Leaving this
+  // unconstrained lets it size to the tallest pill's real content — on
+  // devices with a larger system font scale too, since PixelRatio.getFontScale()
+  // grows the text but a hard px height never would have.
+  quickScroll: { marginBottom: 4 },
   quickRow: { paddingHorizontal: 24, gap: 10, alignItems: 'center', flexDirection: 'row' },
   quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
   quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.paleGrey_cccccc },
+  quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, lineHeight: 16, color: Colors.paleGrey_cccccc },
   quickChipTextActive: { color: Colors.white },
 
   sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 8, marginTop: 4, position: 'relative', zIndex: 10 },

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,7 +16,7 @@ import {
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
 import { haptics } from '../../lib/haptics';
@@ -57,6 +57,7 @@ interface Offer {
     id?: string;
     title?: string;
     price?: number;
+    status?: string;
   };
   buyer?: {
     id?: string;
@@ -185,9 +186,20 @@ export const DealerOffersScreen: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  // Refetch on every focus (not just mount) — a notification tap that lands
+  // on an already-mounted screen instance was showing stale/empty data
+  // because this only ever ran once on the initial mount.
+  const isFirstOffersFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstOffersFocus.current) {
+        fetchData();
+        isFirstOffersFocus.current = false;
+      } else {
+        fetchData(true);
+      }
+    }, [fetchData]),
+  );
 
   const handleRetry = () => fetchData();
 
@@ -195,7 +207,10 @@ export const DealerOffersScreen: React.FC = () => {
 
   const handleRespond = async (
     offer: Offer,
-    status: 'ACCEPTED' | 'REJECTED' | 'COUNTER',
+    // Backend's RespondOfferDto only accepts ACCEPTED/REJECTED/COUNTERED
+    // (class-validator @IsEnum) — 'COUNTER' 400s with "status must be one
+    // of the following values: ACCEPTED, REJECTED, COUNTERED".
+    status: 'ACCEPTED' | 'REJECTED' | 'COUNTERED',
     counterAmt?: number,
   ) => {
     setActionLoading(offer.id);
@@ -259,7 +274,7 @@ export const DealerOffersScreen: React.FC = () => {
       return;
     }
     setCounterModalOffer(null);
-    await handleRespond(counterModalOffer, 'COUNTER', parsed);
+    await handleRespond(counterModalOffer, 'COUNTERED', parsed);
   };
 
   const handleMessageBuyer = async (offer: Offer) => {
@@ -376,8 +391,18 @@ export const DealerOffersScreen: React.FC = () => {
     const askingPrice = offer.listing?.price;
     const diff = askingPrice != null ? offer.amount - askingPrice : null;
     const isActioning = actionLoading === offer.id;
-    const showActions = offer.status === 'PENDING';
     const isCountered = offer.status === 'COUNTERED';
+    const displayedSellerCounter = offer.sellerCounterAmount ?? offer.counterAmount ?? null;
+    // True when the buyer has counter-backed — ball is in the seller's court
+    const buyerCounteredBack = isCountered && offer.lastCounteredBy === 'BUYER';
+    // Matches web's needsSellerAction (dashboard/seller/offers/page.tsx) —
+    // PENDING is the seller's first response; a buyer counter-back also
+    // needs a response. Previously this was PENDING-only, so once a buyer
+    // countered back the action row vanished and the dealer had no way to
+    // accept/decline/re-counter through the UI at all.
+    const showActions = offer.status === 'PENDING' || buyerCounteredBack;
+    // Backend rejects a 6th seller counter (offers.service.ts respondToOffer).
+    const sellerCounterLocked = (offer.counterAttemptsSeller ?? 0) >= 5;
 
     return (
       <View style={[styles.offerCard, { borderLeftColor: cfg.leftBorder }]}>
@@ -440,16 +465,35 @@ export const DealerOffersScreen: React.FC = () => {
           />
         )}
 
-        {/* Counter sent label */}
+        {/* Counter state label */}
         {isCountered && (
-          <View style={styles.counterSentChip}>
-            <Ionicons name="time-outline" size={12} color={Colors.infoBlue} />
-            <Text style={styles.counterSentText}>Counter sent — awaiting buyer response</Text>
-          </View>
+          buyerCounteredBack ? (
+            <View style={styles.buyerCounteredChip}>
+              <Ionicons name="swap-horizontal-outline" size={12} color={Colors.warning} />
+              <Text style={styles.buyerCounteredText}>
+                BUYER COUNTERED
+                {offer.buyerCounterAmount != null ? ` — ${formatPrice(offer.buyerCounterAmount)}` : ''}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.counterSentChip}>
+              <Ionicons name="time-outline" size={12} color={Colors.infoBlue} />
+              <Text style={styles.counterSentText}>
+                Counter sent{displayedSellerCounter != null ? ` · ${formatPrice(displayedSellerCounter)}` : ''} — awaiting buyer response
+              </Text>
+            </View>
+          )
         )}
 
         {/* Action row */}
         {showActions && (
+          <>
+          {sellerCounterLocked && (
+            <View style={styles.counterLockedBanner}>
+              <Ionicons name="lock-closed-outline" size={12} color={Colors.warning} />
+              <Text style={styles.counterLockedText}>Counter limit reached — Accept or Decline.</Text>
+            </View>
+          )}
           <View style={[styles.actionsRow, { opacity: isActioning ? 0.5 : 1 }]}>
             <TouchableOpacity
               style={[styles.actionBtn, styles.actionBtnDecline]}
@@ -460,14 +504,16 @@ export const DealerOffersScreen: React.FC = () => {
               <Text style={[styles.actionBtnText, { color: Colors.accent }]}>Decline</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnCounter]}
-              activeOpacity={0.75}
-              onPress={() => openCounterModal(offer)}
-              disabled={isActioning}
-            >
-              <Text style={[styles.actionBtnText, { color: Colors.warning }]}>Counter</Text>
-            </TouchableOpacity>
+            {!sellerCounterLocked && (
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.actionBtnCounter]}
+                activeOpacity={0.75}
+                onPress={() => openCounterModal(offer)}
+                disabled={isActioning}
+              >
+                <Text style={[styles.actionBtnText, { color: Colors.warning }]}>Counter</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={[styles.actionBtn, styles.actionBtnAccept]}
@@ -478,11 +524,22 @@ export const DealerOffersScreen: React.FC = () => {
               <Text style={[styles.actionBtnText, { color: Colors.white }]}>Accept</Text>
             </TouchableOpacity>
           </View>
+          </>
         )}
 
         {/* Actions: ACCEPTED — Message / Mark as Sold / Cancel & Relist,
-            matching web's offers page (this row didn't exist on mobile at all). */}
-        {offer.status === 'ACCEPTED' && (
+            matching web's offers page (this row didn't exist on mobile at all).
+            Mark as Sold / Cancel & Relist only make sense while the listing
+            itself is still unsold — once another action (or a different
+            accepted offer) already sold it, the backend correctly rejects a
+            second sale, but the buttons shouldn't have been offered at all. */}
+        {offer.status === 'ACCEPTED' && offer.listing?.status === 'SOLD' && (
+          <View style={styles.soldNoticeBanner}>
+            <Ionicons name="checkmark-circle" size={13} color={Colors.accentGreen} />
+            <Text style={styles.soldNoticeText}>Vehicle already sold</Text>
+          </View>
+        )}
+        {offer.status === 'ACCEPTED' && offer.listing?.status !== 'SOLD' && (
           <View style={[styles.actionsRow, { flexWrap: 'wrap' }]}>
             <TouchableOpacity
               style={[styles.actionBtn, styles.actionBtnMessage]}
@@ -884,6 +941,58 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
     color: Colors.infoBlue,
+  },
+  buyerCounteredChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.warningAlpha10,
+    borderWidth: 1,
+    borderColor: Colors.warningAlpha30,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  buyerCounteredText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xs,
+    color: Colors.warning,
+  },
+  counterLockedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.warningAlpha10,
+    borderWidth: 1,
+    borderColor: Colors.warningAlpha30,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  counterLockedText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.warning,
+  },
+  soldNoticeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.accentGreenAlpha12,
+    borderWidth: 1,
+    borderColor: Colors.accentGreenAlpha30,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  soldNoticeText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.accentGreen,
   },
 
   // ── Action buttons ──

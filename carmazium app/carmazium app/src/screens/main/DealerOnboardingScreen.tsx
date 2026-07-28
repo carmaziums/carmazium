@@ -7,8 +7,6 @@ import {
   ScrollView,
   StatusBar,
   TextInput,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
@@ -20,6 +18,7 @@ import { useAuthStore } from '../../store/authStore';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
+import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
 
 import { IconButton } from '../../components/IconButton';
@@ -137,7 +136,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardStickyView style={styles.container} behavior="padding">
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
@@ -262,7 +261,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
           />
         </View>
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardStickyView>
   );
 };
 
