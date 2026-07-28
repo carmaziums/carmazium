@@ -9,7 +9,7 @@ import {
     Fuel, Cog, Gauge, Palette, DoorOpen, Users2, Zap,
     CalendarDays, Hash, ShieldCheck, FileText,
     MapPin, CheckCircle2, XCircle, Clock, PoundSterling,
-    MessageSquare, User,
+    MessageSquare, User, FileSearch,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { getAuction, type Auction } from "@/lib/auctionApi"
@@ -355,6 +355,47 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                 )}
                             </div>
                         </div>
+
+                        {/* Handover status — mirrors the stage grouping on /dashboard/dealer/auctions/won */}
+                        {(() => {
+                            const stage = auction.sellerBonusReleased
+                                ? "complete"
+                                : auction.handoverSubmittedAt
+                                    ? "under_review"
+                                    : "awaiting_seller"
+                            const label =
+                                stage === "complete" ? "Handover complete" :
+                                stage === "under_review" ? "Under review" :
+                                "Awaiting seller proof"
+                            const hint =
+                                stage === "complete" ? "Verified and closed. The seller has been paid the £100 bonus." :
+                                stage === "under_review" ? "Seller has submitted handover proof. Our team is reviewing it." :
+                                "Seller has to submit handover proof — you can chat while you wait."
+                            const Icon = stage === "complete" ? CheckCircle2 : stage === "under_review" ? FileSearch : Clock
+                            const tint =
+                                stage === "complete" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25" :
+                                stage === "under_review" ? "bg-violet-500/10 text-violet-400 border-violet-500/25" :
+                                "bg-blue-500/10 text-blue-400 border-blue-500/25"
+                            return (
+                                <div className="dealer-glass-card p-4">
+                                    <p className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-[var(--border-default)] pb-2 mb-3">Handover Status</p>
+                                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border ${tint}`}>
+                                        <Icon size={11} /> {label}
+                                    </span>
+                                    <p className="text-xs text-[var(--text-muted)] mt-2 leading-relaxed">{hint}</p>
+                                    {auction.handoverSubmittedAt && (
+                                        <p className="text-[10px] text-[var(--text-muted)] mt-2">
+                                            Submitted {formatDate(auction.handoverSubmittedAt)}
+                                        </p>
+                                    )}
+                                    {auction.sellerBonusReleasedAt && (
+                                        <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                                            Verified {formatDate(auction.sellerBonusReleasedAt)}
+                                        </p>
+                                    )}
+                                </div>
+                            )
+                        })()}
 
                         {/* Auction summary */}
                         <div className="dealer-glass-card p-4 space-y-2">

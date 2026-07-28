@@ -441,6 +441,13 @@ export class AdminService {
             include: { listing: { select: { sellerId: true, title: true } } },
         });
         if (!auction) throw new NotFoundException('Auction not found');
+        // Idempotency guard — a successful denial clears handoverProofUrl. If it's
+        // already null, either nothing has been submitted yet or this denial ran
+        // already; either way, running the refund path a second time would try to
+        // re-refund an already-refunded Stripe intent and page every admin twice.
+        if (!auction.handoverProofUrl) {
+            return auction;
+        }
 
         // Issue £100 partial Stripe refund to buyer if they paid
         if (auction.buyerFeePaid && auction.buyerFeeTransactionId) {
@@ -471,6 +478,28 @@ export class AdminService {
                     });
                 }
             }
+        }
+
+        // Purge the denied proof from Supabase storage — the URL is a public path
+        // like `${supabaseUrl}/storage/v1/object/public/listings/handover/{id}/xxx.jpg`;
+        // we take everything after `/listings/` as the object path. Failure is
+        // logged but never blocks the denial from completing.
+        try {
+            const marker = '/storage/v1/object/public/listings/';
+            const idx = auction.handoverProofUrl.indexOf(marker);
+            if (idx !== -1) {
+                const objectPath = auction.handoverProofUrl.slice(idx + marker.length);
+                const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+                const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+                if (supabaseUrl && supabaseKey && objectPath) {
+                    // eslint-disable-next-line @typescript-eslint/no-var-requires
+                    const { createClient } = require('@supabase/supabase-js');
+                    const supabase = createClient(supabaseUrl, supabaseKey);
+                    await supabase.storage.from('listings').remove([objectPath]);
+                }
+            }
+        } catch (err) {
+            console.error(`[Admin] Failed to purge denied handover proof for auction ${auctionId}:`, err);
         }
 
         // Clear the proof URL so seller can resubmit

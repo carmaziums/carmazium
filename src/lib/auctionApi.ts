@@ -90,6 +90,10 @@ export interface Auction {
     handoverProofUrl: string | null;
     handoverSubmittedAt: string | null;
     sellerBonusReleased: boolean;
+    sellerBonusReleasedAt?: string | null;
+    stripePayoutTransferId?: string | null;
+    stripePayoutError?: string | null;
+    stripeRefundError?: string | null;
     createdAt: string;
     updatedAt: string;
     listing: AuctionListing;

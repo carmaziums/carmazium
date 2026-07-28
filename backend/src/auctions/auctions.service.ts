@@ -650,7 +650,7 @@ export class AuctionsService {
                 message: `You won the auction for ${vehicle} with a bid of £${winningAmount.toLocaleString()}. Contact the seller to arrange collection.`,
                 entityType: 'AUCTION',
                 entityId: auction.id,
-                link: `/auction/${auction.id}`,
+                link: `/dashboard/dealer/auctions/won`,
             });
 
             // Notify seller — persisted + push delivered
@@ -662,7 +662,7 @@ export class AuctionsService {
                     message: `Your auction for ${vehicle} has ended. Winning bid: £${winningAmount.toLocaleString()}.`,
                     entityType: 'AUCTION',
                     entityId: auction.id,
-                    link: `/auction/${auction.id}`,
+                    link: `/dashboard/seller/auctions`,
                 });
             }
 
@@ -710,7 +710,7 @@ export class AuctionsService {
                     message: `Your auction for ${vehicle} ended without meeting the reserve price. You can relist or adjust the reserve.`,
                     entityType: 'AUCTION',
                     entityId: auction.id,
-                    link: `/auction/${auction.id}`,
+                    link: `/dashboard/seller/auctions`,
                 });
 
                 const seller = await this.prisma.user.findUnique({ where: { id: listing.sellerId }, select: { email: true, firstName: true } });
