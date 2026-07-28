@@ -763,6 +763,7 @@ model Auction {
   sellerBonusReleasedAt  DateTime?
   stripePayoutTransferId String?   // Set when Stripe transfer succeeds
   stripePayoutError      String?   // Set if Stripe transfer fails — needs manual action
+  stripeRefundError      String?   // Set if the buyer-fee refund fails on handover denial — needs manual action
 
   // Digest — seller-authored custom tags/batch labels and self-rating for their own auction
   customTags       String[] @default([])

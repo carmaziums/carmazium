@@ -70,6 +70,17 @@ export class PaymentsService {
     }
 
     /**
+     * True when the configured secret key is a test-mode key.
+     * Used to skip actions that can't work in sandbox (e.g. transfers to live-mode
+     * Connect accounts) without needing a separate feature flag — automatically
+     * flips back off when the live key is restored.
+     */
+    isStripeInTestMode(): boolean {
+        const key = this.config.get<string>('STRIPE_SECRET_KEY') ?? '';
+        return key.startsWith('sk_test_');
+    }
+
+    /**
      * Create a Stripe Checkout Session for a vehicle purchase or deposit.
      */
     private readonly AUCTION_BUYER_FEE = 125;

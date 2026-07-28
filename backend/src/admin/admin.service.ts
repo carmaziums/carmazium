@@ -360,7 +360,26 @@ export class AdminService {
             });
 
             let payoutSucceeded = false;
-            if (seller?.stripeConnectAccountId && seller?.stripeConnectOnboardingComplete) {
+            const stripeInTestMode = this.paymentsService.isStripeInTestMode();
+            if (stripeInTestMode) {
+                // Sandbox window: existing sellers' stripeConnectAccountId values are live-mode
+                // and can't accept a test-mode transfer. Skip the auto-transfer and route to
+                // manual payout so no one hits a spurious "transfer failed" every time.
+                const admins = await this.prisma.user.findMany({
+                    where: { role: 'ADMIN', deletedAt: null },
+                    select: { id: true },
+                });
+                for (const admin of admins) {
+                    this.notificationsGateway.sendNotification(admin.id, {
+                        type: 'PAYOUT_FAILED',
+                        title: 'Manual payout needed (sandbox mode)',
+                        message: `Auto-transfer of £100 to seller for "${auction.listing.title}" was skipped because Stripe is currently in test mode. Please pay manually when live mode is restored.`,
+                        entityType: 'AUCTION',
+                        entityId: auctionId,
+                        link: '/dashboard/admin/handovers',
+                    });
+                }
+            } else if (seller?.stripeConnectAccountId && seller?.stripeConnectOnboardingComplete) {
                 try {
                     const transferId = await this.paymentsService.issueSellerPayout(
                         seller.stripeConnectAccountId,
@@ -425,9 +444,33 @@ export class AdminService {
 
         // Issue £100 partial Stripe refund to buyer if they paid
         if (auction.buyerFeePaid && auction.buyerFeeTransactionId) {
-            await this.paymentsService.issueRefundForAuction(auctionId).catch(err => {
-                console.error('Stripe refund failed during handover denial:', err);
-            });
+            try {
+                await this.paymentsService.issueRefundForAuction(auctionId);
+            } catch (err: any) {
+                const errMsg = err?.message || 'Unknown Stripe error';
+                console.error(`[Admin] Stripe refund failed for auction ${auctionId}:`, errMsg);
+                // Persist error so admins can see it in the handovers view and refund manually —
+                // previously this failure was only console-logged, so a failed refund left the
+                // buyer's £125 fee unrecovered with no one alerted.
+                await this.prisma.auction.update({
+                    where: { id: auctionId },
+                    data: { stripeRefundError: errMsg },
+                });
+                const admins = await this.prisma.user.findMany({
+                    where: { role: 'ADMIN', deletedAt: null },
+                    select: { id: true },
+                });
+                for (const admin of admins) {
+                    this.notificationsGateway.sendNotification(admin.id, {
+                        type: 'REFUND_FAILED',
+                        title: '⚠️ Refund failed — manual action needed',
+                        message: `Auto-refund of £100 to buyer for "${auction.listing.title}" failed: ${errMsg}. Please refund manually via Stripe.`,
+                        entityType: 'AUCTION',
+                        entityId: auctionId,
+                        link: '/dashboard/admin/handovers',
+                    });
+                }
+            }
         }
 
         // Clear the proof URL so seller can resubmit
