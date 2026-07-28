@@ -15,7 +15,6 @@ const STATIC_ROUTES = [
     "/how-it-works",
     "/reviews",
     "/auctions",
-    "/auctions/how-it-works",
     "/compare",
 ]
 
