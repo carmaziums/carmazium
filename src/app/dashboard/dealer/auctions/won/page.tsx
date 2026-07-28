@@ -5,13 +5,14 @@ import Link from "next/link"
 import Image from "next/image"
 import {
     Loader2, Trophy, Car, MessageSquare, CreditCard, CheckCircle2, XCircle,
-    Clock, AlertTriangle, Gavel, Radio, TrendingUp,
+    Clock, AlertTriangle, Gavel, Radio, TrendingUp, FileSearch,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { useAuth } from "@/context/AuthContext"
 import { getWonAuctions, type Auction } from "@/lib/auctionApi"
 import { getMyBids, type Bid } from "@/lib/listingApi"
+import { createChatRoom } from "@/lib/chatApi"
 
 // This page is the single stop for everything about a dealer's auction bidding —
 // bids currently in play and every won auction's handover status — instead of
@@ -141,6 +142,38 @@ function SecondaryButton({ href, icon: Icon, children }: { href: string; icon: R
     )
 }
 
+// Opens (or creates) the chat room right from the list — no detour through the
+// detail page just to say something to the seller.
+function ChatButton({ sellerId, listingId }: { sellerId: string; listingId: string }) {
+    const [connecting, setConnecting] = React.useState(false)
+    const [error, setError] = React.useState(false)
+
+    return (
+        <div className="flex flex-col items-end gap-1 w-full md:w-auto">
+            <button
+                type="button"
+                disabled={connecting}
+                onClick={async () => {
+                    setConnecting(true)
+                    setError(false)
+                    try {
+                        const room = await createChatRoom(sellerId, listingId)
+                        window.location.href = `/dashboard/dealer/messages?room=${room.id}`
+                    } catch {
+                        setError(true)
+                        setConnecting(false)
+                    }
+                }}
+                className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary hover:bg-red-600 disabled:opacity-60 text-white text-sm font-black transition-colors w-full md:w-auto"
+            >
+                {connecting ? <Loader2 size={15} className="animate-spin" /> : <MessageSquare size={15} />}
+                Chat with seller
+            </button>
+            {error && <p className="text-xs text-red-400 font-bold">Couldn&apos;t open chat — try again.</p>}
+        </div>
+    )
+}
+
 // ─── Section 1: Won auctions, grouped by handover stage ───────────────────────
 
 function WonAuctionRow({ auction }: { auction: Auction }) {
@@ -152,6 +185,9 @@ function WonAuctionRow({ auction }: { auction: Auction }) {
     const sellerName = seller?.dealerProfile?.companyName
         || `${seller?.firstName ?? ""} ${seller?.lastName ?? ""}`.trim()
         || "the seller"
+    // Nothing to review yet — put the chat action right here instead of sending
+    // them to the detail page to discover the same button there.
+    const noProofYet = stage === "in_progress" && !auction.handoverSubmittedAt
 
     return (
         <Row
@@ -173,9 +209,15 @@ function WonAuctionRow({ auction }: { auction: Auction }) {
                     <PrimaryButton href={`/checkout?listing_id=${auction.listingId}&mode=auction_fee`} icon={CreditCard}>
                         Pay the £125 fee
                     </PrimaryButton>
+                ) : noProofYet && l.sellerId ? (
+                    <ChatButton sellerId={l.sellerId} listingId={auction.listingId} />
+                ) : stage === "in_progress" ? (
+                    <SecondaryButton href={`/auctions/won/${auction.id}`} icon={FileSearch}>
+                        View details
+                    </SecondaryButton>
                 ) : (
                     <SecondaryButton href={`/auctions/won/${auction.id}`} icon={MessageSquare}>
-                        Open handover
+                        View details
                     </SecondaryButton>
                 )
             }

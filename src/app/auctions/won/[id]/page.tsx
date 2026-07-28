@@ -65,6 +65,15 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
 
     const [activeImage, setActiveImage] = React.useState(0)
 
+    const connectChat = React.useCallback((sellerId: string, listingId: string) => {
+        setChatLoading(true)
+        setChatError(null)
+        createChatRoom(sellerId, listingId)
+            .then(setChatRoom)
+            .catch((err: unknown) => setChatError(err instanceof Error ? err.message : "Could not open chat with seller."))
+            .finally(() => setChatLoading(false))
+    }, [])
+
     // Fetch auction data
     React.useEffect(() => {
         if (authLoading || !user) return
@@ -73,16 +82,12 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                 setAuction(a)
                 // Open chat with seller once we have the auction
                 if (a.listing.sellerId && a.winnerId === user.id) {
-                    setChatLoading(true)
-                    createChatRoom(a.listing.sellerId, a.listing.id)
-                        .then(setChatRoom)
-                        .catch(() => setChatError("Could not open chat with seller."))
-                        .finally(() => setChatLoading(false))
+                    connectChat(a.listing.sellerId, a.listing.id)
                 }
             })
             .catch(() => setLoadError("Could not load auction details."))
             .finally(() => setLoading(false))
-    }, [authLoading, user, auctionId])
+    }, [authLoading, user, auctionId, connectChat])
 
     // Access control — redirect if wrong user or fee not paid
     React.useEffect(() => {
@@ -341,10 +346,16 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                         <Loader2 size={22} className="animate-spin text-primary" />
                                     </div>
                                 ) : chatError ? (
-                                    <div className="h-full flex flex-col items-center justify-center gap-2 px-6 text-center">
+                                    <div className="h-full flex flex-col items-center justify-center gap-3 px-6 text-center">
                                         <AlertTriangle size={24} className="text-red-400" />
                                         <p className="text-red-300 text-sm">{chatError}</p>
-                                        <p className="text-gray-600 text-xs">Try refreshing the page.</p>
+                                        <button
+                                            type="button"
+                                            onClick={() => auction?.listing.sellerId && connectChat(auction.listing.sellerId, auction.listing.id)}
+                                            className="text-xs font-bold text-primary hover:underline"
+                                        >
+                                            Try again
+                                        </button>
                                     </div>
                                 ) : chatRoom ? (
                                     <ChatWindow room={chatRoom} />
