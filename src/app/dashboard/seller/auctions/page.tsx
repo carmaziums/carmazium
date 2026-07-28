@@ -56,6 +56,38 @@ function addHours(iso: string, hours: number): string {
     })
 }
 
+// A plain grey "ENDED" pill hides the one thing a seller actually needs to
+// know: whether there's something left to do. This surfaces that directly on
+// the row instead of making them notice a separate section further down the
+// page and mentally connect it back to this auction.
+function AuctionStatusBadge({ auction }: { auction: Auction }) {
+    const needsHandover = auction.status === "ENDED" && !!auction.winnerId && !auction.sellerBonusReleased
+    const paidOut = auction.status === "ENDED" && !!auction.winnerId && auction.sellerBonusReleased
+
+    if (needsHandover) {
+        return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border bg-amber-500/10 text-amber-400 border-amber-500/25 animate-pulse">
+                <Handshake size={10} /> Action Needed
+            </span>
+        )
+    }
+    if (paidOut) {
+        return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                <CheckCircle size={10} /> Ended · Paid
+            </span>
+        )
+    }
+    return (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[auction.status] ?? STATUS_STYLES.ENDED}`}>
+            {auction.status === "ACTIVE" && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5" />
+            )}
+            {auction.status}
+        </span>
+    )
+}
+
 export default function SellerAuctionsPageWrapper() {
     return (
         <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
@@ -342,6 +374,30 @@ function SellerAuctionsPage() {
                         </button>
                     </div>
 
+                    {/* Action needed — the single most important thing on this page when it applies,
+                        so it sits above everything else instead of being a section you have to scroll
+                        past the whole table to discover on your own. */}
+                    {endedWithWinner.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => document.getElementById('handover-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                            className="w-full flex items-center gap-4 p-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15 transition-colors text-left"
+                        >
+                            <div className="w-11 h-11 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
+                                <Handshake size={20} className="text-amber-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-black text-amber-300 text-base">
+                                    {endedWithWinner.length} auction{endedWithWinner.length > 1 ? "s" : ""} waiting on you
+                                </p>
+                                <p className="text-sm text-amber-300/80 mt-0.5">
+                                    Upload handover proof to get your £100 bonus released.
+                                </p>
+                            </div>
+                            <ChevronRight size={18} className="text-amber-400 shrink-0" />
+                        </button>
+                    )}
+
                     {/* Success banner */}
                     <AnimatePresence>
                         {successMsg && (
@@ -590,12 +646,7 @@ function SellerAuctionsPage() {
                                                 <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
                                                     {auction.listing.year} &middot; {auction.listing.make} {auction.listing.model}
                                                 </p>
-                                                <span className={`inline-flex items-center mt-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[auction.status] ?? STATUS_STYLES.ENDED}`}>
-                                                    {auction.status === "ACTIVE" && (
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5" />
-                                                    )}
-                                                    {auction.status}
-                                                </span>
+                                                <div className="mt-1.5"><AuctionStatusBadge auction={auction} /></div>
                                             </div>
                                         </div>
 
@@ -646,7 +697,7 @@ function SellerAuctionsPage() {
                                             {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && !(auction.listing as any).linkedListing && (
                                                 <button
                                                     onClick={() => { setAlsoRetailAuction(auction); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-bold hover:bg-blue-500/20 transition-colors"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-transparent text-[var(--text-muted)] border border-[var(--border-default)] text-xs font-bold hover:text-blue-400 hover:border-blue-500/30 transition-colors"
                                                 >
                                                     <Tag size={13} /> Also Retail
                                                 </button>
@@ -666,7 +717,7 @@ function SellerAuctionsPage() {
                                             {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && (
                                                 <button
                                                     onClick={() => openDigest(auction)}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 text-xs font-bold hover:bg-violet-500/20 transition-colors"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-transparent text-[var(--text-muted)] border border-[var(--border-default)] text-xs font-bold hover:text-violet-400 hover:border-violet-500/30 transition-colors"
                                                 >
                                                     <Tags size={13} /> Digest
                                                 </button>
@@ -764,12 +815,7 @@ function SellerAuctionsPage() {
 
                                                 {/* Status */}
                                                 <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[auction.status] ?? STATUS_STYLES.ENDED}`}>
-                                                        {auction.status === "ACTIVE" && (
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5" />
-                                                        )}
-                                                        {auction.status}
-                                                    </span>
+                                                    <AuctionStatusBadge auction={auction} />
                                                 </td>
 
                                                 {/* Schedule */}
@@ -829,7 +875,7 @@ function SellerAuctionsPage() {
                                                         {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && !(auction.listing as any).linkedListing && (
                                                             <button
                                                                 onClick={() => { setAlsoRetailAuction(auction); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
-                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-bold hover:bg-blue-500/20 transition-colors"
+                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-transparent text-[var(--text-muted)] border border-[var(--border-default)] text-xs font-bold hover:text-blue-400 hover:border-blue-500/30 transition-colors"
                                                             >
                                                                 <Tag size={13} /> Also Retail
                                                             </button>
@@ -849,7 +895,7 @@ function SellerAuctionsPage() {
                                                         {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && (
                                                             <button
                                                                 onClick={() => openDigest(auction)}
-                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 text-xs font-bold hover:bg-violet-500/20 transition-colors"
+                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-transparent text-[var(--text-muted)] border border-[var(--border-default)] text-xs font-bold hover:text-violet-400 hover:border-violet-500/30 transition-colors"
                                                             >
                                                                 <Tags size={13} /> Digest
                                                             </button>
@@ -904,7 +950,7 @@ function SellerAuctionsPage() {
 
                     {/* ── Handover Proof Section ──────────────────────────── */}
                     {endedWithWinner.length > 0 && (
-                        <div className="space-y-4">
+                        <div id="handover-section" className="space-y-4 scroll-mt-24">
                             <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
                                     <Handshake size={16} className="text-emerald-400" />
