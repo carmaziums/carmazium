@@ -826,6 +826,7 @@ export class OffersService {
                         slug: true,
                         vrm: true,
                         price: true,
+                        status: true,
                     },
                 },
                 buyer: {
