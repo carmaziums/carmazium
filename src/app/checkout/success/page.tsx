@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button"
 import { getSessionStatus, applyAuctionFee, applyKycFee } from "@/lib/paymentApi"
 import type { SessionStatus } from "@/lib/paymentApi"
 import { publishListing } from "@/lib/listingApi"
+import { useAuth } from "@/context/AuthContext"
 
 export default function CheckoutSuccessPage() {
     return (
@@ -26,6 +27,10 @@ export default function CheckoutSuccessPage() {
 function CheckoutSuccessContent() {
     const searchParams = useSearchParams()
     const sessionId = searchParams.get("session_id")
+    const { profile } = useAuth()
+    // Won-auction handover list lives at a different path per role — same
+    // split used by the notification bell for auction-seller destinations.
+    const wonAuctionsHref = profile?.role === "DEALER" ? "/dashboard/dealer/auctions/won" : "/dashboard/buyer/bids"
 
     const [sessionData, setSessionData] = useState<SessionStatus | null>(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -175,7 +180,7 @@ function CheckoutSuccessContent() {
                     ) : sessionData?.metadata?.type === 'COMMISSION' ? (
                         <>
                             <Button asChild className="gap-2 bg-gradient-to-r from-primary to-[#ff4d4d] hover:from-[#ff4d4d] hover:to-primary px-6">
-                                <Link href="/dashboard/dealer/auctions">
+                                <Link href={wonAuctionsHref}>
                                     <LayoutDashboard size={18} /> Go to My Auctions <ArrowRight size={14} />
                                 </Link>
                             </Button>

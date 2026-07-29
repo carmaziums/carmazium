@@ -29,6 +29,12 @@ export function MetricCard({
     href,
     subLabel,
 }: MetricCardProps) {
+    // Long formatted values (e.g. "£101,600.00") outgrow a fixed text-3xl on
+    // narrower cards and butt right up against the card's edge — step the
+    // size down as the string gets longer instead of letting it overflow.
+    const valueStr = loading ? "..." : String(value)
+    const sizeClass = valueStr.length > 12 ? "text-xl" : valueStr.length > 9 ? "text-2xl" : "text-3xl"
+
     const inner = (
         <>
             <div className="flex items-center justify-between mb-4 relative z-10">
@@ -41,8 +47,8 @@ export function MetricCard({
                     </span>
                 )}
             </div>
-            <h3 className={`text-3xl font-black font-heading relative z-10 ${foilValue ? "metallic-foil" : ""}`} style={!foilValue ? { color: 'var(--text-primary)' } : undefined}>
-                {loading ? "..." : value}
+            <h3 className={`${sizeClass} font-black font-heading relative z-10 truncate ${foilValue ? "metallic-foil" : ""}`} style={!foilValue ? { color: 'var(--text-primary)' } : undefined}>
+                {valueStr}
             </h3>
             {subLabel && (
                 <p className="text-[var(--text-muted)] text-xs mt-0.5 uppercase tracking-widest font-bold relative z-10">

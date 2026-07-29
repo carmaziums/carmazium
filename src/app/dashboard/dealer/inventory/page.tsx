@@ -247,8 +247,8 @@ export default function DealerInventoryPage() {
 
                     {/* Filters — sticky so search/filter/Add Vehicle stay reachable without
                         scrolling back to the top of a long inventory list */}
-                    <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md py-2 -my-2 flex flex-col lg:flex-row gap-4 items-center">
-                        <div className="relative flex-1 w-full">
+                    <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md pt-2 -mt-2 flex flex-col lg:flex-row lg:flex-wrap gap-4 items-center">
+                        <div className="relative flex-1 w-full lg:min-w-[200px] lg:max-w-md">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} />
                             <Input
                                 placeholder="Search by make, model, VRM..."
@@ -257,7 +257,7 @@ export default function DealerInventoryPage() {
                                 className="pl-12 bg-[var(--bg-input)] border-[var(--border-default)]  placeholder:text-[var(--text-muted)] h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
                             />
                         </div>
-                        <div className="flex gap-2 p-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl w-full lg:w-auto overflow-x-auto">
+                        <div className="flex gap-2 p-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl w-full lg:w-auto overflow-x-auto shrink-0">
                             {["ALL", "ACTIVE", "PENDING_REVIEW", "REJECTED", "DRAFT", "SOLD"].map(s => (
                                 <button
                                     key={s}

@@ -285,9 +285,12 @@ export class AuctionsService {
                                     lastName: true,
                                     email: true,
                                     phone: true,
-                                    dealerProfile: { select: { companyName: true, logo: true } },
+                                    dealerProfile: { select: { companyName: true, logo: true, businessAddress: true } },
                                 },
                             },
+                            // Only present if the seller purchased a report — same "if it has
+                            // any" gating already used everywhere else HPI data is shown.
+                            hpiReport: { select: { isClear: true } },
                         },
                     },
                 },

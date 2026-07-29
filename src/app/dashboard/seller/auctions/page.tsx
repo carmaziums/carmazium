@@ -361,7 +361,7 @@ function SellerAuctionsPage() {
 
                     {/* Header — sticky so "Create Auction" stays reachable without
                         scrolling back up from deep inside a long auctions table */}
-                    <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md py-2 -my-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md pt-2 -mt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                             <h1 className="text-3xl font-bold font-heading">My Auctions</h1>
                             <p className="text-[var(--text-muted)] text-sm mt-1">Manage your live vehicle auctions and bidding</p>
@@ -1001,23 +1001,13 @@ function SellerAuctionsPage() {
                                             </div>
                                         </div>
 
-                                        {/* Fee summary */}
-                                        <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                                            <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/15 p-2.5">
-                                                <p className="text-[var(--text-muted)] text-xs uppercase tracking-widest mb-0.5">Your Bonus</p>
-                                                <p className="text-emerald-400 font-black text-base">£100</p>
-                                                <p className="text-[var(--text-secondary)] text-xs">after handover verified</p>
-                                            </div>
-                                            <div className="rounded-lg bg-white/[0.02] border border-[var(--border-default)] p-2.5">
-                                                <p className="text-[var(--text-muted)] text-xs uppercase tracking-widest mb-0.5">Platform Fee</p>
-                                                <p className="font-black text-base">£25</p>
-                                                <p className="text-[var(--text-secondary)] text-xs">non-refundable</p>
-                                            </div>
-                                            <div className="rounded-lg bg-white/[0.02] border border-[var(--border-default)] p-2.5">
-                                                <p className="text-[var(--text-muted)] text-xs uppercase tracking-widest mb-0.5">Buyer Paid</p>
-                                                <p className="font-black text-base">£125</p>
-                                                <p className="text-[var(--text-secondary)] text-xs">total buyer fee</p>
-                                            </div>
+                                        {/* Fee summary — only the seller's own payout, not the
+                                            full £125 breakdown (what the buyer pays and what
+                                            Carmazium keeps is not the seller's business). */}
+                                        <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/15 p-2.5 text-center text-xs">
+                                            <p className="text-[var(--text-muted)] text-xs uppercase tracking-widest mb-0.5">Your Bonus</p>
+                                            <p className="text-emerald-400 font-black text-base">£100</p>
+                                            <p className="text-[var(--text-secondary)] text-xs">after handover verified</p>
                                         </div>
 
                                         {isDone ? (

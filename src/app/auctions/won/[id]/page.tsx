@@ -9,7 +9,7 @@ import {
     Fuel, Cog, Gauge, Palette, DoorOpen, Users2, Zap,
     CalendarDays, Hash, ShieldCheck, FileText,
     MapPin, CheckCircle2, XCircle, Clock, PoundSterling,
-    MessageSquare, User, FileSearch, Phone, Mail,
+    MessageSquare, User, FileSearch, Phone, Mail, Award,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { getWonAuctionById, type Auction } from "@/lib/auctionApi"
@@ -126,6 +126,8 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
 
     const motOk = listing.motStatus ? listing.motStatus.toLowerCase() === "valid" : null
     const taxOk = listing.taxStatus ? listing.taxStatus.toLowerCase() === "taxed" : null
+    const GRADE_LABELS = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Average']
+    const businessAddress = seller?.dealerProfile?.businessAddress
 
     return (
         <div className="min-h-screen pt-20 pb-16">
@@ -244,6 +246,32 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                     )}
                                 </div>
                             )}
+
+                            {/* Grade / HPI / history — same trust badges shown on the retail listing cards */}
+                            {(listing.exteriorGrade != null || listing.hpiReport?.isClear || listing.owners || listing.serviceHistory) && (
+                                <div className="flex gap-2 mt-2 flex-wrap">
+                                    {listing.exteriorGrade != null && (
+                                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border bg-violet-500/10 border-violet-500/20 text-violet-400">
+                                            <Award size={10} /> Grade {listing.exteriorGrade} — {GRADE_LABELS[listing.exteriorGrade] ?? ''}
+                                        </span>
+                                    )}
+                                    {listing.hpiReport?.isClear && (
+                                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border bg-emerald-500/10 border-emerald-500/20 text-emerald-400">
+                                            <ShieldCheck size={10} /> HPI Clear
+                                        </span>
+                                    )}
+                                    {listing.owners && (
+                                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border bg-[var(--bg-card)] border-[var(--border-default)] text-[var(--text-secondary)]">
+                                            <Users2 size={10} /> {listing.owners === '1' ? '1 Owner' : `${listing.owners} Owners`}
+                                        </span>
+                                    )}
+                                    {listing.serviceHistory && (
+                                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border bg-[var(--bg-card)] border-[var(--border-default)] text-[var(--text-secondary)]">
+                                            <FileText size={10} /> {listing.serviceHistory} Service History
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Specs grid */}
@@ -323,7 +351,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                 </div>
                             </div>
 
-                            {(seller?.phone || seller?.email) && (
+                            {(seller?.phone || seller?.email || businessAddress) && (
                                 <div className="mt-3 pt-3 border-t border-[var(--border-default)] space-y-2">
                                     {seller?.phone && (
                                         <a href={`tel:${seller.phone}`} className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)] hover:text-primary transition-colors">
@@ -334,6 +362,11 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                         <a href={`mailto:${seller.email}`} className="flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary transition-colors truncate">
                                             <Mail size={13} className="text-primary shrink-0" /> {seller.email}
                                         </a>
+                                    )}
+                                    {businessAddress && (
+                                        <p className="flex items-start gap-2 text-sm text-[var(--text-muted)]">
+                                            <MapPin size={13} className="text-primary shrink-0 mt-0.5" /> {businessAddress}
+                                        </p>
                                     )}
                                 </div>
                             )}
@@ -431,7 +464,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                 <span className="font-bold text-emerald-400 flex items-center gap-1"><CheckCircle2 size={12} /> £125</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-[var(--text-muted)]">Auction ended</span>
+                                <span className="text-[var(--text-muted)]">Date won</span>
                                 <span className="font-bold">{formatDate(auction.endTime)}</span>
                             </div>
                         </div>

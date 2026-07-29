@@ -6,7 +6,7 @@ import Image from "next/image"
 import {
     Loader2, Trophy, Car, MessageSquare, CreditCard, CheckCircle2, XCircle,
     Clock, AlertTriangle, Gavel, Radio, TrendingUp, FileSearch,
-    Calendar, Gauge, Fuel, Cog, Palette, Phone,
+    Calendar, Gauge, Fuel, Cog, Palette, Phone, Mail, ShieldCheck, Award,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
@@ -199,6 +199,29 @@ function ChatButton({ sellerId, listingId, phone }: { sellerId: string; listingI
     )
 }
 
+// Shown before the buyer fee is paid, so the winner has a way to reach the
+// seller right away — the seller still has every reason to keep the handover
+// on-platform since their £100 bonus only releases once it's verified here.
+function SellerContact({ phone, email }: { phone?: string | null; email?: string | null }) {
+    if (!phone && !email) return null
+    return (
+        <div className="flex flex-col items-end gap-1 w-full md:w-auto">
+            {phone && (
+                <a href={`tel:${phone}`} className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-[var(--text-primary)] hover:text-primary transition-colors">
+                    <Phone size={11} className="text-primary shrink-0" /> {phone}
+                </a>
+            )}
+            {email && (
+                <a href={`mailto:${email}`} className="inline-flex items-center justify-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-primary transition-colors truncate max-w-[200px]">
+                    <Mail size={11} className="text-primary shrink-0" /> {email}
+                </a>
+            )}
+        </div>
+    )
+}
+
+const GRADE_LABELS = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Average']
+
 // ─── Section 1: Won auctions, grouped by handover stage ───────────────────────
 
 function WonAuctionRow({ auction }: { auction: Auction }) {
@@ -227,6 +250,12 @@ function WonAuctionRow({ auction }: { auction: Auction }) {
                 {l.transmission && <SpecChip icon={Cog}>{l.transmission}</SpecChip>}
                 {l.color && <SpecChip icon={Palette}>{l.color}</SpecChip>}
                 {l.engineSize != null && <SpecChip icon={Gauge}>{(l.engineSize / 1000).toFixed(1)}L</SpecChip>}
+                {l.exteriorGrade != null && (
+                    <SpecChip icon={Award}>Grade {l.exteriorGrade} — {GRADE_LABELS[l.exteriorGrade] ?? ''}</SpecChip>
+                )}
+                {l.hpiReport?.isClear && <SpecChip icon={ShieldCheck}>HPI Clear</SpecChip>}
+                {l.owners && <SpecChip icon={Car}>{l.owners === '1' ? '1 Owner' : `${l.owners} Owners`}</SpecChip>}
+                {l.serviceHistory && <SpecChip icon={FileSearch}>{l.serviceHistory} Service History</SpecChip>}
             </>}
             badge={s}
             hint={s.hint}
@@ -235,9 +264,12 @@ function WonAuctionRow({ auction }: { auction: Auction }) {
             rightValueClass="text-amber-400"
             cta={
                 stage === "fee_due" ? (
-                    <PrimaryButton href={`/checkout?listing_id=${auction.listingId}&mode=auction_fee`} icon={CreditCard}>
-                        Pay the £125 fee
-                    </PrimaryButton>
+                    <div className="flex flex-col items-end gap-2 w-full md:w-auto">
+                        <PrimaryButton href={`/checkout?listing_id=${auction.listingId}&mode=auction_fee`} icon={CreditCard}>
+                            Pay the £125 fee
+                        </PrimaryButton>
+                        <SellerContact phone={seller?.phone} email={seller?.email} />
+                    </div>
                 ) : noProofYet && l.sellerId ? (
                     <ChatButton sellerId={l.sellerId} listingId={auction.listingId} phone={seller?.phone} />
                 ) : stage === "in_progress" ? (

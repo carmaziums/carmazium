@@ -140,10 +140,13 @@ export default function DealerMyOffersPage() {
                         />
                     </div>
 
-                    <div className="dealer-glass-card overflow-hidden">
-                        {/* Sticky so search stays reachable without scrolling back up
-                            from deep inside a long offers list */}
-                        <div className="sticky top-20 z-20 p-6 border-b border-[var(--border-default)] bg-[var(--bg-card)]/95 backdrop-blur-md flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    {/* Sticky so search stays reachable without scrolling back up from
+                        deep inside a long offers list — kept outside the card below
+                        since a sticky child inside an overflow-hidden ancestor gets its
+                        stuck position clipped/contained by that ancestor instead of the
+                        viewport, which is what caused it to overlap the table. */}
+                    <div className="sticky top-20 z-20 pt-2 -mt-2 bg-[var(--bg-body)]/95 backdrop-blur-md">
+                        <div className="dealer-glass-card p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                             <h3 className="text-sm font-black uppercase tracking-widest text-[var(--text-secondary)]">Outgoing Bids</h3>
                             <div className="relative w-full md:w-64">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
@@ -156,7 +159,9 @@ export default function DealerMyOffersPage() {
                                 />
                             </div>
                         </div>
+                    </div>
 
+                    <div className="dealer-glass-card overflow-hidden">
                         {loading ? (
                             <div className="flex items-center justify-center py-20">
                                 <Loader2 className="h-8 w-8 animate-spin text-primary" />

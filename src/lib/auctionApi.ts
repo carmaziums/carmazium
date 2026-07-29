@@ -23,7 +23,7 @@ export interface AuctionSeller {
     // auction browse/detail endpoints never include these.
     phone?: string | null;
     email?: string | null;
-    dealerProfile?: { companyName: string; logo: string | null } | null;
+    dealerProfile?: { companyName: string; logo: string | null; businessAddress?: string | null } | null;
 }
 
 export interface AuctionListing {
@@ -53,6 +53,10 @@ export interface AuctionListing {
     co2Emissions: number | null;
     // Exterior grade (1 best → 5 worst) — Motorway-style
     exteriorGrade: number | null;
+    owners: string | null;
+    serviceHistory: string | null;
+    // Only present if the seller purchased an HPI report
+    hpiReport?: { isClear: boolean } | null;
     // Trust/promo — same fields the Buy Cars card reads
     badgeTier?: string | null;
     isFeatured?: boolean;

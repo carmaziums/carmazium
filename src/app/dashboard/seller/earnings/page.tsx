@@ -136,7 +136,7 @@ export default function EarningsPage() {
 
                     {/* Tab switcher — sticky so switching tabs doesn't require
                         scrolling back up from deep inside a long registry */}
-                    <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md py-2 -my-2 flex gap-1 w-fit">
+                    <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md pt-2 -mt-2 flex gap-1 w-fit">
                         <div className="flex gap-1 bg-[var(--bg-input)] p-1 rounded-xl border border-[var(--border-default)]">
                             {(['sales', 'auctions', 'receipts'] as const).map(tab => (
                                 <button

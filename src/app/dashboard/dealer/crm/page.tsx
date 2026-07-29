@@ -339,7 +339,7 @@ export default function DealerCRMPage() {
                 <main className="flex-1 space-y-6 min-w-0">
                     {/* Sticky so "Add Lead" stays reachable without scrolling back up
                         from deep inside a long Kanban column */}
-                    <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md py-2 -my-2">
+                    <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md pt-2 -mt-2">
                         <PageHeader
                             title={DEALER_ROUTE_CONFIG[2].title}
                             subHeader={DEALER_ROUTE_CONFIG[2].subHeader}
