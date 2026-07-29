@@ -1024,10 +1024,40 @@ export interface SaleRecord {
     }
 }
 
+export interface AuctionSaleRecord {
+    id: string
+    listingId: string
+    winningBidAmount: number
+    sellerBonus: number
+    sellerBonusReleasedAt: string | null
+    createdAt: string
+    listing: {
+        id: string
+        title: string
+        images: string[]
+        vrm: string | null
+    }
+    winner: {
+        id: string
+        firstName: string | null
+        lastName: string | null
+        email: string
+    } | null
+}
+
 export interface EarningsResponse {
     sales: SaleRecord[]
+    // Combined across retail + auction channels — the vehicle price in both
+    // cases is settled privately (Carmazium never processes it), so both are
+    // counted the same way here for an accurate "how much business have I
+    // done" total. totalAuctionBonus below is the only amount Carmazium
+    // actually paid out.
     totalRevenue: number
     totalSales: number
+    auctionSales: AuctionSaleRecord[]
+    totalAuctionRevenue: number
+    totalAuctionSales: number
+    totalAuctionBonus: number
 }
 
 export async function getEarnings(): Promise<EarningsResponse> {

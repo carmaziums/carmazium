@@ -337,18 +337,22 @@ export default function DealerCRMPage() {
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
                 <main className="flex-1 space-y-6 min-w-0">
-                    <PageHeader
-                        title={DEALER_ROUTE_CONFIG[2].title}
-                        subHeader={DEALER_ROUTE_CONFIG[2].subHeader}
-                    >
-                        <Button
-                            onClick={() => setShowAddModal(true)}
-                            className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-all"
-                            shape="default"
+                    {/* Sticky so "Add Lead" stays reachable without scrolling back up
+                        from deep inside a long Kanban column */}
+                    <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md py-2 -my-2">
+                        <PageHeader
+                            title={DEALER_ROUTE_CONFIG[2].title}
+                            subHeader={DEALER_ROUTE_CONFIG[2].subHeader}
                         >
-                            <PlusCircle size={18} /> Add Lead
-                        </Button>
-                    </PageHeader>
+                            <Button
+                                onClick={() => setShowAddModal(true)}
+                                className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-all"
+                                shape="default"
+                            >
+                                <PlusCircle size={18} /> Add Lead
+                            </Button>
+                        </PageHeader>
+                    </div>
 
                     {/* Stats bar */}
                     <div className="grid grid-cols-3 gap-4">
@@ -382,8 +386,8 @@ export default function DealerCRMPage() {
                                             </span>
                                         </div>
                                     </div>
-                                    <div 
-                                        className="bg-[var(--bg-input)] rounded-b-2xl min-h-[500px] p-3 space-y-3 border-x border-b border-[var(--border-default)] relative transition-colors duration-200"
+                                    <div
+                                        className="bg-[var(--bg-input)] rounded-b-2xl min-h-[500px] max-h-[70vh] overflow-y-auto custom-scrollbar p-3 space-y-3 border-x border-b border-[var(--border-default)] relative transition-colors duration-200"
                                         onDragOver={(e) => {
                                             e.preventDefault()
                                             e.currentTarget.classList.add('bg-white/[0.05]')

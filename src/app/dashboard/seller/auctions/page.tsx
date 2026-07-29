@@ -359,8 +359,9 @@ function SellerAuctionsPage() {
                 <DashboardSidebar role="seller" />
                 <main className="flex-1 space-y-6">
 
-                    {/* Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+                    {/* Header — sticky so "Create Auction" stays reachable without
+                        scrolling back up from deep inside a long auctions table */}
+                    <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md py-2 -my-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                             <h1 className="text-3xl font-bold font-heading">My Auctions</h1>
                             <p className="text-[var(--text-muted)] text-sm mt-1">Manage your live vehicle auctions and bidding</p>

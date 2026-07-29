@@ -270,7 +270,7 @@ export class ListingsController {
     ): Promise<void> {
         // Fetch all records for CSV export (no pagination cap)
         const earnings = await this.listingsService.getEarnings(user.id, 1, 9999);
-        const rows: string[] = ['Date,Vehicle,VRM,Buyer,Listed Price,Sold Price'];
+        const rows: string[] = ['Date,Channel,Vehicle,VRM,Buyer,Listed Price,Sold Price,Carmazium Bonus'];
         for (const sale of earnings.sales) {
             const date = new Date(sale.createdAt).toLocaleDateString('en-GB');
             const title = `"${(sale.listing?.title ?? '').replace(/"/g, '""')}"`;
@@ -278,7 +278,16 @@ export class ListingsController {
             const buyer = sale.buyer ? `${sale.buyer.firstName ?? ''} ${sale.buyer.lastName ?? ''}`.trim() : 'Private';
             const listed = Number(sale.listing?.price ?? 0).toFixed(2);
             const sold = Number(sale.soldPrice).toFixed(2);
-            rows.push(`${date},${title},${vrm},${buyer},${listed},${sold}`);
+            rows.push(`${date},Retail,${title},${vrm},${buyer},${listed},${sold},0.00`);
+        }
+        for (const auction of earnings.auctionSales) {
+            const date = new Date(auction.createdAt).toLocaleDateString('en-GB');
+            const title = `"${(auction.listing?.title ?? '').replace(/"/g, '""')}"`;
+            const vrm = auction.listing?.vrm ?? '';
+            const winner = auction.winner ? `${auction.winner.firstName ?? ''} ${auction.winner.lastName ?? ''}`.trim() : 'Verified dealer';
+            const sold = Number(auction.winningBidAmount).toFixed(2);
+            const bonus = Number(auction.sellerBonus).toFixed(2);
+            rows.push(`${date},Auction,${title},${vrm},${winner},,${sold},${bonus}`);
         }
         const csv = rows.join('\n');
         res.setHeader('Content-Type', 'text/csv');

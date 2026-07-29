@@ -74,6 +74,12 @@ export default function DealerInventoryPage() {
     const [isBulkImportOpen,  setIsBulkImportOpen]  = React.useState(false)
     const [isImportModalOpen, setIsImportModalOpen] = React.useState(false)
     const [activeDropdown,    setActiveDropdown]    = React.useState<string | null>(null)
+    // The row-actions menu always opened downward regardless of how close the
+    // row was to the bottom of the viewport, so opening it on any of the last
+    // few rows in a long list pushed the menu off-screen — the only way to see
+    // or click any of its items was to scroll the whole page down first. Now
+    // computed at click time from the button's actual position.
+    const [dropdownOpensUp, setDropdownOpensUp] = React.useState(false)
     const [publishing,        setPublishing]        = React.useState<string | null>(null)
     // Plan modal
     const [planSelectListing, setPlanSelectListing] = React.useState<any | null>(null)
@@ -239,8 +245,9 @@ export default function DealerInventoryPage() {
                         </Link>
                     </PageHeader>
 
-                    {/* Filters */}
-                    <div className="flex flex-col lg:flex-row gap-4 items-center">
+                    {/* Filters — sticky so search/filter/Add Vehicle stay reachable without
+                        scrolling back to the top of a long inventory list */}
+                    <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md py-2 -my-2 flex flex-col lg:flex-row gap-4 items-center">
                         <div className="relative flex-1 w-full">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} />
                             <Input
@@ -263,6 +270,11 @@ export default function DealerInventoryPage() {
                                 </button>
                             ))}
                         </div>
+                        <Link href="/dashboard/dealer/add-listing" className="w-full lg:w-auto shrink-0">
+                            <Button className="w-full gap-2 h-12 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-transform">
+                                <PlusCircle size={18} /> Add Vehicle
+                            </Button>
+                        </Link>
                     </div>
 
                     {/* Table */}
@@ -555,7 +567,12 @@ export default function DealerInventoryPage() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveDropdown(activeDropdown === listing.id ? null : listing.id) }}
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault(); e.stopPropagation()
+                                                                        const rect = e.currentTarget.getBoundingClientRect()
+                                                                        setDropdownOpensUp(rect.bottom > window.innerHeight - 260)
+                                                                        setActiveDropdown(activeDropdown === listing.id ? null : listing.id)
+                                                                    }}
                                                                     className="bg-[var(--bg-card)] hover:bg-white/10 text-[var(--text-muted)] hover:text-primary dark:hover:text-white border border-[var(--border-default)]"
                                                                 >
                                                                     <MoreVertical size={16} />
@@ -566,7 +583,7 @@ export default function DealerInventoryPage() {
                                                                 <div className="fixed inset-0 z-10" onClick={() => setActiveDropdown(null)} />
                                                                 <div
                                                                     onClick={() => setActiveDropdown(null)}
-                                                                    className="absolute right-0 top-full mt-1 w-36 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg shadow-xl transition-all z-20 flex flex-col py-1">
+                                                                    className={`absolute right-0 w-36 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg shadow-xl transition-all z-20 flex flex-col py-1 ${dropdownOpensUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
                                                                     <Link href={`/dashboard/dealer/add-listing?editId=${listing.id}&editSlug=${encodeURIComponent(listing.slug)}`} className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white transition-colors">
                                                                         <Pencil size={14} /> Edit
                                                                     </Link>

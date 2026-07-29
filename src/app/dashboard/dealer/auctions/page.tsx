@@ -308,17 +308,21 @@ function DealerAuctionsPage() {
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
                 <main className="flex-1 space-y-6 min-w-0">
-                    <PageHeader
-                        title={auctionRoute?.title ?? "Auctions"}
-                        subHeader={auctionRoute?.subHeader ?? "Manage live vehicle auctions & bidding"}
-                    >
-                        <Button
-                            onClick={openForm}
-                            className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-transform"
+                    {/* Sticky so "Create Auction" stays reachable without scrolling
+                        back up from deep inside a long auctions table */}
+                    <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md py-2 -my-2">
+                        <PageHeader
+                            title={auctionRoute?.title ?? "Auctions"}
+                            subHeader={auctionRoute?.subHeader ?? "Manage live vehicle auctions & bidding"}
                         >
-                            <PlusCircle size={18} /> Create Auction
-                        </Button>
-                    </PageHeader>
+                            <Button
+                                onClick={openForm}
+                                className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-transform"
+                            >
+                                <PlusCircle size={18} /> Create Auction
+                            </Button>
+                        </PageHeader>
+                    </div>
 
                     {/* Action needed — the single most important thing on this page when it applies,
                         so it sits above everything else instead of being a section you have to scroll

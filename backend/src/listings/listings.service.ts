@@ -1576,12 +1576,57 @@ export class ListingsService {
             this.prisma.sale.aggregate({ where, _sum: { soldPrice: true } }),
         ]);
 
-        const totalRevenue = Number(revenueAgg._sum.soldPrice ?? 0);
+        // Auctions the seller has actually been paid out on — sellerBonusReleased is
+        // only ever set true once an admin has approved the handover proof, so this
+        // can't include auctions that are still mid-handover or were denied/refunded.
+        // The vehicle price itself (winningBidAmount) is settled directly between
+        // buyer and seller — Carmazium never processes that payment — but retail
+        // Sale.soldPrice is the same kind of self-reported figure, so counting both
+        // the same way in totalRevenue keeps "how much business have I done here"
+        // accurate across both channels. The £100 bonus is the only amount Carmazium
+        // itself actually paid out, tracked separately so that distinction stays clear.
+        const AUCTION_SELLER_BONUS = 100;
+        const auctionWhere = {
+            listing: { sellerId: targetOwnerId },
+            status: 'ENDED' as const,
+            winnerId: { not: null },
+            sellerBonusReleased: true,
+            deletedAt: null,
+        };
+        const auctionSalesRaw = await this.prisma.auction.findMany({
+            where: auctionWhere,
+            include: {
+                listing: { select: { id: true, title: true, images: true, vrm: true } },
+                winner: { select: { id: true, firstName: true, lastName: true, email: true } },
+            },
+            orderBy: { sellerBonusReleasedAt: 'desc' },
+        });
+
+        const totalAuctionSales = auctionSalesRaw.length;
+        const totalAuctionRevenue = auctionSalesRaw.reduce((sum, a) => sum + Number(a.winningBidAmount ?? 0), 0);
+        const totalAuctionBonus = totalAuctionSales * AUCTION_SELLER_BONUS;
+
+        const auctionSales = auctionSalesRaw.map(a => ({
+            id: a.id,
+            listingId: a.listingId,
+            winningBidAmount: Number(a.winningBidAmount ?? 0),
+            sellerBonus: AUCTION_SELLER_BONUS,
+            sellerBonusReleasedAt: a.sellerBonusReleasedAt,
+            createdAt: a.sellerBonusReleasedAt ?? a.updatedAt,
+            listing: a.listing,
+            winner: a.winner,
+        }));
+
+        const totalRevenue = Number(revenueAgg._sum.soldPrice ?? 0) + totalAuctionRevenue;
 
         return {
             sales,
             totalRevenue,
-            totalSales,
+            totalSales: totalSales + totalAuctionSales,
+            auctionSales,
+            totalAuctionRevenue,
+            totalAuctionSales,
+            totalAuctionBonus,
             page,
             totalPages: Math.ceil(totalSales / limit),
         };

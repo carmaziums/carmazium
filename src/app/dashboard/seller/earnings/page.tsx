@@ -3,19 +3,20 @@
 import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { 
-    DollarSign, 
-    TrendingUp, 
-    Calendar, 
-    User as UserIcon, 
-    ArrowUpRight, 
+import {
+    DollarSign,
+    TrendingUp,
+    Calendar,
+    User as UserIcon,
+    ArrowUpRight,
     ArrowDownRight,
     Loader2,
     Search,
     Filter,
     Download,
     ChevronRight,
-    Car
+    Car,
+    Gavel,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -30,7 +31,7 @@ export default function EarningsPage() {
     const [loading, setLoading] = React.useState(true)
     const [searchTerm, setSearchTerm] = React.useState("")
     const [exporting, setExporting] = React.useState(false)
-    const [activeTab, setActiveTab] = React.useState<'sales' | 'receipts'>('sales')
+    const [activeTab, setActiveTab] = React.useState<'sales' | 'auctions' | 'receipts'>('sales')
 
     React.useEffect(() => {
         async function fetchData() {
@@ -94,47 +95,59 @@ export default function EarningsPage() {
                     </div>
 
                     {/* Stats Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <MetricCard 
-                            label="Total Revenue" 
-                            value={formatPrice(data?.totalRevenue || 0)} 
-                            icon={DollarSign} 
-                            color="text-emerald-400" 
-                            bg="bg-emerald-500/10" 
-                            border="border-emerald-500/20" 
-                            loading={loading} 
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <MetricCard
+                            label="Total Revenue"
+                            value={formatPrice(data?.totalRevenue || 0)}
+                            icon={DollarSign}
+                            color="text-emerald-400"
+                            bg="bg-emerald-500/10"
+                            border="border-emerald-500/20"
+                            loading={loading}
                         />
-                        <MetricCard 
-                            label="Vehicles Sold" 
-                            value={data?.totalSales || 0} 
-                            icon={TrendingUp} 
-                            color="text-primary" 
-                            bg="bg-primary/10" 
-                            border="border-primary/20" 
-                            loading={loading} 
+                        <MetricCard
+                            label="Vehicles Sold"
+                            value={data?.totalSales || 0}
+                            icon={TrendingUp}
+                            color="text-primary"
+                            bg="bg-primary/10"
+                            border="border-primary/20"
+                            loading={loading}
                         />
-                        <MetricCard 
-                            label="Avg. Sale Price" 
-                            value={formatPrice(data?.totalSales ? (data.totalRevenue / data.totalSales) : 0)} 
-                            icon={ArrowUpRight} 
-                            color="text-blue-400" 
-                            bg="bg-blue-500/10" 
-                            border="border-blue-500/20" 
-                            loading={loading} 
+                        <MetricCard
+                            label="Avg. Sale Price"
+                            value={formatPrice(data?.totalSales ? (data.totalRevenue / data.totalSales) : 0)}
+                            icon={ArrowUpRight}
+                            color="text-blue-400"
+                            bg="bg-blue-500/10"
+                            border="border-blue-500/20"
+                            loading={loading}
+                        />
+                        <MetricCard
+                            label="Auction Bonuses Earned"
+                            value={formatPrice(data?.totalAuctionBonus || 0)}
+                            icon={Gavel}
+                            color="text-amber-400"
+                            bg="bg-amber-500/10"
+                            border="border-amber-500/20"
+                            loading={loading}
                         />
                     </div>
 
-                    {/* Tab switcher */}
-                    <div className="flex gap-1 bg-[var(--bg-input)] p-1 rounded-xl border border-[var(--border-default)] w-fit">
-                        {(['sales', 'receipts'] as const).map(tab => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-primary text-white shadow-neon-small' : 'text-[var(--text-muted)] hover:text-primary dark:hover:text-white'}`}
-                            >
-                                {tab === 'sales' ? 'Sales History' : 'Receipts'}
-                            </button>
-                        ))}
+                    {/* Tab switcher — sticky so switching tabs doesn't require
+                        scrolling back up from deep inside a long registry */}
+                    <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md py-2 -my-2 flex gap-1 w-fit">
+                        <div className="flex gap-1 bg-[var(--bg-input)] p-1 rounded-xl border border-[var(--border-default)]">
+                            {(['sales', 'auctions', 'receipts'] as const).map(tab => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-primary text-white shadow-neon-small' : 'text-[var(--text-muted)] hover:text-primary dark:hover:text-white'}`}
+                                >
+                                    {tab === 'sales' ? 'Sales History' : tab === 'auctions' ? `Auction Sales (${data?.totalAuctionSales ?? 0})` : 'Receipts'}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Receipts tab */}
@@ -281,6 +294,86 @@ export default function EarningsPage() {
                                 <Button variant="outline" size="sm" disabled className="h-9 opacity-50">Next</Button>
                             </div>
                         </div>
+                    </div>}
+
+                    {/* Auction Sales */}
+                    {activeTab === 'auctions' && <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl shadow-2xl">
+                        <div className="p-6 border-b border-[var(--border-default)] bg-white/2">
+                            <h2 className="text-xl font-black font-heading uppercase tracking-tight flex items-center gap-2">
+                                <Gavel className="text-amber-400" size={20} /> Auction Sales
+                            </h2>
+                            <p className="text-xs text-[var(--text-muted)] mt-1">
+                                Vehicles sold through auction with handover verified. The winning bid is settled directly with the buyer — the £100 bonus is what Carmazium paid you.
+                            </p>
+                        </div>
+
+                        {!data || data.auctionSales.length === 0 ? (
+                            <div className="px-6 py-20 text-center">
+                                <div className="flex flex-col items-center gap-3 text-[var(--text-muted)] italic">
+                                    <div className="w-16 h-16 bg-[var(--bg-card)] rounded-full flex items-center justify-center mb-2">
+                                        <Gavel size={32} className="opacity-20" />
+                                    </div>
+                                    <p>No completed auction sales yet.</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-black tracking-widest border-b border-[var(--border-default)]">
+                                        <tr>
+                                            <th className="px-6 py-5">Vehicle Details</th>
+                                            <th className="px-6 py-5">Winning Bidder</th>
+                                            <th className="px-6 py-5 text-right">Winning Bid</th>
+                                            <th className="px-6 py-5 text-right">Your Bonus</th>
+                                            <th className="px-6 py-5 text-center">Verified</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-[var(--border-default)]/80">
+                                        {data.auctionSales.map(a => (
+                                            <tr key={a.id} className="hover:bg-white/[0.03] transition-all group">
+                                                <td className="px-6 py-5">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-[var(--border-default)] group-hover:border-amber-400/30 transition-colors">
+                                                            {a.listing.images?.[0] ? (
+                                                                <Image src={a.listing.images[0]} alt="" fill className="object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full bg-[var(--bg-input)] flex items-center justify-center text-[var(--text-secondary)]"><Car size={20} /></div>
+                                                            )}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className="font-black group-hover:text-amber-400 transition-colors truncate uppercase tracking-tight">{a.listing.title}</p>
+                                                            <p className="text-xs text-[var(--text-muted)] font-bold tracking-widest uppercase mt-0.5">{a.listing.vrm || "Private Plate"}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="w-8 h-8 bg-[var(--bg-card)] rounded-full flex items-center justify-center border border-[var(--border-default)] shrink-0 text-[var(--text-muted)]">
+                                                            <UserIcon size={14} />
+                                                        </div>
+                                                        <p className="text-sm font-bold text-[var(--text-primary)] truncate">
+                                                            {a.winner ? `${a.winner.firstName ?? ''} ${a.winner.lastName ?? ''}`.trim() || 'Verified dealer' : 'Verified dealer'}
+                                                        </p>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5 text-right">
+                                                    <p className="font-black text-base">{formatPrice(a.winningBidAmount)}</p>
+                                                    <span className="text-xs text-[var(--text-muted)]">paid directly by buyer</span>
+                                                </td>
+                                                <td className="px-6 py-5 text-right">
+                                                    <span className="text-amber-400 font-black text-base">{formatPrice(a.sellerBonus)}</span>
+                                                </td>
+                                                <td className="px-6 py-5 text-center">
+                                                    <p className="text-sm font-bold text-[var(--text-secondary)]">
+                                                        {new Date(a.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>}
                 </main>
             </div>
