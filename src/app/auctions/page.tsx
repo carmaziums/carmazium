@@ -555,6 +555,22 @@ export default function AuctionsPage() {
                                 </div>
                             ))}
                         </motion.div>
+
+                        {/* List Your Car CTA — moved up from the page-bottom closing card so it's
+                            visible without scrolling past the whole How It Works section */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 16 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.32 }}
+                            className="mt-8"
+                        >
+                            <Link href="/sell" className="inline-block w-full sm:w-auto">
+                                <Button size="lg" shape="pill" className="w-full sm:w-auto px-6 sm:px-10 text-sm sm:text-lg shadow-neon group">
+                                    List Your Car for Auction
+                                    <ArrowRight className="ml-2 w-4 h-4 shrink-0 group-hover:translate-x-1 transition-transform" />
+                                </Button>
+                            </Link>
+                        </motion.div>
                     </div>
                 </div>
 
@@ -769,19 +785,6 @@ export default function AuctionsPage() {
                         </div>
                     </div>
 
-                    {/* Closing CTA */}
-                    <div className="relative max-w-3xl mx-auto rounded-[1.75rem] border border-[var(--border-default)] bg-[var(--bg-input)] p-10 md:p-14 text-center overflow-hidden">
-                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(237,28,36,0.08)_0%,transparent_70%)] pointer-events-none" />
-                        <div className="relative">
-                            <h3 className="text-2xl md:text-3xl font-black font-heading mb-6">Ready to turn your keys into cash?</h3>
-                            <Link href="/sell" className="inline-block w-full sm:w-auto">
-                                <Button size="lg" shape="pill" className="w-full sm:w-auto px-6 sm:px-10 text-sm sm:text-lg shadow-neon group">
-                                    List Your Car for Auction
-                                    <ArrowRight className="ml-2 w-4 h-4 shrink-0 group-hover:translate-x-1 transition-transform" />
-                                </Button>
-                            </Link>
-                        </div>
-                    </div>
                 </div>
             </section>
         </div>
