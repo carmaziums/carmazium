@@ -626,6 +626,21 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
           </>
         )}
 
+        {/* REJECTED / WITHDRAWN — a terminal state with no further action,
+            so nothing below the negotiation history/timestamp used to render
+            at all. Every other status ends the card on something with real
+            visual weight (a button row, the accepted-offer banner); leaving
+            these on bare "23h ago" text made the card look cut off/unfinished
+            (flagged in QA). A short closing line gives it the same kind of
+            terminus the other statuses already have. */}
+        {(offer.status === 'REJECTED' || offer.status === 'WITHDRAWN') && (
+          <Text style={styles.closedStatusText}>
+            {offer.status === 'REJECTED'
+              ? 'This offer was declined by the seller.'
+              : 'You withdrew this offer.'}
+          </Text>
+        )}
+
         {/* Info-only state: buyer already countered, awaiting the seller —
             mirrors SellerOffersScreen.tsx's "Counter sent" chip. */}
         {isCountered && !isBuyerTurn && (
@@ -1153,6 +1168,12 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
     color: Colors.success,
+    lineHeight: 18,
+  },
+  closedStatusText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
     lineHeight: 18,
   },
   actionsRow: {

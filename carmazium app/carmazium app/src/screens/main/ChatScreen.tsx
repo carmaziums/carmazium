@@ -809,13 +809,19 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   // Bubble stack (bubble + Instagram-style "Seen" row underneath)
+  // No flexShrink here — `bubble` below already caps itself at maxWidth 82%
+  // and owns the shrink. Stacking a second flexShrink:1 on this wrapper (as
+  // it had before) double-applies Yoga's shrink pass with no flexBasis to
+  // anchor it: single unbreakable "words" (no space to naturally wrap on)
+  // got measured against an under-computed intermediate width and force-broke
+  // mid-word, while a real conversation whose most common short messages are
+  // more than one word masked it. offerMessageBubble/counterMessageCard below
+  // never had this second wrapper and never showed the bug.
   bubbleStackRight: {
     alignItems: 'flex-end',
-    flexShrink: 1,
   },
   bubbleStackLeft: {
     alignItems: 'flex-start',
-    flexShrink: 1,
   },
   msgFooter: {
     flexDirection: 'row',

@@ -426,6 +426,17 @@ export const DealerMyOffersScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* REJECTED / WITHDRAWN — terminal state, nothing above renders for
+            it, which left the card ending on bare "Xh ago" text with no
+            visual weight (matches the same gap fixed on BuyerOffersScreen). */}
+        {(offer.status === 'REJECTED' || offer.status === 'WITHDRAWN') && (
+          <Text style={styles.closedStatusText}>
+            {offer.status === 'REJECTED'
+              ? 'This offer was declined by the seller.'
+              : 'You withdrew this offer.'}
+          </Text>
+        )}
       </View>
     );
   }, [actionLoading, handleWithdraw, handleCounterRespond, handleMessageSeller]);
@@ -689,6 +700,12 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
     color: Colors.success,
+    lineHeight: 18,
+  },
+  closedStatusText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
     lineHeight: 18,
   },
   actionsRow: {
