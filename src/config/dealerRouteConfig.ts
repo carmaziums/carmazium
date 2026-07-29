@@ -110,8 +110,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/dealer/auctions/won",
-        label: "My Bids",
-        title: "My Bids",
+        label: "Purchased from Auction",
+        title: "Purchased from Auction",
         subHeader: "Every auction you're bidding on or have won, and exactly what to do next",
         icon: Trophy
     },

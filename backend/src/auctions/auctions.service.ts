@@ -274,12 +274,18 @@ export class AuctionsService {
                                 select: { amount: true },
                             },
                             _count: { select: { bids: true } },
+                            // Winner-only query (where: winnerId = the requesting user), so unlike
+                            // findOne/findAllActive it's safe to include direct contact details here
+                            // — matches the same phone/email exposure already used for completed
+                            // retail purchases in dealers.service.ts::getDealerPurchases.
                             seller: {
                                 select: {
                                     id: true,
                                     firstName: true,
                                     lastName: true,
-                                    dealerProfile: { select: { companyName: true } },
+                                    email: true,
+                                    phone: true,
+                                    dealerProfile: { select: { companyName: true, logo: true } },
                                 },
                             },
                         },

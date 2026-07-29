@@ -19,6 +19,10 @@ export interface AuctionSeller {
     id: string;
     firstName: string | null;
     lastName: string | null;
+    // Only populated by winner-gated endpoints (e.g. getWonAuctions) — public
+    // auction browse/detail endpoints never include these.
+    phone?: string | null;
+    email?: string | null;
     dealerProfile?: { companyName: string; logo: string | null } | null;
 }
 
@@ -176,6 +180,14 @@ export async function getWonAuctions(page = 1, limit = 50): Promise<Auction[]> {
     if (r?.data && Array.isArray(r.data)) return r.data;
     if (r?.data && "data" in r.data && Array.isArray(r.data.data)) return r.data.data;
     return [];
+}
+
+// Single-auction lookup through the winner-gated list endpoint rather than the
+// public findOne — that's the only query that includes the seller's phone/email
+// (safe here because it's filtered to `winnerId = requesting user`).
+export async function getWonAuctionById(id: string): Promise<Auction | null> {
+    const list = await getWonAuctions(1, 200);
+    return list.find(a => a.id === id) ?? null;
 }
 
 export async function getAuction(id: string): Promise<Auction> {

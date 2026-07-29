@@ -125,7 +125,7 @@ export class BidsService {
                 message:    `A new bid of £${createBidDto.amount.toLocaleString()} was placed on ${listing.make} ${listing.model}. Bid again to stay in the lead.`,
                 entityType: 'AUCTION',
                 entityId:   auction.id,
-                link:       `/auction/${auction.id}`,
+                link:       `/auctions/live/${auction.id}`,
             }).catch(() => { /* notification failure must not fail the bid */ });
         }
 

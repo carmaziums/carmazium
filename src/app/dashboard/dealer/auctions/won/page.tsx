@@ -6,6 +6,7 @@ import Image from "next/image"
 import {
     Loader2, Trophy, Car, MessageSquare, CreditCard, CheckCircle2, XCircle,
     Clock, AlertTriangle, Gavel, Radio, TrendingUp, FileSearch,
+    Calendar, Gauge, Fuel, Cog, Palette, Phone,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
@@ -13,6 +14,7 @@ import { useAuth } from "@/context/AuthContext"
 import { getWonAuctions, type Auction } from "@/lib/auctionApi"
 import { getMyBids, type Bid } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
+import { FUEL_TYPE_LABELS, BODY_TYPE_LABELS } from "@/lib/vehicleLabels"
 
 // This page is the single stop for everything about a dealer's auction bidding —
 // bids currently in play and every won auction's handover status — instead of
@@ -77,11 +79,12 @@ const STAGE_LABELS: Record<HandoverStage, { label: string; hint: string; icon: R
 // ─── Shared row shell — every section uses this same shape ───────────────────
 
 function Row({
-    image, title, meta, badge, hint, rightLabel, rightValue, rightValueClass, cta,
+    image, title, meta, specs, badge, hint, rightLabel, rightValue, rightValueClass, cta,
 }: {
     image: string
     title: string
     meta: React.ReactNode
+    specs?: React.ReactNode
     badge: { label: string; icon: React.ComponentType<{ size?: number; className?: string }>; tint: string }
     hint: string
     rightLabel: string
@@ -99,6 +102,7 @@ function Row({
                 <div className="flex-1 min-w-0">
                     <p className="text-lg font-black text-[var(--text-primary)] truncate">{title}</p>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--text-muted)] mt-1">{meta}</div>
+                    {specs && <div className="flex flex-wrap gap-1.5 mt-2">{specs}</div>}
 
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                         <span className={`inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border ${badge.tint}`}>
@@ -117,6 +121,17 @@ function Row({
                 </div>
             </div>
         </div>
+    )
+}
+
+// Same spec-chip look used on the retail listing cards (CarCard.tsx) — so a
+// purchased vehicle reads with the same level of detail a buyer already
+// trusted when they placed the winning bid, not just year/mileage.
+function SpecChip({ icon: Icon, children }: { icon: React.ComponentType<{ size?: number }>; children: React.ReactNode }) {
+    return (
+        <span className="inline-flex items-center gap-1 bg-slate-500/10 dark:bg-[var(--bg-card)] border border-slate-500/20 dark:border-[var(--border-default)] text-slate-600 dark:text-[var(--text-muted)] text-[10px] font-semibold px-2 py-1 rounded-md">
+            <Icon size={10} /> {children}
+        </span>
     )
 }
 
@@ -143,13 +158,15 @@ function SecondaryButton({ href, icon: Icon, children }: { href: string; icon: R
 }
 
 // Opens (or creates) the chat room right from the list — no detour through the
-// detail page just to say something to the seller.
-function ChatButton({ sellerId, listingId }: { sellerId: string; listingId: string }) {
+// detail page just to say something to the seller. Also surfaces a direct
+// call link when their phone number is available (winner-gated data only —
+// see AuctionSeller in auctionApi.ts), for buyers who'd rather just call.
+function ChatButton({ sellerId, listingId, phone }: { sellerId: string; listingId: string; phone?: string | null }) {
     const [connecting, setConnecting] = React.useState(false)
     const [error, setError] = React.useState(false)
 
     return (
-        <div className="flex flex-col items-end gap-1 w-full md:w-auto">
+        <div className="flex flex-col items-end gap-1.5 w-full md:w-auto">
             <button
                 type="button"
                 disabled={connecting}
@@ -169,6 +186,14 @@ function ChatButton({ sellerId, listingId }: { sellerId: string; listingId: stri
                 {connecting ? <Loader2 size={15} className="animate-spin" /> : <MessageSquare size={15} />}
                 Chat with seller
             </button>
+            {phone && (
+                <a
+                    href={`tel:${phone}`}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--border-default)] text-[var(--text-primary)] text-sm font-bold hover:border-primary/40 hover:text-primary transition-colors w-full md:w-auto"
+                >
+                    <Phone size={14} /> {phone}
+                </a>
+            )}
             {error && <p className="text-xs text-red-400 font-bold">Couldn&apos;t open chat — try again.</p>}
         </div>
     )
@@ -193,11 +218,15 @@ function WonAuctionRow({ auction }: { auction: Auction }) {
         <Row
             image={l.images?.[0] ?? "/assets/images/hero-bg.png"}
             title={l.title}
-            meta={<>
-                {l.year && <span className="font-bold">{l.year}</span>}
-                {l.mileage != null && <span>{Number(l.mileage).toLocaleString()} mi</span>}
-                <span className="opacity-40">·</span>
-                <span>Sold by <span className="text-[var(--text-primary)] font-bold">{sellerName}</span></span>
+            meta={<span>Sold by <span className="text-[var(--text-primary)] font-bold">{sellerName}</span></span>}
+            specs={<>
+                {l.year && <SpecChip icon={Calendar}>{l.year}</SpecChip>}
+                {l.mileage != null && <SpecChip icon={Gauge}>{Number(l.mileage).toLocaleString()} mi</SpecChip>}
+                {l.fuelType && FUEL_TYPE_LABELS[l.fuelType] && <SpecChip icon={Fuel}>{FUEL_TYPE_LABELS[l.fuelType]}</SpecChip>}
+                {l.bodyType && BODY_TYPE_LABELS[l.bodyType] && <SpecChip icon={Car}>{BODY_TYPE_LABELS[l.bodyType]}</SpecChip>}
+                {l.transmission && <SpecChip icon={Cog}>{l.transmission}</SpecChip>}
+                {l.color && <SpecChip icon={Palette}>{l.color}</SpecChip>}
+                {l.engineSize != null && <SpecChip icon={Gauge}>{(l.engineSize / 1000).toFixed(1)}L</SpecChip>}
             </>}
             badge={s}
             hint={s.hint}
@@ -210,7 +239,7 @@ function WonAuctionRow({ auction }: { auction: Auction }) {
                         Pay the £125 fee
                     </PrimaryButton>
                 ) : noProofYet && l.sellerId ? (
-                    <ChatButton sellerId={l.sellerId} listingId={auction.listingId} />
+                    <ChatButton sellerId={l.sellerId} listingId={auction.listingId} phone={seller?.phone} />
                 ) : stage === "in_progress" ? (
                     <SecondaryButton href={`/auctions/won/${auction.id}`} icon={FileSearch}>
                         View details
@@ -321,7 +350,7 @@ export default function MyBidsPage() {
                 <DashboardSidebar role="dealer" />
                 <main className="flex-1 space-y-8">
                     <PageHeader
-                        title="My Bids"
+                        title="Purchased from Auction"
                         subHeader="Every auction you're bidding on or have won, and exactly what to do next"
                     />
 

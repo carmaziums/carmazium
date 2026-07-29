@@ -9,10 +9,10 @@ import {
     Fuel, Cog, Gauge, Palette, DoorOpen, Users2, Zap,
     CalendarDays, Hash, ShieldCheck, FileText,
     MapPin, CheckCircle2, XCircle, Clock, PoundSterling,
-    MessageSquare, User, FileSearch,
+    MessageSquare, User, FileSearch, Phone, Mail,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
-import { getAuction, type Auction } from "@/lib/auctionApi"
+import { getWonAuctionById, type Auction } from "@/lib/auctionApi"
 import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
 import { ChatWindow } from "@/components/chat/ChatWindow"
 
@@ -74,29 +74,24 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
             .finally(() => setChatLoading(false))
     }, [])
 
-    // Fetch auction data
+    // Fetch auction data — through the winner-gated endpoint (not the public
+    // findOne), so the seller's phone/email are actually present to display.
     React.useEffect(() => {
         if (authLoading || !user) return
-        getAuction(auctionId)
+        getWonAuctionById(auctionId)
             .then(a => {
+                if (!a || !a.buyerFeePaid) {
+                    router.replace(`/auctions/live/${auctionId}`)
+                    return
+                }
                 setAuction(a)
-                // Open chat with seller once we have the auction
-                if (a.listing.sellerId && a.winnerId === user.id) {
+                if (a.listing.sellerId) {
                     connectChat(a.listing.sellerId, a.listing.id)
                 }
             })
             .catch(() => setLoadError("Could not load auction details."))
             .finally(() => setLoading(false))
-    }, [authLoading, user, auctionId, connectChat])
-
-    // Access control — redirect if wrong user or fee not paid
-    React.useEffect(() => {
-        if (!auction || !user) return
-        const isWinner = auction.winnerId === user.id
-        if (!isWinner || !auction.buyerFeePaid) {
-            router.replace(`/auctions/live/${auctionId}`)
-        }
-    }, [auction, user, auctionId, router])
+    }, [authLoading, user, auctionId, connectChat, router])
 
     if (authLoading || loading) {
         return (
@@ -327,6 +322,22 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                     <p className="text-[var(--text-primary)] font-black text-sm">{sellerName}</p>
                                 </div>
                             </div>
+
+                            {(seller?.phone || seller?.email) && (
+                                <div className="mt-3 pt-3 border-t border-[var(--border-default)] space-y-2">
+                                    {seller?.phone && (
+                                        <a href={`tel:${seller.phone}`} className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)] hover:text-primary transition-colors">
+                                            <Phone size={13} className="text-primary shrink-0" /> {seller.phone}
+                                        </a>
+                                    )}
+                                    {seller?.email && (
+                                        <a href={`mailto:${seller.email}`} className="flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary transition-colors truncate">
+                                            <Mail size={13} className="text-primary shrink-0" /> {seller.email}
+                                        </a>
+                                    )}
+                                </div>
+                            )}
+
                             <div className="mt-3 pt-3 border-t border-[var(--border-default)] flex items-center gap-2 text-xs text-[var(--text-muted)]">
                                 <Clock size={11} />
                                 <span>Auction ended {new Date(auction.endTime).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>

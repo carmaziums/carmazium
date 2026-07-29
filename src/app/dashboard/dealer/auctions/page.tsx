@@ -6,7 +6,8 @@ import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import {
     Gavel, PlusCircle, Loader2, Eye, XCircle, Clock,
-    ChevronUp, AlertCircle, CheckCircle2, Calendar, X, Tags, Star
+    ChevronUp, ChevronRight, AlertCircle, CheckCircle2, Calendar, X, Tags, Star,
+    Upload, Handshake, Info, CheckCircle, ImageIcon,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
@@ -21,7 +22,8 @@ import {
     type Auction, type CreateAuctionRequest,
 } from "@/lib/auctionApi"
 import { apiClient } from "@/lib/apiClient"
-import type { Listing } from "@/lib/listingApi"
+import { uploadImage } from "@/lib/supabase"
+import { getStripeConnectStatus, type StripeConnectStatus, type Listing } from "@/lib/listingApi"
 
 const STATUS_STYLES: Record<string, string> = {
     SCHEDULED: "bg-blue-500/10 text-blue-400 border-blue-500/20",
@@ -54,6 +56,35 @@ function addHours(iso: string, hours: number): string {
     })
 }
 
+// A plain grey "ENDED" pill hides the one thing a seller actually needs to
+// know: whether there's something left to do. Mirrors the same badge on
+// /dashboard/seller/auctions so both auction-selling surfaces read the same way.
+function AuctionStatusBadge({ auction }: { auction: Auction }) {
+    const needsHandover = auction.status === "ENDED" && !!auction.winnerId && !auction.sellerBonusReleased
+    const paidOut = auction.status === "ENDED" && !!auction.winnerId && auction.sellerBonusReleased
+
+    if (needsHandover) {
+        return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border bg-amber-500/10 text-amber-400 border-amber-500/25 animate-pulse">
+                <Handshake size={10} /> Action Needed
+            </span>
+        )
+    }
+    if (paidOut) {
+        return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                <CheckCircle size={10} /> Ended · Paid
+            </span>
+        )
+    }
+    return (
+        <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-black tracking-widest border ${STATUS_STYLES[auction.status] ?? STATUS_STYLES.ENDED}`}>
+            {auction.status === "ACTIVE" && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5 self-center inline-block" />}
+            {auction.status}
+        </span>
+    )
+}
+
 export default function DealerAuctionsPageWrapper() {
     return (
         <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
@@ -79,6 +110,12 @@ function DealerAuctionsPage() {
     const [digestRating,   setDigestRating]   = React.useState<number | null>(null)
     const [digestLoading,  setDigestLoading]  = React.useState(false)
     const [digestError,    setDigestError]    = React.useState<string | null>(null)
+    const [payoutStatus, setPayoutStatus] = React.useState<StripeConnectStatus | null>(null)
+
+    // ── Handover proof upload ─────────────────────────────────────────────────
+    const [handoverUploading, setHandoverUploading] = React.useState<string | null>(null)
+    const [handoverDone, setHandoverDone] = React.useState<Set<string>>(new Set())
+    const [handoverError, setHandoverError] = React.useState<Record<string, string>>({})
 
     // Form state
     const [formListingId, setFormListingId] = React.useState(preselectedListingId)
@@ -96,6 +133,38 @@ function DealerAuctionsPage() {
         const id = setInterval(() => setTick(t => t + 1), 1000)
         return () => clearInterval(id)
     }, [])
+
+    React.useEffect(() => {
+        if (user) getStripeConnectStatus().then(setPayoutStatus).catch(() => {})
+    }, [user])
+
+    // Seed handoverDone from API data whenever auctions load
+    React.useEffect(() => {
+        const submittedIds = auctions
+            .filter(a => a.handoverProofUrl && !a.sellerBonusReleased)
+            .map(a => a.id)
+        if (submittedIds.length > 0) {
+            setHandoverDone(prev => new Set([...prev, ...submittedIds]))
+        }
+    }, [auctions])
+
+    async function handleHandoverUpload(auctionId: string, file: File) {
+        setHandoverUploading(auctionId)
+        setHandoverError(prev => ({ ...prev, [auctionId]: "" }))
+        try {
+            const url = await uploadImage(file, 'listings', `handover/${auctionId}`)
+            await apiClient(`/auctions/${auctionId}/handover-proof`, {
+                method: "POST",
+                body: JSON.stringify({ proofUrl: url }),
+            })
+            setHandoverDone(prev => new Set([...prev, auctionId]))
+            setSuccessMsg("Handover proof submitted — your £100 bonus will be released after verification.")
+        } catch (err: any) {
+            setHandoverError(prev => ({ ...prev, [auctionId]: err.message || "Upload failed. Please try again." }))
+        } finally {
+            setHandoverUploading(null)
+        }
+    }
 
     async function fetchAuctions() {
         setLoading(true)
@@ -228,6 +297,11 @@ function DealerAuctionsPage() {
 
     const auctionRoute = DEALER_ROUTE_CONFIG.find(r => r.href === "/dashboard/dealer/auctions")
 
+    // Auctions where handover is needed or pending — exclude fully approved ones
+    const endedWithWinner = auctions.filter(a => a.status === "ENDED" && a.winnerId && !a.sellerBonusReleased)
+    // Auctions where bonus has been approved — show a completion card
+    const approvedHandovers = auctions.filter(a => a.status === "ENDED" && a.winnerId && a.sellerBonusReleased)
+
     return (
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
@@ -245,6 +319,30 @@ function DealerAuctionsPage() {
                             <PlusCircle size={18} /> Create Auction
                         </Button>
                     </PageHeader>
+
+                    {/* Action needed — the single most important thing on this page when it applies,
+                        so it sits above everything else instead of being a section you have to scroll
+                        past the whole table to discover on your own. */}
+                    {endedWithWinner.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => document.getElementById('handover-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                            className="w-full flex items-center gap-4 p-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15 transition-colors text-left"
+                        >
+                            <div className="w-11 h-11 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
+                                <Handshake size={20} className="text-amber-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-black text-amber-300 text-base">
+                                    {endedWithWinner.length} auction{endedWithWinner.length > 1 ? "s" : ""} waiting on you
+                                </p>
+                                <p className="text-sm text-amber-300/80 mt-0.5">
+                                    Upload handover proof to get your £100 bonus released.
+                                </p>
+                            </div>
+                            <ChevronRight size={18} className="text-amber-400 shrink-0" />
+                        </button>
+                    )}
 
                     {/* Success banner */}
                     <AnimatePresence>
@@ -458,9 +556,7 @@ function DealerAuctionsPage() {
                                             <p className="font-black text-sm truncate">{auction.listing.title}</p>
                                             <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest">{auction.listing.year} · {auction.listing.make}</p>
                                         </div>
-                                        <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-black tracking-widest border shrink-0 ${STATUS_STYLES[auction.status] ?? STATUS_STYLES.ENDED}`}>
-                                            {auction.status}
-                                        </span>
+                                        <div className="shrink-0"><AuctionStatusBadge auction={auction} /></div>
                                     </div>
                                     <div className="flex items-center justify-between gap-2">
                                         <div>
@@ -574,10 +670,7 @@ function DealerAuctionsPage() {
 
                                                 {/* Status */}
                                                 <td className="px-6 py-6 text-center">
-                                                    <span className={`inline-flex px-3 py-1.5 rounded-lg text-xs font-black tracking-widest border ${STATUS_STYLES[auction.status] ?? STATUS_STYLES.ENDED}`}>
-                                                        {auction.status === "ACTIVE" && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5 self-center" />}
-                                                        {auction.status}
-                                                    </span>
+                                                    <AuctionStatusBadge auction={auction} />
                                                 </td>
 
                                                 {/* Schedule */}
@@ -687,6 +780,157 @@ function DealerAuctionsPage() {
                             </table>
                         </div>{/* end hidden sm:block */}
                     </div>
+
+                    {/* ── Approved Handovers ──────────────────────────────── */}
+                    {approvedHandovers.length > 0 && (
+                        <div className="space-y-3">
+                            {approvedHandovers.map(auction => (
+                                <div key={auction.id} className="dealer-glass-card p-4 flex items-center gap-4 border border-emerald-500/20 bg-emerald-500/5 rounded-2xl">
+                                    <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
+                                        <CheckCircle size={18} className="text-emerald-400" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-sm">{auction.listing?.title}</p>
+                                        <p className="text-xs text-emerald-400 mt-0.5">Handover verified — £100 seller bonus released</p>
+                                    </div>
+                                    <span className="text-xs font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">Complete</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* ── Handover Proof Section ──────────────────────────── */}
+                    {endedWithWinner.length > 0 && (
+                        <div id="handover-section" className="space-y-4 scroll-mt-24">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                                    <Handshake size={16} className="text-emerald-400" />
+                                </div>
+                                <div>
+                                    <h2 className="font-bold">Handover Completion</h2>
+                                    <p className="text-xs text-[var(--text-muted)]">Upload proof to receive your £100 seller bonus</p>
+                                </div>
+                            </div>
+
+                            {payoutStatus !== null && !payoutStatus.onboardingComplete && (
+                                <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                                    <AlertCircle size={15} className="text-amber-400 shrink-0 mt-0.5" />
+                                    <div className="text-xs text-amber-300">
+                                        <p className="font-bold mb-0.5">Payout method not set up</p>
+                                        <p className="text-amber-300/70">
+                                            Connect your bank account in{" "}
+                                            <a href="/dashboard/dealer/settings" className="underline hover:text-amber-200">Settings → Payouts</a>
+                                            {" "}to receive your £100 automatically after handover approval.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {endedWithWinner.map(auction => {
+                                const isDone = handoverDone.has(auction.id)
+                                const isUploading = handoverUploading === auction.id
+                                const err = handoverError[auction.id]
+                                const winningBid = Number(auction.winningBidAmount)
+
+                                return (
+                                    <div key={auction.id} className="dealer-glass-card p-5 space-y-4">
+                                        {/* Auction info */}
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                {auction.listing.images?.[0] && (
+                                                    <Image src={auction.listing.images[0]} alt="" width={56} height={40} className="w-14 h-10 rounded object-cover shrink-0" />
+                                                )}
+                                                <div className="min-w-0">
+                                                    <p className="font-bold truncate">{auction.listing.title}</p>
+                                                    <p className="text-xs text-[var(--text-muted)]">{auction.listing.year} · {auction.listing.make} {auction.listing.model}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right shrink-0">
+                                                <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest">Winning Bid</p>
+                                                <p className="text-lg font-black font-mono">£{winningBid.toLocaleString()}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Fee summary */}
+                                        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                                            <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/15 p-2.5">
+                                                <p className="text-[var(--text-muted)] text-xs uppercase tracking-widest mb-0.5">Your Bonus</p>
+                                                <p className="text-emerald-400 font-black text-base">£100</p>
+                                                <p className="text-[var(--text-secondary)] text-xs">after handover verified</p>
+                                            </div>
+                                            <div className="rounded-lg bg-white/[0.02] border border-[var(--border-default)] p-2.5">
+                                                <p className="text-[var(--text-muted)] text-xs uppercase tracking-widest mb-0.5">Platform Fee</p>
+                                                <p className="font-black text-base">£25</p>
+                                                <p className="text-[var(--text-secondary)] text-xs">non-refundable</p>
+                                            </div>
+                                            <div className="rounded-lg bg-white/[0.02] border border-[var(--border-default)] p-2.5">
+                                                <p className="text-[var(--text-muted)] text-xs uppercase tracking-widest mb-0.5">Buyer Paid</p>
+                                                <p className="font-black text-base">£125</p>
+                                                <p className="text-[var(--text-secondary)] text-xs">total buyer fee</p>
+                                            </div>
+                                        </div>
+
+                                        {isDone ? (
+                                            <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                                                <CheckCircle size={16} className="shrink-0" />
+                                                <div>
+                                                    <p className="text-sm font-bold">Handover proof submitted</p>
+                                                    <p className="text-xs text-emerald-400/70">Your £100 bonus is pending verification — we&apos;ll notify you once released.</p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/5 border border-amber-500/15 text-xs text-[var(--text-muted)]">
+                                                    <Info size={13} className="text-amber-400 shrink-0 mt-0.5" />
+                                                    <span>Upload a photo or document showing the vehicle was handed over — e.g. a signed receipt, photo with the buyer, or logbook transfer confirmation.</span>
+                                                </div>
+
+                                                {err && (
+                                                    <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+                                                        <AlertCircle size={13} className="shrink-0" />
+                                                        {err}
+                                                    </div>
+                                                )}
+
+                                                <label className={`flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${isUploading ? "opacity-50 pointer-events-none" : "border-[var(--border-default)] hover:border-emerald-500/40 hover:bg-emerald-500/5"}`}>
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*,.pdf"
+                                                        className="sr-only"
+                                                        disabled={isUploading}
+                                                        onChange={e => {
+                                                            const file = e.target.files?.[0]
+                                                            if (file) handleHandoverUpload(auction.id, file)
+                                                        }}
+                                                    />
+                                                    {isUploading ? (
+                                                        <Loader2 size={24} className="text-emerald-400 animate-spin" />
+                                                    ) : (
+                                                        <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                                                            <ImageIcon size={22} className="text-emerald-400" />
+                                                        </div>
+                                                    )}
+                                                    <div className="text-center">
+                                                        <p className="text-sm font-bold">
+                                                            {isUploading ? "Uploading proof..." : "Upload Handover Proof"}
+                                                        </p>
+                                                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                                                            {isUploading ? "Please wait" : "JPG, PNG or PDF · Click or drag to upload"}
+                                                        </p>
+                                                    </div>
+                                                    {!isUploading && (
+                                                        <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500 text-black font-bold text-xs">
+                                                            <Upload size={12} /> Choose File
+                                                        </span>
+                                                    )}
+                                                </label>
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
                 </main>
             </div>
 

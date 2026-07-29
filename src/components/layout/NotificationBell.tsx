@@ -77,7 +77,7 @@ function timeAgo(dateStr: string) {
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 export function NotificationBell() {
-    const { user } = useAuth()
+    const { user, profile } = useAuth()
     const { unreadCount: chatUnread } = useChat()
     const router = useRouter()
 
@@ -156,7 +156,12 @@ export function NotificationBell() {
         if (n.type.startsWith("AUCTION_")) {
             const auctionId = typeof dataObj.auctionId === "string" ? dataObj.auctionId : n.entityId
             if (n.type === "AUCTION_WON" && auctionId) {
-                router.push(`/auctions/won/${auctionId}`)
+                // Only bidding-eligible (DEALER) accounts can win, and the individual
+                // /auctions/won/[id] page immediately bounces anyone who hasn't paid
+                // the £125 fee yet back to the now-closed live auction — a dead end
+                // right when a winner clicks in. The list view always has a working
+                // "Pay the fee" action instead, regardless of payment state.
+                router.push("/dashboard/dealer/auctions/won")
                 return
             }
             if (auctionId && (
@@ -172,7 +177,10 @@ export function NotificationBell() {
                 return
             }
             if (n.type === "AUCTION_ENDED_NO_SALE" || n.type === "AUCTION_CANCELLED") {
-                router.push("/dashboard/seller/auctions")
+                // These go to the auction's seller, who may be a plain "seller"
+                // account or a dealer selling via auction — each has its own
+                // dashboard shell, so route to whichever one they actually have.
+                router.push(profile?.role === "DEALER" ? "/dashboard/dealer/auctions" : "/dashboard/seller/auctions")
                 return
             }
         }
