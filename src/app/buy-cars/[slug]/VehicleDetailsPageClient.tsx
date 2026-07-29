@@ -742,14 +742,17 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                             {listing.seller.dealerProfile.description && (
                                                 <p className="line-clamp-3 text-xs">{listing.seller.dealerProfile.description}</p>
                                             )}
-                                            <div className="flex flex-col gap-1 pt-2">
+                                            <div className="flex flex-col gap-2 pt-2">
                                                 <BlurredPhone
                                                     phone={listing.seller.dealerProfile.phone}
                                                     phoneAvailable={listing.seller.dealerProfile.phoneAvailable ?? !!listing.seller.dealerProfile.phone}
                                                 />
                                                 {listing.seller.dealerProfile.website && (
-                                                    <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-primary dark:hover:text-white transition-colors">
-                                                        <Globe size={14} className="text-[var(--text-muted)]" /> Visit Website
+                                                    <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group">
+                                                        <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
+                                                            <Globe size={14} className="text-[var(--text-muted)] group-hover:text-primary transition-colors" />
+                                                        </div>
+                                                        <span className="font-medium">Visit Website</span>
                                                     </a>
                                                 )}
                                             </div>
@@ -1152,14 +1155,17 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                         {listing.seller.dealerProfile.description && (
                                             <p className="line-clamp-3 text-xs">{listing.seller.dealerProfile.description}</p>
                                         )}
-                                        <div className="flex flex-col gap-1 pt-2">
+                                        <div className="flex flex-col gap-2 pt-2">
                                             <BlurredPhone
                                                 phone={listing.seller.dealerProfile.phone}
                                                 phoneAvailable={listing.seller.dealerProfile.phoneAvailable ?? !!listing.seller.dealerProfile.phone}
                                             />
                                             {listing.seller.dealerProfile.website && (
-                                                <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-primary dark:hover:text-white transition-colors">
-                                                    <Globe size={14} className="text-[var(--text-muted)]" /> Visit Website
+                                                <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group">
+                                                    <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
+                                                        <Globe size={14} className="text-[var(--text-muted)] group-hover:text-primary transition-colors" />
+                                                    </div>
+                                                    <span className="font-medium">Visit Website</span>
                                                 </a>
                                             )}
                                         </div>

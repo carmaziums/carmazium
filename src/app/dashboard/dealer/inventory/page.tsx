@@ -245,8 +245,9 @@ export default function DealerInventoryPage() {
                         </Link>
                     </PageHeader>
 
-                    {/* Filters — sticky so search/filter/Add Vehicle stay reachable without
-                        scrolling back to the top of a long inventory list */}
+                    {/* Filters — sticky so search/filter stay reachable without scrolling
+                        back to the top of a long inventory list. Add Vehicle already lives
+                        in the page header above — no need to repeat it here. */}
                     <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md pt-2 -mt-2 flex flex-col lg:flex-row lg:flex-wrap gap-4 items-center">
                         <div className="relative flex-1 w-full lg:min-w-[200px] lg:max-w-md">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} />
@@ -270,11 +271,6 @@ export default function DealerInventoryPage() {
                                 </button>
                             ))}
                         </div>
-                        <Link href="/dashboard/dealer/add-listing" className="w-full lg:w-auto shrink-0">
-                            <Button className="w-full gap-2 h-12 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-transform">
-                                <PlusCircle size={18} /> Add Vehicle
-                            </Button>
-                        </Link>
                     </div>
 
                     {/* Table */}

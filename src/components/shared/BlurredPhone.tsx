@@ -29,9 +29,12 @@ export function BlurredPhone({ phone, phoneAvailable, className = "" }: BlurredP
         return (
             <a
                 href={`tel:${phone}`}
-                className={`flex items-center gap-2 text-emerald-500 hover:text-primary dark:hover:text-white transition-colors ${className}`}
+                className={`flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group ${className}`}
             >
-                <Phone size={14} className="text-emerald-500 shrink-0" /> {phone}
+                <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
+                    <Phone size={14} className="text-emerald-500 group-hover:text-primary transition-colors" />
+                </div>
+                <span className="font-medium text-emerald-500">{phone}</span>
             </a>
         )
     }
@@ -40,9 +43,11 @@ export function BlurredPhone({ phone, phoneAvailable, className = "" }: BlurredP
         <button
             type="button"
             onClick={() => router.push(`/auth/login?redirect=${encodeURIComponent(pathname || '/')}`)}
-            className={`flex items-center gap-2 group ${className}`}
+            className={`flex items-center gap-3 group bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] ${className}`}
         >
-            <Lock size={14} className="text-[var(--text-muted)] shrink-0" />
+            <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
+                <Lock size={14} className="text-[var(--text-muted)] shrink-0" />
+            </div>
             <span className="blur-[4px] select-none text-[var(--text-muted)] group-hover:blur-[3px] transition-all">07XXX XXXXXX</span>
             <span className="text-primary text-xs font-bold whitespace-nowrap group-hover:underline">Log in to view</span>
         </button>

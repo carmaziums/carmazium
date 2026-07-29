@@ -88,7 +88,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                     // If this is the server-confirmed version of our optimistic message,
                     // replace the temp entry instead of appending a duplicate
                     const tempId = optimisticTempId.current
-                    if (tempId && message.senderId !== room.otherUser.id) {
+                    if (tempId && message.senderId !== room.otherUser?.id) {
                         const idx = prev.findIndex(m => m.id === tempId)
                         if (idx !== -1) {
                             optimisticTempId.current = null
@@ -109,7 +109,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     // Subscribe to typing indicators
     React.useEffect(() => {
         const unsubscribe = onTyping((data) => {
-            if (data.roomId === room.id && data.userId === room.otherUser.id) {
+            if (data.roomId === room.id && data.userId === room.otherUser?.id) {
                 setIsTyping(data.isTyping)
             }
         })
@@ -210,7 +210,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                     </button>
                 )}
                 <div className="relative w-10 h-10 rounded-full bg-[var(--bg-card)] flex items-center justify-center overflow-hidden">
-                    {room.otherUser.profileImage ? (
+                    {room.otherUser?.profileImage ? (
                         <Image src={room.otherUser.profileImage} alt="" fill sizes="40px" className="object-cover" />
                     ) : (
                         <User size={20} className="text-[var(--text-muted)]" />
@@ -218,7 +218,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 </div>
                 <div className="flex-1">
                     <h3 className="font-bold">
-                        {room.otherUser.firstName} {room.otherUser.lastName}
+                        {room.otherUser ? `${room.otherUser.firstName ?? ""} ${room.otherUser.lastName ?? ""}`.trim() || "Chat" : "Chat"}
                     </h3>
                     {room.listing && (
                         <p className="text-xs text-[var(--text-muted)] truncate">
@@ -262,7 +262,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                 </span>
                             </div>
                             {group.messages.map((msg) => {
-                                const isOwn = msg.senderId !== room.otherUser.id
+                                const isOwn = msg.senderId !== room.otherUser?.id
                                 return (
                                     <div
                                         key={msg.id}

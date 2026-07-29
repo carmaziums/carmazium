@@ -10,7 +10,7 @@ import {
     ChevronRight, Timer, Gauge, Fuel, Car, MapPin,
     BadgeCheck, ShieldCheck, Star, Truck,
     ArrowRight, ChevronDown, FileText, Lock, Handshake, Banknote,
-    Eye, TrendingUp, CreditCard, Box,
+    Eye, TrendingUp, CreditCard, Box, Filter,
 } from "lucide-react"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
 import { CardImageCarousel } from "@/components/features/CardImageCarousel"
@@ -22,6 +22,17 @@ import {
     getActiveAuctions, getScheduledAuctions, getCurrentBid,
     getBidCount, isAntiSnipeActive, type Auction,
 } from "@/lib/auctionApi"
+
+// ─── Filters ──────────────────────────────────────────────────────────────────
+
+type SortOption = "ending_soon" | "newest" | "price_low" | "price_high"
+
+const SORT_LABELS: Record<SortOption, string> = {
+    ending_soon: "Ending Soonest",
+    newest: "Newest Listed",
+    price_low: "Price: Low to High",
+    price_high: "Price: High to Low",
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -456,6 +467,15 @@ export default function AuctionsPage() {
     const [search, setSearch] = React.useState("")
     const [lastRefresh, setLastRefresh] = React.useState(Date.now())
 
+    // Filters
+    const [showFilters, setShowFilters] = React.useState(false)
+    const [makeFilter, setMakeFilter] = React.useState("")
+    const [bodyTypeFilter, setBodyTypeFilter] = React.useState("")
+    const [fuelTypeFilter, setFuelTypeFilter] = React.useState("")
+    const [minPrice, setMinPrice] = React.useState("")
+    const [maxPrice, setMaxPrice] = React.useState("")
+    const [sortBy, setSortBy] = React.useState<SortOption>("ending_soon")
+
     const load = React.useCallback(async () => {
         try {
             setLoading(true)
@@ -473,15 +493,54 @@ export default function AuctionsPage() {
 
     React.useEffect(() => { load() }, [load])
 
-    const displayed = (activeTab === "live" ? liveAuctions : scheduledAuctions).filter(a => {
-        if (!search) return true
-        const q = search.toLowerCase()
-        return (
-            a.listing.title.toLowerCase().includes(q) ||
-            (a.listing.make ?? "").toLowerCase().includes(q) ||
-            (a.listing.model ?? "").toLowerCase().includes(q)
-        )
-    })
+    const sourceAuctions = activeTab === "live" ? liveAuctions : scheduledAuctions
+
+    // Distinct make list, sorted, for the filter dropdown — pulled from whichever
+    // tab is active so options never show a make with zero results in this tab.
+    const availableMakes = React.useMemo(() => {
+        const makes = new Set<string>()
+        sourceAuctions.forEach(a => { if (a.listing.make) makes.add(a.listing.make) })
+        return Array.from(makes).sort()
+    }, [sourceAuctions])
+
+    const activeFilterCount = [makeFilter, bodyTypeFilter, fuelTypeFilter, minPrice, maxPrice].filter(Boolean).length
+
+    function clearFilters() {
+        setMakeFilter("")
+        setBodyTypeFilter("")
+        setFuelTypeFilter("")
+        setMinPrice("")
+        setMaxPrice("")
+    }
+
+    const displayed = sourceAuctions
+        .filter(a => {
+            if (search) {
+                const q = search.toLowerCase()
+                const matchesSearch =
+                    a.listing.title.toLowerCase().includes(q) ||
+                    (a.listing.make ?? "").toLowerCase().includes(q) ||
+                    (a.listing.model ?? "").toLowerCase().includes(q)
+                if (!matchesSearch) return false
+            }
+            if (makeFilter && a.listing.make !== makeFilter) return false
+            if (bodyTypeFilter && a.listing.bodyType !== bodyTypeFilter) return false
+            if (fuelTypeFilter && a.listing.fuelType !== fuelTypeFilter) return false
+            const price = getCurrentBid(a)
+            if (minPrice && price < Number(minPrice)) return false
+            if (maxPrice && price > Number(maxPrice)) return false
+            return true
+        })
+        .sort((a, b) => {
+            switch (sortBy) {
+                case "price_low": return getCurrentBid(a) - getCurrentBid(b)
+                case "price_high": return getCurrentBid(b) - getCurrentBid(a)
+                case "newest": return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                case "ending_soon":
+                default:
+                    return new Date(a.endTime).getTime() - new Date(b.endTime).getTime()
+            }
+        })
 
     return (
         <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
@@ -608,8 +667,8 @@ export default function AuctionsPage() {
                         ))}
                     </div>
 
-                    {/* Search + refresh — full width on mobile, capped on md+ */}
-                    <div className="flex items-center gap-2 w-full md:w-auto md:flex-1 md:max-w-xs">
+                    {/* Search + filters toggle + refresh — full width on mobile, capped on md+ */}
+                    <div className="flex items-center gap-2 w-full md:w-auto md:flex-1 md:max-w-lg">
                         <div className="relative flex-1 min-w-0">
                             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                             <input
@@ -621,6 +680,19 @@ export default function AuctionsPage() {
                             />
                         </div>
                         <button
+                            onClick={() => setShowFilters(v => !v)}
+                            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all ${
+                                showFilters || activeFilterCount > 0
+                                    ? "border-primary/40 text-primary bg-primary/10"
+                                    : "border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:border-primary/30"
+                            }`}
+                        >
+                            <Filter size={13} /> Filters
+                            {activeFilterCount > 0 && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold bg-primary/30 text-red-300">{activeFilterCount}</span>
+                            )}
+                        </button>
+                        <button
                             onClick={load}
                             disabled={loading}
                             className="shrink-0 p-2 rounded-xl border border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:border-primary/30 transition-all"
@@ -630,6 +702,105 @@ export default function AuctionsPage() {
                         </button>
                     </div>
                 </div>
+
+                {/* ── Expandable filter panel ─────────────────────────────────── */}
+                <AnimatePresence>
+                    {showFilters && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="border-t border-[var(--border-default)] overflow-hidden"
+                        >
+                            <div className="container mx-auto px-4 md:px-6 py-4 flex flex-wrap items-end gap-3">
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Make</label>
+                                    <select
+                                        value={makeFilter}
+                                        onChange={e => setMakeFilter(e.target.value)}
+                                        className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-3 py-2 text-xs min-w-[140px] focus:outline-none focus:border-primary/40"
+                                    >
+                                        <option value="">All Makes</option>
+                                        {availableMakes.map(m => <option key={m} value={m}>{m}</option>)}
+                                    </select>
+                                </div>
+
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Body Type</label>
+                                    <select
+                                        value={bodyTypeFilter}
+                                        onChange={e => setBodyTypeFilter(e.target.value)}
+                                        className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-3 py-2 text-xs min-w-[140px] focus:outline-none focus:border-primary/40"
+                                    >
+                                        <option value="">All Body Types</option>
+                                        {Object.entries(BODY_TYPE_LABELS).map(([value, label]) => (
+                                            <option key={value} value={value}>{label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Fuel Type</label>
+                                    <select
+                                        value={fuelTypeFilter}
+                                        onChange={e => setFuelTypeFilter(e.target.value)}
+                                        className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-3 py-2 text-xs min-w-[140px] focus:outline-none focus:border-primary/40"
+                                    >
+                                        <option value="">All Fuel Types</option>
+                                        {Object.entries(FUEL_TYPE_LABELS).map(([value, label]) => (
+                                            <option key={value} value={value}>{label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Current Bid Range</label>
+                                    <div className="flex items-center gap-1.5">
+                                        <input
+                                            type="number"
+                                            inputMode="numeric"
+                                            value={minPrice}
+                                            onChange={e => setMinPrice(e.target.value)}
+                                            placeholder="Min £"
+                                            className="w-24 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-3 py-2 text-xs placeholder-[var(--text-muted)] focus:outline-none focus:border-primary/40"
+                                        />
+                                        <span className="text-[var(--text-muted)] text-xs">–</span>
+                                        <input
+                                            type="number"
+                                            inputMode="numeric"
+                                            value={maxPrice}
+                                            onChange={e => setMaxPrice(e.target.value)}
+                                            placeholder="Max £"
+                                            className="w-24 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-3 py-2 text-xs placeholder-[var(--text-muted)] focus:outline-none focus:border-primary/40"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Sort By</label>
+                                    <select
+                                        value={sortBy}
+                                        onChange={e => setSortBy(e.target.value as SortOption)}
+                                        className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-3 py-2 text-xs min-w-[160px] focus:outline-none focus:border-primary/40"
+                                    >
+                                        {(Object.keys(SORT_LABELS) as SortOption[]).map(opt => (
+                                            <option key={opt} value={opt}>{SORT_LABELS[opt]}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {activeFilterCount > 0 && (
+                                    <button
+                                        onClick={clearFilters}
+                                        className="text-xs font-bold text-primary hover:underline pb-2"
+                                    >
+                                        Clear filters
+                                    </button>
+                                )}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* ── Auction Grid ──────────────────────────────────────────────── */}

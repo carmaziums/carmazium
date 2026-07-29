@@ -15,6 +15,7 @@ import { useAuth } from "@/context/AuthContext"
 import { getWonAuctionById, type Auction } from "@/lib/auctionApi"
 import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
 import { ChatWindow } from "@/components/chat/ChatWindow"
+import { ChatErrorBoundary } from "@/components/chat/ChatErrorBoundary"
 
 // ─── Spec row helper ──────────────────────────────────────────────────────────
 
@@ -402,7 +403,14 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                         </button>
                                     </div>
                                 ) : chatRoom ? (
-                                    <ChatWindow room={chatRoom} />
+                                    <ChatErrorBoundary fallback={
+                                        <div className="h-full flex flex-col items-center justify-center gap-3 px-6 text-center">
+                                            <AlertTriangle size={24} className="text-red-400" />
+                                            <p className="text-red-300 text-sm">Chat couldn&apos;t load. The rest of this page still works.</p>
+                                        </div>
+                                    }>
+                                        <ChatWindow room={chatRoom} />
+                                    </ChatErrorBoundary>
                                 ) : (
                                     <div className="h-full flex items-center justify-center">
                                         <Loader2 size={22} className="animate-spin text-primary" />
