@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRoomDto, SendMessageDto } from './dto';
-import { ChatRoom, Message } from '@prisma/client';
+import { Message } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 
@@ -17,9 +17,54 @@ export class ChatService {
     ) { }
 
     /**
+     * Relations every room needs before it can be handed to the frontend —
+     * shared so findOrCreateRoom/getRoom/getUserRooms never drift into
+     * returning a bare row that's missing the computed `otherUser` the
+     * frontend's ChatRoom type (and ChatWindow/ChatRoomList) require.
+     */
+    private readonly roomInclude = {
+        initiator: {
+            select: { id: true, firstName: true, lastName: true, profileImage: true, role: true },
+        },
+        participant: {
+            select: { id: true, firstName: true, lastName: true, profileImage: true, role: true },
+        },
+        listing: {
+            select: {
+                id: true,
+                title: true,
+                slug: true,
+                images: true,
+                type: true,
+                price: true,
+                auction: {
+                    select: {
+                        id: true,
+                        status: true,
+                        winnerId: true,
+                        buyerFeePaid: true,
+                        winningBidAmount: true,
+                    },
+                },
+            },
+        },
+    };
+
+    /** Adds the computed `otherUser` field the frontend actually reads. */
+    private withOtherUser<T extends { initiatorId: string; initiator: unknown; participant: unknown }>(
+        room: T,
+        userId: string,
+    ) {
+        return {
+            ...room,
+            otherUser: room.initiatorId === userId ? room.participant : room.initiator,
+        };
+    }
+
+    /**
      * Find or create a chat room between two users
      */
-    async findOrCreateRoom(userId: string, dto: CreateRoomDto): Promise<ChatRoom> {
+    async findOrCreateRoom(userId: string, dto: CreateRoomDto) {
         const { participantId, listingId } = dto;
 
         // Check if room already exists (either direction)
@@ -47,23 +92,29 @@ export class ChatService {
         }
 
         if (existingRoom) {
-            if (listingId && listingId !== existingRoom.listingId) {
-                return this.prisma.chatRoom.update({
+            const room = (listingId && listingId !== existingRoom.listingId)
+                ? await this.prisma.chatRoom.update({
                     where: { id: existingRoom.id },
                     data: { listingId },
+                    include: this.roomInclude,
+                })
+                : await this.prisma.chatRoom.findUniqueOrThrow({
+                    where: { id: existingRoom.id },
+                    include: this.roomInclude,
                 });
-            }
-            return existingRoom;
+            return this.withOtherUser(room, userId);
         }
 
         // Create new room
-        return this.prisma.chatRoom.create({
+        const room = await this.prisma.chatRoom.create({
             data: {
                 initiatorId: userId,
                 participantId,
                 listingId,
             },
+            include: this.roomInclude,
         });
+        return this.withOtherUser(room, userId);
     }
 
     /**
@@ -105,31 +156,7 @@ export class ChatService {
                 deletedAt: null,
             },
             include: {
-                initiator: {
-                    select: { id: true, firstName: true, lastName: true, profileImage: true, role: true },
-                },
-                participant: {
-                    select: { id: true, firstName: true, lastName: true, profileImage: true, role: true },
-                },
-                listing: {
-                    select: {
-                        id: true,
-                        title: true,
-                        slug: true,
-                        images: true,
-                        type: true,
-                        price: true,
-                        auction: {
-                            select: {
-                                id: true,
-                                status: true,
-                                winnerId: true,
-                                buyerFeePaid: true,
-                                winningBidAmount: true,
-                            }
-                        }
-                    },
-                },
+                ...this.roomInclude,
                 messages: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
@@ -157,8 +184,7 @@ export class ChatService {
                     },
                 });
 
-                // Determine the other user
-                const otherUser = room.initiatorId === userId ? room.participant : room.initiator;
+                const { otherUser } = this.withOtherUser(room, userId);
 
                 return {
                     id: room.id,
@@ -175,36 +201,10 @@ export class ChatService {
     /**
      * Get a single room with authorization check
      */
-    async getRoom(roomId: string, userId: string): Promise<ChatRoom> {
+    async getRoom(roomId: string, userId: string) {
         const room = await this.prisma.chatRoom.findUnique({
             where: { id: roomId },
-            include: {
-                initiator: {
-                    select: { id: true, firstName: true, lastName: true, profileImage: true, role: true },
-                },
-                participant: {
-                    select: { id: true, firstName: true, lastName: true, profileImage: true, role: true },
-                },
-                listing: {
-                    select: {
-                        id: true,
-                        title: true,
-                        slug: true,
-                        images: true,
-                        type: true,
-                        price: true,
-                        auction: {
-                            select: {
-                                id: true,
-                                status: true,
-                                winnerId: true,
-                                buyerFeePaid: true,
-                                winningBidAmount: true,
-                            }
-                        }
-                    },
-                },
-            },
+            include: this.roomInclude,
         });
 
         if (!room || room.deletedAt) {
@@ -215,7 +215,7 @@ export class ChatService {
             throw new ForbiddenException('You are not a member of this chat room');
         }
 
-        return room;
+        return this.withOtherUser(room, userId);
     }
 
     /**

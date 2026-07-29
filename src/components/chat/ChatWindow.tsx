@@ -114,7 +114,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             }
         })
         return unsubscribe
-    }, [room.id, room.otherUser.id, onTyping])
+    }, [room.id, room.otherUser?.id, onTyping])
 
     const handleSend = async () => {
         if (!newMessage.trim()) return
