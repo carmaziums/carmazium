@@ -12,6 +12,7 @@ import {
   StatusBar,
   ActivityIndicator,
   Animated,
+  Dimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
@@ -31,6 +32,10 @@ import { GlobalToastContext } from '../../components/GlobalToastProvider';
 
 import { IconButton } from '../../components/IconButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
+
+// Message bubbles cap their width off this instead of a percentage string —
+// see the note on the `bubble` style below for why.
+const MAX_BUBBLE_WIDTH = Dimensions.get('window').width * 0.82;
 
 const parseSpecialMessage = (content: string) => {
   const counterMatch = content.match(/Counter-offer:\s*£([\d,]+)/i);
@@ -767,11 +772,21 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     marginBottom: 12,
   },
+  // maxWidth as an absolute px value (MAX_BUBBLE_WIDTH), not a '82%' string —
+  // this View sits 3 levels deep (row > column(alignItems) > this), and a
+  // percentage maxWidth has to be resolved back through that whole chain
+  // before Yoga knows the real number. On Android that resolution can lag
+  // behind the Text's own line-break measurement pass, so the text wraps
+  // against a too-small guessed width and never re-flows once the container's
+  // real (correct, much wider) size resolves — a single unbreakable word then
+  // has nowhere to go but mid-word, and even "Hn kya scene hai?" wrapped after
+  // just two words instead of using anywhere near the real available width.
+  // A plain number needs no such resolution — it's known on the first pass.
   bubble: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 16,
-    maxWidth: '82%',
+    maxWidth: MAX_BUBBLE_WIDTH,
     flexShrink: 1,
   },
   bubbleDealer: {
@@ -880,7 +895,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 4,
     padding: 16,
-    maxWidth: '82%',
+    maxWidth: MAX_BUBBLE_WIDTH,
     flexShrink: 1,
   },
   offerTagHeader: {
@@ -919,7 +934,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    width: '82%',
+    width: MAX_BUBBLE_WIDTH,
   },
   counterHeader: {
     flexDirection: 'row',
