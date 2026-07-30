@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import {
@@ -67,6 +67,21 @@ const STATUS_LABELS: Record<string, string> = {
 export default function DealerInventoryPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const router = useRouter()
+    const searchParams = useSearchParams()
+    // Featured Boost checkout redirects here with ?boost=success — the payment
+    // itself already activates via webhook, but nothing ever confirmed it to
+    // the user, who previously bounced through a dead redirect stub that
+    // dropped this query param before they even got back here.
+    const [showBoostSuccess, setShowBoostSuccess] = React.useState(false)
+    React.useEffect(() => {
+        if (searchParams.get('boost') === 'success') {
+            setShowBoostSuccess(true)
+            const params = new URLSearchParams(searchParams.toString())
+            params.delete('boost')
+            router.replace(`?${params.toString()}`)
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
     const [listings,          setListings]          = React.useState<any[]>([])
     const [loading,           setLoading]           = React.useState(true)
     const [searchQuery,       setSearchQuery]       = React.useState("")
@@ -244,6 +259,14 @@ export default function DealerInventoryPage() {
                             </Button>
                         </Link>
                     </PageHeader>
+
+                    {showBoostSuccess && (
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                            <CheckCircle2 size={18} className="shrink-0" />
+                            <span className="flex-1 text-sm font-bold">Your listing is now Featured for the next 28 days!</span>
+                            <button onClick={() => setShowBoostSuccess(false)}><X size={16} /></button>
+                        </div>
+                    )}
 
                     {/* Filters — sticky so search/filter stay reachable without scrolling
                         back to the top of a long inventory list. Add Vehicle already lives

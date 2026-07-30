@@ -102,6 +102,7 @@ export interface Auction {
     stripePayoutTransferId?: string | null;
     stripePayoutError?: string | null;
     stripeRefundError?: string | null;
+    manualPayoutConfirmedAt?: string | null;
     createdAt: string;
     updatedAt: string;
     listing: AuctionListing;

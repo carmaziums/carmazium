@@ -20,6 +20,7 @@ import {
     createHpiCheckoutSession, createListingCheckoutSession, publishListing
 } from "@/lib/listingApi"
 import { uploadImage } from "@/lib/supabase"
+import { getSessionStatus, applyHpiFee } from "@/lib/paymentApi"
 import { dvlaLookup } from "@/lib/dvlaApi"
 import { aiGenerateDescription } from "@/lib/aiApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
@@ -299,6 +300,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // HPI Payment State
     const [showHpiModal, setShowHpiModal] = React.useState(false)
     const [isHpiUnlocked, setIsHpiUnlocked] = React.useState(false)
+    const [isVerifyingHpiPayment, setIsVerifyingHpiPayment] = React.useState(false)
+    const [hpiVerifyError, setHpiVerifyError] = React.useState<string | null>(null)
     const [isProcessingPayment, setIsProcessingPayment] = React.useState(false)
     const [draftListingId, setDraftListingId] = React.useState<string | null>(null)
     const [damageImageCount, setDamageImageCount] = React.useState(0)
@@ -422,32 +425,56 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [editId])
 
-    // Handle Stripe return for HPI
+    // Handle Stripe return for HPI — verify the session actually completed
+    // instead of trusting the bare `hpi_success` URL flag (which anyone could
+    // navigate to directly, e.g. after a cancelled checkout), and fall back to
+    // triggering report generation ourselves in case the webhook was delayed
+    // or dropped — otherwise the UI could show "unlocked" with no report ever
+    // having been generated server-side.
     React.useEffect(() => {
         const hpiSuccess = searchParams.get('hpi_success') === 'true'
         const urlVrm = searchParams.get('vrm')
-        
-        if (hpiSuccess) {
-            setIsHpiUnlocked(true)
-            // Restore form data from localStorage if available
-            const saved = localStorage.getItem('carmazium_listing_draft')
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved)
-                    setFormData(parsed)
-                    setSellingMethod('list')
-                    setCurrentStep(2) // Return to media step where HPI is
-                } catch (e) {
-                    console.error("Failed to parse saved draft", e)
-                }
-            }
-            // Restore draft listing ID if present
-            const savedDraftId = localStorage.getItem('carmazium_hpi_draft_id')
-            if (savedDraftId) setDraftListingId(savedDraftId)
-            if (urlVrm && !formData.vrm) {
-                setFormData(prev => ({ ...prev, vrm: urlVrm }))
+        const sessionId = searchParams.get('session_id')
+
+        if (!hpiSuccess) return
+
+        // Restore form data from localStorage if available
+        const saved = localStorage.getItem('carmazium_listing_draft')
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved)
+                setFormData(parsed)
+                setSellingMethod('list')
+                setCurrentStep(2) // Return to media step where HPI is
+            } catch (e) {
+                console.error("Failed to parse saved draft", e)
             }
         }
+        // Restore draft listing ID if present
+        const savedDraftId = localStorage.getItem('carmazium_hpi_draft_id')
+        if (savedDraftId) setDraftListingId(savedDraftId)
+        if (urlVrm && !formData.vrm) {
+            setFormData(prev => ({ ...prev, vrm: urlVrm }))
+        }
+
+        if (!sessionId) {
+            setHpiVerifyError("Couldn't verify your payment — no session reference found.")
+            return
+        }
+
+        setIsVerifyingHpiPayment(true)
+        setHpiVerifyError(null)
+        getSessionStatus(sessionId)
+            .then(status => {
+                if (status.paymentStatus !== 'paid') {
+                    setHpiVerifyError("We couldn't confirm your HPI report payment. If you were charged, please contact support.")
+                    return
+                }
+                // Idempotent — safe even if the webhook already generated the report.
+                return applyHpiFee(sessionId).then(() => setIsHpiUnlocked(true))
+            })
+            .catch(() => setHpiVerifyError("Couldn't verify your payment. Please refresh or contact support if you were charged."))
+            .finally(() => setIsVerifyingHpiPayment(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams])
 
@@ -2350,6 +2377,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </div>
                                 )}
                             </div>
+
+                            {isVerifyingHpiPayment && (
+                                <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 text-sm">
+                                    <Loader2 size={14} className="animate-spin shrink-0" /> Verifying your HPI report payment…
+                                </div>
+                            )}
+                            {hpiVerifyError && (
+                                <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
+                                    <AlertTriangle size={14} className="shrink-0" /> {hpiVerifyError}
+                                </div>
+                            )}
 
                             {/* HPI Bait Section (shown after VRM lookup) */}
                             {dvlaSuccess && (

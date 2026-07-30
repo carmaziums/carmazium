@@ -61,7 +61,11 @@ function addHours(iso: string, hours: number): string {
 // /dashboard/seller/auctions so both auction-selling surfaces read the same way.
 function AuctionStatusBadge({ auction }: { auction: Auction }) {
     const needsHandover = auction.status === "ENDED" && !!auction.winnerId && !auction.sellerBonusReleased
-    const paidOut = auction.status === "ENDED" && !!auction.winnerId && auction.sellerBonusReleased
+    const approved = auction.status === "ENDED" && !!auction.winnerId && auction.sellerBonusReleased
+    // sellerBonusReleased means the handover was approved — it doesn't guarantee
+    // the £100 actually arrived (auto-transfer can fail or be skipped if no
+    // payout method is connected), so "Paid" is only shown once it truly has.
+    const paidOut = approved && (!!auction.stripePayoutTransferId || !!auction.manualPayoutConfirmedAt)
 
     if (needsHandover) {
         return (
@@ -74,6 +78,13 @@ function AuctionStatusBadge({ auction }: { auction: Auction }) {
         return (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
                 <CheckCircle size={10} /> Ended · Paid
+            </span>
+        )
+    }
+    if (approved) {
+        return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-blue-500/10 text-blue-400 border-blue-500/20">
+                <CheckCircle size={10} /> Ended · Payout Processing
             </span>
         )
     }
@@ -788,18 +799,25 @@ function DealerAuctionsPage() {
                     {/* ── Approved Handovers ──────────────────────────────── */}
                     {approvedHandovers.length > 0 && (
                         <div className="space-y-3">
-                            {approvedHandovers.map(auction => (
+                            {approvedHandovers.map(auction => {
+                                const paid = !!auction.stripePayoutTransferId || !!auction.manualPayoutConfirmedAt
+                                return (
                                 <div key={auction.id} className="dealer-glass-card p-4 flex items-center gap-4 border border-emerald-500/20 bg-emerald-500/5 rounded-2xl">
                                     <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
                                         <CheckCircle size={18} className="text-emerald-400" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-sm">{auction.listing?.title}</p>
-                                        <p className="text-xs text-emerald-400 mt-0.5">Handover verified — £100 seller bonus released</p>
+                                        <p className="text-xs text-emerald-400 mt-0.5">
+                                            {paid ? "Handover verified — £100 seller bonus released" : "Handover verified — £100 bonus is being processed"}
+                                        </p>
                                     </div>
-                                    <span className="text-xs font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">Complete</span>
+                                    <span className="text-xs font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">
+                                        {paid ? "Complete" : "Processing"}
+                                    </span>
                                 </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     )}
 

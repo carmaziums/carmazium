@@ -116,6 +116,20 @@ function UnifiedUserDashboardContent() {
     
     const [dashboardData, setDashboardData] = React.useState<UnifiedDashboardData | null>(null)
     const [loading, setLoading] = React.useState(true)
+    // Featured Boost checkout redirects here with ?boost=success — the payment
+    // itself already activates via webhook, but nothing ever confirmed it to
+    // the user, who just landed back on their listings with no feedback at all.
+    const [showBoostSuccess, setShowBoostSuccess] = React.useState(false)
+
+    React.useEffect(() => {
+        if (searchParams.get('boost') === 'success') {
+            setShowBoostSuccess(true)
+            const params = new URLSearchParams(searchParams.toString())
+            params.delete('boost')
+            router.replace(`?${params.toString()}`)
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     const setTab = (tab: string) => {
         const params = new URLSearchParams(searchParams.toString())
@@ -182,6 +196,13 @@ function UnifiedUserDashboardContent() {
 
                 <main className="flex-1 space-y-8 min-w-0">
 
+                    {showBoostSuccess && (
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                            <CheckCircle2 size={18} className="shrink-0" />
+                            <span className="flex-1 text-sm font-bold">Your listing is now Featured for the next 28 days!</span>
+                            <button onClick={() => setShowBoostSuccess(false)}><X size={16} /></button>
+                        </div>
+                    )}
 
                     {/* Tab Content */}
                     <div className="min-h-[60vh] w-full min-w-0">

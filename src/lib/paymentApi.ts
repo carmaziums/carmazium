@@ -89,6 +89,17 @@ export async function applyKycFee(sessionId: string): Promise<{ applied: boolean
 }
 
 /**
+ * Webhook fallback: generate the HPI report if the Stripe webhook was delayed or missed.
+ */
+export async function applyHpiFee(sessionId: string): Promise<{ applied: boolean }> {
+    const data = await apiClient<{ data: { applied: boolean } }>('/payments/apply-hpi-fee', {
+        method: 'POST',
+        body: JSON.stringify({ sessionId }),
+    })
+    return data.data
+}
+
+/**
  * Fetch payment history for the current user.
  */
 export async function getPaymentHistory(): Promise<PaymentTransaction[]> {

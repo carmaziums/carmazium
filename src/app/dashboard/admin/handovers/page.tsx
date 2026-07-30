@@ -6,12 +6,12 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import {
     Handshake, Loader2, ArrowLeft, CheckCircle, XCircle, ExternalLink,
-    Car, Clock, AlertTriangle, BadgeCheck
+    Car, Clock, AlertTriangle, BadgeCheck, RefreshCw, Banknote
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
-import { getPendingHandovers, approveHandover, denyHandover } from "@/lib/adminApi"
+import { getPendingHandovers, approveHandover, denyHandover, getPendingPayouts, retryPayout, markPayoutPaidManually } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
 
 export default function AdminHandoversPage() {
@@ -21,6 +21,15 @@ export default function AdminHandoversPage() {
     const [loading, setLoading] = React.useState(true)
     const [processing, setProcessing] = React.useState<string | null>(null)
     const [error, setError] = React.useState<string | null>(null)
+
+    // Approved handovers whose £100 seller bonus still hasn't actually reached
+    // the seller — this used to have no persistent home once the auction left
+    // the pending-proofs queue above, so a payout that failed or was skipped
+    // (no Stripe connected) could get lost with nobody following up on it.
+    const [pendingPayouts, setPendingPayouts] = React.useState<any[]>([])
+    const [payoutsLoading, setPayoutsLoading] = React.useState(true)
+    const [payoutProcessing, setPayoutProcessing] = React.useState<string | null>(null)
+    const [payoutError, setPayoutError] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         if (!authLoading) {
@@ -39,7 +48,44 @@ export default function AdminHandoversPage() {
             .finally(() => setLoading(false))
     }, [profile])
 
+    const fetchPendingPayouts = React.useCallback(() => {
+        if (profile?.role !== 'ADMIN') return
+        setPayoutsLoading(true)
+        setPayoutError(null)
+        getPendingPayouts()
+            .then(setPendingPayouts)
+            .catch(err => setPayoutError(err.message || 'Failed to load pending payouts'))
+            .finally(() => setPayoutsLoading(false))
+    }, [profile])
+
     React.useEffect(() => { fetchHandovers() }, [fetchHandovers])
+    React.useEffect(() => { fetchPendingPayouts() }, [fetchPendingPayouts])
+
+    const handleRetryPayout = async (auctionId: string) => {
+        if (!confirm('Retry the £100 Stripe transfer to this seller now?')) return
+        try {
+            setPayoutProcessing(auctionId)
+            await retryPayout(auctionId)
+            setPendingPayouts(prev => prev.filter(p => p.id !== auctionId))
+        } catch (err: any) {
+            alert(err.message || 'Retry failed')
+        } finally {
+            setPayoutProcessing(null)
+        }
+    }
+
+    const handleMarkPaid = async (auctionId: string) => {
+        if (!confirm('Confirm you have paid this seller £100 manually (outside Stripe)?')) return
+        try {
+            setPayoutProcessing(auctionId)
+            await markPayoutPaidManually(auctionId)
+            setPendingPayouts(prev => prev.filter(p => p.id !== auctionId))
+        } catch (err: any) {
+            alert(err.message || 'Failed to mark as paid')
+        } finally {
+            setPayoutProcessing(null)
+        }
+    }
 
     const handleApprove = async (auctionId: string, sellerConnected: boolean, hasBankDetails?: boolean) => {
         const payoutNote = sellerConnected
@@ -97,6 +143,69 @@ export default function AdminHandoversPage() {
                             Review seller-submitted handover proofs. Approve to release the £100 seller bonus, or deny to refund the buyer.
                         </p>
                     </div>
+
+                    {/* ── Needs Manual Payout ──────────────────────────────── */}
+                    {!payoutsLoading && pendingPayouts.length > 0 && (
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                                <Banknote className="text-amber-400" size={20} />
+                                <h2 className="text-lg font-black uppercase tracking-tight">Needs Manual Payout</h2>
+                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400">{pendingPayouts.length}</span>
+                            </div>
+                            <p className="text-xs text-[var(--text-muted)] -mt-1">
+                                These handovers were approved, but the £100 seller bonus hasn&apos;t actually been paid yet — the automatic Stripe transfer either failed or the seller has no payout method connected.
+                            </p>
+                            {payoutError && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200"><strong>Error:</strong> {payoutError}</div>}
+                            {pendingPayouts.map((p) => (
+                                <div key={p.id} className="glass-card border border-blue-500/20 bg-blue-500/5 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                        {p.listing?.images?.[0] ? (
+                                            <Image src={p.listing.images[0]} alt="" width={56} height={56} className="w-14 h-14 rounded-xl object-cover shrink-0" />
+                                        ) : (
+                                            <div className="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center shrink-0"><Car size={22} className="text-[var(--text-muted)]" /></div>
+                                        )}
+                                        <div className="min-w-0">
+                                            <p className="font-bold truncate">{p.listing?.title}</p>
+                                            <p className="text-xs text-[var(--text-muted)]">
+                                                Seller: {p.listing?.seller?.firstName} {p.listing?.seller?.lastName} ({p.listing?.seller?.email})
+                                            </p>
+                                            {p.stripePayoutError && (
+                                                <p className="text-xs text-amber-400 mt-0.5">{p.stripePayoutError}</p>
+                                            )}
+                                            {p.listing?.seller?.stripeConnectOnboardingComplete === false && p.listing?.seller?.bankAccountNumber && (
+                                                <p className="text-xs font-mono text-blue-300 mt-1">
+                                                    {p.listing.seller.bankAccountName || '—'} · {p.listing.seller.bankSortCode || '—'} · {p.listing.seller.bankAccountNumber}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        {p.listing?.seller?.stripeConnectOnboardingComplete && (
+                                            <Button
+                                                onClick={() => handleRetryPayout(p.id)}
+                                                disabled={payoutProcessing === p.id}
+                                                size="sm"
+                                                className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
+                                            >
+                                                {payoutProcessing === p.id ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                                                Retry via Stripe
+                                            </Button>
+                                        )}
+                                        <Button
+                                            onClick={() => handleMarkPaid(p.id)}
+                                            disabled={payoutProcessing === p.id}
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex items-center gap-2"
+                                        >
+                                            {payoutProcessing === p.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                                            Mark Paid Manually
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     {error && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200"><strong>Error:</strong> {error}</div>}
 

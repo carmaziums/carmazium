@@ -762,8 +762,13 @@ model Auction {
   sellerBonusReleased    Boolean   @default(false)
   sellerBonusReleasedAt  DateTime?
   stripePayoutTransferId String?   // Set when Stripe transfer succeeds
-  stripePayoutError      String?   // Set if Stripe transfer fails — needs manual action
+  stripePayoutError      String?   // Set when auto-payout didn't happen (no Connect account, Stripe error, or test-mode skip) — needs manual action
   stripeRefundError      String?   // Set if the buyer-fee refund fails on handover denial — needs manual action
+  // Set once an admin manually confirms they've paid the seller outside Stripe
+  // (bank transfer). sellerBonusReleased means "handover approved" — this is
+  // the separate "the £100 has actually reached the seller" signal; without
+  // it, an approved-but-unpaid auction had no way to ever be marked resolved.
+  manualPayoutConfirmedAt DateTime?
 
   // Digest — seller-authored custom tags/batch labels and self-rating for their own auction
   customTags       String[] @default([])

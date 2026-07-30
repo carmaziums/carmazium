@@ -116,6 +116,8 @@ function CheckoutSuccessContent() {
                             ? 'Buyer Fee Paid!'
                             : sessionData?.metadata?.type === 'KYC_VERIFICATION'
                             ? 'Verification Fee Paid!'
+                            : sessionData?.metadata?.type === 'DEPOSIT'
+                            ? 'Deposit Confirmed!'
                             : 'Payment Successful!'}
                     </h1>
                     <p className="mt-3 text-lg text-gray-300">
@@ -125,6 +127,8 @@ function CheckoutSuccessContent() {
                             ? 'Your £125 buyer fee is confirmed. Submit your handover proof to release the seller payout.'
                             : sessionData?.metadata?.type === 'KYC_VERIFICATION'
                             ? 'Your £1 verification fee is confirmed. Our team will review your dealer application shortly.'
+                            : sessionData?.metadata?.type === 'DEPOSIT'
+                            ? "Your £500 refundable deposit is confirmed and the seller has been notified. Message them to arrange the rest of the sale — the vehicle price itself is paid directly between you and the seller."
                             : 'Your transaction has been completed securely through Stripe.'}
                     </p>
                 </motion.div>

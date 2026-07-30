@@ -327,6 +327,31 @@ export class AdminService {
         });
     }
 
+    /**
+     * Persist (not just push) a "manual payout needed" alert to every admin —
+     * a live-only gateway push is lost forever if no admin happens to be
+     * connected at that exact second, with zero trace anywhere afterward.
+     */
+    private async notifyAdminsPayoutNeedsAction(auctionId: string, title: string, message: string) {
+        const admins = await this.prisma.user.findMany({
+            where: { role: 'ADMIN', deletedAt: null },
+            select: { id: true },
+        });
+        await Promise.all(
+            admins.map((admin) =>
+                this.notificationsService.create({
+                    userId: admin.id,
+                    type: 'SYSTEM',
+                    title,
+                    message,
+                    entityType: 'AUCTION',
+                    entityId: auctionId,
+                    link: '/dashboard/admin/handovers',
+                }).catch(() => {}),
+            ),
+        );
+    }
+
     async approveHandover(auctionId: string) {
         const auction = await this.prisma.auction.findUnique({
             where: { id: auctionId },
@@ -360,25 +385,27 @@ export class AdminService {
             });
 
             let payoutSucceeded = false;
+            // Distinguishes "seller never connected a payout method" (their action needed)
+            // from "connected, but the transfer itself failed" (Carmazium's/Stripe's problem) —
+            // conflating these produced the wrong "connect your bank account" message below
+            // for sellers who'd already connected one.
+            let payoutReason: 'not_connected' | 'transfer_failed' | 'test_mode' | null = null;
             const stripeInTestMode = this.paymentsService.isStripeInTestMode();
+
             if (stripeInTestMode) {
                 // Sandbox window: existing sellers' stripeConnectAccountId values are live-mode
                 // and can't accept a test-mode transfer. Skip the auto-transfer and route to
                 // manual payout so no one hits a spurious "transfer failed" every time.
-                const admins = await this.prisma.user.findMany({
-                    where: { role: 'ADMIN', deletedAt: null },
-                    select: { id: true },
+                payoutReason = 'test_mode';
+                await this.prisma.auction.update({
+                    where: { id: auctionId },
+                    data: { stripePayoutError: 'Skipped: Stripe is in test mode, live-mode Connect accounts cannot receive a transfer.' },
                 });
-                for (const admin of admins) {
-                    this.notificationsGateway.sendNotification(admin.id, {
-                        type: 'PAYOUT_FAILED',
-                        title: 'Manual payout needed (sandbox mode)',
-                        message: `Auto-transfer of £100 to seller for "${auction.listing.title}" was skipped because Stripe is currently in test mode. Please pay manually when live mode is restored.`,
-                        entityType: 'AUCTION',
-                        entityId: auctionId,
-                        link: '/dashboard/admin/handovers',
-                    });
-                }
+                await this.notifyAdminsPayoutNeedsAction(
+                    auctionId,
+                    'Manual payout needed (sandbox mode)',
+                    `Auto-transfer of £100 to seller for "${auction.listing.title}" was skipped because Stripe is currently in test mode. Please pay manually when live mode is restored.`,
+                );
             } else if (seller?.stripeConnectAccountId && seller?.stripeConnectOnboardingComplete) {
                 try {
                     const transferId = await this.paymentsService.issueSellerPayout(
@@ -387,33 +414,40 @@ export class AdminService {
                     // Record transfer ID for audit trail
                     await this.prisma.auction.update({
                         where: { id: auctionId },
-                        data: { stripePayoutTransferId: transferId },
+                        data: { stripePayoutTransferId: transferId, stripePayoutError: null },
                     });
                     payoutSucceeded = true;
                 } catch (err: any) {
                     const errMsg = err?.message || 'Unknown Stripe error';
                     console.error(`[Admin] Stripe payout failed for auction ${auctionId}:`, errMsg);
+                    payoutReason = 'transfer_failed';
                     // Persist error so admins can see it in the handovers view
                     await this.prisma.auction.update({
                         where: { id: auctionId },
                         data: { stripePayoutError: errMsg },
                     });
-                    // Notify every admin so they can manually transfer
-                    const admins = await this.prisma.user.findMany({
-                        where: { role: 'ADMIN', deletedAt: null },
-                        select: { id: true },
-                    });
-                    for (const admin of admins) {
-                        this.notificationsGateway.sendNotification(admin.id, {
-                            type: 'PAYOUT_FAILED',
-                            title: '⚠️ Payout failed — manual action needed',
-                            message: `Auto-transfer of £100 to seller for "${auction.listing.title}" failed: ${errMsg}. Please pay manually.`,
-                            entityType: 'AUCTION',
-                            entityId: auctionId,
-                            link: '/dashboard/admin/handovers',
-                        });
-                    }
+                    await this.notifyAdminsPayoutNeedsAction(
+                        auctionId,
+                        '⚠️ Payout failed — manual action needed',
+                        `Auto-transfer of £100 to seller for "${auction.listing.title}" failed: ${errMsg}. Please pay manually.`,
+                    );
                 }
+            } else {
+                // Seller has no Stripe Connect account (or onboarding incomplete) — this used
+                // to fall through silently: no stripePayoutError, no admin notification, and
+                // the auction still disappeared from the pending-handovers queue the moment
+                // sellerBonusReleased flipped true, leaving no trace anywhere that £100 was
+                // still owed.
+                payoutReason = 'not_connected';
+                await this.prisma.auction.update({
+                    where: { id: auctionId },
+                    data: { stripePayoutError: 'Seller has not connected a Stripe payout method.' },
+                });
+                await this.notifyAdminsPayoutNeedsAction(
+                    auctionId,
+                    'Manual payout needed — seller not connected',
+                    `Seller for "${auction.listing.title}" has no Stripe payout method connected. £100 still needs to be paid manually.`,
+                );
             }
 
             this.notificationsGateway.sendNotification(sellerId, {
@@ -421,7 +455,9 @@ export class AdminService {
                 title: 'Handover verified',
                 message: payoutSucceeded
                     ? `Your handover proof for "${auction.listing.title}" has been approved. Your £100 bonus is on its way to your bank account.`
-                    : `Your handover proof for "${auction.listing.title}" has been approved. Connect your bank account in Settings to receive your £100 bonus.`,
+                    : payoutReason === 'not_connected'
+                        ? `Your handover proof for "${auction.listing.title}" has been approved. Connect your bank account in Settings to receive your £100 bonus.`
+                        : `Your handover proof for "${auction.listing.title}" has been approved. Your £100 bonus is being processed manually — our team will be in touch shortly.`,
                 entityType: 'AUCTION',
                 entityId: auctionId,
                 link: '/dashboard/seller/auctions',
@@ -433,6 +469,110 @@ export class AdminService {
         }
 
         return updated;
+    }
+
+    /**
+     * List approved handovers whose £100 seller bonus still hasn't actually
+     * reached the seller — i.e. sellerBonusReleased is true (admin approved
+     * it) but neither a Stripe transfer nor a manual bank payment has been
+     * confirmed. Without this, an approved-but-unpaid auction had no
+     * persistent home anywhere in the system once it left the pending queue.
+     */
+    async getPendingPayouts() {
+        return this.prisma.auction.findMany({
+            where: {
+                deletedAt: null,
+                sellerBonusReleased: true,
+                stripePayoutTransferId: null,
+                manualPayoutConfirmedAt: null,
+            },
+            orderBy: { sellerBonusReleasedAt: 'asc' },
+            include: {
+                listing: {
+                    select: {
+                        id: true,
+                        title: true,
+                        slug: true,
+                        images: true,
+                        make: true,
+                        model: true,
+                        year: true,
+                        seller: {
+                            select: {
+                                id: true,
+                                email: true,
+                                firstName: true,
+                                lastName: true,
+                                stripeConnectAccountId: true,
+                                stripeConnectOnboardingComplete: true,
+                                bankAccountName: true,
+                                bankSortCode: true,
+                                bankAccountNumber: true,
+                                payoutPreference: true,
+                            },
+                        },
+                    },
+                },
+                winner: { select: { id: true, firstName: true, lastName: true, email: true } },
+            },
+        });
+    }
+
+    /**
+     * Re-attempt the Stripe transfer for an approved handover that's still
+     * owed — e.g. the seller has since connected Stripe, or a transient
+     * Stripe error has cleared. Idempotent: no-ops if already paid.
+     */
+    async retryPayout(auctionId: string) {
+        const auction = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            include: { listing: { select: { sellerId: true, title: true } } },
+        });
+        if (!auction) throw new NotFoundException('Auction not found');
+        if (!auction.sellerBonusReleased) {
+            throw new BadRequestException('This handover has not been approved yet.');
+        }
+        if (auction.stripePayoutTransferId || auction.manualPayoutConfirmedAt) {
+            return auction; // already paid — nothing to retry
+        }
+
+        const sellerId = auction.listing?.sellerId;
+        const seller = sellerId
+            ? await this.prisma.user.findUnique({
+                where: { id: sellerId },
+                select: { stripeConnectAccountId: true, stripeConnectOnboardingComplete: true },
+            })
+            : null;
+
+        if (this.paymentsService.isStripeInTestMode()) {
+            throw new BadRequestException('Cannot retry via Stripe while in test mode — use "Mark Paid Manually" instead.');
+        }
+        if (!seller?.stripeConnectAccountId || !seller?.stripeConnectOnboardingComplete) {
+            throw new BadRequestException('Seller still has no connected Stripe payout method.');
+        }
+
+        const transferId = await this.paymentsService.issueSellerPayout(seller.stripeConnectAccountId);
+        return this.prisma.auction.update({
+            where: { id: auctionId },
+            data: { stripePayoutTransferId: transferId, stripePayoutError: null },
+        });
+    }
+
+    /**
+     * Admin confirms they've paid the seller's £100 bonus manually (bank
+     * transfer outside Stripe) — the only way an approved-but-unpaid auction
+     * could ever be marked resolved before this existed.
+     */
+    async markPayoutPaidManually(auctionId: string) {
+        const auction = await this.prisma.auction.findUnique({ where: { id: auctionId } });
+        if (!auction) throw new NotFoundException('Auction not found');
+        if (!auction.sellerBonusReleased) {
+            throw new BadRequestException('This handover has not been approved yet.');
+        }
+        return this.prisma.auction.update({
+            where: { id: auctionId },
+            data: { manualPayoutConfirmedAt: new Date(), stripePayoutError: null },
+        });
     }
 
     async denyHandover(auctionId: string) {

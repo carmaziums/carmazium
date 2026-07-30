@@ -125,6 +125,16 @@ export class PaymentsController {
         return new StandardResponse(result);
     }
 
+    @Post('apply-hpi-fee')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Webhook fallback: generate the HPI report if the webhook was delayed' })
+    async applyHpiFee(@Body('sessionId') sessionId: string) {
+        if (!sessionId) throw new BadRequestException('sessionId is required');
+        const result = await this.paymentsService.applyHpiFee(sessionId);
+        return new StandardResponse(result);
+    }
+
     @Get('history')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()

@@ -430,9 +430,18 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                 stage === "complete" ? "Handover complete" :
                                 stage === "under_review" ? "Under review" :
                                 "Awaiting seller proof"
+                            // sellerBonusReleased only means the handover was approved — it
+                            // doesn't guarantee the £100 actually reached the seller yet
+                            // (auto-transfer can fail or be skipped if they haven't
+                            // connected a payout method). Check the actual payout signal
+                            // separately so this never claims a payment that hasn't happened.
+                            const payoutComplete = !!auction.stripePayoutTransferId || !!auction.manualPayoutConfirmedAt
                             const hint =
-                                stage === "complete" ? "Verified and closed. The seller has been paid the £100 bonus." :
-                                stage === "under_review" ? "Seller has submitted handover proof. Our team is reviewing it." :
+                                stage === "complete"
+                                    ? (payoutComplete
+                                        ? "Verified and closed. The seller has been paid the £100 bonus."
+                                        : "Verified and closed. The seller's £100 bonus is still being processed.")
+                                    : stage === "under_review" ? "Seller has submitted handover proof. Our team is reviewing it." :
                                 "Seller has to submit handover proof — you can chat while you wait."
                             const Icon = stage === "complete" ? CheckCircle2 : stage === "under_review" ? FileSearch : Clock
                             const tint =

@@ -66,6 +66,21 @@ export async function denyHandover(auctionId: string) {
   return result;
 }
 
+export async function getPendingPayouts() {
+  const result = await apiClient<{ data: any[] }>('/admin/payouts/pending');
+  return result.data;
+}
+
+export async function retryPayout(auctionId: string) {
+  const result = await apiClient<any>(`/admin/payouts/${auctionId}/retry`, { method: 'POST' });
+  return result;
+}
+
+export async function markPayoutPaidManually(auctionId: string) {
+  const result = await apiClient<any>(`/admin/payouts/${auctionId}/mark-paid`, { method: 'POST' });
+  return result;
+}
+
 export async function updateUserRole(userId: string, role: string) {
   const result = await apiClient<any>(`/admin/users/${userId}/role`, {
     method: 'PATCH',

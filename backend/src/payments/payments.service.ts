@@ -47,6 +47,42 @@ export class PaymentsService {
         }
     }
 
+    /**
+     * Notify a seller that a buyer has paid the £500 refundable deposit on
+     * their listing. This used to be entirely missing — a completed DEPOSIT
+     * payment only updated the Transaction row, with no reaction anywhere
+     * else, so the seller had no way of knowing anyone had paid a deposit.
+     */
+    private async notifyDepositPaid(listingId: string, buyerId?: string) {
+        try {
+            const listing = await this.prisma.listing.findUnique({
+                where: { id: listingId },
+                select: { id: true, title: true, sellerId: true },
+            });
+            if (!listing?.sellerId) return;
+
+            const buyer = buyerId
+                ? await this.prisma.user.findUnique({ where: { id: buyerId }, select: { firstName: true, lastName: true } })
+                : null;
+            const buyerName = buyer ? `${buyer.firstName ?? ''} ${buyer.lastName ?? ''}`.trim() || 'A buyer' : 'A buyer';
+
+            const notification = await this.notificationsService.create({
+                userId: listing.sellerId,
+                type: 'SYSTEM',
+                title: 'Refundable deposit received',
+                message: `${buyerName} has paid a £500 refundable deposit to secure "${listing.title}". Get in touch with them to arrange next steps.`,
+                link: '/dashboard/seller/listings',
+                entityType: 'Listing',
+                entityId: listing.id,
+            }).catch(() => null);
+            if (notification) {
+                this.notificationsGateway.sendNotification(listing.sellerId, notification);
+            }
+        } catch {
+            // best-effort only
+        }
+    }
+
     // Prices in GBP
     private readonly HPI_REPORT_PRICE = 9.99;
     private readonly LISTING_FEES = {
@@ -537,6 +573,12 @@ export class PaymentsService {
                 }
 
                 // 3. Handle Specific Types
+                if (type === 'DEPOSIT') {
+                    // Previously a no-op beyond marking the Transaction COMPLETED above —
+                    // the seller was never told a buyer had paid a deposit on their listing.
+                    this.notifyDepositPaid(listingId, session.metadata?.userId).catch(() => {});
+                }
+
                 if (type === 'FULL_PAYMENT') {
                     const buyerId: string | undefined = session.metadata?.userId;
                     const listing = await this.prisma.listing.findUnique({
@@ -632,6 +674,10 @@ export class PaymentsService {
                         },
                     });
                     this.notifyListingSubmittedForReview(listingId).catch(() => { });
+                }
+
+                if (type === 'DEPOSIT' && listingId) {
+                    this.notifyDepositPaid(listingId, pi.metadata?.userId).catch(() => {});
                 }
 
                 if (type === 'FULL_PAYMENT' && listingId) {
@@ -817,6 +863,47 @@ export class PaymentsService {
                     data: { buyerFeePaid: true, buyerFeeTransactionId: transaction.id },
                 });
             }
+        }
+        return { applied: true };
+    }
+
+    /**
+     * Webhook fallback for the HPI report fee (£9.99).
+     * Called from the /sell page in case the webhook was delayed or missed —
+     * without this, ListingWizard.tsx only ever trusted the bare `hpi_success`
+     * URL flag with no server-side confirmation, so a delayed/dropped webhook
+     * meant the customer paid but the report was never actually generated.
+     */
+    async applyHpiFee(sessionId: string): Promise<{ applied: boolean }> {
+        const transaction = await this.prisma.transaction.findFirst({
+            where: { stripePaymentId: sessionId, type: 'HPI_REPORT' as any },
+        });
+        if (!transaction) return { applied: false };
+
+        // Already completed with a report on file — nothing left to do.
+        if (transaction.status === 'COMPLETED' && transaction.listingId) {
+            const existing = await this.prisma.hpiReport.findUnique({ where: { listingId: transaction.listingId } });
+            if (existing) return { applied: true };
+        }
+
+        const stripe = await this.getStripe();
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        if (session.payment_status !== 'paid') return { applied: false };
+
+        await this.prisma.transaction.update({
+            where: { id: transaction.id },
+            data: { status: 'COMPLETED' },
+        });
+
+        const vrm = session.metadata?.vrm;
+        if (!transaction.listingId || !vrm) return { applied: false };
+
+        try {
+            // Idempotent (upsert on listingId) — safe even if the webhook already ran this.
+            await this.hpiService.generateAndSaveReport(transaction.listingId, vrm, transaction.id);
+        } catch (err) {
+            console.error('Failed to generate HPI report in applyHpiFee fallback:', err);
+            return { applied: false };
         }
         return { applied: true };
     }

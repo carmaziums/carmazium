@@ -52,6 +52,13 @@ export class FeaturedBoostService {
         const expiresAt = addDays(new Date(), BOOST_DURATION_DAYS);
         const baseUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
 
+        // /dashboard/seller/listings is a dead redirect stub that drops query
+        // params entirely, and dealers who boost from their own inventory tab
+        // were being sent to the plain-seller dashboard regardless — route
+        // straight to the real, role-correct inventory tab instead.
+        const seller = await this.prisma.user.findUnique({ where: { id: sellerId }, select: { role: true } });
+        const returnPath = seller?.role === 'DEALER' ? '/dashboard/dealer/inventory' : '/dashboard/user?tab=inventory';
+
         const boost = await this.prisma.featuredBoost.create({
             data: {
                 listingId,
@@ -81,8 +88,8 @@ export class FeaturedBoostService {
                 },
             ],
             metadata: { boostId: boost.id, listingId, sellerId },
-            success_url: `${baseUrl}/dashboard/seller/listings?boost=success`,
-            cancel_url: `${baseUrl}/dashboard/seller/listings?boost=cancelled`,
+            success_url: `${baseUrl}${returnPath}${returnPath.includes('?') ? '&' : '?'}boost=success`,
+            cancel_url: `${baseUrl}${returnPath}${returnPath.includes('?') ? '&' : '?'}boost=cancelled`,
         });
 
         await this.prisma.featuredBoost.update({

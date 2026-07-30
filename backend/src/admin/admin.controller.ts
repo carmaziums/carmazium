@@ -199,6 +199,31 @@ export class AdminController {
         return new StandardResponse(result);
     }
 
+    @Get('payouts/pending')
+    @ApiOperation({ summary: 'Get approved handovers whose £100 seller bonus still hasn\'t been paid' })
+    async getPendingPayouts(): Promise<StandardResponse<any>> {
+        const data = await this.adminService.getPendingPayouts();
+        return new StandardResponse(data);
+    }
+
+    @Post('payouts/:auctionId/retry')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Retry the Stripe transfer for an approved-but-unpaid handover' })
+    @ApiParam({ name: 'auctionId' })
+    async retryPayout(@Param('auctionId') auctionId: string): Promise<StandardResponse<any>> {
+        const result = await this.adminService.retryPayout(auctionId);
+        return new StandardResponse(result);
+    }
+
+    @Post('payouts/:auctionId/mark-paid')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Confirm the seller was paid manually (bank transfer outside Stripe)' })
+    @ApiParam({ name: 'auctionId' })
+    async markPayoutPaidManually(@Param('auctionId') auctionId: string): Promise<StandardResponse<any>> {
+        const result = await this.adminService.markPayoutPaidManually(auctionId);
+        return new StandardResponse(result);
+    }
+
     // ── Transactions ──────────────────────────────────────────────────────────
 
     @Get('transactions')
