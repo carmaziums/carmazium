@@ -373,10 +373,20 @@ export class AuthService {
     /**
      * Generate a Supabase verification link via admin API and deliver it
      * through Resend so new users reliably receive their confirmation email.
+     *
+     * Uses type: 'magiclink' rather than 'signup' — 'signup' is for creating a
+     * brand-new user in this same call and requires a `password` field (see
+     * GenerateSignupLinkParams), but by the time this runs the user already
+     * exists (created client-side via supabase.auth.signUp() on the signup
+     * form) and is just pending confirmation. Calling generateLink with
+     * type: 'signup' and no password never actually generated a usable link,
+     * which is why verification emails were silently never sent. A magic
+     * link for an existing unconfirmed user confirms their email as a
+     * side effect of being verified, same as a signup link would.
      */
     async sendVerificationEmail(email: string, redirectTo: string): Promise<void> {
         const { data, error } = await this.supabase.auth.admin.generateLink({
-            type: 'signup',
+            type: 'magiclink',
             email,
             options: { redirectTo },
         });

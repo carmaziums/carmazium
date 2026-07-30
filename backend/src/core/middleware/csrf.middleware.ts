@@ -21,6 +21,8 @@ export class CsrfMiddleware implements NestMiddleware {
             '/auth/register',
             '/api/auth/supabase-session',
             '/auth/supabase-session',
+            '/api/auth/send-verification',
+            '/auth/send-verification',
             '/ai/search',
             '/ai/chat',
             '/ai/generate-description',
