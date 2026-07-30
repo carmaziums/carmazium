@@ -742,32 +742,23 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                             {listing.seller.dealerProfile.description && (
                                                 <p className="line-clamp-3 text-xs">{listing.seller.dealerProfile.description}</p>
                                             )}
-                                            <div className="flex flex-col gap-2 pt-2">
-                                                <BlurredPhone
-                                                    phone={listing.seller.dealerProfile.phone}
-                                                    phoneAvailable={listing.seller.dealerProfile.phoneAvailable ?? !!listing.seller.dealerProfile.phone}
-                                                />
-                                                {listing.seller.dealerProfile.website && (
+                                            {/* Phone dropped here on mobile — the sticky bottom bar already
+                                                has a call button, so showing it twice was redundant. */}
+                                            {listing.seller.dealerProfile.website && (
+                                                <div className="pt-2">
                                                     <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group">
                                                         <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
                                                             <Globe size={14} className="text-[var(--text-muted)] group-hover:text-primary transition-colors" />
                                                         </div>
                                                         <span className="font-medium">Visit Website</span>
                                                     </a>
-                                                )}
-                                            </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
-                                    {/* Private seller contact phone */}
-                                    {listing.seller && listing.seller.role !== 'DEALER' && (
-                                        <div className="mb-6 text-sm text-[var(--text-secondary)]">
-                                            <BlurredPhone
-                                                phone={listing.seller.phone ?? null}
-                                                phoneAvailable={listing.seller.phoneAvailable ?? !!listing.seller.phone}
-                                            />
-                                        </div>
-                                    )}
+                                    {/* Private seller contact phone dropped here on mobile too — same
+                                        reasoning as the dealer phone above. */}
 
                                     {listing.linkedListingId && listing.linkedListing?.auction?.status === 'ACTIVE' && (
                                         <Link
