@@ -6,7 +6,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { updateProfile } from "@/lib/listingApi"
 import { uploadImage } from "@/lib/supabase"
-import { Loader2, Check, AlertCircle, Camera, User, Phone, Mail, Bell, Settings as SettingsIcon } from "lucide-react"
+import { Loader2, Check, AlertCircle, Camera, User, Phone, Mail, Bell, Settings as SettingsIcon, MapPin, Hash } from "lucide-react"
 
 export default function BuyerSettingsPage() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -14,6 +14,8 @@ export default function BuyerSettingsPage() {
     const [lastName, setLastName] = React.useState("")
     const [email, setEmail] = React.useState("")
     const [phone, setPhone] = React.useState("")
+    const [location, setLocation] = React.useState("")
+    const [postcode, setPostcode] = React.useState("")
     const [profileImage, setProfileImage] = React.useState("")
     const [saving, setSaving] = React.useState(false)
     const [uploadingImage, setUploadingImage] = React.useState(false)
@@ -27,6 +29,8 @@ export default function BuyerSettingsPage() {
             setLastName(profile.lastName || "")
             setEmail(profile.email || user?.email || "")
             setPhone(profile.phone || "")
+            setLocation(profile.location || "")
+            setPostcode(profile.postcode || "")
             setProfileImage(profile.profileImage || "")
         } else if (user) {
             setEmail(user.email || "")
@@ -52,11 +56,21 @@ export default function BuyerSettingsPage() {
             setSaveError("A phone number is required — it's shown on your profile and listings.")
             return
         }
+        if (!location.trim()) {
+            setSaveStatus("error")
+            setSaveError("Your location is required.")
+            return
+        }
+        if (!postcode.trim()) {
+            setSaveStatus("error")
+            setSaveError("Your postal code is required.")
+            return
+        }
         try {
             setSaving(true)
             setSaveStatus("idle")
             setSaveError("")
-            await updateProfile({ firstName, lastName, phone, profileImage })
+            await updateProfile({ firstName, lastName, phone, location, postcode, profileImage })
             setSaveStatus("success")
             setTimeout(() => setSaveStatus("idle"), 3000)
         } catch (err: any) {
@@ -164,6 +178,18 @@ export default function BuyerSettingsPage() {
                                                 <Phone size={11} /> Phone Number <span className="text-primary">*</span>
                                             </label>
                                             <input type="tel" placeholder="07123 456789" value={phone} onChange={e => setPhone(e.target.value)} className="w-full h-11 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-4 focus:border-primary outline-none transition-colors" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold uppercase text-[var(--text-muted)] flex items-center gap-1">
+                                                <MapPin size={11} /> Location <span className="text-primary">*</span>
+                                            </label>
+                                            <input type="text" placeholder="e.g. London" value={location} onChange={e => setLocation(e.target.value)} className="w-full h-11 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-4 focus:border-primary outline-none transition-colors" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold uppercase text-[var(--text-muted)] flex items-center gap-1">
+                                                <Hash size={11} /> Postal Code <span className="text-primary">*</span>
+                                            </label>
+                                            <input type="text" placeholder="e.g. E1 6AN" value={postcode} onChange={e => setPostcode(e.target.value)} className="w-full h-11 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-4 focus:border-primary outline-none transition-colors" />
                                         </div>
                                     </div>
                                     <p className="text-[11px] text-[var(--text-muted)] mt-3">

@@ -111,6 +111,7 @@ export class UsersService {
             notifyOnSale?: boolean;
             showPublicProfile?: boolean;
             location?: string;
+            postcode?: string;
             preferences?: Record<string, any>;
         },
     ) {
@@ -136,6 +137,7 @@ export class UsersService {
                 ...(data.notifyOnSale !== undefined && { notifyOnSale: data.notifyOnSale }),
                 ...(data.showPublicProfile !== undefined && { showPublicProfile: data.showPublicProfile }),
                 ...(data.location !== undefined && { location: data.location }),
+                ...(data.postcode !== undefined && { postcode: data.postcode }),
                 ...(data.preferences !== undefined && {
                     preferences: {
                         ...((user.preferences as Record<string, any>) ?? {}),

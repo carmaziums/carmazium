@@ -49,6 +49,8 @@ export default function OnboardingPage() {
     const [lastName, setLastName] = useState('')
     const [nameError, setNameError] = useState('')
     const [location, setLocation] = useState('')
+    const [postcode, setPostcode] = useState('')
+    const [locationError, setLocationError] = useState('')
     const [selectedBodyTypes, setSelectedBodyTypes] = useState<string[]>([])
     const [selectedFuels, setSelectedFuels] = useState<string[]>([])
     const [selectedBudget, setSelectedBudget] = useState('')
@@ -172,17 +174,24 @@ export default function OnboardingPage() {
     }
 
     const handleSaveLocation = async () => {
+        const trimmedLocation = location.trim()
+        const trimmedPostcode = postcode.trim()
+        if (!trimmedLocation) {
+            setLocationError('Please enter your location.')
+            return
+        }
+        if (!trimmedPostcode) {
+            setLocationError('Please enter your postal code.')
+            return
+        }
+        setLocationError('')
         setSaving(true)
         try {
-            if (location.trim()) {
-                await updateProfile({ location: location.trim() })
-                localStorage.setItem('carmazium_user_location', location.trim())
-            }
+            await updateProfile({ location: trimmedLocation, postcode: trimmedPostcode })
+            localStorage.setItem('carmazium_user_location', trimmedLocation)
             setStep('preferences')
         } catch (err: any) {
-            console.error('Failed to save location:', err)
-            // Still proceed — don't block the user
-            setStep('preferences')
+            setLocationError(err.message || 'Failed to save your location. Please try again.')
         } finally {
             setSaving(false)
         }
@@ -384,27 +393,38 @@ export default function OnboardingPage() {
                                 </div>
                             </div>
 
+                            {locationError && (
+                                <div className="p-3 bg-red-500/15 border border-red-500/40 rounded-xl text-red-300 text-sm">
+                                    {locationError}
+                                </div>
+                            )}
+
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-gray-400">City or Postcode</label>
+                                <label className="text-sm font-bold uppercase text-gray-400">City / Location</label>
                                 <Input
-                                    placeholder="e.g. London, Birmingham, B1 1AA…"
+                                    placeholder="e.g. London"
                                     value={location}
                                     onChange={e => setLocation(e.target.value)}
                                     className="h-12 bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-                                    onKeyDown={e => e.key === 'Enter' && handleSaveLocation()}
                                     autoFocus
                                 />
-                                <p className="text-xs text-gray-600">This is saved locally on your device and can be changed in your profile settings.</p>
                             </div>
 
-                            <div className="flex gap-3">
-                                <Button variant="outline" className="flex-1 border-white/10 text-gray-400 hover:text-white" onClick={() => setStep('preferences')}>
-                                    Skip
-                                </Button>
-                                <Button className="flex-1" onClick={handleSaveLocation} disabled={saving}>
-                                    {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <>Continue <ArrowRight size={16} className="ml-1" /></>}
-                                </Button>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase text-gray-400">Postal Code</label>
+                                <Input
+                                    placeholder="e.g. B1 1AA"
+                                    value={postcode}
+                                    onChange={e => setPostcode(e.target.value)}
+                                    className="h-12 bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
+                                    onKeyDown={e => e.key === 'Enter' && handleSaveLocation()}
+                                />
+                                <p className="text-xs text-gray-600">Can be changed later in your profile settings.</p>
                             </div>
+
+                            <Button className="w-full" onClick={handleSaveLocation} disabled={saving}>
+                                {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <>Continue <ArrowRight size={16} className="ml-1" /></>}
+                            </Button>
                         </div>
                     )}
 

@@ -13,6 +13,8 @@ interface UserProfile {
     lastName?: string
     phone?: string
     profileImage?: string
+    location?: string
+    postcode?: string
     dealerProfile?: any
     contractorProfile?: any
     dealerStaffMemberships?: Array<{

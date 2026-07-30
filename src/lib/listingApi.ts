@@ -766,6 +766,7 @@ export interface UpdateProfileRequest {
     notifyOnSale?: boolean
     showPublicProfile?: boolean
     location?: string
+    postcode?: string
     preferences?: Record<string, any>
 }
 

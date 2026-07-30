@@ -323,6 +323,7 @@ model User {
   notifyOnSale    Boolean @default(true)
   showPublicProfile Boolean @default(true)
   location        String?
+  postcode        String?
   preferences     Json?
 
   @@index([role])

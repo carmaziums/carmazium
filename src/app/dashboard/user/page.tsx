@@ -42,7 +42,9 @@ import {
     ExternalLink,
     BadgeCheck,
     Landmark,
-    Check
+    Check,
+    MapPin,
+    Hash
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
@@ -1858,6 +1860,8 @@ function SettingsTab({ profile, refreshProfile }: { profile: any; refreshProfile
     const [firstName, setFirstName] = React.useState("")
     const [lastName, setLastName] = React.useState("")
     const [phone, setPhone] = React.useState("")
+    const [location, setLocation] = React.useState("")
+    const [postcode, setPostcode] = React.useState("")
     const [savingProfile, setSavingProfile] = React.useState(false)
     const [profileSaveStatus, setProfileSaveStatus] = React.useState<{ type: "idle" | "success" | "error", message?: string }>({ type: "idle" })
 
@@ -1869,6 +1873,8 @@ function SettingsTab({ profile, refreshProfile }: { profile: any; refreshProfile
             setFirstName(profile.firstName || "")
             setLastName(profile.lastName || "")
             setPhone(profile.phone || "")
+            setLocation(profile.location || "")
+            setPostcode(profile.postcode || "")
         }
     }, [profile])
 
@@ -1881,10 +1887,18 @@ function SettingsTab({ profile, refreshProfile }: { profile: any; refreshProfile
             setProfileSaveStatus({ type: "error", message: "A phone number is required — it's shown on your profile and listings." })
             return
         }
+        if (!location.trim()) {
+            setProfileSaveStatus({ type: "error", message: "Your location is required." })
+            return
+        }
+        if (!postcode.trim()) {
+            setProfileSaveStatus({ type: "error", message: "Your postal code is required." })
+            return
+        }
         setSavingProfile(true)
         setProfileSaveStatus({ type: "idle" })
         try {
-            await updateProfile({ firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.trim() })
+            await updateProfile({ firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.trim(), location: location.trim(), postcode: postcode.trim() })
             await refreshProfile()
             setProfileSaveStatus({ type: "success", message: "Profile updated." })
             setTimeout(() => setProfileSaveStatus({ type: "idle" }), 3000)
@@ -1998,6 +2012,28 @@ function SettingsTab({ profile, refreshProfile }: { profile: any; refreshProfile
                             value={phone}
                             onChange={e => setPhone(e.target.value)}
                             placeholder="07123 456789"
+                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-[var(--text-primary)] h-12"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-1.5">
+                            <MapPin size={12} /> Location <span className="text-primary">*</span>
+                        </label>
+                        <Input
+                            value={location}
+                            onChange={e => setLocation(e.target.value)}
+                            placeholder="e.g. London"
+                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-[var(--text-primary)] h-12"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-1.5">
+                            <Hash size={12} /> Postal Code <span className="text-primary">*</span>
+                        </label>
+                        <Input
+                            value={postcode}
+                            onChange={e => setPostcode(e.target.value)}
+                            placeholder="e.g. E1 6AN"
                             className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-[var(--text-primary)] h-12"
                         />
                     </div>

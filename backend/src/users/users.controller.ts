@@ -54,6 +54,7 @@ export class UsersController {
             phone?: string;
             profileImage?: string;
             location?: string;
+            postcode?: string;
             preferences?: Record<string, any>;
         },
     ) {
