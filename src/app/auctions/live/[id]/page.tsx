@@ -14,8 +14,10 @@ import {
     MessageSquare, Timer, Flame, TrendingUp, RefreshCw,
     Ban, CalendarClock, CreditCard, Handshake,
     Gauge, Fuel, Car, Cog, Palette, DoorOpen, Star,
-    FileText, Wrench, Leaf, TriangleAlert,
+    FileText, Wrench, Leaf, TriangleAlert, MapPin, Globe,
 } from "lucide-react"
+import { BlurredPhone } from "@/components/shared/BlurredPhone"
+import { BlurredEmail } from "@/components/shared/BlurredEmail"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
 import { useAuth } from "@/context/AuthContext"
@@ -1280,8 +1282,16 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         )}
                                     </motion.div>
                                 )}
-                                {activeTab === "seller" && (
-                                    <motion.div key="seller" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                                {activeTab === "seller" && (() => {
+                                    const seller = auction.listing.seller
+                                    const isDealer = seller?.dealerProfile != null
+                                    const sellerPhone = isDealer ? seller?.dealerProfile?.phone : seller?.phone
+                                    const sellerPhoneAvailable = isDealer ? !!seller?.dealerProfile?.phoneAvailable : !!seller?.phoneAvailable
+                                    const location = auction.listing.location
+                                    const businessAddress = seller?.dealerProfile?.businessAddress
+                                    const website = seller?.dealerProfile?.website
+                                    return (
+                                    <motion.div key="seller" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
                                         <div className="flex items-center gap-4 p-4 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl">
                                             <div className="w-14 h-14 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black shrink-0">
                                                 {getSellerInitials(auction)}
@@ -1296,8 +1306,35 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                 </p>
                                             </div>
                                         </div>
+
+                                        {/* Public seller info — whichever of these the seller actually has on file */}
+                                        {(sellerPhoneAvailable || seller?.emailAvailable || location || businessAddress || website) && (
+                                            <div className="flex flex-col gap-2">
+                                                <BlurredPhone phone={sellerPhone ?? null} phoneAvailable={sellerPhoneAvailable} />
+                                                <BlurredEmail email={seller?.email ?? null} emailAvailable={!!seller?.emailAvailable} />
+                                                {location && (
+                                                    <div className="flex items-center gap-3 bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)]">
+                                                        <div className="bg-[var(--bg-card)] p-1.5 rounded-md"><MapPin size={14} className="text-[var(--text-muted)]" /></div>
+                                                        <span className="text-sm font-medium text-[var(--text-secondary)]">{location}</span>
+                                                    </div>
+                                                )}
+                                                {businessAddress && (
+                                                    <div className="flex items-start gap-3 bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)]">
+                                                        <div className="bg-[var(--bg-card)] p-1.5 rounded-md shrink-0"><MapPin size={14} className="text-[var(--text-muted)]" /></div>
+                                                        <span className="text-sm font-medium text-[var(--text-secondary)]">{businessAddress}</span>
+                                                    </div>
+                                                )}
+                                                {website && (
+                                                    <a href={website} target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group">
+                                                        <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors"><Globe size={14} className="text-[var(--text-muted)] group-hover:text-primary transition-colors" /></div>
+                                                        <span className="font-medium">Visit Website</span>
+                                                    </a>
+                                                )}
+                                            </div>
+                                        )}
                                     </motion.div>
-                                )}
+                                    )
+                                })()}
                             </AnimatePresence>
                         </div>
                     </div>

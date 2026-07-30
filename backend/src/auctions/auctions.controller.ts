@@ -23,6 +23,7 @@ import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
+import { OptionalSessionAuthGuard } from '../auth/guards/optional-session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
 
@@ -81,11 +82,12 @@ export class AuctionsController {
     }
 
     @Get(':id')
+    @UseGuards(OptionalSessionAuthGuard)
     @ApiOperation({ summary: 'Get full auction details by ID' })
     @ApiResponse({ status: 200, description: 'Auction details with bids and listing' })
     @ApiResponse({ status: 404, description: 'Auction not found' })
-    async findOne(@Param('id') id: string) {
-        const auction = await this.auctionsService.findOne(id);
+    async findOne(@Param('id') id: string, @CurrentUser() user: any) {
+        const auction = await this.auctionsService.findOne(id, user?.id);
         return new StandardResponse(auction);
     }
 

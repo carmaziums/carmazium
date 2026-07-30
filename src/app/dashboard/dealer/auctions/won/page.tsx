@@ -6,7 +6,7 @@ import Image from "next/image"
 import {
     Loader2, Trophy, Car, MessageSquare, CreditCard, CheckCircle2, XCircle,
     Clock, AlertTriangle, Gavel, Radio, TrendingUp, FileSearch,
-    Calendar, Gauge, Fuel, Cog, Palette, Phone, Mail, ShieldCheck, Award,
+    Calendar, Gauge, Fuel, Cog, Palette, Phone, Mail, ShieldCheck, Award, MapPin, Globe,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
@@ -202,21 +202,16 @@ function ChatButton({ sellerId, listingId, phone }: { sellerId: string; listingI
 // Shown before the buyer fee is paid, so the winner has a way to reach the
 // seller right away — the seller still has every reason to keep the handover
 // on-platform since their £100 bonus only releases once it's verified here.
-function SellerContact({ phone, email }: { phone?: string | null; email?: string | null }) {
-    if (!phone && !email) return null
+// Same size/shape as PrimaryButton so the two stack as a matched pair.
+function CallSellerButton({ phone }: { phone?: string | null }) {
+    if (!phone) return null
     return (
-        <div className="flex flex-col items-end gap-1 w-full md:w-auto">
-            {phone && (
-                <a href={`tel:${phone}`} className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-[var(--text-primary)] hover:text-primary transition-colors">
-                    <Phone size={11} className="text-primary shrink-0" /> {phone}
-                </a>
-            )}
-            {email && (
-                <a href={`mailto:${email}`} className="inline-flex items-center justify-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-primary transition-colors truncate max-w-[200px]">
-                    <Mail size={11} className="text-primary shrink-0" /> {email}
-                </a>
-            )}
-        </div>
+        <a
+            href={`tel:${phone}`}
+            className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black transition-colors w-full md:w-auto"
+        >
+            <Phone size={15} /> Call Seller
+        </a>
     )
 }
 
@@ -237,11 +232,32 @@ function WonAuctionRow({ auction }: { auction: Auction }) {
     // them to the detail page to discover the same button there.
     const noProofYet = stage === "in_progress" && !auction.handoverSubmittedAt
 
+    const businessAddress = seller?.dealerProfile?.businessAddress
+    const website = seller?.dealerProfile?.website
+
     return (
         <Row
             image={l.images?.[0] ?? "/assets/images/hero-bg.png"}
             title={l.title}
-            meta={<span>Sold by <span className="text-[var(--text-primary)] font-bold">{sellerName}</span></span>}
+            meta={<>
+                <span>Sold by <span className="text-[var(--text-primary)] font-bold">{sellerName}</span></span>
+                {seller?.email && (
+                    <a href={`mailto:${seller.email}`} className="flex items-center gap-1 hover:text-primary transition-colors truncate max-w-[220px]">
+                        <Mail size={11} className="shrink-0" /> {seller.email}
+                    </a>
+                )}
+                {l.location && (
+                    <span className="flex items-center gap-1"><MapPin size={11} className="shrink-0" /> {l.location}</span>
+                )}
+                {businessAddress && (
+                    <span className="flex items-center gap-1"><MapPin size={11} className="shrink-0" /> {businessAddress}</span>
+                )}
+                {website && (
+                    <a href={website} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-primary transition-colors">
+                        <Globe size={11} className="shrink-0" /> Website
+                    </a>
+                )}
+            </>}
             specs={<>
                 {l.year && <SpecChip icon={Calendar}>{l.year}</SpecChip>}
                 {l.mileage != null && <SpecChip icon={Gauge}>{Number(l.mileage).toLocaleString()} mi</SpecChip>}
@@ -268,7 +284,7 @@ function WonAuctionRow({ auction }: { auction: Auction }) {
                         <PrimaryButton href={`/checkout?listing_id=${auction.listingId}&mode=auction_fee`} icon={CreditCard}>
                             Pay the £125 fee
                         </PrimaryButton>
-                        <SellerContact phone={seller?.phone} email={seller?.email} />
+                        <CallSellerButton phone={seller?.phone} />
                     </div>
                 ) : noProofYet && l.sellerId ? (
                     <ChatButton sellerId={l.sellerId} listingId={auction.listingId} phone={seller?.phone} />

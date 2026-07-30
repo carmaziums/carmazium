@@ -186,7 +186,15 @@ export class AuctionsService {
         return { data, total };
     }
 
-    async findOne(id: string): Promise<any> {
+    /**
+     * `viewerId` is only present when the caller is authenticated (via
+     * OptionalSessionAuthGuard) — same gating pattern as
+     * ListingsService.findBySlug: anonymous visitors never receive the
+     * seller's real phone/email in the response payload, only an
+     * `*Available` boolean the frontend uses to render a "log in to view"
+     * placeholder. Non-sensitive business info (address, website) is public.
+     */
+    async findOne(id: string, viewerId?: string): Promise<any> {
         const auction = await this.prisma.auction.findUnique({
             where: { id },
             include: {
@@ -197,7 +205,9 @@ export class AuctionsService {
                                 id: true,
                                 firstName: true,
                                 lastName: true,
-                                dealerProfile: { select: { companyName: true, logo: true } },
+                                email: true,
+                                phone: true,
+                                dealerProfile: { select: { companyName: true, logo: true, businessAddress: true, website: true, phone: true } },
                             },
                         },
                         bids: {
@@ -216,6 +226,27 @@ export class AuctionsService {
 
         if (!auction || auction.deletedAt) {
             throw new NotFoundException(`Auction not found`);
+        }
+
+        const seller = auction.listing?.seller as any;
+        if (seller) {
+            const hasPersonalPhone = !!seller.phone;
+            const hasPersonalEmail = !!seller.email;
+            const hasDealerPhone = !!seller.dealerProfile?.phone;
+            (auction.listing as any).seller = {
+                ...seller,
+                phone: viewerId ? seller.phone : null,
+                phoneAvailable: hasPersonalPhone,
+                email: viewerId ? seller.email : null,
+                emailAvailable: hasPersonalEmail,
+                ...(seller.dealerProfile ? {
+                    dealerProfile: {
+                        ...seller.dealerProfile,
+                        phone: viewerId ? seller.dealerProfile.phone : null,
+                        phoneAvailable: hasDealerPhone,
+                    },
+                } : {}),
+            };
         }
 
         return this.clearExpiredBin(auction);

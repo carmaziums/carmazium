@@ -19,11 +19,21 @@ export interface AuctionSeller {
     id: string;
     firstName: string | null;
     lastName: string | null;
-    // Only populated by winner-gated endpoints (e.g. getWonAuctions) — public
-    // auction browse/detail endpoints never include these.
+    // Real values only present for authenticated viewers (OptionalSessionAuthGuard) —
+    // anonymous requests get null + the *Available flag so the frontend can render
+    // a "log in to view" placeholder instead of silently hiding the field.
     phone?: string | null;
+    phoneAvailable?: boolean;
     email?: string | null;
-    dealerProfile?: { companyName: string; logo: string | null; businessAddress?: string | null } | null;
+    emailAvailable?: boolean;
+    dealerProfile?: {
+        companyName: string;
+        logo: string | null;
+        businessAddress?: string | null;
+        website?: string | null;
+        phone?: string | null;
+        phoneAvailable?: boolean;
+    } | null;
 }
 
 export interface AuctionListing {
