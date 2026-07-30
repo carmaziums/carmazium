@@ -9,7 +9,7 @@ import dynamic from "next/dynamic"
 const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
 const ThreeDVehicleViewer = dynamic(() => import("@/components/listing/ThreeDVehicleViewer").then(m => m.ThreeDVehicleViewer), { ssr: false })
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
-import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info, Globe, Fuel, Gavel, Truck } from "lucide-react"
+import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info, Globe, Fuel, Gavel, Truck, Phone } from "lucide-react"
 import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, getDamageRecords, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
 import { triggerBuyItNow } from "@/lib/auctionApi"
 import { createChatRoom } from "@/lib/chatApi"
@@ -1350,14 +1350,32 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
             </div>
 
             {/* Mobile sticky action bar — lg:hidden */}
-            <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-slate-900/95 backdrop-blur-md border-t border-[var(--border-default)] p-3 pb-[env(safe-area-inset-bottom)]">
-                <div className="flex items-center gap-2">
-                    <Button
-                        className="flex-1 py-5"
-                        onClick={() => setShowOfferModal(true)}
-                    >
-                        Make an Offer
-                    </Button>
+            <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-slate-900/95 backdrop-blur-md border-t border-[var(--border-default)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                <div className="flex items-center gap-2.5">
+                    {(() => {
+                        const sellerPhone = listing.seller?.role === 'DEALER' ? listing.seller.dealerProfile?.phone : listing.seller?.phone
+                        const sellerName = (listing.seller?.role === 'DEALER' ? listing.seller.dealerProfile?.companyName : null)
+                            || `${listing.seller?.firstName || ''} ${listing.seller?.lastName || ''}`.trim()
+                            || 'Private Seller'
+                        return sellerPhone ? (
+                            <a
+                                href={`tel:${sellerPhone}`}
+                                className="flex-1 min-w-0 flex items-center justify-center gap-2 h-11 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors"
+                            >
+                                <Phone size={16} className="shrink-0" />
+                                <span className="truncate">{sellerPhone}</span>
+                            </a>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={handleEnquire}
+                                className="flex-1 min-w-0 flex items-center justify-center gap-2 h-11 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors"
+                            >
+                                <Phone size={16} className="shrink-0" />
+                                <span className="truncate">{sellerName}</span>
+                            </button>
+                        )
+                    })()}
                     <Button
                         variant="outline"
                         size="icon"
