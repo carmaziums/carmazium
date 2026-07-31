@@ -60,7 +60,7 @@ export function AuctionResultsModal({
     const tips = getResultTips(auction)
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
             <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl shadow-2xl">
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-default)] sticky top-0 bg-[var(--bg-dropdown)] z-10">
