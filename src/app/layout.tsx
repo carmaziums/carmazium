@@ -36,35 +36,35 @@ const inter = Inter({ subsets: ["latin"], display: "swap" })
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com"),
   title: {
-    default: "CarMazium — Buy & Sell Cars in London",
+    default: "CarMazium — Buy & Sell Cars in UK",
     template: "%s | CarMazium",
   },
   description:
-    "London's trusted car marketplace. Browse thousands of verified vehicles, sell your car for free, and get the best deals with transparent pricing and seller reviews.",
+    "UK's trusted car marketplace. Browse thousands of verified vehicles, sell your car for free, and get the best deals with transparent pricing and seller reviews.",
   keywords: [
-    "buy cars London",
+    "buy cars UK",
     "sell car UK",
     "used cars",
     "car marketplace",
     "CarMazium",
     "cars for sale",
-    "second hand cars London",
-    "car dealer London",
+    "second hand cars UK",
+    "car dealer UK",
   ],
   openGraph: {
     type: "website",
     locale: "en_GB",
     siteName: "CarMazium",
-    title: "CarMazium — Buy & Sell Cars in London",
+    title: "CarMazium — Buy & Sell Cars in UK",
     description:
-      "London's trusted car marketplace. Browse verified vehicles, sell for free, transparent pricing.",
+      "UK's trusted car marketplace. Browse verified vehicles, sell for free, transparent pricing.",
     url: process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com",
   },
   twitter: {
     card: "summary_large_image",
-    title: "CarMazium — Buy & Sell Cars in London",
+    title: "CarMazium — Buy & Sell Cars in UK",
     description:
-      "London's trusted car marketplace. Browse verified vehicles, sell for free, transparent pricing.",
+      "UK's trusted car marketplace. Browse verified vehicles, sell for free, transparent pricing.",
   },
   robots: {
     index: true,
@@ -74,8 +74,8 @@ export const metadata: Metadata = {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
   },
   other: {
-    "geo.region": "GB-LND",
-    "geo.placename": "London",
+    "geo.region": "GB",
+    "geo.placename": "UK",
   },
 };
 

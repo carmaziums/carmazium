@@ -1,13 +1,13 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-    title: "Buy Cars — Browse Verified Vehicles in London",
+    title: "Buy Cars — Browse Verified Vehicles in UK",
     description:
-        "Search thousands of verified used cars for sale in London. Filter by price, mileage, fuel type, and more. Transparent pricing with seller reviews.",
+        "Search thousands of verified used cars for sale in UK. Filter by price, mileage, fuel type, and more. Transparent pricing with seller reviews.",
     openGraph: {
-        title: "Buy Cars — Browse Verified Vehicles in London",
+        title: "Buy Cars — Browse Verified Vehicles in UK",
         description:
-            "Search thousands of verified used cars for sale in London. Filter by price, mileage, fuel type, and more.",
+            "Search thousands of verified used cars for sale in UK. Filter by price, mileage, fuel type, and more.",
     },
 }
 

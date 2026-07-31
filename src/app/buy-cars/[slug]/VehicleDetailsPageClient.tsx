@@ -316,7 +316,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
         if (listing) {
             document.title = `${listing.title} — ${formatPrice(listing.price)} | CarMazium`
         }
-        return () => { document.title = 'CarMazium — Buy & Sell Cars in London' }
+        return () => { document.title = 'CarMazium — Buy & Sell Cars in UK' }
     }, [listing])
 
     if (loading) {
