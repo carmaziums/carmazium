@@ -16,7 +16,6 @@ import { CompareProvider } from "@/context/CompareContext";
 import { LocationProvider } from "@/context/LocationContext";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
-import { MetaPixel } from "@/components/analytics/MetaPixel";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -93,7 +92,6 @@ export default function RootLayout({
       >
         <AutoDealerJsonLd />
         <GoogleAnalytics />
-        <MetaPixel />
         <ThemeProvider>
           <AuthProvider>
             <ChatProvider>
