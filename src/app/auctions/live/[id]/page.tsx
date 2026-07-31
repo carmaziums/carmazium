@@ -19,6 +19,8 @@ import {
 import { BlurredPhone } from "@/components/shared/BlurredPhone"
 import { BlurredEmail } from "@/components/shared/BlurredEmail"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
+import { CardImageCarousel } from "@/components/features/CardImageCarousel"
+import { ImageLightbox } from "@/components/features/ImageLightbox"
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
 import { useAuth } from "@/context/AuthContext"
 import { getAuction, acceptBidEarly, triggerBuyItNow, confirmBuyItNow, declineBuyItNow, cancelBid, type Auction, type BidBroadcastPayload, type AuctionEndPayload } from "@/lib/auctionApi"
@@ -101,6 +103,12 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const [connectingChat, setConnectingChat] = React.useState(false)
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
     const [selectedDamageZone, setSelectedDamageZone] = React.useState<string | null>(null)
+    const [damageLightboxOpen, setDamageLightboxOpen] = React.useState(false)
+    const [damageLightboxIndex, setDamageLightboxIndex] = React.useState(0)
+    const damageImages = React.useMemo(
+        () => damageRecords.map((r: any) => r.imageUrl).filter(Boolean),
+        [damageRecords]
+    )
     const [acceptingBid, setAcceptingBid] = React.useState<BidEntry | null>(null)
     const [acceptLoading, setAcceptLoading] = React.useState(false)
     const [acceptError, setAcceptError] = React.useState<string | null>(null)
@@ -455,7 +463,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const reserveMet = !!(topBidAmount !== null && topBidAmount >= Number(auction.reservePrice))
     // BIN card visibility: live + buyer + BIN price set + reserve not met + no pending BIN
     const showBin = isLive && !isSeller && !!auction.buyItNowPrice && !reserveMet && !binPending
-    const image = auction.listing.images?.[0] ?? "/assets/images/hero-bg.png"
+    const images = auction.listing.images?.length ? auction.listing.images : ["/assets/images/hero-bg.png"]
     const bidCount = bidHistory.length
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -837,66 +845,73 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 <div className="space-y-5 min-w-0">
 
                     {/* Vehicle image */}
-                    <div className="relative aspect-video rounded-2xl overflow-hidden bg-[var(--bg-input)] border border-[var(--border-default)] shadow-xl">
-                        <Image src={image} alt={auction.listing.title} fill className="object-cover" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent" />
+                    <div className="group relative aspect-video rounded-2xl overflow-hidden bg-[var(--bg-input)] border border-[var(--border-default)] shadow-xl">
+                        <CardImageCarousel
+                            images={images}
+                            alt={auction.listing.title}
+                            imageClassName="object-cover"
+                            sizes="(max-width: 1024px) 100vw, 800px"
+                            lightboxOnTap
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent pointer-events-none" />
 
-                        {isLive && (
-                            <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-primary text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-[0_0_20px_rgba(237,28,36,0.5)] tracking-widest z-10">
-                                <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> LIVE
-                            </div>
-                        )}
-                        {isScheduled && (
-                            <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-blue-600/90 text-white text-[10px] font-black px-3 py-1.5 rounded-full z-10">
-                                <CalendarClock size={11} /> Upcoming
-                            </div>
-                        )}
-                        {isCancelled && (
-                            <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-slate-700 text-[var(--text-secondary)] text-[10px] font-black px-3 py-1.5 rounded-full z-10">
-                                <Ban size={11} /> Cancelled
-                            </div>
-                        )}
+                            {isLive && (
+                                <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-primary text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-[0_0_20px_rgba(237,28,36,0.5)] tracking-widest z-10 pointer-events-none">
+                                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> LIVE
+                                </div>
+                            )}
+                            {isScheduled && (
+                                <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-blue-600/90 text-white text-[10px] font-black px-3 py-1.5 rounded-full z-10 pointer-events-none">
+                                    <CalendarClock size={11} /> Upcoming
+                                </div>
+                            )}
+                            {isCancelled && (
+                                <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-slate-700 text-[var(--text-secondary)] text-[10px] font-black px-3 py-1.5 rounded-full z-10 pointer-events-none">
+                                    <Ban size={11} /> Cancelled
+                                </div>
+                            )}
 
-                        {/* Bottom overlay */}
-                        <div className="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between z-10">
-                            <div>
-                                <p className="text-white/50 text-[10px] uppercase tracking-widest font-bold mb-1">
-                                    {isEnded ? "Final Bid" : isScheduled ? "Starting Bid" : "Current Bid"}
-                                </p>
-                                <p className="text-4xl md:text-5xl font-black text-white font-mono leading-none drop-shadow-2xl">
-                                    £{currentBid.toLocaleString()}
-                                </p>
-                            </div>
+                            {/* Bottom overlay */}
+                            <div className="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between z-10 pointer-events-none">
+                                <div>
+                                    <p className="text-white/50 text-[10px] uppercase tracking-widest font-bold mb-1">
+                                        {isEnded ? "Final Bid" : isScheduled ? "Starting Bid" : "Current Bid"}
+                                    </p>
+                                    <p className="text-4xl md:text-5xl font-black text-white font-mono leading-none drop-shadow-2xl">
+                                        £{currentBid.toLocaleString()}
+                                    </p>
+                                </div>
 
-                            <div className="flex flex-col items-end gap-2">
-                                {isLive && isWinning && !isSeller && (
-                                    <div className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-black px-3 py-1.5 rounded-full backdrop-blur">
-                                        <CheckCircle size={10} /> Winning
-                                    </div>
-                                )}
-                                {isLive && !isWinning && user && !isSeller && bidCount > 0 && (
-                                    <div className="flex items-center gap-1.5 bg-red-500/20 border border-red-500/30 text-red-400 text-[10px] font-black px-3 py-1.5 rounded-full backdrop-blur">
-                                        <AlertCircle size={10} /> Outbid
-                                    </div>
-                                )}
-                                {isLive && endTime && (
-                                    <div className="bg-[var(--bg-card)] backdrop-blur border border-[var(--border-default)] rounded-xl px-3 py-2 text-center">
-                                        <p className="text-[8px] text-[var(--text-muted)] uppercase tracking-widest font-bold mb-0.5">Ends In</p>
-                                        <div className="text-[var(--text-primary)] font-mono font-black text-lg leading-none">
-                                            <CountdownTimer targetDate={endTime} minimal />
+                                <div className="flex flex-col items-end gap-2">
+                                    {isLive && isWinning && !isSeller && (
+                                        <div className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-black px-3 py-1.5 rounded-full backdrop-blur">
+                                            <CheckCircle size={10} /> Winning
                                         </div>
-                                    </div>
-                                )}
-                                {isScheduled && startTime && (
-                                    <div className="bg-blue-900/60 backdrop-blur border border-blue-500/20 rounded-xl px-3 py-2 text-center">
-                                        <p className="text-[8px] text-blue-300/60 uppercase tracking-widest font-bold mb-0.5">Starts In</p>
-                                        <div className="text-blue-300 font-mono font-black text-lg leading-none">
-                                            <CountdownTimer targetDate={startTime} minimal />
+                                    )}
+                                    {isLive && !isWinning && user && !isSeller && bidCount > 0 && (
+                                        <div className="flex items-center gap-1.5 bg-red-500/20 border border-red-500/30 text-red-400 text-[10px] font-black px-3 py-1.5 rounded-full backdrop-blur">
+                                            <AlertCircle size={10} /> Outbid
                                         </div>
-                                    </div>
-                                )}
+                                    )}
+                                    {isLive && endTime && (
+                                        <div className="bg-[var(--bg-card)] backdrop-blur border border-[var(--border-default)] rounded-xl px-3 py-2 text-center">
+                                            <p className="text-[8px] text-[var(--text-muted)] uppercase tracking-widest font-bold mb-0.5">Ends In</p>
+                                            <div className="text-[var(--text-primary)] font-mono font-black text-lg leading-none">
+                                                <CountdownTimer targetDate={endTime} minimal />
+                                            </div>
+                                        </div>
+                                    )}
+                                    {isScheduled && startTime && (
+                                        <div className="bg-blue-900/60 backdrop-blur border border-blue-500/20 rounded-xl px-3 py-2 text-center">
+                                            <p className="text-[8px] text-blue-300/60 uppercase tracking-widest font-bold mb-0.5">Starts In</p>
+                                            <div className="text-blue-300 font-mono font-black text-lg leading-none">
+                                                <CountdownTimer targetDate={startTime} minimal />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        </CardImageCarousel>
                     </div>
 
                     {/* Anti-snipe alert */}
@@ -1184,25 +1199,36 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             {damageRecords.length > 0 && (
                                                 <div className="mt-4 space-y-2">
                                                     {damageRecords.map((record: any, i: number) => (
-                                                        <button
+                                                        <div
                                                             key={i}
-                                                            onClick={() => setSelectedDamageZone(prev => prev === record.part ? null : record.part)}
-                                                            className={`w-full text-left flex items-start gap-3 p-3 rounded-lg border transition-colors ${selectedDamageZone === record.part ? "bg-amber-500/10 border-amber-500/30" : "bg-[var(--bg-input)] border-[var(--border-default)] hover:border-[var(--border-default)]"}`}
+                                                            className={`w-full flex items-start gap-3 p-3 rounded-lg border transition-colors ${selectedDamageZone === record.part ? "bg-amber-500/10 border-amber-500/30" : "bg-[var(--bg-input)] border-[var(--border-default)] hover:border-[var(--border-default)]"}`}
                                                         >
                                                             {record.imageUrl && (
-                                                                <div className="relative w-12 h-12 rounded-md overflow-hidden shrink-0 border border-[var(--border-default)]">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setDamageLightboxIndex(Math.max(0, damageImages.indexOf(record.imageUrl)))
+                                                                        setDamageLightboxOpen(true)
+                                                                    }}
+                                                                    aria-label={`View photo of ${record.part} damage`}
+                                                                    className="relative w-12 h-12 rounded-md overflow-hidden shrink-0 border border-[var(--border-default)] cursor-zoom-in hover:border-primary/40 transition-colors"
+                                                                >
                                                                     <Image src={record.imageUrl} alt={record.part} fill className="object-cover" sizes="48px" />
-                                                                </div>
+                                                                </button>
                                                             )}
-                                                            <div className="min-w-0">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSelectedDamageZone(prev => prev === record.part ? null : record.part)}
+                                                                className="min-w-0 flex-1 text-left"
+                                                            >
                                                                 <p className="text-sm font-semibold text-[var(--text-primary)] capitalize">
                                                                     {record.part.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
                                                                 </p>
                                                                 <p className="text-xs text-[var(--text-muted)]">
                                                                     {record.type}{record.size ? ` — ${record.size}` : ""}
                                                                 </p>
-                                                            </div>
-                                                        </button>
+                                                            </button>
+                                                        </div>
                                                     ))}
                                                 </div>
                                             )}
@@ -1310,7 +1336,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         {/* Public seller info — whichever of these the seller actually has on file */}
                                         {(sellerPhoneAvailable || seller?.emailAvailable || location || businessAddress || website) && (
                                             <div className="flex flex-col gap-2">
-                                                <BlurredPhone phone={sellerPhone ?? null} phoneAvailable={sellerPhoneAvailable} />
+                                                <BlurredPhone
+                                                    phone={sellerPhone ?? null}
+                                                    phoneAvailable={sellerPhoneAvailable}
+                                                    lockedMessage={user ? "Unlocks after you win & pay the buyer fee" : undefined}
+                                                />
                                                 <BlurredEmail email={seller?.email ?? null} emailAvailable={!!seller?.emailAvailable} />
                                                 {location && (
                                                     <div className="flex items-center gap-3 bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)]">
@@ -1636,6 +1666,14 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     )}
                 </aside>
             </div>
+
+            <ImageLightbox
+                images={damageImages}
+                alt="Damage photo"
+                startIndex={damageLightboxIndex}
+                open={damageLightboxOpen}
+                onClose={() => setDamageLightboxOpen(false)}
+            />
         </div>
     )
 }

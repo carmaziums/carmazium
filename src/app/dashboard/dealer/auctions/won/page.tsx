@@ -6,7 +6,7 @@ import Image from "next/image"
 import {
     Loader2, Trophy, Car, MessageSquare, CreditCard, CheckCircle2, XCircle,
     Clock, AlertTriangle, Gavel, Radio, TrendingUp, FileSearch,
-    Calendar, Gauge, Fuel, Cog, Palette, Phone, Mail, ShieldCheck, Award, MapPin, Globe,
+    Calendar, Gauge, Fuel, Cog, Palette, Phone, Mail, ShieldCheck, Award, MapPin, Globe, Lock,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
@@ -199,12 +199,23 @@ function ChatButton({ sellerId, listingId, phone }: { sellerId: string; listingI
     )
 }
 
-// Shown before the buyer fee is paid, so the winner has a way to reach the
-// seller right away — the seller still has every reason to keep the handover
-// on-platform since their £100 bonus only releases once it's verified here.
-// Same size/shape as PrimaryButton so the two stack as a matched pair.
-function CallSellerButton({ phone }: { phone?: string | null }) {
-    if (!phone) return null
+// The seller's number stays locked until the buyer fee is paid — otherwise a
+// winner could get the seller's contact and arrange the handover off-platform
+// without ever paying. Same size/shape as PrimaryButton so the two stack as
+// a matched pair; the backend only sends a real `phone` once buyerFeePaid.
+function CallSellerButton({ phone, phoneAvailable }: { phone?: string | null; phoneAvailable?: boolean }) {
+    if (!phoneAvailable) return null
+    if (!phone) {
+        return (
+            <div
+                className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] text-[var(--text-muted)] text-sm font-black w-full md:w-auto"
+                title="Unlocks after you pay the buyer fee"
+            >
+                <Lock size={15} className="shrink-0" />
+                <span className="blur-[3px] select-none">07XXX XXXXXX</span>
+            </div>
+        )
+    }
     return (
         <a
             href={`tel:${phone}`}
@@ -284,7 +295,7 @@ function WonAuctionRow({ auction }: { auction: Auction }) {
                         <PrimaryButton href={`/checkout?listing_id=${auction.listingId}&mode=auction_fee`} icon={CreditCard}>
                             Pay the £125 fee
                         </PrimaryButton>
-                        <CallSellerButton phone={seller?.phone} />
+                        <CallSellerButton phone={seller?.phone} phoneAvailable={seller?.phoneAvailable} />
                     </div>
                 ) : noProofYet && l.sellerId ? (
                     <ChatButton sellerId={l.sellerId} listingId={auction.listingId} phone={seller?.phone} />

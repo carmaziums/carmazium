@@ -233,16 +233,21 @@ export class AuctionsService {
             const hasPersonalPhone = !!seller.phone;
             const hasPersonalEmail = !!seller.email;
             const hasDealerPhone = !!seller.dealerProfile?.phone;
+            // Phone is withheld until the viewer has actually won this specific
+            // auction AND paid the £125 buyer fee — logging in isn't enough, so a
+            // bidder can't skip the fee and arrange the handover off-platform.
+            // Email keeps the simpler "any logged-in viewer" gate (unchanged).
+            const canSeePhone = !!viewerId && viewerId === auction.winnerId && !!auction.buyerFeePaid;
             (auction.listing as any).seller = {
                 ...seller,
-                phone: viewerId ? seller.phone : null,
+                phone: canSeePhone ? seller.phone : null,
                 phoneAvailable: hasPersonalPhone,
                 email: viewerId ? seller.email : null,
                 emailAvailable: hasPersonalEmail,
                 ...(seller.dealerProfile ? {
                     dealerProfile: {
                         ...seller.dealerProfile,
-                        phone: viewerId ? seller.dealerProfile.phone : null,
+                        phone: canSeePhone ? seller.dealerProfile.phone : null,
                         phoneAvailable: hasDealerPhone,
                     },
                 } : {}),
@@ -331,7 +336,26 @@ export class AuctionsService {
             }),
             this.prisma.auction.count({ where }),
         ]);
-        return { data, total };
+
+        // Same fee gate as findOne() — the winner sees this list before paying,
+        // so the raw phone number can't ride along in the response until the
+        // buyer fee is actually paid.
+        const gated = data.map((auction: any) => {
+            const seller = auction.listing?.seller;
+            if (seller) {
+                auction.listing = {
+                    ...auction.listing,
+                    seller: {
+                        ...seller,
+                        phone: auction.buyerFeePaid ? seller.phone : null,
+                        phoneAvailable: !!seller.phone,
+                    },
+                };
+            }
+            return auction;
+        });
+
+        return { data: gated, total };
     }
 
     async update(id: string, updateAuctionDto: UpdateAuctionDto, userId: string): Promise<Auction> {
