@@ -6,8 +6,8 @@ import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import {
     Gavel, PlusCircle, Loader2, Eye, XCircle, Clock,
-    ChevronUp, ChevronRight, AlertCircle, CheckCircle2, Calendar, X, Tags, Star,
-    Upload, Handshake, Info, CheckCircle, ImageIcon,
+    ChevronRight, AlertCircle, CheckCircle2, Calendar, X, Tags, Star,
+    Upload, Handshake, Info, CheckCircle, ImageIcon, BarChart2,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
@@ -23,6 +23,8 @@ import {
 } from "@/lib/auctionApi"
 import { apiClient } from "@/lib/apiClient"
 import { uploadImage } from "@/lib/supabase"
+import { createChatRoom } from "@/lib/chatApi"
+import { AuctionResultsModal } from "@/components/auctions/AuctionResultsModal"
 import { getStripeConnectStatus, type StripeConnectStatus, type Listing } from "@/lib/listingApi"
 
 const STATUS_STYLES: Record<string, string> = {
@@ -138,6 +140,8 @@ function DealerAuctionsPage() {
     const [submitting, setSubmitting] = React.useState(false)
     const [formError, setFormError] = React.useState<string | null>(null)
     const [successMsg, setSuccessMsg] = React.useState<string | null>(null)
+    const [resultsAuction, setResultsAuction] = React.useState<Auction | null>(null)
+    const [connectingChat, setConnectingChat] = React.useState(false)
 
     // Countdown tick every second
     React.useEffect(() => {
@@ -299,6 +303,19 @@ function DealerAuctionsPage() {
             setDigestError(err.message ?? 'Failed to save digest')
         } finally {
             setDigestLoading(false)
+        }
+    }
+
+    async function handleConnectWithWinner(auction: Auction) {
+        if (!auction.winnerId) return
+        setConnectingChat(true)
+        try {
+            const room = await createChatRoom(auction.winnerId, auction.listingId)
+            window.location.href = `/dashboard/dealer/messages?room=${room.id}`
+        } catch (err: any) {
+            alert(err.message || "Failed to open chat")
+        } finally {
+            setConnectingChat(false)
         }
     }
 
@@ -602,7 +619,7 @@ function DealerAuctionsPage() {
                                         </button>
                                     )}
                                     {(auction.status === "ENDED" || auction.status === "CANCELLED") && (
-                                        <Link href={`/auctions/live/${auction.id}`} className="w-full min-h-[46px] flex items-center justify-center rounded-xl border border-[var(--border-default)] text-[var(--text-muted)] font-bold text-sm">View results</Link>
+                                        <button onClick={() => setResultsAuction(auction)} className="w-full min-h-[46px] flex items-center justify-center rounded-xl border border-[var(--border-default)] text-[var(--text-muted)] font-bold text-sm">View results</button>
                                     )}
                                 </div>
                             ))}
@@ -776,15 +793,14 @@ function DealerAuctionsPage() {
                                                             </Button>
                                                         )}
                                                         {(auction.status === "ENDED" || auction.status === "CANCELLED") && (
-                                                            <Link href={`/auctions/live/${auction.id}`}>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="gap-1.5 bg-[var(--bg-card)] hover:bg-white/10 text-[var(--text-muted)] border border-[var(--border-default)]"
-                                                                >
-                                                                    <ChevronUp size={14} /> View Results
-                                                                </Button>
-                                                            </Link>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => setResultsAuction(auction)}
+                                                                className="gap-1.5 bg-[var(--bg-card)] hover:bg-white/10 text-[var(--text-muted)] border border-[var(--border-default)]"
+                                                            >
+                                                                <BarChart2 size={14} /> View Results
+                                                            </Button>
                                                         )}
                                                     </div>
                                                 </td>
@@ -945,6 +961,20 @@ function DealerAuctionsPage() {
                     )}
                 </main>
             </div>
+
+            {resultsAuction && (
+                <AuctionResultsModal
+                    auction={resultsAuction}
+                    onClose={() => setResultsAuction(null)}
+                    onReauction={(a) => {
+                        setResultsAuction(null)
+                        setFormListingId(a.listingId)
+                        openForm()
+                    }}
+                    onConnectWithWinner={handleConnectWithWinner}
+                    connectingChat={connectingChat}
+                />
+            )}
 
             {digestAuction && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">

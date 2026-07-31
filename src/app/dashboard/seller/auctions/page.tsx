@@ -8,9 +8,10 @@ import {
     Gavel, PlusCircle, Loader2, Eye, XCircle, Clock,
     ChevronRight, AlertCircle, CheckCircle2, Calendar, X,
     Upload, Handshake, Info, CheckCircle, ImageIcon,
-    Trophy, MessageSquare, BarChart2, Users, TrendingUp, Tag, Tags, Star,
+    BarChart2, Users, TrendingUp, Tag, Tags, Star,
 } from "lucide-react"
 import { createChatRoom } from "@/lib/chatApi"
+import { AuctionResultsModal } from "@/components/auctions/AuctionResultsModal"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -1096,124 +1097,17 @@ function SellerAuctionsPage() {
         {/* Auction Results Modal */}
 
         {resultsAuction && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setResultsAuction(null) }}>
-                <div className="w-full max-w-lg bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl shadow-2xl overflow-hidden">
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-default)]">
-                        <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                                <BarChart2 size={16} className="text-primary" />
-                            </div>
-                            <div>
-                                <h2 className="font-bold">Auction Results</h2>
-                                <p className="text-xs text-[var(--text-muted)] truncate max-w-[260px]">{resultsAuction.listing.title}</p>
-                            </div>
-                        </div>
-                        <button onClick={() => setResultsAuction(null)} className="p-2.5 text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors">
-                            <X size={18} />
-                        </button>
-                    </div>
-
-                    <div className="p-6 space-y-5">
-                        {/* Status banner */}
-                        {resultsAuction.winnerId ? (
-                            <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                                <Trophy size={20} className="text-amber-400 shrink-0" />
-                                <div>
-                                    <p className="font-bold text-amber-300 text-sm">Auction Sold</p>
-                                    <p className="text-xs text-[var(--text-muted)]">Winner: <span className="font-semibold">
-                                        {resultsAuction.winner
-                                            ? `${resultsAuction.winner.firstName || ""} ${resultsAuction.winner.lastName || ""}`.trim() || "Anonymous Bidder"
-                                            : "Anonymous Bidder"}
-                                    </span></p>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-500/10 border border-gray-500/20">
-                                <XCircle size={20} className="text-[var(--text-muted)] shrink-0" />
-                                <div>
-                                    <p className="font-bold text-[var(--text-secondary)] text-sm">No Winner</p>
-                                    <p className="text-xs text-[var(--text-muted)]">Reserve price not met or no bids placed</p>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Stats grid */}
-                        <div className="grid grid-cols-3 gap-3">
-                            <div className="rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] p-3 text-center">
-                                <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest mb-1">Winning Bid</p>
-                                <p className="text-lg font-black font-mono">
-                                    {resultsAuction.winningBidAmount
-                                        ? `£${Number(resultsAuction.winningBidAmount).toLocaleString()}`
-                                        : "—"}
-                                </p>
-                            </div>
-                            <div className="rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] p-3 text-center">
-                                <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest mb-1">Total Bids</p>
-                                <p className="text-lg font-black">
-                                    {getBidCount(resultsAuction)}
-                                </p>
-                            </div>
-                            <div className="rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] p-3 text-center">
-                                <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest mb-1">Reserve</p>
-                                <p className="text-lg font-black font-mono">
-                                    £{Number(resultsAuction.reservePrice).toLocaleString()}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Timeline */}
-                        <div className="space-y-2 text-xs text-[var(--text-muted)]">
-                            <div className="flex justify-between">
-                                <span>Started</span>
-                                <span>{formatDate(resultsAuction.startTime)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>Ended</span>
-                                <span>{formatDate(resultsAuction.endTime)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>Starting Bid</span>
-                                <span className="font-mono">£{Number(resultsAuction.startingBid).toLocaleString()}</span>
-                            </div>
-                        </div>
-
-                        {/* Action buttons */}
-                        <div className="flex gap-3 pt-1">
-                            <Link
-                                href={`/auctions/live/${resultsAuction.id}`}
-                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] text-[var(--text-secondary)] text-sm font-bold hover:bg-[var(--bg-card-hover)] transition-colors"
-                            >
-                                <Eye size={14} /> View Auction
-                            </Link>
-                            {resultsAuction.winnerId ? (
-                                <button
-                                    onClick={() => handleConnectWithWinner(resultsAuction)}
-                                    disabled={connectingChat}
-                                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary hover:bg-red-600 text-white text-sm font-bold transition-colors disabled:opacity-50"
-                                >
-                                    {connectingChat
-                                        ? <Loader2 size={14} className="animate-spin" />
-                                        : <MessageSquare size={14} />
-                                    }
-                                    Connect with Winner
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={() => {
-                                        setResultsAuction(null)
-                                        setFormListingId(resultsAuction.listingId)
-                                        openForm()
-                                    }}
-                                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary hover:bg-red-600 text-white text-sm font-bold transition-colors"
-                                >
-                                    <Gavel size={14} /> Re-auction
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <AuctionResultsModal
+                auction={resultsAuction}
+                onClose={() => setResultsAuction(null)}
+                onReauction={(a) => {
+                    setResultsAuction(null)
+                    setFormListingId(a.listingId)
+                    openForm()
+                }}
+                onConnectWithWinner={handleConnectWithWinner}
+                connectingChat={connectingChat}
+            />
         )}
         {/* ── Also List for Retail modal ──────────────────────────── */}
         {alsoRetailAuction && (
