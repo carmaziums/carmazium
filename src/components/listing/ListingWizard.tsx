@@ -1083,6 +1083,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <h2 className="text-2xl font-bold mb-2 font-heading">Retail Listing</h2>
                                     <p className="text-[var(--text-muted)] mb-6 text-sm">Set your asking price and let buyers submit offers. You choose who to accept.</p>
                                     <ul className="space-y-2.5 mb-6 text-[var(--text-secondary)] flex-1">
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Starting from £1</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> DVLA-verified vehicle data</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Instant estimated valuation</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Reach thousands of buyers</li>
@@ -1131,6 +1132,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         <span>Only <strong>verified dealers</strong> can bid. Open to all registered sellers to list.</span>
                                     </div>
                                     <ul className="space-y-2.5 mb-6 text-[var(--text-secondary)] flex-1">
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="shrink-0 text-orange-400" /> Free to list</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="shrink-0 text-orange-400" /> Real-time live bidding</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="shrink-0 text-orange-400" /> Anti-snipe protection</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="shrink-0 text-orange-400" /> Set your reserve price</li>
