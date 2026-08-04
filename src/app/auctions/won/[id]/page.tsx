@@ -116,9 +116,11 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
     const images: string[] = listing.images ?? []
     const winAmount = Number(auction.winningBidAmount)
     const seller = listing.seller
+    const isDealerSeller = seller?.dealerProfile != null
     const sellerName = seller?.dealerProfile?.companyName
         || `${seller?.firstName ?? ""} ${seller?.lastName ?? ""}`.trim()
         || "Seller"
+    const sellerPhone = isDealerSeller ? seller?.dealerProfile?.phone : seller?.phone
 
     function formatDate(d: string | null | undefined) {
         if (!d) return null
@@ -352,11 +354,11 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                 </div>
                             </div>
 
-                            {(seller?.phone || seller?.email || businessAddress) && (
+                            {(sellerPhone || seller?.email || businessAddress) && (
                                 <div className="mt-3 pt-3 border-t border-[var(--border-default)] space-y-2">
-                                    {seller?.phone && (
-                                        <a href={`tel:${seller.phone}`} className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)] hover:text-primary transition-colors">
-                                            <Phone size={13} className="text-primary shrink-0" /> {seller.phone}
+                                    {sellerPhone && (
+                                        <a href={`tel:${sellerPhone}`} className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)] hover:text-primary transition-colors">
+                                            <Phone size={13} className="text-primary shrink-0" /> {sellerPhone}
                                         </a>
                                     )}
                                     {seller?.email && (

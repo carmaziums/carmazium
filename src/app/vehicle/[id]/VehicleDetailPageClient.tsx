@@ -13,10 +13,11 @@ import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
 import {
     ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon,
     MapPin, Share2, Heart, Scale, Loader2, AlertTriangle, X, Tag,
-    Clock, XCircle, MessageCircle, ThumbsUp, Lock, FileSearch, BadgeCheck, Star, Sparkles, Zap, CreditCard, Info, Phone, Globe, Wrench,
+    Clock, XCircle, MessageCircle, ThumbsUp, Lock, FileSearch, BadgeCheck, Star, Sparkles, Zap, CreditCard, Info, Globe, Wrench,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { SellerBadge } from "@/components/ui/SellerBadge"
+import { BlurredPhone } from "@/components/shared/BlurredPhone"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { EnquireModal } from "@/components/listing/EnquireModal"
 import { getListingBySlug, makeOffer, getMyOfferForListing, respondToCounterOffer, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, formatPrice, type Listing, type LatestOffer } from "@/lib/listingApi"
@@ -800,14 +801,10 @@ export function VehicleDetailPageClient({ params }: { params: Promise<{ id: stri
                                     <p className="line-clamp-4 text-sm leading-relaxed">{listing.seller.dealerProfile.description}</p>
                                 )}
                                 <div className="flex flex-col gap-2.5">
-                                    {listing.seller.dealerProfile.phone && (
-                                        <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group">
-                                            <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
-                                                <Phone size={14} className="text-emerald-500 group-hover:text-primary transition-colors" />
-                                            </div>
-                                            <span className="font-medium text-emerald-500">{listing.seller.dealerProfile.phone}</span>
-                                        </a>
-                                    )}
+                                    <BlurredPhone
+                                        phone={listing.seller.dealerProfile.phone}
+                                        phoneAvailable={listing.seller.dealerProfile.phoneAvailable ?? !!listing.seller.dealerProfile.phone}
+                                    />
                                     {listing.seller.dealerProfile.website && (
                                         <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group">
                                             <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
@@ -817,6 +814,16 @@ export function VehicleDetailPageClient({ params }: { params: Promise<{ id: stri
                                         </a>
                                     )}
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Private seller contact phone */}
+                        {listing.seller.role !== 'DEALER' && (
+                            <div className="border-t border-[var(--border-default)] pt-4">
+                                <BlurredPhone
+                                    phone={listing.seller.phone ?? null}
+                                    phoneAvailable={listing.seller.phoneAvailable ?? !!listing.seller.phone}
+                                />
                             </div>
                         )}
 
@@ -1415,14 +1422,10 @@ export function VehicleDetailPageClient({ params }: { params: Promise<{ id: stri
                                             <p className="line-clamp-3 text-xs">{listing.seller.dealerProfile.description}</p>
                                         )}
                                         <div className="flex flex-col gap-2 pt-2">
-                                            {listing.seller.dealerProfile.phone && (
-                                                <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group">
-                                                    <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
-                                                        <Phone size={14} className="text-emerald-500 group-hover:text-primary transition-colors" />
-                                                    </div>
-                                                    <span className="font-medium text-emerald-500">{listing.seller.dealerProfile.phone}</span>
-                                                </a>
-                                            )}
+                                            <BlurredPhone
+                                                phone={listing.seller.dealerProfile.phone}
+                                                phoneAvailable={listing.seller.dealerProfile.phoneAvailable ?? !!listing.seller.dealerProfile.phone}
+                                            />
                                             {listing.seller.dealerProfile.website && (
                                                 <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group">
                                                     <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
@@ -1432,6 +1435,16 @@ export function VehicleDetailPageClient({ params }: { params: Promise<{ id: stri
                                                 </a>
                                             )}
                                         </div>
+                                    </div>
+                                )}
+
+                                {/* Private seller contact phone */}
+                                {listing.seller?.role !== 'DEALER' && (
+                                    <div className="mb-6">
+                                        <BlurredPhone
+                                            phone={listing.seller?.phone ?? null}
+                                            phoneAvailable={listing.seller?.phoneAvailable ?? !!listing.seller?.phone}
+                                        />
                                     </div>
                                 )}
 

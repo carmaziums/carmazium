@@ -236,6 +236,7 @@ function WonAuctionRow({ auction }: { auction: Auction }) {
     const s = STAGE_LABELS[stage]
     const winAmount = Number(auction.winningBidAmount ?? 0)
     const seller = l.seller
+    const isDealerSeller = seller?.dealerProfile != null
     const sellerName = seller?.dealerProfile?.companyName
         || `${seller?.firstName ?? ""} ${seller?.lastName ?? ""}`.trim()
         || "the seller"
@@ -245,6 +246,8 @@ function WonAuctionRow({ auction }: { auction: Auction }) {
 
     const businessAddress = seller?.dealerProfile?.businessAddress
     const website = seller?.dealerProfile?.website
+    const sellerPhone = isDealerSeller ? seller?.dealerProfile?.phone : seller?.phone
+    const sellerPhoneAvailable = isDealerSeller ? seller?.dealerProfile?.phoneAvailable : seller?.phoneAvailable
 
     return (
         <Row
@@ -295,10 +298,10 @@ function WonAuctionRow({ auction }: { auction: Auction }) {
                         <PrimaryButton href={`/checkout?listing_id=${auction.listingId}&mode=auction_fee`} icon={CreditCard}>
                             Pay the £125 fee
                         </PrimaryButton>
-                        <CallSellerButton phone={seller?.phone} phoneAvailable={seller?.phoneAvailable} />
+                        <CallSellerButton phone={sellerPhone} phoneAvailable={sellerPhoneAvailable} />
                     </div>
                 ) : noProofYet && l.sellerId ? (
-                    <ChatButton sellerId={l.sellerId} listingId={auction.listingId} phone={seller?.phone} />
+                    <ChatButton sellerId={l.sellerId} listingId={auction.listingId} phone={sellerPhone} />
                 ) : stage === "in_progress" ? (
                     <SecondaryButton href={`/auctions/won/${auction.id}`} icon={FileSearch}>
                         View details

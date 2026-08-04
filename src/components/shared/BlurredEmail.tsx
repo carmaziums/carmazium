@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { useRouter, usePathname } from "next/navigation"
-import { Mail, Lock } from "lucide-react"
+import { usePathname } from "next/navigation"
+import { Mail, Eye } from "lucide-react"
+import { LoginWall } from "@/components/auth/LoginWall"
 
 interface BlurredEmailProps {
     /** Real email address, or null if the backend withheld it from an anonymous viewer */
@@ -17,8 +18,8 @@ interface BlurredEmailProps {
  * address to authenticated requests, so this just reflects what it was given.
  */
 export function BlurredEmail({ email, emailAvailable, className = "" }: BlurredEmailProps) {
-    const router = useRouter()
     const pathname = usePathname()
+    const [showLoginWall, setShowLoginWall] = React.useState(false)
 
     if (!emailAvailable) return null
 
@@ -37,16 +38,24 @@ export function BlurredEmail({ email, emailAvailable, className = "" }: BlurredE
     }
 
     return (
-        <button
-            type="button"
-            onClick={() => router.push(`/auth/login?redirect=${encodeURIComponent(pathname || '/')}`)}
-            className={`flex items-center gap-3 group bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] ${className}`}
-        >
-            <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
-                <Lock size={14} className="text-[var(--text-muted)] shrink-0" />
-            </div>
-            <span className="blur-[4px] select-none text-[var(--text-muted)] group-hover:blur-[3px] transition-all">email@hidden.com</span>
-            <span className="text-primary text-xs font-bold whitespace-nowrap group-hover:underline">Log in to view</span>
-        </button>
+        <>
+            <button
+                type="button"
+                onClick={() => setShowLoginWall(true)}
+                className={`flex items-center gap-3 group bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] ${className}`}
+            >
+                <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
+                    <Eye size={14} className="text-[var(--text-muted)] group-hover:text-primary shrink-0 transition-colors" />
+                </div>
+                <span className="blur-[4px] select-none text-[var(--text-muted)] group-hover:blur-[3px] transition-all">email@hidden.com</span>
+                <span className="text-primary text-xs font-bold whitespace-nowrap group-hover:underline">Reveal email</span>
+            </button>
+            <LoginWall
+                open={showLoginWall}
+                onClose={() => setShowLoginWall(false)}
+                redirectTo={pathname || '/'}
+                message="Log in or create an account to view this seller's email address."
+            />
+        </>
     )
 }
