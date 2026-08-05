@@ -5,9 +5,11 @@ import { UserRole } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import { ReviewKycDto } from './dto/review-kyc.dto';
 import { RejectListingDto } from './dto/reject-listing.dto';
+import { AdminUpdateListingDto } from './dto/admin-update-listing.dto';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SellersService } from '../sellers/sellers.service';
+import { AuctionsService } from '../auctions/auctions.service';
 
 @Injectable()
 export class AdminService {
@@ -18,6 +20,7 @@ export class AdminService {
         private readonly notificationsGateway: NotificationsGateway,
         private readonly notificationsService: NotificationsService,
         private readonly sellersService: SellersService,
+        private readonly auctionsService: AuctionsService,
     ) { }
 
     async getAllUsers(page = 1, limit = 20, search?: string) {
@@ -154,6 +157,44 @@ export class AdminService {
         });
     }
 
+    /**
+     * Lets an admin correct a listing's own fields (typos, wrong spec, etc.)
+     * while it's still awaiting review, instead of rejecting-and-waiting for
+     * the seller to resubmit. Deliberately restricted to PENDING_REVIEW /
+     * REJECTED — once a listing is live, edits go through the normal
+     * seller-owned update flow.
+     */
+    async updateListing(id: string, dto: AdminUpdateListingDto) {
+        const listing = await this.prisma.listing.findUnique({ where: { id } });
+        if (!listing) {
+            throw new NotFoundException('Listing not found');
+        }
+        if (listing.status !== 'PENDING_REVIEW' && listing.status !== 'REJECTED') {
+            throw new BadRequestException('Only listings awaiting review can be edited');
+        }
+
+        const data: Record<string, unknown> = {};
+        if (dto.title !== undefined) data.title = dto.title;
+        if (dto.price !== undefined) data.price = dto.price;
+        if (dto.description !== undefined) data.description = dto.description;
+        if (dto.make !== undefined) data.make = dto.make;
+        if (dto.model !== undefined) data.model = dto.model;
+        if (dto.year !== undefined) data.year = dto.year;
+        if (dto.mileage !== undefined) data.mileage = dto.mileage;
+        if (dto.vrm !== undefined) data.vrm = dto.vrm;
+        if (dto.vin !== undefined) data.vin = dto.vin;
+        if (dto.fuelType !== undefined) data.fuelType = dto.fuelType;
+        if (dto.transmission !== undefined) data.transmission = dto.transmission;
+        if (dto.bodyType !== undefined) data.bodyType = dto.bodyType;
+        if (dto.condition !== undefined) data.condition = dto.condition;
+        if (dto.color !== undefined) data.color = dto.color;
+        if (dto.doors !== undefined) data.doors = dto.doors;
+        if (dto.seats !== undefined) data.seats = dto.seats;
+        if (dto.location !== undefined) data.location = dto.location;
+
+        return this.prisma.listing.update({ where: { id }, data });
+    }
+
     async approveListing(id: string) {
         const listing = await this.prisma.listing.findUnique({ where: { id } });
         if (!listing) {
@@ -286,6 +327,30 @@ export class AdminService {
             this.prisma.auction.count(),
         ]);
         return { data, total };
+    }
+
+    /** Lightweight list of every dealer, for the "assign winner" dropdown. */
+    async getAllDealersForAssignment() {
+        return this.prisma.user.findMany({
+            where: { role: 'DEALER', deletedAt: null },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                dealerProfile: { select: { companyName: true, isVerified: true } },
+            },
+            orderBy: { firstName: 'asc' },
+        });
+    }
+
+    /**
+     * Admin override: force-ends a live auction, assigning a chosen dealer as
+     * winner regardless of whether they ever bid. See AuctionsService.adminAssignWinner
+     * for the money-flow rules (BIN/reserve price, normal £125 buyer fee still applies).
+     */
+    async assignAuctionWinner(auctionId: string, dealerId: string) {
+        await this.auctionsService.adminAssignWinner(auctionId, dealerId);
     }
 
     async getPendingHandovers() {

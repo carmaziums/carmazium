@@ -46,6 +46,19 @@ export async function getAdminAuctions(page = 1, limit = 20) {
   return result;
 }
 
+export async function getAllDealers() {
+  const result = await apiClient<{ data: any[] }>('/admin/dealers');
+  return result.data;
+}
+
+export async function assignAuctionWinner(auctionId: string, dealerId: string) {
+  const result = await apiClient<any>(`/admin/auctions/${auctionId}/assign-winner`, {
+    method: 'POST',
+    body: JSON.stringify({ dealerId }),
+  });
+  return result;
+}
+
 export async function getAdminTransactions(page = 1, limit = 20) {
   const result = await apiClient<any>(`/admin/transactions?page=${page}&limit=${limit}`);
   return result;
@@ -117,6 +130,14 @@ export async function deleteListingForce(listingId: string) {
 export async function getPendingListingReviews() {
   const result = await apiClient<{ data: any[] }>('/admin/listings/pending-review');
   return result.data;
+}
+
+export async function updateListingAsAdmin(listingId: string, fields: Record<string, unknown>) {
+  const result = await apiClient<any>(`/admin/listings/${listingId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(fields),
+  });
+  return result;
 }
 
 export async function approveListing(listingId: string) {

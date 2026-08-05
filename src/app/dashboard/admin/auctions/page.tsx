@@ -4,10 +4,10 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Gavel, Loader2, ArrowLeft, Eye, Car } from "lucide-react"
+import { Gavel, Loader2, ArrowLeft, Eye, Car, UserCheck, X, AlertTriangle } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
-import { getAdminAuctions } from "@/lib/adminApi"
+import { getAdminAuctions, getAllDealers, assignAuctionWinner } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
 
 const STATUS_STYLES: Record<string, string> = {
@@ -27,6 +27,14 @@ export default function AdminAuctionsPage() {
     const [total, setTotal] = React.useState(0)
     const limit = 20
 
+    // Assign-winner flow
+    const [dealers, setDealers] = React.useState<any[]>([])
+    const [assignTarget, setAssignTarget] = React.useState<any | null>(null)
+    const [selectedDealerId, setSelectedDealerId] = React.useState("")
+    const [confirming, setConfirming] = React.useState(false)
+    const [assigning, setAssigning] = React.useState(false)
+    const [assignError, setAssignError] = React.useState<string | null>(null)
+
     React.useEffect(() => {
         if (!authLoading) {
             if (!user) { router.replace('/auth/login'); return }
@@ -34,15 +42,58 @@ export default function AdminAuctionsPage() {
         }
     }, [user, profile, authLoading, router])
 
-    React.useEffect(() => {
-        if (profile?.role !== 'ADMIN') return
+    const loadAuctions = React.useCallback(() => {
         setLoading(true)
         setError(null)
         getAdminAuctions(page, limit)
             .then(r => { setAuctions(r.data || []); setTotal(r.pagination?.total || 0) })
             .catch(err => setError(err.message || 'Failed to load auctions'))
             .finally(() => setLoading(false))
-    }, [profile, page])
+    }, [page])
+
+    React.useEffect(() => {
+        if (profile?.role !== 'ADMIN') return
+        loadAuctions()
+    }, [profile, page, loadAuctions])
+
+    React.useEffect(() => {
+        if (profile?.role !== 'ADMIN') return
+        getAllDealers().then(setDealers).catch(() => {})
+    }, [profile])
+
+    function openAssignModal(auction: any) {
+        setAssignTarget(auction)
+        setSelectedDealerId("")
+        setConfirming(false)
+        setAssignError(null)
+    }
+
+    function closeAssignModal() {
+        setAssignTarget(null)
+        setSelectedDealerId("")
+        setConfirming(false)
+        setAssignError(null)
+    }
+
+    async function handleConfirmAssign() {
+        if (!assignTarget || !selectedDealerId) return
+        setAssigning(true)
+        setAssignError(null)
+        try {
+            await assignAuctionWinner(assignTarget.id, selectedDealerId)
+            closeAssignModal()
+            loadAuctions()
+        } catch (err: any) {
+            setAssignError(err.message || 'Failed to assign winner')
+        } finally {
+            setAssigning(false)
+        }
+    }
+
+    const assignAmount = assignTarget
+        ? (assignTarget.buyItNowPrice != null ? Number(assignTarget.buyItNowPrice) : Number(assignTarget.reservePrice))
+        : 0
+    const selectedDealer = dealers.find(d => d.id === selectedDealerId)
 
     if (authLoading || (user && !profile) || (loading && auctions.length === 0)) {
         return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
@@ -121,9 +172,21 @@ export default function AdminAuctionsPage() {
                                                 ) : <span className="text-[var(--text-muted)]">—</span>}
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <Link href={`/auctions/live/${a.id}`} target="_blank" className="p-2.5 hover:bg-white/10 rounded-lg transition-colors text-blue-400 hover:text-primary dark:hover:text-white inline-flex" title="View Auction">
-                                                    <Eye size={16} />
-                                                </Link>
+                                                <div className="flex items-center justify-end gap-1">
+                                                    {a.status === 'ACTIVE' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openAssignModal(a)}
+                                                            className="p-2.5 hover:bg-white/10 rounded-lg transition-colors text-purple-400 hover:text-primary dark:hover:text-white inline-flex cursor-pointer"
+                                                            title="Assign Winner"
+                                                        >
+                                                            <UserCheck size={16} />
+                                                        </button>
+                                                    )}
+                                                    <Link href={`/auctions/live/${a.id}`} target="_blank" className="p-2.5 hover:bg-white/10 rounded-lg transition-colors text-blue-400 hover:text-primary dark:hover:text-white inline-flex" title="View Auction">
+                                                        <Eye size={16} />
+                                                    </Link>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -140,6 +203,100 @@ export default function AdminAuctionsPage() {
                     </div>
                 </main>
             </div>
+
+            {/* Assign Winner Modal */}
+            {assignTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={closeAssignModal}>
+                    <div className="w-full max-w-md bg-[var(--bg-card)] border border-[var(--border-default)] rounded-2xl p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                                <UserCheck size={20} className="text-purple-400" /> Assign Winner
+                            </h3>
+                            <button type="button" onClick={closeAssignModal} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <p className="text-sm text-[var(--text-muted)] mb-1">
+                            {assignTarget.listing?.title}
+                        </p>
+                        <p className="text-xs text-[var(--text-muted)] mb-4">
+                            Winning amount will be {assignTarget.buyItNowPrice != null ? 'the Buy It Now price' : 'the reserve price'}: <span className="font-bold text-[var(--text-primary)]">{formatPrice(assignAmount)}</span>
+                        </p>
+
+                        {!confirming ? (
+                            <>
+                                <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Select Dealer</label>
+                                <select
+                                    value={selectedDealerId}
+                                    onChange={(e) => setSelectedDealerId(e.target.value)}
+                                    className="w-full mt-1 mb-5 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
+                                >
+                                    <option value="">Choose a dealer...</option>
+                                    {dealers.map((d) => (
+                                        <option key={d.id} value={d.id}>
+                                            {d.dealerProfile?.companyName || `${d.firstName || ''} ${d.lastName || ''}`.trim() || d.email}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={closeAssignModal}
+                                        className="flex-1 px-4 py-2.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)] text-[var(--text-muted)] font-bold text-xs uppercase tracking-widest hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfirming(true)}
+                                        disabled={!selectedDealerId}
+                                        className="flex-1 px-4 py-2.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-400 font-bold text-xs uppercase tracking-widest hover:bg-purple-500/20 disabled:opacity-50 transition-colors cursor-pointer"
+                                    >
+                                        Continue
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 mb-5">
+                                    <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                                    <p className="text-xs text-amber-200">
+                                        This immediately ends the auction and assigns{' '}
+                                        <span className="font-bold">{selectedDealer?.dealerProfile?.companyName || `${selectedDealer?.firstName || ''} ${selectedDealer?.lastName || ''}`.trim()}</span>{' '}
+                                        as the winner for <span className="font-bold">{formatPrice(assignAmount)}</span>. This cannot be undone.
+                                    </p>
+                                </div>
+
+                                {assignError && (
+                                    <p className="text-xs text-red-400 mb-3">{assignError}</p>
+                                )}
+
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfirming(false)}
+                                        disabled={assigning}
+                                        className="flex-1 px-4 py-2.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)] text-[var(--text-muted)] font-bold text-xs uppercase tracking-widest hover:text-[var(--text-primary)] disabled:opacity-50 transition-colors cursor-pointer"
+                                    >
+                                        Back
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleConfirmAssign}
+                                        disabled={assigning}
+                                        className="flex-1 px-4 py-2.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-400 font-bold text-xs uppercase tracking-widest hover:bg-purple-500/20 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                                    >
+                                        {assigning ? <Loader2 size={14} className="animate-spin" /> : <UserCheck size={14} />}
+                                        Yes, Assign Winner
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

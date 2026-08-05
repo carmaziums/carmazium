@@ -22,6 +22,7 @@ import {
 import { AdminService } from './admin.service';
 import { ReviewKycDto } from './dto/review-kyc.dto';
 import { RejectListingDto } from './dto/reject-listing.dto';
+import { AdminUpdateListingDto } from './dto/admin-update-listing.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -137,6 +138,17 @@ export class AdminController {
         return new StandardResponse(list);
     }
 
+    @Patch('listings/:id')
+    @ApiOperation({ summary: "Edit a pending/rejected listing's own fields before approving it" })
+    @ApiParam({ name: 'id', description: 'Listing UUID' })
+    async updateListing(
+        @Param('id') id: string,
+        @Body() dto: AdminUpdateListingDto,
+    ): Promise<StandardResponse<any>> {
+        const listing = await this.adminService.updateListing(id, dto);
+        return new StandardResponse(listing);
+    }
+
     @Post('listings/:id/approve')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Approve a pending listing — it goes live immediately' })
@@ -170,6 +182,25 @@ export class AdminController {
     ): Promise<PaginatedResponse<any>> {
         const { data, total } = await this.adminService.getAllAuctions(Number(page), Number(limit));
         return new PaginatedResponse(data, total, Number(page), Number(limit));
+    }
+
+    @Get('dealers')
+    @ApiOperation({ summary: 'List every dealer — for the auction "assign winner" dropdown' })
+    async getAllDealers(): Promise<StandardResponse<any>> {
+        const dealers = await this.adminService.getAllDealersForAssignment();
+        return new StandardResponse(dealers);
+    }
+
+    @Post('auctions/:id/assign-winner')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Force-end a live auction, assigning a chosen dealer as winner' })
+    @ApiParam({ name: 'id', description: 'Auction UUID' })
+    async assignAuctionWinner(
+        @Param('id') id: string,
+        @Body('dealerId') dealerId: string,
+    ): Promise<StandardResponse<any>> {
+        await this.adminService.assignAuctionWinner(id, dealerId);
+        return new StandardResponse({ success: true });
     }
 
     // ── Handovers ─────────────────────────────────────────────────────────────

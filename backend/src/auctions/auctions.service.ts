@@ -503,6 +503,44 @@ export class AuctionsService {
         await this.notifyAuctionEnd(auction, winnerId, winningAmount, true);
     }
 
+    /**
+     * Admin override: ends a live auction immediately, assigning a specific
+     * dealer as winner regardless of whether they ever bid on it. Winning
+     * amount is always the Buy It Now price if one was set, otherwise the
+     * reserve price — never the current top bid, since the assigned dealer
+     * may not have placed one. The dealer still goes through the normal
+     * £125 buyer-fee flow afterward (unchanged — endAuctionWithWinner doesn't
+     * touch buyerFeePaid), same as any other winner.
+     */
+    async adminAssignWinner(auctionId: string, dealerId: string): Promise<void> {
+        const auction = await this.findOne(auctionId);
+        if (auction.status !== 'ACTIVE') {
+            throw new BadRequestException('Only ACTIVE (live) auctions can have a winner assigned');
+        }
+
+        const dealer = await this.prisma.user.findUnique({ where: { id: dealerId } });
+        if (!dealer || dealer.deletedAt) {
+            throw new NotFoundException('Dealer not found');
+        }
+        if (dealer.role !== 'DEALER') {
+            throw new BadRequestException('Only dealer accounts can be assigned as an auction winner');
+        }
+
+        const sellerId = auction.listing.sellerId;
+        if (!sellerId) {
+            throw new BadRequestException('This listing has no seller on record');
+        }
+        if (sellerId === dealerId) {
+            throw new BadRequestException('Cannot assign the listing\'s own seller as the winning buyer');
+        }
+
+        const amount = auction.buyItNowPrice != null ? Number(auction.buyItNowPrice) : Number(auction.reservePrice);
+        const linkedListingId = (auction.listing as any).linkedListingId as string | null;
+
+        await this.endAuctionWithWinner(auctionId, dealerId, amount, sellerId, linkedListingId);
+        await this.notifyAuctionEnd(auction, dealerId, amount, true);
+    }
+
     async remove(id: string, userId: string): Promise<Auction> {
         const auction = await this.findOne(id);
 

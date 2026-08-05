@@ -5,11 +5,19 @@ import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
-import { Car, Loader2, ArrowLeft, Trash2, AlertTriangle, Eye, ChevronDown, Check, X, Clock } from "lucide-react"
+import { Car, Loader2, ArrowLeft, Trash2, AlertTriangle, Eye, ChevronDown, Check, X, Clock, Pencil, Save } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
-import { getAdminListings, deleteListingForce, getPendingListingReviews, approveListing, rejectListing } from "@/lib/adminApi"
+import { getAdminListings, deleteListingForce, getPendingListingReviews, approveListing, rejectListing, updateListingAsAdmin } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
+
+const FUEL_TYPES = ['PETROL', 'DIESEL', 'ELECTRIC', 'HYBRID', 'PLUGIN_HYBRID', 'LPG', 'HYDROGEN_CELL', 'BI_FUEL', 'NATURAL_GAS', 'PETROL_HYBRID', 'DIESEL_HYBRID', 'PETROL_PLUGIN_HYBRID', 'DIESEL_PLUGIN_HYBRID', 'UNLISTED']
+const TRANSMISSIONS = ['MANUAL', 'AUTOMATIC', 'SEMI_AUTOMATIC', 'CVT']
+const BODY_TYPES = ['SEDAN', 'SUV', 'HATCHBACK', 'COUPE', 'CONVERTIBLE', 'ESTATE', 'CROSSOVER', 'SPORTS_CAR', 'MINIVAN', 'PICKUP_TRUCK', 'STATION_WAGON', 'MPV', 'VAN']
+const CONDITIONS = ['EXCELLENT', 'GOOD', 'FAIR', 'POOR', 'CAT_S', 'CAT_N', 'CAT_C', 'CAT_D']
+const EDIT_NUMERIC_FIELDS = ['price', 'year', 'mileage', 'doors', 'seats']
+
+const editInputClass = "w-full mt-1 rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] px-3 py-2 text-sm placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none"
 
 export default function AdminListingsPage() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -30,6 +38,9 @@ export default function AdminListingsPage() {
     const [actionLoading, setActionLoading] = React.useState<string | null>(null)
     const [actionError, setActionError] = React.useState<string | null>(null)
     const [successMsg, setSuccessMsg] = React.useState<string | null>(null)
+    const [editingId, setEditingId] = React.useState<string | null>(null)
+    const [editForm, setEditForm] = React.useState<Record<string, string>>({})
+    const [savingEdit, setSavingEdit] = React.useState(false)
 
     React.useEffect(() => {
         // Enforce Admin Access
@@ -121,6 +132,61 @@ export default function AdminListingsPage() {
         }
     }
 
+    const startEdit = (l: any) => {
+        setActionError(null)
+        setSuccessMsg(null)
+        setEditingId(l.id)
+        setEditForm({
+            title: l.title || '',
+            price: l.price != null ? String(l.price) : '',
+            description: l.description || '',
+            make: l.make || '',
+            model: l.model || '',
+            year: l.year != null ? String(l.year) : '',
+            mileage: l.mileage != null ? String(l.mileage) : '',
+            vrm: l.vrm || '',
+            vin: l.vin || '',
+            fuelType: l.fuelType || '',
+            transmission: l.transmission || '',
+            bodyType: l.bodyType || '',
+            condition: l.condition || '',
+            color: l.color || '',
+            doors: l.doors != null ? String(l.doors) : '',
+            seats: l.seats != null ? String(l.seats) : '',
+            location: l.location || '',
+        })
+    }
+
+    const cancelEdit = () => {
+        setEditingId(null)
+        setEditForm({})
+    }
+
+    const handleSaveEdit = async (id: string) => {
+        setActionError(null)
+        setSuccessMsg(null)
+        try {
+            setSavingEdit(true)
+            // Blank fields are left out rather than sent as '' — every field here
+            // is optional server-side, and an empty string would fail number/enum
+            // validation instead of just "leave unchanged".
+            const fields: Record<string, unknown> = {}
+            for (const [key, value] of Object.entries(editForm)) {
+                if (value === '') continue
+                fields[key] = EDIT_NUMERIC_FIELDS.includes(key) ? Number(value) : value
+            }
+            const result = await updateListingAsAdmin(id, fields)
+            const updated = result?.data ?? result
+            setPendingListings(prev => prev.map(l => l.id === id ? { ...l, ...updated } : l))
+            setEditingId(null)
+            setSuccessMsg('Listing details updated.')
+        } catch (err: any) {
+            setActionError(err.message || 'Failed to save changes')
+        } finally {
+            setSavingEdit(false)
+        }
+    }
+
     const handleDelete = async (listingId: string) => {
         if (!window.confirm("Are you sure you want to forcefully delete this listing? This action cannot be undone.")) return;
 
@@ -200,6 +266,7 @@ export default function AdminListingsPage() {
                                 {pendingListings.map((l) => {
                                     const isExpanded = expandedId === l.id
                                     const isRejectedResubmit = l.status === 'REJECTED'
+                                    const isEditing = editingId === l.id
                                     return (
                                         <div key={l.id} className={`border rounded-xl overflow-hidden ${isRejectedResubmit ? 'border-red-500/30' : 'border-[var(--border-default)]'}`}>
                                             <button
@@ -241,69 +308,188 @@ export default function AdminListingsPage() {
                                                         </div>
                                                     )}
 
-                                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm py-2">
-                                                        {([
-                                                            ['Make', l.make], ['Model', l.model], ['Year', l.year],
-                                                            ['Mileage', l.mileage ? `${Number(l.mileage).toLocaleString()} mi` : null],
-                                                            ['VRM', l.vrm], ['VIN', l.vin],
-                                                            ['Fuel', l.fuelType], ['Transmission', l.transmission],
-                                                            ['Body Type', l.bodyType], ['Condition', l.condition],
-                                                            ['Colour', l.color], ['Doors', l.doors], ['Seats', l.seats],
-                                                            ['Location', l.location], ['Badge Tier', l.badgeTier],
-                                                            ['Type', l.type], ['Owners', l.owners],
-                                                            ['MOT', l.motStatus], ['Tax', l.taxStatus],
-                                                        ] as [string, unknown][]).filter(([, v]) => v !== null && v !== undefined && v !== '').map(([label, value]) => (
-                                                            <div key={label}>
-                                                                <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">{label}</p>
-                                                                <p className="font-medium">{String(value)}</p>
+                                                    {isEditing ? (
+                                                        <div className="space-y-3 py-2">
+                                                            <div>
+                                                                <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Title</label>
+                                                                <input type="text" value={editForm.title} onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))} className={editInputClass} />
                                                             </div>
-                                                        ))}
-                                                    </div>
+                                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                                                <div>
+                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Price (£)</label>
+                                                                    <input type="number" value={editForm.price} onChange={(e) => setEditForm(prev => ({ ...prev, price: e.target.value }))} className={editInputClass} />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Make</label>
+                                                                    <input type="text" value={editForm.make} onChange={(e) => setEditForm(prev => ({ ...prev, make: e.target.value }))} className={editInputClass} />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Model</label>
+                                                                    <input type="text" value={editForm.model} onChange={(e) => setEditForm(prev => ({ ...prev, model: e.target.value }))} className={editInputClass} />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Year</label>
+                                                                    <input type="number" value={editForm.year} onChange={(e) => setEditForm(prev => ({ ...prev, year: e.target.value }))} className={editInputClass} />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Mileage</label>
+                                                                    <input type="number" value={editForm.mileage} onChange={(e) => setEditForm(prev => ({ ...prev, mileage: e.target.value }))} className={editInputClass} />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">VRM</label>
+                                                                    <input type="text" value={editForm.vrm} onChange={(e) => setEditForm(prev => ({ ...prev, vrm: e.target.value }))} className={editInputClass} />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">VIN</label>
+                                                                    <input type="text" value={editForm.vin} onChange={(e) => setEditForm(prev => ({ ...prev, vin: e.target.value }))} className={editInputClass} />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Fuel</label>
+                                                                    <select value={editForm.fuelType} onChange={(e) => setEditForm(prev => ({ ...prev, fuelType: e.target.value }))} className={editInputClass}>
+                                                                        <option value="">—</option>
+                                                                        {FUEL_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
+                                                                    </select>
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Transmission</label>
+                                                                    <select value={editForm.transmission} onChange={(e) => setEditForm(prev => ({ ...prev, transmission: e.target.value }))} className={editInputClass}>
+                                                                        <option value="">—</option>
+                                                                        {TRANSMISSIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                                                                    </select>
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Body Type</label>
+                                                                    <select value={editForm.bodyType} onChange={(e) => setEditForm(prev => ({ ...prev, bodyType: e.target.value }))} className={editInputClass}>
+                                                                        <option value="">—</option>
+                                                                        {BODY_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
+                                                                    </select>
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Condition</label>
+                                                                    <select value={editForm.condition} onChange={(e) => setEditForm(prev => ({ ...prev, condition: e.target.value }))} className={editInputClass}>
+                                                                        <option value="">—</option>
+                                                                        {CONDITIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                                                                    </select>
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Colour</label>
+                                                                    <input type="text" value={editForm.color} onChange={(e) => setEditForm(prev => ({ ...prev, color: e.target.value }))} className={editInputClass} />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Doors</label>
+                                                                    <input type="number" value={editForm.doors} onChange={(e) => setEditForm(prev => ({ ...prev, doors: e.target.value }))} className={editInputClass} />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Seats</label>
+                                                                    <input type="number" value={editForm.seats} onChange={(e) => setEditForm(prev => ({ ...prev, seats: e.target.value }))} className={editInputClass} />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Location</label>
+                                                                    <input type="text" value={editForm.location} onChange={(e) => setEditForm(prev => ({ ...prev, location: e.target.value }))} className={editInputClass} />
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Description</label>
+                                                                <textarea value={editForm.description} onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))} rows={4} className={editInputClass} />
+                                                            </div>
 
-                                                    {l.description && (
-                                                        <div className="py-3">
-                                                            <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold mb-1">Description</p>
-                                                            <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">{l.description}</p>
+                                                            <div className="flex gap-3 mt-4">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleSaveEdit(l.id)}
+                                                                    disabled={savingEdit}
+                                                                    className="flex-1 px-4 py-2.5 rounded-lg bg-primary/10 border border-primary/30 text-primary font-bold text-xs uppercase tracking-widest hover:bg-primary/20 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                                                                >
+                                                                    {savingEdit ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                                                    Save Changes
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={cancelEdit}
+                                                                    disabled={savingEdit}
+                                                                    className="flex-1 px-4 py-2.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-default)] text-[var(--text-muted)] font-bold text-xs uppercase tracking-widest hover:text-[var(--text-primary)] disabled:opacity-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                                                                >
+                                                                    <X size={14} />
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
                                                         </div>
+                                                    ) : (
+                                                        <>
+                                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm py-2">
+                                                                {([
+                                                                    ['Make', l.make], ['Model', l.model], ['Year', l.year],
+                                                                    ['Mileage', l.mileage ? `${Number(l.mileage).toLocaleString()} mi` : null],
+                                                                    ['VRM', l.vrm], ['VIN', l.vin],
+                                                                    ['Fuel', l.fuelType], ['Transmission', l.transmission],
+                                                                    ['Body Type', l.bodyType], ['Condition', l.condition],
+                                                                    ['Colour', l.color], ['Doors', l.doors], ['Seats', l.seats],
+                                                                    ['Location', l.location], ['Badge Tier', l.badgeTier],
+                                                                    ['Type', l.type], ['Owners', l.owners],
+                                                                    ['MOT', l.motStatus], ['Tax', l.taxStatus],
+                                                                ] as [string, unknown][]).filter(([, v]) => v !== null && v !== undefined && v !== '').map(([label, value]) => (
+                                                                    <div key={label}>
+                                                                        <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">{label}</p>
+                                                                        <p className="font-medium">{String(value)}</p>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+
+                                                            {l.description && (
+                                                                <div className="py-3">
+                                                                    <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold mb-1">Description</p>
+                                                                    <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">{l.description}</p>
+                                                                </div>
+                                                            )}
+
+                                                            <div className="flex items-center gap-4 py-2">
+                                                                <Link href={`/buy-cars/${l.slug}`} target="_blank" className="text-xs text-blue-400 hover:underline inline-flex items-center gap-1">
+                                                                    <Eye size={12} /> Preview listing
+                                                                </Link>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => startEdit(l)}
+                                                                    className="text-xs text-[var(--text-muted)] hover:text-primary transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                                                >
+                                                                    <Pencil size={12} /> Edit details
+                                                                </button>
+                                                            </div>
+
+                                                            <div className="mt-3">
+                                                                <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">
+                                                                    Rejection reason (required to reject)
+                                                                </label>
+                                                                <textarea
+                                                                    value={rejectReasons[l.id] || ''}
+                                                                    onChange={(e) => setRejectReasons(prev => ({ ...prev, [l.id]: e.target.value }))}
+                                                                    placeholder="Explain what needs fixing before this can be approved..."
+                                                                    rows={2}
+                                                                    className="w-full mt-1 rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] px-3 py-2 text-sm placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none"
+                                                                />
+                                                            </div>
+
+                                                            <div className="flex gap-3 mt-4">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleApprove(l.id)}
+                                                                    disabled={actionLoading === l.id}
+                                                                    className="flex-1 px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-xs uppercase tracking-widest hover:bg-emerald-500/20 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                                                                >
+                                                                    {actionLoading === l.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                                                                    Approve — Go Live
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleReject(l.id)}
+                                                                    disabled={actionLoading === l.id}
+                                                                    className="flex-1 px-4 py-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 font-bold text-xs uppercase tracking-widest hover:bg-red-500/20 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                                                                >
+                                                                    {actionLoading === l.id ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
+                                                                    Reject
+                                                                </button>
+                                                            </div>
+                                                        </>
                                                     )}
-
-                                                    <Link href={`/buy-cars/${l.slug}`} target="_blank" className="text-xs text-blue-400 hover:underline inline-flex items-center gap-1 py-2">
-                                                        <Eye size={12} /> Preview listing
-                                                    </Link>
-
-                                                    <div className="mt-3">
-                                                        <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">
-                                                            Rejection reason (required to reject)
-                                                        </label>
-                                                        <textarea
-                                                            value={rejectReasons[l.id] || ''}
-                                                            onChange={(e) => setRejectReasons(prev => ({ ...prev, [l.id]: e.target.value }))}
-                                                            placeholder="Explain what needs fixing before this can be approved..."
-                                                            rows={2}
-                                                            className="w-full mt-1 rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] px-3 py-2 text-sm placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none"
-                                                        />
-                                                    </div>
-
-                                                    <div className="flex gap-3 mt-4">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleApprove(l.id)}
-                                                            disabled={actionLoading === l.id}
-                                                            className="flex-1 px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-xs uppercase tracking-widest hover:bg-emerald-500/20 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                                                        >
-                                                            {actionLoading === l.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                                                            Approve — Go Live
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleReject(l.id)}
-                                                            disabled={actionLoading === l.id}
-                                                            className="flex-1 px-4 py-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 font-bold text-xs uppercase tracking-widest hover:bg-red-500/20 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                                                        >
-                                                            {actionLoading === l.id ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
-                                                            Reject
-                                                        </button>
-                                                    </div>
                                                 </div>
                                             )}
                                         </div>
