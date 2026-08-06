@@ -12,6 +12,7 @@ import { DeliveryExpiryService } from '../delivery/delivery-expiry.service';
 import { EmailModule } from '../email/email.module';
 import { DbBackupService } from './db-backup.service';
 import { WatchlistReminderService } from './watchlist-reminder.service';
+import { UnpaidAuctionFeeExpiryService } from './unpaid-auction-fee-expiry.service';
 
 @Module({
     imports: [
@@ -23,6 +24,6 @@ import { WatchlistReminderService } from './watchlist-reminder.service';
         DeliveryModule,
         EmailModule,
     ],
-    providers: [ImageCleanupService, FeaturedBoostExpiryService, AuctionLifecycleService, DeliveryExpiryService, DbBackupService, WatchlistReminderService],
+    providers: [ImageCleanupService, FeaturedBoostExpiryService, AuctionLifecycleService, DeliveryExpiryService, DbBackupService, WatchlistReminderService, UnpaidAuctionFeeExpiryService],
 })
 export class TasksModule { }

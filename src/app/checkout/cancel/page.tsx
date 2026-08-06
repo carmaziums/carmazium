@@ -23,6 +23,7 @@ export default function CheckoutCancelPage() {
 function CheckoutCancelContent() {
     const searchParams = useSearchParams()
     const listingId = searchParams.get("listing_id")
+    const isAuctionFee = searchParams.get("type") === "COMMISSION"
 
     return (
         <div className="min-h-screen flex items-center justify-center px-4">
@@ -64,7 +65,11 @@ function CheckoutCancelContent() {
                     className="rounded-2xl border p-5 text-sm text-left"
                     style={{ background: 'var(--bg-card)', borderColor: 'var(--border-default)', color: 'var(--text-muted)' }}
                 >
-                    <p>Your card has <strong className="text-[var(--text-primary)]">not been charged</strong>. The vehicle is still available if you&apos;d like to try again.</p>
+                    {isAuctionFee ? (
+                        <p>Your card has <strong className="text-[var(--text-primary)]">not been charged</strong>. You still won this auction — pay the £125 buyer fee within 72 hours to unlock chat with the seller and complete the handover, or the win will be cancelled and the vehicle relisted.</p>
+                    ) : (
+                        <p>Your card has <strong className="text-[var(--text-primary)]">not been charged</strong>. The vehicle is still available if you&apos;d like to try again.</p>
+                    )}
                 </motion.div>
 
                 {/* CTAs */}
@@ -74,7 +79,13 @@ function CheckoutCancelContent() {
                     transition={{ delay: 0.5 }}
                     className="flex flex-col sm:flex-row gap-4 justify-center"
                 >
-                    {listingId && (
+                    {listingId && isAuctionFee ? (
+                        <Button asChild className="gap-2 bg-gradient-to-r from-primary to-[#ff4d4d] hover:from-[#ff4d4d] hover:to-primary px-6">
+                            <Link href={`/checkout?listing_id=${listingId}&mode=auction_fee`}>
+                                <ArrowLeft size={18} /> Retry Payment
+                            </Link>
+                        </Button>
+                    ) : listingId && (
                         <Button asChild className="gap-2 bg-gradient-to-r from-primary to-[#ff4d4d] hover:from-[#ff4d4d] hover:to-primary px-6">
                             <Link href={`/vehicle/${listingId}`}>
                                 <ArrowLeft size={18} /> Back to Vehicle

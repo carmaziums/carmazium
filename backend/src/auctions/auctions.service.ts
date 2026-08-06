@@ -18,6 +18,9 @@ import { Auction } from '@prisma/client';
 
 const AUCTION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 const ANTI_SNIPE_MINUTES = 3;
+// Grace window a declared winner has to pay the £125 buyer fee before the win
+// auto-reverts — see UnpaidAuctionFeeExpiryService.
+const BUYER_FEE_GRACE_MS = 72 * 60 * 60 * 1000; // 72 hours
 
 @Injectable()
 export class AuctionsService {
@@ -475,7 +478,7 @@ export class AuctionsService {
         await this.prisma.$transaction([
             this.prisma.auction.update({
                 where: { id: auctionId },
-                data: { status: 'ENDED', winnerId, winningBidAmount: bid.amount },
+                data: { status: 'ENDED', winnerId, winningBidAmount: bid.amount, wonAt: new Date() },
             }),
             this.prisma.listing.update({
                 where: { id: auction.listingId },
@@ -539,6 +542,87 @@ export class AuctionsService {
 
         await this.endAuctionWithWinner(auctionId, dealerId, amount, sellerId, linkedListingId);
         await this.notifyAuctionEnd(auction, dealerId, amount, true);
+    }
+
+    /**
+     * Called by UnpaidAuctionFeeExpiryService (hourly cron). Any ENDED auction
+     * with a winner who hasn't paid the £125 buyer fee within BUYER_FEE_GRACE_MS
+     * of wonAt gets unwound: the win is cancelled, the Sale record removed, the
+     * listing goes back to ACTIVE, and both the (former) winner and the seller
+     * are notified. Without this, a winner who never pays leaves the listing
+     * permanently stuck SOLD with no way back onto the market.
+     */
+    async revertUnpaidWins(): Promise<{ reverted: number }> {
+        const cutoff = new Date(Date.now() - BUYER_FEE_GRACE_MS);
+        const stale = await this.prisma.auction.findMany({
+            where: {
+                status: 'ENDED',
+                winnerId: { not: null },
+                buyerFeePaid: false,
+                wonAt: { not: null, lt: cutoff },
+                deletedAt: null,
+            },
+            include: {
+                listing: { select: { id: true, title: true, sellerId: true } },
+            },
+        });
+
+        for (const auction of stale) {
+            const winnerId = auction.winnerId!;
+            const listing = auction.listing;
+
+            await this.prisma.$transaction([
+                this.prisma.auction.update({
+                    where: { id: auction.id },
+                    data: { status: 'CANCELLED', winnerId: null, winningBidAmount: null, wonAt: null },
+                }),
+                this.prisma.listing.update({
+                    where: { id: listing.id },
+                    data: { status: 'ACTIVE' },
+                }),
+                this.prisma.sale.deleteMany({ where: { listingId: listing.id, buyerId: winnerId } }),
+                ...(listing.sellerId ? [
+                    this.prisma.sellerProfile.update({
+                        where: { userId: listing.sellerId },
+                        data: { totalSales: { decrement: 1 } },
+                    }),
+                ] : []),
+            ]);
+
+            await this.notificationsService.create({
+                userId: winnerId,
+                type: 'AUCTION_WIN_EXPIRED',
+                title: 'Your auction win was cancelled',
+                message: `You didn't pay the £125 buyer fee for "${listing.title}" in time, so the win was cancelled and the listing is back on the market.`,
+                entityType: 'AUCTION',
+                entityId: auction.id,
+                link: `/dashboard/dealer/auctions/won`,
+            }).catch(() => {});
+
+            if (listing.sellerId) {
+                const notification = await this.notificationsService.create({
+                    userId: listing.sellerId,
+                    type: 'AUCTION_WIN_EXPIRED',
+                    title: 'Auction sale fell through — relisted',
+                    message: `The winning buyer for "${listing.title}" didn't pay the buyer fee in time, so the sale was cancelled and your listing is active again.`,
+                    entityType: 'AUCTION',
+                    entityId: auction.id,
+                    link: `/dashboard/seller/auctions`,
+                }).catch(() => null);
+                if (notification) {
+                    this.notificationsGateway.sendNotification(listing.sellerId, notification);
+                }
+            }
+
+            this.auctionGateway.broadcastAuctionEnd(auction.id, {
+                auctionId: auction.id,
+                winnerId: null,
+                winningBidAmount: null,
+                reserveMet: false,
+            });
+        }
+
+        return { reverted: stale.length };
     }
 
     async remove(id: string, userId: string): Promise<Auction> {
@@ -655,6 +739,7 @@ export class AuctionsService {
                         status: 'ENDED',
                         winnerId: topBid.bidderId,
                         winningBidAmount: topBid.amount,
+                        wonAt: new Date(),
                     },
                 }),
                 this.prisma.listing.update({
@@ -844,6 +929,7 @@ export class AuctionsService {
                     status: 'ENDED',
                     winnerId,
                     winningBidAmount: amount,
+                    wonAt: new Date(),
                     buyItNowPendingBuyerId: null,
                     buyItNowPendingAt: null,
                 },
@@ -945,6 +1031,7 @@ export class AuctionsService {
                     status: 'ENDED',
                     winnerId: pendingBuyerId,
                     winningBidAmount: binPrice,
+                    wonAt: new Date(),
                     buyItNowPendingBuyerId: null,
                     buyItNowPendingAt: null,
                 },

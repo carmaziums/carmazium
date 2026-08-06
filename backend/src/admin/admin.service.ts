@@ -174,15 +174,21 @@ export class AdminService {
         }
 
         const data: Record<string, unknown> = {};
+        // Core
         if (dto.title !== undefined) data.title = dto.title;
         if (dto.price !== undefined) data.price = dto.price;
+        if (dto.priceMin !== undefined) data.priceMin = dto.priceMin;
+        if (dto.priceMax !== undefined) data.priceMax = dto.priceMax;
         if (dto.description !== undefined) data.description = dto.description;
+        // Vehicle identity
         if (dto.make !== undefined) data.make = dto.make;
         if (dto.model !== undefined) data.model = dto.model;
+        if (dto.variant !== undefined) data.variant = dto.variant;
         if (dto.year !== undefined) data.year = dto.year;
         if (dto.mileage !== undefined) data.mileage = dto.mileage;
         if (dto.vrm !== undefined) data.vrm = dto.vrm;
         if (dto.vin !== undefined) data.vin = dto.vin;
+        // Mechanical / body
         if (dto.fuelType !== undefined) data.fuelType = dto.fuelType;
         if (dto.transmission !== undefined) data.transmission = dto.transmission;
         if (dto.bodyType !== undefined) data.bodyType = dto.bodyType;
@@ -190,7 +196,54 @@ export class AdminService {
         if (dto.color !== undefined) data.color = dto.color;
         if (dto.doors !== undefined) data.doors = dto.doors;
         if (dto.seats !== undefined) data.seats = dto.seats;
+        if (dto.driveType !== undefined) data.driveType = dto.driveType;
+        if (dto.engineSize !== undefined) data.engineSize = dto.engineSize;
+        if (dto.bhp !== undefined) data.bhp = dto.bhp;
+        if (dto.torqueNm !== undefined) data.torqueNm = dto.torqueNm;
+        if (dto.topSpeedMph !== undefined) data.topSpeedMph = dto.topSpeedMph;
+        if (dto.zeroTo60Mph !== undefined) data.zeroTo60Mph = dto.zeroTo60Mph;
+        if (dto.combinedMpg !== undefined) data.combinedMpg = dto.combinedMpg;
+        if (dto.extraUrbanMpg !== undefined) data.extraUrbanMpg = dto.extraUrbanMpg;
+        if (dto.ulezCompliant !== undefined) data.ulezCompliant = dto.ulezCompliant;
+        if (dto.euroStandard !== undefined) data.euroStandard = dto.euroStandard;
+        if (dto.co2Emissions !== undefined) data.co2Emissions = dto.co2Emissions;
+        // History / ownership
+        if (dto.numberOfKeys !== undefined) data.numberOfKeys = dto.numberOfKeys;
+        if (dto.serviceHistory !== undefined) data.serviceHistory = dto.serviceHistory;
+        if (dto.owners !== undefined) data.owners = dto.owners;
+        if (dto.stolenRecovered !== undefined) data.stolenRecovered = dto.stolenRecovered;
+        if (dto.hasOutstandingFinance !== undefined) data.hasOutstandingFinance = dto.hasOutstandingFinance;
+        if (dto.isLegalRegisteredKeeper !== undefined) data.isLegalRegisteredKeeper = dto.isLegalRegisteredKeeper;
+        if (dto.writeOffCategory !== undefined) {
+            // Same auction-only rule as the seller-facing update — a Cat A/B
+            // write-off can't be corrected onto a CLASSIFIED listing.
+            if ((dto.writeOffCategory === 'CAT_A' || dto.writeOffCategory === 'CAT_B') && listing.type === 'CLASSIFIED') {
+                throw new BadRequestException('Cat A and Cat B write-offs cannot be listed for retail sale. Switch to an Auction listing to proceed.');
+            }
+            data.writeOffCategory = dto.writeOffCategory;
+        }
+        if (dto.isDepartedSale !== undefined) data.isDepartedSale = dto.isDepartedSale;
+        if (dto.departedRelationship !== undefined) data.departedRelationship = dto.departedRelationship;
+        if (dto.notOwnerRelationship !== undefined) data.notOwnerRelationship = dto.notOwnerRelationship;
+        // DVLA-derived
+        if (dto.motStatus !== undefined) data.motStatus = dto.motStatus;
+        if (dto.taxStatus !== undefined) data.taxStatus = dto.taxStatus;
+        if (dto.motExpiryDate !== undefined) data.motExpiryDate = dto.motExpiryDate;
+        if (dto.taxDueDate !== undefined) data.taxDueDate = dto.taxDueDate;
+        if (dto.markedForExport !== undefined) data.markedForExport = dto.markedForExport;
+        if (dto.monthOfFirstRegistration !== undefined) data.monthOfFirstRegistration = dto.monthOfFirstRegistration;
+        if (dto.wheelplan !== undefined) data.wheelplan = dto.wheelplan;
+        if (dto.typeApproval !== undefined) data.typeApproval = dto.typeApproval;
+        // Listing meta
         if (dto.location !== undefined) data.location = dto.location;
+        if (dto.vehicleType !== undefined) data.vehicleType = dto.vehicleType;
+        if (dto.isImported !== undefined) data.isImported = dto.isImported;
+        if (dto.bannerLabel !== undefined) data.bannerLabel = dto.bannerLabel;
+        if (dto.features !== undefined) data.features = dto.features;
+        // Delivery
+        if (dto.deliveryAvailable !== undefined) data.deliveryAvailable = dto.deliveryAvailable;
+        if (dto.deliveryPricePerMile !== undefined) data.deliveryPricePerMile = dto.deliveryPricePerMile;
+        if (dto.deliveryMaxMiles !== undefined) data.deliveryMaxMiles = dto.deliveryMaxMiles;
 
         return this.prisma.listing.update({ where: { id }, data });
     }

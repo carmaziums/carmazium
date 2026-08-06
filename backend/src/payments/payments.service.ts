@@ -220,7 +220,7 @@ export class PaymentsService {
                 type,
             },
             success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${baseUrl}/checkout/cancel?listing_id=${listingId}`,
+            cancel_url: `${baseUrl}/checkout/cancel?listing_id=${listingId}&type=${type}`,
         });
 
         // Store Stripe session ID for reconciliation

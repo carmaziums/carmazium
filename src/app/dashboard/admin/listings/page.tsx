@@ -15,9 +15,61 @@ const FUEL_TYPES = ['PETROL', 'DIESEL', 'ELECTRIC', 'HYBRID', 'PLUGIN_HYBRID', '
 const TRANSMISSIONS = ['MANUAL', 'AUTOMATIC', 'SEMI_AUTOMATIC', 'CVT']
 const BODY_TYPES = ['SEDAN', 'SUV', 'HATCHBACK', 'COUPE', 'CONVERTIBLE', 'ESTATE', 'CROSSOVER', 'SPORTS_CAR', 'MINIVAN', 'PICKUP_TRUCK', 'STATION_WAGON', 'MPV', 'VAN']
 const CONDITIONS = ['EXCELLENT', 'GOOD', 'FAIR', 'POOR', 'CAT_S', 'CAT_N', 'CAT_C', 'CAT_D']
-const EDIT_NUMERIC_FIELDS = ['price', 'year', 'mileage', 'doors', 'seats']
+const WRITE_OFF_CATEGORIES = ['NONE', 'CAT_S', 'CAT_N', 'CAT_A', 'CAT_B']
+const VEHICLE_TYPES = ['CAR', 'HGV', 'MOTORCYCLE']
+const EURO_STANDARDS = ['EURO_4', 'EURO_5', 'EURO_6', 'EURO_6D']
+
+const EDIT_NUMERIC_FIELDS = [
+    'price', 'priceMin', 'priceMax', 'year', 'mileage', 'doors', 'seats',
+    'engineSize', 'bhp', 'torqueNm', 'topSpeedMph', 'zeroTo60Mph', 'combinedMpg', 'extraUrbanMpg',
+    'numberOfKeys', 'co2Emissions', 'deliveryPricePerMile', 'deliveryMaxMiles',
+]
+const EDIT_BOOLEAN_FIELDS = [
+    'ulezCompliant', 'stolenRecovered', 'hasOutstandingFinance', 'isLegalRegisteredKeeper',
+    'isDepartedSale', 'markedForExport', 'isImported', 'deliveryAvailable',
+]
+const EDIT_ARRAY_FIELDS = ['features']
 
 const editInputClass = "w-full mt-1 rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] px-3 py-2 text-sm placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none"
+
+function EditField({ label, value, onChange, type = 'text', options }: {
+    label: string
+    value: string
+    onChange: (v: string) => void
+    type?: 'text' | 'number' | 'select' | 'boolean' | 'textarea'
+    options?: string[]
+}) {
+    return (
+        <div>
+            <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">{label}</label>
+            {type === 'select' ? (
+                <select value={value} onChange={(e) => onChange(e.target.value)} className={editInputClass}>
+                    <option value="">—</option>
+                    {options?.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+            ) : type === 'boolean' ? (
+                <select value={value} onChange={(e) => onChange(e.target.value)} className={editInputClass}>
+                    <option value="">—</option>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                </select>
+            ) : type === 'textarea' ? (
+                <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={4} className={editInputClass} />
+            ) : (
+                <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className={editInputClass} />
+            )}
+        </div>
+    )
+}
+
+function EditSection({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+        <div className="pt-3 first:pt-0">
+            <p className="text-xs font-black uppercase tracking-widest text-primary mb-2 border-b border-[var(--border-default)] pb-1.5">{title}</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">{children}</div>
+        </div>
+    )
+}
 
 export default function AdminListingsPage() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -136,14 +188,19 @@ export default function AdminListingsPage() {
         setActionError(null)
         setSuccessMsg(null)
         setEditingId(l.id)
+        const str = (v: unknown) => v != null ? String(v) : ''
+        const bool = (v: unknown) => v === true ? 'true' : v === false ? 'false' : ''
         setEditForm({
             title: l.title || '',
-            price: l.price != null ? String(l.price) : '',
+            price: str(l.price),
+            priceMin: str(l.priceMin),
+            priceMax: str(l.priceMax),
             description: l.description || '',
             make: l.make || '',
             model: l.model || '',
-            year: l.year != null ? String(l.year) : '',
-            mileage: l.mileage != null ? String(l.mileage) : '',
+            variant: l.variant || '',
+            year: str(l.year),
+            mileage: str(l.mileage),
             vrm: l.vrm || '',
             vin: l.vin || '',
             fuelType: l.fuelType || '',
@@ -151,9 +208,45 @@ export default function AdminListingsPage() {
             bodyType: l.bodyType || '',
             condition: l.condition || '',
             color: l.color || '',
-            doors: l.doors != null ? String(l.doors) : '',
-            seats: l.seats != null ? String(l.seats) : '',
+            doors: str(l.doors),
+            seats: str(l.seats),
+            driveType: l.driveType || '',
+            engineSize: str(l.engineSize),
+            bhp: str(l.bhp),
+            torqueNm: str(l.torqueNm),
+            topSpeedMph: str(l.topSpeedMph),
+            zeroTo60Mph: str(l.zeroTo60Mph),
+            combinedMpg: str(l.combinedMpg),
+            extraUrbanMpg: str(l.extraUrbanMpg),
+            ulezCompliant: bool(l.ulezCompliant),
+            euroStandard: l.euroStandard || '',
+            co2Emissions: str(l.co2Emissions),
+            numberOfKeys: str(l.numberOfKeys),
+            serviceHistory: l.serviceHistory || '',
+            owners: l.owners || '',
+            stolenRecovered: bool(l.stolenRecovered),
+            hasOutstandingFinance: bool(l.hasOutstandingFinance),
+            isLegalRegisteredKeeper: bool(l.isLegalRegisteredKeeper),
+            writeOffCategory: l.writeOffCategory || '',
+            isDepartedSale: bool(l.isDepartedSale),
+            departedRelationship: l.departedRelationship || '',
+            notOwnerRelationship: l.notOwnerRelationship || '',
+            motStatus: l.motStatus || '',
+            taxStatus: l.taxStatus || '',
+            motExpiryDate: l.motExpiryDate || '',
+            taxDueDate: l.taxDueDate || '',
+            markedForExport: bool(l.markedForExport),
+            monthOfFirstRegistration: l.monthOfFirstRegistration || '',
+            wheelplan: l.wheelplan || '',
+            typeApproval: l.typeApproval || '',
             location: l.location || '',
+            vehicleType: l.vehicleType || '',
+            isImported: bool(l.isImported),
+            bannerLabel: l.bannerLabel || '',
+            features: Array.isArray(l.features) ? l.features.join(', ') : '',
+            deliveryAvailable: bool(l.deliveryAvailable),
+            deliveryPricePerMile: str(l.deliveryPricePerMile),
+            deliveryMaxMiles: str(l.deliveryMaxMiles),
         })
     }
 
@@ -173,7 +266,15 @@ export default function AdminListingsPage() {
             const fields: Record<string, unknown> = {}
             for (const [key, value] of Object.entries(editForm)) {
                 if (value === '') continue
-                fields[key] = EDIT_NUMERIC_FIELDS.includes(key) ? Number(value) : value
+                if (EDIT_NUMERIC_FIELDS.includes(key)) {
+                    fields[key] = Number(value)
+                } else if (EDIT_BOOLEAN_FIELDS.includes(key)) {
+                    fields[key] = value === 'true'
+                } else if (EDIT_ARRAY_FIELDS.includes(key)) {
+                    fields[key] = value.split(',').map(s => s.trim()).filter(Boolean)
+                } else {
+                    fields[key] = value
+                }
             }
             const result = await updateListingAsAdmin(id, fields)
             const updated = result?.data ?? result
@@ -267,6 +368,7 @@ export default function AdminListingsPage() {
                                     const isExpanded = expandedId === l.id
                                     const isRejectedResubmit = l.status === 'REJECTED'
                                     const isEditing = editingId === l.id
+                                    const set = (key: string) => (v: string) => setEditForm(prev => ({ ...prev, [key]: v }))
                                     return (
                                         <div key={l.id} className={`border rounded-xl overflow-hidden ${isRejectedResubmit ? 'border-red-500/30' : 'border-[var(--border-default)]'}`}>
                                             <button
@@ -309,88 +411,89 @@ export default function AdminListingsPage() {
                                                     )}
 
                                                     {isEditing ? (
-                                                        <div className="space-y-3 py-2">
-                                                            <div>
-                                                                <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Title</label>
-                                                                <input type="text" value={editForm.title} onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))} className={editInputClass} />
-                                                            </div>
-                                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                                                <div>
-                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Price (£)</label>
-                                                                    <input type="number" value={editForm.price} onChange={(e) => setEditForm(prev => ({ ...prev, price: e.target.value }))} className={editInputClass} />
+                                                        <div className="space-y-1 py-2">
+                                                            <EditSection title="Core">
+                                                                <div className="col-span-2 sm:col-span-3">
+                                                                    <EditField label="Title" value={editForm.title} onChange={set('title')} />
                                                                 </div>
-                                                                <div>
-                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Make</label>
-                                                                    <input type="text" value={editForm.make} onChange={(e) => setEditForm(prev => ({ ...prev, make: e.target.value }))} className={editInputClass} />
+                                                                <EditField label="Price (£)" value={editForm.price} onChange={set('price')} type="number" />
+                                                                <EditField label="Min Offer Price (£)" value={editForm.priceMin} onChange={set('priceMin')} type="number" />
+                                                                <EditField label="Max Offer Price (£)" value={editForm.priceMax} onChange={set('priceMax')} type="number" />
+                                                            </EditSection>
+
+                                                            <EditSection title="Vehicle Identity">
+                                                                <EditField label="Make" value={editForm.make} onChange={set('make')} />
+                                                                <EditField label="Model" value={editForm.model} onChange={set('model')} />
+                                                                <EditField label="Variant / Trim" value={editForm.variant} onChange={set('variant')} />
+                                                                <EditField label="Year" value={editForm.year} onChange={set('year')} type="number" />
+                                                                <EditField label="Mileage" value={editForm.mileage} onChange={set('mileage')} type="number" />
+                                                                <EditField label="VRM" value={editForm.vrm} onChange={set('vrm')} />
+                                                                <EditField label="VIN" value={editForm.vin} onChange={set('vin')} />
+                                                            </EditSection>
+
+                                                            <EditSection title="Mechanical &amp; Body">
+                                                                <EditField label="Fuel" value={editForm.fuelType} onChange={set('fuelType')} type="select" options={FUEL_TYPES} />
+                                                                <EditField label="Transmission" value={editForm.transmission} onChange={set('transmission')} type="select" options={TRANSMISSIONS} />
+                                                                <EditField label="Body Type" value={editForm.bodyType} onChange={set('bodyType')} type="select" options={BODY_TYPES} />
+                                                                <EditField label="Condition" value={editForm.condition} onChange={set('condition')} type="select" options={CONDITIONS} />
+                                                                <EditField label="Colour" value={editForm.color} onChange={set('color')} />
+                                                                <EditField label="Doors" value={editForm.doors} onChange={set('doors')} type="number" />
+                                                                <EditField label="Seats" value={editForm.seats} onChange={set('seats')} type="number" />
+                                                                <EditField label="Drive Type" value={editForm.driveType} onChange={set('driveType')} />
+                                                                <EditField label="Engine Size (cc)" value={editForm.engineSize} onChange={set('engineSize')} type="number" />
+                                                                <EditField label="Power (BHP)" value={editForm.bhp} onChange={set('bhp')} type="number" />
+                                                                <EditField label="Torque (Nm)" value={editForm.torqueNm} onChange={set('torqueNm')} type="number" />
+                                                                <EditField label="Top Speed (mph)" value={editForm.topSpeedMph} onChange={set('topSpeedMph')} type="number" />
+                                                                <EditField label="0-60mph (sec)" value={editForm.zeroTo60Mph} onChange={set('zeroTo60Mph')} type="number" />
+                                                                <EditField label="Combined MPG" value={editForm.combinedMpg} onChange={set('combinedMpg')} type="number" />
+                                                                <EditField label="Extra Urban MPG" value={editForm.extraUrbanMpg} onChange={set('extraUrbanMpg')} type="number" />
+                                                                <EditField label="ULEZ Compliant" value={editForm.ulezCompliant} onChange={set('ulezCompliant')} type="boolean" />
+                                                                <EditField label="Euro Standard" value={editForm.euroStandard} onChange={set('euroStandard')} type="select" options={EURO_STANDARDS} />
+                                                                <EditField label="CO2 (g/km)" value={editForm.co2Emissions} onChange={set('co2Emissions')} type="number" />
+                                                            </EditSection>
+
+                                                            <EditSection title="History &amp; Ownership">
+                                                                <EditField label="Number of Keys" value={editForm.numberOfKeys} onChange={set('numberOfKeys')} type="number" />
+                                                                <EditField label="Service History" value={editForm.serviceHistory} onChange={set('serviceHistory')} />
+                                                                <EditField label="Previous Owners" value={editForm.owners} onChange={set('owners')} />
+                                                                <EditField label="Stolen/Recovered" value={editForm.stolenRecovered} onChange={set('stolenRecovered')} type="boolean" />
+                                                                <EditField label="Outstanding Finance" value={editForm.hasOutstandingFinance} onChange={set('hasOutstandingFinance')} type="boolean" />
+                                                                <EditField label="Seller is Legal Keeper" value={editForm.isLegalRegisteredKeeper} onChange={set('isLegalRegisteredKeeper')} type="boolean" />
+                                                                <EditField label="Write-Off Category" value={editForm.writeOffCategory} onChange={set('writeOffCategory')} type="select" options={WRITE_OFF_CATEGORIES} />
+                                                                <EditField label="Departed/Estate Sale" value={editForm.isDepartedSale} onChange={set('isDepartedSale')} type="boolean" />
+                                                                <EditField label="Departed Relationship" value={editForm.departedRelationship} onChange={set('departedRelationship')} />
+                                                                <EditField label="Not-Owner Relationship" value={editForm.notOwnerRelationship} onChange={set('notOwnerRelationship')} />
+                                                            </EditSection>
+
+                                                            <EditSection title="DVLA-Derived">
+                                                                <EditField label="MOT Status" value={editForm.motStatus} onChange={set('motStatus')} />
+                                                                <EditField label="Tax Status" value={editForm.taxStatus} onChange={set('taxStatus')} />
+                                                                <EditField label="MOT Expiry" value={editForm.motExpiryDate} onChange={set('motExpiryDate')} />
+                                                                <EditField label="Tax Due Date" value={editForm.taxDueDate} onChange={set('taxDueDate')} />
+                                                                <EditField label="Marked for Export" value={editForm.markedForExport} onChange={set('markedForExport')} type="boolean" />
+                                                                <EditField label="First Registered" value={editForm.monthOfFirstRegistration} onChange={set('monthOfFirstRegistration')} />
+                                                                <EditField label="Wheelplan" value={editForm.wheelplan} onChange={set('wheelplan')} />
+                                                                <EditField label="Type Approval" value={editForm.typeApproval} onChange={set('typeApproval')} />
+                                                            </EditSection>
+
+                                                            <EditSection title="Listing Meta">
+                                                                <EditField label="Location" value={editForm.location} onChange={set('location')} />
+                                                                <EditField label="Vehicle Type" value={editForm.vehicleType} onChange={set('vehicleType')} type="select" options={VEHICLE_TYPES} />
+                                                                <EditField label="Imported" value={editForm.isImported} onChange={set('isImported')} type="boolean" />
+                                                                <EditField label="Banner Label" value={editForm.bannerLabel} onChange={set('bannerLabel')} />
+                                                                <div className="col-span-2 sm:col-span-3">
+                                                                    <EditField label="Features (comma-separated)" value={editForm.features} onChange={set('features')} />
                                                                 </div>
-                                                                <div>
-                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Model</label>
-                                                                    <input type="text" value={editForm.model} onChange={(e) => setEditForm(prev => ({ ...prev, model: e.target.value }))} className={editInputClass} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Year</label>
-                                                                    <input type="number" value={editForm.year} onChange={(e) => setEditForm(prev => ({ ...prev, year: e.target.value }))} className={editInputClass} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Mileage</label>
-                                                                    <input type="number" value={editForm.mileage} onChange={(e) => setEditForm(prev => ({ ...prev, mileage: e.target.value }))} className={editInputClass} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">VRM</label>
-                                                                    <input type="text" value={editForm.vrm} onChange={(e) => setEditForm(prev => ({ ...prev, vrm: e.target.value }))} className={editInputClass} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">VIN</label>
-                                                                    <input type="text" value={editForm.vin} onChange={(e) => setEditForm(prev => ({ ...prev, vin: e.target.value }))} className={editInputClass} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Fuel</label>
-                                                                    <select value={editForm.fuelType} onChange={(e) => setEditForm(prev => ({ ...prev, fuelType: e.target.value }))} className={editInputClass}>
-                                                                        <option value="">—</option>
-                                                                        {FUEL_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
-                                                                    </select>
-                                                                </div>
-                                                                <div>
-                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Transmission</label>
-                                                                    <select value={editForm.transmission} onChange={(e) => setEditForm(prev => ({ ...prev, transmission: e.target.value }))} className={editInputClass}>
-                                                                        <option value="">—</option>
-                                                                        {TRANSMISSIONS.map(v => <option key={v} value={v}>{v}</option>)}
-                                                                    </select>
-                                                                </div>
-                                                                <div>
-                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Body Type</label>
-                                                                    <select value={editForm.bodyType} onChange={(e) => setEditForm(prev => ({ ...prev, bodyType: e.target.value }))} className={editInputClass}>
-                                                                        <option value="">—</option>
-                                                                        {BODY_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
-                                                                    </select>
-                                                                </div>
-                                                                <div>
-                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Condition</label>
-                                                                    <select value={editForm.condition} onChange={(e) => setEditForm(prev => ({ ...prev, condition: e.target.value }))} className={editInputClass}>
-                                                                        <option value="">—</option>
-                                                                        {CONDITIONS.map(v => <option key={v} value={v}>{v}</option>)}
-                                                                    </select>
-                                                                </div>
-                                                                <div>
-                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Colour</label>
-                                                                    <input type="text" value={editForm.color} onChange={(e) => setEditForm(prev => ({ ...prev, color: e.target.value }))} className={editInputClass} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Doors</label>
-                                                                    <input type="number" value={editForm.doors} onChange={(e) => setEditForm(prev => ({ ...prev, doors: e.target.value }))} className={editInputClass} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Seats</label>
-                                                                    <input type="number" value={editForm.seats} onChange={(e) => setEditForm(prev => ({ ...prev, seats: e.target.value }))} className={editInputClass} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Location</label>
-                                                                    <input type="text" value={editForm.location} onChange={(e) => setEditForm(prev => ({ ...prev, location: e.target.value }))} className={editInputClass} />
-                                                                </div>
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Description</label>
-                                                                <textarea value={editForm.description} onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))} rows={4} className={editInputClass} />
+                                                            </EditSection>
+
+                                                            <EditSection title="Delivery">
+                                                                <EditField label="Delivery Available" value={editForm.deliveryAvailable} onChange={set('deliveryAvailable')} type="boolean" />
+                                                                <EditField label="Price per Mile (£)" value={editForm.deliveryPricePerMile} onChange={set('deliveryPricePerMile')} type="number" />
+                                                                <EditField label="Max Miles" value={editForm.deliveryMaxMiles} onChange={set('deliveryMaxMiles')} type="number" />
+                                                            </EditSection>
+
+                                                            <div className="pt-3">
+                                                                <EditField label="Description" value={editForm.description} onChange={set('description')} type="textarea" />
                                                             </div>
 
                                                             <div className="flex gap-3 mt-4">
@@ -446,13 +549,6 @@ export default function AdminListingsPage() {
                                                                 <Link href={`/buy-cars/${l.slug}`} target="_blank" className="text-xs text-blue-400 hover:underline inline-flex items-center gap-1">
                                                                     <Eye size={12} /> Preview listing
                                                                 </Link>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => startEdit(l)}
-                                                                    className="text-xs text-[var(--text-muted)] hover:text-primary transition-colors inline-flex items-center gap-1 cursor-pointer"
-                                                                >
-                                                                    <Pencil size={12} /> Edit details
-                                                                </button>
                                                             </div>
 
                                                             <div className="mt-3">
@@ -477,6 +573,14 @@ export default function AdminListingsPage() {
                                                                 >
                                                                     {actionLoading === l.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                                                                     Approve — Go Live
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => startEdit(l)}
+                                                                    className="flex-1 px-4 py-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 font-bold text-xs uppercase tracking-widest hover:bg-blue-500/20 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                                                                >
+                                                                    <Pencil size={14} />
+                                                                    Edit Details
                                                                 </button>
                                                                 <button
                                                                     type="button"

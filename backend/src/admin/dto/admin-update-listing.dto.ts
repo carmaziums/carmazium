@@ -5,21 +5,34 @@ import {
     IsNumber,
     IsPositive,
     IsInt,
+    IsBoolean,
+    IsArray,
     Min,
     Max,
     IsOptional,
     Length,
+    MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { FuelType, Transmission, BodyType, VehicleCondition } from '../../listings/dto/create-listing.dto';
+import {
+    FuelType,
+    Transmission,
+    BodyType,
+    VehicleCondition,
+    VehicleType,
+    WriteOffCategory,
+    EuroStandard,
+} from '../../listings/dto/create-listing.dto';
 
 /**
  * Fields an admin can correct while a listing is awaiting review (PENDING_REVIEW
  * or REJECTED) — e.g. fixing a seller's typo before approving instead of
- * bouncing it back and forth. Deliberately narrower than CreateListingDto:
- * only the fields shown in the admin review panel are editable here.
+ * bouncing it back and forth. Mirrors every field the seller could have set
+ * in the listing wizard (CreateListingDto) except images/videoUrls, which
+ * need their own upload UI rather than a text field.
  */
 export class AdminUpdateListingDto {
+    // ─── Core ────────────────────────────────────────────────────────────────
     @ApiProperty({ required: false, minLength: 5, maxLength: 200 })
     @IsString()
     @IsOptional()
@@ -34,10 +47,25 @@ export class AdminUpdateListingDto {
     price?: number;
 
     @ApiProperty({ required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    @IsOptional()
+    priceMin?: number;
+
+    @ApiProperty({ required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    @IsOptional()
+    priceMax?: number;
+
+    @ApiProperty({ required: false })
     @IsString()
     @IsOptional()
     description?: string;
 
+    // ─── Vehicle identity ───────────────────────────────────────────────────
     @ApiProperty({ required: false })
     @IsString()
     @IsOptional()
@@ -47,6 +75,11 @@ export class AdminUpdateListingDto {
     @IsString()
     @IsOptional()
     model?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    variant?: string;
 
     @ApiProperty({ required: false })
     @Type(() => Number)
@@ -74,6 +107,7 @@ export class AdminUpdateListingDto {
     @IsOptional()
     vin?: string;
 
+    // ─── Mechanical / body ──────────────────────────────────────────────────
     @ApiProperty({ enum: FuelType, required: false })
     @IsEnum(FuelType)
     @IsOptional()
@@ -118,5 +152,217 @@ export class AdminUpdateListingDto {
     @ApiProperty({ required: false })
     @IsString()
     @IsOptional()
+    driveType?: string;
+
+    @ApiProperty({ required: false })
+    @Type(() => Number)
+    @IsInt()
+    @Min(0)
+    @IsOptional()
+    engineSize?: number;
+
+    @ApiProperty({ required: false })
+    @Type(() => Number)
+    @IsInt()
+    @Min(0)
+    @IsOptional()
+    bhp?: number;
+
+    @ApiProperty({ required: false })
+    @Type(() => Number)
+    @IsInt()
+    @Min(0)
+    @IsOptional()
+    torqueNm?: number;
+
+    @ApiProperty({ required: false })
+    @Type(() => Number)
+    @IsInt()
+    @Min(0)
+    @IsOptional()
+    topSpeedMph?: number;
+
+    @ApiProperty({ required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @Min(0)
+    @IsOptional()
+    zeroTo60Mph?: number;
+
+    @ApiProperty({ required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 1 })
+    @Min(0)
+    @IsOptional()
+    combinedMpg?: number;
+
+    @ApiProperty({ required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 1 })
+    @Min(0)
+    @IsOptional()
+    extraUrbanMpg?: number;
+
+    @ApiProperty({ required: false })
+    @IsBoolean()
+    @IsOptional()
+    ulezCompliant?: boolean;
+
+    @ApiProperty({ enum: EuroStandard, required: false })
+    @IsEnum(EuroStandard)
+    @IsOptional()
+    euroStandard?: EuroStandard;
+
+    @ApiProperty({ required: false })
+    @Type(() => Number)
+    @IsInt()
+    @Min(0)
+    @Max(9999)
+    @IsOptional()
+    co2Emissions?: number;
+
+    // ─── History / ownership ────────────────────────────────────────────────
+    @ApiProperty({ required: false })
+    @Type(() => Number)
+    @IsInt()
+    @Min(0)
+    @Max(10)
+    @IsOptional()
+    numberOfKeys?: number;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    serviceHistory?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    owners?: string;
+
+    @ApiProperty({ required: false })
+    @IsBoolean()
+    @IsOptional()
+    stolenRecovered?: boolean;
+
+    @ApiProperty({ required: false })
+    @IsBoolean()
+    @IsOptional()
+    hasOutstandingFinance?: boolean;
+
+    @ApiProperty({ required: false })
+    @IsBoolean()
+    @IsOptional()
+    isLegalRegisteredKeeper?: boolean;
+
+    @ApiProperty({ enum: WriteOffCategory, required: false })
+    @IsEnum(WriteOffCategory)
+    @IsOptional()
+    writeOffCategory?: WriteOffCategory;
+
+    @ApiProperty({ required: false })
+    @IsBoolean()
+    @IsOptional()
+    isDepartedSale?: boolean;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    @MaxLength(200)
+    departedRelationship?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    @MaxLength(200)
+    notOwnerRelationship?: string;
+
+    // ─── DVLA-derived (admin correction) ────────────────────────────────────
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    motStatus?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    taxStatus?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    motExpiryDate?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    taxDueDate?: string;
+
+    @ApiProperty({ required: false })
+    @IsBoolean()
+    @IsOptional()
+    markedForExport?: boolean;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    monthOfFirstRegistration?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    wheelplan?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    typeApproval?: string;
+
+    // ─── Listing meta ────────────────────────────────────────────────────────
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
     location?: string;
+
+    @ApiProperty({ enum: VehicleType, required: false })
+    @IsEnum(VehicleType)
+    @IsOptional()
+    vehicleType?: VehicleType;
+
+    @ApiProperty({ required: false })
+    @IsBoolean()
+    @IsOptional()
+    isImported?: boolean;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    @MaxLength(40)
+    bannerLabel?: string;
+
+    @ApiProperty({ required: false, type: [String] })
+    @IsArray()
+    @IsString({ each: true })
+    @IsOptional()
+    features?: string[];
+
+    // ─── Delivery ────────────────────────────────────────────────────────────
+    @ApiProperty({ required: false })
+    @IsBoolean()
+    @IsOptional()
+    deliveryAvailable?: boolean;
+
+    @ApiProperty({ required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @Min(0)
+    @IsOptional()
+    deliveryPricePerMile?: number;
+
+    @ApiProperty({ required: false })
+    @Type(() => Number)
+    @IsInt()
+    @Min(1)
+    @IsOptional()
+    deliveryMaxMiles?: number;
 }

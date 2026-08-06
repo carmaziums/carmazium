@@ -756,6 +756,10 @@ model Auction {
   buyItNowPendingAt      DateTime?
 
   // Buyer fee & handover tracking
+  // Set the moment a winner is determined (real bid, BIN, seller-accept, or
+  // admin assignment). Used to measure the grace window before an unpaid win
+  // auto-reverts — see UnpaidAuctionFeeExpiryService.
+  wonAt                  DateTime?
   buyerFeePaid           Boolean   @default(false)
   buyerFeeTransactionId  String?
   handoverProofUrl       String?
