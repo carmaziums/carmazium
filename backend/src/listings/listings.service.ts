@@ -629,6 +629,23 @@ export class ListingsService {
                 damageRecords: {
                     orderBy: { createdAt: 'asc' },
                 },
+                // This listing's own auction (not to be confused with linkedListing.auction
+                // below, which is a *different* listing's auction for dual-channel cross-
+                // linking) — needed for the auction-buyer-fee checkout page (winning bid,
+                // auction reference).
+                auction: {
+                    select: {
+                        id: true,
+                        status: true,
+                        reservePrice: true,
+                        startTime: true,
+                        endTime: true,
+                        winnerId: true,
+                        winningBidAmount: true,
+                        buyItNowPrice: true,
+                        buyItNowPendingBuyerId: true,
+                    },
+                },
                 linkedListing: {
                     select: {
                         id: true,
