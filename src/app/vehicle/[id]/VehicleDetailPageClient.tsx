@@ -432,13 +432,19 @@ function BidModal({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export function VehicleDetailPageClient({ params }: { params: Promise<{ id: string }> }) {
+export function VehicleDetailPageClient({ params, initialListing }: { params: Promise<{ id: string }>; initialListing?: Listing | null }) {
     const { id } = React.use(params)
     const { user } = useAuth()
     const { upsertRoom } = useChat()
 
-    const [listing, setListing] = React.useState<Listing | null>(null)
-    const [loading, setLoading] = React.useState(true)
+    // Seeded from the server fetch (see page.tsx) so there's no empty-shell
+    // flash on first paint. The effect below still refetches on mount and on
+    // every auth-state change — deliberately kept, since the server fetch is
+    // always the anonymous-viewer view (phone/email gated) and a logged-in
+    // viewer needs the follow-up fetch to reveal what they're entitled to.
+    const hasInitialListing = initialListing != null && initialListing.slug === id
+    const [listing, setListing] = React.useState<Listing | null>(hasInitialListing ? initialListing! : null)
+    const [loading, setLoading] = React.useState(!hasInitialListing)
     const [error, setError] = React.useState<string | null>(null)
     const [activeImage, setActiveImage] = React.useState(0)
     const [isDescExpanded, setIsDescExpanded] = React.useState(false)
@@ -488,11 +494,18 @@ export function VehicleDetailPageClient({ params }: { params: Promise<{ id: stri
         }
     }
 
-    // Fetch listing by slug/id
+    // Fetch listing by slug/id — still runs on mount and on every auth-state
+    // change (see comment on hasInitialListing above), but skips the
+    // full-page loading spinner on the very first run when we already have
+    // server-rendered data to show while this fetch resolves in the
+    // background.
+    const isFirstFetchRef = React.useRef(true)
     React.useEffect(() => {
+        const skipSpinner = isFirstFetchRef.current && hasInitialListing
+        isFirstFetchRef.current = false
         const load = async () => {
             try {
-                setLoading(true)
+                if (!skipSpinner) setLoading(true)
                 setError(null)
                 const data = await getListingBySlug(id)
                 setListing(data)

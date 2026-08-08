@@ -217,14 +217,15 @@ function getVideoPlatform(url: string): 'youtube' | 'instagram' | 'facebook' | '
     return 'other'
 }
 
-function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }) {
+function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ slug: string }>; initialListing: Listing | null }) {
     const { slug } = React.use(params)
     const router = useRouter()
     const searchParams = useSearchParams()
     const isEditMode = searchParams.get('editOffer') === 'true'
     const { user } = useAuth()
-    const [listing, setListing] = React.useState<Listing | null>(null)
-    const [loading, setLoading] = React.useState(true)
+    const hasInitialListing = initialListing != null && initialListing.slug === slug
+    const [listing, setListing] = React.useState<Listing | null>(hasInitialListing ? initialListing : null)
+    const [loading, setLoading] = React.useState(!hasInitialListing)
     const [error, setError] = React.useState<string | null>(null)
     const [activeImage, setActiveImage] = React.useState(0)
     const [isDescExpanded, setIsDescExpanded] = React.useState(false)
@@ -254,6 +255,15 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
     }, [isEditMode])
 
     React.useEffect(() => {
+        // Server already fetched this exact listing (see page.tsx) and passed
+        // it down as initialListing — skip the redundant client-side refetch
+        // that used to fire on every mount regardless.
+        if (hasInitialListing) {
+            if (initialListing!.offers && initialListing!.offers.length > 0) {
+                setLatestOffer(initialListing!.offers[0])
+            }
+            return
+        }
         async function fetchListing() {
             try {
                 setLoading(true)
@@ -270,6 +280,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
             }
         }
         if (slug) fetchListing()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [slug])
 
     // Separately fetch the current user's own offer for this listing
@@ -1409,14 +1420,14 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
     )
 }
 
-export function VehicleDetailsPageClient({ params }: { params: Promise<{ slug: string }> }) {
+export function VehicleDetailsPageClient({ params, initialListing }: { params: Promise<{ slug: string }>; initialListing?: Listing | null }) {
     return (
         <React.Suspense fallback={
             <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="w-10 h-10 text-primary animate-spin" />
             </div>
         }>
-            <VehicleDetailsContent params={params} />
+            <VehicleDetailsContent params={params} initialListing={initialListing ?? null} />
         </React.Suspense>
     )
 }

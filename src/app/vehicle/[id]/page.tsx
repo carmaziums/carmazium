@@ -45,6 +45,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     }
 }
 
-export default function Page({ params }: { params: Promise<{ id: string }> }) {
-    return <VehicleDetailPageClient params={params} />
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params
+    // Deduped against the identical fetch in generateMetadata() — no extra
+    // network round-trip. Passed down so the client component skips its own
+    // fetch-on-mount (which used to mean an empty shell + a second,
+    // uncached network hit before content ever appeared).
+    const initialListing = await getListingBySlug(id)
+    return <VehicleDetailPageClient params={params} initialListing={initialListing} />
 }

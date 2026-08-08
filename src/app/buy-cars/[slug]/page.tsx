@@ -65,6 +65,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     }
 }
 
-export default function Page({ params }: { params: Promise<{ slug: string }> }) {
-    return <VehicleDetailsPageClient params={params} />
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params
+    // Next.js dedupes this against the identical fetch already made in
+    // generateMetadata() (same URL + revalidate options) — no extra network
+    // round-trip. Passed down so the client component doesn't have to fetch
+    // it again itself on mount (that used to mean an empty shell + a second,
+    // uncached network hit before content ever appeared).
+    const initialListing = await getListingBySlug(slug)
+    return <VehicleDetailsPageClient params={params} initialListing={initialListing} />
 }

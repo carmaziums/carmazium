@@ -1,14 +1,13 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
 import { Loader2 } from "lucide-react"
 
 export default function DashboardPage() {
-    const { user, profile, loading, refreshProfile } = useAuth()
+    const { user, profile, loading } = useAuth()
     const router = useRouter()
-    const hasRefreshed = useRef(false)
 
     useEffect(() => {
         if (loading) return
@@ -18,16 +17,11 @@ export default function DashboardPage() {
             return
         }
 
-        // Ensure we have a fresh profile before routing — this busts stale role
-        // cache that can linger after a DEALER → SELLER account switch.
-        if (!hasRefreshed.current) {
-            hasRefreshed.current = true
-            refreshProfile().then(() => {
-                // After refresh, the effect will re-run with the updated profile
-            })
-            return
-        }
-
+        // No extra refreshProfile() round-trip here — every flow that actually
+        // changes a user's role (dealer/settings, dealer/layout switch-to-buyer,
+        // KycOverlayForm) already calls refreshProfile() itself before pushing
+        // here, so AuthContext's profile is already current by the time this
+        // effect runs.
         const role = (
             profile?.role ||
             (user as any)?.user_metadata?.role ||
@@ -48,7 +42,7 @@ export default function DashboardPage() {
             // Fallback — unknown role goes to seller dashboard
             router.push('/dashboard/seller')
         }
-    }, [user, profile, loading, router, refreshProfile])
+    }, [user, profile, loading, router])
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center">
