@@ -806,23 +806,52 @@ export class AdminService {
         return { data, total };
     }
 
+    // £25 of the £125 auction buyer fee is CarMazium's own cut — the other
+    // £100 is a seller bonus paid out via Stripe Connect transfer
+    // (issueSellerPayout). Mirrors AUCTION_PLATFORM_FEE in payments.service.ts.
+    private readonly AUCTION_PLATFORM_FEE_CUT = 25;
+
+    /**
+     * "Revenue" here means money CarMazium actually retains, not gross Stripe
+     * throughput. LISTING_FEE and HPI_REPORT are kept in full. COMMISSION
+     * (the £125 auction buyer fee) is counted per-transaction at the fixed
+     * £25 platform cut, not by summing `amount` — the stored amount is the
+     * full £125, £100 of which is seller pass-through. DEPOSIT and
+     * FULL_PAYMENT are buyer funds for the vehicle itself — refundable or a
+     * pass-through to the seller — and are excluded entirely; there's
+     * currently no seller-payout mechanism for FULL_PAYMENT by design (retail
+     * sales settle outside the fee flow), so none of that money is ever
+     * CarMazium's to count. BOOST payments don't create Transaction rows at
+     * all yet (see FeaturedBoostService) and so aren't reflected here either.
+     */
+    private async computeRealRevenue(dateRange?: { gte: Date; lte: Date }): Promise<number> {
+        const createdAt = dateRange ? { createdAt: dateRange } : {};
+        const [feeAgg, commissionCount] = await Promise.all([
+            this.prisma.transaction.aggregate({
+                where: { status: 'COMPLETED', deletedAt: null, type: { in: ['LISTING_FEE', 'HPI_REPORT'] }, ...createdAt },
+                _sum: { amount: true },
+            }),
+            this.prisma.transaction.count({
+                where: { status: 'COMPLETED', deletedAt: null, type: 'COMMISSION', ...createdAt },
+            }),
+        ]);
+        return Number(feeAgg._sum?.amount ?? 0) + commissionCount * this.AUCTION_PLATFORM_FEE_CUT;
+    }
+
     async getPlatformStats() {
-        const [users, listings, activeListings, soldListings, auctions, activeAuctions, endedAuctions, bids, revenueAgg] = await Promise.all([
+        const [users, listings, activeListings, soldListings, auctions, activeAuctions, endedAuctions, bids, totalRevenue] = await Promise.all([
             this.prisma.user.count(),
             // Phase 10: include SOLD in total count — no status filter, counts DRAFT + ACTIVE + SOLD
-            this.prisma.listing.count(),
+            this.prisma.listing.count({ where: { deletedAt: null } }),
             // Phase 10: activeListings intentionally ACTIVE only — current live count
-            this.prisma.listing.count({ where: { status: 'ACTIVE' } }),
+            this.prisma.listing.count({ where: { status: 'ACTIVE', deletedAt: null } }),
             // Phase 10: soldListings correctly counts SOLD listings only
-            this.prisma.listing.count({ where: { status: 'SOLD' } }),
+            this.prisma.listing.count({ where: { status: 'SOLD', deletedAt: null } }),
             this.prisma.auction.count({ where: { deletedAt: null } }),
             this.prisma.auction.count({ where: { status: 'ACTIVE', deletedAt: null } }),
             this.prisma.auction.count({ where: { status: 'ENDED', deletedAt: null } }),
             this.prisma.bid.count({ where: { deletedAt: null } }),
-            this.prisma.transaction.aggregate({
-                where: { status: 'COMPLETED', deletedAt: null },
-                _sum: { amount: true },
-            }),
+            this.computeRealRevenue(),
         ]);
 
         return {
@@ -834,7 +863,7 @@ export class AdminService {
             activeAuctions,
             endedAuctions,
             totalBids: bids,
-            totalRevenue: Number(revenueAgg._sum?.amount ?? 0),
+            totalRevenue,
         };
     }
 
@@ -854,19 +883,16 @@ export class AdminService {
 
         const data = await Promise.all(
             months.map(async ({ label, start, end }) => {
-                const [newUsers, newListings, completedTxns] = await Promise.all([
+                const [newUsers, newListings, revenue] = await Promise.all([
                     this.prisma.user.count({ where: { createdAt: { gte: start, lte: end } } }),
-                    this.prisma.listing.count({ where: { createdAt: { gte: start, lte: end } } }),
-                    this.prisma.transaction.aggregate({
-                        where: { status: 'COMPLETED', createdAt: { gte: start, lte: end }, deletedAt: null },
-                        _sum: { amount: true },
-                    }),
+                    this.prisma.listing.count({ where: { createdAt: { gte: start, lte: end }, deletedAt: null } }),
+                    this.computeRealRevenue({ gte: start, lte: end }),
                 ]);
                 return {
                     month: label,
                     newUsers,
                     newListings,
-                    revenue: Number(completedTxns._sum?.amount ?? 0),
+                    revenue,
                 };
             }),
         );
