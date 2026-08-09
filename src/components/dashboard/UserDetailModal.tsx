@@ -277,29 +277,17 @@ export function UserDetailModal({ userId, onClose, onChanged }: { userId: string
     return createPortal(
         <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
             <div
-                className="w-full max-w-lg h-full bg-[var(--bg-card)] border-l border-[var(--border-default)] overflow-y-auto shadow-2xl"
+                className="w-full max-w-lg h-full bg-[var(--bg-card)] border-l border-[var(--border-default)] shadow-2xl flex flex-col"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="sticky top-0 z-10 flex items-center justify-between p-5 border-b border-[var(--border-default)] bg-[var(--bg-card)]">
+                <div className="shrink-0 flex items-center justify-between p-5 border-b border-[var(--border-default)] bg-[var(--bg-card)]">
                     <h3 className="text-lg font-black uppercase tracking-tight">User Details</h3>
-                    <div className="flex items-center gap-3">
-                        {detail && (
-                            <button
-                                onClick={handleExportPdf}
-                                disabled={exporting}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-bold uppercase tracking-widest hover:bg-primary/20 transition-colors disabled:opacity-50 cursor-pointer"
-                            >
-                                {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                                Export PDF
-                            </button>
-                        )}
-                        <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
-                            <X size={20} />
-                        </button>
-                    </div>
+                    <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
+                        <X size={20} />
+                    </button>
                 </div>
 
-                <div className="p-5">
+                <div className="flex-1 overflow-y-auto p-5">
                     {loading && !detail && (
                         <div className="flex justify-center py-16"><Loader2 className="animate-spin text-primary" size={28} /></div>
                     )}
@@ -491,6 +479,19 @@ export function UserDetailModal({ userId, onClose, onChanged }: { userId: string
                         </>
                     )}
                 </div>
+
+                {detail && (
+                    <div className="shrink-0 p-5 border-t border-[var(--border-default)] bg-[var(--bg-card)]">
+                        <button
+                            onClick={handleExportPdf}
+                            disabled={exporting}
+                            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer shadow-neon"
+                        >
+                            {exporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                            Export as PDF
+                        </button>
+                    </div>
+                )}
             </div>
         </div>,
         document.body
