@@ -427,48 +427,71 @@ export class AdminService {
         return updated;
     }
 
+    /**
+     * ACTIVE auctions always sort ahead of everything else (so live auctions
+     * needing attention aren't buried under older-but-more-recently-created
+     * scheduled/ended ones), then newest-first within each bucket.
+     */
     async getAllAuctions(page = 1, limit = 20) {
         const skip = (page - 1) * limit;
-        const [data, total] = await Promise.all([
-            this.prisma.auction.findMany({
-                skip,
-                take: limit,
-                orderBy: { createdAt: 'desc' },
-                include: {
-                    listing: {
+        const include = {
+            listing: {
+                select: {
+                    id: true,
+                    title: true,
+                    slug: true,
+                    images: true,
+                    make: true,
+                    model: true,
+                    year: true,
+                    seller: {
                         select: {
-                            id: true,
-                            title: true,
-                            slug: true,
-                            images: true,
-                            make: true,
-                            model: true,
-                            year: true,
-                            seller: {
-                                select: {
-                                    id: true, email: true, firstName: true, lastName: true, phone: true,
-                                    dealerProfile: { select: { companyName: true, isVerified: true } },
-                                },
-                            },
-                            bids: {
-                                where: { deletedAt: null },
-                                orderBy: { amount: 'desc' },
-                                take: 1,
-                                select: { amount: true },
-                            },
-                            _count: { select: { bids: true } },
-                        },
-                    },
-                    winner: {
-                        select: {
-                            id: true, firstName: true, lastName: true, email: true, phone: true,
+                            id: true, email: true, firstName: true, lastName: true, phone: true,
                             dealerProfile: { select: { companyName: true, isVerified: true } },
                         },
                     },
+                    bids: {
+                        where: { deletedAt: null },
+                        orderBy: { amount: 'desc' as const },
+                        take: 1,
+                        select: { amount: true },
+                    },
+                    _count: { select: { bids: true } },
                 },
-            }),
+            },
+            winner: {
+                select: {
+                    id: true, firstName: true, lastName: true, email: true, phone: true,
+                    dealerProfile: { select: { companyName: true, isVerified: true } },
+                },
+            },
+        };
+
+        const [activeCount, total] = await Promise.all([
+            this.prisma.auction.count({ where: { status: 'ACTIVE' } }),
             this.prisma.auction.count(),
         ]);
+
+        const data: any[] = [];
+        if (skip < activeCount) {
+            data.push(...await this.prisma.auction.findMany({
+                where: { status: 'ACTIVE' },
+                skip,
+                take: limit,
+                orderBy: { createdAt: 'desc' },
+                include,
+            }));
+        }
+        if (data.length < limit) {
+            data.push(...await this.prisma.auction.findMany({
+                where: { status: { not: 'ACTIVE' } },
+                skip: Math.max(0, skip - activeCount),
+                take: limit - data.length,
+                orderBy: { createdAt: 'desc' },
+                include,
+            }));
+        }
+
         return { data, total };
     }
 

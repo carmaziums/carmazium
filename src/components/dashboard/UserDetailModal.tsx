@@ -5,7 +5,7 @@ import Link from "next/link"
 import {
     X, Loader2, Mail, ShieldCheck, Ban, LockKeyhole,
     LockKeyholeOpen, Building2, FileText, ExternalLink, Star, Car, Receipt, CreditCard, BadgeCheck,
-    AlertTriangle,
+    AlertTriangle, Download,
 } from "lucide-react"
 import { getAdminUserDetail, banUser, unbanUser, lockUser, unlockUser } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
@@ -48,11 +48,182 @@ const KYC_DOC_FIELDS: { key: string; label: string }[] = [
     { key: "paymentScreenshot", label: "Payment Screenshot" },
 ]
 
+async function exportUserDetailPdf(detail: any) {
+    const { jsPDF } = await import("jspdf")
+    const doc = new jsPDF()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    const marginBottom = 15
+    let y = 20
+
+    const checkPageBreak = (needed: number) => {
+        if (y + needed > pageHeight - marginBottom) {
+            doc.addPage()
+            y = 20
+        }
+    }
+    const addSection = (title: string) => {
+        checkPageBreak(16)
+        y += 2
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(12)
+        doc.setTextColor(30)
+        doc.text(title, 14, y)
+        y += 2
+        doc.setDrawColor(210)
+        doc.line(14, y + 1, 196, y + 1)
+        y += 8
+    }
+    const addField = (label: string, value: unknown) => {
+        if (value === null || value === undefined || value === "") return
+        checkPageBreak(10)
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(8)
+        doc.setTextColor(120)
+        doc.text(label.toUpperCase(), 14, y)
+        y += 4
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(10)
+        doc.setTextColor(20)
+        const lines = doc.splitTextToSize(String(value), 180)
+        doc.text(lines, 14, y)
+        y += lines.length * 5 + 3
+    }
+    const addLine = (text: string) => {
+        checkPageBreak(6)
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(9)
+        doc.setTextColor(20)
+        doc.text(text, 14, y)
+        y += 5
+    }
+    const addSubheading = (text: string) => {
+        checkPageBreak(8)
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(9)
+        doc.setTextColor(90)
+        doc.text(text, 14, y)
+        y += 5
+    }
+
+    const name = [detail.firstName, detail.lastName].filter(Boolean).join(" ") || detail.email || "User"
+    const kyc = detail?.dealerProfile?.kyc
+    const documentStatuses: Record<string, { status: string; note?: string }> = kyc?.documentStatuses || {}
+
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(16)
+    doc.setTextColor(20)
+    doc.text("CarMazium — User Detail Report", 14, y)
+    y += 7
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(9)
+    doc.setTextColor(120)
+    doc.text(`Generated ${new Date().toLocaleString("en-GB")}`, 14, y)
+    y += 10
+
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(14)
+    doc.setTextColor(20)
+    doc.text(name, 14, y)
+    y += 6
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(9)
+    doc.setTextColor(90)
+    const flags = [
+        `Role: ${detail.role}`,
+        detail.deletedAt ? "BANNED" : null,
+        detail.lockoutUntil && new Date(detail.lockoutUntil) > new Date() ? "LOCKED" : null,
+    ].filter(Boolean).join(" · ")
+    doc.text(flags, 14, y)
+    y += 10
+
+    addSection("Contact & Account")
+    addField("Email", detail.email)
+    addField("Phone", detail.phone)
+    addField("Location", [detail.location, detail.postcode].filter(Boolean).join(", "))
+    addField("Joined", fmtDate(detail.createdAt))
+    addField("Last Updated", fmtDateTime(detail.updatedAt))
+    addField("Login Attempts", detail.loginAttempts)
+
+    if (detail.bankAccountNumber || detail.stripeConnectAccountId) {
+        addSection("Payout Info")
+        addField("Payout Method", detail.payoutPreference)
+        addField("Stripe Connect", detail.stripeConnectOnboardingComplete ? "Onboarded" : "Not complete")
+        addField("Bank Account Name", detail.bankAccountName)
+        addField("Sort Code", detail.bankSortCode)
+        addField("Account Number", detail.bankAccountNumber)
+    }
+
+    if (detail.dealerProfile) {
+        addSection("Dealer Profile")
+        addField("Company Name", detail.dealerProfile.companyName)
+        addField("Verified", detail.dealerProfile.isVerified ? "Yes" : "No")
+        addField("VAT Number", detail.dealerProfile.vatNumber)
+        addField("Registration No.", detail.dealerProfile.registrationNumber)
+        addField("Business Address", detail.dealerProfile.businessAddress)
+        addField("Business Phone", detail.dealerProfile.phone)
+        addField("Website", detail.dealerProfile.website)
+    }
+
+    if (kyc) {
+        addSection("KYC Record")
+        addField("Status", kyc.status)
+        addField("Submitted", fmtDateTime(kyc.submittedAt))
+        addField("Reviewed", kyc.reviewedAt ? fmtDateTime(kyc.reviewedAt) : "Not yet reviewed")
+        addField("Company House Name", kyc.companyHouseName)
+        addField("Company Reg. No.", kyc.companyRegistrationNumber)
+        addField("Representative", kyc.representativeName)
+        addField("Representative Role", kyc.representativePosition)
+        addField("Director", kyc.directorName)
+        addField("Person of Significant Control", kyc.personOfSignificantControl)
+        addField("Business Website", kyc.businessWebsite)
+        addField("Registered Address", kyc.businessRegisteredAddress)
+        addField("Trading Address", kyc.tradingAddress)
+        addField("£1 Fee Charged", kyc.stripeChargedAt ? fmtDateTime(kyc.stripeChargedAt) : "Not paid")
+
+        addSubheading("SUBMITTED DOCUMENTS")
+        KYC_DOC_FIELDS.forEach(({ key, label }) => {
+            const url = kyc[key]
+            const fieldStatus = documentStatuses[key]
+            const statusText = fieldStatus ? ` [${fieldStatus.status}]` : ""
+            addLine(`${label}${statusText}: ${url || "Not provided"}`)
+        })
+        y += 3
+    }
+
+    if (detail.sellerProfile) {
+        addSection("Seller Profile")
+        addField("Reliability Score", `${detail.sellerProfile.reliabilityScore.toFixed(1)} / 5.0`)
+        addField("Total Sales", detail.sellerProfile.totalSales)
+        addField("Total Listings", detail.sellerProfile.totalListings)
+        addField("Response Rate", `${detail.sellerProfile.responseRate}%`)
+    }
+
+    addSection("Activity")
+    addField("Listings", detail._count?.listings ?? 0)
+    addField("Transactions", detail._count?.transactions ?? 0)
+    addField("Auctions Won", detail._count?.wonAuctions ?? 0)
+
+    if (detail.recentListings?.length > 0) {
+        addSubheading("RECENT LISTINGS")
+        detail.recentListings.forEach((l: any) => addLine(`${l.title} — ${formatPrice(l.price)} — ${l.status}`))
+        y += 3
+    }
+
+    if (detail.recentTransactions?.length > 0) {
+        addSubheading("RECENT TRANSACTIONS")
+        detail.recentTransactions.forEach((t: any) => addLine(`${t.type} — ${formatPrice(Number(t.amount))} — ${t.status}`))
+    }
+
+    const safeName = name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()
+    doc.save(`carmazium-user-${safeName}-${Date.now()}.pdf`)
+}
+
 export function UserDetailModal({ userId, onClose, onChanged }: { userId: string | null; onClose: () => void; onChanged?: () => void }) {
     const [detail, setDetail] = React.useState<any | null>(null)
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [acting, setActing] = React.useState(false)
+    const [exporting, setExporting] = React.useState(false)
 
     const load = React.useCallback(() => {
         if (!userId) return
@@ -84,6 +255,18 @@ export function UserDetailModal({ userId, onClose, onChanged }: { userId: string
         }
     }
 
+    const handleExportPdf = async () => {
+        if (!detail) return
+        setExporting(true)
+        try {
+            await exportUserDetailPdf(detail)
+        } catch (err: any) {
+            alert(err.message || "Failed to generate PDF")
+        } finally {
+            setExporting(false)
+        }
+    }
+
     const kyc = detail?.dealerProfile?.kyc
     const documentStatuses: Record<string, { status: string; note?: string }> = kyc?.documentStatuses || {}
     const name = [detail?.firstName, detail?.lastName].filter(Boolean).join(" ") || detail?.email || "User"
@@ -96,9 +279,22 @@ export function UserDetailModal({ userId, onClose, onChanged }: { userId: string
             >
                 <div className="sticky top-0 z-10 flex items-center justify-between p-5 border-b border-[var(--border-default)] bg-[var(--bg-card)]">
                     <h3 className="text-lg font-black uppercase tracking-tight">User Details</h3>
-                    <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
-                        <X size={20} />
-                    </button>
+                    <div className="flex items-center gap-3">
+                        {detail && (
+                            <button
+                                onClick={handleExportPdf}
+                                disabled={exporting}
+                                title="Export as PDF"
+                                className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] hover:text-primary transition-colors disabled:opacity-50 cursor-pointer"
+                            >
+                                {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                                PDF
+                            </button>
+                        )}
+                        <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
+                            <X size={20} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="p-5">
