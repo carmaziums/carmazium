@@ -275,12 +275,12 @@ export function UserDetailModal({ userId, onClose, onChanged }: { userId: string
     if (typeof document === "undefined") return null
 
     return createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
             <div
-                className="w-full max-w-2xl max-h-[90vh] bg-[var(--bg-card)] border border-[var(--border-default)] rounded-2xl overflow-y-auto shadow-2xl"
+                className="w-full max-w-lg h-full bg-[var(--bg-card)] border-l border-[var(--border-default)] overflow-y-auto shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="sticky top-0 z-10 flex items-center justify-between p-5 border-b border-[var(--border-default)] bg-[var(--bg-card)] rounded-t-2xl">
+                <div className="sticky top-0 z-10 flex items-center justify-between p-5 border-b border-[var(--border-default)] bg-[var(--bg-card)]">
                     <h3 className="text-lg font-black uppercase tracking-tight">User Details</h3>
                     <div className="flex items-center gap-3">
                         {detail && (
