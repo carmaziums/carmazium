@@ -16,6 +16,7 @@ import { aiSearch, type AiSearchResult } from "@/lib/aiApi"
 import { CarCard } from "@/components/features/CarCard"
 import { getActiveAuctions, type Auction, getCurrentBid, getBidCount } from "@/lib/auctionApi"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
+import { type BlogPost } from "@/lib/blogApi"
 
 /* ── Dynamic imports for below-fold heavy components ────────────────────────
  * Code-split these into separate chunks so they don't block initial load.
@@ -27,9 +28,10 @@ const TestimonialsSection = dynamic(() => import("@/components/features/Testimon
 
 interface HomeClientProps {
   initialListings: Listing[]
+  latestBlogPosts?: BlogPost[]
 }
 
-export default function HomeClient({ initialListings }: HomeClientProps) {
+export default function HomeClient({ initialListings, latestBlogPosts = [] }: HomeClientProps) {
   const ref = useRef(null)
   const router = useRouter()
   const { resolvedTheme } = useTheme()
@@ -516,42 +518,55 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
       </section>
 
       {/* Blog Section */}
-      <section className="container mx-auto px-5 mb-24">
-        <h2 className="text-3xl font-bold text-center mb-12 font-heading">Automotive Insights & Market Updates</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[
-            { title: "How Car Auctions Help You Get the Best Price", image: "/assets/images/featured-suv.png" },
-            { title: "Tips for Buying Used Luxury Cars Safely", image: "/assets/images/blog-keys.png" },
-            { title: "Selling Your Car Faster with Digital Marketplaces", image: "/assets/images/featured-sports.png" }
-          ].map((blog, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.1 }}
-              className="glass-card overflow-hidden group hover:border-primary/30"
-            >
-              <div className="h-48 overflow-hidden relative">
-                <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/10 transition-colors z-10" />
-                <Image
-                  src={blog.image}
-                  alt={blog.title}
-                  width={400}
-                  height={250}
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                />
-              </div>
-              <div className="p-6">
-                <h3 className="text-lg font-bold mb-3 group-hover:text-primary transition-colors line-clamp-2">{blog.title}</h3>
-                <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>Discover more about automotive trends...</p>
-                <Button variant="link" className="p-0 h-auto text-primary group-hover:translate-x-2 transition-transform">Read More <ArrowRight className="ml-1 h-4 w-4" /></Button>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+      {latestBlogPosts.length > 0 && (
+        <section className="container mx-auto px-5 mb-24">
+          <div className="flex items-center justify-between mb-12">
+            <h2 className="text-3xl font-bold font-heading">Automotive Insights & Market Updates</h2>
+            <Link href="/blog" className="hidden sm:inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:translate-x-1 transition-transform">
+              View All <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {latestBlogPosts.map((post, idx) => (
+              <motion.div
+                key={post.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+              >
+                <Link
+                  href={`/blog/${post.slug}`}
+                  className="glass-card overflow-hidden group hover:border-primary/30 block"
+                >
+                  <div className="h-48 overflow-hidden relative bg-[var(--bg-input)]">
+                    <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/10 transition-colors z-10" />
+                    {post.coverImage ? (
+                      <Image
+                        src={post.coverImage}
+                        alt={post.title}
+                        width={400}
+                        height={250}
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Sparkles className="w-8 h-8 text-[var(--text-muted)]" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-6">
+                    <h3 className="text-lg font-bold mb-3 group-hover:text-primary transition-colors line-clamp-2">{post.title}</h3>
+                    <p className="text-sm mb-4 line-clamp-2" style={{ color: 'var(--text-muted)' }}>{post.excerpt}</p>
+                    <Button variant="link" className="p-0 h-auto text-primary group-hover:translate-x-2 transition-transform">Read More <ArrowRight className="ml-1 h-4 w-4" /></Button>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

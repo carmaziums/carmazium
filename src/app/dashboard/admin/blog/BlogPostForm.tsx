@@ -1,0 +1,268 @@
+"use client"
+
+import * as React from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { Loader2, Upload, Image as ImageIcon, X, Eye, Pencil, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
+import { BlogContent } from "@/components/blog/BlogContent"
+import { uploadImage } from "@/lib/supabase"
+import { createBlogPost, updateBlogPost, type BlogPost, type BlogPostStatus } from "@/lib/blogApi"
+
+function slugify(title: string): string {
+    return title
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+}
+
+function errorMessage(err: unknown, fallback: string): string {
+    return err instanceof Error && err.message ? err.message : fallback
+}
+
+interface BlogPostFormProps {
+    post?: BlogPost
+}
+
+export function BlogPostForm({ post }: BlogPostFormProps) {
+    const router = useRouter()
+    const isEdit = !!post
+
+    const [title, setTitle] = React.useState(post?.title ?? "")
+    const [slug, setSlug] = React.useState(post?.slug ?? "")
+    const [slugTouched, setSlugTouched] = React.useState(isEdit)
+    const [excerpt, setExcerpt] = React.useState(post?.excerpt ?? "")
+    const [content, setContent] = React.useState(post?.content ?? "")
+    const [coverImage, setCoverImage] = React.useState(post?.coverImage ?? "")
+    const [authorName, setAuthorName] = React.useState(post?.authorName ?? "CarMazium Team")
+    const [tagsInput, setTagsInput] = React.useState((post?.tags ?? []).join(", "))
+    const [status, setStatus] = React.useState<BlogPostStatus>(post?.status ?? "DRAFT")
+    const [metaTitle, setMetaTitle] = React.useState(post?.metaTitle ?? "")
+    const [metaDescription, setMetaDescription] = React.useState(post?.metaDescription ?? "")
+
+    const [showPreview, setShowPreview] = React.useState(false)
+    const [uploading, setUploading] = React.useState(false)
+    const [saving, setSaving] = React.useState(false)
+    const [error, setError] = React.useState<string | null>(null)
+    const [savedMsg, setSavedMsg] = React.useState<string | null>(null)
+    const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+    // Keep the slug in sync with the title until the admin edits it directly
+    React.useEffect(() => {
+        if (!slugTouched) setSlug(slugify(title))
+    }, [title, slugTouched])
+
+    const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        if (!file.type.startsWith('image/')) {
+            setError('Please select an image file.')
+            return
+        }
+        setUploading(true)
+        setError(null)
+        try {
+            const url = await uploadImage(file, 'listings', 'blog')
+            setCoverImage(url)
+        } catch (err) {
+            setError(errorMessage(err, 'Upload failed'))
+        } finally {
+            setUploading(false)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+        }
+    }
+
+    const buildPayload = (nextStatus: BlogPostStatus) => ({
+        title: title.trim(),
+        slug: slug.trim() || undefined,
+        excerpt: excerpt.trim(),
+        content,
+        coverImage: coverImage || undefined,
+        authorName: authorName.trim() || 'CarMazium Team',
+        tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
+        status: nextStatus,
+        metaTitle: metaTitle.trim() || undefined,
+        metaDescription: metaDescription.trim() || undefined,
+    })
+
+    const handleSave = async (nextStatus: BlogPostStatus) => {
+        if (!title.trim() || !excerpt.trim() || !content.trim()) {
+            setError('Title, excerpt, and content are all required.')
+            return
+        }
+        setSaving(true)
+        setError(null)
+        setSavedMsg(null)
+        try {
+            const payload = buildPayload(nextStatus)
+            if (isEdit) {
+                await updateBlogPost(post!.id, payload)
+                setStatus(nextStatus)
+                setSavedMsg(nextStatus === 'PUBLISHED' ? 'Published' : 'Saved as draft')
+            } else {
+                const created = await createBlogPost(payload)
+                router.replace(`/dashboard/admin/blog/${created.id}/edit`)
+                return
+            }
+        } catch (err) {
+            setError(errorMessage(err, 'Failed to save post'))
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    return (
+        <div className="space-y-6 max-w-3xl">
+            {error && (
+                <div className="flex items-center gap-2 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                    <AlertCircle size={16} className="shrink-0" /> {error}
+                </div>
+            )}
+            {savedMsg && (
+                <div className="flex items-center gap-2 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm">
+                    <CheckCircle2 size={16} className="shrink-0" /> {savedMsg}
+                </div>
+            )}
+
+            {/* Title & slug */}
+            <div className="glass-card p-6 space-y-4">
+                <div>
+                    <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] mb-1.5 block">Title</label>
+                    <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="How Car Auctions Help You Get the Best Price" className="text-base" />
+                </div>
+                <div>
+                    <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] mb-1.5 block">Slug</label>
+                    <div className="flex items-center gap-1 text-sm">
+                        <span className="text-[var(--text-muted)] shrink-0">/blog/</span>
+                        <Input
+                            value={slug}
+                            onChange={(e) => { setSlug(slugify(e.target.value)); setSlugTouched(true) }}
+                            placeholder="how-car-auctions-help-you-get-the-best-price"
+                            className="text-sm"
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] mb-1.5 block">Excerpt <span className="text-[var(--text-faint)] normal-case font-normal">— shown on cards, {excerpt.length}/300</span></label>
+                    <textarea
+                        value={excerpt}
+                        onChange={(e) => setExcerpt(e.target.value.slice(0, 300))}
+                        rows={2}
+                        placeholder="A quick guide to getting the most out of a live auction sale."
+                        className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none resize-none"
+                    />
+                </div>
+            </div>
+
+            {/* Cover image */}
+            <div className="glass-card p-6 space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Cover Image</h3>
+                {coverImage ? (
+                    <div className="relative rounded-xl overflow-hidden border border-[var(--border-default)] bg-[var(--bg-input)]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={coverImage} alt="Cover" className="w-full h-48 object-cover" />
+                        <button
+                            type="button"
+                            onClick={() => setCoverImage("")}
+                            className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-lg text-white transition-colors"
+                        >
+                            <X size={14} />
+                        </button>
+                        {uploading && <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
+                    </div>
+                ) : (
+                    <div className="h-32 rounded-xl border border-dashed border-[var(--border-default)] bg-[var(--bg-input)] flex items-center justify-center">
+                        <ImageIcon className="text-[var(--text-muted)]" size={28} />
+                    </div>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
+                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="w-full sm:w-auto">
+                    {uploading ? <Loader2 size={16} className="animate-spin mr-2" /> : <Upload size={16} className="mr-2" />}
+                    {uploading ? 'Uploading…' : coverImage ? 'Replace Image' : 'Upload Image'}
+                </Button>
+            </div>
+
+            {/* Content */}
+            <div className="glass-card p-6 space-y-3">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Content (Markdown)</h3>
+                    <button
+                        type="button"
+                        onClick={() => setShowPreview(v => !v)}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+                    >
+                        {showPreview ? <><Pencil size={12} /> Edit</> : <><Eye size={12} /> Preview</>}
+                    </button>
+                </div>
+                {showPreview ? (
+                    <div className="min-h-[300px] border border-[var(--border-default)] rounded-lg p-4 bg-[var(--bg-input)]">
+                        {content.trim() ? <BlogContent content={content} /> : <p className="text-sm text-[var(--text-muted)]">Nothing to preview yet.</p>}
+                    </div>
+                ) : (
+                    <textarea
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        rows={16}
+                        placeholder={"## A heading\n\nWrite your post in Markdown — **bold**, *italic*, [links](https://example.com), lists, images, etc."}
+                        className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-3 text-sm font-mono placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none resize-y"
+                    />
+                )}
+            </div>
+
+            {/* Meta */}
+            <div className="glass-card p-6 space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Details</h3>
+                <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                        <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] mb-1.5 block">Author</label>
+                        <Input value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="CarMazium Team" />
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] mb-1.5 block">Tags <span className="text-[var(--text-faint)] normal-case font-normal">— comma separated</span></label>
+                        <Input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} placeholder="auctions, selling tips" />
+                    </div>
+                </div>
+            </div>
+
+            {/* SEO */}
+            <div className="glass-card p-6 space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">SEO</h3>
+                <div>
+                    <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] mb-1.5 block">Meta Title <span className="text-[var(--text-faint)] normal-case font-normal">— falls back to Title</span></label>
+                    <Input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} placeholder={title || "Meta title"} />
+                </div>
+                <div>
+                    <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] mb-1.5 block">Meta Description <span className="text-[var(--text-faint)] normal-case font-normal">— falls back to Excerpt</span></label>
+                    <textarea
+                        value={metaDescription}
+                        onChange={(e) => setMetaDescription(e.target.value.slice(0, 160))}
+                        rows={2}
+                        placeholder={excerpt || "Meta description"}
+                        className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none resize-none"
+                    />
+                    <p className="text-[10px] text-[var(--text-faint)] mt-1">{metaDescription.length}/160</p>
+                </div>
+            </div>
+
+            {/* Actions */}
+            <div className="glass-card p-6 flex flex-col sm:flex-row items-center gap-3 sticky bottom-4">
+                <span className={`inline-flex px-2.5 py-1 rounded text-xs font-bold border ${status === 'PUBLISHED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
+                    {status}
+                </span>
+                <div className="flex-1" />
+                <Link href="/dashboard/admin/blog" className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">Cancel</Link>
+                <Button type="button" variant="outline" onClick={() => handleSave('DRAFT')} disabled={saving}>
+                    {saving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+                    Save as Draft
+                </Button>
+                <Button type="button" onClick={() => handleSave('PUBLISHED')} disabled={saving}>
+                    {saving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+                    {status === 'PUBLISHED' ? 'Save & Update' : 'Publish'}
+                </Button>
+            </div>
+        </div>
+    )
+}

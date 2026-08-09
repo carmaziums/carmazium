@@ -35,6 +35,17 @@ async function getActiveListingSlugs(): Promise<SitemapListing[]> {
     }
 }
 
+async function getPublishedBlogSlugs(): Promise<SitemapListing[]> {
+    try {
+        const res = await fetch(`${API_BASE}/blog?limit=1000`, { next: { revalidate: 3600 } })
+        if (!res.ok) return []
+        const json = await res.json()
+        return (json.data ?? []) as SitemapListing[]
+    } catch {
+        return []
+    }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const staticEntries = STATIC_ROUTES.map((route) => ({
         url: `${BASE_URL}${route}`,
@@ -51,5 +62,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8,
     }))
 
-    return [...staticEntries, ...listingEntries]
+    const blogPosts = await getPublishedBlogSlugs()
+    const blogEntries = blogPosts.map((p) => ({
+        url: `${BASE_URL}/blog/${p.slug}`,
+        lastModified: p.updatedAt ? new Date(p.updatedAt) : new Date(),
+        changeFrequency: "monthly" as const,
+        priority: 0.6,
+    }))
+
+    return [
+        ...staticEntries,
+        { url: `${BASE_URL}/blog`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 0.7 },
+        ...listingEntries,
+        ...blogEntries,
+    ]
 }

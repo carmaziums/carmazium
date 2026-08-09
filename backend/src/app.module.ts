@@ -35,6 +35,7 @@ import { DamageAnalysisModule } from './damage/damage.module';
 import { HpiModule } from './hpi/hpi.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { MarketingModule } from './marketing/marketing.module';
+import { BlogModule } from './blog/blog.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { MarketingModule } from './marketing/marketing.module';
     HpiModule,
     DeliveryModule,
     MarketingModule,
+    BlogModule,
   ],
   controllers: [AppController],
   providers: [AppService],

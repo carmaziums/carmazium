@@ -1245,6 +1245,41 @@ model MarketingPopup {
 }
 
 // ============================================================================
+// BLOG (admin-authored content, markdown body)
+// ============================================================================
+
+enum BlogPostStatus {
+  DRAFT
+  PUBLISHED
+
+  @@map("blog_post_status")
+}
+
+model BlogPost {
+  id              String         @id @default(uuid())
+  slug            String         @unique
+  title           String
+  excerpt         String
+  /// Markdown source, rendered client-side with react-markdown
+  content         String
+  coverImage      String?
+  authorName      String         @default("CarMazium Team")
+  tags            String[]       @default([])
+  status          BlogPostStatus @default(DRAFT)
+  publishedAt     DateTime?
+  /// Falls back to `title` when unset
+  metaTitle       String?
+  /// Falls back to `excerpt` when unset
+  metaDescription String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+
+  @@index([status, publishedAt])
+  @@map("blog_posts")
+}
+
+// ============================================================================
 // SALES RECORDS (Revenue Tracking)
 // ============================================================================
 

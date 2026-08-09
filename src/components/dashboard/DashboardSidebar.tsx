@@ -30,6 +30,7 @@ import {
     Receipt,
     TrendingUp,
     Megaphone,
+    Newspaper,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
@@ -154,6 +155,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/dashboard/admin/dealer-verification", label: "Dealer KYC", icon: Shield },
             { href: "/dashboard/admin/dealers", label: "All Dealers", icon: Building2 },
             { href: "/dashboard/admin/marketing-popup", label: "Marketing Popup", icon: Megaphone },
+            { href: "/dashboard/admin/blog", label: "Blog", icon: Newspaper },
         ]
     }
 
