@@ -53,6 +53,14 @@ export class AdminController {
         return new PaginatedResponse(data, total, Number(page), Number(limit));
     }
 
+    @Get('users/:id')
+    @ApiOperation({ summary: 'Full user detail — dealer profile, KYC record with document URLs, seller profile, recent activity' })
+    @ApiParam({ name: 'id', description: 'User UUID' })
+    async getUserDetail(@Param('id') id: string): Promise<StandardResponse<any>> {
+        const user = await this.adminService.getUserDetail(id);
+        return new StandardResponse(user);
+    }
+
     @Patch('users/:id/role')
     @ApiOperation({ summary: 'Update user role' })
     @ApiParam({ name: 'id', description: 'User UUID' })
@@ -294,6 +302,18 @@ export class AdminController {
     async getPendingKyc(): Promise<StandardResponse<any>> {
         const list = await this.adminService.getPendingKyc();
         return new StandardResponse(list);
+    }
+
+    @Get('dealers/kyc-archive')
+    @ApiOperation({ summary: 'Every dealer KYC record regardless of status, with document URLs — approved ones drop out of kyc-pending permanently otherwise' })
+    @ApiQuery({ name: 'page', required: false })
+    @ApiQuery({ name: 'limit', required: false })
+    async getAllDealersKycArchive(
+        @Query('page') page = 1,
+        @Query('limit') limit = 20,
+    ): Promise<PaginatedResponse<any>> {
+        const { data, total } = await this.adminService.getAllDealersKycArchive(Number(page), Number(limit));
+        return new PaginatedResponse(data, total, Number(page), Number(limit));
     }
 
     @Patch('dealers/kyc/:id/review')

@@ -36,6 +36,16 @@ export async function getAdminUsers(page = 1, limit = 20, search?: string) {
   return result;
 }
 
+export async function getAdminUserDetail(id: string) {
+  const result = await apiClient<{ data: any }>(`/admin/users/${id}`);
+  return result.data;
+}
+
+export async function getAdminDealersKycArchive(page = 1, limit = 20) {
+  const result = await apiClient<any>(`/admin/dealers/kyc-archive?page=${page}&limit=${limit}`);
+  return result;
+}
+
 export async function getAdminListings(page = 1, limit = 20) {
   const result = await apiClient<any>(`/admin/listings?page=${page}&limit=${limit}`);
   return result;

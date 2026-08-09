@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Car, Loader2, ArrowLeft, Trash2, AlertTriangle, Eye, ChevronDown, Check, X, Clock, Pencil, Save } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminListings, deleteListingForce, getPendingListingReviews, approveListing, rejectListing, updateListingAsAdmin } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
@@ -93,6 +94,7 @@ export default function AdminListingsPage() {
     const [editingId, setEditingId] = React.useState<string | null>(null)
     const [editForm, setEditForm] = React.useState<Record<string, string>>({})
     const [savingEdit, setSavingEdit] = React.useState(false)
+    const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         // Enforce Admin Access
@@ -626,7 +628,7 @@ export default function AdminListingsPage() {
                                                 </span>
                                             </div>
                                             <div className="flex items-center justify-between mt-1">
-                                                <p className="text-xs text-[var(--text-muted)] truncate">{l.seller?.firstName} {l.seller?.lastName} · {l.vrm || 'No VRM'}</p>
+                                                <p className="text-xs text-[var(--text-muted)] truncate hover:text-primary transition-colors cursor-pointer" onClick={() => l.seller?.id && setSelectedUserId(l.seller.id)}>{l.seller?.firstName} {l.seller?.lastName} · {l.vrm || 'No VRM'}</p>
                                                 <p className="text-sm font-bold ml-2 shrink-0">{formatPrice(l.price)}</p>
                                             </div>
                                         </div>
@@ -690,9 +692,15 @@ export default function AdminListingsPage() {
                                                 {formatPrice(l.price)}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="text-sm">
-                                                    <p className="truncate max-w-[150px]">{l.seller?.firstName} {l.seller?.lastName}</p>
+                                                <div className="text-sm cursor-pointer group" onClick={() => l.seller?.id && setSelectedUserId(l.seller.id)}>
+                                                    <p className="truncate max-w-[150px] group-hover:text-primary transition-colors">{l.seller?.firstName} {l.seller?.lastName}</p>
                                                     <p className="text-xs text-[var(--text-muted)] truncate max-w-[150px]">{l.seller?.email}</p>
+                                                    {l.seller?.phone && <p className="text-xs text-[var(--text-muted)] truncate max-w-[150px]">{l.seller.phone}</p>}
+                                                    {l.seller?.dealerProfile?.companyName && (
+                                                        <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                            {l.seller.dealerProfile.companyName}{l.seller.dealerProfile.isVerified ? ' ✓' : ''}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
@@ -736,6 +744,7 @@ export default function AdminListingsPage() {
 
                 </main>
             </div>
+            <UserDetailModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
         </div>
     )
 }

@@ -3,8 +3,9 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Receipt, Loader2, ArrowLeft } from "lucide-react"
+import { Receipt, Loader2, ArrowLeft, ChevronDown } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminTransactions } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
@@ -34,6 +35,8 @@ export default function AdminTransactionsPage() {
     const [error, setError] = React.useState<string | null>(null)
     const [page, setPage] = React.useState(1)
     const [total, setTotal] = React.useState(0)
+    const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
+    const [expandedTxId, setExpandedTxId] = React.useState<string | null>(null)
     const limit = 20
 
     React.useEffect(() => {
@@ -86,7 +89,7 @@ export default function AdminTransactionsPage() {
                             {transactions.map((t) => (
                                 <div key={t.id} className="p-4">
                                     <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0 flex-1">
+                                        <div className="min-w-0 flex-1 cursor-pointer" onClick={() => t.user?.id && setSelectedUserId(t.user.id)}>
                                             <p className="text-sm font-bold truncate">{t.user?.firstName} {t.user?.lastName}</p>
                                             <p className="text-xs text-[var(--text-muted)] truncate">{t.user?.email}</p>
                                         </div>
@@ -121,14 +124,23 @@ export default function AdminTransactionsPage() {
                                         <th className="px-6 py-4 text-center">Status</th>
                                         <th className="px-6 py-4 text-right">Amount</th>
                                         <th className="px-6 py-4 text-right">Date</th>
+                                        <th className="px-6 py-4 text-right w-8"></th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[var(--border-default)]/80">
                                     {transactions.map((t) => (
-                                        <tr key={t.id} className="hover:bg-[var(--bg-card)] transition-colors">
+                                        <React.Fragment key={t.id}>
+                                        <tr className="hover:bg-[var(--bg-card)] transition-colors cursor-pointer" onClick={() => setExpandedTxId(expandedTxId === t.id ? null : t.id)}>
                                             <td className="px-6 py-4 text-xs">
-                                                <p className="font-medium">{t.user?.firstName} {t.user?.lastName}</p>
-                                                <p className="text-[var(--text-muted)]">{t.user?.email}</p>
+                                                <div className="group inline-block" onClick={(e) => { e.stopPropagation(); if (t.user?.id) setSelectedUserId(t.user.id) }}>
+                                                    <p className="font-medium group-hover:text-primary transition-colors">{t.user?.firstName} {t.user?.lastName}</p>
+                                                    <p className="text-[var(--text-muted)]">{t.user?.email}</p>
+                                                    {t.user?.dealerProfile?.companyName && (
+                                                        <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                            {t.user.dealerProfile.companyName}{t.user.dealerProfile.isVerified ? ' ✓' : ''}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4 text-xs max-w-[160px]">
                                                 {t.listing ? (
@@ -156,7 +168,31 @@ export default function AdminTransactionsPage() {
                                             <td className="px-6 py-4 text-right text-xs text-[var(--text-muted)]">
                                                 {new Date(t.createdAt).toLocaleDateString()}
                                             </td>
+                                            <td className="px-2 py-4 text-right text-[var(--text-muted)]">
+                                                <ChevronDown size={14} className={`transition-transform inline-block ${expandedTxId === t.id ? 'rotate-180' : ''}`} />
+                                            </td>
                                         </tr>
+                                        {expandedTxId === t.id && (
+                                            <tr className="bg-[var(--bg-input)]">
+                                                <td colSpan={7} className="px-6 py-4">
+                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                                        <div>
+                                                            <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Transaction ID</p>
+                                                            <p className="font-mono break-all">{t.id}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Stripe Reference</p>
+                                                            <p className="font-mono break-all">{t.stripePaymentId || '—'}</p>
+                                                        </div>
+                                                        <div className="col-span-2">
+                                                            <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Description</p>
+                                                            <p>{t.description || '—'}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                        </React.Fragment>
                                     ))}
                                 </tbody>
                             </table>
@@ -172,6 +208,7 @@ export default function AdminTransactionsPage() {
                     </div>
                 </main>
             </div>
+            <UserDetailModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
         </div>
     )
 }

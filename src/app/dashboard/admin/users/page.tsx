@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Users, Loader2, ArrowLeft, MoreHorizontal, ShieldAlert, BadgeCheck, Ban, LockKeyhole, LockKeyholeOpen, ShieldCheck, X, Landmark, CreditCard, AlertCircle, Search } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminUsers, updateUserRole, banUser, unbanUser, lockUser, unlockUser } from "@/lib/adminApi"
 
@@ -20,6 +21,7 @@ export default function AdminUsersPage() {
     const [openMenu, setOpenMenu] = React.useState<string | null>(null)
     const [search, setSearch] = React.useState("")
     const [searchInput, setSearchInput] = React.useState("")
+    const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
     const menuRef = React.useRef<HTMLDivElement>(null)
     const limit = 20
 
@@ -176,13 +178,13 @@ export default function AdminUsersPage() {
                                 const isSelf = u.id === user?.id
                                 return (
                                     <div key={u.id} className={`p-4 ${isBanned ? 'bg-red-500/5' : ''}`}>
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setSelectedUserId(u.id)}>
                                             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ring-1 ring-white/10 shrink-0 ${isBanned ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
                                                 {(u.firstName?.[0] || u.email[0]).toUpperCase()}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <p className="font-bold text-sm truncate">{u.firstName} {u.lastName}</p>
+                                                    <p className="font-bold text-sm truncate hover:text-primary transition-colors">{u.firstName} {u.lastName}</p>
                                                     <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-bold border shrink-0 ${isBanned ? 'bg-red-500/10 text-red-400 border-red-500/20' : isLocked ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
                                                         {isBanned ? 'BAN' : isLocked ? 'LOCK' : 'OK'}
                                                     </span>
@@ -253,12 +255,12 @@ export default function AdminUsersPage() {
                                         return (
                                             <tr key={u.id} className={`transition-colors ${isBanned ? 'bg-red-500/5' : ''} hover:bg-[var(--bg-card)]`}>
                                                 <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
+                                                    <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setSelectedUserId(u.id)}>
                                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ring-1 ring-white/10 ${isBanned ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
                                                             {(u.firstName?.[0] || u.email[0]).toUpperCase()}
                                                         </div>
                                                         <div>
-                                                            <p className="font-bold flex items-center gap-2">
+                                                            <p className="font-bold flex items-center gap-2 group-hover:text-primary transition-colors">
                                                                 {u.firstName} {u.lastName}
                                                                 {u.role === 'ADMIN' && <ShieldAlert size={14} className="text-yellow-400" />}
                                                                 {u.dealerProfile?.isVerified && <BadgeCheck size={14} className="text-blue-400" />}
@@ -412,6 +414,7 @@ export default function AdminUsersPage() {
                     </div>
                 </main>
             </div>
+            <UserDetailModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} onChanged={fetchUsers} />
         </div>
     )
 }

@@ -6,6 +6,7 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Gavel, Loader2, ArrowLeft, Eye, Car, UserCheck, X, AlertTriangle } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminAuctions, getAllDealers, assignAuctionWinner } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
@@ -34,6 +35,7 @@ export default function AdminAuctionsPage() {
     const [confirming, setConfirming] = React.useState(false)
     const [assigning, setAssigning] = React.useState(false)
     const [assignError, setAssignError] = React.useState<string | null>(null)
+    const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         if (!authLoading) {
@@ -153,8 +155,16 @@ export default function AdminAuctionsPage() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-xs">
-                                                <p className="">{a.listing?.seller?.firstName} {a.listing?.seller?.lastName}</p>
-                                                <p className="text-[var(--text-muted)]">{a.listing?.seller?.email}</p>
+                                                <div className="cursor-pointer group" onClick={() => a.listing?.seller?.id && setSelectedUserId(a.listing.seller.id)}>
+                                                    <p className="group-hover:text-primary transition-colors">{a.listing?.seller?.firstName} {a.listing?.seller?.lastName}</p>
+                                                    <p className="text-[var(--text-muted)]">{a.listing?.seller?.email}</p>
+                                                    {a.listing?.seller?.phone && <p className="text-[var(--text-muted)]">{a.listing.seller.phone}</p>}
+                                                    {a.listing?.seller?.dealerProfile?.companyName && (
+                                                        <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                            {a.listing.seller.dealerProfile.companyName}{a.listing.seller.dealerProfile.isVerified ? ' ✓' : ''}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <span className={`inline-flex px-2 py-1 rounded border text-xs font-bold ${STATUS_STYLES[a.status] || STATUS_STYLES.ENDED}`}>
@@ -168,7 +178,15 @@ export default function AdminAuctionsPage() {
                                             <td className="px-6 py-4 text-right text-sm">{a.listing?._count?.bids ?? 0}</td>
                                             <td className="px-6 py-4 text-right text-xs">
                                                 {a.winner ? (
-                                                    <span className="text-emerald-400">{a.winner.firstName} {a.winner.lastName}</span>
+                                                    <div className="cursor-pointer group inline-block text-right" onClick={() => setSelectedUserId(a.winner.id)}>
+                                                        <p className="text-emerald-400 group-hover:text-primary transition-colors">{a.winner.firstName} {a.winner.lastName}</p>
+                                                        {a.winner.phone && <p className="text-[var(--text-muted)]">{a.winner.phone}</p>}
+                                                        {a.winner.dealerProfile?.companyName && (
+                                                            <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                                {a.winner.dealerProfile.companyName}{a.winner.dealerProfile.isVerified ? ' ✓' : ''}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 ) : <span className="text-[var(--text-muted)]">—</span>}
                                             </td>
                                             <td className="px-6 py-4 text-right">
@@ -297,6 +315,8 @@ export default function AdminAuctionsPage() {
                     </div>
                 </div>
             )}
+
+            <UserDetailModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
         </div>
     )
 }

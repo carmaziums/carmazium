@@ -53,6 +53,7 @@ export class AdminService {
                     lockoutUntil: true,
                     dealerProfile: { select: { isVerified: true, companyName: true } },
                     _count: { select: { listings: true } },
+                    phone: true,
                     stripeConnectOnboardingComplete: true,
                     bankAccountName: true,
                     bankSortCode: true,
@@ -63,6 +64,78 @@ export class AdminService {
             this.prisma.user.count({ where }),
         ]);
         return { data, total };
+    }
+
+    /**
+     * Full profile for the admin "view details" panel — everything the list
+     * endpoints deliberately keep lightweight: phone, dealer profile + full
+     * KYC record (including document URLs, which otherwise become
+     * unreachable the moment a KYC is approved and drops out of
+     * getPendingKyc), seller profile, and recent activity.
+     */
+    async getUserDetail(id: string) {
+        const user = await this.prisma.user.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                phone: true,
+                role: true,
+                profileImage: true,
+                isEmailVerified: true,
+                isPhoneVerified: true,
+                isAddressVerified: true,
+                location: true,
+                postcode: true,
+                createdAt: true,
+                updatedAt: true,
+                deletedAt: true,
+                lockoutUntil: true,
+                loginAttempts: true,
+                stripeCustomerId: true,
+                stripeConnectAccountId: true,
+                stripeConnectOnboardingComplete: true,
+                bankAccountName: true,
+                bankSortCode: true,
+                bankAccountNumber: true,
+                payoutPreference: true,
+                dealerProfile: {
+                    include: { kyc: true },
+                },
+                sellerProfile: true,
+                _count: {
+                    select: {
+                        listings: true,
+                        transactions: true,
+                        wonAuctions: true,
+                        salesAsSeller: true,
+                        purchasesAsBuyer: true,
+                    },
+                },
+            },
+        });
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        const [recentListings, recentTransactions] = await Promise.all([
+            this.prisma.listing.findMany({
+                where: { sellerId: id, deletedAt: null },
+                orderBy: { createdAt: 'desc' },
+                take: 5,
+                select: { id: true, title: true, slug: true, status: true, price: true, createdAt: true },
+            }),
+            this.prisma.transaction.findMany({
+                where: { userId: id, deletedAt: null },
+                orderBy: { createdAt: 'desc' },
+                take: 10,
+                select: { id: true, type: true, status: true, amount: true, stripePaymentId: true, description: true, createdAt: true },
+            }),
+        ]);
+
+        return { ...user, recentListings, recentTransactions };
     }
 
     async updateUserRole(userId: string, role: UserRole) {
@@ -127,7 +200,14 @@ export class AdminService {
                 skip,
                 take: limit,
                 orderBy: { createdAt: 'desc' },
-                include: { seller: { select: { id: true, email: true, firstName: true, lastName: true } } },
+                include: {
+                    seller: {
+                        select: {
+                            id: true, email: true, firstName: true, lastName: true, phone: true,
+                            dealerProfile: { select: { companyName: true, isVerified: true } },
+                        },
+                    },
+                },
             }),
             this.prisma.listing.count(),
         ]);
@@ -364,7 +444,12 @@ export class AdminService {
                             make: true,
                             model: true,
                             year: true,
-                            seller: { select: { id: true, email: true, firstName: true, lastName: true } },
+                            seller: {
+                                select: {
+                                    id: true, email: true, firstName: true, lastName: true, phone: true,
+                                    dealerProfile: { select: { companyName: true, isVerified: true } },
+                                },
+                            },
                             bids: {
                                 where: { deletedAt: null },
                                 orderBy: { amount: 'desc' },
@@ -374,7 +459,12 @@ export class AdminService {
                             _count: { select: { bids: true } },
                         },
                     },
-                    winner: { select: { id: true, firstName: true, lastName: true, email: true } },
+                    winner: {
+                        select: {
+                            id: true, firstName: true, lastName: true, email: true, phone: true,
+                            dealerProfile: { select: { companyName: true, isVerified: true } },
+                        },
+                    },
                 },
             }),
             this.prisma.auction.count(),
@@ -797,7 +887,12 @@ export class AdminService {
                 take: limit,
                 orderBy: { createdAt: 'desc' },
                 include: {
-                    user: { select: { id: true, email: true, firstName: true, lastName: true } },
+                    user: {
+                        select: {
+                            id: true, email: true, firstName: true, lastName: true, phone: true,
+                            dealerProfile: { select: { companyName: true, isVerified: true } },
+                        },
+                    },
                     listing: { select: { id: true, title: true, slug: true, make: true, model: true, year: true } },
                 },
             }),
@@ -922,6 +1017,32 @@ export class AdminService {
             },
             orderBy: { submittedAt: 'desc' },
         });
+    }
+
+    /**
+     * Every dealer with a KYC record, regardless of status — getPendingKyc()
+     * only shows PENDING/REJECTED, so an approved dealer's submission
+     * (including document URLs) becomes permanently unreachable in the admin
+     * panel the moment it's approved. This is the archive that fixes that.
+     */
+    async getAllDealersKycArchive(page = 1, limit = 20) {
+        const skip = (page - 1) * limit;
+        const [data, total] = await Promise.all([
+            this.prisma.dealerKyc.findMany({
+                skip,
+                take: limit,
+                include: {
+                    dealerProfile: {
+                        include: {
+                            user: { select: { id: true, email: true, firstName: true, lastName: true, phone: true } },
+                        },
+                    },
+                },
+                orderBy: { submittedAt: 'desc' },
+            }),
+            this.prisma.dealerKyc.count(),
+        ]);
+        return { data, total };
     }
 
     async reviewKyc(kycId: string, dto: ReviewKycDto) {

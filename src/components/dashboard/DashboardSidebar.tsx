@@ -152,6 +152,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/dashboard/admin/transactions", label: "Transactions", icon: Receipt },
             { href: "/dashboard/admin/analytics", label: "Analytics", icon: TrendingUp },
             { href: "/dashboard/admin/dealer-verification", label: "Dealer KYC", icon: Shield },
+            { href: "/dashboard/admin/dealers", label: "All Dealers", icon: Building2 },
             { href: "/dashboard/admin/marketing-popup", label: "Marketing Popup", icon: Megaphone },
         ]
     }
