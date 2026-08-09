@@ -24,6 +24,7 @@ import { BODY_TYPE_ICONS, BODY_TYPE_LABELS as SIDEBAR_BODY_TYPE_LABELS, BODY_TYP
 import { CAR_MAKES, getModelsForMake } from "@/lib/carData"
 import { useLocation } from "@/context/LocationContext"
 import { haversineDistanceMiles } from "@/lib/distance"
+import { useAnalytics } from "@/hooks/useAnalytics"
 import type { VehicleConditionValue, EuroStandardValue } from "@/lib/listingApi"
 import {
     getActiveAuctions, getScheduledAuctions, getCurrentBid,
@@ -607,7 +608,17 @@ export default function AuctionsPage() {
     const [lastRefresh, setLastRefresh] = React.useState(Date.now())
 
     const { location: userLocation, setPostcode } = useLocation()
+    const { trackEvent } = useAnalytics()
     const [detectingLocation, setDetectingLocation] = React.useState(false)
+
+    // Debounced search tracking — the search box filters live with no submit
+    // button, so log a 'search' analytics event only once typing settles.
+    React.useEffect(() => {
+        const q = search.trim()
+        if (!q) return
+        const timer = setTimeout(() => trackEvent('search', { query: q }), 800)
+        return () => clearTimeout(timer)
+    }, [search, trackEvent])
 
     // Filters — draft (`filters`, edited in the sidebar) vs `appliedFilters`
     // (committed on "Apply Filters", same two-stage pattern as /search)

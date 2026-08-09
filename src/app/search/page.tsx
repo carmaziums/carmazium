@@ -16,6 +16,7 @@ import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/
 import { useLocation } from "@/context/LocationContext"
 import { haversineDistanceMiles } from "@/lib/distance"
 import { CAR_MAKES, getModelsForMake } from "@/lib/carData"
+import { useAnalytics } from "@/hooks/useAnalytics"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -202,6 +203,7 @@ function SearchPageContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const { location: userLocation, setPostcode } = useLocation()
+    const { trackEvent } = useAnalytics()
     const [isFilterOpen, setIsFilterOpen] = React.useState(false)
     const [detectingLocation, setDetectingLocation] = React.useState(false)
     const [listings, setListings] = React.useState<Listing[]>([])
@@ -448,8 +450,9 @@ function SearchPageContent() {
             setFilters(fromUrl)
             setAppliedFilters(fromUrl)
             fetchListings(fromUrl)
+            if (fromUrl.search.trim()) trackEvent('search', { query: fromUrl.search.trim() })
         }
-    }, [currentQs, hydrateFromUrl, fetchListings])
+    }, [currentQs, hydrateFromUrl, fetchListings, trackEvent])
 
     // (Initial mount fetch relies on didInitialHydrate inside the main effect above)
 
@@ -487,6 +490,7 @@ function SearchPageContent() {
         setAppliedFilters(updated)
         fetchListings(updated)
         pushFiltersToUrl(updated)
+        if (updated.search.trim()) trackEvent('search', { query: updated.search.trim() })
     }
     const handleSortChange = (value: string) => {
         const updated = { ...appliedFilters, sortBy: value }
