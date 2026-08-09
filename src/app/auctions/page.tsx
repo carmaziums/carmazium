@@ -11,13 +11,20 @@ import {
     BadgeCheck, ShieldCheck, Star, Truck,
     ArrowRight, ChevronDown, FileText, Lock, Handshake, Banknote,
     Eye, TrendingUp, CreditCard, Box, Filter,
+    X, Loader2, RotateCcw, EyeOff,
 } from "lucide-react"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
 import { CardImageCarousel } from "@/components/features/CardImageCarousel"
 import { WishlistButton } from "@/components/features/WishlistButton"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
 import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS } from "@/lib/vehicleLabels"
+import { BODY_TYPE_ICONS, BODY_TYPE_LABELS as SIDEBAR_BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
+import { CAR_MAKES, getModelsForMake } from "@/lib/carData"
+import { useLocation } from "@/context/LocationContext"
+import { haversineDistanceMiles } from "@/lib/distance"
+import type { VehicleConditionValue, EuroStandardValue } from "@/lib/listingApi"
 import {
     getActiveAuctions, getScheduledAuctions, getCurrentBid,
     getBidCount, isAntiSnipeActive, type Auction,
@@ -32,6 +39,138 @@ const SORT_LABELS: Record<SortOption, string> = {
     newest: "Newest Listed",
     price_low: "Price: Low to High",
     price_high: "Price: High to Low",
+}
+
+const TRANSMISSION_LABELS: Record<string, string> = {
+    MANUAL: 'Manual', AUTOMATIC: 'Automatic', SEMI_AUTOMATIC: 'Semi-Automatic', CVT: 'CVT',
+}
+
+const CONDITION_OPTIONS: { value: VehicleConditionValue; label: string }[] = [
+    { value: 'EXCELLENT', label: 'Excellent' },
+    { value: 'GOOD', label: 'Good' },
+    { value: 'FAIR', label: 'Fair' },
+    { value: 'POOR', label: 'Poor' },
+    { value: 'CAT_S', label: 'CAT S (write-off)' },
+    { value: 'CAT_N', label: 'CAT N (write-off)' },
+    { value: 'CAT_C', label: 'CAT C (write-off)' },
+    { value: 'CAT_D', label: 'CAT D (write-off)' },
+]
+
+const EURO_OPTIONS: { value: EuroStandardValue; label: string }[] = [
+    { value: 'EURO_4', label: 'Euro 4' },
+    { value: 'EURO_5', label: 'Euro 5' },
+    { value: 'EURO_6', label: 'Euro 6' },
+    { value: 'EURO_6D', label: 'Euro 6d' },
+]
+
+const POPULAR_FEATURES = [
+    'Air Conditioning', 'Climate Control', 'Alloy Wheels',
+    'Parking Sensors (Front)', 'Parking Sensors (Rear)', 'Reverse Camera',
+    'Sat Nav', 'Bluetooth / Hands Free', 'DAB Radio',
+    'Heated Seats', 'Cruise Control', 'Panoramic Roof',
+    'Apple CarPlay', 'Android Auto', 'Keyless Entry',
+    'Lane Assist', 'Blind Spot Monitoring', 'Adaptive Cruise Control',
+] as const
+
+const DISTANCE_CHIPS = [10, 25, 50, 100, 200] as const
+
+const CURRENT_YEAR = new Date().getFullYear()
+
+// ─── Filter State ─────────────────────────────────────────────────────────────
+
+interface FilterState {
+    vehicleType: string
+    make: string
+    model: string
+    bodyType: string
+    minPrice: string
+    maxPrice: string
+    minYear: string
+    maxYear: string
+    minMileage: string
+    maxMileage: string
+    fuelTypes: string[]
+    transmissions: string[]
+    color: string
+    minDoors: string
+    minSeats: string
+    minEngine: string
+    maxEngine: string
+    maxCo2: string
+    conditions: VehicleConditionValue[]
+    ulezCompliant: 'yes' | 'no' | ''
+    euroStandard: EuroStandardValue | ''
+    minBhp: string
+    maxBhp: string
+    features: string[]
+    location: string
+    maxDistanceMi: number | null
+    sellerType: 'PRIVATE' | 'DEALER' | ''
+    deliveryAvailable: boolean
+    isImported: 'yes' | 'no' | ''
+    sortBy: SortOption
+}
+
+const INITIAL_FILTERS: FilterState = {
+    vehicleType: 'CAR', make: '', model: '', bodyType: '',
+    minPrice: '', maxPrice: '',
+    minYear: '', maxYear: '',
+    minMileage: '', maxMileage: '',
+    fuelTypes: [], transmissions: [],
+    color: '', minDoors: '', minSeats: '',
+    minEngine: '', maxEngine: '', maxCo2: '',
+    conditions: [], ulezCompliant: '', euroStandard: '',
+    minBhp: '', maxBhp: '',
+    features: [], location: '', maxDistanceMi: null,
+    sellerType: '', deliveryAvailable: false, isImported: '',
+    sortBy: 'ending_soon',
+}
+
+// ─── Collapsible Section ──────────────────────────────────────────────────────
+
+function FilterSection({ title, children, defaultOpen = false }: {
+    title: string; children: React.ReactNode; defaultOpen?: boolean
+}) {
+    const [open, setOpen] = React.useState(defaultOpen)
+    return (
+        <div className="border-b border-[var(--border-default)] pb-4">
+            <button type="button" onClick={() => setOpen(!open)}
+                className="w-full flex items-center justify-between text-sm font-bold uppercase text-[var(--text-muted)] tracking-wide hover:text-[var(--text-secondary)] transition-colors cursor-pointer py-1"
+            >
+                {title}
+                <ChevronDown size={16} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+            </button>
+            {open && <div className="mt-3">{children}</div>}
+        </div>
+    )
+}
+
+// ─── Range Pair Input ─────────────────────────────────────────────────────────
+
+function RangeInputs({ minVal, maxVal, onMinChange, onMaxChange, minPlaceholder = 'Min', maxPlaceholder = 'Max' }: {
+    minVal: string; maxVal: string
+    onMinChange: (v: string) => void; onMaxChange: (v: string) => void
+    minPlaceholder?: string; maxPlaceholder?: string
+}) {
+    return (
+        <div className="flex gap-2">
+            <Input type="number" placeholder={minPlaceholder} value={minVal}
+                onChange={(e) => onMinChange(e.target.value)}
+                className="h-9 text-sm" />
+            <Input type="number" placeholder={maxPlaceholder} value={maxVal}
+                onChange={(e) => onMaxChange(e.target.value)}
+                className="h-9 text-sm" />
+        </div>
+    )
+}
+
+function FilterTag({ label, onRemove }: { label: string; onRemove: () => void }) {
+    return (
+        <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
+            {label}
+            <button onClick={onRemove} className="ml-1 hover:opacity-60 cursor-pointer"><X size={12} /></button>
+        </span>
+    )
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -467,14 +606,17 @@ export default function AuctionsPage() {
     const [search, setSearch] = React.useState("")
     const [lastRefresh, setLastRefresh] = React.useState(Date.now())
 
-    // Filters
-    const [showFilters, setShowFilters] = React.useState(false)
-    const [makeFilter, setMakeFilter] = React.useState("")
-    const [bodyTypeFilter, setBodyTypeFilter] = React.useState("")
-    const [fuelTypeFilter, setFuelTypeFilter] = React.useState("")
-    const [minPrice, setMinPrice] = React.useState("")
-    const [maxPrice, setMaxPrice] = React.useState("")
-    const [sortBy, setSortBy] = React.useState<SortOption>("ending_soon")
+    const { location: userLocation, setPostcode } = useLocation()
+    const [detectingLocation, setDetectingLocation] = React.useState(false)
+
+    // Filters — draft (`filters`, edited in the sidebar) vs `appliedFilters`
+    // (committed on "Apply Filters", same two-stage pattern as /search)
+    const [isFilterOpen, setIsFilterOpen] = React.useState(false)
+    const [filters, setFilters] = React.useState<FilterState>(INITIAL_FILTERS)
+    const [appliedFilters, setAppliedFilters] = React.useState<FilterState>(INITIAL_FILTERS)
+
+    const set = <K extends keyof FilterState>(key: K, val: FilterState[K]) =>
+        setFilters(prev => ({ ...prev, [key]: val }))
 
     const load = React.useCallback(async () => {
         try {
@@ -495,44 +637,132 @@ export default function AuctionsPage() {
 
     const sourceAuctions = activeTab === "live" ? liveAuctions : scheduledAuctions
 
-    // Distinct make list, sorted, for the filter dropdown — pulled from whichever
-    // tab is active so options never show a make with zero results in this tab.
-    const availableMakes = React.useMemo(() => {
-        const makes = new Set<string>()
-        sourceAuctions.forEach(a => { if (a.listing.make) makes.add(a.listing.make) })
-        return Array.from(makes).sort()
-    }, [sourceAuctions])
-
-    const activeFilterCount = [makeFilter, bodyTypeFilter, fuelTypeFilter, minPrice, maxPrice].filter(Boolean).length
-
-    function clearFilters() {
-        setMakeFilter("")
-        setBodyTypeFilter("")
-        setFuelTypeFilter("")
-        setMinPrice("")
-        setMaxPrice("")
+    const handleDetectLocation = async () => {
+        if (!navigator?.geolocation) return
+        setDetectingLocation(true)
+        try {
+            const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+                navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 })
+            )
+            const { latitude, longitude } = pos.coords
+            const resp = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+            )
+            const data = await resp.json()
+            const city = data.address?.city || data.address?.town || data.address?.village || data.address?.county || ''
+            if (city) set('location', city)
+        } catch {
+            // silently ignore — user may have denied permission
+        } finally {
+            setDetectingLocation(false)
+        }
     }
 
-    const displayed = sourceAuctions
-        .filter(a => {
+    const activeFilterCount = React.useMemo(() => {
+        let count = 0
+        if (appliedFilters.vehicleType && appliedFilters.vehicleType !== 'CAR') count++
+        if (appliedFilters.make) count++
+        if (appliedFilters.model) count++
+        if (appliedFilters.bodyType) count++
+        if (appliedFilters.minPrice || appliedFilters.maxPrice) count++
+        if (appliedFilters.minYear || appliedFilters.maxYear) count++
+        if (appliedFilters.minMileage || appliedFilters.maxMileage) count++
+        if (appliedFilters.fuelTypes.length) count++
+        if (appliedFilters.transmissions.length) count++
+        if (appliedFilters.color) count++
+        if (appliedFilters.minDoors) count++
+        if (appliedFilters.minSeats) count++
+        if (appliedFilters.minEngine || appliedFilters.maxEngine) count++
+        if (appliedFilters.maxCo2) count++
+        if (appliedFilters.conditions.length) count++
+        if (appliedFilters.ulezCompliant) count++
+        if (appliedFilters.euroStandard) count++
+        if (appliedFilters.minBhp || appliedFilters.maxBhp) count++
+        if (appliedFilters.features.length) count++
+        if (appliedFilters.location) count++
+        if (appliedFilters.maxDistanceMi) count++
+        if (appliedFilters.sellerType) count++
+        if (appliedFilters.deliveryAvailable) count++
+        if (appliedFilters.isImported) count++
+        return count
+    }, [appliedFilters])
+
+    const handleApplyFilters = () => {
+        setAppliedFilters({ ...filters })
+        setIsFilterOpen(false)
+    }
+    const handleResetFilters = () => {
+        setFilters(INITIAL_FILTERS)
+        setAppliedFilters(INITIAL_FILTERS)
+    }
+    const handleSortChange = (value: SortOption) => {
+        setFilters(prev => ({ ...prev, sortBy: value }))
+        setAppliedFilters(prev => ({ ...prev, sortBy: value }))
+    }
+    const toggleFuelType = (f: string) => setFilters(prev => ({ ...prev, fuelTypes: prev.fuelTypes.includes(f) ? prev.fuelTypes.filter(x => x !== f) : [...prev.fuelTypes, f] }))
+    const toggleTransmission = (t: string) => setFilters(prev => ({ ...prev, transmissions: prev.transmissions.includes(t) ? prev.transmissions.filter(x => x !== t) : [...prev.transmissions, t] }))
+    const clearFilter = (patch: Partial<FilterState>) => {
+        const u = { ...appliedFilters, ...patch }
+        setFilters(u); setAppliedFilters(u)
+    }
+
+    const displayed = React.useMemo(() => {
+        let filtered = sourceAuctions.filter(a => {
+            const l = a.listing
             if (search) {
                 const q = search.toLowerCase()
                 const matchesSearch =
-                    a.listing.title.toLowerCase().includes(q) ||
-                    (a.listing.make ?? "").toLowerCase().includes(q) ||
-                    (a.listing.model ?? "").toLowerCase().includes(q)
+                    l.title.toLowerCase().includes(q) ||
+                    (l.make ?? "").toLowerCase().includes(q) ||
+                    (l.model ?? "").toLowerCase().includes(q)
                 if (!matchesSearch) return false
             }
-            if (makeFilter && a.listing.make !== makeFilter) return false
-            if (bodyTypeFilter && a.listing.bodyType !== bodyTypeFilter) return false
-            if (fuelTypeFilter && a.listing.fuelType !== fuelTypeFilter) return false
+            if (appliedFilters.vehicleType && l.vehicleType && l.vehicleType !== appliedFilters.vehicleType) return false
+            if (appliedFilters.make && l.make !== appliedFilters.make) return false
+            if (appliedFilters.model && l.model !== appliedFilters.model) return false
+            if (appliedFilters.bodyType && l.bodyType !== appliedFilters.bodyType) return false
             const price = getCurrentBid(a)
-            if (minPrice && price < Number(minPrice)) return false
-            if (maxPrice && price > Number(maxPrice)) return false
+            if (appliedFilters.minPrice && price < Number(appliedFilters.minPrice)) return false
+            if (appliedFilters.maxPrice && price > Number(appliedFilters.maxPrice)) return false
+            if (appliedFilters.minYear && (!l.year || l.year < Number(appliedFilters.minYear))) return false
+            if (appliedFilters.maxYear && (!l.year || l.year > Number(appliedFilters.maxYear))) return false
+            if (appliedFilters.minMileage && (l.mileage == null || l.mileage < Number(appliedFilters.minMileage))) return false
+            if (appliedFilters.maxMileage && (l.mileage == null || l.mileage > Number(appliedFilters.maxMileage))) return false
+            if (appliedFilters.fuelTypes.length && (!l.fuelType || !appliedFilters.fuelTypes.includes(l.fuelType))) return false
+            if (appliedFilters.transmissions.length && (!l.transmission || !appliedFilters.transmissions.includes(l.transmission))) return false
+            if (appliedFilters.color && !(l.color ?? '').toLowerCase().includes(appliedFilters.color.toLowerCase())) return false
+            if (appliedFilters.minDoors && (l.doors == null || l.doors < Number(appliedFilters.minDoors))) return false
+            if (appliedFilters.minSeats && (l.seats == null || l.seats < Number(appliedFilters.minSeats))) return false
+            if (appliedFilters.minEngine && (l.engineSize == null || l.engineSize < Number(appliedFilters.minEngine))) return false
+            if (appliedFilters.maxEngine && (l.engineSize == null || l.engineSize > Number(appliedFilters.maxEngine))) return false
+            if (appliedFilters.maxCo2 && (l.co2Emissions == null || l.co2Emissions > Number(appliedFilters.maxCo2))) return false
+            if (appliedFilters.conditions.length && (!l.condition || !appliedFilters.conditions.includes(l.condition as VehicleConditionValue))) return false
+            if (appliedFilters.ulezCompliant && (l.ulezCompliant == null || (appliedFilters.ulezCompliant === 'yes') !== l.ulezCompliant)) return false
+            if (appliedFilters.euroStandard && l.euroStandard !== appliedFilters.euroStandard) return false
+            if (appliedFilters.minBhp && (l.bhp == null || l.bhp < Number(appliedFilters.minBhp))) return false
+            if (appliedFilters.maxBhp && (l.bhp == null || l.bhp > Number(appliedFilters.maxBhp))) return false
+            if (appliedFilters.features.length && !appliedFilters.features.every(f => (l.features ?? []).includes(f))) return false
+            if (appliedFilters.location && !(l.location ?? '').toLowerCase().includes(appliedFilters.location.toLowerCase())) return false
+            if (appliedFilters.sellerType) {
+                const isDealer = !!l.seller?.dealerProfile
+                if (appliedFilters.sellerType === 'DEALER' && !isDealer) return false
+                if (appliedFilters.sellerType === 'PRIVATE' && isDealer) return false
+            }
+            if (appliedFilters.deliveryAvailable && !l.deliveryAvailable) return false
+            if (appliedFilters.isImported === 'yes' && !l.isImported) return false
+            if (appliedFilters.isImported === 'no' && l.isImported) return false
             return true
         })
-        .sort((a, b) => {
-            switch (sortBy) {
+
+        if (appliedFilters.maxDistanceMi && userLocation?.lat && userLocation?.lng) {
+            filtered = filtered.filter(a =>
+                a.listing.latitude != null && a.listing.longitude != null &&
+                haversineDistanceMiles(userLocation.lat!, userLocation.lng!, a.listing.latitude, a.listing.longitude) <= appliedFilters.maxDistanceMi!
+            )
+        }
+
+        return filtered.sort((a, b) => {
+            switch (appliedFilters.sortBy) {
                 case "price_low": return getCurrentBid(a) - getCurrentBid(b)
                 case "price_high": return getCurrentBid(b) - getCurrentBid(a)
                 case "newest": return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -541,6 +771,7 @@ export default function AuctionsPage() {
                     return new Date(a.endTime).getTime() - new Date(b.endTime).getTime()
             }
         })
+    }, [sourceAuctions, search, appliedFilters, userLocation])
 
     return (
         <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
@@ -680,9 +911,9 @@ export default function AuctionsPage() {
                             />
                         </div>
                         <button
-                            onClick={() => setShowFilters(v => !v)}
+                            onClick={() => setIsFilterOpen(v => !v)}
                             className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all ${
-                                showFilters || activeFilterCount > 0
+                                isFilterOpen || activeFilterCount > 0
                                     ? "border-primary/40 text-primary bg-primary/10"
                                     : "border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:border-primary/30"
                             }`}
@@ -702,148 +933,563 @@ export default function AuctionsPage() {
                         </button>
                     </div>
                 </div>
-
-                {/* ── Expandable filter panel ─────────────────────────────────── */}
-                <AnimatePresence>
-                    {showFilters && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="border-t border-[var(--border-default)] overflow-hidden"
-                        >
-                            <div className="container mx-auto px-4 md:px-6 py-4 flex flex-wrap items-end gap-3">
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Make</label>
-                                    <select
-                                        value={makeFilter}
-                                        onChange={e => setMakeFilter(e.target.value)}
-                                        className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-3 py-2 text-xs min-w-[140px] focus:outline-none focus:border-primary/40"
-                                    >
-                                        <option value="">All Makes</option>
-                                        {availableMakes.map(m => <option key={m} value={m}>{m}</option>)}
-                                    </select>
-                                </div>
-
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Body Type</label>
-                                    <select
-                                        value={bodyTypeFilter}
-                                        onChange={e => setBodyTypeFilter(e.target.value)}
-                                        className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-3 py-2 text-xs min-w-[140px] focus:outline-none focus:border-primary/40"
-                                    >
-                                        <option value="">All Body Types</option>
-                                        {Object.entries(BODY_TYPE_LABELS).map(([value, label]) => (
-                                            <option key={value} value={value}>{label}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Fuel Type</label>
-                                    <select
-                                        value={fuelTypeFilter}
-                                        onChange={e => setFuelTypeFilter(e.target.value)}
-                                        className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-3 py-2 text-xs min-w-[140px] focus:outline-none focus:border-primary/40"
-                                    >
-                                        <option value="">All Fuel Types</option>
-                                        {Object.entries(FUEL_TYPE_LABELS).map(([value, label]) => (
-                                            <option key={value} value={value}>{label}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Current Bid Range</label>
-                                    <div className="flex items-center gap-1.5">
-                                        <input
-                                            type="number"
-                                            inputMode="numeric"
-                                            value={minPrice}
-                                            onChange={e => setMinPrice(e.target.value)}
-                                            placeholder="Min £"
-                                            className="w-24 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-3 py-2 text-xs placeholder-[var(--text-muted)] focus:outline-none focus:border-primary/40"
-                                        />
-                                        <span className="text-[var(--text-muted)] text-xs">–</span>
-                                        <input
-                                            type="number"
-                                            inputMode="numeric"
-                                            value={maxPrice}
-                                            onChange={e => setMaxPrice(e.target.value)}
-                                            placeholder="Max £"
-                                            className="w-24 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-3 py-2 text-xs placeholder-[var(--text-muted)] focus:outline-none focus:border-primary/40"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Sort By</label>
-                                    <select
-                                        value={sortBy}
-                                        onChange={e => setSortBy(e.target.value as SortOption)}
-                                        className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-3 py-2 text-xs min-w-[160px] focus:outline-none focus:border-primary/40"
-                                    >
-                                        {(Object.keys(SORT_LABELS) as SortOption[]).map(opt => (
-                                            <option key={opt} value={opt}>{SORT_LABELS[opt]}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                {activeFilterCount > 0 && (
-                                    <button
-                                        onClick={clearFilters}
-                                        className="text-xs font-bold text-primary hover:underline pb-2"
-                                    >
-                                        Clear filters
-                                    </button>
-                                )}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
             </div>
 
             {/* ── Auction Grid ──────────────────────────────────────────────── */}
-            <div className="container mx-auto px-6 py-10">
-                {error && (
-                    <div className="text-center py-16 space-y-3">
-                        <p className="text-red-400 text-sm">{error}</p>
-                        <button onClick={load} className="text-primary underline text-xs">Try again</button>
-                    </div>
+            <div className="container mx-auto px-5 py-8 flex flex-col lg:flex-row gap-8">
+
+                {/* ── Sidebar Overlay (Mobile) ── */}
+                {isFilterOpen && (
+                    <div
+                        className="fixed inset-0 z-[55] bg-slate-950/80 backdrop-blur-sm lg:hidden transition-opacity"
+                        onClick={() => setIsFilterOpen(false)}
+                    />
                 )}
 
-                {loading && !error && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
-                    </div>
-                )}
-
-                {!loading && !error && (
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={activeTab}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.15 }}
-                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
-                        >
-                            {displayed.length === 0 ? (
-                                <EmptyState tab={activeTab} />
-                            ) : (
-                                displayed.map((auction, i) => (
-                                    <AuctionCard key={auction.id} auction={auction} index={i} />
-                                ))
+                {/* ── Sidebar ──────────────────────────────────────────────────── */}
+                <aside className={`
+                    fixed inset-x-0 bottom-0 z-[60] lg:z-10 flex flex-col h-[85vh] bg-[var(--bg-dropdown)] border-t border-[var(--border-default)] rounded-t-3xl shadow-2xl transition-transform duration-300
+                    lg:static lg:w-72 lg:flex-shrink-0 lg:glass-card lg:border lg:rounded-2xl lg:shadow-none lg:translate-y-0 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:flex lg:flex-col lg:overflow-visible lg:p-0
+                    ${isFilterOpen ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'}
+                `}>
+                    <div className="flex justify-between items-center p-6 pb-4 border-b border-[var(--border-default)] lg:px-6 lg:pt-6 lg:pb-4 lg:border-b lg:border-[var(--border-default)] shrink-0">
+                        <h3 className="font-heading font-bold text-xl">Filters</h3>
+                        <div className="flex items-center gap-4">
+                            {activeFilterCount > 0 && (
+                                <button onClick={handleResetFilters} className="text-xs text-primary font-normal cursor-pointer hover:underline flex items-center gap-1">
+                                    <RotateCcw size={12} /> Reset All
+                                </button>
                             )}
-                        </motion.div>
-                    </AnimatePresence>
-                )}
+                            <button
+                                onClick={() => setIsFilterOpen(false)}
+                                className="lg:hidden text-[var(--text-muted)] hover:text-primary dark:hover:text-white bg-[var(--bg-card)] w-8 h-8 rounded-full flex items-center justify-center"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                    </div>
 
-                {!loading && (
-                    <p className="text-center text-[var(--text-muted)] text-[10px] mt-8 font-mono">
-                        Updated {new Date(lastRefresh).toLocaleTimeString("en-GB")}
-                    </p>
-                )}
+                    <div className="px-6 py-4 overflow-y-auto flex-1 scrollbar-hide">
+                        <div className="space-y-4">
+                            {/* Vehicle Category */}
+                            <div className="pb-4 border-b border-[var(--border-default)]">
+                                <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3">Vehicle Category</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[
+                                        { value: 'CAR', label: '🚗 Cars' },
+                                        { value: 'MOTORCYCLE', label: '🏍 Bikes' },
+                                        { value: 'HGV', label: '🚛 HGV' },
+                                    ].map((opt) => {
+                                        const active = filters.vehicleType === opt.value
+                                        return (
+                                            <button key={opt.value} type="button"
+                                                onClick={() => setFilters(prev => ({ ...prev, vehicleType: opt.value }))}
+                                                className={`py-2.5 rounded-lg border text-sm font-semibold transition-all text-center ${
+                                                    active
+                                                        ? 'border-primary bg-primary/10 text-primary shadow-[0_0_12px_rgba(237,28,36,0.15)]'
+                                                        : 'border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30 hover:text-[var(--text-secondary)]'
+                                                }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Body Type — hidden for motorcycles */}
+                            {filters.vehicleType !== 'MOTORCYCLE' && (
+                            <FilterSection title="Body Type">
+                                <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
+                                    {BODY_TYPE_KEYS.map((key) => {
+                                        const Icon = BODY_TYPE_ICONS[key]
+                                        const isActive = filters.bodyType === key
+                                        return (
+                                            <button key={key} type="button"
+                                                onClick={() => set('bodyType', filters.bodyType === key ? '' : key)}
+                                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)] dark:hover:text-white border border-transparent'}`}
+                                            >
+                                                <Icon className="w-8 h-4 shrink-0" />{SIDEBAR_BODY_TYPE_LABELS[key]}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </FilterSection>
+                            )}
+
+                            {/* Make & Model */}
+                            <FilterSection title="Make / Model" defaultOpen={true}>
+                                <div className="space-y-2">
+                                    <div className="relative">
+                                        <input
+                                            list="auction-make-options"
+                                            placeholder="Make (e.g. BMW)"
+                                            value={filters.make}
+                                            onChange={(e) => {
+                                                set('make', e.target.value)
+                                                set('model', '')
+                                            }}
+                                            className="h-9 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none"
+                                        />
+                                        <datalist id="auction-make-options">
+                                            {CAR_MAKES.map(m => <option key={m} value={m} />)}
+                                        </datalist>
+                                    </div>
+                                    {(() => {
+                                        const models = getModelsForMake(filters.make)
+                                        return models.length > 0 ? (
+                                            <div className="max-h-44 overflow-y-auto rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] space-y-0.5 p-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => set('model', '')}
+                                                    className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${!filters.model ? 'bg-primary/15 text-primary font-semibold' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)] dark:hover:text-white'}`}
+                                                >
+                                                    All {filters.make} models
+                                                </button>
+                                                {models.map(m => (
+                                                    <button
+                                                        key={m}
+                                                        type="button"
+                                                        onClick={() => set('model', m)}
+                                                        className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${filters.model === m ? 'bg-primary/15 text-primary font-semibold' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)] dark:hover:text-white'}`}
+                                                    >
+                                                        {m}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <Input
+                                                placeholder="Model (e.g. M4)"
+                                                value={filters.model}
+                                                onChange={(e) => set('model', e.target.value)}
+                                                className="h-9 text-sm bg-[var(--bg-input)] border-[var(--border-default)] placeholder:text-[var(--text-muted)]"
+                                            />
+                                        )
+                                    })()}
+                                </div>
+                            </FilterSection>
+
+                            {/* Current Bid Range */}
+                            <FilterSection title="Current Bid (£)" defaultOpen={true}>
+                                <RangeInputs minVal={filters.minPrice} maxVal={filters.maxPrice}
+                                    onMinChange={(v) => set('minPrice', v)} onMaxChange={(v) => set('maxPrice', v)}
+                                    minPlaceholder="Min £" maxPlaceholder="Max £" />
+                            </FilterSection>
+
+                            {/* Year Range */}
+                            <FilterSection title="Year">
+                                <RangeInputs minVal={filters.minYear} maxVal={filters.maxYear}
+                                    onMinChange={(v) => set('minYear', v)} onMaxChange={(v) => set('maxYear', v)}
+                                    minPlaceholder="From" maxPlaceholder={`${CURRENT_YEAR}`} />
+                            </FilterSection>
+
+                            {/* Mileage Range */}
+                            <FilterSection title="Mileage (miles)">
+                                <RangeInputs minVal={filters.minMileage} maxVal={filters.maxMileage}
+                                    onMinChange={(v) => set('minMileage', v)} onMaxChange={(v) => set('maxMileage', v)}
+                                    minPlaceholder="Min" maxPlaceholder="Max" />
+                            </FilterSection>
+
+                            {/* Fuel Type */}
+                            <FilterSection title="Fuel Type">
+                                <div className="space-y-2">
+                                    {Object.entries(FUEL_TYPE_LABELS).map(([value, label]) => (
+                                        <label key={value} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer hover:text-primary transition-colors">
+                                            <input type="checkbox" checked={filters.fuelTypes.includes(value)} onChange={() => toggleFuelType(value)}
+                                                className="accent-primary rounded w-4 h-4 bg-[var(--bg-input)] border-[var(--border-default)]" />
+                                            {label}
+                                        </label>
+                                    ))}
+                                </div>
+                            </FilterSection>
+
+                            {/* Transmission */}
+                            <FilterSection title="Transmission">
+                                <div className="space-y-2">
+                                    {Object.entries(TRANSMISSION_LABELS).map(([value, label]) => (
+                                        <label key={value} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer hover:text-primary transition-colors">
+                                            <input type="checkbox" checked={filters.transmissions.includes(value)} onChange={() => toggleTransmission(value)}
+                                                className="accent-primary rounded w-4 h-4 bg-[var(--bg-input)] border-[var(--border-default)]" />
+                                            {label}
+                                        </label>
+                                    ))}
+                                </div>
+                            </FilterSection>
+
+                            {/* Colour */}
+                            <FilterSection title="Colour">
+                                <Input placeholder="e.g. White, Black, Blue" value={filters.color}
+                                    onChange={(e) => set('color', e.target.value)}
+                                    className="h-9 text-sm bg-[var(--bg-input)] border-[var(--border-default)] placeholder:text-[var(--text-muted)]" />
+                            </FilterSection>
+
+                            {/* Doors */}
+                            <FilterSection title="Doors">
+                                <div className="flex gap-2">
+                                    {['2', '3', '4', '5'].map(d => (
+                                        <button key={d} type="button"
+                                            onClick={() => set('minDoors', filters.minDoors === d ? '' : d)}
+                                            className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-all cursor-pointer ${filters.minDoors === d ? 'border-primary bg-primary/15 text-primary' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
+                                        >{d}+</button>
+                                    ))}
+                                </div>
+                            </FilterSection>
+
+                            {/* Seats */}
+                            <FilterSection title="Seats">
+                                <div className="flex gap-2">
+                                    {['2', '4', '5', '7'].map(s => (
+                                        <button key={s} type="button"
+                                            onClick={() => set('minSeats', filters.minSeats === s ? '' : s)}
+                                            className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-all cursor-pointer ${filters.minSeats === s ? 'border-primary bg-primary/15 text-primary' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
+                                        >{s}+</button>
+                                    ))}
+                                </div>
+                            </FilterSection>
+
+                            {/* Engine Size */}
+                            <FilterSection title="Engine Size (cc)">
+                                <RangeInputs minVal={filters.minEngine} maxVal={filters.maxEngine}
+                                    onMinChange={(v) => set('minEngine', v)} onMaxChange={(v) => set('maxEngine', v)}
+                                    minPlaceholder="Min cc" maxPlaceholder="Max cc" />
+                            </FilterSection>
+
+                            {/* CO₂ Emissions */}
+                            <FilterSection title="CO₂ (g/km)">
+                                <div className="space-y-2">
+                                    <Input placeholder="Max g/km" type="number" value={filters.maxCo2}
+                                        onChange={(e) => set('maxCo2', e.target.value)}
+                                        className="h-9 text-sm bg-[var(--bg-input)] border-[var(--border-default)] placeholder:text-[var(--text-muted)]" />
+                                    <div className="flex gap-2">
+                                        {['100', '120', '150', '200'].map(v => (
+                                            <button key={v} type="button"
+                                                onClick={() => set('maxCo2', filters.maxCo2 === v ? '' : v)}
+                                                className={`flex-1 py-1.5 rounded-md border text-xs font-semibold transition-all cursor-pointer ${filters.maxCo2 === v ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
+                                            >≤{v}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </FilterSection>
+
+                            {/* Condition */}
+                            <FilterSection title="Condition">
+                                <div className="space-y-1">
+                                    {CONDITION_OPTIONS.map(opt => {
+                                        const isActive = filters.conditions.includes(opt.value)
+                                        const isCat = opt.value.startsWith('CAT')
+                                        return (
+                                            <button key={opt.value} type="button"
+                                                onClick={() => set('conditions', isActive
+                                                    ? filters.conditions.filter(c => c !== opt.value)
+                                                    : [...filters.conditions, opt.value]
+                                                )}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all cursor-pointer flex items-center gap-2 ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : isCat ? 'text-amber-500/70 hover:bg-amber-500/10 border border-transparent' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)] dark:hover:text-white border border-transparent'}`}
+                                            >
+                                                <span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center ${isActive ? 'bg-primary border-primary' : 'border-white/20'}`}>
+                                                    {isActive && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                                                </span>
+                                                {opt.label}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </FilterSection>
+
+                            {/* UK Compliance */}
+                            <FilterSection title="UK Compliance">
+                                <div className="space-y-3">
+                                    <div>
+                                        <p className="text-xs text-[var(--text-muted)] mb-1.5 flex items-center gap-1"><ShieldCheck size={11} /> ULEZ / CAZ</p>
+                                        <div className="flex gap-2">
+                                            {(['yes', 'no', ''] as const).map((v) => (
+                                                <button key={v} type="button"
+                                                    onClick={() => set('ulezCompliant', v)}
+                                                    className={`flex-1 py-1.5 rounded-md border text-xs font-semibold transition-all ${filters.ulezCompliant === v && v !== '' ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300' : v === '' ? filters.ulezCompliant === '' ? 'border-primary bg-primary/10 text-primary' : 'border-[var(--border-default)] text-[var(--text-muted)]' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
+                                                >
+                                                    {v === 'yes' ? '✓ ULEZ' : v === 'no' ? '✗ Non' : 'Either'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-[var(--text-muted)] mb-1.5">Euro Standard</p>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {([{ value: '' as EuroStandardValue | '', label: 'Any' }, ...EURO_OPTIONS]).map(o => (
+                                                <button
+                                                    key={o.value}
+                                                    type="button"
+                                                    onClick={() => set('euroStandard', o.value as EuroStandardValue | '')}
+                                                    className={`px-3 py-1.5 rounded-md border text-xs font-semibold transition-all cursor-pointer ${filters.euroStandard === o.value ? 'border-primary bg-primary/15 text-primary' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30 hover:text-[var(--text-secondary)]'}`}
+                                                >
+                                                    {o.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </FilterSection>
+
+                            {/* BHP / Power */}
+                            <FilterSection title="Power (BHP)">
+                                <RangeInputs minVal={filters.minBhp} maxVal={filters.maxBhp}
+                                    onMinChange={(v) => set('minBhp', v)} onMaxChange={(v) => set('maxBhp', v)}
+                                    minPlaceholder="Min BHP" maxPlaceholder="Max BHP" />
+                            </FilterSection>
+
+                            {/* Features / Options */}
+                            <FilterSection title="Features / Options">
+                                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                                    {POPULAR_FEATURES.map(feat => (
+                                        <label key={feat} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer hover:text-primary transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked={filters.features.includes(feat)}
+                                                onChange={() => setFilters(prev => ({
+                                                    ...prev,
+                                                    features: prev.features.includes(feat)
+                                                        ? prev.features.filter(f => f !== feat)
+                                                        : [...prev.features, feat]
+                                                }))}
+                                                className="accent-primary rounded w-4 h-4 bg-[var(--bg-input)] border-[var(--border-default)]"
+                                            />
+                                            {feat}
+                                        </label>
+                                    ))}
+                                </div>
+                            </FilterSection>
+
+                            {/* Location */}
+                            <FilterSection title="Location" defaultOpen={true}>
+                                <div className="space-y-1.5">
+                                    <div className="flex gap-2">
+                                        <Input
+                                            placeholder="e.g. London, Manchester, B1…"
+                                            value={filters.location}
+                                            onChange={(e) => set('location', e.target.value)}
+                                            className="h-9 text-sm bg-[var(--bg-input)] border-[var(--border-default)] placeholder:text-[var(--text-muted)] flex-1"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleDetectLocation}
+                                            disabled={detectingLocation}
+                                            title="Use my location"
+                                            className="h-9 w-9 flex items-center justify-center rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:text-primary hover:border-primary/40 transition-colors disabled:opacity-50 shrink-0"
+                                        >
+                                            {detectingLocation
+                                                ? <Loader2 size={14} className="animate-spin" />
+                                                : <MapPin size={14} />
+                                            }
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-[var(--text-secondary)]">Matches listings by city or postcode area</p>
+                                </div>
+                            </FilterSection>
+
+                            {/* Distance */}
+                            <FilterSection title="Distance">
+                                <div className="space-y-2">
+                                    {!userLocation?.lat && (
+                                        <div className="space-y-2">
+                                            <p className="text-xs text-[var(--text-muted)]">Allow location or enter your postcode:</p>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    placeholder="e.g. M1 1AA"
+                                                    className="flex-1 bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-xs placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-primary/50"
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') setPostcode((e.target as HTMLInputElement).value)
+                                                    }}
+                                                    onBlur={(e) => { if (e.target.value) setPostcode(e.target.value) }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                    <select
+                                        value={filters.maxDistanceMi ?? ''}
+                                        onChange={(e) => set('maxDistanceMi', e.target.value === '' ? null : Number(e.target.value))}
+                                        disabled={!userLocation?.lat}
+                                        className="w-full bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-xs text-[var(--text-primary)] disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:border-primary/50"
+                                    >
+                                        <option value="">Any distance</option>
+                                        {DISTANCE_CHIPS.map(d => (
+                                            <option key={d} value={d}>Within {d} mi</option>
+                                        ))}
+                                    </select>
+                                    {userLocation?.lat && userLocation.source === 'postcode' && userLocation.postcode && (
+                                        <p className="text-[10px] text-[var(--text-secondary)]">Using: {userLocation.postcode}</p>
+                                    )}
+                                </div>
+                            </FilterSection>
+
+                            {/* Seller Type */}
+                            <FilterSection title="Seller Type">
+                                <div className="flex gap-2">
+                                    {([
+                                        { value: '' as const, label: 'All' },
+                                        { value: 'PRIVATE' as const, label: 'Private' },
+                                        { value: 'DEALER' as const, label: 'Dealer' },
+                                    ]).map(opt => (
+                                        <button key={opt.value} type="button"
+                                            onClick={() => set('sellerType', opt.value)}
+                                            className={`flex-1 py-1.5 rounded-md border text-xs font-semibold transition-all cursor-pointer ${filters.sellerType === opt.value ? 'border-primary bg-primary/15 text-primary' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
+                                        >{opt.label}</button>
+                                    ))}
+                                </div>
+                            </FilterSection>
+
+                            {/* Delivery */}
+                            <FilterSection title="Delivery">
+                                <button
+                                    type="button"
+                                    onClick={() => set('deliveryAvailable', !filters.deliveryAvailable)}
+                                    className={`flex items-center gap-2 w-full py-1.5 px-2.5 rounded-md border text-xs font-semibold transition-all ${
+                                        filters.deliveryAvailable
+                                            ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
+                                            : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'
+                                    }`}
+                                >
+                                    <Truck size={12} />
+                                    Delivery available
+                                </button>
+                            </FilterSection>
+
+                            {/* Import status */}
+                            <FilterSection title="Import">
+                                <div className="flex flex-col gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => set('isImported', filters.isImported === 'yes' ? '' : 'yes')}
+                                        className={`flex items-center gap-2 w-full py-1.5 px-2.5 rounded-md border text-xs font-semibold transition-all ${
+                                            filters.isImported === 'yes'
+                                                ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
+                                                : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'
+                                        }`}
+                                    >
+                                        Imported vehicles
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => set('isImported', filters.isImported === 'no' ? '' : 'no')}
+                                        className={`flex items-center gap-2 w-full py-1.5 px-2.5 rounded-md border text-xs font-semibold transition-all ${
+                                            filters.isImported === 'no'
+                                                ? 'border-primary/60 text-primary bg-transparent'
+                                                : 'border-dashed border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30 bg-transparent'
+                                        }`}
+                                    >
+                                        <EyeOff size={12} />
+                                        Hide imported cars
+                                    </button>
+                                </div>
+                            </FilterSection>
+                        </div>
+                    </div>
+
+                    {/* Footer — pinned Apply button (visible on both mobile and desktop) */}
+                    <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-dropdown)] shrink-0 lg:bg-transparent lg:border-[var(--border-default)]">
+                        <Button className="w-full shadow-neon py-6 text-lg lg:py-3 lg:text-sm" onClick={handleApplyFilters}>
+                            <span className="lg:hidden">Show Results</span>
+                            <span className="hidden lg:inline">Apply Filters</span>
+                        </Button>
+                    </div>
+                </aside>
+
+                {/* ── Results Column ─────────────────────────────────────────── */}
+                <div className="flex-1 min-w-0">
+                    {/* Sort Bar */}
+                    <div className="flex justify-between items-center mb-6 gap-4 flex-wrap">
+                        <p className="text-[var(--text-muted)] text-sm">
+                            {loading ? <span>Loading...</span> : <>Showing <span className="font-bold">{displayed.length}</span> of <span className="font-bold">{sourceAuctions.length}</span> {activeTab} auctions</>}
+                        </p>
+                        <select value={appliedFilters.sortBy} onChange={(e) => handleSortChange(e.target.value as SortOption)}
+                            className="bg-transparent border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm font-bold cursor-pointer outline-none hover:border-primary/30">
+                            {(Object.keys(SORT_LABELS) as SortOption[]).map(opt => (
+                                <option key={opt} value={opt} className="bg-[var(--bg-dropdown)] text-[var(--text-primary)]">{SORT_LABELS[opt]}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Active Filter Tags */}
+                    {activeFilterCount > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-6">
+                            {appliedFilters.vehicleType !== 'CAR' && <FilterTag label={appliedFilters.vehicleType} onRemove={() => clearFilter({ vehicleType: 'CAR' })} />}
+                            {appliedFilters.bodyType && <FilterTag label={SIDEBAR_BODY_TYPE_LABELS[appliedFilters.bodyType]} onRemove={() => clearFilter({ bodyType: '' })} />}
+                            {appliedFilters.make && <FilterTag label={`Make: ${appliedFilters.make}`} onRemove={() => clearFilter({ make: '' })} />}
+                            {appliedFilters.model && <FilterTag label={`Model: ${appliedFilters.model}`} onRemove={() => clearFilter({ model: '' })} />}
+                            {(appliedFilters.minPrice || appliedFilters.maxPrice) && (
+                                <FilterTag label={`£${appliedFilters.minPrice || '0'} – £${appliedFilters.maxPrice || '∞'}`} onRemove={() => clearFilter({ minPrice: '', maxPrice: '' })} />
+                            )}
+                            {(appliedFilters.minYear || appliedFilters.maxYear) && (
+                                <FilterTag label={`${appliedFilters.minYear || ''}–${appliedFilters.maxYear || ''}`} onRemove={() => clearFilter({ minYear: '', maxYear: '' })} />
+                            )}
+                            {(appliedFilters.minMileage || appliedFilters.maxMileage) && (
+                                <FilterTag label={`${appliedFilters.minMileage || '0'}–${appliedFilters.maxMileage || '∞'} mi`} onRemove={() => clearFilter({ minMileage: '', maxMileage: '' })} />
+                            )}
+                            {appliedFilters.fuelTypes.map(f => <FilterTag key={f} label={FUEL_TYPE_LABELS[f] ?? f} onRemove={() => clearFilter({ fuelTypes: appliedFilters.fuelTypes.filter(x => x !== f) })} />)}
+                            {appliedFilters.transmissions.map(t => <FilterTag key={t} label={TRANSMISSION_LABELS[t] ?? t} onRemove={() => clearFilter({ transmissions: appliedFilters.transmissions.filter(x => x !== t) })} />)}
+                            {appliedFilters.color && <FilterTag label={`Colour: ${appliedFilters.color}`} onRemove={() => clearFilter({ color: '' })} />}
+                            {appliedFilters.conditions.map(c => {
+                                const label = CONDITION_OPTIONS.find(o => o.value === c)?.label ?? c
+                                return <FilterTag key={c} label={`Condition: ${label}`} onRemove={() => clearFilter({ conditions: appliedFilters.conditions.filter(x => x !== c) })} />
+                            })}
+                            {appliedFilters.ulezCompliant && <FilterTag label={appliedFilters.ulezCompliant === 'yes' ? 'ULEZ Compliant' : 'Non-ULEZ'} onRemove={() => clearFilter({ ulezCompliant: '' })} />}
+                            {appliedFilters.euroStandard && <FilterTag label={appliedFilters.euroStandard.replace('_', ' ')} onRemove={() => clearFilter({ euroStandard: '' })} />}
+                            {(appliedFilters.minBhp || appliedFilters.maxBhp) && <FilterTag label={`BHP: ${appliedFilters.minBhp || '0'}–${appliedFilters.maxBhp || '∞'}`} onRemove={() => clearFilter({ minBhp: '', maxBhp: '' })} />}
+                            {appliedFilters.features.map(f => <FilterTag key={f} label={f} onRemove={() => clearFilter({ features: appliedFilters.features.filter(x => x !== f) })} />)}
+                            {appliedFilters.location && <FilterTag label={`Near: ${appliedFilters.location}`} onRemove={() => clearFilter({ location: '' })} />}
+                            {appliedFilters.maxDistanceMi && <FilterTag label={`Within ${appliedFilters.maxDistanceMi} mi`} onRemove={() => clearFilter({ maxDistanceMi: null })} />}
+                            {appliedFilters.sellerType && <FilterTag label={appliedFilters.sellerType === 'DEALER' ? 'Dealer' : 'Private Seller'} onRemove={() => clearFilter({ sellerType: '' })} />}
+                            {appliedFilters.deliveryAvailable && (
+                                <FilterTag label="Delivery available" onRemove={() => clearFilter({ deliveryAvailable: false })} />
+                            )}
+                            {appliedFilters.isImported && (
+                                <FilterTag
+                                    label={appliedFilters.isImported === 'yes' ? 'Imported' : 'Imported hidden'}
+                                    onRemove={() => clearFilter({ isImported: '' })}
+                                />
+                            )}
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="text-center py-16 space-y-3">
+                            <p className="text-red-400 text-sm">{error}</p>
+                            <button onClick={load} className="text-primary underline text-xs">Try again</button>
+                        </div>
+                    )}
+
+                    {loading && !error && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                            {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
+                        </div>
+                    )}
+
+                    {!loading && !error && (
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={activeTab}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.15 }}
+                                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"
+                            >
+                                {displayed.length === 0 ? (
+                                    <EmptyState tab={activeTab} />
+                                ) : (
+                                    displayed.map((auction, i) => (
+                                        <AuctionCard key={auction.id} auction={auction} index={i} />
+                                    ))
+                                )}
+                            </motion.div>
+                        </AnimatePresence>
+                    )}
+
+                    {!loading && (
+                        <p className="text-center text-[var(--text-muted)] text-[10px] mt-8 font-mono">
+                            Updated {new Date(lastRefresh).toLocaleTimeString("en-GB")}
+                        </p>
+                    )}
+                </div>
             </div>
 
             {/* ── How Auctions Work ────────────────────────────────────────── */}

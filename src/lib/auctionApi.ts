@@ -85,6 +85,10 @@ export interface AuctionListing {
     // Features & location
     features: string[] | null;
     location: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    vehicleType?: 'CAR' | 'MOTORCYCLE' | 'HGV';
+    isImported?: boolean;
     type: 'AUCTION' | 'CLASSIFIED';
     status: string;
     sellerId: string | null;
