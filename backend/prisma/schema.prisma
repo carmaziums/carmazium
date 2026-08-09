@@ -1271,6 +1271,8 @@ model BlogPost {
   metaTitle       String?
   /// Falls back to `excerpt` when unset
   metaDescription String?
+  /// Keeps the post live at its URL but excludes it from search engine indexing
+  noIndex         Boolean        @default(false)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   deletedAt       DateTime?

@@ -20,12 +20,23 @@ export class BlogController {
     @ApiOperation({ summary: 'List published blog posts' })
     @ApiQuery({ name: 'page', required: false })
     @ApiQuery({ name: 'limit', required: false })
+    @ApiQuery({ name: 'tag', required: false })
     async findAllPublished(
         @Query('page') page = '1',
         @Query('limit') limit = '12',
+        @Query('tag') tag?: string,
     ) {
-        const { data, total } = await this.blogService.findAllPublished(Number(page), Number(limit));
+        const { data, total } = await this.blogService.findAllPublished(Number(page), Number(limit), tag);
         return new PaginatedResponse(data, total, Number(page), Number(limit));
+    }
+
+    @Get(':slug/related')
+    @ApiOperation({ summary: 'Get posts related to a published post by tag overlap' })
+    @ApiParam({ name: 'slug' })
+    async findRelated(@Param('slug') slug: string) {
+        const post = await this.blogService.findPublishedBySlug(slug);
+        const related = await this.blogService.findRelated(post.id, post.tags);
+        return new StandardResponse(related);
     }
 
     @Get(':slug')

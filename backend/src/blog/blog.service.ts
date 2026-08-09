@@ -32,9 +32,14 @@ export class BlogService {
 
     // ── Public ────────────────────────────────────────────────────────────────
 
-    async findAllPublished(page = 1, limit = 12) {
+    async findAllPublished(page = 1, limit = 12, tag?: string) {
         const skip = (page - 1) * limit;
-        const where = { status: 'PUBLISHED' as const, deletedAt: null, publishedAt: { lte: new Date() } };
+        const where = {
+            status: 'PUBLISHED' as const,
+            deletedAt: null,
+            publishedAt: { lte: new Date() },
+            ...(tag && { tags: { has: tag } }),
+        };
         const [data, total] = await Promise.all([
             this.prisma.blogPost.findMany({
                 where,
@@ -53,6 +58,32 @@ export class BlogService {
         });
         if (!post) throw new NotFoundException('Blog post not found');
         return post;
+    }
+
+    /**
+     * Other published posts sharing at least one tag, newest first; backfilled
+     * with the most recent other posts if there aren't enough tag matches.
+     */
+    async findRelated(currentId: string, tags: string[], limit = 3) {
+        const baseWhere = { id: { not: currentId }, status: 'PUBLISHED' as const, deletedAt: null, publishedAt: { lte: new Date() } };
+
+        const byTag = tags.length
+            ? await this.prisma.blogPost.findMany({
+                where: { ...baseWhere, tags: { hasSome: tags } },
+                orderBy: { publishedAt: 'desc' },
+                take: limit,
+            })
+            : [];
+
+        if (byTag.length >= limit) return byTag;
+
+        const fallback = await this.prisma.blogPost.findMany({
+            where: { ...baseWhere, id: { notIn: [currentId, ...byTag.map(p => p.id)] } },
+            orderBy: { publishedAt: 'desc' },
+            take: limit - byTag.length,
+        });
+
+        return [...byTag, ...fallback];
     }
 
     // ── Admin ─────────────────────────────────────────────────────────────────
@@ -96,6 +127,7 @@ export class BlogService {
                 publishedAt: status === 'PUBLISHED' ? new Date() : null,
                 metaTitle: dto.metaTitle,
                 metaDescription: dto.metaDescription,
+                noIndex: dto.noIndex ?? false,
             },
         });
     }
@@ -131,6 +163,7 @@ export class BlogService {
                 publishedAt,
                 ...(dto.metaTitle !== undefined && { metaTitle: dto.metaTitle }),
                 ...(dto.metaDescription !== undefined && { metaDescription: dto.metaDescription }),
+                ...(dto.noIndex !== undefined && { noIndex: dto.noIndex }),
             },
         });
     }

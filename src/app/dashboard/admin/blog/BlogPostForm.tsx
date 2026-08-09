@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Loader2, Upload, Image as ImageIcon, X, Eye, Pencil, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Loader2, Upload, Image as ImageIcon, X, Eye, Pencil, AlertCircle, CheckCircle2, ImagePlus } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { BlogContent } from "@/components/blog/BlogContent"
@@ -43,12 +43,17 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
     const [metaTitle, setMetaTitle] = React.useState(post?.metaTitle ?? "")
     const [metaDescription, setMetaDescription] = React.useState(post?.metaDescription ?? "")
 
+    const [noIndex, setNoIndex] = React.useState(post?.noIndex ?? false)
+
     const [showPreview, setShowPreview] = React.useState(false)
     const [uploading, setUploading] = React.useState(false)
+    const [contentUploading, setContentUploading] = React.useState(false)
     const [saving, setSaving] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [savedMsg, setSavedMsg] = React.useState<string | null>(null)
     const fileInputRef = React.useRef<HTMLInputElement>(null)
+    const contentFileInputRef = React.useRef<HTMLInputElement>(null)
+    const contentTextareaRef = React.useRef<HTMLTextAreaElement>(null)
 
     // Keep the slug in sync with the title until the admin edits it directly
     React.useEffect(() => {
@@ -75,6 +80,41 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
         }
     }
 
+    /** Uploads an in-body image and inserts `![alt](url)` markdown at the caret. */
+    const handleContentImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        if (!file.type.startsWith('image/')) {
+            setError('Please select an image file.')
+            return
+        }
+        setContentUploading(true)
+        setError(null)
+        try {
+            const url = await uploadImage(file, 'listings', 'blog')
+            const textarea = contentTextareaRef.current
+            const markdown = `![](${url})`
+            if (textarea) {
+                const start = textarea.selectionStart
+                const end = textarea.selectionEnd
+                const next = content.slice(0, start) + markdown + content.slice(end)
+                setContent(next)
+                requestAnimationFrame(() => {
+                    textarea.focus()
+                    const caret = start + markdown.length
+                    textarea.setSelectionRange(caret, caret)
+                })
+            } else {
+                setContent(prev => `${prev}\n\n${markdown}\n`)
+            }
+        } catch (err) {
+            setError(errorMessage(err, 'Upload failed'))
+        } finally {
+            setContentUploading(false)
+            if (contentFileInputRef.current) contentFileInputRef.current.value = ''
+        }
+    }
+
     const buildPayload = (nextStatus: BlogPostStatus) => ({
         title: title.trim(),
         slug: slug.trim() || undefined,
@@ -86,6 +126,7 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
         status: nextStatus,
         metaTitle: metaTitle.trim() || undefined,
         metaDescription: metaDescription.trim() || undefined,
+        noIndex,
     })
 
     const handleSave = async (nextStatus: BlogPostStatus) => {
@@ -189,24 +230,39 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
             <div className="glass-card p-6 space-y-3">
                 <div className="flex items-center justify-between">
                     <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Content (Markdown)</h3>
-                    <button
-                        type="button"
-                        onClick={() => setShowPreview(v => !v)}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
-                    >
-                        {showPreview ? <><Pencil size={12} /> Edit</> : <><Eye size={12} /> Preview</>}
-                    </button>
+                    <div className="flex items-center gap-4">
+                        {!showPreview && (
+                            <button
+                                type="button"
+                                onClick={() => contentFileInputRef.current?.click()}
+                                disabled={contentUploading}
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline disabled:opacity-50"
+                            >
+                                {contentUploading ? <Loader2 size={12} className="animate-spin" /> : <ImagePlus size={12} />}
+                                {contentUploading ? 'Uploading…' : 'Insert Image'}
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => setShowPreview(v => !v)}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+                        >
+                            {showPreview ? <><Pencil size={12} /> Edit</> : <><Eye size={12} /> Preview</>}
+                        </button>
+                    </div>
                 </div>
+                <input ref={contentFileInputRef} type="file" accept="image/*" onChange={handleContentImageSelected} className="hidden" />
                 {showPreview ? (
                     <div className="min-h-[300px] border border-[var(--border-default)] rounded-lg p-4 bg-[var(--bg-input)]">
                         {content.trim() ? <BlogContent content={content} /> : <p className="text-sm text-[var(--text-muted)]">Nothing to preview yet.</p>}
                     </div>
                 ) : (
                     <textarea
+                        ref={contentTextareaRef}
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                         rows={16}
-                        placeholder={"## A heading\n\nWrite your post in Markdown — **bold**, *italic*, [links](https://example.com), lists, images, etc."}
+                        placeholder={"## A heading\n\nWrite your post in Markdown — **bold**, *italic*, [links](https://example.com), lists, images, etc.\n\nUse \"Insert Image\" above to upload and drop one in at the cursor."}
                         className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-3 text-sm font-mono placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none resize-y"
                     />
                 )}
@@ -245,6 +301,15 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                     />
                     <p className="text-[10px] text-[var(--text-faint)] mt-1">{metaDescription.length}/160</p>
                 </div>
+                <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={noIndex}
+                        onChange={(e) => setNoIndex(e.target.checked)}
+                        className="accent-primary rounded w-4 h-4 bg-[var(--bg-input)] border-[var(--border-default)]"
+                    />
+                    Hide from search engines (noindex) <span className="text-[var(--text-faint)]">— post stays live at its URL, just excluded from Google</span>
+                </label>
             </div>
 
             {/* Actions */}

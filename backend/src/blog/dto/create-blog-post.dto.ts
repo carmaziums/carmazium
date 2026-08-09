@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateBlogPostDto {
     @ApiProperty({ example: 'How Car Auctions Help You Get the Best Price' })
@@ -51,4 +51,9 @@ export class CreateBlogPostDto {
     @IsString()
     @IsOptional()
     metaDescription?: string;
+
+    @ApiProperty({ required: false, default: false, description: 'Keeps the post live at its URL but excludes it from search engine indexing' })
+    @IsBoolean()
+    @IsOptional()
+    noIndex?: boolean;
 }

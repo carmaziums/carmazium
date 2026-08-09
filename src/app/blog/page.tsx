@@ -22,7 +22,10 @@ async function getPosts(page: number): Promise<{ data: BlogPost[]; total: number
 export const metadata: Metadata = {
     title: "Blog — Automotive Insights & Market Updates",
     description: "Guides, market trends, and tips for buying, selling, and auctioning cars in the UK — from the CarMazium team.",
-    alternates: { canonical: `${SITE_URL}/blog` },
+    alternates: {
+        canonical: `${SITE_URL}/blog`,
+        types: { "application/rss+xml": `${SITE_URL}/blog/rss.xml` },
+    },
     openGraph: {
         title: "CarMazium Blog — Automotive Insights & Market Updates",
         description: "Guides, market trends, and tips for buying, selling, and auctioning cars in the UK.",

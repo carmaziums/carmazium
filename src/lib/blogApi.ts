@@ -15,6 +15,7 @@ export interface BlogPost {
     publishedAt: string | null;
     metaTitle: string | null;
     metaDescription: string | null;
+    noIndex: boolean;
     createdAt: string;
     updatedAt: string;
 }
@@ -30,6 +31,7 @@ export interface CreateBlogPostInput {
     status?: BlogPostStatus;
     metaTitle?: string;
     metaDescription?: string;
+    noIndex?: boolean;
 }
 
 export type UpdateBlogPostInput = Partial<CreateBlogPostInput>;
@@ -41,12 +43,19 @@ interface Paginated<T> {
 
 // ─── Public ─────────────────────────────────────────────────────────────────
 
-export async function getBlogPosts(page = 1, limit = 12): Promise<Paginated<BlogPost>> {
-    return apiClient<Paginated<BlogPost>>(`/blog?page=${page}&limit=${limit}`);
+export async function getBlogPosts(page = 1, limit = 12, tag?: string): Promise<Paginated<BlogPost>> {
+    const qs = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (tag) qs.set('tag', tag);
+    return apiClient<Paginated<BlogPost>>(`/blog?${qs.toString()}`);
 }
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost> {
     const result = await apiClient<{ data: BlogPost }>(`/blog/${slug}`);
+    return result.data;
+}
+
+export async function getRelatedBlogPosts(slug: string): Promise<BlogPost[]> {
+    const result = await apiClient<{ data: BlogPost[] }>(`/blog/${slug}/related`);
     return result.data;
 }
 
