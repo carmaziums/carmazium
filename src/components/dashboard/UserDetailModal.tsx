@@ -272,23 +272,22 @@ export function UserDetailModal({ userId, onClose, onChanged }: { userId: string
     const name = [detail?.firstName, detail?.lastName].filter(Boolean).join(" ") || detail?.email || "User"
 
     return (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
             <div
-                className="w-full max-w-lg h-full bg-[var(--bg-card)] border-l border-[var(--border-default)] overflow-y-auto shadow-2xl"
+                className="w-full max-w-2xl max-h-[90vh] bg-[var(--bg-card)] border border-[var(--border-default)] rounded-2xl overflow-y-auto shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="sticky top-0 z-10 flex items-center justify-between p-5 border-b border-[var(--border-default)] bg-[var(--bg-card)]">
+                <div className="sticky top-0 z-10 flex items-center justify-between p-5 border-b border-[var(--border-default)] bg-[var(--bg-card)] rounded-t-2xl">
                     <h3 className="text-lg font-black uppercase tracking-tight">User Details</h3>
                     <div className="flex items-center gap-3">
                         {detail && (
                             <button
                                 onClick={handleExportPdf}
                                 disabled={exporting}
-                                title="Export as PDF"
-                                className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] hover:text-primary transition-colors disabled:opacity-50 cursor-pointer"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-bold uppercase tracking-widest hover:bg-primary/20 transition-colors disabled:opacity-50 cursor-pointer"
                             >
                                 {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                                PDF
+                                Export PDF
                             </button>
                         )}
                         <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
