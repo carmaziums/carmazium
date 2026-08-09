@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
 import {
     X, Loader2, Mail, ShieldCheck, Ban, LockKeyhole,
@@ -271,7 +272,9 @@ export function UserDetailModal({ userId, onClose, onChanged }: { userId: string
     const documentStatuses: Record<string, { status: string; note?: string }> = kyc?.documentStatuses || {}
     const name = [detail?.firstName, detail?.lastName].filter(Boolean).join(" ") || detail?.email || "User"
 
-    return (
+    if (typeof document === "undefined") return null
+
+    return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
             <div
                 className="w-full max-w-2xl max-h-[90vh] bg-[var(--bg-card)] border border-[var(--border-default)] rounded-2xl overflow-y-auto shadow-2xl"
@@ -489,6 +492,7 @@ export function UserDetailModal({ userId, onClose, onChanged }: { userId: string
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     )
 }
