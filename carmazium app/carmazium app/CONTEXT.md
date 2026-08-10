@@ -4,6 +4,41 @@
 
 ---
 
+## 0. START HERE — current directive (2026-08-10)
+
+Development focus has shifted fully to this app. Two things anyone picking this up needs to know before touching code:
+
+### 0.1 The UI/UX mandate: a full professional redesign, not another patch pass
+
+Client feedback as of 2026-08-10, verbatim in spirit: the app currently **"looks like generic slop, like a student made it as their academic project"** — not industry-grade. The ask is to **majorly improve the mobile app's UI/UX entirely**.
+
+**Read `mobile-ui-ux-audit.md` and `mobile-ui-ux-plan.md` in this directory for history, but understand what they actually cover before assuming the UI/UX problem is solved:** that audit (2026-07-10) and plan (status banner: all 6 stages DONE by 2026-07-12) fixed **consistency and correctness** issues — design tokens enforced instead of 1,600+ raw hex literals, ~20 hand-rolled modals consolidated onto one `BottomSheet` component, always-on fake "✓ VERIFIED"/"4.5★" trust chrome gated on real data, accessibility labels added, a dealer density preset. **None of that is a visual design pass.** Perfectly consistent, accessible, token-driven UI can still look exactly like every other dark-mode React Native app — flat cards, default spacing, a red accent on near-black, no typographic personality, no signature moment anywhere in the product. That's almost certainly what "generic slop" is pointing at: the plumbing got fixed, the actual look was never designed.
+
+This is a new, distinct initiative on top of that prior work, not a continuation of it:
+- Treat the current palette (`src/constants/colors.ts`) and type scale (`src/constants/typography.ts`) as open to a real redesign, not just enforcement targets. Prior work made the app *consistent*; this pass should make it *distinctive*.
+- Avoid the generic-AI-design defaults if this gets handed to Claude Code as a design brief: warm-cream-serif, near-black-with-one-neon-accent, or broadsheet-hairline-rules are all templated answers regardless of subject — CarMazium's own vernacular (UK vehicle marketplace, auctions, dealer trade culture) should drive palette/type/layout choices, not a generic "AI app" look.
+- Match complexity of execution to whatever direction gets chosen — a bold redesign needs to be executed with precision (spacing, motion, a real signature element), not just a color swap on the existing layouts.
+- Scope is "entirely," per the client's own words — likely means every major screen (Home, Search, Vehicle Detail, Sell flow, Auctions, Dashboards), not a spot-fix list. Plan accordingly rather than treating this as another 6-stage patch plan bolted onto the existing one.
+
+Before starting execution, it's worth producing a fresh design plan (palette, type pairing, layout concept, one signature element) and getting it reviewed/approved before touching 50+ screens — same principle as the existing `mobile-ui-ux-plan.md`'s staged approach, but the deliverable this time is a look, not a checklist of bug fixes.
+
+### 0.2 Backend changed while focus was on web — read this before assuming old behavior
+
+The backend (shared with web, `https://carmazium-hjoh9w.fly.dev`) picked up real behavior changes between 2026-07-27 and 2026-08-10 while this app wasn't being actively worked on. Full detail in **`FEATURE_AUDIT.md` (repo root) §10** — read it before touching auctions, offers, chat, payouts, or onboarding. Highlights that affect mobile directly:
+
+- Auctions now require admin review before going live in *every* case (previously had a gap) — any "your auction is now live" mobile copy needs to account for a review step.
+- Unpaid auction wins auto-revert after 72h (new `Auction.wonAt` field + cron) — won-auctions screen should reflect `CANCELLED`, not assume a win is permanent.
+- Payout status has two more fields (`stripeRefundError`, `manualPayoutConfirmedAt`) — `sellerBonusReleased` alone was never sufficient to mean "paid" and still isn't.
+- Received-offers response now includes the listing's current status — this was filed specifically because mobile's dealer offers screen offered "Mark as Sold" on an already-sold listing. Confirm mobile reads the new field.
+- Chat `findOrCreateRoom` now reliably returns `otherUser` — any defensive workaround for the old crash is still safe to keep, just no longer load-bearing.
+- New mandatory `postcode` field on `User` (alongside existing `location`) — mobile onboarding/profile screens should collect it too if they don't already.
+
+### 0.3 This doc's own currency
+
+§6 ("what's shipped") and §10 (history log) below stop at **2026-07-21**. Six more mobile commits landed between then and 2026-08-10 (`c95c670e`, `b7a8ab43`, `d2d6b9eb`, `d0affee0`, `63cccc6b`, `c21a447d` — chat bubble/search-pill/keyboard fixes and a "web/backend parity" pass) that were never folded into this doc. Give `git log --oneline --since=2026-07-21 -- "carmazium app"` a pass and update §6/§10 for real before relying on them as a complete picture of current state.
+
+---
+
 ## 1. What this app is
 
 A React Native / Expo mobile app for **Carmazium** — a UK vehicle marketplace with retail classifieds *and* live auctions. Same backend as the web app (`https://carmazium-hjoh9w.fly.dev`); the web app lives in `<repo-root>\src\` as a sibling of this directory.
