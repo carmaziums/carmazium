@@ -4,7 +4,10 @@ import { Suspense, useEffect, useRef } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import Script from "next/script"
 
-const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID
+// .trim() guards against stray whitespace from a copy-pasted env var value —
+// an untrimmed ID silently breaks the noscript pixel URL's query string and
+// Meta's own Event Setup Tool then reports "pixel wasn't detected".
+const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim()
 
 declare global {
     interface Window {
