@@ -120,7 +120,7 @@ export default function AdminAuctionsPage() {
                             <Gavel className="text-purple-400 hidden sm:block" size={28} />
                             Auction Management
                         </h1>
-                        <p className="text-[var(--text-muted)] mt-1 text-sm">{total} total auctions</p>
+                        <p className="text-[var(--text-muted)] mt-1 text-sm">{total} total auctions across the platform</p>
                     </div>
 
                     {error && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200"><strong>Error:</strong> {error}</div>}
@@ -169,7 +169,8 @@ export default function AdminAuctionsPage() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <span className={`inline-flex px-2 py-1 rounded border text-xs font-bold ${STATUS_STYLES[a.status] || STATUS_STYLES.ENDED}`}>
+                                                <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded border text-xs font-bold ${STATUS_STYLES[a.status] || STATUS_STYLES.ENDED}`}>
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
                                                     {a.status}
                                                 </span>
                                                 {a.listing?.status && a.listing.status !== 'ACTIVE' && (
