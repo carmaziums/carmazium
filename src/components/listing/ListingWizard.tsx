@@ -778,7 +778,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     return
                 }
 
-                router.push('/dashboard/seller/listings')
+                // FREE tier (auctions) — no payment step, so publishing (DRAFT/REJECTED
+                // -> PENDING_REVIEW) is the whole submission, not something a webhook does.
+                await publishListing(editId)
+                setPendingReview({ title: payload.title, onContinue: () => router.push('/dashboard/seller/listings') })
             } else if (draftListingId) {
                 // User returned from HPI payment — update the existing draft listing instead of creating a new one
                 const response = await apiClient<{ data: any }>(`/listings/${draftListingId}`, {
@@ -857,10 +860,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     return
                 }
 
+                // FREE tier (auctions) — no payment step, so publishing (DRAFT -> PENDING_REVIEW)
+                // is the whole submission, not something a webhook does.
+                await publishListing(finalListingId)
                 setFormData(INITIAL_FORM)
                 setCurrentStep(1)
                 setSellingMethod(null)
-                router.push(`/buy-cars/${finalSlug}`)
+                setPendingReview({
+                    title: payload.title,
+                    onContinue: () => router.push(payload.listingType === 'AUCTION' ? '/dashboard/seller/auctions' : '/dashboard/seller/listings'),
+                })
             } else {
                 // For paid tiers, create as DRAFT — the Stripe webhook activates it after payment
                 const isPaidTier = payload.badgeTier !== 'FREE'
@@ -913,9 +922,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     return
                 }
 
-                // FREE tier (auctions) — no payment step, so it's already submitted for
-                // review at this point. Show the same "under review" messaging as the
+                // FREE tier (auctions) — no payment step, so publishing (DRAFT -> PENDING_REVIEW)
+                // is the whole submission. Show the same "under review" messaging as the
                 // paid-tier checkout-success flow before sending them onward.
+                await publishListing(newListingId)
                 setPendingReview({
                     title: payload.title,
                     onContinue: () => {
