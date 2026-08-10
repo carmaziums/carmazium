@@ -81,12 +81,28 @@ export class AuctionsService {
             throw new BadRequestException('An auction already exists for this listing');
         }
 
-        // Auto-convert listing to AUCTION type so bids validation passes
-        if (listing.type !== 'AUCTION') {
+        // Scheduling an auction is itself a submission that needs a fresh admin
+        // pass — whether this is a brand-new listing or an already-ACTIVE retail
+        // listing the seller is now also putting up for auction, and regardless
+        // of instant vs. scheduled start time. Force the listing back to
+        // PENDING_REVIEW (unless it's already there) so it lands in the same
+        // admin/listings review queue as everything else, clearing any stale
+        // rejection reason from a previous pass.
+        const listingUpdateData: Record<string, unknown> = {};
+        if (listing.type !== 'AUCTION') listingUpdateData.type = 'AUCTION';
+        const needsReview = listing.status !== 'PENDING_REVIEW';
+        if (needsReview) {
+            listingUpdateData.status = 'PENDING_REVIEW';
+            listingUpdateData.rejectionReason = null;
+        }
+        if (Object.keys(listingUpdateData).length > 0) {
             await this.prisma.listing.update({
                 where: { id: createAuctionDto.listingId },
-                data: { type: 'AUCTION' },
+                data: listingUpdateData,
             });
+        }
+        if (needsReview) {
+            this.notifyAuctionSubmittedForReview(listing.id, listing.title, listing.sellerId).catch(() => { });
         }
 
         // Re-use the existing row (listingId is @unique — can't insert a second row)
@@ -128,6 +144,23 @@ export class AuctionsService {
                 status: 'SCHEDULED',
             },
         });
+    }
+
+    private async notifyAuctionSubmittedForReview(listingId: string, listingTitle: string, sellerId: string | null): Promise<void> {
+        if (!sellerId) return;
+        const notification = await this.notificationsService.create({
+            userId: sellerId,
+            type: 'LISTING_SUBMITTED',
+            title: 'Auction Submitted for Review',
+            message: `"${listingTitle}" has been submitted and is awaiting admin review before the auction goes live.`,
+            link: '/dashboard/seller/auctions',
+            entityType: 'Listing',
+            entityId: listingId,
+            actionType: 'SUBMITTED',
+        }).catch(() => null);
+        if (notification) {
+            this.notificationsGateway.sendNotification(sellerId, notification);
+        }
     }
 
     async findAllActive(): Promise<any[]> {
