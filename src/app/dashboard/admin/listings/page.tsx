@@ -11,6 +11,7 @@ import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminListings, deleteListingForce, getPendingListingReviews, approveListing, rejectListing, updateListingAsAdmin } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
+import { uploadImage } from "@/lib/supabase"
 
 const FUEL_TYPES = ['PETROL', 'DIESEL', 'ELECTRIC', 'HYBRID', 'PLUGIN_HYBRID', 'LPG', 'HYDROGEN_CELL', 'BI_FUEL', 'NATURAL_GAS', 'PETROL_HYBRID', 'DIESEL_HYBRID', 'PETROL_PLUGIN_HYBRID', 'DIESEL_PLUGIN_HYBRID', 'UNLISTED']
 const TRANSMISSIONS = ['MANUAL', 'AUTOMATIC', 'SEMI_AUTOMATIC', 'CVT']
@@ -24,12 +25,15 @@ const EDIT_NUMERIC_FIELDS = [
     'price', 'priceMin', 'priceMax', 'year', 'mileage', 'doors', 'seats',
     'engineSize', 'bhp', 'torqueNm', 'topSpeedMph', 'zeroTo60Mph', 'combinedMpg', 'extraUrbanMpg',
     'numberOfKeys', 'co2Emissions', 'deliveryPricePerMile', 'deliveryMaxMiles',
+    'reservePrice', 'startingBid', 'minIncrement', 'buyItNowPrice',
 ]
 const EDIT_BOOLEAN_FIELDS = [
     'ulezCompliant', 'stolenRecovered', 'hasOutstandingFinance', 'isLegalRegisteredKeeper',
     'isDepartedSale', 'markedForExport', 'isImported', 'deliveryAvailable',
 ]
-const EDIT_ARRAY_FIELDS = ['features']
+const EDIT_ARRAY_FIELDS = ['features', 'videoUrls']
+const LISTING_TYPES = ['CLASSIFIED', 'AUCTION']
+const BADGE_TIERS = ['FREE', 'BASIC', 'STANDARD', 'PREMIUM']
 
 const editInputClass = "w-full mt-1 rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] px-3 py-2 text-sm placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none"
 
@@ -37,7 +41,7 @@ function EditField({ label, value, onChange, type = 'text', options }: {
     label: string
     value: string
     onChange: (v: string) => void
-    type?: 'text' | 'number' | 'select' | 'boolean' | 'textarea'
+    type?: 'text' | 'number' | 'select' | 'boolean' | 'textarea' | 'datetime-local'
     options?: string[]
 }) {
     return (
@@ -93,6 +97,8 @@ export default function AdminListingsPage() {
     const [successMsg, setSuccessMsg] = React.useState<string | null>(null)
     const [editingId, setEditingId] = React.useState<string | null>(null)
     const [editForm, setEditForm] = React.useState<Record<string, string>>({})
+    const [editImages, setEditImages] = React.useState<string[]>([])
+    const [imageUploading, setImageUploading] = React.useState(false)
     const [savingEdit, setSavingEdit] = React.useState(false)
     const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
 
@@ -190,8 +196,17 @@ export default function AdminListingsPage() {
         setActionError(null)
         setSuccessMsg(null)
         setEditingId(l.id)
+        setEditImages(Array.isArray(l.images) ? [...l.images] : [])
         const str = (v: unknown) => v != null ? String(v) : ''
         const bool = (v: unknown) => v === true ? 'true' : v === false ? 'false' : ''
+        // datetime-local inputs need "YYYY-MM-DDTHH:mm" (no seconds/timezone)
+        const localDatetime = (v: unknown) => {
+            if (!v) return ''
+            const d = new Date(v as string)
+            if (isNaN(d.getTime())) return ''
+            const pad = (n: number) => String(n).padStart(2, '0')
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+        }
         setEditForm({
             title: l.title || '',
             price: str(l.price),
@@ -249,12 +264,38 @@ export default function AdminListingsPage() {
             deliveryAvailable: bool(l.deliveryAvailable),
             deliveryPricePerMile: str(l.deliveryPricePerMile),
             deliveryMaxMiles: str(l.deliveryMaxMiles),
+            listingType: l.type || '',
+            badgeTier: l.badgeTier || '',
+            videoUrls: Array.isArray(l.videoUrls) ? l.videoUrls.join(', ') : '',
+            reservePrice: str(l.auction?.reservePrice),
+            startingBid: str(l.auction?.startingBid),
+            minIncrement: str(l.auction?.minIncrement),
+            buyItNowPrice: str(l.auction?.buyItNowPrice),
+            startTime: localDatetime(l.auction?.startTime),
         })
     }
 
     const cancelEdit = () => {
         setEditingId(null)
         setEditForm({})
+        setEditImages([])
+    }
+
+    const handleAddImage = async (id: string, file: File) => {
+        setImageUploading(true)
+        setActionError(null)
+        try {
+            const url = await uploadImage(file, 'listings', 'admin-edit')
+            setEditImages(prev => [...prev, url])
+        } catch (err: any) {
+            setActionError(err.message || 'Image upload failed')
+        } finally {
+            setImageUploading(false)
+        }
+    }
+
+    const handleRemoveImage = (index: number) => {
+        setEditImages(prev => prev.filter((_, i) => i !== index))
     }
 
     const handleSaveEdit = async (id: string) => {
@@ -268,7 +309,11 @@ export default function AdminListingsPage() {
             const fields: Record<string, unknown> = {}
             for (const [key, value] of Object.entries(editForm)) {
                 if (value === '') continue
-                if (EDIT_NUMERIC_FIELDS.includes(key)) {
+                if (key === 'startTime') {
+                    // datetime-local value has no timezone — Date() treats it as
+                    // local time, which is what the admin actually entered.
+                    fields[key] = new Date(value).toISOString()
+                } else if (EDIT_NUMERIC_FIELDS.includes(key)) {
                     fields[key] = Number(value)
                 } else if (EDIT_BOOLEAN_FIELDS.includes(key)) {
                     fields[key] = value === 'true'
@@ -278,10 +323,12 @@ export default function AdminListingsPage() {
                     fields[key] = value
                 }
             }
+            fields.images = editImages
             const result = await updateListingAsAdmin(id, fields)
             const updated = result?.data ?? result
             setPendingListings(prev => prev.map(l => l.id === id ? { ...l, ...updated } : l))
             setEditingId(null)
+            setEditImages([])
             setSuccessMsg('Listing details updated.')
         } catch (err: any) {
             setActionError(err.message || 'Failed to save changes')
@@ -494,6 +541,61 @@ export default function AdminListingsPage() {
                                                                 <EditField label="Max Miles" value={editForm.deliveryMaxMiles} onChange={set('deliveryMaxMiles')} type="number" />
                                                             </EditSection>
 
+                                                            <EditSection title="Type &amp; Badge">
+                                                                <EditField label="Listing Type" value={editForm.listingType} onChange={set('listingType')} type="select" options={LISTING_TYPES} />
+                                                                <EditField label="Badge Tier" value={editForm.badgeTier} onChange={set('badgeTier')} type="select" options={BADGE_TIERS} />
+                                                                <div className="col-span-2 sm:col-span-3">
+                                                                    <EditField label="Video URLs (comma-separated)" value={editForm.videoUrls} onChange={set('videoUrls')} />
+                                                                </div>
+                                                            </EditSection>
+
+                                                            {(l.type === 'AUCTION' || editForm.listingType === 'AUCTION') && (
+                                                                <EditSection title="Auction Schedule">
+                                                                    {!l.auction && (
+                                                                        <p className="col-span-2 sm:col-span-3 text-xs text-[var(--text-muted)] -mt-1 mb-1">
+                                                                            No auction has been scheduled for this listing yet.
+                                                                        </p>
+                                                                    )}
+                                                                    <EditField label="Reserve Price (£)" value={editForm.reservePrice} onChange={set('reservePrice')} type="number" />
+                                                                    <EditField label="Starting Bid (£)" value={editForm.startingBid} onChange={set('startingBid')} type="number" />
+                                                                    <EditField label="Min Increment (£)" value={editForm.minIncrement} onChange={set('minIncrement')} type="number" />
+                                                                    <EditField label="Buy It Now (£)" value={editForm.buyItNowPrice} onChange={set('buyItNowPrice')} type="number" />
+                                                                    <EditField label="Start Time" value={editForm.startTime} onChange={set('startTime')} type="datetime-local" />
+                                                                </EditSection>
+                                                            )}
+
+                                                            <div className="pt-3 first:pt-0">
+                                                                <p className="text-xs font-black uppercase tracking-widest text-primary mb-2 border-b border-[var(--border-default)] pb-1.5">Photos</p>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {editImages.map((img, i) => (
+                                                                        <div key={i} className="relative group">
+                                                                            <Image src={img} alt="" width={80} height={60} className="w-20 h-[60px] rounded-lg object-cover border border-[var(--border-default)]" />
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleRemoveImage(i)}
+                                                                                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                            >
+                                                                                <X size={12} />
+                                                                            </button>
+                                                                        </div>
+                                                                    ))}
+                                                                    <label className="w-20 h-[60px] rounded-lg border border-dashed border-[var(--border-default)] flex items-center justify-center cursor-pointer hover:border-primary/40 transition-colors shrink-0">
+                                                                        {imageUploading ? <Loader2 size={16} className="animate-spin text-[var(--text-muted)]" /> : <span className="text-2xl text-[var(--text-muted)]">+</span>}
+                                                                        <input
+                                                                            type="file"
+                                                                            accept="image/*"
+                                                                            className="hidden"
+                                                                            disabled={imageUploading}
+                                                                            onChange={(e) => {
+                                                                                const file = e.target.files?.[0]
+                                                                                if (file) handleAddImage(l.id, file)
+                                                                                e.target.value = ''
+                                                                            }}
+                                                                        />
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+
                                                             <div className="pt-3">
                                                                 <EditField label="Description" value={editForm.description} onChange={set('description')} type="textarea" />
                                                             </div>
@@ -532,6 +634,14 @@ export default function AdminListingsPage() {
                                                                     ['Location', l.location], ['Badge Tier', l.badgeTier],
                                                                     ['Type', l.type], ['Owners', l.owners],
                                                                     ['MOT', l.motStatus], ['Tax', l.taxStatus],
+                                                                    ...(l.type === 'AUCTION' && l.auction ? ([
+                                                                        ['Auction Status', l.auction.status],
+                                                                        ['Reserve Price', formatPrice(l.auction.reservePrice)],
+                                                                        ['Starting Bid', formatPrice(l.auction.startingBid)],
+                                                                        ['Min Increment', formatPrice(l.auction.minIncrement)],
+                                                                        ['Buy It Now', l.auction.buyItNowPrice ? formatPrice(l.auction.buyItNowPrice) : null],
+                                                                        ['Start Time', new Date(l.auction.startTime).toLocaleString('en-GB')],
+                                                                    ] as [string, unknown][]) : []),
                                                                 ] as [string, unknown][]).filter(([, v]) => v !== null && v !== undefined && v !== '').map(([label, value]) => (
                                                                     <div key={label}>
                                                                         <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">{label}</p>
@@ -539,6 +649,11 @@ export default function AdminListingsPage() {
                                                                     </div>
                                                                 ))}
                                                             </div>
+                                                            {l.type === 'AUCTION' && !l.auction && (
+                                                                <div className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 mb-2">
+                                                                    Marked as an auction listing but no auction schedule has been created yet.
+                                                                </div>
+                                                            )}
 
                                                             {l.description && (
                                                                 <div className="py-3">

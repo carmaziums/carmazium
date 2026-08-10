@@ -233,7 +233,13 @@ export class AdminService {
         return this.prisma.listing.findMany({
             where: { status: { in: ['PENDING_REVIEW', 'REJECTED'] }, deletedAt: null },
             orderBy: { createdAt: 'asc' },
-            include: { seller: { select: { id: true, email: true, firstName: true, lastName: true, phone: true } } },
+            include: {
+                seller: { select: { id: true, email: true, firstName: true, lastName: true, phone: true } },
+                // AUCTION-type listings carry their schedule (reserve/starting bid/
+                // BIN/start time) on this related row, not on Listing itself — the
+                // pending-review UI needs it to actually review an auction.
+                auction: true,
+            },
         });
     }
 
@@ -245,7 +251,7 @@ export class AdminService {
      * seller-owned update flow.
      */
     async updateListing(id: string, dto: AdminUpdateListingDto) {
-        const listing = await this.prisma.listing.findUnique({ where: { id } });
+        const listing = await this.prisma.listing.findUnique({ where: { id }, include: { auction: true } });
         if (!listing) {
             throw new NotFoundException('Listing not found');
         }
@@ -324,8 +330,35 @@ export class AdminService {
         if (dto.deliveryAvailable !== undefined) data.deliveryAvailable = dto.deliveryAvailable;
         if (dto.deliveryPricePerMile !== undefined) data.deliveryPricePerMile = dto.deliveryPricePerMile;
         if (dto.deliveryMaxMiles !== undefined) data.deliveryMaxMiles = dto.deliveryMaxMiles;
+        // Media
+        if (dto.images !== undefined) data.images = dto.images;
+        if (dto.videoUrls !== undefined) data.videoUrls = dto.videoUrls;
+        // Type / badge tier
+        if (dto.listingType !== undefined) data.type = dto.listingType;
+        if (dto.badgeTier !== undefined) data.badgeTier = dto.badgeTier;
 
-        return this.prisma.listing.update({ where: { id }, data });
+        const updated = await this.prisma.listing.update({ where: { id }, data });
+
+        // Auction schedule lives on the related Auction row, not Listing — only
+        // touch it while the auction hasn't gone live yet (SCHEDULED), same gate
+        // as the listing itself being PENDING_REVIEW/REJECTED.
+        const hasAuctionFields = [dto.reservePrice, dto.startingBid, dto.minIncrement, dto.buyItNowPrice, dto.startTime]
+            .some(v => v !== undefined);
+        if (hasAuctionFields && listing.auction && listing.auction.status === 'SCHEDULED') {
+            const auctionData: Record<string, unknown> = {};
+            if (dto.reservePrice !== undefined) auctionData.reservePrice = dto.reservePrice;
+            if (dto.startingBid !== undefined) auctionData.startingBid = dto.startingBid;
+            if (dto.minIncrement !== undefined) auctionData.minIncrement = dto.minIncrement;
+            if (dto.buyItNowPrice !== undefined) auctionData.buyItNowPrice = dto.buyItNowPrice;
+            if (dto.startTime !== undefined) {
+                const startTime = new Date(dto.startTime);
+                auctionData.startTime = startTime;
+                auctionData.endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000);
+            }
+            await this.prisma.auction.update({ where: { id: listing.auction.id }, data: auctionData });
+        }
+
+        return updated;
     }
 
     async approveListing(id: string) {
@@ -381,7 +414,7 @@ export class AdminService {
     }
 
     async rejectListing(id: string, dto: RejectListingDto) {
-        const listing = await this.prisma.listing.findUnique({ where: { id } });
+        const listing = await this.prisma.listing.findUnique({ where: { id }, include: { auction: true } });
         if (!listing) {
             throw new NotFoundException('Listing not found');
         }
@@ -397,6 +430,15 @@ export class AdminService {
                 reviewedAt: new Date(),
             },
         });
+
+        // A rejected listing has nothing to auction — cancel its still-scheduled
+        // auction rather than leaving it to activate against a rejected listing.
+        if (listing.auction && listing.auction.status === 'SCHEDULED') {
+            await this.prisma.auction.update({
+                where: { id: listing.auction.id },
+                data: { status: 'CANCELLED' },
+            });
+        }
 
         if (listing.sellerId) {
             const seller = await this.prisma.user.findUnique({
@@ -444,6 +486,7 @@ export class AdminService {
                     make: true,
                     model: true,
                     year: true,
+                    status: true,
                     seller: {
                         select: {
                             id: true, email: true, firstName: true, lastName: true, phone: true,

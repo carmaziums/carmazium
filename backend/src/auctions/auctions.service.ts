@@ -132,7 +132,9 @@ export class AuctionsService {
 
     async findAllActive(): Promise<any[]> {
         return this.prisma.auction.findMany({
-            where: { status: 'ACTIVE', deletedAt: null },
+            // listing.status filter is defense-in-depth — the activation cron
+            // already only flips SCHEDULED -> ACTIVE for approved listings.
+            where: { status: 'ACTIVE', deletedAt: null, listing: { status: 'ACTIVE' } },
             include: {
                 listing: {
                     include: {
@@ -161,9 +163,13 @@ export class AuctionsService {
 
     async findAllScheduled(page = 1, limit = 20): Promise<{ data: any[]; total: number }> {
         const skip = (page - 1) * limit;
+        // Only surface auctions whose listing has cleared admin review — a
+        // SCHEDULED auction still sitting on a PENDING_REVIEW/REJECTED listing
+        // isn't approved yet and shouldn't show in the public "Upcoming" tab.
+        const where = { status: 'SCHEDULED' as const, deletedAt: null, listing: { status: 'ACTIVE' as const } };
         const [data, total] = await Promise.all([
             this.prisma.auction.findMany({
-                where: { status: 'SCHEDULED', deletedAt: null },
+                where,
                 include: {
                     listing: {
                         include: {
@@ -184,7 +190,7 @@ export class AuctionsService {
                 skip,
                 take: limit,
             }),
-            this.prisma.auction.count({ where: { status: 'SCHEDULED', deletedAt: null } }),
+            this.prisma.auction.count({ where }),
         ]);
         return { data, total };
     }

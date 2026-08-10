@@ -7,6 +7,8 @@ import {
     IsInt,
     IsBoolean,
     IsArray,
+    IsUrl,
+    IsDateString,
     Min,
     Max,
     IsOptional,
@@ -22,14 +24,16 @@ import {
     VehicleType,
     WriteOffCategory,
     EuroStandard,
+    ListingType,
 } from '../../listings/dto/create-listing.dto';
 
 /**
  * Fields an admin can correct while a listing is awaiting review (PENDING_REVIEW
  * or REJECTED) — e.g. fixing a seller's typo before approving instead of
  * bouncing it back and forth. Mirrors every field the seller could have set
- * in the listing wizard (CreateListingDto) except images/videoUrls, which
- * need their own upload UI rather than a text field.
+ * in the listing wizard (CreateListingDto), plus the auction schedule fields
+ * (reservePrice/startingBid/minIncrement/buyItNowPrice/startTime) for AUCTION
+ * listings, which live on the related Auction row rather than Listing itself.
  */
 export class AdminUpdateListingDto {
     // ─── Core ────────────────────────────────────────────────────────────────
@@ -365,4 +369,63 @@ export class AdminUpdateListingDto {
     @Min(1)
     @IsOptional()
     deliveryMaxMiles?: number;
+
+    // ─── Media ───────────────────────────────────────────────────────────────
+    @ApiProperty({ required: false, type: [String] })
+    @IsArray()
+    @IsString({ each: true })
+    @IsUrl({}, { each: true, message: 'Each image must be a valid URL' })
+    @IsOptional()
+    images?: string[];
+
+    @ApiProperty({ required: false, type: [String] })
+    @IsArray()
+    @IsString({ each: true })
+    @IsOptional()
+    videoUrls?: string[];
+
+    // ─── Listing type & badge tier ──────────────────────────────────────────
+    @ApiProperty({ enum: ListingType, required: false })
+    @IsEnum(ListingType)
+    @IsOptional()
+    listingType?: ListingType;
+
+    @ApiProperty({ description: 'Badge tier: FREE, STANDARD, or PREMIUM', required: false })
+    @IsString()
+    @IsOptional()
+    badgeTier?: string;
+
+    // ─── Auction schedule (AUCTION listings only — lives on the Auction row) ──
+    @ApiProperty({ required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    @IsOptional()
+    reservePrice?: number;
+
+    @ApiProperty({ required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    @IsOptional()
+    startingBid?: number;
+
+    @ApiProperty({ required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    @IsOptional()
+    minIncrement?: number;
+
+    @ApiProperty({ required: false, description: 'Set to null to clear an existing Buy It Now price' })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    @IsOptional()
+    buyItNowPrice?: number;
+
+    @ApiProperty({ required: false, description: 'ISO datetime — endTime is always recalculated as startTime + 24h' })
+    @IsDateString()
+    @IsOptional()
+    startTime?: string;
 }

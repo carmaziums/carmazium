@@ -170,6 +170,15 @@ export default function AdminAuctionsPage() {
                                                 <span className={`inline-flex px-2 py-1 rounded border text-xs font-bold ${STATUS_STYLES[a.status] || STATUS_STYLES.ENDED}`}>
                                                     {a.status}
                                                 </span>
+                                                {a.listing?.status && a.listing.status !== 'ACTIVE' && (
+                                                    <Link
+                                                        href="/dashboard/admin/listings"
+                                                        title="This auction's listing hasn't cleared admin review yet — it can't go live until approved"
+                                                        className="block mt-1 text-[9px] font-bold uppercase tracking-widest text-amber-400 hover:underline"
+                                                    >
+                                                        {a.listing.status === 'REJECTED' ? 'Listing Rejected' : 'Awaiting Review'}
+                                                    </Link>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-right text-sm font-bold">{formatPrice(a.reservePrice)}</td>
                                             <td className="px-6 py-4 text-right text-sm text-emerald-400 font-bold">

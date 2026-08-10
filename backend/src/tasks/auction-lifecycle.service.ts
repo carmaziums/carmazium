@@ -30,11 +30,18 @@ export class AuctionLifecycleService {
     }
 
     private async activateScheduledAuctions(now: Date): Promise<void> {
+        // The parent listing must have cleared admin review (ACTIVE) before its
+        // auction is allowed to go live — otherwise an auction whose listing is
+        // still PENDING_REVIEW (or was REJECTED) would go live to bidders with
+        // zero admin ever having approved it. Auctions past their startTime just
+        // sit SCHEDULED until the listing is approved; approveListing() flips the
+        // listing to ACTIVE and this cron picks the auction up on its next run.
         const toActivate = await this.prisma.auction.findMany({
             where: {
                 status: 'SCHEDULED',
                 startTime: { lte: now },
                 deletedAt: null,
+                listing: { status: 'ACTIVE' },
             },
         });
 
