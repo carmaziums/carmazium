@@ -22,6 +22,7 @@ import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { EnquireModal } from "@/components/listing/EnquireModal"
 import { getListingBySlug, makeOffer, getMyOfferForListing, respondToCounterOffer, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, formatPrice, type Listing, type LatestOffer } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
+import { trackMetaEvent } from "@/components/analytics/MetaPixel"
 import { useChat } from "@/context/ChatContext"
 import { useRouter } from "next/navigation"
 
@@ -481,6 +482,11 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
         try {
             setEnquiring(true)
             const room = await createChatRoom(listing.sellerId, listing.id)
+            trackMetaEvent("Lead", {
+                content_name: listing.title,
+                content_ids: [listing.id],
+                content_category: "vehicle_chat_enquiry",
+            })
             // Pre-populate the room in ChatContext so the messages page can auto-select
             // it immediately with the correct seller name and listing title, without
             // waiting for a full refreshRooms() round-trip.

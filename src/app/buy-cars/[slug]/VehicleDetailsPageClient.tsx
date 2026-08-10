@@ -25,6 +25,7 @@ import { useLocation } from '@/context/LocationContext'
 import { haversineDistanceMiles } from '@/lib/distance'
 import { useCompare } from '@/context/CompareContext'
 import { BlurredPhone } from '@/components/shared/BlurredPhone'
+import { trackMetaEvent } from '@/components/analytics/MetaPixel'
 
 // ─── Offer Status Chip ───────────────────────────────────────────────────────
 // viewerRole: 'buyer' = the person who made the offer
@@ -415,6 +416,11 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
             setEnquiring(true)
             // Create or find existing chat room with the seller about this listing
             const room = await createChatRoom(listing.sellerId, listing.id)
+            trackMetaEvent("Lead", {
+                content_name: listing.title,
+                content_ids: [listing.id],
+                content_category: "vehicle_chat_enquiry",
+            })
             router.push(`/dashboard/buyer/messages?room=${room.id}`)
         } catch (err: any) {
             console.error('Failed to create chat room:', err)
