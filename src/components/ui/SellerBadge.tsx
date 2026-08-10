@@ -11,6 +11,12 @@
  *  sellerUserId — User ID to link to /seller/[id]
  *  size         — "sm" (card use) | "md" (profile page use)
  *  showLabel    — whether to render the tier label text
+ *  asLink       — set false when already nested inside a Link/anchor
+ *                 pointing at the same seller profile (e.g. a seller info
+ *                 card) — renders a plain span instead, since nesting an
+ *                 <a> inside another <a> is invalid HTML and breaks
+ *                 hydration. Defaults to true (standalone, independently
+ *                 clickable — e.g. on CarCard, which isn't itself a link).
  */
 
 import Link from "next/link"
@@ -23,6 +29,7 @@ interface SellerBadgeProps {
     sellerUserId: string
     size?: "sm" | "md" | "lg"
     showLabel?: boolean
+    asLink?: boolean
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -37,23 +44,38 @@ function getTier(score: number): { label: string; color: string; bg: string } {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function SellerBadge({ score, sellerUserId, size = "sm", showLabel = false }: SellerBadgeProps) {
+export function SellerBadge({ score, sellerUserId, size = "sm", showLabel = false, asLink = true }: SellerBadgeProps) {
     const tier = getTier(score)
     const iconSize = size === "sm" ? 10 : size === "md" ? 13 : 16
     const textSize = size === "sm" ? "text-[10px]" : size === "md" ? "text-xs" : "text-sm px-3 py-1"
+    const className = `inline-flex items-center gap-1 border rounded-md px-2 py-0.5 transition-opacity hover:opacity-80 ${tier.bg} ${textSize}`
 
-    return (
-        <Link
-            href={`/seller/${sellerUserId}`}
-            onClick={(e) => e.stopPropagation()}
-            className={`inline-flex items-center gap-1 border rounded-md px-2 py-0.5 transition-opacity hover:opacity-80 ${tier.bg} ${textSize}`}
-            title={`Reliability Score: ${score.toFixed(1)} / 5.0`}
-        >
+    const content = (
+        <>
             <Star size={iconSize} className={`fill-current ${tier.color}`} />
             <span className={`font-bold ${tier.color}`}>{score.toFixed(1)}</span>
             {showLabel && (
                 <span className={`font-medium ${tier.color} ml-0.5`}>{tier.label}</span>
             )}
+        </>
+    )
+
+    if (!asLink) {
+        return (
+            <span className={className} title={`Reliability Score: ${score.toFixed(1)} / 5.0`}>
+                {content}
+            </span>
+        )
+    }
+
+    return (
+        <Link
+            href={`/seller/${sellerUserId}`}
+            onClick={(e) => e.stopPropagation()}
+            className={className}
+            title={`Reliability Score: ${score.toFixed(1)} / 5.0`}
+        >
+            {content}
         </Link>
     )
 }

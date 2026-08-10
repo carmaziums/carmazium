@@ -808,7 +808,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                                             </>
                                         )}
                                     </div>
-                                    {listing.sellerId && <SellerBadge score={0} sellerUserId={listing.sellerId} size="sm" showLabel />}
+                                    {listing.sellerId && <SellerBadge score={0} sellerUserId={listing.sellerId} size="sm" showLabel asLink={false} />}
                                 </div>
                             </div>
                         </Link>
@@ -1428,7 +1428,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                                                         </>
                                                     )}
                                                 </div>
-                                                {listing.sellerId && <SellerBadge score={0} sellerUserId={listing.sellerId} size="sm" showLabel />}
+                                                {listing.sellerId && <SellerBadge score={0} sellerUserId={listing.sellerId} size="sm" showLabel asLink={false} />}
                                             </div>
                                         </div>
                                     </Link>
