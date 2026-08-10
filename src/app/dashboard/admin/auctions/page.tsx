@@ -4,9 +4,10 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Gavel, Loader2, ArrowLeft, Eye, Car, UserCheck, X, AlertTriangle } from "lucide-react"
+import { Gavel, Loader2, ArrowLeft, Eye, Car, UserCheck, X, AlertTriangle, Pencil } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
+import { ListingEditModal } from "@/components/dashboard/ListingEditModal"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminAuctions, getAllDealers, assignAuctionWinner } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
@@ -36,6 +37,7 @@ export default function AdminAuctionsPage() {
     const [assigning, setAssigning] = React.useState(false)
     const [assignError, setAssignError] = React.useState<string | null>(null)
     const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
+    const [editListingId, setEditListingId] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         if (!authLoading) {
@@ -210,6 +212,15 @@ export default function AdminAuctionsPage() {
                                                             <UserCheck size={16} />
                                                         </button>
                                                     )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => a.listing?.id && setEditListingId(a.listing.id)}
+                                                        disabled={!a.listing?.id}
+                                                        className="p-2.5 hover:bg-white/10 rounded-lg transition-colors text-[var(--text-muted)] hover:text-primary dark:hover:text-white inline-flex disabled:opacity-30 cursor-pointer"
+                                                        title="Edit Listing"
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </button>
                                                     <Link href={`/auctions/live/${a.id}`} target="_blank" className="p-2.5 hover:bg-white/10 rounded-lg transition-colors text-blue-400 hover:text-primary dark:hover:text-white inline-flex" title="View Auction">
                                                         <Eye size={16} />
                                                     </Link>
@@ -326,6 +337,11 @@ export default function AdminAuctionsPage() {
             )}
 
             <UserDetailModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
+            <ListingEditModal
+                listingId={editListingId}
+                onClose={() => setEditListingId(null)}
+                onSaved={loadAuctions}
+            />
         </div>
     )
 }

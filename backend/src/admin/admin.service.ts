@@ -243,20 +243,34 @@ export class AdminService {
         });
     }
 
+    /** Full single-listing detail (any status), for the admin edit modal. */
+    async getListingById(id: string) {
+        const listing = await this.prisma.listing.findUnique({
+            where: { id },
+            include: {
+                seller: { select: { id: true, email: true, firstName: true, lastName: true, phone: true } },
+                auction: true,
+            },
+        });
+        if (!listing) {
+            throw new NotFoundException('Listing not found');
+        }
+        return listing;
+    }
+
     /**
-     * Lets an admin correct a listing's own fields (typos, wrong spec, etc.)
-     * while it's still awaiting review, instead of rejecting-and-waiting for
-     * the seller to resubmit. Deliberately restricted to PENDING_REVIEW /
-     * REJECTED — once a listing is live, edits go through the normal
-     * seller-owned update flow.
+     * Lets an admin correct a listing's own fields (typos, wrong spec, etc.) —
+     * whether it's still awaiting review or already live (ACTIVE), including
+     * listings tied to a live auction. Blocked only for SOLD, since editing
+     * vehicle details on a completed sale would corrupt the transaction record.
      */
     async updateListing(id: string, dto: AdminUpdateListingDto) {
         const listing = await this.prisma.listing.findUnique({ where: { id }, include: { auction: true } });
         if (!listing) {
             throw new NotFoundException('Listing not found');
         }
-        if (listing.status !== 'PENDING_REVIEW' && listing.status !== 'REJECTED') {
-            throw new BadRequestException('Only listings awaiting review can be edited');
+        if (listing.status === 'SOLD') {
+            throw new BadRequestException('Cannot edit a listing that has already been sold');
         }
 
         const data: Record<string, unknown> = {};

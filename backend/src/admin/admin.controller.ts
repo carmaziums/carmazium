@@ -146,8 +146,16 @@ export class AdminController {
         return new StandardResponse(list);
     }
 
+    @Get('listings/:id')
+    @ApiOperation({ summary: 'Get a single listing with full detail (any status), for the admin edit modal' })
+    @ApiParam({ name: 'id', description: 'Listing UUID' })
+    async getListingById(@Param('id') id: string): Promise<StandardResponse<any>> {
+        const listing = await this.adminService.getListingById(id);
+        return new StandardResponse(listing);
+    }
+
     @Patch('listings/:id')
-    @ApiOperation({ summary: "Edit a pending/rejected listing's own fields before approving it" })
+    @ApiOperation({ summary: "Edit a listing's own fields — any status except SOLD" })
     @ApiParam({ name: 'id', description: 'Listing UUID' })
     async updateListing(
         @Param('id') id: string,

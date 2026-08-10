@@ -51,6 +51,11 @@ export async function getAdminListings(page = 1, limit = 20) {
   return result;
 }
 
+export async function getAdminListing(id: string) {
+  const result = await apiClient<{ data: any }>(`/admin/listings/${id}`);
+  return result.data;
+}
+
 export async function getAdminAuctions(page = 1, limit = 20) {
   const result = await apiClient<any>(`/admin/auctions?page=${page}&limit=${limit}`);
   return result;

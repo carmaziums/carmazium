@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button"
 import { Car, Loader2, ArrowLeft, Trash2, AlertTriangle, Eye, ChevronDown, Check, X, Clock, Pencil, Save } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
+import { ListingEditModal } from "@/components/dashboard/ListingEditModal"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminListings, deleteListingForce, getPendingListingReviews, approveListing, rejectListing, updateListingAsAdmin } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
@@ -101,6 +102,7 @@ export default function AdminListingsPage() {
     const [imageUploading, setImageUploading] = React.useState(false)
     const [savingEdit, setSavingEdit] = React.useState(false)
     const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
+    const [editListingId, setEditListingId] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         // Enforce Admin Access
@@ -823,8 +825,16 @@ export default function AdminListingsPage() {
                                                     <Link href={`/buy-cars/${l.slug}`} target="_blank" className="p-2.5 hover:bg-white/10 rounded-lg transition-colors text-blue-400 hover:text-primary dark:hover:" title="View Listing">
                                                         <Eye size={18} />
                                                     </Link>
-                                                    <button 
-                                                        onClick={() => handleDelete(l.id)} 
+                                                    <button
+                                                        onClick={() => setEditListingId(l.id)}
+                                                        disabled={l.status === 'SOLD' || !!l.deletedAt}
+                                                        className="p-2.5 hover:bg-white/10 rounded-lg transition-colors text-[var(--text-muted)] hover:text-primary dark:hover:text-white disabled:opacity-30"
+                                                        title={l.status === 'SOLD' ? 'Cannot edit a sold listing' : 'Edit Listing'}
+                                                    >
+                                                        <Pencil size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(l.id)}
                                                         disabled={deleting === l.id || !!l.deletedAt}
                                                         className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-red-400 disabled:opacity-30 disabled:hover:bg-transparent"
                                                         title="Force Delete"
@@ -860,6 +870,11 @@ export default function AdminListingsPage() {
                 </main>
             </div>
             <UserDetailModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
+            <ListingEditModal
+                listingId={editListingId}
+                onClose={() => setEditListingId(null)}
+                onSaved={() => { fetchListings(); loadPending() }}
+            />
         </div>
     )
 }
