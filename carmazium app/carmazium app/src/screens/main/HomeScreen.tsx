@@ -654,68 +654,72 @@ export const HomeScreen: React.FC = () => {
           </Section>
         )}
 
-        {/* Live Auctions CTA — a direct, prominent entry point matching the
-            "Sell your car" card's visual weight, not just the small quick-chip
-            + "See all" link this used to be the only way in via (see
-            mobile-production-readiness-plan.md F9). Only shown when there's
-            something live to jump into; the quick chip below still covers the
-            zero-live-auctions case. */}
-        {liveAuctions.length > 0 && (
-          <TouchableOpacity
-            style={s.auctionCta}
-            onPress={() => navigation.navigate('Tabs', { screen: 'Live' })}
-            activeOpacity={0.85}
-          >
-            <View style={s.auctionCtaIconWrap}>
-              <Ionicons name="hammer" size={20} color={Colors.accent} />
-              <View style={s.auctionLiveDot} />
-            </View>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={s.auctionCtaTitle}>
-                {liveAuctions.length} live auction{liveAuctions.length !== 1 ? 's' : ''} right now
-              </Text>
-              <Text style={s.auctionCtaHint}>Bid live before time runs out</Text>
-            </View>
-            <View style={s.auctionCtaBtn}>
-              <Text style={s.auctionCtaBtnText}>VIEW</Text>
-            </View>
-          </TouchableOpacity>
-        )}
-
-        {/* Sell your car CTA */}
+        {/* Sell your car — the one bold, accent-filled moment on this screen.
+            Previously three near-identical bgSecondary+border cards (auction/
+            sell/dealer) competed for the same visual weight, just recolored —
+            restyled so only the highest-value action (free listing) gets the
+            hero treatment; auction/dealer below are now quiet utility rows. */}
         <TouchableOpacity
           style={s.sellCta}
           onPress={() => navigation.navigate('SellCarFlow' as any)}
-          activeOpacity={0.85}
+          activeOpacity={0.9}
         >
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={s.sellCtaTitle}>Sell your car</Text>
-            <Text style={s.sellCtaHint}>List in minutes · Get offers from buyers</Text>
-          </View>
+          <Ionicons name="car-sport" size={72} color={Colors.accentAlpha15} style={s.sellCtaWatermark} />
+          <Text style={s.sellCtaTitle}>Sell your car</Text>
+          <Text style={s.sellCtaHint}>List in minutes · Get offers from buyers</Text>
           <View style={s.sellCtaBtn}>
-            <Text style={s.sellCtaBtnText}>START</Text>
+            <Text style={s.sellCtaBtnText}>Start listing</Text>
+            <Ionicons name="arrow-forward" size={14} color={Colors.white} />
           </View>
         </TouchableOpacity>
 
-        {/* Apply as a Dealer CTA — web's home page (HomeClient.tsx) has a
-            full "Are You a Car Dealer?" section linking to dealer signup;
-            mobile had no equivalent entry point anywhere on the home screen. */}
-        {role !== 'dealer' && (
-          <TouchableOpacity
-            style={s.dealerCta}
-            onPress={() => navigation.navigate('DealerOnboarding' as any)}
-            activeOpacity={0.85}
-          >
-            <View style={s.dealerCtaIconWrap}>
-              <Ionicons name="business-outline" size={20} color={Colors.infoBlueLight} />
+        {(() => {
+          const showAuctionRow = liveAuctions.length > 0;
+          const showDealerRow = role !== 'dealer';
+          if (!showAuctionRow && !showDealerRow) return null;
+          // Divider only between two rows — a style-level border-bottom on
+          // every row would leave a stray trailing line when just one shows.
+          const dividerStyle = showAuctionRow && showDealerRow
+            ? { borderBottomWidth: 1, borderBottomColor: Colors.borderSubtle }
+            : undefined;
+          return (
+            <View style={s.secondaryRows}>
+              {showAuctionRow && (
+                <TouchableOpacity
+                  style={[s.utilityRow, dividerStyle]}
+                  onPress={() => navigation.navigate('Tabs', { screen: 'Live' })}
+                  activeOpacity={0.7}
+                >
+                  <View style={s.utilityRowIconWrap}>
+                    <Ionicons name="hammer-outline" size={16} color={Colors.accent} />
+                    <View style={s.auctionLiveDot} />
+                  </View>
+                  <Text style={s.utilityRowText} numberOfLines={1}>
+                    {liveAuctions.length} live auction{liveAuctions.length !== 1 ? 's' : ''} right now
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                </TouchableOpacity>
+              )}
+
+              {/* Apply as a Dealer CTA — web's home page (HomeClient.tsx) has a
+                  full "Are You a Car Dealer?" section linking to dealer signup;
+                  mobile had no equivalent entry point anywhere on the home screen. */}
+              {showDealerRow && (
+                <TouchableOpacity
+                  style={s.utilityRow}
+                  onPress={() => navigation.navigate('DealerOnboarding' as any)}
+                  activeOpacity={0.7}
+                >
+                  <View style={s.utilityRowIconWrap}>
+                    <Ionicons name="business-outline" size={16} color={Colors.infoBlueLight} />
+                  </View>
+                  <Text style={s.utilityRowText} numberOfLines={1}>Are you a car dealer? Apply here</Text>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                </TouchableOpacity>
+              )}
             </View>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={s.dealerCtaTitle}>Are you a car dealer?</Text>
-              <Text style={s.dealerCtaHint}>Apply for a dealer account to list your full stock</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
-          </TouchableOpacity>
-        )}
+          );
+        })()}
 
         <View style={{ height: 110 }} />
       </ScrollView>
@@ -836,24 +840,23 @@ const s = StyleSheet.create({
   emptyState: { width: 240, height: 100, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.whiteAlpha02, borderRadius: 14, borderWidth: 1, borderColor: Colors.whiteAlpha05 },
   emptyStateText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.midBlue_505060 },
 
-  // Live Auctions CTA
-  auctionCta: { marginHorizontal: 24, marginBottom: 12, backgroundColor: Colors.bgSecondary, borderRadius: 18, borderWidth: 1, borderColor: Colors.accentAlpha25, padding: 18, flexDirection: 'row', alignItems: 'center' },
-  auctionCtaIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.accentAlpha12, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
-  auctionLiveDot: { position: 'absolute', top: -2, right: -2, width: 9, height: 9, borderRadius: 4.5, backgroundColor: Colors.accent, borderWidth: 1.5, borderColor: Colors.bgSecondary },
-  auctionCtaTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 2 },
-  auctionCtaHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
-  auctionCtaBtn: { backgroundColor: Colors.accent, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
-  auctionCtaBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, letterSpacing: 0.8 },
+  // Sell CTA — the one accent-filled hero action on this screen (CDS restraint
+  // rule: at most one primary accent-filled action per view). Accent wash
+  // fill instead of a thin border, a watermark icon for texture, and a
+  // trailing-arrow button instead of a boxed label.
+  sellCta: { marginHorizontal: 24, marginBottom: 14, backgroundColor: Colors.accentAlpha12, borderRadius: 20, borderWidth: 1, borderColor: Colors.accentAlpha25, padding: 24, overflow: 'hidden' },
+  sellCtaWatermark: { position: 'absolute', top: -10, right: -10 },
+  sellCtaTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.xl, color: Colors.white, marginBottom: 4 },
+  sellCtaHint: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: 16 },
+  sellCtaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, alignSelf: 'flex-start', backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
+  sellCtaBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.3 },
 
-  // Sell CTA
-  sellCta: { marginHorizontal: 24, marginBottom: 8, backgroundColor: Colors.bgSecondary, borderRadius: 18, borderWidth: 1, borderColor: Colors.accentAlpha25, padding: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sellCtaTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 4 },
-  sellCtaHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.iconMuted },
-  sellCtaBtn: { backgroundColor: Colors.accent, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
-  sellCtaBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, letterSpacing: 0.8 },
-
-  dealerCta: { marginHorizontal: 24, marginBottom: 8, backgroundColor: Colors.bgSecondary, borderRadius: 18, borderWidth: 1, borderColor: Colors.infoBlueAlpha20, padding: 18, flexDirection: 'row', alignItems: 'center', gap: 14 },
-  dealerCtaIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.infoBlueAlpha12, alignItems: 'center', justifyContent: 'center' },
-  dealerCtaTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 2 },
-  dealerCtaHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
+  // Secondary utility rows (live auctions / dealer signup) — deliberately
+  // quiet compact rows, not competing hero cards, so the sell CTA above is
+  // the only bold moment on the screen.
+  secondaryRows: { marginHorizontal: 24, marginBottom: 8, backgroundColor: Colors.bgSecondary, borderRadius: 16, borderWidth: 1, borderColor: Colors.borderSubtle, overflow: 'hidden' },
+  utilityRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
+  utilityRowIconWrap: { width: 30, height: 30, borderRadius: 10, backgroundColor: Colors.whiteAlpha05, alignItems: 'center', justifyContent: 'center' },
+  auctionLiveDot: { position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.accent, borderWidth: 1.5, borderColor: Colors.bgSecondary },
+  utilityRowText: { flex: 1, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.white },
 });

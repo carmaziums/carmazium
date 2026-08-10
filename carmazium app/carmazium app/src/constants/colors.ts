@@ -2,10 +2,17 @@
 // Dark-mode first, Crimson accent
 
 export const Colors = {
-  // Backgrounds
-  bgPrimary: '#0A0A0C',
-  bgSecondary: '#111115',
-  bgTertiary: '#18181E',
+  // Backgrounds — these three MUST stay literal copies of the web app's
+  // dark-theme tokens (src/app/globals.css .dark block): --bg-body (#0f172a,
+  // Tailwind slate-900), --color-secondary (#1e293b, slate-800), and one step
+  // further down the same slate ramp (#334155, slate-700) for a third tier
+  // web doesn't need (translucent bg-card layering) but RN does (opaque
+  // surfaces only). Previously a flat, colder near-black (#0A0A0C/#111115/
+  // #18181E) that drifted from web's actual blue-slate dark theme —
+  // corrected 2026-08-10, do not reintroduce a separate near-black scale.
+  bgPrimary: '#0f172a',
+  bgSecondary: '#1e293b',
+  bgTertiary: '#334155',
 
   // Glass
   glassBg: 'rgba(255, 255, 255, 0.06)',
@@ -53,7 +60,7 @@ export const Colors = {
   overlay80: 'rgba(0, 0, 0, 0.80)',
 
   // Tab bar
-  tabBarBg: 'rgba(10, 10, 12, 0.92)',
+  tabBarBg: 'rgba(15, 23, 42, 0.92)',
   tabBarBorder: 'rgba(255, 255, 255, 0.08)',
   tabActive: '#DC1F26',
   tabInactive: '#5C5C6B',
@@ -68,8 +75,11 @@ export const Colors = {
   // no color values were changed, only moved from inline literals into named tokens.
   accentGreen: '#10B981',
   bgSecondaryAlt: '#111116',
-  borderMuted: '#404050',
-  borderSubtle: '#2A2A32',
+  // Web's --border-default / --border-hover (dark theme) are rgba(255,255,255,0.1)
+  // / rgba(255,255,255,0.2) — corrected 2026-08-10 from flat near-black hex
+  // (#404050/#2A2A32) that didn't match web's actual glass-border system.
+  borderMuted: 'rgba(255, 255, 255, 0.20)',
+  borderSubtle: 'rgba(255, 255, 255, 0.10)',
   darkBlue_1a2238: '#1A2238',
   darkBlue_1c2033: '#1C2033',
   darkBlue_1d2030: '#1D2030',
