@@ -4,6 +4,7 @@ import * as React from "react"
 import { X, Send, User, Mail, Phone, MessageSquare, Loader2, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { apiClient } from "@/lib/apiClient"
+import { trackMetaEvent } from "@/components/analytics/MetaPixel"
 
 interface EnquireModalProps {
     listingId: string
@@ -45,6 +46,11 @@ export function EnquireModal({ listingId, dealerProfileId, isOpen, onClose, sell
                 })
             })
             setStatus("success")
+            trackMetaEvent("Lead", {
+                content_name: carTitle,
+                content_ids: [listingId],
+                content_category: "vehicle_enquiry",
+            })
             setTimeout(() => {
                 onClose()
                 setStatus("idle")

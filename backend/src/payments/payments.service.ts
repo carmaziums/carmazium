@@ -491,6 +491,8 @@ export class PaymentsService {
             paymentStatus: session.payment_status,
             customerEmail: session.customer_details?.email ?? null,
             metadata: session.metadata,
+            amountTotal: session.amount_total,
+            currency: session.currency,
         };
     }
 

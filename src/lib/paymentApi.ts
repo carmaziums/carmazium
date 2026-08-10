@@ -16,6 +16,8 @@ export interface SessionStatus {
     paymentStatus: string
     customerEmail: string | null
     metadata: Record<string, string>
+    amountTotal: number | null
+    currency: string | null
 }
 
 export interface PaymentTransaction {

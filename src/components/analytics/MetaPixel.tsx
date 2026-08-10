@@ -13,6 +13,15 @@ declare global {
     }
 }
 
+/**
+ * Fire a Meta Pixel event (standard or custom) from anywhere in the app.
+ * No-ops silently if the Pixel never loaded (id unset, script blocked, etc).
+ */
+export function trackMetaEvent(eventName: string, params?: Record<string, unknown>) {
+    if (typeof window === "undefined" || typeof window.fbq !== "function") return
+    window.fbq("track", eventName, params)
+}
+
 function MetaPixelPageViewTracker() {
     const pathname = usePathname()
     const searchParams = useSearchParams()

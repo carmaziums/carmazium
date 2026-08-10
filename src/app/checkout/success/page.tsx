@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -11,6 +11,7 @@ import { getSessionStatus, applyAuctionFee, applyKycFee } from "@/lib/paymentApi
 import type { SessionStatus } from "@/lib/paymentApi"
 import { publishListing } from "@/lib/listingApi"
 import { useAuth } from "@/context/AuthContext"
+import { trackMetaEvent } from "@/components/analytics/MetaPixel"
 
 export default function CheckoutSuccessPage() {
     return (
@@ -34,6 +35,7 @@ function CheckoutSuccessContent() {
 
     const [sessionData, setSessionData] = useState<SessionStatus | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const trackedSessionId = useRef<string | null>(null)
 
     useEffect(() => {
         if (!sessionId) {
@@ -53,6 +55,18 @@ function CheckoutSuccessContent() {
                 }
                 if (data?.metadata?.type === 'KYC_VERIFICATION') {
                     applyKycFee(sessionId).catch(() => {})
+                }
+                // Guard against double-firing (effect re-run, repeated polls) — one
+                // Purchase event per completed Stripe Checkout Session.
+                if (data?.paymentStatus === 'paid' && trackedSessionId.current !== sessionId) {
+                    trackedSessionId.current = sessionId
+                    trackMetaEvent("Purchase", {
+                        value: data.amountTotal != null ? data.amountTotal / 100 : undefined,
+                        currency: data.currency?.toUpperCase() ?? "GBP",
+                        content_type: "product",
+                        content_ids: data.metadata?.listingId ? [data.metadata.listingId] : undefined,
+                        content_name: data.metadata?.type,
+                    })
                 }
             } catch {
                 // Silently fail — show generic success
