@@ -1080,28 +1080,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-                            {/* Retail Listing card */}
-                            <div
-                                onClick={handleMethodClick}
-                                className="relative cursor-pointer group"
-                            >
-                                <div className="relative dealer-glass-card p-8 border-[var(--border-default)] hover:border-primary/40 transition-all duration-300 overflow-hidden hover:shadow-[0_10px_40px_rgba(237,28,36,0.15)] rounded-2xl h-full flex flex-col">
-                                    <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl -z-10 group-hover:bg-primary/20 transition-colors" />
-                                    <div className="w-16 h-16 bg-[var(--bg-input)] rounded-2xl flex items-center justify-center mb-6 border border-[var(--border-default)] group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(237,28,36,0.2)] transition-all">
-                                        <List className="text-primary w-8 h-8" />
-                                    </div>
-                                    <h2 className="text-2xl font-bold mb-2 font-heading">Retail Listing</h2>
-                                    <p className="text-[var(--text-muted)] mb-6 text-sm">Set your asking price and let buyers submit offers. You choose who to accept.</p>
-                                    <ul className="space-y-2.5 mb-6 text-[var(--text-secondary)] flex-1">
-                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Starting from £1</li>
-                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> DVLA-verified vehicle data</li>
-                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Instant estimated valuation</li>
-                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Reach thousands of buyers</li>
-                                    </ul>
-                                    <Button className="w-full py-4 group-hover:shadow-neon">Start Listing <ArrowRight className="ml-2 h-4 w-4" /></Button>
-                                </div>
-                            </div>
-
                             {/* Auction card */}
                             <div
                                 onClick={() => {
@@ -1151,6 +1129,28 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <Button className="w-full py-4 border-0 bg-orange-600 hover:bg-orange-500 group-hover:shadow-[0_0_20px_rgba(249,115,22,0.4)]">
                                         <span>List for Auction</span><Gavel className="ml-2 h-4 w-4" />
                                     </Button>
+                                </div>
+                            </div>
+
+                            {/* Retail Listing card */}
+                            <div
+                                onClick={handleMethodClick}
+                                className="relative cursor-pointer group"
+                            >
+                                <div className="relative dealer-glass-card p-8 border-[var(--border-default)] hover:border-primary/40 transition-all duration-300 overflow-hidden hover:shadow-[0_10px_40px_rgba(237,28,36,0.15)] rounded-2xl h-full flex flex-col">
+                                    <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl -z-10 group-hover:bg-primary/20 transition-colors" />
+                                    <div className="w-16 h-16 bg-[var(--bg-input)] rounded-2xl flex items-center justify-center mb-6 border border-[var(--border-default)] group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(237,28,36,0.2)] transition-all">
+                                        <List className="text-primary w-8 h-8" />
+                                    </div>
+                                    <h2 className="text-2xl font-bold mb-2 font-heading">Retail Listing</h2>
+                                    <p className="text-[var(--text-muted)] mb-6 text-sm">Set your asking price and let buyers submit offers. You choose who to accept.</p>
+                                    <ul className="space-y-2.5 mb-6 text-[var(--text-secondary)] flex-1">
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Starting from £1</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> DVLA-verified vehicle data</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Instant estimated valuation</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Reach thousands of buyers</li>
+                                    </ul>
+                                    <Button className="w-full py-4 group-hover:shadow-neon">Start Listing <ArrowRight className="ml-2 h-4 w-4" /></Button>
                                 </div>
                             </div>
                         </div>

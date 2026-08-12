@@ -230,7 +230,7 @@ function SignupForm() {
                     </div>
 
                     <div className="space-y-2 relative group-dropdown">
-                        <label className="text-xs font-bold uppercase tracking-wide block text-gray-200">Join As</label>
+                        <label className="text-xs font-bold uppercase tracking-wide block text-gray-200">Select Role</label>
                         <div className="relative">
                             <input type="checkbox" id="dropdown-toggle" className="peer hidden" />
                             <label htmlFor="dropdown-toggle" className="flex items-center justify-between w-full h-14 px-4 bg-slate-900/60 border border-white/10 rounded-xl cursor-pointer text-white hover:border-primary/50 transition-colors">
