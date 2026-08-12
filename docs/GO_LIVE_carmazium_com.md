@@ -63,6 +63,14 @@ Nothing existed before this session — the app only had a custom first-party an
 3. That's it — `GoogleAnalytics.tsx` loads `gtag.js` and fires a `page_view` on every App Router client-side navigation only when the env var is present; it's a complete no-op otherwise, so nothing breaks if this step is skipped or delayed.
 4. Recommended: link the GA4 property to Search Console once both exist, for the combined organic-performance view.
 
+### Google Ads conversion tag
+
+Separate product from GA4 (`AW-...` id, not `G-...`) but shares the same `gtag.js` script — `GoogleAnalytics.tsx` loads the library and configures whichever of GA4/Ads is present, independently of the other.
+
+1. Grab the Conversion ID (`AW-XXXXXXXXXX`) from the Google Ads account's conversion tracking setup.
+2. Set `NEXT_PUBLIC_GOOGLE_ADS_ID` in Vercel (same scoping as `NEXT_PUBLIC_GA_MEASUREMENT_ID` above).
+3. No-op if unset, same as GA4.
+
 ---
 
 ## 5. Things worth a decision before/around go-live (found while auditing, not caused by the domain work)
