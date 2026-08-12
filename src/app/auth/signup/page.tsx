@@ -24,8 +24,17 @@ function SignupForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const roleParam = searchParams.get("role")?.toUpperCase()
-    const initialRole = (VALID_SIGNUP_ROLES as readonly string[]).includes(roleParam ?? "") ? roleParam as typeof VALID_SIGNUP_ROLES[number] : "BUYER"
-    const [formData, setFormData] = React.useState({
+    // Empty by default — the role picker must be a deliberate choice, not a
+    // silent BUYER default. A valid ?role= query param (e.g. from a "Sell as
+    // a dealer" link) still pre-fills it.
+    const initialRole = (VALID_SIGNUP_ROLES as readonly string[]).includes(roleParam ?? "") ? roleParam as typeof VALID_SIGNUP_ROLES[number] : ""
+    const [formData, setFormData] = React.useState<{
+        firstName: string
+        lastName: string
+        email: string
+        password: string
+        role: typeof VALID_SIGNUP_ROLES[number] | ""
+    }>({
         firstName: "",
         lastName: "",
         email: "",
@@ -50,6 +59,10 @@ function SignupForm() {
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (!formData.role) {
+            setError("Please select a role to continue.")
+            return
+        }
         setLoading(true)
         setError(null)
 
@@ -143,7 +156,7 @@ function SignupForm() {
         { id: 'FINANCE_PARTNER', icon: CreditCard, label: 'Finance Provider', sub: 'Vehicle financing services' }
     ]
 
-    const selectedRole = roles.find(r => r.id === formData.role) || roles[0]
+    const selectedRole = roles.find(r => r.id === formData.role)
 
     return (
         <div className="min-h-screen pt-24 pb-12 flex items-center justify-center bg-[url('/assets/images/signup-bg.png')] bg-cover bg-center relative">
@@ -234,12 +247,16 @@ function SignupForm() {
                         <div className="relative">
                             <input type="checkbox" id="dropdown-toggle" className="peer hidden" />
                             <label htmlFor="dropdown-toggle" className="flex items-center justify-between w-full h-14 px-4 bg-slate-900/60 border border-white/10 rounded-xl cursor-pointer text-white hover:border-primary/50 transition-colors">
-                                <span className="flex items-center gap-3">
-                                    <span className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                                        <selectedRole.icon size={16} />
+                                {selectedRole ? (
+                                    <span className="flex items-center gap-3">
+                                        <span className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                                            <selectedRole.icon size={16} />
+                                        </span>
+                                        <span>{selectedRole.label}</span>
                                     </span>
-                                    <span>{selectedRole.label}</span>
-                                </span>
+                                ) : (
+                                    <span className="text-gray-400">Select your role...</span>
+                                )}
                                 <ArrowLeft className="rotate-[-90deg] text-gray-400 peer-checked:rotate-90 transition-transform" size={16} />
                             </label>
 
@@ -285,6 +302,10 @@ function SignupForm() {
                         variant="outline"
                         disabled={googleLoading}
                         onClick={async () => {
+                            if (!formData.role) {
+                                setError("Please select a role to continue.")
+                                return
+                            }
                             setGoogleLoading(true)
                             setError(null)
                             try {
