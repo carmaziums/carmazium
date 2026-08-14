@@ -12,6 +12,7 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { GlobalToastProvider } from './src/components/GlobalToastProvider';
 import { DrawerProvider } from './src/context/DrawerContext';
 import { GlobalDrawer } from './src/components/GlobalDrawer';
+import { LocationPromptSheet } from './src/components/LocationPromptSheet';
 import { Colors } from './src/constants/colors';
 import { ChatProvider } from './src/context/ChatContext';
 import { LocationProvider } from './src/context/LocationContext';
@@ -267,6 +268,12 @@ export default function App() {
           <GlobalDrawer />
           {/* Global AI Chat Bot floating over every screen */}
           <GlobalAIChatBot />
+          {/* Asks accounts predating the mandatory location/postcode fields
+              (backend 53c5acca) to supply them — those users never went
+              through a step that collects them. Renders itself only when
+              genuinely missing, and gates internally on being authenticated
+              and past onboarding. */}
+          <LocationPromptSheet />
         </DrawerProvider>
         <StatusBar style="light" />
       </NavigationContainer>

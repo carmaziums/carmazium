@@ -8,6 +8,7 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
+  Linking,
   Text,
   TouchableOpacity,
   View,
@@ -17,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
+import { getAuction } from '../../lib/auctionApi';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -193,6 +195,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
   const [error, setError] = useState<string | null>(null);
   const [tappingId, setTappingId] = useState<string | null>(null);
   const [connectingChatId, setConnectingChatId] = useState<string | null>(null);
+  const [callingBidId, setCallingBidId] = useState<string | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -241,6 +244,48 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
   };
 
   // ── chat with seller (won auctions) ──────────────────────────
+  /**
+   * Call the seller — web parity (05cfe7e4 added this to the won-auction list).
+   *
+   * The phone number is fetched on tap rather than with the list. It isn't in
+   * the /bids/my payload at all — RawBid.listing carries only `sellerId` — and
+   * the only endpoint that returns it,
+   * GET /auctions/:id, gates it server-side on having won and paid. Prefetching
+   * per row would mean one auction request per won bid on every render of this
+   * screen to populate a button most users won't press.
+   *
+   * A null phone here is the backend saying "not yet" rather than an error, so
+   * that case explains the gate instead of reporting a failure.
+   */
+  const handleCallSeller = async (bid: Bid) => {
+    if (!bid.auctionId) return;
+    setCallingBidId(bid.id);
+    try {
+      const auction = await getAuction(bid.auctionId);
+      const seller = (auction as any)?.listing?.seller;
+      const phone: string | null =
+        seller?.dealerProfile?.phone ?? seller?.phone ?? null;
+
+      if (phone) {
+        Linking.openURL(`tel:${phone}`);
+        return;
+      }
+
+      const everHadOne =
+        !!seller?.dealerProfile?.phoneAvailable || !!seller?.phoneAvailable;
+      Alert.alert(
+        everHadOne ? 'Contact locked' : 'No phone number',
+        everHadOne
+          ? 'The seller’s phone number unlocks once your £125 buyer fee is paid.'
+          : 'This seller has not added a phone number. Try messaging them instead.',
+      );
+    } catch {
+      Alert.alert('Unable to get contact', 'Please try again in a moment.');
+    } finally {
+      setCallingBidId(null);
+    }
+  };
+
   const handleChatWithSeller = async (bid: Bid) => {
     const sellerId = bid.listing?.sellerId;
     if (!sellerId) {
@@ -430,6 +475,24 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
                 <ActivityIndicator size="small" color={Colors.accentGreen} />
               ) : (
                 <Ionicons name="chatbubble-ellipses-outline" size={16} color={Colors.accentGreen} />
+              )}
+            </TouchableOpacity>
+            {/* Call Seller — web's won-auction list gained this in 05cfe7e4.
+                Always shown on a won row: the number is gated server-side, so
+                hiding the button until the fee is paid would just leave the
+                winner guessing where the seller's details are. */}
+            <TouchableOpacity
+              style={styles.wonCallBtn}
+              activeOpacity={0.85}
+              onPress={() => handleCallSeller(bid)}
+              disabled={callingBidId === bid.id}
+              accessibilityRole="button"
+              accessibilityLabel="Call seller"
+            >
+              {callingBidId === bid.id ? (
+                <ActivityIndicator size="small" color={Colors.accentGreen} />
+              ) : (
+                <Ionicons name="call-outline" size={16} color={Colors.accentGreen} />
               )}
             </TouchableOpacity>
           </View>
@@ -735,6 +798,15 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size12,
     color: Colors.white,
     letterSpacing: 0.8,
+  },
+  wonCallBtn: {
+    width: 44,
+    borderRadius: Radius.chip,
+    backgroundColor: Colors.accentGreenAlpha15,
+    borderWidth: 1,
+    borderColor: Colors.accentGreenAlpha30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   wonChatBtn: {
     width: 44,

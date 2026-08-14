@@ -13,6 +13,9 @@ interface User {
   phone?: string | null;
   profileImage?: string | null;
   location?: string | null;
+  /** Mandatory on the backend since 53c5acca, but accounts created before that
+   *  can still be missing it — LocationPromptSheet exists to collect it. */
+  postcode?: string | null;
   isAddressVerified?: boolean;
   isVerified?: boolean; // true if dealer KYC approved
 }
@@ -28,6 +31,7 @@ interface UserProfileResponse {
     phone?: string;
     profileImage?: string;
     location?: string;
+    postcode?: string;
     isAddressVerified?: boolean;
     dealerProfile?: {
       isVerified?: boolean;
@@ -124,6 +128,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               phone: profile.phone || null,
               profileImage: profile.profileImage || null,
               location: profile.location || null,
+              postcode: profile.postcode || null,
               isAddressVerified: profile.isAddressVerified || false,
               isVerified: profile.dealerProfile?.isVerified ?? false,
             },
@@ -213,6 +218,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             phone: profile.phone || null,
             profileImage: profile.profileImage || null,
             location: profile.location || null,
+              postcode: profile.postcode || null,
             isAddressVerified: profile.isAddressVerified || false,
             isVerified: profile.dealerProfile?.isVerified ?? false,
           },
@@ -305,6 +311,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               phone: profile.phone || null,
               profileImage: profile.profileImage || null,
               location: profile.location || null,
+              postcode: profile.postcode || null,
               isAddressVerified: profile.isAddressVerified || false,
               isVerified: profile.dealerProfile?.isVerified ?? false,
             },
