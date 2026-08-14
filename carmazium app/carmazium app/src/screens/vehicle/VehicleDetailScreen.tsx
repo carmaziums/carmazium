@@ -69,6 +69,92 @@ function getVideoPlatformLabel(url: string): string {
   return 'Video';
 }
 
+
+// ─── Specification model ──────────────────────────────────────────────────────
+// Data-driven so rows with no value disappear rather than printing "Not
+// disclosed" a dozen times down the card. Grouped so the screen is scannable:
+// a buyer looking for MOT expiry shouldn't have to read past torque.
+
+type SpecRow = { label: string; value: string | null; tone?: 'good' | 'warn' };
+
+/** ENUM_VALUE -> "Enum value". Backend enums are SCREAMING_SNAKE and were
+ *  previously either shown raw or collapsed into lossy display buckets. */
+const prettyEnum = (v?: string | null): string | null =>
+  v ? v.charAt(0).toUpperCase() + v.slice(1).toLowerCase().replace(/_/g, ' ') : null;
+
+const gbDate = (d?: string | null): string | null =>
+  d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+
+const SPEC_GROUPS: { title: string; rows: (l: CarListing) => SpecRow[] }[] = [
+  {
+    title: 'VEHICLE',
+    rows: (l) => [
+      // Web shows the registration free on its vehicle page; mobile only ever
+      // revealed it after a £9.99 HPI purchase, because it was never a typed
+      // field on CarListing at all.
+      { label: 'Registration', value: l.vrm ?? null },
+      { label: 'Body type', value: prettyEnum(l.bodyTypeRaw) ?? (l.category === 'Sports' ? 'Coupé' : l.category) },
+      { label: 'Colour', value: l.colour || null },
+      { label: 'Doors / Seats', value: l.doors != null || l.seats != null ? `${l.doors ?? '—'} / ${l.seats ?? '—'}` : null },
+      // conditionRaw carries CAT_S / CAT_N, which the 2-bucket display
+      // `condition` throws away — and a write-off category is exactly the sort
+      // of thing a buyer must not have hidden from them.
+      { label: 'Condition', value: prettyEnum(l.conditionRaw) ?? l.condition ?? null },
+      { label: 'First registered', value: gbDate(l.monthOfFirstRegistration) },
+      { label: 'Wheelplan', value: prettyEnum(l.wheelplan) },
+    ],
+  },
+  {
+    title: 'PERFORMANCE',
+    rows: (l) => [
+      {
+        label: 'Engine',
+        value: l.engineSize
+          ? `${(l.engineSize / 1000).toFixed(1)}L${l.bhp ? ` · ${l.bhp} bhp` : ''}`
+          : l.bhp ? `${l.bhp} bhp` : null,
+      },
+      { label: 'Torque', value: l.torqueNm != null ? `${l.torqueNm} Nm` : null },
+      { label: '0-60 mph', value: l.zeroToSixty ? `${l.zeroToSixty}s` : null },
+      { label: 'Top speed', value: l.topSpeed ? `${l.topSpeed} mph` : null },
+      { label: 'Transmission', value: l.transmission || null },
+    ],
+  },
+  {
+    title: 'RUNNING COSTS',
+    rows: (l) => [
+      {
+        label: 'Fuel economy',
+        value: [
+          l.combinedMpg != null ? `${l.combinedMpg} mpg combined` : null,
+          l.extraUrbanMpg != null ? `${l.extraUrbanMpg} mpg extra-urban` : null,
+        ].filter(Boolean).join(' · ') || null,
+      },
+      { label: 'CO₂ emissions', value: l.co2Emissions != null ? `${l.co2Emissions} g/km` : null },
+      // ULEZ and Euro standard are real backend columns that the mapper was
+      // silently dropping. In a UK marketplace ULEZ status is a buying
+      // decision, not a detail — so it's toned rather than left as plain text.
+      {
+        label: 'ULEZ',
+        value: l.ulezCompliant == null ? null : l.ulezCompliant ? 'Compliant' : 'Not compliant',
+        tone: l.ulezCompliant == null ? undefined : l.ulezCompliant ? 'good' : 'warn',
+      },
+      { label: 'Euro standard', value: prettyEnum(l.euroStandard) },
+      { label: 'Tax status', value: prettyEnum(l.taxStatus) },
+      { label: 'Tax due', value: gbDate(l.taxDueDate) },
+    ],
+  },
+  {
+    title: 'HISTORY',
+    rows: (l) => [
+      { label: 'Owners', value: l.owners != null ? String(l.owners) : 'Not disclosed' },
+      { label: 'Service history', value: prettyEnum(l.serviceHistory) },
+      { label: 'MOT status', value: prettyEnum(l.motStatus) },
+      { label: 'MOT until', value: gbDate(l.motExpiry) ?? 'Not disclosed' },
+      { label: 'Type approval', value: prettyEnum(l.typeApproval) },
+    ],
+  },
+];
+
 export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { listing } = route.params;
   const insets = useSafeAreaInsets();
@@ -961,92 +1047,42 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           )}
 
-          {/* Section: Specifications list card */}
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionHeaderTitle}>SPECIFICATION</Text>
-            <View style={styles.specCardContainer}>
-              <View style={styles.specRow}>
-                <Text style={styles.specRowLabel}>Body type</Text>
-                <Text style={styles.specRowValue}>
-                  {listing.category === 'Sports' ? 'Coupé' : listing.category}
-                </Text>
-              </View>
-              <View style={styles.specRow}>
-                <Text style={styles.specRowLabel}>Engine</Text>
-                <Text style={styles.specRowValue}>
-                  {/* Was a hardcoded "3.0L" for every listing regardless of the
-                      real vehicle — now uses the real engineSize field, with
-                      an honest fallback instead of a fabricated number. */}
-                  {listing.engineSize ? `${(listing.engineSize / 1000).toFixed(1)}L` : 'Not disclosed'}
-                  {listing.bhp ? ` - ${listing.bhp} bhp` : ''}
-                </Text>
-              </View>
-              <View style={styles.specRow}>
-                <Text style={styles.specRowLabel}>0-60 mph</Text>
-                <Text style={styles.specRowValue}>{listing.zeroToSixty}s</Text>
-              </View>
-              {/* Performance fields — real API data (torqueNm/combinedMpg/
-                  extraUrbanMpg/topSpeed) that reaches CarListing via the
-                  mapper but had no row in this grid until now (mobile
-                  audit M2 finding: not a missing endpoint, just unrendered). */}
-              {!!listing.topSpeed && (
-                <View style={styles.specRow}>
-                  <Text style={styles.specRowLabel}>Top speed</Text>
-                  <Text style={styles.specRowValue}>{listing.topSpeed} mph</Text>
+          {/* Section: Specifications
+              Was a flat run of ~12 undifferentiated rows. Now grouped —
+              Vehicle / Performance / Running costs / History — because a buyer
+              scanning for MOT expiry shouldn't have to read past torque to
+              find it. Built from data so a row with no value drops out
+              entirely instead of printing "Not disclosed" a dozen times; only
+              genuinely decision-relevant fields keep an explicit "Not
+              disclosed", where the absence is itself information. */}
+          {SPEC_GROUPS.map((group) => {
+            const rows = group.rows(listing).filter((r) => r.value != null && r.value !== '');
+            if (rows.length === 0) return null;
+            return (
+              <View key={group.title} style={styles.sectionContainer}>
+                <Text style={styles.sectionHeaderTitle}>{group.title}</Text>
+                <View style={styles.specCardContainer}>
+                  {rows.map((r, i) => (
+                    <View
+                      key={r.label}
+                      style={[styles.specRow, i === rows.length - 1 && { borderBottomWidth: 0 }]}
+                    >
+                      <Text style={styles.specRowLabel}>{r.label}</Text>
+                      <Text
+                        style={[
+                          styles.specRowValue,
+                          r.tone === 'good' && styles.specValueGood,
+                          r.tone === 'warn' && styles.specValueWarn,
+                        ]}
+                      >
+                        {r.value}
+                      </Text>
+                    </View>
+                  ))}
                 </View>
-              )}
-              {listing.torqueNm != null && (
-                <View style={styles.specRow}>
-                  <Text style={styles.specRowLabel}>Torque</Text>
-                  <Text style={styles.specRowValue}>{listing.torqueNm} Nm</Text>
-                </View>
-              )}
-              <View style={styles.specRow}>
-                <Text style={styles.specRowLabel}>Doors / Seats</Text>
-                <Text style={styles.specRowValue}>
-                  {listing.doors != null || listing.seats != null
-                    ? `${listing.doors ?? '—'} / ${listing.seats ?? '—'}`
-                    : 'Not disclosed'}
-                </Text>
               </View>
-              <View style={styles.specRow}>
-                <Text style={styles.specRowLabel}>CO₂ emissions</Text>
-                <Text style={styles.specRowValue}>
-                  {listing.co2Emissions != null ? `${listing.co2Emissions} g/km` : 'Not disclosed'}
-                </Text>
-              </View>
-              {(listing.combinedMpg != null || listing.extraUrbanMpg != null) && (
-                <View style={styles.specRow}>
-                  <Text style={styles.specRowLabel}>Fuel economy</Text>
-                  <Text style={styles.specRowValue}>
-                    {listing.combinedMpg != null ? `${listing.combinedMpg} mpg combined` : ''}
-                    {listing.combinedMpg != null && listing.extraUrbanMpg != null ? ' · ' : ''}
-                    {listing.extraUrbanMpg != null ? `${listing.extraUrbanMpg} mpg extra-urban` : ''}
-                  </Text>
-                </View>
-              )}
-              <View style={styles.specRow}>
-                <Text style={styles.specRowLabel}>Owners</Text>
-                <Text style={styles.specRowValue}>
-                  {listing.owners != null
-                    ? `${listing.owners}${listing.serviceHistory ? ` (${listing.serviceHistory})` : ''}`
-                    : 'Not disclosed'}
-                </Text>
-              </View>
-              <View style={styles.specRow}>
-                <Text style={styles.specRowLabel}>MOT until</Text>
-                <Text style={styles.specRowValue}>
-                  {listing.motExpiry
-                    ? new Date(listing.motExpiry).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                    : 'Not disclosed'}
-                </Text>
-              </View>
-              <View style={[styles.specRow, { borderBottomWidth: 0 }]}>
-                <Text style={styles.specRowLabel}>Colour</Text>
-                <Text style={styles.specRowValue}>{listing.colour}</Text>
-              </View>
-            </View>
-          </View>
+            );
+          })}
 
           {/* Section: Vehicle History — real DVLA/seller-declared fields only.
               Paid HPI report below (:314-360, 1399-1406) is the actual verified check;
@@ -2279,7 +2315,13 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
     color: Colors.white,
+    flexShrink: 1,
+    textAlign: 'right',
   },
+  // ULEZ status is the one spec row worth colouring — it's a cost decision for
+  // a London buyer, not a footnote.
+  specValueGood: { color: Colors.successLight },
+  specValueWarn: { color: Colors.warningLight },
   // Vehicle History Grid
   historyGrid: {
     flexDirection: 'row',

@@ -59,6 +59,29 @@ export interface CarListing {
   // Auto-computed server-side from DamageRecord count on every damage save —
   // never seller-set, no mobile picker exists or should exist for this.
   exteriorGrade?: number | null;
+  /**
+   * Registration mark. Web shows this free on the vehicle page; mobile only
+   * ever surfaced it after a £9.99 HPI purchase because it was never a typed
+   * field — it was reachable only via `as any`.
+   */
+  vrm?: string | null;
+  /**
+   * ULEZ compliance and Euro emissions standard. Both are real backend columns
+   * and were already declared on `ApiListing`, but the mapper never assigned
+   * them because `CarListing` had nowhere to put them — so they were silently
+   * dropped on every listing. For a UK marketplace ULEZ status is a buying
+   * decision, not a detail.
+   */
+  ulezCompliant?: boolean | null;
+  euroStandard?: string | null;
+  /**
+   * The raw backend enums, preserved alongside the lossy display buckets.
+   * `category` collapses a 13-value bodyType into 6, and `condition` collapses
+   * a 6-value enum (which includes CAT_S / CAT_N write-off categories) into 2 —
+   * detail a buyer needs and mobile was throwing away.
+   */
+  bodyTypeRaw?: string | null;
+  conditionRaw?: string | null;
   importedFromUrl?: string | null;
   importedSource?: string | null;
   linkedListingId?: string | null;
