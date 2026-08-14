@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Spacing } from '../../constants/spacing';
+import { Spacing, Radius } from '../../constants/spacing';
 import {
   AppNotification,
   getNotifications,
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
   markAllBtn: {
     height: 34,
     paddingHorizontal: 12,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 18,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 14,
@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
   },
   groupCard: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 18,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     overflow: 'hidden',

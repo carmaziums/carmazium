@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { CarListing } from '../../data/listings';
 import { PRICING } from '../../constants/pricing';
 
@@ -688,7 +689,7 @@ const styles = StyleSheet.create({
   periodToggle: {
     flexDirection: 'row',
     backgroundColor: Colors.whiteAlpha07,
-    borderRadius: 18,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha10,
     padding: 2,
@@ -725,7 +726,7 @@ const styles = StyleSheet.create({
     backgroundColor: CARD_BG,
     borderWidth: 1,
     borderColor: CARD_BORDER,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     overflow: 'hidden',
   },
   heroImageArea: {
@@ -815,7 +816,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     padding: 18,
     alignItems: 'center',
     gap: 6,
@@ -865,7 +866,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     height: 52,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
   },
   ctaButtonText: {
@@ -909,7 +910,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(20,26,42,0.55)',
     borderWidth: 1,
     borderColor: Colors.whiteAlpha05,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     padding: 20,
     alignItems: 'center',
     gap: 8,
@@ -937,7 +938,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(20,26,42,0.55)',
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     padding: 16,
   },
   quickIconWrap: {
@@ -963,14 +964,14 @@ const styles = StyleSheet.create({
   // ── listing cards ──
   listingCardSkeleton: {
     height: 76,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.whiteAlpha04,
   },
   listingCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: CARD_BG,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: CARD_BORDER,
     padding: 18,
@@ -1021,7 +1022,7 @@ const styles = StyleSheet.create({
   statusChip: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     borderWidth: 1,
     flexShrink: 0,
   },
@@ -1054,7 +1055,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     height: 48,
     paddingHorizontal: 28,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1068,7 +1069,7 @@ const styles = StyleSheet.create({
   // ── recent offers card ──
   offersCard: {
     backgroundColor: CARD_BG,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: CARD_BORDER,
     overflow: 'hidden',
@@ -1127,7 +1128,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warningAlpha15,
     borderWidth: 1,
     borderColor: Colors.warningAlpha30,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },

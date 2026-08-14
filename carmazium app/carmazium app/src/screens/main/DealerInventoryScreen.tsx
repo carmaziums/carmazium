@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
-import { RowDensity } from '../../constants/spacing';
+import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { haptics } from '../../lib/haptics';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -862,7 +862,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 34,
     paddingHorizontal: 14,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha07,
@@ -1084,7 +1084,7 @@ const styles = StyleSheet.create({
   bulkImportBtn: {
     width: 52,
     height: 52,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     backgroundColor: Colors.warningAlpha12,
     borderWidth: 1,
     borderColor: Colors.warningAlpha30,
@@ -1139,7 +1139,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.deepBlue_1a1a22,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha10,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontFamily: FontFamily.regular,
@@ -1182,7 +1182,7 @@ const styles = StyleSheet.create({
   },
   bulkSubmitBtn: {
     height: 52,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1217,7 +1217,7 @@ const styles = StyleSheet.create({
   },
   bulkDoneBtn: {
     height: 52,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     backgroundColor: Colors.success,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1364,7 +1364,7 @@ const styles = StyleSheet.create({
   detailCard: {
     marginHorizontal: 20,
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 18,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     paddingHorizontal: 18,
@@ -1413,7 +1413,7 @@ const styles = StyleSheet.create({
   },
   putOnAuctionBtn: {
     height: 48,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     backgroundColor: Colors.accent,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1428,7 +1428,7 @@ const styles = StyleSheet.create({
   boostBtn: {
     flex: 1,
     height: 52,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     backgroundColor: Colors.deepBlue_1c1c22,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha10,
@@ -1477,7 +1477,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     backgroundColor: Colors.success,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
@@ -1509,7 +1509,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     paddingHorizontal: 14,
   },
   soldPriceCurrency: {
@@ -1527,7 +1527,7 @@ const styles = StyleSheet.create({
   },
   markSoldConfirmBtn: {
     height: 48,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.success,
     alignItems: 'center',
     justifyContent: 'center',

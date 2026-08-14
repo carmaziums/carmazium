@@ -18,6 +18,7 @@ import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconButton } from '../../components/IconButton';
@@ -270,7 +271,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingHorizontal: 16,
     height: 54,
   },
@@ -335,7 +336,7 @@ const styles = StyleSheet.create({
   signInBtn: {
     paddingVertical: 10,
     paddingHorizontal: 32,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.accent,
   },

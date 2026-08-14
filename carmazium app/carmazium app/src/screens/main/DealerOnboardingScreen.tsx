@@ -13,6 +13,7 @@ import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
@@ -366,7 +367,7 @@ const styles = StyleSheet.create({
      fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.error, marginTop: 6,
   },
   inputWrap: {
-     flexDirection: 'row', alignItems: 'center', height: 50, borderRadius: 12,
+     flexDirection: 'row', alignItems: 'center', height: 50, borderRadius: Radius.inline,
      backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06,
      paddingHorizontal: 16
   },

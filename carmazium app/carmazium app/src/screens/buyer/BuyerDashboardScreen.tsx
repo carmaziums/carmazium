@@ -18,6 +18,7 @@ import { getFeaturedListings } from '../../lib/listingsApi';
 import { getUnreadCount } from '../../lib/notificationsApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { Logo } from '../../components/Logo';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -545,7 +546,7 @@ const styles = StyleSheet.create({
   // Header
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 16 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  bellBtn: { width: 38, height: 38, borderRadius: 10, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: Colors.whiteAlpha10, alignItems: 'center', justifyContent: 'center' },
+  bellBtn: { width: 38, height: 38, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: Colors.whiteAlpha10, alignItems: 'center', justifyContent: 'center' },
   bellDot: { position: 'absolute', top: 8, right: 8, width: 7, height: 7, borderRadius: 3.5, backgroundColor: Colors.accent, borderWidth: 1.5, borderColor: Colors.bgPrimary },
 
   // Greeting
@@ -561,7 +562,7 @@ const styles = StyleSheet.create({
 
   // KPI Grid
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingHorizontal: 24, marginBottom: 28 },
-  kpiCard: { width: '47.5%', backgroundColor: CARD_BG, borderRadius: 18, borderWidth: 1, borderColor: CARD_BORDER, padding: 18, overflow: 'hidden', position: 'relative' },
+  kpiCard: { width: '47.5%', backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: CARD_BORDER, padding: 18, overflow: 'hidden', position: 'relative' },
   kpiCardFull: { width: '100%' },
   kpiGlow: { position: 'absolute', top: -10, right: -10, width: 70, height: 70, borderRadius: 35, opacity: 0.18 },
   kpiTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
@@ -573,7 +574,7 @@ const styles = StyleSheet.create({
 
   // Hot Deal
   hotDealSection: { marginBottom: 28, paddingHorizontal: 24 },
-  hotDealCard: { backgroundColor: CARD_BG, borderRadius: 18, borderWidth: 1.5, borderColor: 'rgba(255,0,55,0.25)', flexDirection: 'row', padding: 18, gap: 14, alignItems: 'center' },
+  hotDealCard: { backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1.5, borderColor: 'rgba(255,0,55,0.25)', flexDirection: 'row', padding: 18, gap: 14, alignItems: 'center' },
   hotDealImage: { width: 96, height: 76, borderRadius: 12 },
   hotDealImagePlaceholder: { backgroundColor: Colors.whiteAlpha06 },
   hotDealInfo: { flex: 1 },
@@ -591,10 +592,10 @@ const styles = StyleSheet.create({
   activitySection: { paddingHorizontal: 24, marginBottom: 28 },
   activitySectionTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1, textTransform: 'uppercase' },
   seeAllText: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.accent },
-  activityCard: { backgroundColor: CARD_BG, borderRadius: 16, borderWidth: 1, borderColor: CARD_BORDER, overflow: 'hidden' },
+  activityCard: { backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: CARD_BORDER, overflow: 'hidden' },
   activityRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 17, gap: 14 },
   activityRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha06 },
-  activityIcon: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  activityIcon: { width: 36, height: 36, borderRadius: Radius.inline, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   activityText: { flex: 1 },
   activityTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 1 },
   activitySubtitle: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted },
@@ -604,14 +605,14 @@ const styles = StyleSheet.create({
   // Quick actions
   quickActionsSection: { paddingHorizontal: 24, marginBottom: 28, gap: 14 },
   quickRow: { flexDirection: 'row', gap: 12 },
-  quickTile: { flex: 1, backgroundColor: CARD_BG, borderRadius: 16, borderWidth: 1, borderColor: CARD_BORDER, padding: 18, alignItems: 'center', gap: 8, position: 'relative' },
+  quickTile: { flex: 1, backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: CARD_BORDER, padding: 18, alignItems: 'center', gap: 8, position: 'relative' },
   quickIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   quickLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white, letterSpacing: 0.3, textAlign: 'center' },
   quickBadge: { position: 'absolute', top: 8, right: 8, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   quickBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white },
 
   // Profile Card
-  profileCard: { marginHorizontal: 24, marginTop: 8, flexDirection: 'row', alignItems: 'center', backgroundColor: CARD_BG, borderRadius: 20, borderWidth: 1, borderColor: CARD_BORDER, padding: 20, gap: 16 },
+  profileCard: { marginHorizontal: 24, marginTop: 8, flexDirection: 'row', alignItems: 'center', backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: CARD_BORDER, padding: 20, gap: 16 },
   profileAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   profileAvatarText: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   profileInfo: { flex: 1 },
@@ -619,5 +620,5 @@ const styles = StyleSheet.create({
   profileEmail: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textSecondary, marginBottom: 6 },
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: Colors.successAlpha08, borderWidth: 1, borderColor: Colors.successAlpha20, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 20 },
   verifiedBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.success, letterSpacing: 0.5 },
-  profileGear: { width: 38, height: 38, borderRadius: 10, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  profileGear: { width: 38, height: 38, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
 });

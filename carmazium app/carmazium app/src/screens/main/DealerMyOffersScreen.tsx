@@ -17,6 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { CounterLedger } from '../../components/offers/CounterLedger';
 
@@ -560,7 +561,7 @@ const styles = StyleSheet.create({
   // ── Skeleton ──
   skeletonCard: {
     height: 140,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha04,
@@ -590,7 +591,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     height: 44,
     paddingHorizontal: 28,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
@@ -604,7 +605,7 @@ const styles = StyleSheet.create({
   // ── Offer card ──
   offerCard: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
@@ -656,7 +657,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warningAlpha06,
     borderWidth: 1,
     borderColor: Colors.warningAlpha20,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     padding: 12,
     gap: 6,
   },
@@ -715,7 +716,7 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     height: 36,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,

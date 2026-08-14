@@ -19,6 +19,7 @@ import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 
 import { IconButton } from '../../components/IconButton';
 type Props = NativeStackScreenProps<AuthStackParamList, 'ForgotPassword'>;
@@ -232,7 +233,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingHorizontal: 16,
     height: 54,
   },

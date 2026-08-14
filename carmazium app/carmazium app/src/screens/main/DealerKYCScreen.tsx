@@ -22,6 +22,7 @@ import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { haptics } from '../../lib/haptics';
 import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
@@ -89,7 +90,7 @@ const formFieldStyles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingHorizontal: 16,
     color: Colors.white,
     fontFamily: FontFamily.regular,
@@ -907,7 +908,7 @@ const styles = StyleSheet.create({
   statusBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     padding: 14,
     marginBottom: 20,
@@ -921,7 +922,7 @@ const styles = StyleSheet.create({
 
   // Info card
   infoCard: {
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.infoBlueAlpha20,
     backgroundColor: Colors.bgSecondary,
@@ -937,7 +938,7 @@ const styles = StyleSheet.create({
   infoIconWrap: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.infoBlueAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -978,7 +979,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: Colors.warningAlpha06,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.warningAlpha15,
     padding: 14,
@@ -1019,7 +1020,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderStyle: 'dashed',
@@ -1036,7 +1037,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
@@ -1052,7 +1053,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.successAlpha06,
     borderWidth: 1,
     borderColor: Colors.successAlpha20,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
@@ -1123,7 +1124,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     backgroundColor: Colors.warningAlpha06,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.warningAlpha15,
     paddingHorizontal: 14,

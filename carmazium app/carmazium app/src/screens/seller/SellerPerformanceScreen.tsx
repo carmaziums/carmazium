@@ -16,6 +16,7 @@ import { BarChart, LineChart } from 'react-native-gifted-charts';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 
@@ -329,7 +330,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.glassBg,
     borderWidth: 1,
     borderColor: Colors.glassBorder,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     padding: 16,
   },
   statIconWrap: {
@@ -366,7 +367,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.glassBg,
     borderWidth: 1,
     borderColor: Colors.glassBorder,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     paddingHorizontal: 12,
     paddingTop: 16,
     paddingBottom: 8,
@@ -379,7 +380,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.glassBg,
     borderWidth: 1,
     borderColor: Colors.glassBorder,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     padding: 20,
   },
   convIconWrap: {

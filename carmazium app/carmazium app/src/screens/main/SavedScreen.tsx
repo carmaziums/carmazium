@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
 import { IconButton } from '../../components/IconButton';
 import { CarListing, formatPrice } from '../../data/listings';
@@ -363,7 +364,7 @@ const styles = StyleSheet.create({
   skeletonCard: {
     width: CARD_WIDTH,
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     overflow: 'hidden',
@@ -380,7 +381,7 @@ const styles = StyleSheet.create({
   gridCard: {
     width: CARD_WIDTH,
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     overflow: 'hidden',
@@ -493,7 +494,7 @@ const styles = StyleSheet.create({
   listCard: {
     flexDirection: 'row',
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 14,

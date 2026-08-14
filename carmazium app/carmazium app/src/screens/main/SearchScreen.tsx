@@ -19,6 +19,7 @@ import { haversineDistanceMiles } from '../../lib/distance';
 import { Colors } from '../../constants/colors';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import {FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -1369,7 +1370,7 @@ const s = StyleSheet.create({
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center' },
 
   searchWrap: { paddingHorizontal: 24, marginBottom: 8 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgSecondary, borderRadius: 14, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, height: 52, gap: 10 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, height: 52, gap: 10 },
   searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white },
 
   // A horizontal ScrollView's cross-axis size is NOT auto-grown by its
@@ -1385,19 +1386,19 @@ const s = StyleSheet.create({
   // was already marginal at default scale.
   quickScroll: { height: 64, marginBottom: 4 },
   quickRow: { paddingHorizontal: 24, gap: 10, alignItems: 'center', flexDirection: 'row' },
-  quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
+  quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.card, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
   quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, lineHeight: 16, color: Colors.paleGrey_cccccc },
   quickChipTextActive: { color: Colors.white },
 
   sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 8, marginTop: 4, position: 'relative', zIndex: 10 },
   resultsCount: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 1 },
-  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: Colors.bgSecondary, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
+  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
   sortBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
-  filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: Colors.bgSecondary, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
+  filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
   filterBtnActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   filterBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
-  filterClearBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 7, backgroundColor: 'transparent', borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha10 },
+  filterClearBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 7, backgroundColor: 'transparent', borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha10 },
   filterClearBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
   sortDropdown: { position: 'absolute', top: 36, right: 0, backgroundColor: Colors.bgTertiary, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderSubtle, padding: 4, zIndex: 99, minWidth: 160, shadowColor: Colors.black, shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
   sortOption: { paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 8 },
@@ -1408,7 +1409,7 @@ const s = StyleSheet.create({
   loadMoreWrap: { alignItems: 'center', paddingVertical: 20 },
   endText: { textAlign: 'center', fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.borderMuted, paddingVertical: 20 },
   skeletonList: { paddingHorizontal: 24, gap: 14 },
-  skeletonCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Colors.bgSecondary, borderRadius: 14, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 14 },
+  skeletonCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 14 },
   skeletonInfo: { flex: 1, gap: 6 },
 
   // Filter modal
@@ -1422,14 +1423,14 @@ const s = StyleSheet.create({
   filterLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 1.5, marginBottom: 14 },
   divider: { height: 1, backgroundColor: Colors.whiteAlpha05, marginVertical: 20 },
   chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  filterChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
+  filterChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
   filterChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   filterChipText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.textSecondary },
   filterChipTextActive: { color: Colors.white, fontFamily: FontFamily.bold },
-  bodyChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
+  bodyChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
   bodyChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   twoCol: { gap: 10 },
-  inputBox: { flex: 1, backgroundColor: Colors.whiteAlpha03, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 12 },
+  inputBox: { flex: 1, backgroundColor: Colors.whiteAlpha03, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 12 },
   inputBoxLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 6 },
   inputBoxValue: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
   miniChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
@@ -1440,21 +1441,21 @@ const s = StyleSheet.create({
 
   // AI search button
   aiSearchWrap: { paddingHorizontal: 24, marginBottom: 6 },
-  aiSearchBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: Colors.warningAlpha10, borderWidth: 1, borderColor: Colors.warningAlpha25 },
+  aiSearchBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.card, backgroundColor: Colors.warningAlpha10, borderWidth: 1, borderColor: Colors.warningAlpha25 },
   aiSearchBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.warning },
 
   // AI explanation banner
-  aiExplanationBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginHorizontal: 24, marginBottom: 6, backgroundColor: Colors.warningAlpha08, borderWidth: 1, borderColor: Colors.warningAlpha20, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
+  aiExplanationBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginHorizontal: 24, marginBottom: 6, backgroundColor: Colors.warningAlpha08, borderWidth: 1, borderColor: Colors.warningAlpha20, borderRadius: Radius.inline, paddingHorizontal: 12, paddingVertical: 9 },
   aiExplanationText: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.lightYellow, lineHeight: 18 },
 
   // AI modal
   aiModalSubtitle: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.iconMuted, lineHeight: 19 },
-  aiModalInput: { backgroundColor: Colors.bgSecondary, borderRadius: 14, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, paddingVertical: 14, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white, minHeight: 80, textAlignVertical: 'top' },
-  aiModalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: 12, backgroundColor: Colors.warning },
+  aiModalInput: { backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, paddingVertical: 14, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white, minHeight: 80, textAlignVertical: 'top' },
+  aiModalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: Radius.inline, backgroundColor: Colors.warning },
   aiModalBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
 
   // Segmented controls (listing type / seller type)
-  segmentBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06, alignItems: 'center' },
+  segmentBtn: { flex: 1, paddingVertical: 10, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06, alignItems: 'center' },
   segmentBtnActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   segmentBtnText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary },
   segmentBtnTextActive: { color: Colors.white, fontFamily: FontFamily.bold },

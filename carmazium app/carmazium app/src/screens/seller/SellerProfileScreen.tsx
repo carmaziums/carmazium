@@ -17,6 +17,7 @@ import { apiClient } from '../../lib/apiClient';
 import { mapApiListingToCarListing, ApiListing, BackendPaginatedResponse } from '../../lib/listingsApi';
 import { Colors } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 
 import { IconButton } from '../../components/IconButton';
 // ─────────────────────────── interfaces ───────────────────────────
@@ -407,7 +408,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.successAlpha06,
     borderWidth: 1,
     borderColor: Colors.successAlpha20,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
@@ -429,7 +430,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.glassBg,
     borderWidth: 1,
     borderColor: Colors.glassBorder,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     paddingVertical: 16,
     alignItems: 'center',
   },
@@ -466,7 +467,7 @@ const styles = StyleSheet.create({
 
   listingCard: {
     width: 180,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     overflow: 'hidden',
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
@@ -493,7 +494,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.glassBg,
     borderWidth: 1,
     borderColor: Colors.glassBorder,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     padding: 14,
     marginBottom: 10,
   },

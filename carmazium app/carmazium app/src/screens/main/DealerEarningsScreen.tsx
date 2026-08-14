@@ -19,6 +19,7 @@ import { apiClient } from '../../lib/apiClient';
 import { getAccessToken } from '../../lib/supabase';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 
@@ -343,7 +344,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     backgroundColor: Colors.successAlpha10,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.successAlpha25,
   },
@@ -372,7 +373,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     flex: 1,
     backgroundColor: 'rgba(20,26,42,0.70)',
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
     padding: 14,
@@ -398,7 +399,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha07,
     padding: 14,
@@ -442,7 +443,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     backgroundColor: Colors.whiteAlpha04,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha04,
     padding: 14,
@@ -461,7 +462,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 14,

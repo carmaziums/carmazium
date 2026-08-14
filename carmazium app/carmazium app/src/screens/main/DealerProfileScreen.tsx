@@ -20,6 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -794,7 +795,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warningAlpha05,
     borderWidth: 1,
     borderColor: Colors.warningAlpha30,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     marginHorizontal: 24,
     marginBottom: 16,
     paddingHorizontal: 14,
@@ -815,7 +816,7 @@ const styles = StyleSheet.create({
   tabToggleRow: {
     flexDirection: 'row',
     backgroundColor: Colors.whiteAlpha02,
-    borderRadius: 24,
+    borderRadius: Radius.sheet,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha05,
     padding: 3,
@@ -860,7 +861,7 @@ const styles = StyleSheet.create({
   // Today View - Inventory Snapshot
   card: {
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 20,
@@ -940,7 +941,7 @@ const styles = StyleSheet.create({
   },
   listingsList: {
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     paddingVertical: 8,
@@ -948,7 +949,7 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     paddingVertical: 28,
@@ -1033,7 +1034,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 18,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 16,
@@ -1041,7 +1042,7 @@ const styles = StyleSheet.create({
   attentionIconWrap: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1065,7 +1066,7 @@ const styles = StyleSheet.create({
   // This Week View - Revenue Sales Card
   salesCard: {
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 24,
@@ -1123,7 +1124,7 @@ const styles = StyleSheet.create({
   metricCard: {
     width: (SCREEN_WIDTH - 58) / 2,
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 14,
@@ -1177,7 +1178,7 @@ const styles = StyleSheet.create({
   },
   funnelCard: {
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 20,
@@ -1236,7 +1237,7 @@ const styles = StyleSheet.create({
   switchProfileBtn: {
     marginHorizontal: 24,
     height: 48,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderStyle: 'dashed',
     borderWidth: 1.5,
     borderColor: Colors.whiteAlpha12,

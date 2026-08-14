@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
 import { BODY_TYPE_ICONS } from '../../constants/bodyTypes';
 import { IconButton } from '../../components/IconButton';
@@ -3061,7 +3062,7 @@ const s = StyleSheet.create({
   stepLineActive: { backgroundColor: Colors.accent },
 
   // Section Box
-  sectionBox: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: 14, borderWidth: 1, borderColor: Colors.whiteAlpha06, marginBottom: 12 },
+  sectionBox: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha06, marginBottom: 12 },
   sectionBoxHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha05, borderLeftWidth: 3, borderLeftColor: Colors.whiteAlpha15, borderTopLeftRadius: 14, borderTopRightRadius: 14 },
   sectionBoxTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1, flex: 1 },
   sectionBoxBody: { padding: 14 },
@@ -3074,14 +3075,14 @@ const s = StyleSheet.create({
   fieldHintRed: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.accent, marginBottom: 8 },
 
   // Input
-  input: { backgroundColor: Colors.deepBlue_1a1a22, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 14, paddingVertical: 12, fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.white, marginBottom: 0 },
+  input: { backgroundColor: Colors.deepBlue_1a1a22, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 14, paddingVertical: 12, fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.white, marginBottom: 0 },
   inlineError: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.error, marginTop: 4 },
 
   // PickerField (Make/Model search-or-type sheet — F26)
   pickerFieldInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pickerFieldValue: { fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.white, flex: 1 },
   pickerFieldPlaceholder: { fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.borderMuted, flex: 1 },
-  pickerSearchInput: { backgroundColor: Colors.deepBlue_1a1a22, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 14, paddingVertical: 12, fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.white, marginBottom: 10 },
+  pickerSearchInput: { backgroundColor: Colors.deepBlue_1a1a22, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 14, paddingVertical: 12, fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.white, marginBottom: 10 },
   pickerOptionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha06 },
   pickerOptionText: { fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.white, flex: 1 },
   pickerEmptyText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center', paddingVertical: 20 },
@@ -3092,8 +3093,8 @@ const s = StyleSheet.create({
 
   // DVLA
   vrmRow: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
-  vrmInput: { flex: 1, backgroundColor: Colors.lightYellow, borderRadius: 10, paddingHorizontal: 16, fontFamily: FontFamily.black, fontSize: FontSize.size22, color: Colors.black, letterSpacing: 2 } as any,
-  vrmBtn: { backgroundColor: Colors.accent, borderRadius: 10, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center', minWidth: 120 },
+  vrmInput: { flex: 1, backgroundColor: Colors.lightYellow, borderRadius: Radius.inline, paddingHorizontal: 16, fontFamily: FontFamily.black, fontSize: FontSize.size22, color: Colors.black, letterSpacing: 2 } as any,
+  vrmBtn: { backgroundColor: Colors.accent, borderRadius: Radius.inline, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center', minWidth: 120 },
   vrmBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 0.8 },
   dvlaSuccess: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, padding: 10, backgroundColor: Colors.accentGreenAlpha08, borderRadius: 8, borderWidth: 1, borderColor: Colors.accentGreenAlpha20 },
   dvlaSuccessText: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.accentGreen, flex: 1 },
@@ -3101,7 +3102,7 @@ const s = StyleSheet.create({
   dvlaField: { width: '50%', paddingVertical: 8, paddingRight: 8 },
   dvlaFieldLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 3 },
   dvlaFieldValue: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
-  motHistoryBox: { marginTop: 12, padding: 12, borderRadius: 10, backgroundColor: Colors.infoBlueAlpha08, borderWidth: 1, borderColor: Colors.infoBlueAlpha20 },
+  motHistoryBox: { marginTop: 12, padding: 12, borderRadius: Radius.inline, backgroundColor: Colors.infoBlueAlpha08, borderWidth: 1, borderColor: Colors.infoBlueAlpha20 },
   motHistoryTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.infoBlue, letterSpacing: 1, marginBottom: 8 },
   motHistoryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
   motHistoryDate: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white },
@@ -3131,7 +3132,7 @@ const s = StyleSheet.create({
 
   // Legal
   warnText: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.warning, lineHeight: 18, marginBottom: 14, padding: 10, backgroundColor: Colors.warningAlpha08, borderRadius: 8 },
-  declRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.whiteAlpha02, marginTop: 8 },
+  declRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 12, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.whiteAlpha02, marginTop: 8 },
   declRowActive: { borderColor: Colors.accentAlpha40, backgroundColor: Colors.accentAlpha05 },
   checkbox: { width: 20, height: 20, borderRadius: 4, borderWidth: 2, borderColor: Colors.iconMuted, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 },
   checkboxActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
@@ -3144,14 +3145,14 @@ const s = StyleSheet.create({
   photoTrackerBar: { height: 4, backgroundColor: Colors.whiteAlpha10, borderRadius: 2, marginBottom: 8 },
   photoTrackerFill: { height: 4, backgroundColor: Colors.accent, borderRadius: 2 },
   photoTrackerHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted, marginBottom: 16 },
-  photoTabs: { flexDirection: 'row', gap: 0, marginBottom: 14, backgroundColor: Colors.bgSecondaryAlt, borderRadius: 10, padding: 3 },
+  photoTabs: { flexDirection: 'row', gap: 0, marginBottom: 14, backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, padding: 3 },
   photoTab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
   photoTabActive: { backgroundColor: Colors.accent },
   photoTabText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.iconMuted },
   photoTabTextActive: { color: Colors.white },
-  proTip: { flexDirection: 'row', gap: 8, backgroundColor: Colors.infoBlueAlpha08, borderWidth: 1, borderColor: Colors.infoBlueAlpha20, borderRadius: 10, padding: 10, marginBottom: 14 },
+  proTip: { flexDirection: 'row', gap: 8, backgroundColor: Colors.infoBlueAlpha08, borderWidth: 1, borderColor: Colors.infoBlueAlpha20, borderRadius: Radius.inline, padding: 10, marginBottom: 14 },
   proTipText: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.paleBlue_93c5fd, lineHeight: 16, flex: 1 },
-  uploadZone: { borderWidth: 1, borderColor: Colors.whiteAlpha10, borderStyle: 'dashed', borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingVertical: 36, gap: 8 },
+  uploadZone: { borderWidth: 1, borderColor: Colors.whiteAlpha10, borderStyle: 'dashed', borderRadius: Radius.inline, alignItems: 'center', justifyContent: 'center', paddingVertical: 36, gap: 8 },
   uploadZoneTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
   uploadZoneHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.iconMuted },
   uploadZoneFormats: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.borderMuted },
@@ -3165,14 +3166,14 @@ const s = StyleSheet.create({
   photoProgressFill: { height: 4, backgroundColor: Colors.accent ?? Colors.accent, borderRadius: 0 },
 
   // Damage Map
-  dmgForm: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: 12, borderWidth: 1, borderColor: Colors.accentAlpha20, padding: 14, marginBottom: 12 },
+  dmgForm: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha20, padding: 14, marginBottom: 12 },
   dmgFormTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: 12 },
   dmgRecord: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.whiteAlpha03, borderRadius: 8, padding: 10, marginBottom: 6 },
   dmgRecordZone: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, marginBottom: 2 },
   dmgRecordMeta: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
 
   // Pricing
-  priceInputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.deepBlue_1a1a22, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 14, height: 52, marginBottom: 0 },
+  priceInputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.deepBlue_1a1a22, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 14, height: 52, marginBottom: 0 },
   priceInputWrapActive: { borderColor: Colors.accentAlpha40, backgroundColor: Colors.accentAlpha04 },
   priceCurrency: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.textSecondary, marginRight: 6 },
   priceInput: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.xl, color: Colors.white },
@@ -3200,11 +3201,11 @@ const s = StyleSheet.create({
   reviewCell: { width: '50%', paddingVertical: 8, paddingRight: 8 },
   reviewCellLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 3 },
   reviewCellValue: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.paleBlue_c0c0cb },
-  reviewFeatureChip: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: Colors.whiteAlpha06, borderRadius: 12 },
+  reviewFeatureChip: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: Colors.whiteAlpha06, borderRadius: Radius.inline },
   reviewFeatureChipText: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.textSecondary },
 
   // Auction Schedule
-  auctionModeBtn: { flex: 1, backgroundColor: Colors.whiteAlpha03, borderRadius: 12, borderWidth: 1, borderColor: Colors.whiteAlpha08, padding: 14, alignItems: 'flex-start', gap: 4 },
+  auctionModeBtn: { flex: 1, backgroundColor: Colors.whiteAlpha03, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08, padding: 14, alignItems: 'flex-start', gap: 4 },
   auctionModeBtnActive: { borderColor: Colors.lightOrange_f97316, backgroundColor: 'rgba(249,115,22,0.08)' },
   auctionModeBtnIcon: { fontSize: FontSize.xl, marginBottom: 4 },
   auctionModeBtnTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 2 },
@@ -3214,8 +3215,8 @@ const s = StyleSheet.create({
   bodyTypePill: { alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, gap: 4 },
 
   // HPI callout in review
-  hpiCallout: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(59,130,246,0.07)', borderWidth: 1, borderColor: Colors.infoBlueAlpha20, borderRadius: 14, padding: 14, marginBottom: 12, gap: 12 },
-  hpiCalloutIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: Colors.infoBlueAlpha12, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  hpiCallout: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(59,130,246,0.07)', borderWidth: 1, borderColor: Colors.infoBlueAlpha20, borderRadius: Radius.inline, padding: 14, marginBottom: 12, gap: 12 },
+  hpiCalloutIcon: { width: 44, height: 44, borderRadius: Radius.inline, backgroundColor: Colors.infoBlueAlpha12, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   hpiCalloutTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white, marginBottom: 3 },
   hpiCalloutSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 16 },
   hpiCalloutBadge: { backgroundColor: Colors.infoBlueAlpha15, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, flexShrink: 0 },
@@ -3223,9 +3224,9 @@ const s = StyleSheet.create({
 
   // Bottom Bar
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingTop: 12, backgroundColor: Colors.bgPrimary, borderTopWidth: 1, borderTopColor: Colors.whiteAlpha05, flexDirection: 'row', gap: 10 },
-  backBtnSm: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, height: 52, borderRadius: 12, borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.whiteAlpha05 },
+  backBtnSm: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, height: 52, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.whiteAlpha05 },
   backBtnSmText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white },
-  nextBtn: { flex: 1, backgroundColor: Colors.accent, borderRadius: 12, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  nextBtn: { flex: 1, backgroundColor: Colors.accent, borderRadius: Radius.inline, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   nextBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.8 },
   publishBtn: { backgroundColor: Colors.accentGreen },
 });

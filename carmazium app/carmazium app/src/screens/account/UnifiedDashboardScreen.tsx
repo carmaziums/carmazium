@@ -18,6 +18,7 @@ import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 
 // ─────────────────────────── types ───────────────────────────────
 
@@ -330,11 +331,11 @@ const styles = StyleSheet.create({
   // Header
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 14 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  bellBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
+  bellBtn: { width: 38, height: 38, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
   bellDot: { position: 'absolute', top: 8, right: 8, width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.accent },
 
   // Profile card
-  profileCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 20, backgroundColor: CARD_BG, borderRadius: 16, borderWidth: 1, borderColor: BORDER, padding: 16, gap: 14 },
+  profileCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 20, backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: BORDER, padding: 16, gap: 14 },
   avatar: { width: 50, height: 50, borderRadius: 14, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
   avatarDealer: { backgroundColor: Colors.midOrange_b8860b, borderWidth: 1.5, borderColor: Colors.warning },
   avatarSeller: { backgroundColor: Colors.midBlue_1d4ed8, borderWidth: 1.5, borderColor: Colors.infoBlue },
@@ -354,7 +355,7 @@ const styles = StyleSheet.create({
   sectionLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 1.6 },
 
   // Overview stats
-  statsRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 24, backgroundColor: CARD_BG, borderRadius: 16, borderWidth: 1, borderColor: BORDER, paddingVertical: 18 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 24, backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: BORDER, paddingVertical: 18 },
   statCell: { flex: 1, alignItems: 'center' },
   statValue: { fontFamily: FontFamily.extraBold, fontSize: FontSize.size22, color: Colors.white, marginBottom: 2 },
   statName: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 0.5 },
@@ -362,7 +363,7 @@ const styles = StyleSheet.create({
 
   // Tile grid
   tileGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12, marginBottom: 20 },
-  tile: { width: '47%', backgroundColor: CARD_BG, borderRadius: 16, borderWidth: 1, borderColor: BORDER, padding: 16, gap: 8 },
+  tile: { width: '47%', backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: BORDER, padding: 16, gap: 8 },
   tileWide: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 14 },
   tileTextWrap: { flex: 1, gap: 3 },
   tileIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', position: 'relative' },
@@ -372,7 +373,7 @@ const styles = StyleSheet.create({
   tileSublabel: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
 
   // Sign out
-  signOutRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, backgroundColor: Colors.accentAlpha06, borderWidth: 1, borderColor: Colors.accentAlpha20, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
-  signOutIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.accentAlpha12, alignItems: 'center', justifyContent: 'center' },
+  signOutRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, backgroundColor: Colors.accentAlpha06, borderWidth: 1, borderColor: Colors.accentAlpha20, borderRadius: Radius.inline, paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
+  signOutIcon: { width: 34, height: 34, borderRadius: Radius.inline, backgroundColor: Colors.accentAlpha12, alignItems: 'center', justifyContent: 'center' },
   signOutText: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.accent },
 });

@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
@@ -148,7 +149,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha07,
     padding: 16,
@@ -156,7 +157,7 @@ const styles = StyleSheet.create({
   cardIconWrap: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.accentAlpha10,
     alignItems: 'center',
     justifyContent: 'center',

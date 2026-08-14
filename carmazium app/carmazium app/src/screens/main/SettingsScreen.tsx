@@ -12,6 +12,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../store/authStore';
 import {FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
 import { startAddressVerification, confirmAddressVerification } from '../../lib/addressVerificationApi';
@@ -951,7 +952,7 @@ const styles = StyleSheet.create({
   // Dealer invite entry point
   inviteRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: Colors.bgSecondary, borderRadius: 14, borderWidth: 1, borderColor: Colors.whiteAlpha07,
+    backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha07,
     padding: 14, marginTop: 16,
   },
   inviteIconWrap: {
@@ -970,7 +971,7 @@ const styles = StyleSheet.create({
 
   // Card
   card: {
-    backgroundColor: Colors.bgSecondary, borderRadius: 16, borderWidth: 1, borderColor: Colors.whiteAlpha07,
+    backgroundColor: Colors.bgSecondary, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.whiteAlpha07,
     padding: 18, gap: 14,
   },
   cardDivider: { height: 1, backgroundColor: Colors.whiteAlpha07, marginHorizontal: -2 },
@@ -1012,7 +1013,7 @@ const styles = StyleSheet.create({
   // Password
   pwdInputWrap: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.whiteAlpha04, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha07,
+    backgroundColor: Colors.whiteAlpha04, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha07,
     paddingHorizontal: 14, paddingVertical: 12, gap: 8,
   },
   pwdInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size14, color: Colors.white },
@@ -1020,11 +1021,11 @@ const styles = StyleSheet.create({
 
   // Buttons
   saveBtn: {
-    backgroundColor: Colors.accent, borderRadius: 10, height: 44,
+    backgroundColor: Colors.accent, borderRadius: Radius.inline, height: 44,
     alignItems: 'center', justifyContent: 'center',
   },
   updatePwdBtn: {
-    backgroundColor: Colors.darkBlue_1d2030, borderRadius: 10, height: 44,
+    backgroundColor: Colors.darkBlue_1d2030, borderRadius: Radius.inline, height: 44,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: Colors.accent,
   },
@@ -1036,12 +1037,12 @@ const styles = StyleSheet.create({
   stripeConnectedText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.success },
   stripeWarning: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    backgroundColor: Colors.warningAlpha08, borderRadius: 10, borderWidth: 1,
+    backgroundColor: Colors.warningAlpha08, borderRadius: Radius.inline, borderWidth: 1,
     borderColor: Colors.warningAlpha25, padding: 12,
   },
   stripeWarningText: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.warning, lineHeight: 17 },
   stripeBtn: {
-    backgroundColor: Colors.accent, borderRadius: 10, height: 44,
+    backgroundColor: Colors.accent, borderRadius: Radius.inline, height: 44,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   stripeBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.5 },
@@ -1049,13 +1050,13 @@ const styles = StyleSheet.create({
 
   // Bank details
   inputField: {
-    backgroundColor: Colors.whiteAlpha04, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha07,
+    backgroundColor: Colors.whiteAlpha04, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha07,
     paddingHorizontal: 14, paddingVertical: 12,
     fontFamily: FontFamily.regular, fontSize: FontSize.size14, color: Colors.white,
   },
   bankRow: { flexDirection: 'row' },
   bankSaveBtn: {
-    backgroundColor: Colors.warning, borderRadius: 10, height: 44,
+    backgroundColor: Colors.warning, borderRadius: Radius.inline, height: 44,
     alignItems: 'center', justifyContent: 'center',
   },
 

@@ -22,6 +22,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { CounterLedger } from '../../components/offers/CounterLedger';
@@ -842,7 +843,7 @@ const styles = StyleSheet.create({
 
   // ── Skeleton ──
   skeletonCard: {
-    borderRadius: 16,
+    borderRadius: Radius.card,
     backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha04,
@@ -862,7 +863,7 @@ const styles = StyleSheet.create({
   // ── Offer card ──
   offerCard: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
@@ -995,7 +996,7 @@ const styles = StyleSheet.create({
   actionBtn: {
     flex: 1,
     height: 36,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -1045,7 +1046,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.inputBg,
     borderWidth: 1,
     borderColor: Colors.inputBorder,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontFamily: FontFamily.mono,
@@ -1104,7 +1105,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.successAlpha10,
     borderWidth: 1,
     borderColor: 'rgba(34,197,94,0.28)',
-    borderRadius: 10,
+    borderRadius: Radius.inline,
   },
   toastText: {
     flex: 1,

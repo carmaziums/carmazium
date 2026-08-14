@@ -16,6 +16,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
   formGroup: { marginHorizontal: 24, marginBottom: 16 },
   inputLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, letterSpacing: 1.2, marginBottom: 8 },
   inputWrap: {
-    flexDirection: 'row', alignItems: 'flex-start', minHeight: 50, borderRadius: 12,
+    flexDirection: 'row', alignItems: 'flex-start', minHeight: 50, borderRadius: Radius.inline,
     backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06,
     paddingHorizontal: 16, paddingVertical: 12,
   },

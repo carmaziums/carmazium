@@ -17,6 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { getMyFinanceApplications, FinanceApplication, FinanceApplicationStatus } from '../../lib/financeApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -297,7 +298,7 @@ const styles = StyleSheet.create({
   statCard: {
     width: HALF_CARD,
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 14,
@@ -332,7 +333,7 @@ const styles = StyleSheet.create({
   // ── Application card ──
   appCard: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 14,
@@ -385,7 +386,7 @@ const styles = StyleSheet.create({
     gap: 6,
     alignSelf: 'flex-start',
     borderWidth: 1,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },

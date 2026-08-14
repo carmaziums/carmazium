@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
@@ -190,7 +191,7 @@ const styles = StyleSheet.create({
   logoMark: {
     width: 72,
     height: 72,
-    borderRadius: 22,
+    borderRadius: Radius.sheet,
     backgroundColor: Colors.accentAlpha12,
     borderWidth: 1,
     borderColor: Colors.accentAlpha25,
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'stretch',
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha07,
     paddingVertical: 18,
@@ -266,7 +267,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 14,
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 16,
@@ -274,7 +275,7 @@ const styles = StyleSheet.create({
   bulletIconWrap: {
     width: 44,
     height: 44,
-    borderRadius: 13,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.accentAlpha10,
     borderWidth: 1,
     borderColor: Colors.accentAlpha20,

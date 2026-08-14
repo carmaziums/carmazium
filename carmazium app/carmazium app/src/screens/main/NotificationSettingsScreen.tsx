@@ -13,6 +13,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
@@ -455,12 +456,12 @@ const styles = StyleSheet.create({
 
   // Mute All Box
   muteAllBox: {
-     marginHorizontal: 24, borderRadius: 16, borderWidth: 1, borderColor: Colors.accentAlpha20,
+     marginHorizontal: 24, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.accentAlpha20,
      backgroundColor: Colors.bgSecondaryAlt, flexDirection: 'row', alignItems: 'center', padding: 16, marginBottom: 32,
      overflow: 'hidden'
   },
   muteIconWrap: {
-     width: 40, height: 40, borderRadius: 10, backgroundColor: Colors.accentAlpha10,
+     width: 40, height: 40, borderRadius: Radius.inline, backgroundColor: Colors.accentAlpha10,
      alignItems: 'center', justifyContent: 'center', marginRight: 16
   },
   muteTextWrap: {
@@ -489,7 +490,7 @@ const styles = StyleSheet.create({
   },
 
   cardBlock: {
-     marginHorizontal: 24, backgroundColor: Colors.bgSecondaryAlt, borderRadius: 16, borderWidth: 1,
+     marginHorizontal: 24, backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.card, borderWidth: 1,
      borderColor: Colors.whiteAlpha06, marginBottom: 32, overflow: 'hidden'
   },
   toggleRow: {
@@ -510,7 +511,7 @@ const styles = StyleSheet.create({
 
   // Delivery Nav Button
   deliveryBtn: {
-     marginHorizontal: 24, backgroundColor: Colors.bgSecondaryAlt, borderRadius: 16, borderWidth: 1,
+     marginHorizontal: 24, backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.card, borderWidth: 1,
      borderColor: Colors.whiteAlpha06, padding: 16, flexDirection: 'row', alignItems: 'center',
      marginBottom: 32
   },
@@ -520,18 +521,18 @@ const styles = StyleSheet.create({
 
   // Delivery Channels
   channelIconRed: {
-     width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.accentAlpha10,
+     width: 36, height: 36, borderRadius: Radius.inline, backgroundColor: Colors.accentAlpha10,
      alignItems: 'center', justifyContent: 'center', marginRight: 14
   },
   channelIconGrey: {
-     width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.whiteAlpha05,
+     width: 36, height: 36, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha05,
      alignItems: 'center', justifyContent: 'center', marginRight: 14
   },
 
   // Frequency
   freqRow: {
      flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, padding: 16,
-     backgroundColor: Colors.bgSecondaryAlt, borderRadius: 14, borderWidth: 1, borderColor: Colors.whiteAlpha05,
+     backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha05,
      marginBottom: 10
   },
   freqRowActive: {
@@ -567,7 +568,7 @@ const styles = StyleSheet.create({
   timeInput: {
      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
      backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha10,
-     borderRadius: 12, paddingHorizontal: 14, height: 48
+     borderRadius: Radius.inline, paddingHorizontal: 14, height: 48
   },
   timeText: {
      fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white

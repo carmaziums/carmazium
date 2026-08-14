@@ -33,6 +33,7 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { formatPrice, formatMileage, CarListing } from '../../data/listings';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
@@ -2097,7 +2098,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
     borderColor: Colors.warningAlpha25,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 16,
@@ -2230,7 +2231,7 @@ const styles = StyleSheet.create({
     gap: 6,
     height: 90,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
@@ -2245,7 +2246,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     paddingHorizontal: 18,
   },
   specRow: {
@@ -2275,7 +2276,7 @@ const styles = StyleSheet.create({
   historyBox: {
     width: (SCREEN_WIDTH - 60) / 3, // 3 columns
     height: 58,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
@@ -2305,7 +2306,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     height: 68,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     backgroundColor: Colors.deepBlue_11131e,
     borderWidth: 1,
     borderColor: Colors.darkBlue_222636,
@@ -2363,7 +2364,7 @@ const styles = StyleSheet.create({
   financeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: Radius.card,
     backgroundColor: Colors.deepPurple,
     borderWidth: 1,
     borderColor: Colors.darkPink_3b1e2b,
@@ -2403,7 +2404,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.deepGreen,
     borderWidth: 1,
     borderColor: Colors.darkGreen,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     padding: 14,
   },
   protectionText: {
@@ -2419,7 +2420,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentGreenAlpha06,
     borderWidth: 1,
     borderColor: Colors.accentGreenAlpha20,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     padding: 14,
     marginTop: 12,
     gap: 12,
@@ -2432,7 +2433,7 @@ const styles = StyleSheet.create({
   deliveryIconWrap: {
     width: 34,
     height: 34,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.accentGreenAlpha12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2475,7 +2476,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 7,
     height: 42,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.accentGreen,
   },
   deliveryRequestBtnText: {
@@ -2514,7 +2515,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.infoBlueAlpha28,
     backgroundColor: Colors.infoBlueAlpha06,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
@@ -2538,7 +2539,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.errorAlpha08,
     borderWidth: 1,
     borderColor: 'rgba(239,68,68,0.28)',
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
@@ -2568,7 +2569,7 @@ const styles = StyleSheet.create({
   },
   deliveryInput: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
     paddingHorizontal: 14,
@@ -2579,7 +2580,7 @@ const styles = StyleSheet.create({
   },
   deliveryModalSubmitBtn: {
     height: 50,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.accentGreen,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2609,7 +2610,7 @@ const styles = StyleSheet.create({
   chatButton: {
     width: 52,
     height: 52,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.darkBlue_2a2e3d,
     backgroundColor: Colors.deepBlue_1b1d26,
@@ -2619,7 +2620,7 @@ const styles = StyleSheet.create({
   makeOfferButton: {
     flex: 1,
     height: 52,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
     flexDirection: 'row',
     justifyContent: 'center',
@@ -2634,7 +2635,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -2674,7 +2675,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -2721,7 +2722,7 @@ const styles = StyleSheet.create({
   },
   offerBoxContainer: {
     backgroundColor: Colors.bgPrimary,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
     padding: 14,
@@ -2740,7 +2741,7 @@ const styles = StyleSheet.create({
   },
   offerAdjusterContainer: {
     backgroundColor: Colors.bgPrimary,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
     padding: 14,
@@ -2768,7 +2769,7 @@ const styles = StyleSheet.create({
   adjustBtn: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.darkBlue_1c2033,
     borderWidth: 1,
     borderColor: Colors.darkBlue_2b3252,
@@ -2801,7 +2802,7 @@ const styles = StyleSheet.create({
   },
   submitOfferBtn: {
     height: 48,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
@@ -2846,7 +2847,7 @@ const styles = StyleSheet.create({
   successCloseBtn: {
     height: 44,
     width: '100%',
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.darkBlue_1c2033,
     borderWidth: 1,
     borderColor: Colors.darkBlue_2b3252,
@@ -2974,17 +2975,17 @@ const styles = StyleSheet.create({
   // HPI Report button
   hpiReportBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: Colors.bgSecondary, borderRadius: 14, borderWidth: 1,
+    backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1,
     borderColor: Colors.whiteAlpha06, padding: 14,
   },
   hpiButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: Colors.bgSecondary, borderRadius: 14, borderWidth: 1,
+    backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1,
     borderColor: Colors.whiteAlpha06, padding: 14,
   },
   hpiReportLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   hpiIconBg: {
-    width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.infoBlueAlpha12,
+    width: 34, height: 34, borderRadius: Radius.inline, backgroundColor: Colors.infoBlueAlpha12,
     alignItems: 'center', justifyContent: 'center',
   },
   hpiReportTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
@@ -2992,7 +2993,7 @@ const styles = StyleSheet.create({
 
   // HPI inline card (shown after payment)
   hpiInlineCard: {
-    backgroundColor: Colors.bgTertiary, borderRadius: 14, borderWidth: 1,
+    backgroundColor: Colors.bgTertiary, borderRadius: Radius.inline, borderWidth: 1,
     borderColor: Colors.infoBlueAlpha20, padding: 16, gap: 8,
   },
   hpiInlineTitle: {
@@ -3010,7 +3011,7 @@ const styles = StyleSheet.create({
 
   // Finance calculator body
   financeCalcBody: {
-    backgroundColor: Colors.bgSecondary, borderRadius: 14, borderWidth: 1,
+    backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1,
     borderColor: Colors.whiteAlpha06, padding: 16, marginTop: 8, marginBottom: 12,
   },
   calcRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
@@ -3025,21 +3026,21 @@ const styles = StyleSheet.create({
   depositStepText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
   depositStepTextActive: { color: Colors.white },
   calcResult: {
-    marginTop: 16, backgroundColor: Colors.whiteAlpha03, borderRadius: 12,
+    marginTop: 16, backgroundColor: Colors.whiteAlpha03, borderRadius: Radius.inline,
     borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 16, alignItems: 'center',
   },
   calcResultLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.textSecondary, letterSpacing: 1, marginBottom: 6 },
   calcResultValue: { fontFamily: FontFamily.bold, fontSize: FontSize['3xl'], color: Colors.white },
   calcResultSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 4, textAlign: 'center' },
   financeApplyBtn: {
-    marginTop: 14, height: 44, borderRadius: 10, borderWidth: 1,
+    marginTop: 14, height: 44, borderRadius: Radius.inline, borderWidth: 1,
     borderColor: Colors.accent, backgroundColor: Colors.accentAlpha08, alignItems: 'center', justifyContent: 'center',
   },
   financeApplyBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent, letterSpacing: 0.5 },
 
   // HPI Modal
   hpiOverallBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: Radius.inline, borderWidth: 1, padding: 14, marginBottom: 16,
   },
   hpiOverallText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, flex: 1 },
   hpiCheckRow: {
@@ -3069,7 +3070,7 @@ const styles = StyleSheet.create({
   financeComingSoonBox: {
     alignItems: 'center',
     backgroundColor: Colors.whiteAlpha02,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 20,

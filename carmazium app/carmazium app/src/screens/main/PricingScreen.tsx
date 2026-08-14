@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { PRICING } from '../../constants/pricing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
@@ -383,7 +384,7 @@ const styles = StyleSheet.create({
   // ── Plan card ──
   planCard: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 18,
+    borderRadius: Radius.card,
     borderWidth: 1,
     overflow: 'hidden',
     position: 'relative',
@@ -504,7 +505,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 14,
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 16,
@@ -559,7 +560,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 16,
@@ -567,7 +568,7 @@ const styles = StyleSheet.create({
   dealerPromptIconWrap: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.accentAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -592,7 +593,7 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 14,
     backgroundColor: Colors.glassBg,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.glassBorder,
   },

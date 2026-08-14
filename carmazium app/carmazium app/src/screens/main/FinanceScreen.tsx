@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     padding: 18,
     marginBottom: 16,
     gap: 12,
@@ -207,7 +208,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.glassBorder,
     borderLeftWidth: 3,
     borderLeftColor: Colors.accent,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     padding: 16,
     marginBottom: 16,
   },
@@ -228,7 +229,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.accent,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     padding: 18,
     gap: 12,
     marginBottom: 12,

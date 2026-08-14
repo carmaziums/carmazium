@@ -21,6 +21,7 @@ import { getListingById } from '../../lib/listingsApi';
 import { getAccessToken } from '../../lib/supabase';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
 import { IconButton } from '../../components/IconButton';
@@ -489,7 +490,7 @@ const styles = StyleSheet.create({
   // ── Totals bar ──
   totalsCard: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 16,
@@ -523,7 +524,7 @@ const styles = StyleSheet.create({
   // ── Skeleton ──
   skeletonCard: {
     height: 76,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.whiteAlpha04,
   },
 
@@ -552,7 +553,7 @@ const styles = StyleSheet.create({
   // ── History card ──
   historyCard: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 14,
@@ -589,7 +590,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 9,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
@@ -627,7 +628,7 @@ const styles = StyleSheet.create({
   },
   completedChip: {
     backgroundColor: Colors.successAlpha10,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     paddingHorizontal: 8,
     paddingVertical: 3,
     marginTop: 4,
@@ -644,7 +645,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     marginTop: 4,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,

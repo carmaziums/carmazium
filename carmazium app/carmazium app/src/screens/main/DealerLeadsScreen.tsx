@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
-import { RowDensity } from '../../constants/spacing';
+import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { createChatRoom } from '../../lib/chatApi';
 import { haptics } from '../../lib/haptics';
@@ -933,7 +933,7 @@ const styles = StyleSheet.create({
      alignItems: 'center', justifyContent: 'center',
   },
   viewModeToggle: {
-     flexDirection: 'row', backgroundColor: Colors.whiteAlpha05, borderRadius: 12,
+     flexDirection: 'row', backgroundColor: Colors.whiteAlpha05, borderRadius: Radius.inline,
      borderWidth: 1, borderColor: Colors.whiteAlpha08, padding: 2,
   },
   viewModeBtn: {
@@ -964,7 +964,7 @@ const styles = StyleSheet.create({
   },
   filterTab: {
      flexDirection: 'row', alignItems: 'center', height: 32, paddingHorizontal: 16,
-     borderRadius: 16, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08
+     borderRadius: Radius.card, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08
   },
   filterTabActive: {
      backgroundColor: Colors.accent, borderColor: Colors.accent
@@ -1000,7 +1000,7 @@ const styles = StyleSheet.create({
      // an explicit dimension of its own, not just an unconstrained parent.
      height: '100%',
      backgroundColor: Colors.whiteAlpha03,
-     borderRadius: 16,
+     borderRadius: Radius.card,
      borderWidth: 1,
      borderColor: Colors.whiteAlpha06,
      padding: 10,
@@ -1026,7 +1026,7 @@ const styles = StyleSheet.create({
      textAlign: 'center', paddingVertical: 16,
   },
   boardCard: {
-     backgroundColor: Colors.bgSecondaryAlt, borderRadius: 12, borderWidth: 1,
+     backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, borderWidth: 1,
      borderColor: Colors.whiteAlpha06, padding: 10, marginBottom: 8,
   },
   boardCardTopRow: {
@@ -1062,7 +1062,7 @@ const styles = StyleSheet.create({
   // Reassign sheet
   reassignRow: {
      flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 13,
-     borderRadius: 12, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha08,
+     borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha08,
   },
   reassignDot: {
      width: 8, height: 8, borderRadius: 4,
@@ -1182,7 +1182,7 @@ const styles = StyleSheet.create({
   },
 
   listingCard: {
-     flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 12, borderWidth: 1,
+     flexDirection: 'row', alignItems: 'center', borderRadius: Radius.card, padding: 12, borderWidth: 1,
      borderColor: Colors.whiteAlpha06, backgroundColor: Colors.bgSecondaryAlt, marginBottom: 16,
   },
   listingThumb: {
@@ -1203,13 +1203,13 @@ const styles = StyleSheet.create({
   },
   metaChip: {
      flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6,
-     borderRadius: 10, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha06,
+     borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha06,
   },
   metaChipText: {
      fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary,
   },
   staffChip: {
-     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16,
+     paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.card,
      backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08,
   },
   staffChipActive: {
@@ -1227,7 +1227,7 @@ const styles = StyleSheet.create({
   },
 
   contactCard: {
-     borderRadius: 16, borderWidth: 1, borderColor: Colors.whiteAlpha06, backgroundColor: Colors.bgSecondaryAlt,
+     borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.whiteAlpha06, backgroundColor: Colors.bgSecondaryAlt,
      marginBottom: 24, overflow: 'hidden',
   },
   contactRow: {
@@ -1245,20 +1245,20 @@ const styles = StyleSheet.create({
   },
 
   notesInput: {
-     minHeight: 100, borderRadius: 16, borderWidth: 1, borderColor: Colors.whiteAlpha08,
+     minHeight: 100, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.whiteAlpha08,
      backgroundColor: Colors.bgSecondaryAlt, color: Colors.white, fontFamily: FontFamily.regular, fontSize: FontSize.sm,
      padding: 14, lineHeight: 20,
   },
   saveNotesBtn: {
      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10,
-     height: 40, borderRadius: 12, backgroundColor: Colors.accent,
+     height: 40, borderRadius: Radius.inline, backgroundColor: Colors.accent,
   },
   saveNotesBtnText: {
      fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white,
   },
   messageCTA: {
      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 20,
-     height: 46, borderRadius: 14, backgroundColor: Colors.bgSecondaryAlt,
+     height: 46, borderRadius: Radius.inline, backgroundColor: Colors.bgSecondaryAlt,
      borderWidth: 1, borderColor: Colors.whiteAlpha12,
   },
   messageCTAText: {
@@ -1272,7 +1272,7 @@ const styles = StyleSheet.create({
      fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, letterSpacing: 1.5, marginBottom: 10, marginLeft: 16,
   },
   statusChip: {
-     height: 36, paddingHorizontal: 16, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
+     height: 36, paddingHorizontal: 16, borderRadius: Radius.card, alignItems: 'center', justifyContent: 'center',
      backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08,
   },
   statusChipText: {
@@ -1284,7 +1284,7 @@ const styles = StyleSheet.create({
      fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, letterSpacing: 1.2, marginBottom: 6, marginTop: 12,
   },
   createInput: {
-     borderRadius: 12, borderWidth: 1, borderColor: Colors.whiteAlpha08,
+     borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08,
      backgroundColor: Colors.bgPrimary, color: Colors.white, fontFamily: FontFamily.regular, fontSize: FontSize.size14,
      paddingHorizontal: 14, paddingVertical: 12,
   },

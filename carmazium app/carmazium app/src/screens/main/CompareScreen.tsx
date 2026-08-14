@@ -23,6 +23,7 @@ import { searchListings } from '../../lib/listingsApi';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
@@ -629,7 +630,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha05,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginHorizontal: 24,
@@ -681,7 +682,7 @@ const styles = StyleSheet.create({
   },
   carCard: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     overflow: 'hidden',
     position: 'relative',
@@ -747,7 +748,7 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     height: 180,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
     borderStyle: 'dashed',
@@ -771,7 +772,7 @@ const styles = StyleSheet.create({
   capsuleCard: {
     flex: 1,
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
     overflow: 'hidden',
@@ -823,7 +824,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     padding: 14,
     alignItems: 'center',
   },
@@ -875,7 +876,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     paddingHorizontal: 16,
     paddingVertical: 8,
     marginBottom: 20,
@@ -970,7 +971,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.deepPurple,
     borderWidth: 1,
     borderColor: Colors.darkPink_3b1e2b,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     padding: 16,
     marginBottom: 20,
   },
@@ -1005,7 +1006,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     flexDirection: 'row',
     height: 48,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha12,
     backgroundColor: 'transparent',
@@ -1065,7 +1066,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     paddingHorizontal: 14,
     height: 46,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
@@ -1082,7 +1083,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgTertiary,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha04,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     padding: 12,
     marginBottom: 10,
   },

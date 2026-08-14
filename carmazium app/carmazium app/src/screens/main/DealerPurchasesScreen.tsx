@@ -21,6 +21,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -455,7 +456,7 @@ const styles = StyleSheet.create({
   // ── Totals bar ──
   totalsCard: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 16,
@@ -486,7 +487,7 @@ const styles = StyleSheet.create({
   // ── Skeleton ──
   skeletonCard: {
     height: 100,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.whiteAlpha04,
   },
 
@@ -515,7 +516,7 @@ const styles = StyleSheet.create({
   // ── Purchase card ──
   purchaseCard: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 14,
@@ -569,7 +570,7 @@ const styles = StyleSheet.create({
     gap: 6,
     alignSelf: 'flex-start',
     borderWidth: 1,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
@@ -679,7 +680,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 7,
     height: 44,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha10,
@@ -694,7 +695,7 @@ const styles = StyleSheet.create({
   },
   modalCloseBtn: {
     height: 48,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.whiteAlpha06,

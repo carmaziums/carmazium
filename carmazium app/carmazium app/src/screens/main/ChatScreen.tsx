@@ -27,6 +27,7 @@ import { getChatMessages, markMessagesAsRead, type ChatMessage, type ChatRoom, t
 import { getListingById } from '../../lib/listingsApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
 
@@ -931,7 +932,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha05,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingHorizontal: 16,
     paddingVertical: 12,
     width: MAX_BUBBLE_WIDTH,
@@ -1033,7 +1034,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
     backgroundColor: Colors.deepBlue_16161c,
-    borderRadius: 18,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
     paddingHorizontal: 16,
@@ -1131,14 +1132,14 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: Colors.warningAlpha05,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.warningAlpha10,
   },
   payOverlayBtn: {
     backgroundColor: Colors.warning,
     height: 50,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1153,7 +1154,7 @@ const styles = StyleSheet.create({
   },
   refreshOverlayBtn: {
     height: 44,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

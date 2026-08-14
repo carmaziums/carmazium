@@ -19,6 +19,7 @@ import { useChat } from '../../context/ChatContext';
 import { ChatRoom, ChatUser } from '../../lib/chatApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -400,7 +401,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     height: 48,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
@@ -467,7 +468,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha05,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     padding: 18,
   },
   threadCardUnread: {

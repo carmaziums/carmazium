@@ -21,6 +21,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
@@ -1053,7 +1054,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     height: 44,
     paddingHorizontal: 28,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1067,7 +1068,7 @@ const styles = StyleSheet.create({
   // ── Offer card ──
   offerCard: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
@@ -1119,7 +1120,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warningAlpha06,
     borderWidth: 1,
     borderColor: Colors.warningAlpha20,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     padding: 12,
     gap: 6,
   },
@@ -1183,7 +1184,7 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     height: 36,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -1276,7 +1277,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.whiteAlpha03,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha10,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     padding: 12,
     gap: 8,
     marginTop: 2,
@@ -1299,7 +1300,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.inputBg,
     borderWidth: 1,
     borderColor: Colors.inputBorder,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     paddingHorizontal: 12,
   },
   counterBackCurrency: {
@@ -1338,7 +1339,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentGreenAlpha06,
     borderWidth: 1,
     borderColor: Colors.accentGreenAlpha20,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     paddingVertical: 10,
     paddingHorizontal: 12,
     gap: 8,
@@ -1382,7 +1383,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.whiteAlpha03,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha10,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     padding: 12,
     gap: 8,
   },

@@ -23,6 +23,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ImportListingModal } from '../../components/ImportListingModal';
@@ -967,7 +968,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
@@ -1027,7 +1028,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
@@ -1049,7 +1050,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
@@ -1109,7 +1110,7 @@ const styles = StyleSheet.create({
   statusChip: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     borderWidth: 1,
   },
   statusChipText: {
@@ -1173,7 +1174,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha10,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     paddingHorizontal: 16,
     height: 60,
   },
@@ -1192,7 +1193,7 @@ const styles = StyleSheet.create({
   soldConfirmBtn: {
     marginHorizontal: 20,
     height: 52,
-    borderRadius: 13,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.success,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1249,13 +1250,13 @@ const styles = StyleSheet.create({
   dualModalSub: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted, marginTop: 2 },
   dualFieldLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.textMuted, letterSpacing: 0.8, marginBottom: 6 },
   dualFieldHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size9, color: Colors.textMuted, marginTop: 4 },
-  dualPriceRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.inputBg, borderWidth: 1, borderColor: Colors.inputBorder, borderRadius: 10, paddingHorizontal: 12 },
+  dualPriceRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.inputBg, borderWidth: 1, borderColor: Colors.inputBorder, borderRadius: Radius.inline, paddingHorizontal: 12 },
   dualCurrency: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.textMuted, marginRight: 4 },
   dualInput: { flex: 1, fontFamily: FontFamily.mono, fontSize: FontSize.base, color: Colors.textPrimary, paddingVertical: 11 },
-  datePickerBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.inputBg, borderWidth: 1, borderColor: Colors.infoBlueAlpha30, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  datePickerBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.inputBg, borderWidth: 1, borderColor: Colors.infoBlueAlpha30, borderRadius: Radius.inline, paddingHorizontal: 14, paddingVertical: 12 },
   datePickerBtnText: { flex: 1, fontFamily: FontFamily.mono, fontSize: FontSize.sm, color: Colors.infoBlueLight },
-  dualErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: Colors.errorAlpha08, borderWidth: 1, borderColor: Colors.errorAlpha20, borderRadius: 10, padding: 10, marginTop: 10 },
+  dualErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: Colors.errorAlpha08, borderWidth: 1, borderColor: Colors.errorAlpha20, borderRadius: Radius.inline, padding: 10, marginTop: 10 },
   dualErrorText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.error, flex: 1, lineHeight: 17 },
-  dualSubmitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: 12, backgroundColor: Colors.lightOrange_f97316, marginTop: 16 },
+  dualSubmitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: Radius.inline, backgroundColor: Colors.lightOrange_f97316, marginTop: 16 },
   dualSubmitText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, letterSpacing: 0.3 },
 });

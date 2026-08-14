@@ -20,6 +20,7 @@ import { getListingById } from '../../lib/listingsApi';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { haptics } from '../../lib/haptics';
@@ -647,7 +648,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     height: 40,
     paddingHorizontal: 20,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.accent,
     alignItems: 'center',
@@ -663,7 +664,7 @@ const styles = StyleSheet.create({
   // ── Bid card ──
   bidCard: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,

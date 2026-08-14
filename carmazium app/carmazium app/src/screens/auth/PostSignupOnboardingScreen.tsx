@@ -17,6 +17,7 @@ import { supabase } from '../../lib/supabase';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Logo } from '../../components/Logo';
@@ -679,7 +680,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.glassBg,
     borderWidth: 1,
     borderColor: Colors.glassBorder,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     paddingHorizontal: 20,
     paddingVertical: 18,
     marginBottom: 20,
@@ -702,7 +703,7 @@ const styles = StyleSheet.create({
   ghostBtn: {
     borderWidth: 1,
     borderColor: Colors.glassBorderStrong,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
@@ -727,7 +728,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
     borderColor: Colors.warningAlpha25,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
@@ -772,7 +773,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingHorizontal: 16,
     height: 54,
   },
@@ -824,7 +825,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.successAlpha08,
     borderWidth: 1,
     borderColor: Colors.successAlpha25,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
   },
   toastText: {
     fontFamily: FontFamily.medium,

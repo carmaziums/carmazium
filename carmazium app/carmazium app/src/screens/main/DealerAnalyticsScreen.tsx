@@ -20,7 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart, LineChart } from 'react-native-gifted-charts';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
-import { RowDensity } from '../../constants/spacing';
+import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -807,7 +807,7 @@ const styles = StyleSheet.create({
   revenueCard: {
     marginHorizontal: 24,
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     overflow: 'hidden',
@@ -909,7 +909,7 @@ const styles = StyleSheet.create({
   topSection: {
     marginHorizontal: 24,
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     paddingHorizontal: 16,
@@ -975,7 +975,7 @@ const styles = StyleSheet.create({
   // ── Conversion CTA ───────────────────────────────────────────────────────
   convCTA: {
     marginHorizontal: 24,
-    borderRadius: 18,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.successAlpha20,
     backgroundColor: Colors.bgSecondaryAlt,
@@ -1020,7 +1020,7 @@ const styles = StyleSheet.create({
   monthCard: {
     marginHorizontal: 24,
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     flexDirection: 'row',
@@ -1069,7 +1069,7 @@ const styles = StyleSheet.create({
   convCard: {
     marginHorizontal: 24,
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.successAlpha15,
     padding: 20,
@@ -1108,7 +1108,7 @@ const styles = StyleSheet.create({
   funnelCard: {
     marginHorizontal: 24,
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     paddingHorizontal: 18,
@@ -1157,7 +1157,7 @@ const styles = StyleSheet.create({
   // AI Card
   aiCard: {
     marginHorizontal: 24,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.accentAlpha20,
     backgroundColor: Colors.bgSecondaryAlt,
@@ -1171,7 +1171,7 @@ const styles = StyleSheet.create({
   aiIconWrap: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.accentAlpha12,
     borderWidth: 1,
     borderColor: Colors.accentAlpha20,
@@ -1200,7 +1200,7 @@ const styles = StyleSheet.create({
   benchCard: {
     marginHorizontal: 24,
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 20,

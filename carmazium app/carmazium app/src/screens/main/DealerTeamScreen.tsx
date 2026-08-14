@@ -24,6 +24,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -536,7 +537,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     flexDirection: 'row',
@@ -575,7 +576,7 @@ const styles = StyleSheet.create({
   // Staff card
   staffCard: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     flexDirection: 'row',
@@ -680,7 +681,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     backgroundColor: Colors.whiteAlpha03,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
     borderStyle: 'dashed',
@@ -737,7 +738,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgPrimary,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingHorizontal: 14,
     height: 52,
   },

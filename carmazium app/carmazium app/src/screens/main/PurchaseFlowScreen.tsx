@@ -14,6 +14,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
 import { apiClient } from '../../lib/apiClient';
@@ -399,7 +400,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentGreenAlpha05,
     borderWidth: 1,
     borderColor: Colors.accentGreenAlpha20,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     padding: 12,
     alignItems: 'center',
     marginBottom: 32,
@@ -428,7 +429,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondaryAlt,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     padding: 20,
     marginBottom: 20,
   },
@@ -474,7 +475,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentGreenAlpha05,
     borderWidth: 1,
     borderColor: Colors.accentGreenAlpha15,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     padding: 14,
     marginBottom: 16,
     gap: 10,
@@ -507,7 +508,7 @@ const styles = StyleSheet.create({
   },
   mainBtn: {
     backgroundColor: Colors.accent,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     height: 56,
     flexDirection: 'row',
     alignItems: 'center',
@@ -562,7 +563,7 @@ const styles = StyleSheet.create({
   },
   doneBtn: {
     backgroundColor: Colors.accent,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingHorizontal: 40,
     paddingVertical: 16,
   },

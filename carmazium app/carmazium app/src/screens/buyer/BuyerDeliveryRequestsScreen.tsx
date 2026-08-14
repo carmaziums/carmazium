@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import {
@@ -389,7 +390,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
@@ -429,7 +430,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.whiteAlpha03,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     paddingHorizontal: 10,
     paddingVertical: 8,
     gap: 2,
@@ -476,7 +477,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     height: 40,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     borderWidth: 1,
   },
   actionBtnDestructive: {

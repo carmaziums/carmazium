@@ -24,6 +24,7 @@ import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 
 import { IconButton } from '../../components/IconButton';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
@@ -314,7 +315,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingHorizontal: 16,
     height: 54,
   },
@@ -406,7 +407,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     height: 50,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
     backgroundColor: Colors.bgSecondary,

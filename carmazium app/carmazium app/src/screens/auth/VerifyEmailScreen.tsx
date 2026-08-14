@@ -12,6 +12,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { Logo } from '../../components/Logo';
 
 export const VerifyEmailScreen: React.FC = () => {
@@ -211,7 +212,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     backgroundColor: 'rgba(255,170,0,0.08)',
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: 'rgba(255,170,0,0.2)',
   },
@@ -225,7 +226,7 @@ const styles = StyleSheet.create({
   primaryBtn: {
     width: '100%',
     backgroundColor: Colors.accent,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 12,
@@ -239,7 +240,7 @@ const styles = StyleSheet.create({
     width: '100%',
     borderWidth: 1,
     borderColor: Colors.glassBorder,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingVertical: 14,
     alignItems: 'center',
     marginBottom: 28,

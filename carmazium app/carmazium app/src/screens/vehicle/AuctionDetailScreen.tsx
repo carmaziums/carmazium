@@ -23,6 +23,7 @@ import Animated, {
 import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import {FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
 import { useAuthStore } from '../../store/authStore';
 import {
@@ -1662,7 +1663,7 @@ const s = StyleSheet.create({
   iconBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, maxWidth: SW - 160 },
-  watcherChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.whiteAlpha05, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
+  watcherChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.whiteAlpha05, borderRadius: Radius.inline, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
   watcherText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white },
   connDot: { width: 8, height: 8, borderRadius: 4 },
 
@@ -1685,13 +1686,13 @@ const s = StyleSheet.create({
   bannerBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white },
 
   // Anti-snipe
-  antiSnipeToast: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.warning, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 24, zIndex: 100, shadowColor: Colors.warning, shadowOpacity: 0.5, shadowRadius: 12, elevation: 20 },
+  antiSnipeToast: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.warning, paddingHorizontal: 14, paddingVertical: 10, borderRadius: Radius.sheet, zIndex: 100, shadowColor: Colors.warning, shadowOpacity: 0.5, shadowRadius: 12, elevation: 20 },
   antiSnipeToastText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.black },
-  antiSnipeBar: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.warningAlpha08, borderWidth: 1, borderColor: Colors.warningAlpha20, borderRadius: 10, padding: 10, marginBottom: 12 },
+  antiSnipeBar: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.warningAlpha08, borderWidth: 1, borderColor: Colors.warningAlpha20, borderRadius: Radius.inline, padding: 10, marginBottom: 12 },
   antiSnipeBarText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.warning, flex: 1 },
 
   // Hero image
-  heroWrap: { height: 240, borderRadius: 16, overflow: 'hidden', marginBottom: 14, position: 'relative', backgroundColor: Colors.bgSecondary },
+  heroWrap: { height: 240, borderRadius: Radius.card, overflow: 'hidden', marginBottom: 14, position: 'relative', backgroundColor: Colors.bgSecondary },
   heroImg: { width: '100%', height: '100%' },
   heroTopLeft: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', gap: 6, zIndex: 2 },
   heroTopRight: { position: 'absolute', top: 12, right: 12, gap: 6, alignItems: 'flex-end', zIndex: 2 },
@@ -1702,24 +1703,24 @@ const s = StyleSheet.create({
   winningBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.accentGreen },
   outbidBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accentAlpha20, borderWidth: 1, borderColor: Colors.accentAlpha30, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   outbidBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.accent },
-  timerBox: { backgroundColor: 'rgba(10,10,12,0.8)', borderWidth: 1, borderColor: Colors.whiteAlpha10, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
+  timerBox: { backgroundColor: 'rgba(10,10,12,0.8)', borderWidth: 1, borderColor: Colors.whiteAlpha10, borderRadius: Radius.inline, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
   timerBoxLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size7, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, marginBottom: 2 },
   timerBoxValue: { fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.white },
 
   // Tabs
-  tabs: { flexDirection: 'row', backgroundColor: Colors.bgSecondaryAlt, borderRadius: 10, marginBottom: 14, padding: 3 },
+  tabs: { flexDirection: 'row', backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, marginBottom: 14, padding: 3 },
   tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
   tabActive: { backgroundColor: Colors.accent },
   tabText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 0.8 },
   tabTextActive: { color: Colors.white },
 
   // Card
-  card: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: 14, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 14, marginBottom: 0 },
+  card: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 14, marginBottom: 0 },
   cardSectionTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1, marginBottom: 12, borderLeftWidth: 2, borderLeftColor: Colors.accent, paddingLeft: 8 },
 
   // Stats row
   statsRow: { flexDirection: 'row', gap: 8, marginBottom: 0 },
-  statBox: { flex: 1, backgroundColor: Colors.bgSecondaryAlt, borderRadius: 12, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 10, alignItems: 'center' },
+  statBox: { flex: 1, backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 10, alignItems: 'center' },
   statLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 4 },
   statValue: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, textAlign: 'center' },
 
@@ -1739,7 +1740,7 @@ const s = StyleSheet.create({
   descText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20 },
 
   // Features
-  featureChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accentGreenAlpha08, borderWidth: 1, borderColor: Colors.accentGreenAlpha20, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20 },
+  featureChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accentGreenAlpha08, borderWidth: 1, borderColor: Colors.accentGreenAlpha20, paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.card },
   featureChipText: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.lightGreen_6ee7b7 },
 
   // Bids tab
@@ -1763,16 +1764,16 @@ const s = StyleSheet.create({
   bidStateText: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
   currentBidVal: { fontFamily: FontFamily.mono, fontSize: FontSize.size22, color: Colors.white },
   minNextBid: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
-  quickBidBtn: { flex: 1, backgroundColor: Colors.whiteAlpha04, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingVertical: 8, alignItems: 'center', gap: 2 },
+  quickBidBtn: { flex: 1, backgroundColor: Colors.whiteAlpha04, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingVertical: 8, alignItems: 'center', gap: 2 },
   quickBidLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted },
   quickBidAmt: { fontFamily: FontFamily.mono, fontSize: FontSize.size12, color: Colors.white },
   quickBidBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, letterSpacing: 0.5 },
-  customBidWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.whiteAlpha04, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 12 },
+  customBidWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.whiteAlpha04, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 12 },
   customBidCurrency: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.iconMuted, marginRight: 4 },
   customBidInput: { flex: 1, fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.white, paddingVertical: 10 },
-  bidBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: Colors.accent, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12 },
+  bidBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: Colors.accent, borderRadius: Radius.inline, paddingHorizontal: 20, paddingVertical: 12 },
   bidBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.8 },
-  feeNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.warningAlpha06, borderWidth: 1, borderColor: Colors.warningAlpha15, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
+  feeNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.warningAlpha06, borderWidth: 1, borderColor: Colors.warningAlpha15, borderRadius: Radius.inline, paddingHorizontal: 12, paddingVertical: 8 },
   feeNoticeLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.warning, letterSpacing: 1 },
   feeNoticeHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.iconMuted, marginTop: 1 },
   feeNoticeAmt: { fontFamily: FontFamily.mono, fontSize: FontSize.xl, color: Colors.warning },
@@ -1844,7 +1845,7 @@ const s = StyleSheet.create({
   cancelBidBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white },
 
   // Error/retry
-  retryBtn: { backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
+  retryBtn: { backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.inline },
   retryBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
 
   // ── Buy It Now (buyer) ──
@@ -1852,7 +1853,7 @@ const s = StyleSheet.create({
     backgroundColor: Colors.accentAlpha06,
     borderWidth: 1,
     borderColor: Colors.accentAlpha25,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     padding: 14,
     marginHorizontal: 14,
     marginBottom: 14,
@@ -1887,7 +1888,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     height: 46,
-    borderRadius: 11,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
   },
   binBtnText: {
@@ -1905,7 +1906,7 @@ const s = StyleSheet.create({
     backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
     borderColor: Colors.warningAlpha20,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginHorizontal: 14,
@@ -1926,7 +1927,7 @@ const s = StyleSheet.create({
     backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
     borderColor: Colors.warningAlpha30,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     padding: 14,
   },
   binSellerTitle: {
@@ -1943,7 +1944,7 @@ const s = StyleSheet.create({
   binSellerDeclineBtn: {
     flex: 1,
     height: 40,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha20,
     alignItems: 'center',
@@ -1957,7 +1958,7 @@ const s = StyleSheet.create({
   binSellerConfirmBtn: {
     flex: 2,
     height: 40,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',

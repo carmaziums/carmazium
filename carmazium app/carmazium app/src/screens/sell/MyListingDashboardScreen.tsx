@@ -18,6 +18,7 @@ import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 import { haptics } from '../../lib/haptics';
@@ -538,11 +539,11 @@ const styles = StyleSheet.create({
      flexDirection: 'row', marginHorizontal: 24, gap: 12, marginBottom: 32
   },
   statCard: {
-     flex: 1, backgroundColor: Colors.bgSecondaryAlt, borderRadius: 16, borderWidth: 1, borderColor: Colors.whiteAlpha06,
+     flex: 1, backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.whiteAlpha06,
      padding: 16, alignItems: 'center'
   },
   statCardOffers: {
-     flex: 1, backgroundColor: Colors.bgSecondaryAlt, borderRadius: 16, borderWidth: 1, borderColor: Colors.warningAlpha30,
+     flex: 1, backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.warningAlpha30,
      padding: 16, alignItems: 'center', overflow: 'hidden'
   },
   statIcon: {
@@ -578,7 +579,7 @@ const styles = StyleSheet.create({
      flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: 24, gap: 12
   },
   actionCard: {
-     width: (SCREEN_WIDTH - 60) / 2, backgroundColor: Colors.bgSecondaryAlt, borderRadius: 16, borderWidth: 1,
+     width: (SCREEN_WIDTH - 60) / 2, backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.card, borderWidth: 1,
      borderColor: Colors.whiteAlpha06, padding: 16
   },
   actionIcon: {
@@ -637,7 +638,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.accent,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     height: 52,
     paddingHorizontal: 32,
   },
@@ -652,7 +653,7 @@ const styles = StyleSheet.create({
   listingCard: {
     marginHorizontal: 24,
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     overflow: 'hidden',

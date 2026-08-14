@@ -16,6 +16,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
@@ -686,7 +687,7 @@ const styles = StyleSheet.create({
   // Hammer box
   hammerBox: {
     backgroundColor: Colors.accentGreenAlpha05,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.accentGreenAlpha20,
     paddingVertical: 24,
@@ -718,7 +719,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warningAlpha05,
     borderWidth: 1,
     borderColor: Colors.warningAlpha30,
-    borderRadius: 24,
+    borderRadius: Radius.sheet,
     paddingHorizontal: 20,
     paddingVertical: 16,
     marginBottom: 40,
@@ -746,7 +747,7 @@ const styles = StyleSheet.create({
   // Summary
   summaryBox: {
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 20,
@@ -785,7 +786,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentGreenAlpha05,
     borderWidth: 1,
     borderColor: Colors.accentGreenAlpha15,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     padding: 14,
     gap: 10,
   },
@@ -830,7 +831,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.accentGreenAlpha20,
     padding: 16,
@@ -843,7 +844,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warningAlpha05,
     borderWidth: 1,
     borderColor: Colors.warningAlpha30,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     padding: 14,
     marginTop: -16,
     marginBottom: 24,
@@ -868,7 +869,7 @@ const styles = StyleSheet.create({
 
   journeyBox: {
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 20,
@@ -912,7 +913,7 @@ const styles = StyleSheet.create({
 
   nextBox: {
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 20,
@@ -928,7 +929,7 @@ const styles = StyleSheet.create({
   // ── Seller review ──
   reviewBox: {
     backgroundColor: Colors.bgSecondaryAlt,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.warningAlpha20,
     padding: 20,
@@ -953,7 +954,7 @@ const styles = StyleSheet.create({
   },
   reviewInput: {
     backgroundColor: Colors.whiteAlpha04,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
     paddingHorizontal: 14,
@@ -968,7 +969,7 @@ const styles = StyleSheet.create({
   },
   reviewBtn: {
     height: 46,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.warning,
     alignItems: 'center',
     justifyContent: 'center',
@@ -996,7 +997,7 @@ const styles = StyleSheet.create({
 
   doneBtn: {
     backgroundColor: Colors.accent,
-    borderRadius: 12,
+    borderRadius: Radius.inline,
     height: 56,
     alignItems: 'center',
     justifyContent: 'center',

@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
   toggleRow: {
     flexDirection: 'row',
     backgroundColor: Colors.whiteAlpha04,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
     padding: 4,
@@ -258,7 +259,7 @@ const styles = StyleSheet.create({
   // ── Step card ──
   stepCard: {
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 18,
@@ -272,7 +273,7 @@ const styles = StyleSheet.create({
   stepIconWrap: {
     width: 46,
     height: 46,
-    borderRadius: 13,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.accentAlpha10,
     borderWidth: 1,
     borderColor: Colors.accentAlpha22,
@@ -308,7 +309,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.successAlpha08,
     borderWidth: 1,
     borderColor: 'rgba(34,197,94,0.18)',
-    borderRadius: 20,
+    borderRadius: Radius.card,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
@@ -333,7 +334,7 @@ const styles = StyleSheet.create({
   peaceCard: {
     width: '48%',
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 14,

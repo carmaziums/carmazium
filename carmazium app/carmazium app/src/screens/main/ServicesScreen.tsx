@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
@@ -199,7 +200,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 14,
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     padding: 16,
@@ -208,7 +209,7 @@ const styles = StyleSheet.create({
   iconWrap: {
     width: 46,
     height: 46,
-    borderRadius: 13,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -231,7 +232,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     backgroundColor: Colors.whiteAlpha04,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
     padding: 14,

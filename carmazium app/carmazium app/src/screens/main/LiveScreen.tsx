@@ -18,6 +18,7 @@ import { formatPrice, AuctionListing } from '../../data/listings';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { getActiveAuctions, getScheduledAuctions, AuctionDetail } from '../../lib/auctionApi';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -579,7 +580,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     height: 48,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
@@ -602,7 +603,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
     borderColor: Colors.warningAlpha25,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 14,
@@ -633,7 +634,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.deepPurple,
     borderWidth: 1,
     borderColor: Colors.darkPink_3b1e2b,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     paddingHorizontal: 16,
     paddingVertical: 13,
     marginBottom: 28,
@@ -670,7 +671,7 @@ const styles = StyleSheet.create({
     paddingVertical: 36,
     gap: 10,
     backgroundColor: Colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     marginBottom: 24,
@@ -688,7 +689,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-    borderRadius: 18,
+    borderRadius: Radius.card,
     overflow: 'hidden',
     marginBottom: 24,
   },
@@ -864,7 +865,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 14,
     height: 50,
-    borderRadius: 13,
+    borderRadius: Radius.inline,
     gap: 6,
   },
   bidNowBtnOwn: {
@@ -899,7 +900,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     padding: 14,
     marginBottom: 12,
   },
@@ -958,7 +959,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.deepPurple,
     borderWidth: 1,
     borderColor: Colors.darkPink_3b1e2b,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     padding: 14,
     marginTop: 8,
     gap: 12,

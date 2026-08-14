@@ -751,14 +751,14 @@ const s = StyleSheet.create({
 
   // Stats bar
   statsBar: { flexDirection: 'row', gap: 8, paddingHorizontal: 24, marginBottom: 16, flexWrap: 'wrap' },
-  statChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: Colors.accentAlpha30, backgroundColor: Colors.accentAlpha06 },
+  statChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.accentAlpha30, backgroundColor: Colors.accentAlpha06 },
   statChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accent },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.accent },
 
   // Search
-  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginBottom: 12, paddingHorizontal: 16, height: 52, borderRadius: 14, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.borderSubtle, gap: 10 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginBottom: 12, paddingHorizontal: 16, height: 52, borderRadius: Radius.inline, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.borderSubtle, gap: 10 },
   searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size14, color: Colors.white },
-  aiChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accent, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, minWidth: 40, justifyContent: 'center' },
+  aiChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accent, paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.inline, minWidth: 40, justifyContent: 'center' },
   aiChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white },
 
   // Inline AI search result
@@ -766,7 +766,7 @@ const s = StyleSheet.create({
     marginHorizontal: 24,
     marginBottom: 10,
     padding: 14,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
     borderColor: Colors.warningAlpha20,
@@ -778,13 +778,13 @@ const s = StyleSheet.create({
   aiResultError: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.error },
   aiResultBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    height: 42, borderRadius: 10, backgroundColor: Colors.accent,
+    height: 42, borderRadius: Radius.inline, backgroundColor: Colors.accent,
   },
   aiResultBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.5 },
 
   // Quick chips
   quickChipsRow: { paddingHorizontal: 24, paddingBottom: 4, gap: 8, marginBottom: 36 },
-  quickChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  quickChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.card, borderWidth: 1 },
   quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs },
 
   // Section
@@ -833,13 +833,13 @@ const s = StyleSheet.create({
   heartBtn: { position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.4)', borderWidth: 1, borderColor: Colors.whiteAlpha12, alignItems: 'center', justifyContent: 'center' },
 
   // Body type
-  bodyTypeCard: { width: 80, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.whiteAlpha07, borderRadius: 14, alignItems: 'center', paddingVertical: 14, gap: 8 },
+  bodyTypeCard: { width: 80, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.whiteAlpha07, borderRadius: Radius.inline, alignItems: 'center', paddingVertical: 14, gap: 8 },
   bodyTypeIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   bodyTypeLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white },
 
   // Recent grid
   recentGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 24, rowGap: 16 },
-  recentCard: { width: (SW - 56 - 12) / 2, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.whiteAlpha07, borderRadius: 16, overflow: 'hidden' },
+  recentCard: { width: (SW - 56 - 12) / 2, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.whiteAlpha07, borderRadius: Radius.card, overflow: 'hidden' },
   recentImgWrap: { height: 116 },
   recentImg: { width: '100%', height: '100%', resizeMode: 'cover' },
   recentBody: { padding: 16 },
@@ -848,26 +848,26 @@ const s = StyleSheet.create({
   recentPrice: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
 
   // Empty state
-  emptyState: { width: 240, height: 100, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.whiteAlpha02, borderRadius: 14, borderWidth: 1, borderColor: Colors.whiteAlpha05 },
+  emptyState: { width: 240, height: 100, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.whiteAlpha02, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha05 },
   emptyStateText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.midBlue_505060 },
 
   // Sell CTA — the one accent-filled hero action on this screen (CDS restraint
   // rule: at most one primary accent-filled action per view). Accent wash
   // fill instead of a thin border, a watermark icon for texture, and a
   // trailing-arrow button instead of a boxed label.
-  sellCta: { marginHorizontal: 24, marginBottom: 14, backgroundColor: Colors.accentAlpha12, borderRadius: 20, borderWidth: 1, borderColor: Colors.accentAlpha25, padding: 24, overflow: 'hidden' },
+  sellCta: { marginHorizontal: 24, marginBottom: 14, backgroundColor: Colors.accentAlpha12, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.accentAlpha25, padding: 24, overflow: 'hidden' },
   sellCtaWatermark: { position: 'absolute', top: -10, right: -10 },
   sellCtaTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.xl, color: Colors.white, marginBottom: 4 },
   sellCtaHint: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: 16 },
-  sellCtaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, alignSelf: 'flex-start', backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
+  sellCtaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, alignSelf: 'flex-start', backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 12, borderRadius: Radius.inline },
   sellCtaBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.3 },
 
   // Secondary utility rows (live auctions / dealer signup) — deliberately
   // quiet compact rows, not competing hero cards, so the sell CTA above is
   // the only bold moment on the screen.
-  secondaryRows: { marginHorizontal: 24, marginBottom: 8, backgroundColor: Colors.bgSecondary, borderRadius: 16, borderWidth: 1, borderColor: Colors.borderSubtle, overflow: 'hidden' },
+  secondaryRows: { marginHorizontal: 24, marginBottom: 8, backgroundColor: Colors.bgSecondary, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, overflow: 'hidden' },
   utilityRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
-  utilityRowIconWrap: { width: 30, height: 30, borderRadius: 10, backgroundColor: Colors.whiteAlpha05, alignItems: 'center', justifyContent: 'center' },
+  utilityRowIconWrap: { width: 30, height: 30, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha05, alignItems: 'center', justifyContent: 'center' },
   auctionLiveDot: { position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.accent, borderWidth: 1.5, borderColor: Colors.bgSecondary },
   utilityRowText: { flex: 1, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.white },
 });

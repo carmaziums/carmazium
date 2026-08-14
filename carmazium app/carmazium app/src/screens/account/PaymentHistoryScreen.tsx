@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
+import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 
 import { IconButton } from '../../components/IconButton';
@@ -289,7 +290,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 16,
     padding: 18,
-    borderRadius: 16,
+    borderRadius: Radius.card,
     backgroundColor: Colors.glassBg,
     borderWidth: 1,
     borderColor: Colors.glassBorder,
@@ -344,7 +345,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    borderRadius: 14,
+    borderRadius: Radius.inline,
     backgroundColor: Colors.glassBg,
     borderWidth: 1,
     borderColor: Colors.glassBorder,
@@ -380,8 +381,9 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   txAmount: {
+    // Monetary values are mono across the app; this was the one holdout.
     fontSize: FontSize.size14,
-    fontFamily: FontFamily.bold,
+    fontFamily: FontFamily.mono,
     color: Colors.textPrimary,
   },
   statusPill: {
