@@ -1352,6 +1352,67 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 )}
               </View>
             )}
+
+            {/* Seller reviews — the backend has been returning the five most
+                recent with reviewer names and photos on every listing fetch
+                (listings.service.ts:586-601) and mobile never read them. For a
+                buyer deciding whether to trust a stranger with several
+                thousand pounds, this is the most useful thing on the screen
+                after the price. */}
+            {!!listing.seller?.reviews?.length && (
+              <View style={styles.reviewsBlock}>
+                <View style={styles.reviewsHeader}>
+                  <Text style={styles.reviewsTitle}>
+                    Reviews ({listing.seller.reviews.length})
+                  </Text>
+                  {listing.seller.responseRate != null && listing.seller.responseRate > 0 && (
+                    <Text style={styles.reviewsResponse}>
+                      Replies to {Math.round(listing.seller.responseRate)}% of enquiries
+                    </Text>
+                  )}
+                </View>
+
+                {listing.seller.reviews.map((r) => (
+                  <View key={r.id} style={styles.reviewCard}>
+                    <View style={styles.reviewTop}>
+                      <View style={styles.reviewAvatar}>
+                        {r.reviewerImage ? (
+                          <Image source={{ uri: r.reviewerImage }} style={styles.reviewAvatarImg} contentFit="cover" />
+                        ) : (
+                          <Text style={styles.reviewAvatarText}>{getInitials(r.reviewerName)}</Text>
+                        )}
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.reviewerName} numberOfLines={1}>{r.reviewerName}</Text>
+                        <Text style={styles.reviewDate}>
+                          {new Date(r.createdAt).toLocaleDateString('en-GB', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </Text>
+                      </View>
+                      {/* These ARE 1-5 star ratings, unlike the seller's
+                          reliabilityScore, which is a weighted composite and
+                          must not be drawn as stars. */}
+                      <View style={styles.reviewStars}>
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <Ionicons
+                            key={n}
+                            name={n <= r.rating ? 'star' : 'star-outline'}
+                            size={11}
+                            color={n <= r.rating ? Colors.warning : Colors.textDisabled}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                    {!!r.comment && (
+                      <Text style={styles.reviewComment}>{r.comment}</Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
 
           {/* Expandable Finance Calculator — Coming Soon */}
@@ -2423,6 +2484,84 @@ const styles = StyleSheet.create({
     color: Colors.warning,
   },
   // Seller Card
+  reviewsBlock: {
+    marginTop: 10,
+    gap: 8,
+  },
+  reviewsHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 2,
+  },
+  reviewsTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.white,
+    letterSpacing: 0.5,
+  },
+  reviewsResponse: {
+    flexShrink: 1,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size11_5,
+    color: Colors.textMuted,
+    textAlign: 'right',
+  },
+  reviewCard: {
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.card,
+    padding: 14,
+    gap: 8,
+  },
+  reviewTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  reviewAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: Colors.bgSurface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reviewAvatarImg: {
+    width: '100%',
+    height: '100%',
+  },
+  reviewAvatarText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size11_5,
+    color: Colors.textSecondary,
+  },
+  reviewerName: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.white,
+  },
+  reviewDate: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size11_5,
+    color: Colors.textMuted,
+    marginTop: 1,
+  },
+  reviewStars: {
+    flexDirection: 'row',
+    gap: 1,
+  },
+  reviewComment: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    lineHeight: 20,
+    color: Colors.textSecondary,
+  },
   dealerDetailCard: {
     marginTop: 10,
     backgroundColor: Colors.bgCard,

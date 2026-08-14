@@ -49,7 +49,23 @@ export interface ApiListing {
       website?: string | null;
       businessAddress?: string | null;
     } | null;
-    sellerProfile?: { totalSales?: number; reliabilityScore?: number } | null;
+    sellerProfile?: {
+      totalSales?: number;
+      /** Weighted 0-5 composite (avgRating*0.5 + responseRate*0.3 +
+       *  salesRatio*0.2) — NOT a star average. Don't render it as stars. */
+      reliabilityScore?: number;
+      /** Percentage (0-100) of enquiries answered within 48h. */
+      responseRate?: number;
+      /** The 5 most recent reviews, returned with the listing
+       *  (listings.service.ts:586-601). Mobile never read them. */
+      reviews?: {
+        id: string;
+        rating: number;
+        comment?: string | null;
+        createdAt: string;
+        reviewer?: { firstName?: string | null; lastName?: string | null; profileImage?: string | null } | null;
+      }[] | null;
+    } | null;
     /** Active listing count — computed server-side (listings.service.ts:604-610). */
     _count?: { listings?: number } | null;
   } | null;
@@ -263,6 +279,15 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
           businessAddress: l.seller.dealerProfile?.businessAddress ?? null,
           activeListings: l.seller._count?.listings ?? null,
           reliabilityScore: l.seller.sellerProfile?.reliabilityScore ?? null,
+          responseRate: l.seller.sellerProfile?.responseRate ?? null,
+          reviews: (l.seller.sellerProfile?.reviews ?? []).map((r) => ({
+            id: r.id,
+            rating: r.rating,
+            comment: r.comment ?? null,
+            createdAt: r.createdAt,
+            reviewerName: [r.reviewer?.firstName, r.reviewer?.lastName].filter(Boolean).join(' ') || 'Buyer',
+            reviewerImage: r.reviewer?.profileImage ?? null,
+          })),
         }
       : undefined,
     isDepartedSale: l.isDepartedSale  ?? false,

@@ -71,7 +71,19 @@ export interface CarListing {
     website?: string | null;
     businessAddress?: string | null;
     activeListings?: number | null;
+    /** Weighted composite, not a star average — label it accordingly. */
     reliabilityScore?: number | null;
+    /** Percentage (0-100) of enquiries answered within 48h. */
+    responseRate?: number | null;
+    /** Up to 5 most recent seller reviews, already returned with the listing. */
+    reviews?: {
+      id: string;
+      rating: number;
+      comment: string | null;
+      createdAt: string;
+      reviewerName: string;
+      reviewerImage: string | null;
+    }[];
   };
   isDepartedSale?: boolean;
   // Auto-computed server-side from DamageRecord count on every damage save —
