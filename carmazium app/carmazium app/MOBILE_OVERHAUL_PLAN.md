@@ -489,7 +489,7 @@ anything web protects.
 | # | Gap | State |
 |---|---|---|
 | P1 | Live-auction seller contact missing | **done** (`2b3aa480`) |
-| P1 | "Call Seller" on the buyer's won-auction list | outstanding |
+| P1 | "Call Seller" on the buyer's won-auction list | **done** (`b1472f24`) |
 | P1 | Auction filter panel — web ported the full Buy Cars filter set to `/auctions`; mobile's `LiveScreen` had only a text query | **done** (`e798ba8e`) |
 | P2 | Marketing popup absent on mobile | outstanding |
 | P2 | How It Works / Terms not diffed against the web rewrites | outstanding |
@@ -519,7 +519,7 @@ that historical data-sanitisation bug and bypassing the dealer KYC path.
 | # | Gap | State |
 |---|---|---|
 | P1 | `SellerOffersScreen` never gated "Mark as Sold" on `listing.status` — the exact bug backend `11f96bf1` was fixing, fixed on the dealer screen but missed here | **done** (`2630c3c2`) |
-| P1 | No mobile equivalent of web's one-time location/postcode prompt for *existing* accounts missing a postcode | outstanding |
+| P1 | No mobile equivalent of web's one-time location/postcode prompt for *existing* accounts missing a postcode | **done** (`b1472f24`) |
 | P2 | `notifStyle()` has no case for `AUCTION_WIN_EXPIRED` | outstanding |
 | P2 | Mobile self-caps photo uploads at 20 vs web's 100 (no server-side cap) | outstanding |
 
