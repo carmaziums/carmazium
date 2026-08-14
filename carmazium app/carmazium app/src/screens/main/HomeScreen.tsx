@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, Dimensions, RefreshControl,
-  TextInput, ActivityIndicator,
+  TextInput, ActivityIndicator, FlatList,
 } from 'react-native';
+import type { ListRenderItem } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@/components/BrandIcon';
@@ -242,6 +243,56 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
   );
 });
 
+/**
+ * Horizontal rail.
+ *
+ * The rails used ScrollView + .map(), which mounts every card in the row up
+ * front — including its ImageCarousel — regardless of how many are off-screen.
+ * FlatList virtualises them instead. Loading and empty branches stay outside
+ * the list: FlatList has no sensible way to render a pair of skeletons, and an
+ * empty-state block isn't a list item.
+ */
+function Rail<T>({
+  data,
+  loading,
+  renderItem,
+  keyExtractor,
+  skeleton,
+  empty,
+}: {
+  data: T[];
+  loading: boolean;
+  renderItem: ListRenderItem<T>;
+  keyExtractor: (item: T) => string;
+  skeleton: React.ReactNode;
+  empty?: React.ReactNode;
+}) {
+  if (loading) {
+    return (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
+        {skeleton}
+      </ScrollView>
+    );
+  }
+  if (data.length === 0) {
+    return empty ? <View style={s.hScroll}>{empty}</View> : null;
+  }
+  return (
+    <FlatList
+      horizontal
+      data={data}
+      renderItem={renderItem}
+      keyExtractor={keyExtractor}
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={s.hScroll}
+      initialNumToRender={3}
+      maxToRenderPerBatch={3}
+      windowSize={5}
+      removeClippedSubviews
+    />
+  );
+}
+
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 
 const Section: React.FC<{ title: string; onSeeAll?: () => void; children: React.ReactNode; badge?: string }> = ({
@@ -375,10 +426,40 @@ export const HomeScreen: React.FC = () => {
     for (const l of [...latestListings, ...featuredListings]) listingsByIdRef.current.set(l.id, l);
   }, [latestListings, featuredListings]);
 
+  // Stable identities for the rails. Defining these inline in JSX would hand
+  // FlatList a new renderItem every render, defeating the memoisation on the
+  // row components underneath it.
+  const keyById = useCallback((item: { id: string }) => item.id, []);
+
+  const goToAuctionStable = useCallback(
+    (auction: AuctionDetail) =>
+      navigation.navigate('LiveAuctionDetailed', { listing: auctionToListingParam(auction) }),
+    [navigation],
+  );
+
+  const renderLiveAuction = useCallback<ListRenderItem<AuctionDetail>>(
+    ({ item }) => <LiveAuctionCard auction={item} onPress={() => goToAuctionStable(item)} />,
+    [goToAuctionStable],
+  );
+
+  const renderUpcomingAuction = useCallback<ListRenderItem<AuctionDetail>>(
+    ({ item }) => <UpcomingAuctionCard auction={item} onPress={() => goToAuctionStable(item)} />,
+    [goToAuctionStable],
+  );
+
   const handleCardPress = useCallback((id: string) => {
     const l = listingsByIdRef.current.get(id);
     if (l) navigation.navigate('VehicleDetail', { listing: l });
   }, [navigation]);
+
+  const renderListing = useCallback<ListRenderItem<CarListing>>(
+    ({ item }) => <ListingCard listing={item} onPress={handleCardPress} />,
+    [handleCardPress],
+  );
+
+  // Sliced once here rather than inside the JSX — a fresh array literal in the
+  // render body would give FlatList a new `data` reference every render.
+  const latestEight = useMemo(() => latestListings.slice(0, 8), [latestListings]);
 
   const userName = user?.firstName || 'there';
   const recentGrid = latestListings.slice(4, 10);
@@ -522,17 +603,14 @@ export const HomeScreen: React.FC = () => {
           badge={liveAuctions.length > 0 ? `${liveAuctions.length} LIVE` : undefined}
           onSeeAll={() => navigation.navigate('Tabs', { screen: 'Live' })}
         >
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
-            {isLoading ? (
-              <><Skeleton w={280} h={230} /><Skeleton w={280} h={230} /></>
-            ) : liveAuctions.length > 0 ? (
-              liveAuctions.map(a => (
-                <LiveAuctionCard key={a.id} auction={a} onPress={() => goToAuction(a)} />
-              ))
-            ) : (
-              <EmptyState icon="hammer-outline" text="No live auctions right now" />
-            )}
-          </ScrollView>
+          <Rail
+            data={liveAuctions}
+            loading={isLoading}
+            keyExtractor={keyById}
+            renderItem={renderLiveAuction}
+            skeleton={<><Skeleton w={280} h={230} /><Skeleton w={280} h={230} /></>}
+            empty={<EmptyState icon="hammer-outline" text="No live auctions right now" />}
+          />
         </Section>
 
         {/* ── UPCOMING AUCTIONS ── */}
@@ -541,15 +619,13 @@ export const HomeScreen: React.FC = () => {
             title="UPCOMING AUCTIONS"
             onSeeAll={() => navigation.navigate('Tabs', { screen: 'Live' })}
           >
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
-              {isLoading ? (
-                <><Skeleton w={280} h={230} /><Skeleton w={280} h={230} /></>
-              ) : upcomingAuctions.length > 0 ? (
-                upcomingAuctions.map(a => (
-                  <UpcomingAuctionCard key={a.id} auction={a} onPress={() => goToAuction(a)} />
-                ))
-              ) : null}
-            </ScrollView>
+            <Rail
+              data={upcomingAuctions}
+              loading={isLoading}
+              keyExtractor={keyById}
+              renderItem={renderUpcomingAuction}
+              skeleton={<><Skeleton w={280} h={230} /><Skeleton w={280} h={230} /></>}
+            />
           </Section>
         )}
 
@@ -558,21 +634,14 @@ export const HomeScreen: React.FC = () => {
           title="LATEST LISTINGS"
           onSeeAll={() => navigation.navigate('Search' as any)}
         >
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
-            {isLoading ? (
-              <><Skeleton w={240} h={220} /><Skeleton w={240} h={220} /><Skeleton w={240} h={220} /></>
-            ) : latestListings.slice(0, 8).length > 0 ? (
-              latestListings.slice(0, 8).map(l => (
-                <ListingCard
-                  key={l.id}
-                  listing={l}
-                  onPress={handleCardPress}
-                />
-              ))
-            ) : (
-              <EmptyState icon="car-sharp" text="No listings found" />
-            )}
-          </ScrollView>
+          <Rail
+            data={latestEight}
+            loading={isLoading}
+            keyExtractor={keyById}
+            renderItem={renderListing}
+            skeleton={<><Skeleton w={240} h={220} /><Skeleton w={240} h={220} /><Skeleton w={240} h={220} /></>}
+            empty={<EmptyState icon="car-sharp" text="No listings found" />}
+          />
         </Section>
 
         {/* ── FEATURED THIS WEEK ── */}
@@ -581,19 +650,13 @@ export const HomeScreen: React.FC = () => {
             title="FEATURED THIS WEEK"
             onSeeAll={() => navigation.navigate('Search' as any)}
           >
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
-              {isLoading ? (
-                <><Skeleton w={260} h={220} /><Skeleton w={260} h={220} /></>
-              ) : featuredListings.length > 0 ? (
-                featuredListings.map(l => (
-                  <ListingCard
-                    key={l.id}
-                    listing={l}
-                    onPress={handleCardPress}
-                  />
-                ))
-              ) : null}
-            </ScrollView>
+            <Rail
+              data={featuredListings}
+              loading={isLoading}
+              keyExtractor={keyById}
+              renderItem={renderListing}
+              skeleton={<><Skeleton w={260} h={220} /><Skeleton w={260} h={220} /></>}
+            />
           </Section>
         )}
 

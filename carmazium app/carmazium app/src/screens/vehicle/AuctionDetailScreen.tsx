@@ -171,7 +171,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // See useKeyboardHeight.ts — Android-only; iOS keeps the native
   // KeyboardAvoidingView path below, which already works reliably there.
   const androidKeyboardHeight = useKeyboardHeight();
-  const { user: currentUser, role } = useAuthStore();
+  // Selector-subscribed. `useAuthStore()` with no selector subscribes this
+  // screen to every field on the store, so `currentUser`'s object identity
+  // changed on any unrelated store write — which re-ran the effects keyed on
+  // it, including the auction socket below.
+  const currentUser = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.role);
 
   // ── Auction state ──
   const [auction, setAuction] = useState<AuctionDetail | null>(null);
@@ -458,7 +463,11 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     })();
 
     return () => { socket?.disconnect(); };
-  }, [auctionId, currentUser]);
+  // Keyed on the user ID rather than the user object. Keyed on the object,
+  // any change to the stored profile tore this socket down and reconnected it
+  // mid-auction — dropping live bid updates for the duration of the
+  // handshake, on the one screen where that matters most.
+  }, [auctionId, currentUser?.id]);
 
   // ─── Cancel bid countdown — 24h window, ticks every 30s (no need for
   // per-second precision over a day-long window). ─────────────────────────
