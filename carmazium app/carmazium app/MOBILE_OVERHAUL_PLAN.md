@@ -381,8 +381,12 @@ Secondary, same area: the backend sends Android channel IDs
 client registers (`default`/`auctions`/`offers`). Moot until the above is fixed,
 but must be fixed with it.
 
-**P0 — startup blocks on 18 font variants.** `App.tsx` synchronously loads 18
-font-family/weight combinations before first paint, holding the splash screen.
+**~~P0 — startup blocks on font loading.~~ Fixed (`0472857a`).** It was
+loading **20** variants, of which only **9** are referenced anywhere in `src/`
+— all six weights of Inter (the app pairs Poppins with Montserrat and never
+uses Inter), plus Poppins 300/400/500 and Montserrat 300/700. Eleven files
+were being read from disk before the splash could be dismissed, for fonts
+nothing would ever render in.
 
 **In-app notifications are actually in good shape** — REST feed, unread badge,
 single and bulk mark-read, and a solid `/notifications` Socket.IO gateway
@@ -399,6 +403,13 @@ destination at all**.
 **Preferences are correct** — mobile's toggles map 1:1 to the real backend
 gating fields. `newLot` has no backend event behind it; `sms` is honestly
 disabled with "Coming soon".
+
+**Fixed since (`0472857a`):** the Home rails now use a shared `Rail` over a
+horizontal `FlatList` with stable `renderItem`/`keyExtractor`, and
+`AuctionDetailScreen` is selector-subscribed with its socket effect keyed on
+`currentUser?.id` — previously any unrelated store write changed the user
+object's identity, tearing down and reconnecting the live auction socket
+mid-auction and dropping bid updates during the handshake.
 
 **Perf is better than expected where audited.** `expo-image` carousels correctly
 set `cachePolicy`/`contentFit`; `DealerLeadsScreen` shows real prior
