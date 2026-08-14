@@ -490,7 +490,7 @@ anything web protects.
 |---|---|---|
 | P1 | Live-auction seller contact missing | **done** (`2b3aa480`) |
 | P1 | "Call Seller" on the buyer's won-auction list | outstanding |
-| P1 | Auction filter panel — web ported the full ~20-field Buy Cars filter set to `/auctions`; mobile's `LiveScreen` still has only a text query | outstanding, the largest item |
+| P1 | Auction filter panel — web ported the full Buy Cars filter set to `/auctions`; mobile's `LiveScreen` had only a text query | **done** (`e798ba8e`) |
 | P2 | Marketing popup absent on mobile | outstanding |
 | P2 | How It Works / Terms not diffed against the web rewrites | outstanding |
 
