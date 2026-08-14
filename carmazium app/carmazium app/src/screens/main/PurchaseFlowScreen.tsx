@@ -85,6 +85,9 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
   } = params;
 
   const isCommission = paymentType === 'COMMISSION';
+  /** An auction buyer fee, as opposed to a retail purchase — the two want
+   *  different next steps on success. */
+  const isWonAuctionFee = isCommission && !!auctionId;
   // Auction winners pay only the platform commission — no sale price is
   // being settled here (they still owe the seller the winning bid amount
   // out-of-band). For deposits and full payments the sale price stacks
@@ -192,14 +195,27 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
             {fmt(total)} · {listingTitle}
           </Text>
           <Text style={styles.successNote}>
-            Your payment has been received. The seller will be in touch to arrange handover.
+            {isWonAuctionFee
+              ? 'Your payment has been received. Next, arrange handover with the seller from your won auctions.'
+              : 'Your payment has been received. The seller will be in touch to arrange handover.'}
           </Text>
+          {/* This used to always send the user Home, which left an auction
+              winner with no signal about what to do next. Web's checkout
+              success page (checkout/success/page.tsx:34,198-204) routes an
+              auction buyer-fee payment to their won-auctions list precisely so
+              they go on to submit handover proof. */}
           <TouchableOpacity
             style={styles.doneBtn}
             activeOpacity={0.8}
-            onPress={() => navigation?.navigate('Tabs')}
+            onPress={() =>
+              isWonAuctionFee
+                ? navigation?.navigate('BuyerBids')
+                : navigation?.navigate('Tabs')
+            }
           >
-            <Text style={styles.doneBtnText}>BACK TO HOME</Text>
+            <Text style={styles.doneBtnText}>
+              {isWonAuctionFee ? 'VIEW MY AUCTIONS' : 'BACK TO HOME'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

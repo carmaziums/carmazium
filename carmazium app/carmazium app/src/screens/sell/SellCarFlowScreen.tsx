@@ -1502,8 +1502,17 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           clearDraft();
           Alert.alert(
             damageSaved ? 'Auction Scheduled!' : 'Auction scheduled — damage details not saved',
-            damageSaved ? 'Your auction is now live.' : DAMAGE_SAVE_FAILED_MSG,
-            [{ text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') }],
+            // Auctions require admin review before going live in every case
+            // (FEATURE_AUDIT.md section 10) — this used to promise "your auction
+            // is now live", which is not what happens.
+            damageSaved
+              ? 'Your auction goes live once our team has reviewed it. We’ll notify you when it does.'
+              : DAMAGE_SAVE_FAILED_MSG,
+            // Was 'SellerListings' — an auction the seller just scheduled isn't
+            // in the retail listings screen, so this dropped them somewhere
+            // their new auction wasn't. Web branches by listing type here
+            // (ListingWizard.tsx:871/936); mobile didn't.
+            [{ text: 'View Auctions', onPress: () => navigation?.navigate('SellerAuctions') }],
           );
         } else if (newListingId) {
           // Classified listing: gate behind payment sheet for all tiers (BASIC=£1, STANDARD=£10, PREMIUM=£25)

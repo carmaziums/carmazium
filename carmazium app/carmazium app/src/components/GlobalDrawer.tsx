@@ -108,6 +108,32 @@ const USER_ITEMS: MenuItem[] = [
     iconLib: 'mci',
     stackScreen: 'SellerAuctions',
   },
+  // The next three screens were fully built and registered in
+  // MainStackNavigator but had no drawer entry, so nothing in the app
+  // navigated to them — a buyer could place bids, buy a car and request
+  // delivery, then have no way back to any of it. Web exposes all three
+  // (/dashboard/buyer/bids, /history, and the delivery requests view).
+  {
+    id: 'user-bids',
+    label: 'My bids',
+    icon: 'hammer-outline',
+    iconLib: 'ion',
+    stackScreen: 'BuyerBids',
+  },
+  {
+    id: 'user-purchases',
+    label: 'Purchase history',
+    icon: 'receipt-outline',
+    iconLib: 'ion',
+    stackScreen: 'BuyerPurchaseHistory',
+  },
+  {
+    id: 'user-deliveries',
+    label: 'Delivery requests',
+    icon: 'cube-outline',
+    iconLib: 'ion',
+    stackScreen: 'BuyerDeliveryRequests',
+  },
   {
     id: 'user-watchlist',
     label: 'Watchlist',
@@ -220,8 +246,26 @@ const DEALER_ITEMS: MenuItem[] = [
     iconLib: 'ion',
     stackScreen: 'DealerPurchases',
   },
-  { 
-    id: 'dealer-notif-settings', 
+  // Earnings and Finance are both built and registered, but were the only two
+  // dealer features missing from this list — reachable solely from a card on
+  // DealerProfileScreen. A dealer could reach Purchases and then had no path
+  // to the money side, one item further down the same menu.
+  {
+    id: 'dealer-earnings',
+    label: 'Earnings',
+    icon: 'wallet-outline',
+    iconLib: 'ion',
+    stackScreen: 'DealerEarnings',
+  },
+  {
+    id: 'dealer-finance',
+    label: 'Finance applications',
+    icon: 'calculator-outline',
+    iconLib: 'ion',
+    stackScreen: 'DealerFinance',
+  },
+  {
+    id: 'dealer-notif-settings',
     label: 'Notification settings', 
     icon: 'notifications-circle-outline', 
     iconLib: 'ion', 
