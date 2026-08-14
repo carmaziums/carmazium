@@ -10,7 +10,8 @@ import Animated, {
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
-import { FontFamily, FontSize } from '../constants/typography';
+import { FontFamily, FontSize, TextPresets } from '../constants/typography';
+import { Elevation, Radius } from '../constants/spacing';
 
 // Main screens
 import { HomeScreen } from '../screens/main/HomeScreen';
@@ -129,8 +130,19 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   }, [state.routes, state.index, navigation]);
 
   return (
-    <View style={[styles.tabBarOuter, { paddingBottom: insets.bottom }]}>
-      {/* Glass-effect background overlay */}
+    // The bar floats above the content rather than sitting edge-to-edge on a
+    // hairline border — that inset, rounded, shadowed slab is the design
+    // system's tab bar and one of the few pieces of chrome visible on every
+    // screen. `insets.bottom` becomes a margin rather than internal padding so
+    // the bar clears the home indicator without growing a dead grey strip
+    // underneath it; on devices with no inset it falls back to a fixed 10px so
+    // it never sits flush against the screen edge.
+    <View
+      style={[
+        styles.tabBarOuter,
+        { bottom: Math.max(insets.bottom, 10) },
+      ]}
+    >
       <View style={[StyleSheet.absoluteFillObject, styles.tabBarGlass]} />
       <View style={styles.tabBarInner}>
         {state.routes.map((route: any, index: number) => {
@@ -195,20 +207,28 @@ export const TabNavigator: React.FC = () => {
 const styles = StyleSheet.create({
   tabBarOuter: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    borderTopWidth: 1,
-    borderTopColor: Colors.tabBarBorder,
+    left: 12,
+    right: 12,
+    borderRadius: Radius.sheet,
+    borderWidth: 1,
+    borderColor: Colors.tabBarBorder,
     backgroundColor: Colors.tabBarBg,
-    overflow: 'hidden',
+    // Deliberately NOT `overflow: 'hidden'` — on iOS that clips the shadow, so
+    // the float elevation below would never render. The glass layer carries its
+    // own radius instead of relying on the parent to clip it.
+    ...Elevation.float,
   },
   tabBarGlass: {
-    backgroundColor: 'rgba(10, 10, 12, 0.88)',
+    borderRadius: Radius.sheet,
+    // Sits under the items to deepen the translucent ground. A real backdrop
+    // blur needs expo-blur, which isn't installed (adding it forces a native
+    // prebuild) — on a dark ground this reads close.
+    backgroundColor: Colors.tabBarBg,
   },
   tabBarInner: {
     flexDirection: 'row',
     paddingTop: 8,
+    paddingBottom: 8,
     paddingHorizontal: 8,
   },
   tabItem: {
@@ -232,10 +252,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -2,
     alignSelf: 'center',
+    // The glow on the active dot is the tab bar's signature detail.
+    shadowColor: Colors.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 6,
   },
   tabLabel: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.xs,
+    ...TextPresets.tabLabel,
   },
   tabLabelActive: {
     color: Colors.accent,
