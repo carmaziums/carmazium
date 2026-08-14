@@ -52,6 +52,9 @@ interface Offer {
     id?: string;
     title?: string;
     price?: number;
+    /** Present since backend commit 11f96bf1 (getReceivedOffers now selects it).
+     *  Needed to stop offering sale actions on an already-sold listing. */
+    status?: string;
   };
   buyer?: {
     id?: string;
@@ -548,7 +551,18 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
 
         {/* Actions: ACCEPTED — matches web's Message / Mark as Sold / Cancel
             & Relist row, which mobile previously had no equivalent of at all. */}
-        {offer.status === 'ACCEPTED' && (
+        {/* Mark as Sold / Cancel & Relist only make sense while the listing is
+            still unsold. Once a different accepted offer already sold it the
+            backend correctly rejects a second sale, but the buttons shouldn't
+            have been offered at all. DealerOffersScreen was fixed for this;
+            this screen was missed, so private sellers still hit it. */}
+        {offer.status === 'ACCEPTED' && offer.listing?.status === 'SOLD' && (
+          <View style={styles.soldNoticeBanner}>
+            <Ionicons name="checkmark-circle" size={13} color={Colors.accentGreen} />
+            <Text style={styles.soldNoticeText}>Vehicle already sold</Text>
+          </View>
+        )}
+        {offer.status === 'ACCEPTED' && offer.listing?.status !== 'SOLD' && (
           <View style={[styles.actionsRow, { flexWrap: 'wrap' }]}>
             <TouchableOpacity
               style={[styles.actionBtn, styles.actionBtnMessage]}
@@ -785,6 +799,23 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
 // ═══════════════════════════ STYLES ════════════════════════════════
 
 const styles = StyleSheet.create({
+  soldNoticeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.accentGreenAlpha12,
+    borderWidth: 1,
+    borderColor: Colors.accentGreenAlpha30,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: Radius.chip,
+  },
+  soldNoticeText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.accentGreen,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,
