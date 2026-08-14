@@ -21,7 +21,8 @@ import { HamburgerButton } from '../../components/HamburgerButton';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Colors } from '../../constants/colors';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
-import {FontFamily, FontSize } from '../../constants/typography';
+import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
+import { Elevation, Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { ImageCarousel } from '../../components/ImageCarousel';
 import { ImageLightbox } from '../../components/ImageLightbox';
@@ -179,9 +180,16 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
 // tick from a sibling card, etc.) doesn't re-render every card in the row (mobile-audit.md P4).
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
-const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => void; onToggle: (id: string) => void; saved: boolean }>(({
-  listing, onPress, onToggle, saved
+const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => void }>(({
+  listing, onPress
 }) => {
+  // The card owns its own saved state rather than receiving `saved`/`onToggle`
+  // from HomeScreen. Passing it down meant HomeScreen had to subscribe to the
+  // watchlist store, so saving any one car re-rendered the whole screen and
+  // every rail on it. `savedIds` is a Set, so this selector returns a plain
+  // boolean and only the card whose state actually changed re-renders.
+  const saved = useWatchlistStore((s) => s.savedIds.has(listing.id));
+  const toggle = useWatchlistStore((s) => s.toggle);
   // Tapping the image opens a full-screen lightbox instead of navigating —
   // matches web's CarCard.tsx (lightboxOnTap). Navigation still happens via
   // the rest of the card.
@@ -205,7 +213,7 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
         )}
         <TouchableOpacity
           style={s.heartBtn}
-          onPress={() => onToggle(listing.id)}
+          onPress={() => toggle(listing)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'}
           accessibilityRole="button"
@@ -286,7 +294,9 @@ export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);
-  const { isSaved, toggle } = useWatchlistStore();
+  // Deliberately does NOT subscribe to the watchlist store — ListingCard owns
+  // its own saved state (see its selector). Subscribing here re-rendered the
+  // entire Home screen, every rail included, whenever any listing was saved.
 
   const [liveAuctions, setLiveAuctions] = useState<AuctionDetail[]>([]);
   const [upcomingAuctions, setUpcomingAuctions] = useState<AuctionDetail[]>([]);
@@ -369,11 +379,6 @@ export const HomeScreen: React.FC = () => {
     const l = listingsByIdRef.current.get(id);
     if (l) navigation.navigate('VehicleDetail', { listing: l });
   }, [navigation]);
-
-  const handleCardToggle = useCallback((id: string) => {
-    const l = listingsByIdRef.current.get(id);
-    if (l) toggle(l);
-  }, [toggle]);
 
   const userName = user?.firstName || 'there';
   const recentGrid = latestListings.slice(4, 10);
@@ -562,8 +567,6 @@ export const HomeScreen: React.FC = () => {
                   key={l.id}
                   listing={l}
                   onPress={handleCardPress}
-                  onToggle={handleCardToggle}
-                  saved={isSaved(l.id)}
                 />
               ))
             ) : (
@@ -587,8 +590,6 @@ export const HomeScreen: React.FC = () => {
                     key={l.id}
                     listing={l}
                     onPress={handleCardPress}
-                    onToggle={handleCardToggle}
-                    saved={isSaved(l.id)}
                   />
                 ))
               ) : null}
@@ -789,7 +790,9 @@ const s = StyleSheet.create({
   // Section
   section: { marginBottom: 36 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, marginBottom: 18 },
-  sectionTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1.5 },
+  // Section headers are the design system's tracked eyebrow, not a bespoke
+  // bold-small-caps pair per screen.
+  sectionTitle: { ...TextPresets.eyebrow, color: Colors.white },
   sectionBadge: { backgroundColor: Colors.accent, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
   sectionBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white, letterSpacing: 0.5 },
   seeAll: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.accent },
@@ -798,15 +801,23 @@ const s = StyleSheet.create({
   hScroll: { paddingHorizontal: 24, gap: 16, flexDirection: 'row', alignItems: 'center' },
 
   // Cards shared
-  auctionCard: { width: 282, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: 16, overflow: 'hidden' },
-  listingCard: { width: 240, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: 16, overflow: 'hidden' },
+  // NOTE: these two carry `overflow: 'hidden'` to clip the image to the
+  // radius, and iOS clips shadows to that — so Elevation.card's shadow*
+  // half is inert here and only the Android `elevation` takes effect.
+  // Making it render on iOS needs a shadow-bearing wrapper around a
+  // clipping inner view; left as a follow-up rather than restructuring
+  // every card in this screen blind.
+  auctionCard: { width: 282, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, overflow: 'hidden', ...Elevation.card },
+  listingCard: { width: 240, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, overflow: 'hidden', ...Elevation.card },
   cardImgWrap: { position: 'relative', height: 150, backgroundColor: Colors.bgTertiary },
   cardImg: { width: '100%', height: '100%' },
   cardImgEmpty: { width: '100%', height: '100%', backgroundColor: Colors.bgTertiary },
   cardBody: { padding: 16 },
-  cardSpecs: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.textFaint, letterSpacing: 0.5, marginBottom: 4 },
+  cardSpecs: { ...TextPresets.eyebrow, fontSize: FontSize.size9, color: Colors.textMuted, marginBottom: 4 },
   cardTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 10 },
-  cardPrice: { fontFamily: FontFamily.bold, fontSize: FontSize.size17, color: Colors.white },
+  // Prices are mono at heavy weight throughout the brand — this was rendering
+  // in the body font like any other text.
+  cardPrice: { ...TextPresets.monoFigure, color: Colors.white },
   cardMeta: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary },
 
   // Auction overlays
@@ -814,7 +825,7 @@ const s = StyleSheet.create({
   livePillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white, letterSpacing: 1 },
   bidOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', backgroundColor: 'rgba(10,10,12,0.78)', borderTopWidth: 1, borderTopColor: Colors.whiteAlpha07, paddingVertical: 9, paddingHorizontal: 14 },
   overlayLabel: { fontFamily: FontFamily.medium, fontSize: FontSize.size8, color: Colors.textSecondary, letterSpacing: 1, marginBottom: 2 },
-  overlayVal: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
+  overlayVal: { ...TextPresets.monoFigure, fontSize: FontSize.size14, color: Colors.white },
 
   // Listing badges
   featuredBadge: { position: 'absolute', top: 10, left: 10, backgroundColor: Colors.warning, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 5 },
