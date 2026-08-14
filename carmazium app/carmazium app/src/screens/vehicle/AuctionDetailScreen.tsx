@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Dimensions, StatusBar, TextInput, ActivityIndicator,
-  Share, Alert, KeyboardAvoidingView, Platform,
+  Share, Alert, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
 // expo-image: caching/recycling for the hero auction photo (large, full-bleed,
 // shown on a screen users keep open while live-bidding).
@@ -90,6 +90,47 @@ function fmtDate(iso: string) {
 }
 
 // ─── Skeleton Loading View ────────────────────────────────────────────────────
+
+/**
+ * One seller-contact row.
+ *
+ * Renders two states from a single input: a present `value` has already been
+ * authorised by the backend, so it shows with its action; a null `value` means
+ * the field exists but is still gated, so it shows as locked. Keeping both in
+ * one component stops the locked and unlocked layouts drifting apart.
+ */
+const ContactRow: React.FC<{
+  icon: string;
+  label: string;
+  value: string | null;
+  actionLabel?: string;
+  onAction?: () => void;
+}> = ({ icon, label, value, actionLabel, onAction }) => (
+  <View style={s.contactRow}>
+    <Ionicons
+      name={value ? (icon as any) : ('lock-closed-outline' as any)}
+      size={14}
+      color={value ? Colors.textMuted : Colors.textDisabled}
+    />
+    <View style={{ flex: 1, minWidth: 0 }}>
+      <Text style={s.contactLabel}>{label}</Text>
+      <Text style={value ? s.contactValue : s.contactValueLocked} numberOfLines={1}>
+        {value ?? 'Locked'}
+      </Text>
+    </View>
+    {value && actionLabel && onAction ? (
+      <TouchableOpacity
+        style={s.contactAction}
+        onPress={onAction}
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel={`${actionLabel} seller`}
+      >
+        <Text style={s.contactActionText}>{actionLabel}</Text>
+      </TouchableOpacity>
+    ) : null}
+  </View>
+);
 
 const AuctionDetailSkeleton: React.FC = () => (
   <View style={s.container}>
@@ -688,6 +729,27 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const sellerInitials = _company
     ? _company.slice(0, 2).toUpperCase()
     : `${_first[0] || '?'}${_last[0] || ''}`.toUpperCase();
+
+  // Seller contact, exactly as the backend hands it over. A dealer's business
+  // phone takes precedence over the personal one — same order web uses, since a
+  // dealership's switchboard is the number a buyer should be ringing.
+  // Cast: the local response type predates these fields (the backend has sent
+  // them since 25869c5d/05cfe7e4) and only declares id/firstName/lastName.
+  const _sAny = _s as any;
+  const _dealer = (_sAny && _sAny.dealerProfile) || null;
+  const sellerContact = {
+    phone: (_dealer?.phone ?? _sAny?.phone ?? null) as string | null,
+    phoneAvailable: !!(_dealer?.phoneAvailable || _sAny?.phoneAvailable),
+    email: (_sAny?.email ?? null) as string | null,
+    emailAvailable: !!_sAny?.emailAvailable,
+    businessAddress: (_dealer?.businessAddress ?? null) as string | null,
+    businessAddressAvailable: !!_dealer?.businessAddressAvailable,
+    website: (_dealer?.website ?? null) as string | null,
+    websiteAvailable: !!_dealer?.websiteAvailable,
+    /** True once the backend actually released a value — i.e. this viewer won
+     *  and paid. Derived from the data, never recomputed from local state. */
+    unlocked: !!(_dealer?.phone || _sAny?.phone || _sAny?.email),
+  };
 
   // ─── Loading / Error ──────────────────────────────────────────────────────
 
@@ -1344,6 +1406,81 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </Text>
               </View>
             </View>
+
+            {/* Seller contact — web parity (auctions/live/[id] gained this in
+                05cfe7e4 / 25869c5d); mobile showed only a name and avatar.
+
+                No gating logic lives here on purpose. The backend
+                (auctions.service.ts:286) withholds every value until the viewer
+                has won THIS auction and paid the buyer fee, returning null plus
+                an `*Available` boolean saying whether a value exists at all.
+                So a present value is already authorised to display, and an
+                Available-but-null value is what renders the locked row. Mobile
+                re-deriving "can this user see it?" would be a second source of
+                truth for a privacy rule, which is exactly how that kind of rule
+                gets broken. */}
+            {(sellerContact.phoneAvailable ||
+              sellerContact.emailAvailable ||
+              sellerContact.businessAddressAvailable ||
+              sellerContact.websiteAvailable) && (
+              <View style={s.sellerContactBlock}>
+                {sellerContact.phoneAvailable && (
+                  <ContactRow
+                    icon="call-outline"
+                    label="Phone"
+                    value={sellerContact.phone}
+                    actionLabel="Call"
+                    onAction={
+                      sellerContact.phone
+                        ? () => Linking.openURL(`tel:${sellerContact.phone}`)
+                        : undefined
+                    }
+                  />
+                )}
+                {sellerContact.emailAvailable && (
+                  <ContactRow
+                    icon="mail-outline"
+                    label="Email"
+                    value={sellerContact.email}
+                    actionLabel="Email"
+                    onAction={
+                      sellerContact.email
+                        ? () => Linking.openURL(`mailto:${sellerContact.email}`)
+                        : undefined
+                    }
+                  />
+                )}
+                {sellerContact.businessAddressAvailable && (
+                  <ContactRow
+                    icon="business-outline"
+                    label="Address"
+                    value={sellerContact.businessAddress}
+                  />
+                )}
+                {sellerContact.websiteAvailable && (
+                  <ContactRow
+                    icon="globe-outline"
+                    label="Website"
+                    value={sellerContact.website}
+                    actionLabel="Open"
+                    onAction={
+                      sellerContact.website
+                        ? () => Linking.openURL(
+                            /^https?:\/\//i.test(sellerContact.website!)
+                              ? sellerContact.website!
+                              : `https://${sellerContact.website}`,
+                          )
+                        : undefined
+                    }
+                  />
+                )}
+                {!sellerContact.unlocked && (
+                  <Text style={s.sellerContactLockedNote}>
+                    Contact details unlock once you win this auction and pay the buyer fee.
+                  </Text>
+                )}
+              </View>
+            )}
           </View>
         )}
 
@@ -1654,6 +1791,57 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
+  sellerContactBlock: {
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    gap: 10,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  contactLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: Colors.textMuted,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  contactValue: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.sm,
+    color: Colors.white,
+  },
+  contactValueLocked: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.sm,
+    color: Colors.textDisabled,
+  },
+  contactAction: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: Radius.chip,
+    backgroundColor: Colors.accentAlpha12,
+    borderWidth: 1,
+    borderColor: Colors.accentAlpha30,
+  },
+  contactActionText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size11_5,
+    color: Colors.accent,
+    letterSpacing: 0.5,
+  },
+  sellerContactLockedNote: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size11_5,
+    color: Colors.textMuted,
+    lineHeight: 16,
+    marginTop: 2,
+  },
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   scroll: { paddingHorizontal: 14, paddingTop: 8 },
   muted: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.iconMuted },
