@@ -4,7 +4,7 @@ import { useEffect } from "react"
 import { motion } from "framer-motion"
 import {
   Search, ShieldCheck, Calculator, Gavel, Banknote, Clock, Users, TrendingUp,
-  Handshake, Truck, Umbrella, ArrowRight, Phone, Gift, Trophy, ClipboardCheck,
+  Handshake, Truck, Umbrella, ArrowRight, Phone, Gift, Trophy, ClipboardCheck, Zap,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import Link from "next/link"
@@ -204,6 +204,13 @@ const TRUST_STRIP = [
   { icon: Gift, label: "£100 seller reward" },
 ]
 
+// A worked example of anti-snipe actually resetting the clock — more honest
+// than a static "current bid" stat, which doesn't show the mechanic at all.
+const BID_LOG = [
+  { t: "23:57:02", amount: "£41,000", reset: true },
+  { t: "23:58:41", amount: "£42,500", reset: true },
+]
+
 export default function HowItWorksPage() {
   const router = useRouter()
 
@@ -219,13 +226,13 @@ export default function HowItWorksPage() {
       <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 flex flex-col items-center justify-center text-center overflow-hidden h-[70vh] min-h-[500px]">
         <div className="absolute inset-0 z-0">
           <Image
-            src="/assets/images/signup-bg.png"
-            alt="CarMazium"
+            src="/assets/images/live-auction-hero.jpg"
+            alt="A car on auction at sunset"
             fill
-            className="object-cover opacity-70 scale-105"
+            className="object-cover scale-105"
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/50 via-slate-950/80 to-slate-950" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/50 via-slate-950/70 to-slate-950" />
         </div>
 
         <div className="absolute top-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent z-10" />
@@ -324,39 +331,32 @@ export default function HowItWorksPage() {
               </div>
             </div>
 
-            <div className="order-1 lg:order-2 relative">
-              <div className="relative z-10 bg-[var(--bg-card)] rounded-2xl border border-[var(--border-default)] p-8 shadow-2xl transition-transform duration-700">
-                <div className="flex justify-between items-center mb-8 border-b border-[var(--border-default)] pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                    <span className="text-red-400 font-mono font-bold tracking-wider">LIVE NOW</span>
-                  </div>
-                  <span className="text-[var(--text-muted)] font-mono">ID: #83921</span>
+            <div className="order-1 lg:order-2">
+              <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-default)] p-6 sm:p-8 shadow-2xl overflow-hidden">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-6 border-b border-[var(--border-default)] pb-4">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+                  <span className="text-red-400 font-mono font-bold tracking-wider text-sm">LIVE NOW</span>
+                  <span className="text-[var(--text-muted)] font-mono text-sm ml-auto">ID: #83921</span>
                 </div>
 
-                <div className="flex justify-between items-end mb-6">
-                  <div>
-                    <p className="text-sm text-[var(--text-muted)] mb-2 uppercase tracking-wide">Current Bid</p>
-                    <p className="text-5xl font-bold tracking-tight">£42,500</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-[var(--text-muted)] mb-2 uppercase tracking-wide">Time Left</p>
-                    <p className="text-3xl font-mono text-primary font-bold tabular-nums">00:01:58</p>
-                  </div>
-                </div>
+                <p className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Time left</p>
+                <p className="text-4xl sm:text-5xl font-mono text-primary font-bold tabular-nums mb-1">00:01:58</p>
+                <p className="text-xs text-[var(--text-muted)] mb-6">Resets to 3:00 on every bid in the final 3 minutes</p>
 
-                <div className="h-3 bg-[var(--bg-input)] rounded-full overflow-hidden mb-3">
-                  <motion.div
-                    className="h-full bg-primary"
-                    initial={{ width: "80%" }}
-                    animate={{ width: "95%" }}
-                    transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
-                  />
+                <div className="space-y-2">
+                  {BID_LOG.map((row) => (
+                    <div key={row.t} className="flex items-center justify-between gap-3 text-sm bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2">
+                      <span className="font-mono text-xs text-[var(--text-muted)] shrink-0">{row.t}</span>
+                      <span className="font-mono font-bold tabular-nums">{row.amount}</span>
+                      {row.reset && (
+                        <span className="flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 rounded-full px-2 py-0.5 shrink-0 whitespace-nowrap">
+                          <Zap size={10} /> clock reset
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 </div>
-                <p className="text-xs text-center text-[var(--text-muted)] font-medium">Anti-snipe active: Auto-extends on new bids</p>
               </div>
-
-              <div className="absolute top-10 -right-10 w-full h-full bg-[var(--bg-input)] rounded-2xl -z-10 blur-xl mt-4" />
             </div>
           </div>
         </div>
