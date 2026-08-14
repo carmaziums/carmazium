@@ -87,9 +87,22 @@ export const Colors = {
   textSecondary: '#D6DBE7',
   /** Meta, captions, inactive. Clears WCAG AA on every ground tier above. */
   textMuted: '#8A93A8',
-  /** Faint — dividers-as-text, placeholder. Not for anything readable. */
-  textFaint: '#4B556B',
-  textDisabled: '#3A4155',
+  /**
+   * Deprecated alias of `textMuted`, NOT the design system's `fg4`.
+   *
+   * The palette rebuild first pointed this at fg4 (#4B556B), which was a
+   * mistake: `textFaint` was #8A8A93 before and all 33 of its call sites use it
+   * for real readable content — spec-table labels on VehicleDetail, the
+   * monthly-payment figure, listing locations. Repointing it at fg4 quietly
+   * darkened every one of them below the AA floor, undoing the contrast fix
+   * that mobile-ui-ux-audit.md had specifically called for on textMuted.
+   *
+   * It now resolves to textMuted, which is where #8A8A93 actually belonged.
+   * Use `textDisabled` if you want genuinely de-emphasised, non-content text.
+   */
+  textFaint: '#8A93A8',
+  /** Non-content only — placeholders, disabled controls, decorative rules. */
+  textDisabled: '#4B556B',
 
   // ═══ Borders ═══════════════════════════════════════════════════════════════
   border: 'rgba(255, 255, 255, 0.08)',

@@ -663,10 +663,17 @@ export const SearchScreen: React.FC = () => {
           ))}
         </View>
       ) : listings.length === 0 ? (
+        // No-results is the most-hit dead end in the app and had no way out —
+        // the user had to work out for themselves that a filter was the cause.
+        // Deliberately NOT the accent treatment: this is informational, not an
+        // invitation, so the CTA stays quiet.
         <EmptyState
           icon="search-outline"
-          title="No results"
-          subtitle="Try a different make, model, or filter."
+          eyebrow="No results"
+          title="Nothing matched that search"
+          subtitle="Try a different make or model, or clear your filters to see everything."
+          ctaLabel="Clear filters"
+          onCtaPress={resetFilters}
         />
       ) : (
         <FlatList

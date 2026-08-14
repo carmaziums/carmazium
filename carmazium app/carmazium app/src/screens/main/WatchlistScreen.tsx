@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { VehicleCard } from '../../components/VehicleCard';
 import { IconButton } from '../../components/IconButton';
@@ -68,15 +69,18 @@ export const WatchlistScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       {savedListings.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <View style={styles.emptyIconCircle}>
-            <Ionicons name="heart-outline" size={30} color={Colors.textMuted} />
-          </View>
-          <Text style={styles.emptyTitle}>No saved vehicles yet</Text>
-          <Text style={styles.emptySubtitle}>
-            Tap the heart on any listing to save it here for later.
-          </Text>
-        </View>
+        // Was a hand-rolled icon + two lines of text with no way forward — a
+        // dead end at the exact moment the user needs direction (CONTEXT.md
+        // section 8). Now the shared empty state, with a route onward.
+        <EmptyState
+          icon="heart-outline"
+          eyebrow="Watchlist"
+          title="No saved vehicles yet"
+          subtitle="Tap the heart on any listing to save it here for later."
+          ctaLabel="Browse listings"
+          onCtaPress={() => navigation.navigate('Tabs' as any, { screen: 'Search' } as any)}
+          accent
+        />
       ) : (
         <FlatList
           contentContainerStyle={styles.listContent}
@@ -138,36 +142,5 @@ const styles = StyleSheet.create({
   cardWrap: {
     paddingHorizontal: 24,
     marginBottom: 16,
-  },
-  emptyWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.base,
-    color: Colors.white,
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  emptySubtitle: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.sm,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 20,
   },
 });

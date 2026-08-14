@@ -32,7 +32,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { formatPrice, formatMileage, CarListing } from '../../data/listings';
 import { Colors } from '../../constants/colors';
-import { FontFamily, FontSize } from '../../constants/typography';
+import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { apiClient } from '../../lib/apiClient';
@@ -2082,7 +2082,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   priceText: {
-    fontFamily: FontFamily.extraBold,
+    // The hero price is the brand's signature element and was rendering in
+    // Poppins like a heading. Prices are mono at heavy weight throughout
+    // CarMazium — the design kit's vehicle screen sets this exact treatment.
+    ...TextPresets.monoPrice,
     fontSize: FontSize['3xl'],
     color: Colors.white,
   },
@@ -2151,14 +2154,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   specBadgeLabel: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size8,
-    color: Colors.textFaint,
+    ...TextPresets.eyebrow,
+    fontSize: FontSize.size9,
+    color: Colors.textMuted,
     marginBottom: 2,
-    letterSpacing: 0.5,
   },
   specBadgeValue: {
-    fontFamily: FontFamily.bold,
+    // Figures in the spec strip are mono, per the kit.
+    fontFamily: FontFamily.mono,
     fontSize: FontSize.sm,
     color: Colors.white,
   },
