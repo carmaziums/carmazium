@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, ViewProps, ViewStyle } from 'react-native';
+import { Platform, StyleSheet, View, ViewProps, ViewStyle } from 'react-native';
 
 import { Colors } from '@/constants/colors';
 import { Elevation, Radius } from '@/constants/spacing';
@@ -60,22 +60,48 @@ export const Card = React.memo<CardProps>(
     style,
     children,
     ...rest
-  }) => (
-    <View
-      {...rest}
-      style={[
-        styles.base,
-        variantStyles[variant],
-        padded && styles.padded,
-        clip && styles.clip,
-        elevated && Elevation.card,
-        active && styles.active,
-        style,
-      ]}
-    >
-      {children}
-    </View>
-  )
+  }) => {
+    const surface = [
+      styles.base,
+      variantStyles[variant],
+      padded && styles.padded,
+      clip && styles.clip,
+      active && styles.active,
+    ];
+
+    // iOS clips a view's shadow to its own `overflow: 'hidden'`, so a card that
+    // both clips its content and casts a shadow silently loses the shadow. The
+    // trap is easy to hit (any card with a full-bleed image needs clipping) and
+    // invisible without a device, so it's handled here once.
+    //
+    // Split ONLY on iOS. Android's `elevation` is not clipped by overflow, so
+    // the single-view path is already correct there — and Android draws no
+    // elevation shadow behind a transparent background, so wrapping it would
+    // trade an iOS bug for an Android one.
+    //
+    // On the split path the wrapper owns the fill and the shadow, and the inner
+    // view owns the border, radius and clipping with no fill of its own —
+    // otherwise a translucent `glass` card would paint its fill twice and come
+    // out at double opacity.
+    if (elevated && clip && Platform.OS === 'ios') {
+      return (
+        <View
+          {...rest}
+          style={[styles.shadowHost, variantStyles[variant], Elevation.card, style]}
+        >
+          <View style={[styles.base, styles.clip, styles.transparent, padded && styles.padded, active && styles.active]}>
+            {children}
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View {...rest} style={[surface, elevated && Elevation.card, style]}>
+        {children}
+      </View>
+    );
+  }
 );
 
 Card.displayName = 'Card';
@@ -84,6 +110,16 @@ const styles = StyleSheet.create({
   base: {
     borderRadius: Radius.card,
     borderWidth: 1,
+  },
+  /** Carries the shadow when the surface itself has to clip. Matches the
+   *  surface radius so the shadow follows the card's real silhouette. */
+  shadowHost: {
+    borderRadius: Radius.card,
+  },
+  /** Used on the split path only — the wrapper already painted the fill. */
+  transparent: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
   },
   padded: {
     padding: 16,
