@@ -22,7 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import {FontFamily, FontSize } from '../../constants/typography';
+import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
 import { useAuthStore } from '../../store/authStore';
@@ -862,7 +862,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       {isSeller && !isCancelled && (
         <View style={[s.banner, s.bannerBlue]}>
           <Ionicons name="information-circle-outline" size={14} color={Colors.infoBlueLight} accessibilityElementsHidden importantForAccessibility="no" />
-          <Text style={[s.bannerText, { color: Colors.paleBlue_93c5fd }]}>
+          <Text style={[s.bannerText, { color: Colors.infoLight }]}>
             <Text style={{ fontFamily: FontFamily.bold }}>This is your auction. </Text>
             {isActive ? 'Bids appear in real time.' : isScheduled ? 'Will start automatically.' : 'Your auction has ended.'}
           </Text>
@@ -889,7 +889,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       {isScheduled && !isSeller && startTime && (
         <View style={[s.banner, s.bannerBlue]}>
           <Ionicons name="calendar-outline" size={14} color={Colors.infoBlueLight} />
-          <Text style={[s.bannerText, { color: Colors.paleBlue_93c5fd }]}>
+          <Text style={[s.bannerText, { color: Colors.infoLight }]}>
             This auction hasn't started yet — opens automatically at{' '}
             <Text style={{ fontFamily: FontFamily.bold }}>{fmtDate(startTime.toISOString())}</Text>.
           </Text>
@@ -1085,7 +1085,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             )}
             {isScheduled && startTime && (
               <View style={[s.timerBox, { borderColor: Colors.infoBlueAlpha30 }]}>
-                <Text style={[s.timerBoxLabel, { color: Colors.paleBlue_93c5fd }]}>STARTS IN</Text>
+                <Text style={[s.timerBoxLabel, { color: Colors.infoLight }]}>STARTS IN</Text>
                 <Text style={[s.timerBoxValue, { color: Colors.infoBlueLight, fontFamily: FontFamily.mono }]}>{fmtCountdown(secondsLeft)}</Text>
               </View>
             )}
@@ -1894,14 +1894,18 @@ const s = StyleSheet.create({
   heroTopLeft: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', gap: 6, zIndex: 2 },
   heroTopRight: { position: 'absolute', top: 12, right: 12, gap: 6, alignItems: 'flex-end', zIndex: 2 },
   heroBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14, zIndex: 2 },
-  heroBidLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.whiteAlpha50, letterSpacing: 1.5, marginBottom: 4 },
-  heroBid: { fontFamily: FontFamily.extraBold, fontSize: FontSize['4xl'], color: Colors.white },
+  heroBidLabel: { ...TextPresets.eyebrow, fontSize: FontSize.size9, color: Colors.textSecondary, marginBottom: 4 },
+  // The live bid is the focal figure of this screen and was rendering in
+  // Poppins. Prices, bids and countdowns are mono at heavy weight throughout
+  // the brand — the kit's auction screen sets exactly this pairing (mono bid
+  // beside a mono countdown).
+  heroBid: { ...TextPresets.monoPrice, fontSize: FontSize['4xl'], color: Colors.white },
   winningBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accentGreenAlpha20, borderWidth: 1, borderColor: Colors.accentGreenAlpha30, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   winningBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.accentGreen },
   outbidBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accentAlpha20, borderWidth: 1, borderColor: Colors.accentAlpha30, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   outbidBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.accent },
-  timerBox: { backgroundColor: 'rgba(10,10,12,0.8)', borderWidth: 1, borderColor: Colors.whiteAlpha10, borderRadius: Radius.inline, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
-  timerBoxLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size7, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, marginBottom: 2 },
+  timerBox: { backgroundColor: Colors.blackAlpha55, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
+  timerBoxLabel: { ...TextPresets.eyebrow, fontSize: FontSize.size9, color: Colors.textMuted, marginBottom: 2 },
   timerBoxValue: { fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.white },
 
   // Tabs
@@ -1912,7 +1916,7 @@ const s = StyleSheet.create({
   tabTextActive: { color: Colors.white },
 
   // Card
-  card: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 14, marginBottom: 0 },
+  card: { backgroundColor: Colors.bgCard, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.border, padding: 16, marginBottom: 0 },
   cardSectionTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1, marginBottom: 12, borderLeftWidth: 2, borderLeftColor: Colors.accent, paddingLeft: 8 },
 
   // Stats row

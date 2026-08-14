@@ -31,9 +31,10 @@ import Animated, {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { formatPrice, formatMileage, CarListing } from '../../data/listings';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
@@ -1540,7 +1541,16 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       </BottomSheet>
 
       {/* Sticky Bottom Actions Bar */}
-      <View style={[styles.stickyCTAOuter, { paddingBottom: insets.bottom + 12 }]}>
+      {/* The kit fades the content out under the CTA rather than cutting it
+          with a hairline and an opaque slab — the bar reads as floating over
+          the page instead of bolted to the bottom of it. */}
+      <View style={[styles.stickyCTAOuter, { paddingBottom: insets.bottom + 12 }]} pointerEvents="box-none">
+        <LinearGradient
+          colors={['rgba(10,13,20,0)', Colors.bgPrimary, Colors.bgPrimary]}
+          locations={[0, 0.45, 1]}
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
         <IconButton style={styles.chatButton} icon={<Ionicons name="chatbubble-ellipses-outline" size={20} color={Colors.white} />} onPress={() => {
             if (listing.seller?.id) {
               setEnquireVisible(true);
@@ -2601,13 +2611,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    minHeight: 86,
+    minHeight: 96,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 24,
-    backgroundColor: Colors.bgPrimary,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderSubtle,
+    paddingTop: 18,
     gap: 14,
   },
   chatButton: {
@@ -2615,8 +2623,8 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: Radius.inline,
     borderWidth: 1,
-    borderColor: Colors.darkBlue_2a2e3d,
-    backgroundColor: Colors.deepBlue_1b1d26,
+    borderColor: Colors.borderHi,
+    backgroundColor: Colors.bgCard,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -2628,6 +2636,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    // The primary CTA is the one place the design system asks for the red glow.
+    ...Elevation.neon,
   },
   makeOfferButtonDisabled: {
     backgroundColor: Colors.whiteAlpha10,
@@ -2646,8 +2656,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   statusBannerWarning: {
-    backgroundColor: 'rgba(255,170,0,0.08)',
-    borderColor: 'rgba(255,170,0,0.28)',
+    backgroundColor: Colors.warningAlpha08,
+    borderColor: Colors.warningAlpha30,
   },
   statusBannerSold: {
     backgroundColor: 'rgba(239,68,68,0.10)',
