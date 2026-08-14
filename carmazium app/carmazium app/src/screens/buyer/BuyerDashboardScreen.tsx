@@ -225,7 +225,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.07)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.6, y: 0.4 }}
         style={StyleSheet.absoluteFillObject}

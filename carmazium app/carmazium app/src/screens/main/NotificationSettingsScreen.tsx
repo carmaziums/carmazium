@@ -141,7 +141,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
         {/* Mute All Box */}
         <View style={styles.muteAllBox}>
            <LinearGradient
-             colors={[Colors.accentAlpha15, 'rgba(220,31,38,0.02)']}
+             colors={[Colors.accentAlpha15, Colors.accentAlpha03]}
              style={StyleSheet.absoluteFillObject}
              start={{ x: 0, y: 0 }}
              end={{ x: 1, y: 1 }}

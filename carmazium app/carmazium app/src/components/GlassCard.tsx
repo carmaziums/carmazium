@@ -66,8 +66,10 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   baseFill: {
-    // Deep translucent dark base
-    backgroundColor: 'rgba(18, 18, 24, 0.82)',
+    // Deep translucent dark base. Was a hardcoded rgba(18, 18, 24, 0.82) — a
+    // literal copy of the pre-redesign near-black that bypassed the tokens, so
+    // this surface stayed on the old palette after the palette was corrected.
+    backgroundColor: Colors.bgCard,
   },
   shimmer: {
     // Subtle white tint — mimics frosted glass scatter

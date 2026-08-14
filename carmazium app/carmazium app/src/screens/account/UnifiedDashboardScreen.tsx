@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   tileSublabel: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
 
   // Sign out
-  signOutRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, backgroundColor: 'rgba(220,31,38,0.07)', borderWidth: 1, borderColor: Colors.accentAlpha20, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
+  signOutRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, backgroundColor: Colors.accentAlpha06, borderWidth: 1, borderColor: Colors.accentAlpha20, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
   signOutIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.accentAlpha12, alignItems: 'center', justifyContent: 'center' },
   signOutText: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.accent },
 });

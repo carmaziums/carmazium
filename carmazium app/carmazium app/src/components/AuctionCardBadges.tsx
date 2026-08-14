@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   featuredBadge: {
-    backgroundColor: 'rgba(220, 31, 38, 0.90)',
+    backgroundColor: Colors.accent,
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 5,

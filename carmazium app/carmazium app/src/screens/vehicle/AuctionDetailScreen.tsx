@@ -1802,7 +1802,7 @@ const s = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(220,31,38,0.5)',
+    borderColor: Colors.accentAlpha40,
     backgroundColor: Colors.accentAlpha08,
     minWidth: 44,
     justifyContent: 'center',

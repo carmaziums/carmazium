@@ -11,6 +11,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { AuctionListing, formatPrice, formatMileage } from '../data/listings';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
+import { Radius } from '../constants/spacing';
 import { ImageCarousel } from './ImageCarousel';
 import { GradeChip } from './GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from './AuctionCardBadges';
@@ -205,10 +206,10 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 20,
-    backgroundColor: 'rgba(18,18,24,0.90)',
+    borderRadius: Radius.card,
+    backgroundColor: Colors.bgCard,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
+    borderColor: Colors.border,
     overflow: 'hidden',
     marginBottom: 16,
   },
@@ -227,10 +228,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(220,31,38,0.9)',
+    backgroundColor: Colors.accent,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 8,
+    borderRadius: Radius.chip,
   },
   upcomingBadge: {
     backgroundColor: 'rgba(0,0,0,0.65)',

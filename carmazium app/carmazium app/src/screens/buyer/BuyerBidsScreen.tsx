@@ -153,7 +153,7 @@ const STATUS_CFG: Record<AuctionStatus, StatusCfg> = {
   ACTIVE: {
     borderLeft: Colors.accent,
     chipBg: Colors.accentAlpha15,
-    chipBorder: 'rgba(220,31,38,0.35)',
+    chipBorder: Colors.accentAlpha30,
     chipText: Colors.accent,
     chipLabel: '● LIVE',
   },

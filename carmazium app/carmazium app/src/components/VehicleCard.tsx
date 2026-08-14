@@ -25,6 +25,7 @@ import { ImageLightbox } from './ImageLightbox';
 import { GradeChip } from './GradeChip';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
+import { Elevation, Radius } from '../constants/spacing';
 import { useLocation } from '../context/LocationContext';
 import { haversineDistanceMiles } from '../lib/distance';
 
@@ -233,11 +234,16 @@ export const VehicleCard = React.memo(VehicleCardBase);
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 20,
-    backgroundColor: 'rgba(18, 18, 24, 0.85)',
+    // Was a hardcoded rgba(18, 18, 24, 0.85) at radius 20 — the pre-redesign
+    // near-black, bypassing the tokens. Since this is the most-rendered
+    // component in the app (every grid on Home, Search and Saved), it kept the
+    // single most-visible surface on the old palette. Now on the card tokens.
+    borderRadius: Radius.card,
+    backgroundColor: Colors.bgCard,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
+    borderColor: Colors.border,
     overflow: 'hidden',
+    ...Elevation.card,
   },
   imageContainer: {
     position: 'relative',
@@ -261,7 +267,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   featuredBadge: {
-    backgroundColor: 'rgba(220, 31, 38, 0.90)',
+    backgroundColor: Colors.accent,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,

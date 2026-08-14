@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   currentPill: {
     backgroundColor: Colors.accentAlpha14,
     borderWidth: 1,
-    borderColor: 'rgba(220,31,38,0.32)',
+    borderColor: Colors.accentAlpha30,
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 999,
