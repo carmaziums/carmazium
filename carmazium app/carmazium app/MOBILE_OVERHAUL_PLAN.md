@@ -475,6 +475,58 @@ device in hand.
 - **Dealer KYC gate** needs the real gating field confirmed against a live
   dealer account before it's safe to ship.
 
+## Phase 7 — Web visual drift (`.parity/05-web-visual-drift.md`)
+
+Web moved a long way since 2026-06-01 and mobile didn't follow. Admin, blog,
+SEO and analytics-pixel work is excluded as web-only per `CONTEXT.md` §8.
+
+**No P0s.** Specifically checked the privacy-sensitive ones: in every commit
+where web started gating or hiding seller contact data (`732ef238`, `05cfe7e4`,
+`25869c5d`, `8f54f6e9`), mobile either already gates it correctly via
+`/sellers/{id}/phone` or never showed the field at all. Mobile is not leaking
+anything web protects.
+
+| # | Gap | State |
+|---|---|---|
+| P1 | Live-auction seller contact missing | **done** (`2b3aa480`) |
+| P1 | "Call Seller" on the buyer's won-auction list | outstanding |
+| P1 | Auction filter panel — web ported the full ~20-field Buy Cars filter set to `/auctions`; mobile's `LiveScreen` still has only a text query | outstanding, the largest item |
+| P2 | Marketing popup absent on mobile | outstanding |
+| P2 | How It Works / Terms not diffed against the web rewrites | outstanding |
+
+### Signup role — a divergence, not a defect
+
+Web's `23920aa5` forced a deliberate role choice because its picker silently
+defaulted to buyer. Mobile has no role picker and `authStore.signup` hardcodes
+`role = 'BUYER'`.
+
+That looks like the same bug but isn't. It is deliberate, and the code says why:
+reading the local role there once wrote `DEALER` straight into the database for
+fresh signups. Mobile grants dealer status only through `DealerOnboardingScreen`
+→ `POST /users/elevate`, and buyer/seller are a single unified account on mobile
+anyway (`CONTEXT.md` §1). So every mobile signup being a BUYER is coherent.
+
+Left alone deliberately: changing signup role semantics blind would risk both
+that historical data-sanitisation bug and bypassing the dealer KYC path.
+
+## Phase 8 — Backend contract drift (`.parity/06-backend-drift.md`)
+
+**No P0s.** The one that mattered most: a full field-by-field diff of
+`CreateListingDto` against mobile's publish payload found no
+`forbidNonWhitelisted` reject risk and no missing required field — the
+2026-07-06 incident has **not** regressed.
+
+| # | Gap | State |
+|---|---|---|
+| P1 | `SellerOffersScreen` never gated "Mark as Sold" on `listing.status` — the exact bug backend `11f96bf1` was fixing, fixed on the dealer screen but missed here | **done** (`2630c3c2`) |
+| P1 | No mobile equivalent of web's one-time location/postcode prompt for *existing* accounts missing a postcode | outstanding |
+| P2 | `notifStyle()` has no case for `AUCTION_WIN_EXPIRED` | outstanding |
+| P2 | Mobile self-caps photo uploads at 20 vs web's 100 (no server-side cap) | outstanding |
+
+Auction re-review gating, payout tracking, chat room re-pointing, the chat
+`otherUser` fix and refund-failure tracking are all either server-side and
+transparent to mobile, or already consumed correctly.
+
 ## Execution order and rationale
 
 Phase 1 → 2 first: they are the client's loudest complaint, they are
