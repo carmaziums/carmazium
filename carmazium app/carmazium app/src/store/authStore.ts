@@ -18,6 +18,15 @@ interface User {
   postcode?: string | null;
   isAddressVerified?: boolean;
   isVerified?: boolean; // true if dealer KYC approved
+  /**
+   * True when this user is active staff on someone else's verified dealership.
+   * Such a user has no dealerProfile of their own, so `isVerified` is false for
+   * them — gating dealer features on `isVerified` alone would lock out every
+   * employee of a verified dealer. Web accounts for this the same way
+   * (dashboard/dealer/layout.tsx: `isVerifiedDealer = dealerProfile.isVerified
+   * || isStaffMember`).
+   */
+  isDealerStaff?: boolean;
 }
 
 interface UserProfileResponse {
@@ -36,6 +45,9 @@ interface UserProfileResponse {
     dealerProfile?: {
       isVerified?: boolean;
     };
+    /** Active memberships only — the backend filters on isActive
+     *  (users.service.ts getProfile). */
+    dealerStaffMemberships?: unknown[];
   };
 }
 
@@ -131,6 +143,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               postcode: profile.postcode || null,
               isAddressVerified: profile.isAddressVerified || false,
               isVerified: profile.dealerProfile?.isVerified ?? false,
+              isDealerStaff: (profile.dealerStaffMemberships?.length ?? 0) > 0,
             },
           });
         }
@@ -221,6 +234,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               postcode: profile.postcode || null,
             isAddressVerified: profile.isAddressVerified || false,
             isVerified: profile.dealerProfile?.isVerified ?? false,
+              isDealerStaff: (profile.dealerStaffMemberships?.length ?? 0) > 0,
           },
         });
       }
@@ -314,6 +328,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               postcode: profile.postcode || null,
               isAddressVerified: profile.isAddressVerified || false,
               isVerified: profile.dealerProfile?.isVerified ?? false,
+              isDealerStaff: (profile.dealerStaffMemberships?.length ?? 0) > 0,
             },
           });
         }

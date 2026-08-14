@@ -12,6 +12,10 @@ import { DealerAnalyticsScreen } from '../screens/main/DealerAnalyticsScreen';
 import { DealerInventoryScreen } from '../screens/main/DealerInventoryScreen';
 import { DealerLeadsScreen } from '../screens/main/DealerLeadsScreen';
 import { DealerKYCScreen } from '../screens/main/DealerKYCScreen';
+// Gates the dealer feature screens behind KYC. Applied here rather than inside
+// each screen so every entry path is covered — drawer, deep link and
+// notification tap alike, not just the ones that go through a menu.
+import { withDealerGate } from '../components/DealerGate';
 import { DealerTeamScreen } from '../screens/main/DealerTeamScreen';
 import { DealerOnboardingScreen } from '../screens/main/DealerOnboardingScreen';
 import { DealerOffersScreen } from '../screens/main/DealerOffersScreen';
@@ -51,6 +55,23 @@ import { AcceptInviteScreen } from '../screens/main/AcceptInviteScreen';
 import { WatchlistScreen } from '../screens/main/WatchlistScreen';
 import { CarListing } from '../data/listings';
 import { Colors } from '../constants/colors';
+
+
+// Hoisted to module scope on purpose. Calling withDealerGate(...) inline in the
+// JSX below would produce a NEW component type on every render of this
+// navigator, and React Navigation treats a changed `component` identity as a
+// different screen — remounting it and discarding its state on every parent
+// render.
+
+const GatedDealerAnalyticsScreen = withDealerGate(DealerAnalyticsScreen);
+const GatedDealerInventoryScreen = withDealerGate(DealerInventoryScreen);
+const GatedDealerLeadsScreen = withDealerGate(DealerLeadsScreen);
+const GatedDealerTeamScreen = withDealerGate(DealerTeamScreen);
+const GatedDealerOffersScreen = withDealerGate(DealerOffersScreen);
+const GatedDealerMyOffersScreen = withDealerGate(DealerMyOffersScreen);
+const GatedDealerPurchasesScreen = withDealerGate(DealerPurchasesScreen);
+const GatedDealerEarningsScreen = withDealerGate(DealerEarningsScreen);
+const GatedDealerFinanceScreen = withDealerGate(DealerFinanceScreen);
 
 export type MainStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
@@ -167,17 +188,17 @@ export const MainStackNavigator: React.FC = () => {
       />
       <Stack.Screen
         name="DealerAnalytics"
-        component={DealerAnalyticsScreen}
+        component={GatedDealerAnalyticsScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen
         name="DealerInventory"
-        component={DealerInventoryScreen}
+        component={GatedDealerInventoryScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen
         name="DealerLeads"
-        component={DealerLeadsScreen}
+        component={GatedDealerLeadsScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen
@@ -187,7 +208,7 @@ export const MainStackNavigator: React.FC = () => {
       />
       <Stack.Screen
         name="DealerTeam"
-        component={DealerTeamScreen}
+        component={GatedDealerTeamScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen
@@ -197,27 +218,27 @@ export const MainStackNavigator: React.FC = () => {
       />
       <Stack.Screen
         name="DealerOffers"
-        component={DealerOffersScreen}
+        component={GatedDealerOffersScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen
         name="DealerMyOffers"
-        component={DealerMyOffersScreen}
+        component={GatedDealerMyOffersScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen
         name="DealerPurchases"
-        component={DealerPurchasesScreen}
+        component={GatedDealerPurchasesScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen
         name="DealerEarnings"
-        component={DealerEarningsScreen}
+        component={GatedDealerEarningsScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen
         name="DealerFinance"
-        component={DealerFinanceScreen}
+        component={GatedDealerFinanceScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen name="Services" component={ServicesScreen} options={{ animation: 'slide_from_right' }} />
