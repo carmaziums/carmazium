@@ -55,6 +55,14 @@ interface DamageEntry {
 // Full parity with web's FuelType enum (ListingWizard.tsx) — was missing 9 of
 // 14 values, silently blocking sellers with e.g. an LPG or hydrogen car from
 // listing accurately.
+/** Upper bound the photo tracker measures against — matches web's MAX_PHOTOS
+ *  (ListingWizard.tsx:1718). Not enforced as a hard cap on either platform, and
+ *  the backend has no server-side limit. */
+const MAX_PHOTOS = 100;
+/** The count worth coaching sellers toward, which is a different number and
+ *  should not double as the tracker's maximum. */
+const RECOMMENDED_PHOTOS = 20;
+
 const FUEL_TYPES = [
   { v: 'PETROL', l: 'Petrol' }, { v: 'DIESEL', l: 'Diesel' },
   { v: 'ELECTRIC', l: 'Electric' }, { v: 'HYBRID', l: 'Hybrid' },
@@ -2184,12 +2192,21 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             <Ionicons name="camera" size={14} color={Colors.accent} />
             <Text style={s.photoTrackerLabel}>Photo Tracker</Text>
           </View>
-          <Text style={s.photoTrackerCount}>{totalCount} / 20</Text>
+          <Text style={s.photoTrackerCount}>{totalCount} / {MAX_PHOTOS}</Text>
         </View>
         <View style={s.photoTrackerBar}>
-          <View style={[s.photoTrackerFill, { width: `${Math.min((totalCount / 20) * 100, 100)}%` }]} />
+          {/* Progress runs to MAX_PHOTOS, matching web (ListingWizard.tsx:1718).
+              This tracker previously ran to 20 — the RECOMMENDED count, not the
+              maximum — so a seller who uploaded 20 saw a full bar and reasonably
+              concluded they were done, when web would have shown 20/100 and
+              invited more. Neither app enforces a hard cap; the backend has
+              none either. The "aim for 20" coaching moves into the hint below,
+              which is where it belonged. */}
+          <View style={[s.photoTrackerFill, { width: `${Math.min((totalCount / MAX_PHOTOS) * 100, 100)}%` }]} />
         </View>
-        <Text style={s.photoTrackerHint}>Aim for at least 20 photos. Cars with 20+ photos sell on average 40% faster.</Text>
+        <Text style={s.photoTrackerHint}>
+          Aim for at least {RECOMMENDED_PHOTOS} photos. Cars with {RECOMMENDED_PHOTOS}+ photos sell on average 40% faster.
+        </Text>
 
         {/* Photo Category Tabs */}
         <View style={s.photoTabs}>

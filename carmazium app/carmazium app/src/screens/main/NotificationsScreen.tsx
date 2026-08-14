@@ -182,6 +182,22 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
           navigation?.navigate('DealerKYC');
           break;
 
+        // A seller told their listing was approved or rejected has nowhere to
+        // act on it from the notification list; these had no destination.
+        // Dealers manage stock in their own inventory screen.
+        case 'LISTING_SUBMITTED':
+        case 'LISTING_APPROVED':
+        case 'LISTING_REJECTED':
+          navigation?.navigate(role === 'dealer' ? 'DealerInventory' : 'SellerListings');
+          break;
+
+        // An unpaid win that auto-reverted (backend 0517f642). The auction is
+        // gone from the user's perspective, so the useful destination is their
+        // bid history rather than the dead auction.
+        case 'AUCTION_WIN_EXPIRED':
+          navigation?.navigate('BuyerBids');
+          break;
+
         case 'DELIVERY_REQUESTED':
         case 'DELIVERY_ACCEPTED':
         case 'DELIVERY_DECLINED':

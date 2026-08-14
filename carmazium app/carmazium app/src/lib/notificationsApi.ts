@@ -72,6 +72,29 @@ export function notifStyle(type: string): { icon: string; color: string; bg: str
     case 'MESSAGE_RECEIVED':  return { icon: 'chatbubble-outline', color: Colors.infoBlue, bg: Colors.infoBlueAlpha12 };
     case 'DEAL_CLOSED':       return { icon: 'checkmark-circle', color: Colors.accentGreen, bg: Colors.accentGreenAlpha12 };
     case 'WATCHLIST_ENDING_24H': return { icon: 'heart', color: Colors.warning, bg: Colors.warningAlpha12 };
+
+    // The ten below are all emitted by the backend (every `type:` passed to
+    // notificationsService.create across backend/src) but had no case here, so
+    // they fell through to the generic bell. An unpaid win auto-reverting and a
+    // KYC rejection are two of the highest-consequence things this app can tell
+    // a user; both were rendering as an anonymous grey bell in the list.
+    case 'AUCTION_WIN_EXPIRED': return { icon: 'alert-circle', color: Colors.accent, bg: Colors.accentAlpha12 };
+
+    case 'DELIVERY_REQUESTED': return { icon: 'cube-outline', color: Colors.infoBlue, bg: Colors.infoBlueAlpha12 };
+    case 'DELIVERY_ACCEPTED':  return { icon: 'checkmark-circle', color: Colors.accentGreen, bg: Colors.accentGreenAlpha12 };
+    case 'DELIVERY_DECLINED':  return { icon: 'close', color: Colors.accent, bg: Colors.accentAlpha12 };
+    case 'DELIVERY_EXPIRED':   return { icon: 'hourglass-outline', color: Colors.iconMuted, bg: Colors.whiteAlpha04 };
+
+    case 'KYC_APPROVED':       return { icon: 'shield-checkmark', color: Colors.accentGreen, bg: Colors.accentGreenAlpha12 };
+    case 'KYC_REJECTED':       return { icon: 'alert-circle', color: Colors.accent, bg: Colors.accentAlpha12 };
+
+    case 'LISTING_SUBMITTED':  return { icon: 'hourglass-outline', color: Colors.warning, bg: Colors.warningAlpha12 };
+    case 'LISTING_APPROVED':   return { icon: 'checkmark-circle', color: Colors.accentGreen, bg: Colors.accentGreenAlpha12 };
+    case 'LISTING_REJECTED':   return { icon: 'close-circle', color: Colors.accent, bg: Colors.accentAlpha12 };
+
+    // SYSTEM is deliberately left on the default bell — it's the catch-all the
+    // backend uses for one-off admin messages with no fixed subject, so a
+    // specific icon would imply a meaning it doesn't have.
     default:                  return { icon: 'notifications-outline', color: Colors.textSecondary, bg: Colors.whiteAlpha04 };
   }
 }
