@@ -493,7 +493,7 @@ anything web protects.
 | P1 | Auction filter panel — web ported the full Buy Cars filter set to `/auctions`; mobile's `LiveScreen` had only a text query | **done** (`e798ba8e`) |
 | P2 | Marketing popup absent on mobile | **won't build — see below** |
 | P2 | How It Works fee ledger ported | **done** (`d39104d1`) |
-| **P1** | Terms of Service badly out of date vs web's rewrite | **outstanding — see below** |
+| **P1** | Terms of Service badly out of date vs web's rewrite | **done** (`253508bd`) |
 
 ### Signup role — a divergence, not a defect
 
@@ -539,11 +539,21 @@ predates that rewrite entirely.
 This is legal copy, and mobile is presenting materially different terms from
 web for the same service. That is worth more than the P2 the audit assigned it.
 
-**Deliberately not fixed here.** The correct resolution is to port web's text
-*verbatim* — but that is ~1,000 lines of legal wording, and paraphrasing or
-mistranscribing any of it would be worse than the current known gap. It also
-warrants whoever owns the legal copy confirming the mobile presentation is
-acceptable, rather than an agent deciding. Flagged for that owner.
+**Ported** (`253508bd`), on instruction. The risk being managed was
+mistranscription, so none of the text was written by hand: web's content model
+and `SECTIONS` array were extracted programmatically into
+`src/data/termsSections.ts` and then diffed against the source — the copy is
+byte-for-byte identical to `src/app/terms/page.tsx` lines 14-856.
+
+The text is a data module rather than screen content on purpose. `TermsScreen`
+is presentation only, so when the terms change the file gets re-copied from web
+wholesale instead of two copies being hand-edited in parallel and drifting
+again — which is how this gap opened in the first place.
+
+**Still needs the copy owner.** It is a faithful copy, but nobody with
+authority over the legal content has reviewed it, and the mobile presentation
+(83 cards in one scroll; web has a jump-to-section index mobile does not) has
+not been seen on a device.
 
 ### The marketing popup is not a mobile gap
 
