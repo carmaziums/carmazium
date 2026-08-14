@@ -38,8 +38,11 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
   listing,
   onPress,
 }) => {
-  const { isSaved, toggle } = useWatchlistStore();
-  const saved = isSaved(listing.id);
+  // Selector-subscribed rather than destructuring the whole store — see the
+  // note in VehicleCard.tsx. Re-renders only when this row's own saved state
+  // changes, not when any listing anywhere is saved.
+  const saved = useWatchlistStore((s) => s.savedIds.has(listing.id));
+  const toggle = useWatchlistStore((s) => s.toggle);
   const scale = useSharedValue(1);
 
   // Tapping the thumbnail opens a full-screen lightbox instead of

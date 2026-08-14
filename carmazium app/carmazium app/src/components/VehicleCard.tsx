@@ -50,8 +50,15 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
   width = CARD_WIDTH,
   compact = false,
 }) => {
-  const { isSaved, toggle } = useWatchlistStore();
-  const saved = isSaved(listing.id);
+  // Selector-subscribed, not `useWatchlistStore()`. Destructuring the whole
+  // store subscribes this component to every field on it, so saving ANY
+  // listing anywhere re-rendered EVERY card on screen. This is the app's
+  // most-rendered component — long grids on Home/Search/Saved — so that was
+  // the single worst re-render source in the app. `savedIds` is a Set, so the
+  // selector returns a plain boolean and this row now re-renders only when its
+  // own saved state flips.
+  const saved = useWatchlistStore((s) => s.savedIds.has(listing.id));
+  const toggle = useWatchlistStore((s) => s.toggle);
   const scale = useSharedValue(1);
 
   // Tapping the image opens a full-screen lightbox instead of navigating —

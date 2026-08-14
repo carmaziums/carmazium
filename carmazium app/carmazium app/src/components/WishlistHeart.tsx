@@ -22,8 +22,12 @@ interface WishlistHeartProps {
 // deferred gap), so a signed-out user structurally cannot reach a screen
 // that renders this button. Nothing to route to.
 export const WishlistHeart: React.FC<WishlistHeartProps> = ({ listing, style }) => {
-  const { isSaved, toggle } = useWatchlistStore();
-  const saved = isSaved(listing.id);
+  // Selector-subscribed rather than destructuring the whole store — see the
+  // note in VehicleCard.tsx. This one renders inside auction cards, so the
+  // same whole-store subscription re-rendered every heart on the Live screen
+  // whenever any listing was saved.
+  const saved = useWatchlistStore((s) => s.savedIds.has(listing.id));
+  const toggle = useWatchlistStore((s) => s.toggle);
 
   return (
     <IconButton
