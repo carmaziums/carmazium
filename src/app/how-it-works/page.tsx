@@ -4,267 +4,209 @@ import { useEffect } from "react"
 import { motion } from "framer-motion"
 import {
   Search, ShieldCheck, Calculator, Gavel, Banknote, Clock, Users, TrendingUp,
-  Handshake, Truck, Umbrella, ArrowRight, CheckCircle2, Phone, Gift, Trophy,
-  ClipboardCheck, Tag, Lock, Image as ImageIcon,
+  Handshake, Truck, Umbrella, ArrowRight, Phone, Gift, Trophy, ClipboardCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 
-type Step = {
-  id: string
+// ─── Content ────────────────────────────────────────────────────────────────
+// Signature device: each flow reads like an itemised receipt, not a grid of
+// icon cards — because the one thing CarMazium actually does differently is
+// keep the money moving directly between the two of you. The ledger makes
+// that literal instead of illustrating it with a stock icon.
+
+type LedgerStep = {
   icon: React.ComponentType<{ size?: number; className?: string }>
   title: string
   desc: string
-  mock: React.ReactNode
+  tag: string
 }
 
-const SELLER_FLOW: Step[] = [
-  {
-    id: "01",
-    icon: Calculator,
-    title: "Get Your Valuation",
-    desc: "Enter your reg and details to get a free valuation for your car in seconds.",
-    mock: (
-      <div className="flex items-center gap-2 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2">
-        <TrendingUp size={14} className="text-emerald-400 shrink-0" />
-        <span className="text-[11px] text-[var(--text-muted)]">Est. Value</span>
-        <span className="ml-auto text-sm font-bold text-emerald-400">£8,450</span>
-      </div>
-    ),
-  },
-  {
-    id: "02",
-    icon: Gavel,
-    title: "Go Live in Auction",
-    desc: "Your car goes live for verified dealers to view and place their bids.",
-    mock: (
-      <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2 space-y-1">
-        <div className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-[10px] font-bold text-red-400 tracking-wide">LIVE AUCTION</span>
-        </div>
-        <div className="flex items-baseline justify-between">
-          <span className="text-[11px] text-[var(--text-muted)]">Highest Bid</span>
-          <span className="text-sm font-bold text-primary">£8,450</span>
-        </div>
-      </div>
-    ),
-  },
-  {
-    id: "03",
-    icon: Users,
-    title: "Dealers Compete",
-    desc: "Verified dealers compete with bids in a 24-hour auction.",
-    mock: (
-      <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2 space-y-1 text-[11px]">
-        <div className="flex justify-between"><span className="text-[var(--text-muted)]">Dealer One</span><span className="font-semibold">£8,450</span></div>
-        <div className="flex justify-between"><span className="text-[var(--text-muted)]">Auto Traders Ltd</span><span className="font-semibold">£8,250</span></div>
-        <div className="flex justify-between"><span className="text-[var(--text-muted)]">Premier Cars</span><span className="font-semibold">£8,100</span></div>
-      </div>
-    ),
-  },
-  {
-    id: "04",
-    icon: Phone,
-    title: "Dealer Contacts You",
-    desc: "The winning dealer contacts you and arranges collection and inspection.",
-    mock: (
-      <div className="flex items-center gap-2 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2">
-        <Truck size={14} className="text-[var(--text-muted)] shrink-0" />
-        <span className="text-[11px] text-[var(--text-secondary)]">Collection arranged</span>
-      </div>
-    ),
-  },
-  {
-    id: "05",
-    icon: Banknote,
-    title: "Dealer Pays You Directly",
-    desc: "If everything is as described, the dealer pays you directly. CarMazium never holds the payment.",
-    mock: (
-      <div className="flex items-center justify-between bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2">
-        <div>
-          <p className="text-[10px] text-[var(--text-muted)]">Payment Received</p>
-          <p className="text-sm font-bold">£8,450</p>
-        </div>
-        <CheckCircle2 size={18} className="text-emerald-400" />
-      </div>
-    ),
-  },
-  {
-    id: "06",
-    icon: Gift,
-    title: "Get Your £100 Reward",
-    desc: "After handover, submit a photo. Once approved, we release your £100 reward.",
-    mock: (
-      <div className="flex items-center justify-between bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2">
-        <div>
-          <p className="text-[10px] text-emerald-400 font-semibold">Handover Approved!</p>
-          <p className="text-sm font-bold">£100 Reward Released</p>
-        </div>
-        <CheckCircle2 size={18} className="text-emerald-400" />
-      </div>
-    ),
-  },
+const SELLER_STEPS: LedgerStep[] = [
+  { icon: Calculator, title: "Get your valuation", desc: "Enter your reg and details for a free, instant estimate.", tag: "Est. £8,450" },
+  { icon: Gavel, title: "Go live in auction", desc: "Your car goes live for verified dealers to view and bid on.", tag: "LIVE · 24h" },
+  { icon: Users, title: "Dealers compete", desc: "Verified trade buyers bid against each other, not against you.", tag: "3 bids" },
+  { icon: Phone, title: "Dealer contacts you", desc: "The winning dealer arranges collection and inspection directly.", tag: "Direct chat" },
+  { icon: Banknote, title: "Dealer pays you directly", desc: "The money moves dealer → you. CarMazium is never in that chain.", tag: "£8,450" },
+  { icon: Gift, title: "Get your £100 reward", desc: "Submit handover proof and we release your reward.", tag: "+£100" },
 ]
 
-const BUYER_FLOW: Step[] = [
-  {
-    id: "01",
-    icon: Search,
-    title: "Search & Find",
-    desc: "Use advanced filters and AI search to find the perfect car that matches your needs.",
-    mock: (
-      <div className="flex items-center gap-2 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2">
-        <ImageIcon size={14} className="text-[var(--text-muted)] shrink-0" />
-        <span className="text-[11px] text-[var(--text-secondary)]">142 matching cars found</span>
-      </div>
-    ),
-  },
-  {
-    id: "02",
-    icon: Gavel,
-    title: "Join the Auction",
-    desc: "Place your bid in live auctions. Compete with other verified dealers in real-time.",
-    mock: (
-      <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2 space-y-1">
-        <div className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-[10px] font-bold text-red-400 tracking-wide">LIVE AUCTION</span>
-        </div>
-        <div className="flex items-baseline justify-between">
-          <span className="text-[11px] text-[var(--text-muted)]">Current Bid</span>
-          <span className="text-sm font-bold text-primary">£8,450</span>
-        </div>
-      </div>
-    ),
-  },
-  {
-    id: "03",
-    icon: Trophy,
-    title: "Win the Auction",
-    desc: "If you're the highest bidder when the auction ends, you win the car.",
-    mock: (
-      <div className="flex items-center justify-between bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2">
-        <div>
-          <p className="text-[10px] text-emerald-400 font-semibold">You Won!</p>
-          <p className="text-sm font-bold">£8,450</p>
-        </div>
-        <CheckCircle2 size={18} className="text-emerald-400" />
-      </div>
-    ),
-  },
-  {
-    id: "04",
-    icon: ClipboardCheck,
-    title: "Complete Checkout",
-    desc: "Review the car details and pay the £125 buyer fee securely.",
-    mock: (
-      <div className="flex items-center justify-between bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2">
-        <div>
-          <p className="text-[10px] text-[var(--text-muted)]">Buyer Fee</p>
-          <p className="text-sm font-bold">£125</p>
-        </div>
-        <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-semibold">
-          <Lock size={11} /> Secure Payment
-        </div>
-      </div>
-    ),
-  },
-  {
-    id: "05",
-    icon: Truck,
-    title: "Arrange Collection",
-    desc: "Coordinate with the seller for inspection and collection.",
-    mock: (
-      <div className="flex items-center gap-2 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2">
-        <Truck size={14} className="text-[var(--text-muted)] shrink-0" />
-        <span className="text-[11px] text-[var(--text-secondary)]">Collection scheduled</span>
-      </div>
-    ),
-  },
-  {
-    id: "06",
-    icon: ShieldCheck,
-    title: "Drive with Confidence",
-    desc: "Inspect, complete the handover and enjoy your new purchase.",
-    mock: (
-      <div className="flex items-center gap-2 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2">
-        <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
-        <span className="text-[11px] text-[var(--text-secondary)]">Ready to drive</span>
-      </div>
-    ),
-  },
+const BUYER_STEPS: LedgerStep[] = [
+  { icon: Search, title: "Search & find", desc: "Filter by make, model, grade and location to shortlist cars.", tag: "142 found" },
+  { icon: Gavel, title: "Join the auction", desc: "Bid live against other verified dealers in real time.", tag: "LIVE · 24h" },
+  { icon: Trophy, title: "Win the auction", desc: "Highest bid when the clock runs out takes the car.", tag: "Won" },
+  { icon: ClipboardCheck, title: "Complete checkout", desc: "Pay the one-off buyer fee that unlocks the seller's contact details.", tag: "£125 fee" },
+  { icon: Truck, title: "Arrange collection", desc: "Coordinate inspection and collection directly with the seller.", tag: "Direct chat" },
+  { icon: ShieldCheck, title: "Drive with confidence", desc: "Inspect, complete the handover, and it's yours.", tag: "✓ Done" },
 ]
 
-const TRUST_BADGES = [
-  { icon: Tag, title: "100% Free Listing", desc: "No fees, no hidden charges." },
-  { icon: Users, title: "Verified Dealers Only", desc: "Only trusted dealers can bid." },
-  { icon: Banknote, title: "You Get Paid Directly", desc: "Payment is made by the dealer to you." },
-  { icon: Gift, title: "£100 Seller Reward", desc: "Complete a successful handover and get £100." },
-]
+const RECEIPTS = {
+  seller: {
+    label: "Your sale, itemised",
+    rows: [
+      { k: "Vehicle sale price", v: "£8,450", note: "paid to you, by the dealer" },
+      { k: "CarMazium listing fee", v: "£0", note: "free, always" },
+      { k: "CarMazium seller reward", v: "+£100", note: "paid to you, after handover" },
+    ],
+    total: { k: "You receive", v: "£8,550" },
+  },
+  buyer: {
+    label: "Your purchase, itemised",
+    rows: [
+      { k: "Winning bid", v: "£8,450", note: "paid to the seller, directly" },
+      { k: "CarMazium buyer fee", v: "£125", note: "unlocks the seller's contact details" },
+    ],
+    total: { k: "Total to drive away", v: "£8,575" },
+  },
+}
+
+function Ledger({ steps, startIndex = 0 }: { steps: LedgerStep[]; startIndex?: number }) {
+  return (
+    <ol className="relative">
+      <div className="absolute left-[19px] top-2 bottom-2 w-px bg-gradient-to-b from-primary/50 via-[var(--border-default)] to-transparent" aria-hidden />
+      {steps.map((step, idx) => (
+        <motion.li
+          key={step.title}
+          initial={{ opacity: 0, x: -12 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.4, delay: idx * 0.06 }}
+          className="relative flex items-start gap-4 py-4"
+        >
+          <span className="relative z-10 shrink-0 w-10 h-10 rounded-full bg-[var(--bg-card)] border border-[var(--border-default)] flex items-center justify-center text-primary">
+            <step.icon size={16} />
+          </span>
+          <div className="flex-grow min-w-0 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 sm:gap-4 border-b border-[var(--border-default)] pb-4">
+            <div className="min-w-0">
+              <p className="font-bold text-[15px] leading-snug">
+                <span className="font-mono text-primary/70 text-xs mr-2 align-middle">{String(startIndex + idx + 1).padStart(2, "0")}</span>
+                {step.title}
+              </p>
+              <p className="text-sm text-[var(--text-muted)] mt-1 leading-relaxed">{step.desc}</p>
+            </div>
+            <span className="self-start shrink-0 font-mono text-xs font-bold text-[var(--text-secondary)] bg-[var(--bg-input)] border border-[var(--border-default)] rounded-full px-3 py-1 tabular-nums">
+              {step.tag}
+            </span>
+          </div>
+        </motion.li>
+      ))}
+    </ol>
+  )
+}
+
+function ReceiptCard({ receipt }: { receipt: typeof RECEIPTS.seller }) {
+  return (
+    <div className="relative">
+      <div
+        className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-t-2xl pt-6 px-6 pb-4"
+        style={{
+          maskImage: "radial-gradient(circle 6px at 12px bottom, transparent 98%, black 100%), radial-gradient(circle 6px at calc(100% - 12px) bottom, transparent 98%, black 100%)",
+          WebkitMaskImage: "radial-gradient(circle 6px at 12px bottom, transparent 98%, black 100%), radial-gradient(circle 6px at calc(100% - 12px) bottom, transparent 98%, black 100%)",
+        }}
+      >
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-primary mb-4">{receipt.label}</p>
+        <div className="space-y-2.5">
+          {receipt.rows.map((row) => (
+            <div key={row.k} className="flex items-baseline justify-between gap-4 text-sm">
+              <span className="text-[var(--text-secondary)]">{row.k}</span>
+              <span className="flex-grow border-b border-dotted border-[var(--border-default)] translate-y-[-3px]" />
+              <span className="font-mono font-bold tabular-nums shrink-0">{row.v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div
+        className="h-px w-full bg-[repeating-linear-gradient(90deg,var(--border-default)_0,var(--border-default)_6px,transparent_6px,transparent_12px)]"
+        aria-hidden
+      />
+      <div
+        className="bg-[var(--bg-input)] border border-[var(--border-default)] border-t-0 rounded-b-2xl px-6 py-4 flex items-baseline justify-between"
+        style={{
+          maskImage: "radial-gradient(circle 6px at 12px top, transparent 98%, black 100%), radial-gradient(circle 6px at calc(100% - 12px) top, transparent 98%, black 100%)",
+          WebkitMaskImage: "radial-gradient(circle 6px at 12px top, transparent 98%, black 100%), radial-gradient(circle 6px at calc(100% - 12px) top, transparent 98%, black 100%)",
+        }}
+      >
+        <span className="font-bold text-sm">{receipt.total.k}</span>
+        <span className="font-mono font-black text-xl text-primary tabular-nums">{receipt.total.v}</span>
+      </div>
+    </div>
+  )
+}
+
+function PhotoBreak({ src, alt, quote, align = "left" }: { src: string; alt: string; quote: string; align?: "left" | "right" }) {
+  return (
+    <div className="relative rounded-2xl overflow-hidden my-10 border border-[var(--border-default)]">
+      <div className="relative h-[280px] md:h-[340px]">
+        <Image src={src} alt={alt} fill sizes="(max-width: 1024px) 100vw, 900px" className="object-cover" />
+        <div className={`absolute inset-0 bg-gradient-to-r ${align === "left" ? "from-slate-950/95 via-slate-950/60" : "from-transparent via-slate-950/60"} to-slate-950/95`} />
+      </div>
+      <div className={`absolute inset-0 flex items-center ${align === "left" ? "justify-start text-left" : "justify-end text-right"} p-8 md:p-12`}>
+        <p className="max-w-sm text-lg md:text-xl font-heading font-bold text-white leading-snug drop-shadow-lg">
+          &ldquo;{quote}&rdquo;
+        </p>
+      </div>
+    </div>
+  )
+}
 
 function FlowSection({
-  eyebrow, title, highlight, subtitle, steps, ctaLabel, ctaHref,
+  eyebrow, title, highlight, subtitle, steps, receipt, ctaLabel, ctaHref, photo,
 }: {
   eyebrow: string
   title: string
   highlight: string
   subtitle: string
-  steps: Step[]
+  steps: LedgerStep[]
+  receipt: typeof RECEIPTS.seller
   ctaLabel: string
   ctaHref: string
+  photo: { src: string; alt: string; quote: string; align: "left" | "right" }
 }) {
   return (
     <section className="py-16 md:py-20 container mx-auto px-5">
-      <div className="text-center max-w-2xl mx-auto mb-14">
-        <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-3">{eyebrow}</p>
+      <div className="max-w-2xl mb-10">
+        <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-3 font-mono">{eyebrow}</p>
         <h2 className="text-3xl md:text-4xl font-bold font-heading mb-4">
           {title} <span className="text-primary">{highlight}</span>
         </h2>
         <p className="text-[var(--text-muted)] leading-relaxed">{subtitle}</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        {steps.map((step, idx) => (
-          <motion.div
-            key={step.id}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{ duration: 0.4, delay: idx * 0.06 }}
-            className="relative h-full p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-default)] hover:border-primary/30 transition-colors flex flex-col"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] flex items-center justify-center text-primary shrink-0">
-                <step.icon size={18} />
-              </div>
-              <span className="text-xs font-black text-[var(--text-muted)] tabular-nums">{step.id}</span>
-            </div>
-            <h3 className="font-bold text-[15px] mb-2 leading-snug">{step.title}</h3>
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-4 flex-grow">{step.desc}</p>
-            {step.mock}
-          </motion.div>
-        ))}
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 lg:gap-14">
+        <div className="lg:col-span-3">
+          <Ledger steps={steps.slice(0, 3)} startIndex={0} />
+          <PhotoBreak src={photo.src} alt={photo.alt} quote={photo.quote} align={photo.align} />
+          <Ledger steps={steps.slice(3)} startIndex={3} />
+        </div>
 
-      <div className="mt-12 text-center">
-        <Link href={ctaHref}>
-          <Button size="lg" shape="pill" className="px-10 py-6 text-base shadow-neon group">
-            {ctaLabel}
-            <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </Button>
-        </Link>
+        <div className="lg:col-span-2 lg:sticky lg:top-28 self-start">
+          <ReceiptCard receipt={receipt} />
+          <div className="mt-6">
+            <Link href={ctaHref}>
+              <Button size="lg" shape="pill" className="w-full py-6 text-base shadow-neon group">
+                {ctaLabel}
+                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
+          </div>
+        </div>
       </div>
     </section>
   )
 }
 
+const TRUST_STRIP = [
+  { icon: Banknote, label: "Free to list" },
+  { icon: ShieldCheck, label: "Verified dealers only" },
+  { icon: Handshake, label: "Paid direct, no middleman" },
+  { icon: Gift, label: "£100 seller reward" },
+]
+
 export default function HowItWorksPage() {
   const router = useRouter()
 
-  // Pre-warm the target pages so clicking the CTA buttons is instant
   useEffect(() => {
     router.prefetch('/search')
     router.prefetch('/sell')
@@ -273,29 +215,23 @@ export default function HowItWorksPage() {
   return (
     <div className="min-h-screen pb-20 selection:bg-primary/30">
 
-      {/* Hero Section */}
+      {/* Hero */}
       <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 flex flex-col items-center justify-center text-center overflow-hidden h-[70vh] min-h-[500px]">
-        {/* Background Image */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/assets/images/live-auction-hero.jpg"
-            alt="CarMazium Hero"
+            src="/assets/images/signup-bg.png"
+            alt="CarMazium"
             fill
-            className="object-cover opacity-40 scale-105"
+            className="object-cover opacity-70 scale-105"
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-900/40 via-slate-900/80 to-slate-950" />
-          <div className="absolute inset-0 bg-slate-950/30 mix-blend-multiply" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/50 via-slate-950/80 to-slate-950" />
         </div>
 
         <div className="absolute top-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent z-10" />
 
         <div className="container mx-auto px-5 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
             <h1 className="text-5xl md:text-7xl font-bold font-heading mb-8 text-white tracking-tight drop-shadow-2xl">
               The Future of <br className="hidden md:block" />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-gray-200">Car Trading is Here</span>
@@ -307,51 +243,50 @@ export default function HowItWorksPage() {
         </div>
       </section>
 
-      {/* How it works for sellers */}
-      <div className="relative -mt-10 z-10">
-        <FlowSection
-          eyebrow="For Sellers"
-          title="How it works for"
-          highlight="sellers"
-          subtitle="List your car for FREE, let dealers compete, get paid directly and receive £100 from CarMazium after a successful handover."
-          steps={SELLER_FLOW}
-          ctaLabel="Start Selling For Free"
-          ctaHref="/sell"
-        />
-      </div>
-
-      {/* Trust badges */}
-      <section className="container mx-auto px-5">
-        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] px-6 py-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {TRUST_BADGES.map((item) => (
-            <div key={item.title} className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                <item.icon size={18} />
-              </div>
-              <div>
-                <p className="font-bold text-sm leading-tight">{item.title}</p>
-                <p className="text-xs text-[var(--text-muted)] leading-tight mt-0.5">{item.desc}</p>
-              </div>
+      {/* Trust strip */}
+      <div className="relative -mt-10 z-10 container mx-auto px-5">
+        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] backdrop-blur-md px-6 py-5 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+          {TRUST_STRIP.map((item, i) => (
+            <div key={item.label} className="flex items-center gap-2.5 text-sm font-semibold">
+              <item.icon size={16} className="text-primary shrink-0" />
+              <span className="text-[var(--text-secondary)]">{item.label}</span>
+              {i < TRUST_STRIP.length - 1 && <span className="hidden sm:block w-px h-4 bg-[var(--border-default)] ml-8" aria-hidden />}
             </div>
           ))}
         </div>
-      </section>
+      </div>
 
-      {/* How it works for buyers */}
+      {/* Seller flow */}
+      <FlowSection
+        eyebrow="For Sellers"
+        title="How it works for"
+        highlight="sellers"
+        subtitle="List your car for free, let dealers compete, get paid directly and receive £100 from CarMazium after a successful handover."
+        steps={SELLER_STEPS}
+        receipt={RECEIPTS.seller}
+        ctaLabel="Start Selling For Free"
+        ctaHref="/sell"
+        photo={{ src: "/assets/images/blog-keys.png", alt: "Car keys handover", quote: "The dealer pays you. Not us.", align: "left" }}
+      />
+
+      <div className="border-t border-[var(--border-default)]" />
+
+      {/* Buyer flow */}
       <FlowSection
         eyebrow="For Buyers"
         title="How it works for"
         highlight="buyers"
         subtitle="Find the right car, win with confidence, and enjoy a smooth, secure buying experience."
-        steps={BUYER_FLOW}
+        steps={BUYER_STEPS}
+        receipt={RECEIPTS.buyer}
         ctaLabel="Browse Live Auctions"
         ctaHref="/auctions"
+        photo={{ src: "/assets/images/featured-suv.png", alt: "Vehicle ready for collection", quote: "One fee. Nothing else moves through CarMazium.", align: "right" }}
       />
 
       {/* Feature Highlight: Auctions */}
       <section className="py-32 container mx-auto px-5">
         <div className="relative rounded-[3rem] overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] backdrop-blur-md">
-          {/* Background Effects */}
           <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none" />
 
@@ -390,7 +325,6 @@ export default function HowItWorksPage() {
             </div>
 
             <div className="order-1 lg:order-2 relative">
-              {/* Abstract Visual Representation of Auction Header */}
               <div className="relative z-10 bg-[var(--bg-card)] rounded-2xl border border-[var(--border-default)] p-8 shadow-2xl transition-transform duration-700">
                 <div className="flex justify-between items-center mb-8 border-b border-[var(--border-default)] pb-4">
                   <div className="flex items-center gap-3">
@@ -411,7 +345,6 @@ export default function HowItWorksPage() {
                   </div>
                 </div>
 
-                {/* Progress Bar Visual */}
                 <div className="h-3 bg-[var(--bg-input)] rounded-full overflow-hidden mb-3">
                   <motion.div
                     className="h-full bg-primary"
@@ -423,30 +356,29 @@ export default function HowItWorksPage() {
                 <p className="text-xs text-center text-[var(--text-muted)] font-medium">Anti-snipe active: Auto-extends on new bids</p>
               </div>
 
-              {/* Decorative Elements */}
               <div className="absolute top-10 -right-10 w-full h-full bg-[var(--bg-input)] rounded-2xl -z-10 blur-xl mt-4" />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Services Grid (Compact) */}
+      {/* Services strip */}
       <section className="py-20 container mx-auto px-5">
-        <div className="text-center mb-16">
+        <div className="text-center mb-14">
           <h2 className="text-3xl font-bold font-heading mb-4">Complete Peace of Mind</h2>
           <p className="text-[var(--text-muted)]">Everything you need to handle your vehicle effortlessly.</p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 border-y border-l border-[var(--border-default)]">
           {[
             { icon: Truck, title: "Delivery", desc: "Via trusted 3rd party" },
             { icon: Umbrella, title: "Warranty", desc: "Via 3rd-party providers" },
             { icon: Handshake, title: "Direct Deals", desc: "Buyer & seller connect" },
             { icon: ShieldCheck, title: "Support", desc: "24/7 Expert help" }
-          ].map((item, idx) => (
-            <div key={idx} className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-2xl p-6 text-center hover:bg-[var(--bg-card-hover)] transition-colors">
-              <item.icon className="mx-auto mb-3 text-[var(--text-muted)]" size={24} />
-              <h3 className="font-bold mb-1">{item.title}</h3>
+          ].map((item) => (
+            <div key={item.title} className="border-r border-[var(--border-default)] px-6 py-8 text-center hover:bg-[var(--bg-card)] transition-colors">
+              <item.icon className="mx-auto mb-3 text-primary" size={22} />
+              <h3 className="font-bold mb-1 text-sm">{item.title}</h3>
               <p className="text-xs text-[var(--text-muted)]">{item.desc}</p>
             </div>
           ))}
