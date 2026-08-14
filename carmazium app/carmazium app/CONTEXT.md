@@ -4,7 +4,102 @@
 
 ---
 
-## 0. START HERE — current directive (2026-08-10)
+## 0. START HERE — current state (2026-08-14)
+
+**The overhaul described in §0.1 below has largely been executed.** Read this
+section first; §0.1/§0.2 are kept underneath as the brief that produced it.
+
+Plan and full status: **`MOBILE_OVERHAUL_PLAN.md`** (same directory).
+Evidence: **`.parity/01`–`06`** — six audits covering UI/visual, dealer parity,
+navigation/journeys, perf + notifications, web visual drift, and backend drift.
+29 commits, all on `main` (`55a41ba4..827e1fb8`), every one `tsc`-clean.
+
+### 0.0.1 What the problem actually was
+
+Not "the screens were never styled." A 2026-07-11 codemod had lifted every raw
+literal in the codebase into a named token **without collapsing them**, leaving
+~150 colours (sixteen near-identical dark blues), 14 arbitrary font sizes
+carrying the *majority* of the app's text, and 16 different corner radii across
+575 sites. Consistency had been enforced; a palette, type scale and radius scale
+had never existed. That is the mechanical reason it read as amateur, and all
+three are now closed at the token level rather than screen by screen.
+
+### 0.0.2 What shipped
+
+- **Foundation** — real palette (brand red now `#FF0037`, client-confirmed),
+  semantic type scale, `Radius`/`Elevation`/`Blur`/`Motion` tokens, primitives
+  in `components/ui/`, floating tab bar. See `CLAUDE.md` for the rules.
+- **Navigation** — 5 built-but-unreachable screens reconnected, wrong
+  post-action destinations fixed, notification tap-routing rebuilt off the
+  backend's `link` field.
+- **Dealer** — KYC gate (`components/DealerGate.tsx`) matching web's layout
+  gate, with staff-membership support added to `authStore`.
+- **Parity** — auction filter panel, gated seller contact on live auctions,
+  Call Seller, postcode prompt, How It Works fee ledger, Terms ported verbatim.
+- **Perf** — 11 unused fonts dropped from startup, Home rails virtualised,
+  whole-store Zustand subscriptions removed from listing cards and the auction
+  socket.
+- **Push** — now works client-side; needed **no backend route** (see §0.0.4).
+
+### 0.0.3 A mistake made during this work — for the record
+
+Phase 1 repointed `Colors.textFaint` at the design system's `fg4` (`#4B556B`).
+That was wrong: `textFaint` was `#8A8A93`, and all 33 of its call sites use it
+for *readable content* — spec-table labels on VehicleDetail, the monthly-payment
+figure, listing locations. Repointing it quietly pushed all of them below the
+WCAG AA floor, undoing a contrast fix `mobile-ui-ux-audit.md` had specifically
+called for.
+
+Caught and fixed in `c1c310c1`: `textFaint` now resolves to `#8A93A8`
+(= `textMuted`, where `#8A8A93` always belonged) and `textDisabled` took over
+`#4B556B` for genuinely non-content text. **The fix is not mentioned in that
+commit's message** — it rode along with an empty-states commit — so anyone
+bisecting a contrast question between `a53234f5` and `c1c310c1` should know it
+was live in that window. Noted here because the commit log won't tell you.
+
+Lesson worth keeping: a token rename is not cosmetic when the old and new names
+mean different things. Check what the *call sites* use a token **for** before
+repointing it at a same-ish colour.
+
+### 0.0.4 Not done — and why
+
+- **Nothing has been seen running.** This machine has no Android SDK (§4). The
+  whole 29-commit range is unverified on device. Verify first: the **dealer KYC
+  gate** with three accounts (verified dealer, unverified dealer, staff of a
+  verified dealership — the staff path was reasoned from the backend query, not
+  observed); then the **floating tab bar** (most likely visual regression, since
+  screens may have assumed the old edge-to-edge height).
+- **Push needs two operational steps**, not code: `app.json` changed so it needs
+  `expo prebuild` + a fresh binary (OTA won't pick it up), and Android delivery
+  needs **FCM credentials on the Expo project** (`eas credentials`). There's no
+  `googleServicesFile` in `app.json` and no `google-services.json` in the repo,
+  so whether that was ever set up is unverified. Without it, pushes still won't
+  arrive.
+- **The `#FF0037` red is mobile-only.** Web still ships `#ed1c24`, so the two
+  platforms visibly differ until web adopts the design system.
+- **Terms needs a copy owner's sign-off.** It's a faithful copy of web, but
+  "faithful copy" and "correct" are different claims, and the mobile
+  presentation (83 cards in one scroll; web has a jump-to-section index mobile
+  lacks) is unreviewed.
+- **Per-screen layout work** against the kit's designed compositions
+  (`screens-vehicle`, `screens-auction`, `screens-sell`,
+  `screens-dealer-dashboard`) is the main remaining UI work, plus the chamfered
+  primary CTA. It's judgement per screen, not a codemod, and wants a device.
+
+### 0.0.5 Two claims from the original brief that did not survive audit
+
+- **The dealer dashboard is not "hallucinated by an AI."** All 11 dealer screens
+  were read in full and every displayed number traced to a real endpoint backed
+  by a real Prisma query; a grep for mock/dummy/fake/`Math.random` found nothing.
+  The dealer problem was navigation and the missing KYC gate.
+- **No P0 was found in either drift audit.** Mobile was not exposing seller
+  contact data web gates, and a field-by-field diff of `CreateListingDto`
+  against mobile's publish payload found no `forbidNonWhitelisted` risk — the
+  2026-07-06 incident has not regressed.
+
+---
+
+## 0. The brief that produced the above (2026-08-10)
 
 Development focus has shifted fully to this app. Two things anyone picking this up needs to know before touching code:
 
@@ -35,7 +130,9 @@ The backend (shared with web, `https://carmazium-hjoh9w.fly.dev`) picked up real
 
 ### 0.3 This doc's own currency
 
-§6 ("what's shipped") and §10 (history log) below stop at **2026-07-21**. Six more mobile commits landed between then and 2026-08-10 (`c95c670e`, `b7a8ab43`, `d2d6b9eb`, `d0affee0`, `63cccc6b`, `c21a447d` — chat bubble/search-pill/keyboard fixes and a "web/backend parity" pass) that were never folded into this doc. Give `git log --oneline --since=2026-07-21 -- "carmazium app"` a pass and update §6/§10 for real before relying on them as a complete picture of current state.
+§6 ("what's shipped") below still stops at **2026-07-21** — §10's history log
+now runs to 2026-08-14, and §0 above covers current state. Original note kept:
+§6 Six more mobile commits landed between then and 2026-08-10 (`c95c670e`, `b7a8ab43`, `d2d6b9eb`, `d0affee0`, `63cccc6b`, `c21a447d` — chat bubble/search-pill/keyboard fixes and a "web/backend parity" pass) that were never folded into this doc. Give `git log --oneline --since=2026-07-21 -- "carmazium app"` a pass and update §6/§10 for real before relying on them as a complete picture of current state.
 
 ---
 
@@ -312,7 +409,10 @@ Faster than a full rebuild but **unsafe if any native dependency changed** since
 - **Admin dashboard** — intentional gap on mobile.
 - **Guest browsing** — mobile gates the entire app behind `isAuthenticated` (`RootNavigator.tsx`); web supports unauthenticated browsing for SEO. Sign-in-modal-on-Make-Offer is mooted by this. To close, would need a guest route surface.
 - **Loading-state consistency** — some action buttons show ActivityIndicator, others just fade via opacity, others do nothing. No standardization done yet.
-- **Empty-state CTAs** — several list screens (Search-no-results, Live-no-upcoming, Saved-empty, Watchlist-empty) show an icon + text but no "Browse by category" or "See all X" CTA to guide the next step.
+- ~~**Empty-state CTAs**~~ — **closed 2026-08-14** (`c1c310c1`). `EmptyState`
+  rebuilt to the design kit and the dead ends given routes onward; Watchlist had
+  been hand-rolling its own with nothing to tap, and Search's no-results now
+  offers "Clear filters".
 - **Skeleton vs spinner parity** — mobile uses `<Skeleton>` on auction and chat screens; web uses `Loader2` overlays. No single pattern.
 
 ### Verified on-device but keep an eye out
@@ -328,6 +428,9 @@ Faster than a full rebuild but **unsafe if any native dependency changed** since
 ## 9. Where to look for more detail
 
 - `CLAUDE.md` (same directory) — conventions, source-of-truth pointers, stack constraints
+- `MOBILE_OVERHAUL_PLAN.md` (same directory) — the 2026-08-14 overhaul: diagnosis, phases, what shipped, what's blocked and on whom
+- `.parity/01`–`06` (same directory) — the six audits behind that plan, with file:line evidence
+- `<repo-root>/CarMazium Design System/` — **visual source of truth**: tokens in `colors_and_type.css`, and a full React concept kit for mobile in `ui_kits/carmazium-mobile/` (atoms + ~20 designed screens). Check it before designing a screen from scratch.
 - `FEATURE_AUDIT.md` (repo root) — running list of web features audited against mobile
 - `.planning/phases/mobile-app-parity/mobile-CONTEXT.md` — older planning doc; parts of it are stale (e.g. mentions of "3D viewer not surfaced" — it's now the default). Treat as historical.
 - `src\components\listing\ListingWizard.tsx` (web) — canonical listing-creation payload shape; check this before touching `SellCarFlowScreen.tsx`'s `/listings` POST body
@@ -336,6 +439,28 @@ Faster than a full rebuild but **unsafe if any native dependency changed** since
 ---
 
 ## 10. History log (compressed)
+
+### 2026-08-14 — UI/UX overhaul + web/backend drift catch-up
+
+29 commits, `55a41ba4..827e1fb8`, all on `main`. Full detail in
+`MOBILE_OVERHAUL_PLAN.md`; evidence in `.parity/01`–`06`. Summary in §0 above.
+
+- Six audits run (UI/visual, dealer parity, navigation/journeys,
+  perf + notifications, web visual drift, backend drift)
+- Palette / type scale / radius scale collapsed onto the design system;
+  primitives built in `components/ui/`; tab bar floated
+- Navigation: 5 unreachable screens reconnected, post-action destinations
+  corrected, notification routing rebuilt off the backend's `link`
+- Dealer KYC gate added, with staff-membership support in `authStore`
+- Auction filter panel, gated seller contact, Call Seller, postcode prompt,
+  fee ledger, Terms ported verbatim from web
+- Perf: 11 unused fonts, Home rail virtualisation, Zustand whole-store
+  subscriptions in listing cards and the auction socket
+- Push fixed client-side (token now written via `PATCH /users/me` —
+  `/users/push-token` never existed; the sender reads
+  `preferences.expoPushToken`, and `preferences` is a merged JSON column)
+- One self-inflicted regression (`textFaint` contrast), caught and fixed —
+  see §0.0.3
 
 ### 2026-07-21 — This handover session
 - Unified buyer/seller drawer; built WatchlistScreen; swapped hand-drawn Logo for real PNG
