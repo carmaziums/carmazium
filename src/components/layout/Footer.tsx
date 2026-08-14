@@ -78,7 +78,7 @@ export function Footer() {
                 </div>
 
                 <div className="border-t border-white/10 pt-8 text-center text-gray-500 text-sm">
-                    <p>&copy; 2025 CarMazium. All Rights Reserved.</p>
+                    <p>&copy; {new Date().getFullYear()} CarMazium. All Rights Reserved.</p>
                 </div>
             </div>
         </footer>

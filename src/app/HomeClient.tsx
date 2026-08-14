@@ -109,7 +109,7 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="text-5xl md:text-7xl font-bold font-heading mb-6 leading-tight drop-shadow-2xl"
           >
-            List your car <br /> <span className="text-primary tracking-tight">for £1</span>
+            Sell Your Car <br /> <span className="text-primary tracking-tight">and Win £100</span>
           </motion.h1>
 
           <motion.div

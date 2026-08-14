@@ -36,13 +36,13 @@ interface Props {
  *   touch) call scrollTo() on the same track so mouse and touch users land
  *   on identical state.
  * - Only the current image loads eagerly; the rest use native lazy-loading,
- *   so a grid of many cards doesn't fetch all 8 images per card up front.
+ *   so a grid of many cards doesn't fetch every image per card up front.
  */
 export function CardImageCarousel({
     images,
     alt,
     href,
-    maxImages = 8,
+    maxImages = 100,
     sizes = "(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px",
     className = "",
     children,

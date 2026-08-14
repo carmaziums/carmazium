@@ -230,11 +230,12 @@ export class AuctionsService {
 
     /**
      * `viewerId` is only present when the caller is authenticated (via
-     * OptionalSessionAuthGuard) — same gating pattern as
-     * ListingsService.findBySlug: anonymous visitors never receive the
-     * seller's real phone/email in the response payload, only an
-     * `*Available` boolean the frontend uses to render a "log in to view"
-     * placeholder. Non-sensitive business info (address, website) is public.
+     * OptionalSessionAuthGuard). Unlike ListingsService.findBySlug (a "log in
+     * to view" gate), every seller contact detail here — phone, email,
+     * business address, website — is withheld from the response payload
+     * until the viewer has won this specific auction AND paid the buyer fee;
+     * only an `*Available` boolean is sent otherwise, for the frontend to
+     * render a locked/blurred placeholder.
      */
     async findOne(id: string, viewerId?: string): Promise<any> {
         const auction = await this.prisma.auction.findUnique({
@@ -275,22 +276,29 @@ export class AuctionsService {
             const hasPersonalPhone = !!seller.phone;
             const hasPersonalEmail = !!seller.email;
             const hasDealerPhone = !!seller.dealerProfile?.phone;
-            // Phone is withheld until the viewer has actually won this specific
-            // auction AND paid the £125 buyer fee — logging in isn't enough, so a
-            // bidder can't skip the fee and arrange the handover off-platform.
-            // Email keeps the simpler "any logged-in viewer" gate (unchanged).
-            const canSeePhone = !!viewerId && viewerId === auction.winnerId && !!auction.buyerFeePaid;
+            const hasBusinessAddress = !!seller.dealerProfile?.businessAddress;
+            const hasWebsite = !!seller.dealerProfile?.website;
+            // All seller contact details — phone, email, and the dealer's business
+            // address/website — are withheld until the viewer has actually won this
+            // specific auction AND paid the £125 buyer fee. Logging in isn't enough,
+            // so a bidder can't skip the fee, grab contact details and arrange the
+            // handover off-platform.
+            const canSeeContactDetails = !!viewerId && viewerId === auction.winnerId && !!auction.buyerFeePaid;
             (auction.listing as any).seller = {
                 ...seller,
-                phone: canSeePhone ? seller.phone : null,
+                phone: canSeeContactDetails ? seller.phone : null,
                 phoneAvailable: hasPersonalPhone,
-                email: viewerId ? seller.email : null,
+                email: canSeeContactDetails ? seller.email : null,
                 emailAvailable: hasPersonalEmail,
                 ...(seller.dealerProfile ? {
                     dealerProfile: {
                         ...seller.dealerProfile,
-                        phone: canSeePhone ? seller.dealerProfile.phone : null,
+                        phone: canSeeContactDetails ? seller.dealerProfile.phone : null,
                         phoneAvailable: hasDealerPhone,
+                        businessAddress: canSeeContactDetails ? seller.dealerProfile.businessAddress : null,
+                        businessAddressAvailable: hasBusinessAddress,
+                        website: canSeeContactDetails ? seller.dealerProfile.website : null,
+                        websiteAvailable: hasWebsite,
                     },
                 } : {}),
             };

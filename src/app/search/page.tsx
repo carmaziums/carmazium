@@ -205,6 +205,7 @@ function SearchPageContent() {
     const { location: userLocation, setPostcode } = useLocation()
     const { trackEvent } = useAnalytics()
     const [isFilterOpen, setIsFilterOpen] = React.useState(false)
+    const [modelManualEntry, setModelManualEntry] = React.useState(false)
     const [detectingLocation, setDetectingLocation] = React.useState(false)
     const [listings, setListings] = React.useState<Listing[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -648,6 +649,7 @@ function SearchPageContent() {
                                             onChange={(e) => {
                                                 set('make', e.target.value)
                                                 set('model', '') // reset model when make changes
+                                                setModelManualEntry(false)
                                             }}
                                             className="h-9 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none"
                                         />
@@ -658,7 +660,28 @@ function SearchPageContent() {
                                     {/* Model — inline scrollable list when make is known, text input otherwise */}
                                     {(() => {
                                         const models = getModelsForMake(filters.make)
-                                        return models.length > 0 ? (
+                                        if (models.length === 0 || modelManualEntry) {
+                                            return (
+                                                <div className="space-y-1.5">
+                                                    <Input
+                                                        placeholder="Model (e.g. M4)"
+                                                        value={filters.model}
+                                                        onChange={(e) => set('model', e.target.value)}
+                                                        className="h-9 text-sm bg-[var(--bg-input)] border-[var(--border-default)] placeholder:text-[var(--text-muted)]"
+                                                    />
+                                                    {models.length > 0 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => { setModelManualEntry(false); set('model', '') }}
+                                                            className="text-xs font-semibold text-primary hover:underline"
+                                                        >
+                                                            ← Back to model list
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )
+                                        }
+                                        return (
                                             <div className="max-h-44 overflow-y-auto rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] space-y-0.5 p-1">
                                                 <button
                                                     type="button"
@@ -677,14 +700,14 @@ function SearchPageContent() {
                                                         {m}
                                                     </button>
                                                 ))}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setModelManualEntry(true); set('model', '') }}
+                                                    className="w-full text-left px-3 py-2 rounded text-sm font-semibold text-primary hover:bg-[var(--bg-card)] transition-all"
+                                                >
+                                                    Other (type manually)
+                                                </button>
                                             </div>
-                                        ) : (
-                                            <Input
-                                                placeholder="Model (e.g. M4)"
-                                                value={filters.model}
-                                                onChange={(e) => set('model', e.target.value)}
-                                                className="h-9 text-sm bg-[var(--bg-input)] border-[var(--border-default)] placeholder:text-[var(--text-muted)]"
-                                            />
                                         )
                                     })()}
                                 </div>

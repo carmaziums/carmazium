@@ -14,7 +14,7 @@ import {
     MessageSquare, Timer, Flame, TrendingUp, RefreshCw,
     Ban, CalendarClock, CreditCard, Handshake,
     Gauge, Fuel, Car, Cog, Palette, DoorOpen, Star,
-    FileText, Wrench, Leaf, TriangleAlert, MapPin, Globe,
+    FileText, Wrench, Leaf, TriangleAlert, MapPin, Globe, Lock,
 } from "lucide-react"
 import { BlurredPhone } from "@/components/shared/BlurredPhone"
 import { BlurredEmail } from "@/components/shared/BlurredEmail"
@@ -1315,7 +1315,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                     const sellerPhoneAvailable = isDealer ? !!seller?.dealerProfile?.phoneAvailable : !!seller?.phoneAvailable
                                     const location = auction.listing.location
                                     const businessAddress = seller?.dealerProfile?.businessAddress
+                                    const businessAddressAvailable = !!seller?.dealerProfile?.businessAddressAvailable
                                     const website = seller?.dealerProfile?.website
+                                    const websiteAvailable = !!seller?.dealerProfile?.websiteAvailable
+                                    const lockedMessage = user ? "Unlocks after you win & pay the buyer fee" : undefined
                                     return (
                                     <motion.div key="seller" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
                                         <div className="flex items-center gap-4 p-4 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl">
@@ -1333,32 +1336,54 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             </div>
                                         </div>
 
-                                        {/* Public seller info — whichever of these the seller actually has on file */}
-                                        {(sellerPhoneAvailable || seller?.emailAvailable || location || businessAddress || website) && (
+                                        {/* Contact/business details — all withheld (blurred) until this viewer
+                                            has won the auction and paid the buyer fee. Only general vehicle
+                                            location (shown publicly elsewhere on this page) is exempt. */}
+                                        {(sellerPhoneAvailable || seller?.emailAvailable || location || businessAddressAvailable || websiteAvailable) && (
                                             <div className="flex flex-col gap-2">
                                                 <BlurredPhone
                                                     phone={sellerPhone ?? null}
                                                     phoneAvailable={sellerPhoneAvailable}
-                                                    lockedMessage={user ? "Unlocks after you win & pay the buyer fee" : undefined}
+                                                    lockedMessage={lockedMessage}
                                                 />
-                                                <BlurredEmail email={seller?.email ?? null} emailAvailable={!!seller?.emailAvailable} />
+                                                <BlurredEmail
+                                                    email={seller?.email ?? null}
+                                                    emailAvailable={!!seller?.emailAvailable}
+                                                    lockedMessage={lockedMessage}
+                                                />
                                                 {location && (
                                                     <div className="flex items-center gap-3 bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)]">
                                                         <div className="bg-[var(--bg-card)] p-1.5 rounded-md"><MapPin size={14} className="text-[var(--text-muted)]" /></div>
                                                         <span className="text-sm font-medium text-[var(--text-secondary)]">{location}</span>
                                                     </div>
                                                 )}
-                                                {businessAddress && (
-                                                    <div className="flex items-start gap-3 bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)]">
-                                                        <div className="bg-[var(--bg-card)] p-1.5 rounded-md shrink-0"><MapPin size={14} className="text-[var(--text-muted)]" /></div>
-                                                        <span className="text-sm font-medium text-[var(--text-secondary)]">{businessAddress}</span>
-                                                    </div>
+                                                {businessAddressAvailable && (
+                                                    businessAddress ? (
+                                                        <div className="flex items-start gap-3 bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)]">
+                                                            <div className="bg-[var(--bg-card)] p-1.5 rounded-md shrink-0"><MapPin size={14} className="text-[var(--text-muted)]" /></div>
+                                                            <span className="text-sm font-medium text-[var(--text-secondary)]">{businessAddress}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center gap-3 bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)]">
+                                                            <div className="bg-[var(--bg-card)] p-1.5 rounded-md"><Lock size={14} className="text-[var(--text-muted)] shrink-0" /></div>
+                                                            <span className="blur-[4px] select-none text-[var(--text-muted)] text-sm">2090 Pacific Avenue</span>
+                                                            {lockedMessage && <span className="text-[var(--text-muted)] text-xs font-bold whitespace-nowrap">{lockedMessage}</span>}
+                                                        </div>
+                                                    )
                                                 )}
-                                                {website && (
-                                                    <a href={website} target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group">
-                                                        <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors"><Globe size={14} className="text-[var(--text-muted)] group-hover:text-primary transition-colors" /></div>
-                                                        <span className="font-medium">Visit Website</span>
-                                                    </a>
+                                                {websiteAvailable && (
+                                                    website ? (
+                                                        <a href={website} target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group">
+                                                            <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors"><Globe size={14} className="text-[var(--text-muted)] group-hover:text-primary transition-colors" /></div>
+                                                            <span className="font-medium">Visit Website</span>
+                                                        </a>
+                                                    ) : (
+                                                        <div className="flex items-center gap-3 bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)]">
+                                                            <div className="bg-[var(--bg-card)] p-1.5 rounded-md"><Lock size={14} className="text-[var(--text-muted)] shrink-0" /></div>
+                                                            <span className="blur-[4px] select-none text-[var(--text-muted)] text-sm">website.com</span>
+                                                            {lockedMessage && <span className="text-[var(--text-muted)] text-xs font-bold whitespace-nowrap">{lockedMessage}</span>}
+                                                        </div>
+                                                    )
                                                 )}
                                             </div>
                                         )}

@@ -19,9 +19,10 @@ export interface AuctionSeller {
     id: string;
     firstName: string | null;
     lastName: string | null;
-    // Real values only present for authenticated viewers (OptionalSessionAuthGuard) —
-    // anonymous requests get null + the *Available flag so the frontend can render
-    // a "log in to view" placeholder instead of silently hiding the field.
+    // Real values are only present once this viewer has won this specific
+    // auction AND paid the buyer fee — everyone else gets null + the
+    // *Available flag so the frontend can render a locked/blurred placeholder
+    // instead of silently hiding the field.
     phone?: string | null;
     phoneAvailable?: boolean;
     email?: string | null;
@@ -30,7 +31,9 @@ export interface AuctionSeller {
         companyName: string;
         logo: string | null;
         businessAddress?: string | null;
+        businessAddressAvailable?: boolean;
         website?: string | null;
+        websiteAvailable?: boolean;
         phone?: string | null;
         phoneAvailable?: boolean;
     } | null;
