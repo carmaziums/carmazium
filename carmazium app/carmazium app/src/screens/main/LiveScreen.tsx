@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,15 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { formatPrice, AuctionListing } from '../../data/listings';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { Colors } from '../../constants/colors';
+import { AuctionFilterSheet } from '../../components/filters/AuctionFilterSheet';
+import {
+  AUCTION_SORT_OPTIONS,
+  AuctionFilterState,
+  INITIAL_AUCTION_FILTERS,
+  compareAuctions,
+  countActiveAuctionFilters,
+  matchesAuctionFilters,
+} from '../../components/filters/auctionFilters';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -88,6 +97,8 @@ export const LiveScreen: React.FC = () => {
   // (mobile-production-readiness-plan.md F15). Filters client-side like
   // web does; no dedicated backend search param for auctions exists.
   const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<AuctionFilterState>(INITIAL_AUCTION_FILTERS);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -136,7 +147,11 @@ export const LiveScreen: React.FC = () => {
           reserve: Number(a.reservePrice),
           reserveMet: latestBid >= Number(a.reservePrice),
           buyItNowPrice: a.buyItNowPrice ?? null,
-        } as AuctionListing;
+          // Carried through purely so the "Newest listed" sort has something to
+          // order by — the mapper dropped it, which would have made that option
+          // silently do nothing rather than visibly not exist.
+          createdAt: a.createdAt,
+        } as AuctionListing & { createdAt?: string };
       });
 
       setLiveAuctions(mappedActive);
@@ -182,8 +197,37 @@ export const LiveScreen: React.FC = () => {
   const q = searchQuery.trim().toLowerCase();
   const matchesQuery = (make: string, model: string) =>
     !q || `${make} ${model}`.toLowerCase().includes(q);
-  const filteredActive = q ? activeList.filter(a => matchesQuery(a.make, a.model)) : activeList;
-  const filteredUpcoming = q ? upcomingList.filter(u => matchesQuery(u.listing.make, u.listing.model)) : upcomingList;
+
+  // Makes actually present in the current results — offering the full make list
+  // would let the user pick one that can never match anything on this screen.
+  const availableMakes = useMemo(() => {
+    const set = new Set<string>();
+    for (const a of activeList) if (a.make) set.add(a.make);
+    for (const u of upcomingList) if (u.listing?.make) set.add(u.listing.make);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [activeList, upcomingList]);
+
+  const activeFilterCount = countActiveAuctionFilters(filters);
+
+  const filteredActive = useMemo(() => {
+    const out = activeList.filter(
+      (a) => matchesQuery(a.make, a.model) && matchesAuctionFilters(a, filters, a.currentBid),
+    );
+    return out.sort(compareAuctions(filters.sortBy));
+  }, [activeList, q, filters]);
+
+  const filteredUpcoming = useMemo(
+    () =>
+      upcomingList.filter(
+        (u) =>
+          matchesQuery(u.listing.make, u.listing.model) &&
+          // Upcoming lots have no bids yet, so bid bounds can't apply to them —
+          // passing currentBid here would filter every upcoming auction out the
+          // moment a minimum bid was set.
+          matchesAuctionFilters(u.listing as any, { ...filters, minBid: '', maxBid: '' }),
+      ),
+    [upcomingList, q, filters],
+  );
 
   return (
     <View style={styles.container}>
@@ -224,6 +268,54 @@ export const LiveScreen: React.FC = () => {
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Ionicons name="close" size={16} color={Colors.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* ─── Filters ─────────────────────────────────────────────────
+            Web rebuilt the /auctions filter panel to match Buy Cars
+            (commit 5a99b5d0); this screen had only the text query above. */}
+        <View style={styles.filterRow}>
+          <TouchableOpacity
+            style={[styles.filterBtn, activeFilterCount > 0 && styles.filterBtnActive]}
+            onPress={() => setFilterSheetOpen(true)}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={
+              activeFilterCount > 0
+                ? `Filters, ${activeFilterCount} active`
+                : 'Filters'
+            }
+          >
+            <Ionicons
+              name="options-outline"
+              size={15}
+              color={activeFilterCount > 0 ? Colors.accent : Colors.textSecondary}
+            />
+            <Text
+              style={[styles.filterBtnText, activeFilterCount > 0 && styles.filterBtnTextActive]}
+            >
+              Filters
+            </Text>
+            {activeFilterCount > 0 && (
+              <View style={styles.filterCountBadge}>
+                <Text style={styles.filterCountText}>{activeFilterCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <Text style={styles.sortLabel} numberOfLines={1}>
+            {AUCTION_SORT_OPTIONS.find((o) => o.value === filters.sortBy)?.label}
+          </Text>
+
+          {activeFilterCount > 0 && (
+            <TouchableOpacity
+              onPress={() => setFilters({ ...INITIAL_AUCTION_FILTERS, sortBy: filters.sortBy })}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Clear all filters"
+            >
+              <Text style={styles.clearFiltersText}>Clear</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -523,11 +615,74 @@ export const LiveScreen: React.FC = () => {
         {/* Bottom spacing so last element clears the tab bar */}
         <View style={{ height: 120 }} />
       </ScrollView>
+
+      <AuctionFilterSheet
+        visible={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+        value={filters}
+        onApply={setFilters}
+        availableMakes={availableMakes}
+        resultCount={filteredActive.length + filteredUpcoming.length}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 12,
+  },
+  filterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.whiteAlpha04,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  filterBtnActive: {
+    backgroundColor: Colors.accentAlpha12,
+    borderColor: Colors.accent,
+  },
+  filterBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.textSecondary,
+  },
+  filterBtnTextActive: {
+    color: Colors.accent,
+  },
+  filterCountBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 5,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterCountText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: Colors.white,
+  },
+  sortLabel: {
+    flex: 1,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size11_5,
+    color: Colors.textMuted,
+  },
+  clearFiltersText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.accent,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,
