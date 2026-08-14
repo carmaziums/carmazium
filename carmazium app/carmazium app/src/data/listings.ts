@@ -54,7 +54,25 @@ export interface CarListing {
   monthlyPayment?: string;
   description?: string;
   features?: string[];
-  seller?: { id: string };
+  /**
+   * Richer seller detail. `seller` stayed `{ id }` for a long time, which is
+   * why the vehicle page could only ever show a name and a location — the
+   * backend has been returning the dealer's description, website, logo, active
+   * listing count and account age on every listing fetch, and all of it was
+   * dropped at the mapper.
+   */
+  seller?: {
+    id: string;
+    profileImage?: string | null;
+    memberSince?: string | null;
+    isVerifiedDealer?: boolean;
+    companyName?: string | null;
+    description?: string | null;
+    website?: string | null;
+    businessAddress?: string | null;
+    activeListings?: number | null;
+    reliabilityScore?: number | null;
+  };
   isDepartedSale?: boolean;
   // Auto-computed server-side from DamageRecord count on every damage save —
   // never seller-set, no mobile picker exists or should exist for this.

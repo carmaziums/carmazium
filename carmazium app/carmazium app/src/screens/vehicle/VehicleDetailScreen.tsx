@@ -1248,13 +1248,24 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
               <View style={styles.sellerInfo}>
                 <View style={styles.sellerNameRow}>
-                  <Text style={styles.sellerName}>{listing.dealer}</Text>
-                  <Ionicons name="checkmark-circle" size={15} color={Colors.infoBlue} style={styles.blueCheck} />
+                  <Text style={styles.sellerName} numberOfLines={1}>{listing.dealer}</Text>
+                  {/* This tick used to render unconditionally, so EVERY seller
+                      looked verified — the same fake-trust-chrome problem a
+                      previous audit removed elsewhere in the app. Now gated on
+                      real verification. */}
+                  {(listing.seller?.isVerifiedDealer || listing.isSellerVerified) && (
+                    <Ionicons name="checkmark-circle" size={15} color={Colors.infoBlue} style={styles.blueCheck} />
+                  )}
                 </View>
-                <Text style={styles.sellerSubtext}>
-                  {listing.location}
-                  {listing.rating != null ? ` · ${listing.rating} ★` : ''}
-                  {listing.totalSales != null ? ` (${listing.totalSales} sales)` : ''}
+                <Text style={styles.sellerSubtext} numberOfLines={1}>
+                  {[
+                    listing.location,
+                    listing.rating != null ? `${listing.rating} ★` : null,
+                    listing.seller?.activeListings != null
+                      ? `${listing.seller.activeListings} listing${listing.seller.activeListings === 1 ? '' : 's'}`
+                      : null,
+                    listing.totalSales != null ? `${listing.totalSales} sales` : null,
+                  ].filter(Boolean).join(' · ')}
                 </Text>
               </View>
               {sellerPhoneAvailable && sellerPhone && (
@@ -1286,6 +1297,61 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </TouchableOpacity>
               <Ionicons name="chevron-forward" size={18} color={Colors.textFaint} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
+
+            {/* Dealer detail — the backend returns the full dealerProfile on
+                every listing fetch, but mobile's mapper discarded everything
+                except the company name, so a dealership's own description of
+                itself and its website never reached a buyer. Only rendered
+                when the dealer actually filled the fields in. */}
+            {(listing.seller?.description || listing.seller?.website || listing.seller?.memberSince) && (
+              <View style={styles.dealerDetailCard}>
+                {!!listing.seller?.description && (
+                  <Text style={styles.dealerDescription} numberOfLines={5}>
+                    {listing.seller.description}
+                  </Text>
+                )}
+                <View style={styles.dealerMetaRow}>
+                  {!!listing.seller?.memberSince && (
+                    <View style={styles.dealerMetaItem}>
+                      <Ionicons name="calendar-outline" size={12} color={Colors.textMuted} />
+                      <Text style={styles.dealerMetaText}>
+                        Member since{' '}
+                        {new Date(listing.seller.memberSince).toLocaleDateString('en-GB', {
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </Text>
+                    </View>
+                  )}
+                  {!!listing.seller?.businessAddress && (
+                    <View style={styles.dealerMetaItem}>
+                      <Ionicons name="business-outline" size={12} color={Colors.textMuted} />
+                      <Text style={styles.dealerMetaText} numberOfLines={1}>
+                        {listing.seller.businessAddress}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                {!!listing.seller?.website && (
+                  <TouchableOpacity
+                    style={styles.dealerWebsiteBtn}
+                    activeOpacity={0.75}
+                    accessibilityRole="link"
+                    onPress={() => {
+                      const raw = listing.seller!.website!;
+                      // Dealers type these by hand and rarely include a scheme.
+                      Linking.openURL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+                    }}
+                  >
+                    <Ionicons name="globe-outline" size={13} color={Colors.accent} />
+                    <Text style={styles.dealerWebsiteText} numberOfLines={1}>
+                      {listing.seller.website.replace(/^https?:\/\//i, '')}
+                    </Text>
+                    <Ionicons name="open-outline" size={12} color={Colors.accent} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
 
           {/* Expandable Finance Calculator — Coming Soon */}
@@ -2357,6 +2423,54 @@ const styles = StyleSheet.create({
     color: Colors.warning,
   },
   // Seller Card
+  dealerDetailCard: {
+    marginTop: 10,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.card,
+    padding: 16,
+    gap: 12,
+  },
+  dealerDescription: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    lineHeight: 21,
+    color: Colors.textSecondary,
+  },
+  dealerMetaRow: {
+    gap: 8,
+  },
+  dealerMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  dealerMetaText: {
+    flex: 1,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size12,
+    color: Colors.textMuted,
+  },
+  dealerWebsiteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: Radius.inline,
+    backgroundColor: Colors.accentAlpha08,
+    borderWidth: 1,
+    borderColor: Colors.accentAlpha25,
+    maxWidth: '100%',
+  },
+  dealerWebsiteText: {
+    flexShrink: 1,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.accent,
+  },
   sellerCard: {
     flexDirection: 'row',
     alignItems: 'center',

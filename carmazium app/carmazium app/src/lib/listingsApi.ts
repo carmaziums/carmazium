@@ -34,8 +34,24 @@ export interface ApiListing {
     id: string;
     firstName?: string;
     lastName?: string;
-    dealerProfile?: { companyName?: string; logo?: string; isVerified?: boolean } | null;
-    sellerProfile?: { totalSales?: number } | null;
+    profileImage?: string | null;
+    /** Account creation date — backs the "member since" line. */
+    createdAt?: string | null;
+    // The backend returns the FULL dealerProfile on GET /listings/{id}
+    // (listings.service.ts:603 `dealerProfile: true`). Mobile previously
+    // declared only three of its fields, so the dealer's description, website
+    // and business address were discarded before they reached any screen.
+    dealerProfile?: {
+      companyName?: string;
+      logo?: string | null;
+      isVerified?: boolean;
+      description?: string | null;
+      website?: string | null;
+      businessAddress?: string | null;
+    } | null;
+    sellerProfile?: { totalSales?: number; reliabilityScore?: number } | null;
+    /** Active listing count — computed server-side (listings.service.ts:604-610). */
+    _count?: { listings?: number } | null;
   } | null;
   isDepartedSale?: boolean | null;
   exteriorGrade?: number | null;
@@ -232,7 +248,23 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
     isNew:        false,
     description:  l.description  ?? undefined,
     features:     l.features     ?? undefined,
-    seller:         l.seller?.id ? { id: l.seller.id } : undefined,
+    // Was `{ id }` only — every other field the backend sends about the seller
+    // was discarded here, which is why the vehicle page could show a name and
+    // a location and nothing else.
+    seller: l.seller?.id
+      ? {
+          id: l.seller.id,
+          profileImage: l.seller.profileImage ?? null,
+          memberSince: l.seller.createdAt ?? null,
+          isVerifiedDealer: l.seller.dealerProfile?.isVerified === true,
+          companyName: l.seller.dealerProfile?.companyName ?? null,
+          description: l.seller.dealerProfile?.description ?? null,
+          website: l.seller.dealerProfile?.website ?? null,
+          businessAddress: l.seller.dealerProfile?.businessAddress ?? null,
+          activeListings: l.seller._count?.listings ?? null,
+          reliabilityScore: l.seller.sellerProfile?.reliabilityScore ?? null,
+        }
+      : undefined,
     isDepartedSale: l.isDepartedSale  ?? false,
     exteriorGrade:  l.exteriorGrade   ?? null,
     importedFromUrl:  l.importedFromUrl  ?? null,
