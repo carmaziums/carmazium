@@ -151,15 +151,48 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
           }
           break;
 
+        // These four can each land on EITHER side of a deal depending on which
+        // code path fired them, so neither the type nor the reader's role is
+        // enough to route on. OFFER_ACCEPTED/REJECTED go to the buyer on the
+        // respond path (offers.service.ts:415-419) but to the SELLER on the
+        // respond-counter path (:764). OFFER_WITHDRAWN (:590) and DEAL_CLOSED
+        // (:466) always go to the seller. Routing these to BuyerOffers
+        // unconditionally, as before, sent a seller to a screen listing offers
+        // they had sent — never the offer the notification was about.
+        //
+        // The backend already sets the correct `link` on every one of them, so
+        // that's the discriminator: it says which side of the deal this
+        // notification belongs to, and role only decides which screen serves
+        // that side for this user.
         case 'OFFER_ACCEPTED':
         case 'OFFER_REJECTED':
         case 'OFFER_WITHDRAWN':
-          navigation?.navigate('BuyerOffers');
+        case 'DEAL_CLOSED': {
+          const isSentByMe = n.link?.includes('/buyer/');
+          if (isSentByMe) {
+            navigation?.navigate(role === 'dealer' ? 'DealerMyOffers' : 'BuyerOffers');
+          } else {
+            navigation?.navigate(role === 'dealer' ? 'DealerOffers' : 'SellerOffers');
+          }
+          break;
+        }
+
+        case 'KYC_APPROVED':
+        case 'KYC_REJECTED':
+          navigation?.navigate('DealerKYC');
           break;
 
-        case 'DEAL_CLOSED':
-          if (role === 'dealer') {
-            navigation?.navigate('DealerOffers');
+        case 'DELIVERY_REQUESTED':
+        case 'DELIVERY_ACCEPTED':
+        case 'DELIVERY_DECLINED':
+        case 'DELIVERY_EXPIRED':
+          // Same split as offers, and the backend sets `link` here too:
+          // DELIVERY_REQUESTED goes to the seller (delivery.service.ts:215),
+          // ACCEPTED/DECLINED/EXPIRED go to the buyer (:284, :329, and
+          // delivery-expiry.service.ts:53). None of these had a tap
+          // destination at all before.
+          if (n.link?.includes('/buyer/')) {
+            navigation?.navigate('BuyerDeliveryRequests');
           } else {
             navigation?.navigate('SellerOffers');
           }
