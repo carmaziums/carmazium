@@ -491,8 +491,9 @@ anything web protects.
 | P1 | Live-auction seller contact missing | **done** (`2b3aa480`) |
 | P1 | "Call Seller" on the buyer's won-auction list | **done** (`b1472f24`) |
 | P1 | Auction filter panel — web ported the full Buy Cars filter set to `/auctions`; mobile's `LiveScreen` had only a text query | **done** (`e798ba8e`) |
-| P2 | Marketing popup absent on mobile | outstanding |
-| P2 | How It Works / Terms not diffed against the web rewrites | outstanding |
+| P2 | Marketing popup absent on mobile | **won't build — see below** |
+| P2 | How It Works fee ledger ported | **done** (`d39104d1`) |
+| **P1** | Terms of Service badly out of date vs web's rewrite | **outstanding — see below** |
 
 ### Signup role — a divergence, not a defect
 
@@ -520,12 +521,43 @@ that historical data-sanitisation bug and bypassing the dealer KYC path.
 |---|---|---|
 | P1 | `SellerOffersScreen` never gated "Mark as Sold" on `listing.status` — the exact bug backend `11f96bf1` was fixing, fixed on the dealer screen but missed here | **done** (`2630c3c2`) |
 | P1 | No mobile equivalent of web's one-time location/postcode prompt for *existing* accounts missing a postcode | **done** (`b1472f24`) |
-| P2 | `notifStyle()` has no case for `AUCTION_WIN_EXPIRED` | outstanding |
-| P2 | Mobile self-caps photo uploads at 20 vs web's 100 (no server-side cap) | outstanding |
+| P2 | `notifStyle()` missing 10 emitted types, not just `AUCTION_WIN_EXPIRED` | **done** (`d39104d1`) |
+| P2 | Photo tracker measured against 20 (the recommendation) not 100 | **done** (`d39104d1`) |
 
 Auction re-review gating, payout tracking, chat room re-pointing, the chat
 `otherUser` fix and refund-failure tracking are all either server-side and
 transparent to mobile, or already consumed correctly.
+
+### Terms of Service — a bigger gap than P2, and not one to fix by hand
+
+Web rewrote its Terms in `8f54f6e9` and now carries **85 granular sections**
+(Definitions, CarMazium's Role, Seller Authority to Sell, £125 Auction Buyer
+Fee, Post-Auction Price Renegotiation, and so on). Mobile's `TermsScreen` still
+has **10 broad ones** ("User Responsibilities", "Selling & Auction Rules") and
+predates that rewrite entirely.
+
+This is legal copy, and mobile is presenting materially different terms from
+web for the same service. That is worth more than the P2 the audit assigned it.
+
+**Deliberately not fixed here.** The correct resolution is to port web's text
+*verbatim* — but that is ~1,000 lines of legal wording, and paraphrasing or
+mistranscribing any of it would be worse than the current known gap. It also
+warrants whoever owns the legal copy confirming the mobile presentation is
+acceptable, rather than an agent deciding. Flagged for that owner.
+
+### The marketing popup is not a mobile gap
+
+Web's `MarketingPopup` renders **only to signed-out users**
+(`src/components/features/MarketingPopup.tsx:25,55`), and the backend DTO says
+as much — "whether the popup shows to signed-out visitors".
+
+Mobile gates the entire app behind `isAuthenticated` in `RootNavigator`; there
+is no signed-out surface (`CONTEXT.md` §8 records guest browsing as a
+deliberate, deferred gap). Porting the popup would therefore build a component
+with no audience — it could never render.
+
+Closed as not-applicable rather than outstanding. If guest browsing is ever
+built, this comes back with it.
 
 ## Execution order and rationale
 
