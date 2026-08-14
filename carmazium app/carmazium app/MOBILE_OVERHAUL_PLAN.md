@@ -481,8 +481,18 @@ device in hand.
 
 ### Blocked / needs a decision
 
-- **Push notifications** need a backend `POST /users/push-token` route. Nothing
-  on the mobile side can make push work without it.
+- ~~Push notifications~~ — fixed (`f850c387`), and **no backend route was
+  needed after all**. The sender reads `user.preferences.expoPushToken`;
+  `preferences` is a JSON column and `PATCH /users/me` already shallow-merges
+  into it, so mobile writes the token through the existing endpoint and the
+  user's notification settings alongside it survive. Production backend
+  untouched.
+
+  Still required before it works in the wild: a **prebuild + fresh binary**
+  (app.json changed, so OTA won't pick it up), and **FCM credentials on the
+  Expo project** (`eas credentials`) — there's no `googleServicesFile` in
+  app.json and no `google-services.json` in the repo, so whether that was ever
+  set up could not be verified from this machine.
 - ~~Dealer KYC gate~~ — shipped (`e59d326c`); still wants the three-account
   on-device check described above.
 
