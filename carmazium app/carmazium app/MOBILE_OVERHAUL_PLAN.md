@@ -423,7 +423,7 @@ before release.
 |---|---|---|
 | ✅ | Phase 0 — four audits + this plan | done |
 | ✅ | Phase 1 — palette, type scale, radius/elevation/motion tokens | done (`a53234f5`) |
-| 🟡 | Phase 2 — primitives built, palette propagated, tab bar floated | atoms done (`c0ac98df`, `a938d5ac`); **screen sweep not started** |
+| 🟡 | Phase 2 — primitives, palette, tab bar, radius scale, Home sweep | atoms + tab bar + radius codemod done; **per-screen layout sweep still outstanding** |
 | 🟡 | Phase 3 — dealer | claim disproven; drawer fixed; **KYC gate deliberately not shipped** |
 | 🟡 | Phase 4 — navigation | 2 wrong destinations + 5 dead screens fixed (`3f172026`); journey traces not re-run |
 | ⬜ | Phase 5 — missing surfaces | not started |
@@ -445,6 +445,28 @@ Ordered by how much damage a wrong guess would do:
    in tight rows.
 5. **Notification tap destinations** — the offer/delivery routing now keys off
    the notification's `link`. Worth testing one real notification per type.
+
+### The three systemic inconsistencies — all now closed
+
+The same failure mode showed up in three places, and all three are fixed at the
+token level rather than screen by screen:
+
+| | Before | After |
+|---|---|---|
+| Colour | ~150 one-off tokens, 16 near-identical darks | one palette + deprecated aliases |
+| Type | 14 arbitrary sizes carrying most of the app's text | one semantic scale |
+| Radius | 16 different corner radii over 575 sites | `inline` / `card` / `sheet` on 394 surfaces |
+
+The 142 circular elements were deliberately excluded from the radius pass —
+snapping a 32×32 avatar's radius from 16 to 18 turns a circle into a lozenge,
+which would be a bug rather than a restyle.
+
+**What's genuinely left in Phase 2** is per-screen *layout* work — applying the
+kit's designed compositions (`screens-vehicle.jsx`, `screens-auction.jsx`,
+`screens-sell.jsx`, `screens-dealer-dashboard.jsx`, `screens-empty-states.jsx`)
+to the corresponding screens, plus the chamfered `Button`/`PrimaryCTA`. That is
+judgement work per screen, not a codemod, and it is the part that most wants a
+device in hand.
 
 ### Blocked / needs a decision
 
