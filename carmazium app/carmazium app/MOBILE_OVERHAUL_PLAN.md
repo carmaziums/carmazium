@@ -223,19 +223,62 @@ already logged in `CONTEXT.md` §8.
 
 ## Phase 3 — Dealer dashboard parity
 
-Driven by `.parity/02-dealer-parity-audit.md`. Priority order:
+### The "hallucinated data" claim did not hold up
 
-- **P0 — fabricated data.** Any dealer screen presenting invented metrics as
-  real gets fixed first: wire to the backing endpoint, or remove the surface.
-  Showing a dealer false business numbers is the worst defect class in this app.
-- **P1 — missing/broken capability.** Web dealer routes with no mobile
-  counterpart, and actions the backend rejects.
-- **P1 — business-rule gating.** KYC/verification/tier/team-seat gates that web
-  enforces and mobile doesn't.
-- **P2 — field-level divergence and cosmetics**, folded into the Phase 2 sweep.
+This needs saying plainly, because it changes what Phase 3 should be.
 
-The backend controllers under `backend/src/` are the arbiter throughout — no
-field or endpoint gets used without confirming it exists.
+All 11 dealer screens were read in full and every displayed number, chart
+series, list and status chip traced to its source, cross-checked against the
+real NestJS services (`dealers.service.ts`, `dashboard.controller.ts`,
+`listings.controller.ts`, `offers.controller.ts`, `finance.controller.ts`,
+`users.controller.ts`, plus the DTOs). See `.parity/02-dealer-parity-audit.md`
+for the provenance table.
+
+**No fabricated data was found.** Every metric hits a real endpoint backed by a
+real Prisma query. `DealerAnalyticsScreen`'s 13 KPIs, trends, funnel and chart
+series are all computed server-side from live `Sale`/`Listing`/`Lead`/`Offer`
+aggregates. A grep for `mock|dummy|sample|placeholder|fake|Math.random` across
+all 11 files returned nothing but legitimate `TextInput` placeholder props.
+Every checked POST/PATCH body matches its DTO's whitelisted fields, so there's
+no `forbidNonWhitelisted` 400 risk either.
+
+Two places where mobile is in fact *more* accurate than web:
+
+- `DealerFinanceScreen` deliberately avoided copying web's `FUNDED`/`REVIEWING`
+  statuses, which don't exist in the schema — the code comments say so.
+- `DealerOffersScreen.tsx:536-562` gates "Mark as Sold" on
+  `listing?.status !== 'SOLD'`. Web's equivalent page has no such check and
+  still offers the action on an already-sold listing.
+
+So what the dealer experience is actually suffering from is **navigation and
+gating**, not invented numbers — which is consistent with the client's third
+complaint rather than the second. That reframes Phase 3:
+
+### What Phase 3 should actually be
+
+- **P1 — dealer screens were unreachable.** `DealerEarnings` and `DealerFinance`
+  were the only two dealer features missing from the drawer. **Done** — see
+  Phase 4.
+- **P1 — no KYC/verification gate.** Web hard-gates every `/dashboard/dealer/*`
+  route behind KYC verification, a skipped-KYC wall, and a phone gate. Mobile
+  registers every `Dealer*` screen bare. An unverified dealer-role user can
+  reach the full dealer suite.
+
+  **Not done, deliberately.** This is an access-control wall: if mobile's
+  `isVerified` semantics differ at all from web's `isVerifiedDealer`, shipping
+  it blind locks every dealer out of the app. It needs the exact gating field
+  confirmed against a real dealer account and an on-device check — neither of
+  which is possible on this machine. It is the first thing to do on the build
+  machine.
+- **P1 — missing dedicated routes.** Web has `add-listing` and `put-on-auction`
+  as dealer routes; mobile reuses `SellCarFlow` and the seller auction flow.
+  Confirm that reuse is intentional (it's plausible and may be fine) rather than
+  a gap.
+- **P2 — field-level divergence.** The audit spot-checked rather than
+  exhaustively diffed CRM Kanban columns, team role enums, and inventory
+  filters. Worth one narrow follow-up pass, folded into the Phase 2 sweep.
+
+The backend controllers under `backend/src/` remain the arbiter throughout.
 
 ---
 
@@ -368,6 +411,47 @@ the perf list is a floor, not a ceiling.
   and preference-toggle mapping to real backend fields.
 
 ---
+
+## Status — 2026-08-14
+
+Branch: `mobile-overhaul-2026-08`. Every commit below is `tsc --noEmit` clean.
+**Nothing here has been seen running.** This machine has no Android SDK
+(`CONTEXT.md` §4), so all of it needs an on-device pass on the build machine
+before release.
+
+| | Work | State |
+|---|---|---|
+| ✅ | Phase 0 — four audits + this plan | done |
+| ✅ | Phase 1 — palette, type scale, radius/elevation/motion tokens | done (`a53234f5`) |
+| 🟡 | Phase 2 — primitives built, palette propagated, tab bar floated | atoms done (`c0ac98df`, `a938d5ac`); **screen sweep not started** |
+| 🟡 | Phase 3 — dealer | claim disproven; drawer fixed; **KYC gate deliberately not shipped** |
+| 🟡 | Phase 4 — navigation | 2 wrong destinations + 5 dead screens fixed (`3f172026`); journey traces not re-run |
+| ⬜ | Phase 5 — missing surfaces | not started |
+| 🟡 | Phase 6 — perf + notifications | notification routing fixed (`a1c5537f`); **push still dead**; perf not started |
+
+### Verify these first on the build machine
+
+Ordered by how much damage a wrong guess would do:
+
+1. **The tab bar floats now.** If any screen's bottom content padding assumed
+   the old edge-to-edge bar, content will sit wrong. Most likely regression in
+   this batch.
+2. **The brand red changed** to `#FF0037`. Confirm the client wants it before it
+   goes further than this branch.
+3. **Deprecated colour aliases** collapsed ~150 shades onto a handful. Surfaces
+   that relied on two near-identical darks reading as distinct will now match.
+   Intended, but worth a look on dense dealer screens.
+4. **Font sizes moved** up to 2px on the aliased scale. Check for clipped labels
+   in tight rows.
+5. **Notification tap destinations** — the offer/delivery routing now keys off
+   the notification's `link`. Worth testing one real notification per type.
+
+### Blocked / needs a decision
+
+- **Push notifications** need a backend `POST /users/push-token` route. Nothing
+  on the mobile side can make push work without it.
+- **Dealer KYC gate** needs the real gating field confirmed against a live
+  dealer account before it's safe to ship.
 
 ## Execution order and rationale
 
