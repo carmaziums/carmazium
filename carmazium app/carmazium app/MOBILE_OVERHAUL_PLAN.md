@@ -84,11 +84,9 @@ Commit `9d7ffa98` recorded a client constraint of "no new colours, commit to the
 web app's existing palette" — but that predates this design system, which is the
 newer and more specific artefact and explicitly labels `#ED1C24` as *old*.
 
-**Decision taken:** adopt `#FF0037` on mobile, since the design system is the
-client's own brief and states it as a hard rule. This is a **single token
-change** and trivially reversible — if the client wants `#ED1C24` retained,
-flip one value in `colors.ts`. Called out here so it is a visible choice rather
-than a silent one. Web is **not** being changed as part of this work.
+**Decision taken and since CONFIRMED by the client (2026-08-14):** `#FF0037` on
+mobile. Web is **not** changed as part of this work, so the two platforms now
+intentionally differ on the accent red until web adopts the design system too.
 
 Similarly, the mobile kit specifies a deeper mobile-specific background
 (`#0a0d14` body / `#13182a` elevated) rather than web's `#0f172a`. Adopted —
@@ -264,12 +262,25 @@ complaint rather than the second. That reframes Phase 3:
   registers every `Dealer*` screen bare. An unverified dealer-role user can
   reach the full dealer suite.
 
-  **Not done, deliberately.** This is an access-control wall: if mobile's
-  `isVerified` semantics differ at all from web's `isVerifiedDealer`, shipping
-  it blind locks every dealer out of the app. It needs the exact gating field
-  confirmed against a real dealer account and an on-device check — neither of
-  which is possible on this machine. It is the first thing to do on the build
-  machine.
+  **Done** (`e59d326c`), on instruction. The lock-out risk was handled rather
+  than ignored:
+
+  - **Staff members pass.** Someone who works for a verified dealership has no
+    `dealerProfile` of their own, so their own `isVerified` is false — gating on
+    it alone would have barred every employee of every verified dealer. Web uses
+    `dealerProfile.isVerified || isStaffMember`; the backend has been returning
+    `dealerStaffMemberships` (active only) on `/users/me` all along and mobile
+    simply never read it. Now surfaced as `user.isDealerStaff`.
+  - **The wall is always escapable** — Start KYC, or back to browsing.
+  - Scope is the nine dealer *feature* screens. `DealerKYC` and
+    `DealerOnboarding` stay open (they are how you get verified), and so does
+    the dealer profile tab: web gates its dealer overview, but on mobile that
+    screen is a bottom-tab destination *and* the route to KYC, so walling it
+    risks stranding the user in their own profile tab.
+
+  **Still wants an on-device pass** with three accounts — verified dealer,
+  unverified dealer, and staff on a verified dealership — because the failure
+  mode is locking out a real user.
 - **P1 — missing dedicated routes.** Web has `add-listing` and `put-on-auction`
   as dealer routes; mobile reuses `SellCarFlow` and the seller auction flow.
   Confirm that reuse is intentional (it's plausible and may be fine) rather than
@@ -472,8 +483,8 @@ device in hand.
 
 - **Push notifications** need a backend `POST /users/push-token` route. Nothing
   on the mobile side can make push work without it.
-- **Dealer KYC gate** needs the real gating field confirmed against a live
-  dealer account before it's safe to ship.
+- ~~Dealer KYC gate~~ — shipped (`e59d326c`); still wants the three-account
+  on-device check described above.
 
 ## Phase 7 — Web visual drift (`.parity/05-web-visual-drift.md`)
 
