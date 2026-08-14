@@ -81,7 +81,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",
-          "color": "#DC1F26",
+          "color": "#FF0037",
           "sounds": [],
           "androidMode": "default",
           "androidCollapsedTitle": "Carmazium"

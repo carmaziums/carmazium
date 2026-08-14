@@ -19,7 +19,7 @@ import { LocationProvider } from './src/context/LocationContext';
 import { useAuthStore } from './src/store/authStore';
 import { supabase } from './src/lib/supabase';
 import * as Notifications from 'expo-notifications';
-import { addNotificationListeners } from './src/lib/pushNotifications';
+import { addNotificationListeners, registerForPushNotifications } from './src/lib/pushNotifications';
 import { navigationRef } from './src/lib/navigationRef';
 
 import { SplashScreen as AppSplashScreen } from './src/screens/loading/SplashScreen';
@@ -141,6 +141,24 @@ export default function App() {
 
     return cleanup;
   }, []);
+
+  // Register this device for push once the user is authenticated.
+  //
+  // registerForPushNotifications() was fully implemented but never called from
+  // anywhere in the app, so no device was ever registered and no user has ever
+  // received a push. It has to run after auth because the token is stored on
+  // the user's profile — before sign-in there is nobody to store it against.
+  //
+  // Keyed on the user id so switching accounts on one device re-registers the
+  // token against the account that's now signed in, rather than leaving the
+  // previous user's profile holding this device's token.
+  const authedUserId = useAuthStore((s) => (s.isAuthenticated ? s.user?.id : undefined));
+  useEffect(() => {
+    if (!authedUserId) return;
+    // Fire-and-forget: it already swallows its own failures, and a failed
+    // registration must never block the app from starting.
+    registerForPushNotifications(authedUserId);
+  }, [authedUserId]);
 
   const [fontsLoaded] = useFonts({
     'Inter_400Regular': require('@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf'),

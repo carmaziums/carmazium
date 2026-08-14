@@ -39,22 +39,30 @@ export async function registerForPushNotifications(userId: string): Promise<stri
 
   // Android needs an explicit notification channel
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'Default',
+    // Channel IDs MUST match what the backend sends as `channelId`
+    // (notifications.service.ts getChannelId): carmazium-default,
+    // carmazium-bids, carmazium-messages. These were previously registered as
+    // 'default'/'auctions'/'offers', so every push the backend sent named a
+    // channel that didn't exist on the device — on Android 8+ a notification
+    // with an unregistered channel is unreliable at best. Renaming here rather
+    // than in the backend: the backend is shared with web and in production,
+    // and the device side is the one that was wrong.
+    await Notifications.setNotificationChannelAsync('carmazium-default', {
+      name: 'General',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: Colors.accent,
       sound: 'default',
     });
-    await Notifications.setNotificationChannelAsync('auctions', {
-      name: 'Auction alerts',
+    await Notifications.setNotificationChannelAsync('carmazium-bids', {
+      name: 'Auction & bid alerts',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: Colors.accent,
       sound: 'default',
     });
-    await Notifications.setNotificationChannelAsync('offers', {
-      name: 'Offer updates',
+    await Notifications.setNotificationChannelAsync('carmazium-messages', {
+      name: 'Messages & offers',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: Colors.accent,
@@ -84,15 +92,23 @@ export async function registerForPushNotifications(userId: string): Promise<stri
     );
     const token = tokenData.data;
 
-    // Persist token to backend — routed through apiClient (not raw fetch) so this
-    // stays in sync with any future change to how apiClient attaches/refreshes
-    // auth (mobile-audit.md P7).
-    await apiClient('/users/push-token', {
-      method: 'POST',
-      body: JSON.stringify({ userId, token, platform: Platform.OS }),
-    }).catch(() => {
-      // Non-fatal — token will be registered on next launch
-    });
+    // Persist the token where the sender actually looks for it.
+    //
+    // This used to POST /users/push-token, which does not exist on the backend
+    // — so the call 404'd, the token was never stored, and no push could ever
+    // be delivered. There is no need for a dedicated route: the sender reads
+    // `user.preferences.expoPushToken` (notifications.service.ts), preferences
+    // is a JSON column, and PATCH /users/me already shallow-merges into it —
+    // so writing just this key preserves the user's notification settings
+    // sitting alongside it.
+    //
+    // Routed through apiClient (not raw fetch) so it stays in sync with any
+    // future change to how apiClient attaches/refreshes auth (mobile-audit.md
+    // P7). Failure is non-fatal — re-registration happens on next launch.
+    await apiClient('/users/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ preferences: { expoPushToken: token } }),
+    }).catch(() => {});
 
     return token;
   } catch {
