@@ -1362,9 +1362,9 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                 <div className="flex items-center gap-2.5">
                     {(() => {
                         const sellerPhone = listing.seller?.role === 'DEALER' ? listing.seller.dealerProfile?.phone : listing.seller?.phone
-                        const sellerName = (listing.seller?.role === 'DEALER' ? listing.seller.dealerProfile?.companyName : null)
-                            || `${listing.seller?.firstName || ''} ${listing.seller?.lastName || ''}`.trim()
-                            || 'Private Seller'
+                        // No phone on file (or withheld from this viewer) — don't show a
+                        // button that looks like it calls but actually opens chat. Enquire
+                        // below is the only contact option in that case.
                         return sellerPhone ? (
                             <a
                                 href={`tel:${sellerPhone}`}
@@ -1373,26 +1373,28 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                 <Phone size={16} className="shrink-0" />
                                 <span className="truncate">{sellerPhone}</span>
                             </a>
-                        ) : (
-                            <button
-                                type="button"
+                        ) : null
+                    })()}
+                    {(() => {
+                        const sellerPhone = listing.seller?.role === 'DEALER' ? listing.seller.dealerProfile?.phone : listing.seller?.phone
+                        return (
+                            <Button
+                                variant={sellerPhone ? "outline" : undefined}
+                                size={sellerPhone ? "icon" : undefined}
+                                shape={sellerPhone ? undefined : "square"}
+                                className={
+                                    sellerPhone
+                                        ? "h-11 w-11 shrink-0 border-white/20 text-gray-300"
+                                        : "flex-1 min-w-0 h-11 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm normal-case tracking-normal"
+                                }
                                 onClick={handleEnquire}
-                                className="flex-1 min-w-0 flex items-center justify-center gap-2 h-11 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors"
+                                title="Enquire"
                             >
-                                <Phone size={16} className="shrink-0" />
-                                <span className="truncate">{sellerName}</span>
-                            </button>
+                                <MessageCircle size={18} />
+                                {!sellerPhone && <span className="ml-2">Enquire</span>}
+                            </Button>
                         )
                     })()}
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-11 w-11 shrink-0 border-white/20 text-gray-300"
-                        onClick={handleEnquire}
-                        title="Enquire"
-                    >
-                        <MessageCircle size={18} />
-                    </Button>
                     <Button
                         variant="outline"
                         size="icon"
