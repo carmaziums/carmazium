@@ -1,10 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { MessageSquare, Send, Loader2, ArrowLeft, User, Check } from "lucide-react"
+import { MessageSquare, Send, Loader2, ArrowLeft, User, Check, Zap } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import Image from "next/image"
 import { useChat } from "@/context/ChatContext"
+import { useAuth } from "@/context/AuthContext"
 import { getChatMessages, sendChatMessage, markMessagesAsRead, getChatDisplayName, isSupportUser, type ChatMessage, type ChatRoom } from "@/lib/chatApi"
 
 interface ChatWindowProps {
@@ -12,12 +13,24 @@ interface ChatWindowProps {
     onBack?: () => void
 }
 
+// Common replies for the admin fielding support conversations — inserted
+// into the input for a quick edit before sending, never sent unreviewed.
+const ADMIN_QUICK_REPLIES = [
+    { label: "On it", text: "Thanks for reaching out — we're looking into this now." },
+    { label: "Need details", text: "Could you share the listing or order this is about?" },
+    { label: "Resolved", text: "This has been resolved on our end — let us know if anything's still not right!" },
+    { label: "Escalated", text: "We've escalated this internally and will follow up as soon as we hear back." },
+    { label: "Sign-off", text: "Happy to help — anything else I can do for you?" },
+]
+
 /**
  * Real-time chat window component
  * Displays messages and handles sending new messages
  */
 export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const { sendMessage, onNewMessage, onTyping, markAsRead, isConnected, onlineUserIds } = useChat()
+    const { profile } = useAuth()
+    const isAdminViewer = profile?.role === 'ADMIN'
     const otherUserOnline = room.otherUser ? onlineUserIds.has(room.otherUser.id) : false
     const [messages, setMessages] = React.useState<ChatMessage[]>([])
     const [newMessage, setNewMessage] = React.useState("")
@@ -26,6 +39,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const [isTyping, setIsTyping] = React.useState(false)
     const messagesEndRef = React.useRef<HTMLDivElement>(null)
     const messagesContainerRef = React.useRef<HTMLDivElement>(null)
+    const inputRef = React.useRef<HTMLInputElement>(null)
     const typingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
     const isInitialLoad = React.useRef(true)
     // Track the optimistic temp message ID so we can replace it when the server confirms
@@ -116,6 +130,11 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         })
         return unsubscribe
     }, [room.id, room.otherUser?.id, onTyping])
+
+    const insertQuickReply = (text: string) => {
+        setNewMessage(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))
+        inputRef.current?.focus()
+    }
 
     const handleSend = async () => {
         if (!newMessage.trim()) return
@@ -264,8 +283,8 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         <p className="font-semibold text-[var(--text-secondary)]">
                             {isSupportUser(room.otherUser) ? 'Ask CarMazium anything' : 'No messages yet'}
                         </p>
-                        <p className="text-sm mt-0.5">
-                            {isSupportUser(room.otherUser) ? "We'll get back to you as soon as we can" : 'Send a message to start the conversation'}
+                        <p className="text-sm mt-0.5 max-w-xs mx-auto">
+                            {isSupportUser(room.otherUser) ? 'We typically respond within 12–24 hours' : 'Send a message to start the conversation'}
                         </p>
                     </div>
                 ) : (
@@ -323,9 +342,25 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-[var(--border-default)]">
-                <div className="flex gap-2 items-end">
+            <div className="border-t border-[var(--border-default)]">
+                {isAdminViewer && (
+                    <div className="flex items-center gap-1.5 px-4 pt-3 overflow-x-auto scrollbar-hide">
+                        <Zap size={12} className="text-[var(--text-muted)] shrink-0" />
+                        {ADMIN_QUICK_REPLIES.map((qr) => (
+                            <button
+                                key={qr.label}
+                                type="button"
+                                onClick={() => insertQuickReply(qr.text)}
+                                className="shrink-0 text-xs font-semibold text-[var(--text-secondary)] bg-[var(--bg-input)] border border-[var(--border-default)] rounded-full px-3 py-1.5 hover:border-primary/40 hover:text-primary transition-colors whitespace-nowrap"
+                            >
+                                {qr.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                <div className="flex gap-2 items-end p-4">
                     <input
+                        ref={inputRef}
                         type="text"
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}

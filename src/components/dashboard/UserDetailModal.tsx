@@ -6,7 +6,7 @@ import Link from "next/link"
 import {
     X, Loader2, Mail, ShieldCheck, Ban, LockKeyhole,
     LockKeyholeOpen, Building2, FileText, ExternalLink, Star, Car, Receipt, CreditCard, BadgeCheck,
-    AlertTriangle, Download,
+    AlertTriangle, Download, MessageCircle,
 } from "lucide-react"
 import { getAdminUserDetail, banUser, unbanUser, lockUser, unlockUser } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
@@ -219,7 +219,7 @@ async function exportUserDetailPdf(detail: any) {
     doc.save(`carmazium-user-${safeName}-${Date.now()}.pdf`)
 }
 
-export function UserDetailModal({ userId, onClose, onChanged }: { userId: string | null; onClose: () => void; onChanged?: () => void }) {
+export function UserDetailModal({ userId, onClose, onChanged, onMessage }: { userId: string | null; onClose: () => void; onChanged?: () => void; onMessage?: (userId: string) => void }) {
     const [detail, setDetail] = React.useState<any | null>(null)
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
@@ -313,6 +313,14 @@ export function UserDetailModal({ userId, onClose, onChanged }: { userId: string
                             </div>
 
                             {/* Admin actions */}
+                            {onMessage && (
+                                <button
+                                    onClick={() => onMessage(userId)}
+                                    className="w-full mb-2 px-3 py-2.5 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-bold uppercase tracking-widest hover:bg-primary/20 transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                    <MessageCircle size={13} /> Message {name.split(" ")[0]}
+                                </button>
+                            )}
                             <div className="flex gap-2 mb-4">
                                 {detail.deletedAt ? (
                                     <button disabled={acting} onClick={() => handleAction("unban")} className="flex-1 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-widest hover:bg-emerald-500/20 disabled:opacity-50 cursor-pointer">Unban</button>

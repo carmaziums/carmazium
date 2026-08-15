@@ -435,7 +435,7 @@ export default function AdminUsersPage() {
                     </div>
                 </main>
             </div>
-            <UserDetailModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} onChanged={fetchUsers} />
+            <UserDetailModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} onChanged={fetchUsers} onMessage={handleMessageUser} />
         </div>
     )
 }
