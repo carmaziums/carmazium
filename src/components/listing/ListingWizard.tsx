@@ -286,6 +286,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     const [currentStep, setCurrentStep] = React.useState(1)
     const [formData, setFormData] = React.useState<FormData>(INITIAL_FORM)
+    // Tracks "the user explicitly chose Other" independently of whether the
+    // field has anything typed in it yet — deriving that purely from the
+    // field being non-empty meant picking Other (which resets the field to
+    // "") made the custom input immediately un-render itself, so "Other"
+    // silently did nothing and the dropdown snapped back to the placeholder.
+    const [manualMakeEntry, setManualMakeEntry] = React.useState(false)
+    const [manualModelEntry, setManualModelEntry] = React.useState(false)
+    const [manualVariantEntry, setManualVariantEntry] = React.useState(false)
     const [sellingMethod, setSellingMethod] = React.useState<"list" | null>(null)
     const [showLoginModal, setShowLoginModal] = React.useState(false)
     const [pendingReview, setPendingReview] = React.useState<{ title: string; onContinue: () => void } | null>(null)
@@ -1453,16 +1461,21 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     {(() => {
                                         // Case-insensitive match — DVLA returns uppercase (e.g. "TOYOTA")
                                         const matchedMake = CAR_MAKES.find(m => m.toLowerCase() === formData.make.trim().toLowerCase())
-                                        const isCustomMake = formData.make.trim() !== "" && !matchedMake
+                                        const isCustomMake = manualMakeEntry || (formData.make.trim() !== "" && !matchedMake)
                                         const selectValue = matchedMake ?? (isCustomMake ? "__other__" : "")
                                         return (
                                             <>
                                                 <select
                                                     value={selectValue}
                                                     onChange={(e) => {
-                                                        if (e.target.value === "__other__") { set("make", ""); set("model", ""); set("variant", "") }
-                                                        // Store canonical casing from CAR_MAKES
-                                                        else { set("make", e.target.value); set("model", ""); set("variant", "") }
+                                                        if (e.target.value === "__other__") {
+                                                            setManualMakeEntry(true); setManualModelEntry(false); setManualVariantEntry(false)
+                                                            set("make", ""); set("model", ""); set("variant", "")
+                                                        } else {
+                                                            // Store canonical casing from CAR_MAKES
+                                                            setManualMakeEntry(false); setManualModelEntry(false); setManualVariantEntry(false)
+                                                            set("make", e.target.value); set("model", ""); set("variant", "")
+                                                        }
                                                     }}
                                                     className="w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-[var(--border-default)]"
                                                 >
@@ -1472,7 +1485,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 </select>
                                                 {isCustomMake && (
                                                     <Input placeholder="e.g. BMW" value={formData.make}
-                                                        onChange={(e) => { set("make", e.target.value); set("model", ""); set("variant", "") }} className={inputCls} />
+                                                        onChange={(e) => {
+                                                            setManualModelEntry(false); setManualVariantEntry(false)
+                                                            set("make", e.target.value); set("model", ""); set("variant", "")
+                                                        }} className={inputCls} />
                                                 )}
                                             </>
                                         )
@@ -1488,13 +1504,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             return (
                                                 <>
                                                     <Input placeholder="e.g. M4 Competition" value={formData.model}
-                                                        onChange={(e) => { set("model", e.target.value); set("variant", "") }} className={`${inputCls} ${modelMissing ? 'border-red-500' : ''}`} />
+                                                        onChange={(e) => {
+                                                            setManualVariantEntry(false)
+                                                            set("model", e.target.value); set("variant", "")
+                                                        }} className={`${inputCls} ${modelMissing ? 'border-red-500' : ''}`} />
                                                     {modelMissing && <p className="text-xs text-red-400">Model is required.</p>}
                                                 </>
                                             )
                                         }
                                         const matchedModel = models.find(m => m.toLowerCase() === formData.model.trim().toLowerCase())
-                                        const isCustomModel = formData.model.trim() !== "" && !matchedModel
+                                        const isCustomModel = manualModelEntry || (formData.model.trim() !== "" && !matchedModel)
                                         const selectValue = matchedModel ?? (isCustomModel ? "__other__" : "")
                                         const modelMissing = hasAttemptedNext && !formData.model
                                         return (
@@ -1502,8 +1521,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 <select
                                                     value={selectValue}
                                                     onChange={(e) => {
-                                                        if (e.target.value === "__other__") { set("model", ""); set("variant", "") }
-                                                        else { set("model", e.target.value); set("variant", "") }
+                                                        if (e.target.value === "__other__") {
+                                                            setManualModelEntry(true); setManualVariantEntry(false)
+                                                            set("model", ""); set("variant", "")
+                                                        } else {
+                                                            setManualModelEntry(false); setManualVariantEntry(false)
+                                                            set("model", e.target.value); set("variant", "")
+                                                        }
                                                     }}
                                                     className={`w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${modelMissing ? 'border-red-500' : 'border-[var(--border-default)]'}`}
                                                 >
@@ -1513,7 +1537,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 </select>
                                                 {isCustomModel && (
                                                     <Input placeholder="e.g. M4 Competition" value={formData.model}
-                                                        onChange={(e) => { set("model", e.target.value); set("variant", "") }} className={`${inputCls} ${modelMissing ? 'border-red-500' : ''}`} />
+                                                        onChange={(e) => {
+                                                            setManualVariantEntry(false)
+                                                            set("model", e.target.value); set("variant", "")
+                                                        }} className={`${inputCls} ${modelMissing ? 'border-red-500' : ''}`} />
                                                 )}
                                                 {modelMissing && <p className="text-xs text-red-400">Model is required.</p>}
                                             </>
@@ -1544,15 +1571,15 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 )
                                             }
                                             const matchedVariant = knownVariants.find(v => v.toLowerCase() === formData.variant.trim().toLowerCase())
-                                            const isCustom = formData.variant.trim() !== "" && !matchedVariant
+                                            const isCustom = manualVariantEntry || (formData.variant.trim() !== "" && !matchedVariant)
                                             const selectValue = matchedVariant ?? (isCustom ? "__other__" : "")
                                             return (
                                                 <>
                                                     <select
                                                         value={selectValue}
                                                         onChange={(e) => {
-                                                            if (e.target.value === "__other__") { set("variant", "") }
-                                                            else { set("variant", e.target.value) }
+                                                            if (e.target.value === "__other__") { setManualVariantEntry(true); set("variant", "") }
+                                                            else { setManualVariantEntry(false); set("variant", e.target.value) }
                                                         }}
                                                         className="w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-[var(--border-default)]"
                                                     >
