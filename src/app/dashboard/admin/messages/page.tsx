@@ -8,16 +8,23 @@ import dynamic from "next/dynamic"
 const ChatWindow = dynamic(() => import("@/components/chat/ChatWindow").then(mod => mod.ChatWindow), { ssr: false })
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import type { ChatRoom } from "@/lib/chatApi"
 
-function ServiceMessagesContent() {
+function AdminMessagesContent() {
     const { user, profile, loading } = useAuth()
     const { rooms, refreshRooms } = useChat()
     const searchParams = useSearchParams()
+    const router = useRouter()
     const targetRoomId = searchParams.get("room")
     const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null)
     const autoSelectedRef = React.useRef(false)
+
+    React.useEffect(() => {
+        if (loading) return
+        if (!user) { router.replace('/auth/login'); return }
+        if (profile?.role !== 'ADMIN') { router.replace('/dashboard'); return }
+    }, [user, profile, loading, router])
 
     React.useEffect(() => {
         if (!user) return
@@ -43,18 +50,23 @@ function ServiceMessagesContent() {
         )
     }
 
-    const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
+    if (!user || profile?.role !== 'ADMIN') return null
+
+    const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "Admin")
 
     return (
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
-                <DashboardSidebar role="provider" userName={userName} userType={profile?.role ? `${profile.role} Account` : "Service Provider"} />
+                <DashboardSidebar role="admin" userName={userName} userType="Admin Account" />
 
                 <main className="flex-1">
                     <div className="glass-card overflow-hidden h-[calc(100vh-180px)]">
                         <div className="p-6 border-b border-[var(--border-default)] flex items-center gap-3">
                             <MessageSquare className="text-primary" />
                             <h2 className="text-xl font-bold font-heading">Messages</h2>
+                            <span className="text-xs text-[var(--text-muted)] ml-1">
+                                Conversations show as &ldquo;CarMazium&rdquo; to the user on the other end
+                            </span>
                         </div>
 
                         <div className="flex h-[calc(100%-80px)]">
@@ -77,7 +89,10 @@ function ServiceMessagesContent() {
                                     <div className="text-center text-[var(--text-muted)]">
                                         <MessageSquare className="w-16 h-16 mx-auto mb-4 opacity-30" />
                                         <p className="text-lg">Select a conversation</p>
-                                        <p className="text-sm mt-1">Choose from your existing conversations</p>
+                                        <p className="text-sm mt-1">
+                                            Or message a user directly from{" "}
+                                            <a href="/dashboard/admin/users" className="text-primary hover:underline">Accounts</a>
+                                        </p>
                                     </div>
                                 )}
                             </div>
@@ -89,14 +104,14 @@ function ServiceMessagesContent() {
     )
 }
 
-export default function ServiceMessagesPage() {
+export default function AdminMessagesPage() {
     return (
         <React.Suspense fallback={
             <div className="min-h-screen flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
             </div>
         }>
-            <ServiceMessagesContent />
+            <AdminMessagesContent />
         </React.Suspense>
     )
 }

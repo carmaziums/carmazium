@@ -1,11 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { MessageSquare, Send, Loader2, ArrowLeft, User } from "lucide-react"
+import { MessageSquare, Send, Loader2, ArrowLeft, User, BadgeCheck } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import Image from "next/image"
 import { useChat } from "@/context/ChatContext"
-import { getChatMessages, sendChatMessage, markMessagesAsRead, type ChatMessage, type ChatRoom } from "@/lib/chatApi"
+import { getChatMessages, sendChatMessage, markMessagesAsRead, getChatDisplayName, isSupportUser, type ChatMessage, type ChatRoom } from "@/lib/chatApi"
 
 interface ChatWindowProps {
     room: ChatRoom
@@ -209,16 +209,19 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         <ArrowLeft size={20} />
                     </button>
                 )}
-                <div className="relative w-10 h-10 rounded-full bg-[var(--bg-card)] flex items-center justify-center overflow-hidden">
-                    {room.otherUser?.profileImage ? (
+                <div className={`relative w-10 h-10 rounded-full flex items-center justify-center overflow-hidden ${isSupportUser(room.otherUser) ? 'bg-primary/10 border border-primary/30' : 'bg-[var(--bg-card)]'}`}>
+                    {isSupportUser(room.otherUser) ? (
+                        <Image src="/assets/images/logo.png" alt="" fill sizes="40px" className="object-contain p-1.5" />
+                    ) : room.otherUser?.profileImage ? (
                         <Image src={room.otherUser.profileImage} alt="" fill sizes="40px" className="object-cover" />
                     ) : (
                         <User size={20} className="text-[var(--text-muted)]" />
                     )}
                 </div>
                 <div className="flex-1">
-                    <h3 className="font-bold">
-                        {room.otherUser ? `${room.otherUser.firstName ?? ""} ${room.otherUser.lastName ?? ""}`.trim() || "Chat" : "Chat"}
+                    <h3 className="font-bold flex items-center gap-1.5">
+                        {getChatDisplayName(room.otherUser)}
+                        {isSupportUser(room.otherUser) && <BadgeCheck size={14} className="text-primary shrink-0" />}
                     </h3>
                     {room.listing && (
                         <p className="text-xs text-[var(--text-muted)] truncate">

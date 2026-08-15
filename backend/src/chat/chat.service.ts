@@ -118,6 +118,30 @@ export class ChatService {
     }
 
     /**
+     * Get or create the current user's conversation with the official
+     * CarMazium support account — the single ADMIN-role user. Reuses
+     * findOrCreateRoom (no listingId) so it's the same unique per-pair room
+     * a direct admin-initiated chat would land on, just resolved without the
+     * caller needing to know the admin's user ID.
+     */
+    async findOrCreateSupportRoom(userId: string) {
+        const supportAccount = await this.prisma.user.findFirst({
+            where: { role: 'ADMIN', deletedAt: null },
+            select: { id: true },
+            orderBy: { createdAt: 'asc' },
+        });
+
+        if (!supportAccount) {
+            throw new NotFoundException('Support is not available right now.');
+        }
+        if (supportAccount.id === userId) {
+            throw new ForbiddenException('You are the support account.');
+        }
+
+        return this.findOrCreateRoom(userId, { participantId: supportAccount.id });
+    }
+
+    /**
      * Gate auction rooms: the winner must have paid the £125 fee before
      * chatting about that specific auction. Runs whenever a listingId is
      * about to be attached to a room — both on first creation and when an

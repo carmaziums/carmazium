@@ -7,11 +7,33 @@ import { ChatRoomList } from "@/components/chat/ChatRoomList"
 import dynamic from "next/dynamic"
 const ChatWindow = dynamic(() => import("@/components/chat/ChatWindow").then(mod => mod.ChatWindow), { ssr: false })
 import { useAuth } from "@/context/AuthContext"
+import { useChat } from "@/context/ChatContext"
+import { useSearchParams } from "next/navigation"
 import type { ChatRoom } from "@/lib/chatApi"
 
-export default function FinanceMessagesPage() {
+function FinanceMessagesContent() {
     const { user, profile, loading } = useAuth()
+    const { rooms, refreshRooms } = useChat()
+    const searchParams = useSearchParams()
+    const targetRoomId = searchParams.get("room")
     const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null)
+    const autoSelectedRef = React.useRef(false)
+
+    React.useEffect(() => {
+        if (!user) return
+        refreshRooms()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user])
+
+    React.useEffect(() => {
+        if (!targetRoomId || autoSelectedRef.current) return
+        const match = rooms.find(r => r.id === targetRoomId)
+        if (match) {
+            setSelectedRoom(match)
+            autoSelectedRef.current = true
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rooms, targetRoomId])
 
     if (loading) {
         return (
@@ -55,5 +77,17 @@ export default function FinanceMessagesPage() {
                 </main>
             </div>
         </div>
+    )
+}
+
+export default function FinanceMessagesPage() {
+    return (
+        <React.Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+        }>
+            <FinanceMessagesContent />
+        </React.Suspense>
     )
 }

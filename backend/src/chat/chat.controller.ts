@@ -65,6 +65,19 @@ export class ChatController {
     }
 
     /**
+     * Get or create the current user's conversation with official CarMazium
+     * support. Registered before `rooms/:id` so it isn't shadowed by that
+     * param route.
+     */
+    @Post('support')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Get or create my support conversation with CarMazium' })
+    async getSupportRoom(@CurrentUser() user: any) {
+        const room = await this.chatService.findOrCreateSupportRoom(user.id);
+        return new StandardResponse(room);
+    }
+
+    /**
      * Get a specific chat room.
      */
     @Get('rooms/:id')

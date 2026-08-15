@@ -11,6 +11,7 @@ export interface ChatUser {
     firstName: string | null
     lastName: string | null
     profileImage: string | null
+    role?: string
 }
 
 export interface ChatListing {
@@ -63,6 +64,25 @@ export interface ChatMessagesResponse {
 }
 
 // ============================================================================
+// DISPLAY HELPERS
+// ============================================================================
+
+/**
+ * The official CarMazium support conversation always shows as "CarMazium",
+ * not the individual admin account's real name — a single consistent
+ * identity regardless of which staff member is actually behind it.
+ */
+export function isSupportUser(user: ChatUser | null | undefined): boolean {
+    return user?.role === 'ADMIN'
+}
+
+export function getChatDisplayName(user: ChatUser | null | undefined): string {
+    if (isSupportUser(user)) return 'CarMazium'
+    if (!user) return 'Chat'
+    return `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Chat'
+}
+
+// ============================================================================
 // CHAT REST API FUNCTIONS
 // ============================================================================
 
@@ -90,6 +110,17 @@ export async function createChatRoom(participantId: string, listingId?: string):
     const data = await apiClient<{ data: ChatRoom }>('/chat/rooms', {
         method: 'POST',
         body: JSON.stringify({ participantId, listingId }),
+    })
+    return data.data
+}
+
+/**
+ * Get or create the current user's conversation with official CarMazium
+ * support, without needing to know the support account's user ID.
+ */
+export async function getOrCreateSupportRoom(): Promise<ChatRoom> {
+    const data = await apiClient<{ data: ChatRoom }>('/chat/support', {
+        method: 'POST',
     })
     return data.data
 }

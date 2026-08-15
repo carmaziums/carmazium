@@ -31,11 +31,26 @@ import {
     TrendingUp,
     Megaphone,
     Newspaper,
+    LifeBuoy,
+    Loader2,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { getPendingOffersCount, getBuyerActionCount } from "@/lib/listingApi"
+import { getOrCreateSupportRoom } from "@/lib/chatApi"
+
+/** Where each role's messages inbox lives, so "Contact Support" can land the
+ *  new/existing room straight in view via the same `?room=` auto-select
+ *  every inbox already supports. */
+const ROLE_MESSAGES_HREF: Record<string, string> = {
+    buyer: "/dashboard/user?tab=messages",
+    seller: "/dashboard/user?tab=messages",
+    provider: "/dashboard/service/messages",
+    finance: "/dashboard/finance/messages",
+    insurance: "/dashboard/insurance/messages",
+    dealer: "/dashboard/dealer/messages",
+}
 
 interface SidebarProps {
     role: "buyer" | "seller" | "provider" | "finance" | "insurance" | "dealer" | "admin"
@@ -54,6 +69,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     const searchParams = useSearchParams()
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
     const [pendingOffersCount, setPendingOffersCount] = React.useState(0)
+    const [contactingSupport, setContactingSupport] = React.useState(false)
 
     React.useEffect(() => {
         if (!user) return
@@ -76,6 +92,21 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     }
 
     const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen)
+
+    const handleContactSupport = async () => {
+        if (contactingSupport) return
+        setContactingSupport(true)
+        try {
+            const room = await getOrCreateSupportRoom()
+            const base = ROLE_MESSAGES_HREF[role] || "/dashboard/user?tab=messages"
+            router.push(`${base}${base.includes("?") ? "&" : "?"}room=${room.id}`)
+            setIsMobileMenuOpen(false)
+        } catch (err) {
+            console.error("Failed to start support chat:", err)
+        } finally {
+            setContactingSupport(false)
+        }
+    }
 
     // Resolve user name dynamically
     const userName = (initialUserName && initialUserName !== "John Doe" && initialUserName !== "Apex Customs" && initialUserName !== "User")
@@ -146,6 +177,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         })),
         admin: [
             { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard },
+            { href: "/dashboard/admin/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
             { href: "/dashboard/admin/users", label: "Accounts", icon: Users },
             { href: "/dashboard/admin/listings", label: "Listings", icon: Car },
             { href: "/dashboard/admin/auctions", label: "Auctions", icon: Gavel },
@@ -291,6 +323,18 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                         )
                     })}
 
+                    {/* Contact Support */}
+                    {role !== "admin" && (
+                        <button
+                            onClick={handleContactSupport}
+                            disabled={contactingSupport}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-primary hover:bg-primary/10 rounded-xl transition-all disabled:opacity-50"
+                        >
+                            {contactingSupport ? <Loader2 size={18} className="animate-spin" /> : <LifeBuoy size={18} />}
+                            Contact CarMazium Support
+                        </button>
+                    )}
+
                     {/* Children */}
                     {children && <div className="pt-2">{children}</div>}
 
@@ -370,6 +414,20 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                             >
                                 <Shield size={18} /> Admin Panel
                             </Link>
+                        </div>
+                    )}
+
+                    {/* Contact Support */}
+                    {role !== 'admin' && (
+                        <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-default)' }}>
+                            <button
+                                onClick={handleContactSupport}
+                                disabled={contactingSupport}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-primary hover:bg-primary/10 rounded-lg transition-all text-sm font-semibold disabled:opacity-50"
+                            >
+                                {contactingSupport ? <Loader2 size={18} className="animate-spin" /> : <LifeBuoy size={18} />}
+                                Contact Support
+                            </button>
                         </div>
                     )}
 

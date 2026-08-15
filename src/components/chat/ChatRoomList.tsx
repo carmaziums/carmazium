@@ -2,9 +2,9 @@
 
 import * as React from "react"
 import Image from "next/image"
-import { MessageSquare, Search, User, Loader2 } from "lucide-react"
+import { MessageSquare, Search, User, Loader2, BadgeCheck } from "lucide-react"
 import { useChat } from "@/context/ChatContext"
-import type { ChatRoom } from "@/lib/chatApi"
+import { getChatDisplayName, isSupportUser, type ChatRoom } from "@/lib/chatApi"
 
 interface ChatRoomListProps {
     onSelectRoom: (room: ChatRoom) => void
@@ -31,7 +31,7 @@ export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps
         if (!searchTerm) return rooms
         const term = searchTerm.toLowerCase()
         return rooms.filter(room => {
-            const name = `${room.otherUser?.firstName || ''} ${room.otherUser?.lastName || ''}`.toLowerCase()
+            const name = getChatDisplayName(room.otherUser).toLowerCase()
             const listing = room.listing?.title?.toLowerCase() || ''
             return name.includes(term) || listing.includes(term)
         })
@@ -103,8 +103,10 @@ export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps
                                     }`}
                             >
                                 {/* Avatar */}
-                                <div className="w-12 h-12 rounded-full bg-[var(--bg-card)] flex items-center justify-center flex-shrink-0 overflow-hidden relative">
-                                    {room.otherUser?.profileImage ? (
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden relative ${isSupportUser(room.otherUser) ? 'bg-primary/10 border border-primary/30' : 'bg-[var(--bg-card)]'}`}>
+                                    {isSupportUser(room.otherUser) ? (
+                                        <Image src="/assets/images/logo.png" alt="" fill sizes="48px" className="object-contain p-2" />
+                                    ) : room.otherUser?.profileImage ? (
                                         <Image
                                             src={room.otherUser.profileImage}
                                             alt=""
@@ -120,8 +122,11 @@ export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps
                                 {/* Content */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between mb-1">
-                                        <h4 className="font-bold text-[var(--text-primary)] truncate">
-                                            {room.otherUser ? `${room.otherUser.firstName ?? ""} ${room.otherUser.lastName ?? ""}`.trim() || "Chat" : "Chat"}
+                                        <h4 className="font-bold text-[var(--text-primary)] truncate flex items-center gap-1.5">
+                                            {getChatDisplayName(room.otherUser)}
+                                            {isSupportUser(room.otherUser) && (
+                                                <BadgeCheck size={13} className="text-primary shrink-0" />
+                                            )}
                                         </h4>
                                         {room.lastMessage && (
                                             <span className="text-xs text-[var(--text-muted)] flex-shrink-0 ml-2">

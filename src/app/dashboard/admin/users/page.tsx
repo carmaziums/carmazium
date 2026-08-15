@@ -3,11 +3,12 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Users, Loader2, ArrowLeft, MoreHorizontal, ShieldAlert, BadgeCheck, Ban, LockKeyhole, LockKeyholeOpen, ShieldCheck, X, Landmark, CreditCard, AlertCircle, Search } from "lucide-react"
+import { Users, Loader2, ArrowLeft, MoreHorizontal, ShieldAlert, BadgeCheck, Ban, LockKeyhole, LockKeyholeOpen, ShieldCheck, X, Landmark, CreditCard, AlertCircle, Search, MessageCircle } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminUsers, updateUserRole, banUser, unbanUser, lockUser, unlockUser } from "@/lib/adminApi"
+import { createChatRoom } from "@/lib/chatApi"
 
 export default function AdminUsersPage() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -93,6 +94,19 @@ export default function AdminUsersPage() {
             }
         } catch (err: any) {
             alert(err.message || `Failed to ${action} user`)
+        } finally {
+            setUpdating(null)
+        }
+    }
+
+    const handleMessageUser = async (userId: string) => {
+        setOpenMenu(null)
+        try {
+            setUpdating(userId)
+            const room = await createChatRoom(userId)
+            router.push(`/dashboard/admin/messages?room=${room.id}`)
+        } catch (err: any) {
+            alert(err.message || 'Failed to start conversation')
         } finally {
             setUpdating(null)
         }
@@ -213,6 +227,7 @@ export default function AdminUsersPage() {
                                             )}
                                             {!isSelf && (
                                                 <div className="flex gap-1">
+                                                    <button onClick={() => handleMessageUser(u.id)} className="p-2.5 bg-primary/10 rounded-lg text-primary"><MessageCircle size={14} /></button>
                                                     {isBanned ? (
                                                         <button onClick={() => handleUserAction(u.id, 'unban')} className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400 text-xs font-bold">Unban</button>
                                                     ) : isLocked ? (
@@ -340,6 +355,12 @@ export default function AdminUsersPage() {
                                                             </button>
                                                             {openMenu === u.id && (
                                                                 <div className="absolute right-0 top-full mt-1 w-44 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl shadow-2xl z-50 overflow-hidden">
+                                                                    <button
+                                                                        onClick={() => handleMessageUser(u.id)}
+                                                                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-primary hover:bg-primary/10 transition-colors border-b border-[var(--border-default)]"
+                                                                    >
+                                                                        <MessageCircle size={14} /> Message
+                                                                    </button>
                                                                     {isBanned ? (
                                                                         <button
                                                                             onClick={() => handleUserAction(u.id, 'unban')}
