@@ -223,7 +223,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     const router = useRouter()
     const searchParams = useSearchParams()
     const isEditMode = searchParams.get('editOffer') === 'true'
-    const { user } = useAuth()
+    const { user, loading: authLoading } = useAuth()
     const hasInitialListing = initialListing != null && initialListing.slug === slug
     const [listing, setListing] = React.useState<Listing | null>(hasInitialListing ? initialListing : null)
     const [loading, setLoading] = React.useState(!hasInitialListing)
@@ -283,6 +283,23 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
         if (slug) fetchListing()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [slug])
+
+    // The server-side fetch in page.tsx has no access to the viewer's session
+    // cookie (and its response is cached for 60s, shared across every visitor),
+    // so `initialListing` is always the anonymous-gated view — seller phone/
+    // email withheld even for a logged-in viewer who's entitled to see them.
+    // Once we actually know who's viewing, do one client-side refetch (which
+    // goes through apiClient with credentials) to pick up the real gated
+    // fields, merged over the existing listing so there's no loading flash.
+    const refetchedForUserId = React.useRef<string | null>(null)
+    React.useEffect(() => {
+        if (authLoading || !user || !slug) return
+        if (refetchedForUserId.current === user.id) return
+        refetchedForUserId.current = user.id
+        getListingBySlug(slug)
+            .then(data => setListing(prev => prev ? { ...prev, ...data } : data))
+            .catch(() => { })
+    }, [user, authLoading, slug])
 
     // Separately fetch the current user's own offer for this listing
     // This runs after the listing is loaded so we have the listing ID
