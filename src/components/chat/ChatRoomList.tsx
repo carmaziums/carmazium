@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Image from "next/image"
-import { MessageSquare, Search, User, Loader2, BadgeCheck } from "lucide-react"
+import { MessageSquare, Search, User, Loader2, Check } from "lucide-react"
 import { useChat } from "@/context/ChatContext"
 import { getChatDisplayName, isSupportUser, type ChatRoom } from "@/lib/chatApi"
 
@@ -86,76 +86,85 @@ export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps
             {/* Room List */}
             <div className="flex-1 overflow-y-auto">
                 {filteredRooms.length === 0 ? (
-                    <div className="text-center text-[var(--text-muted)] py-12">
-                        <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                        <p>No conversations yet</p>
+                    <div className="text-center text-[var(--text-muted)] py-12 px-6">
+                        <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-40" strokeWidth={1.5} />
+                        <p className="font-semibold text-[var(--text-secondary)]">No conversations yet</p>
                         <p className="text-sm mt-1">
-                            Start a chat from a listing page
+                            Messages from listings you contact land here — or use Contact Support in the sidebar
                         </p>
                     </div>
                 ) : (
                     <div className="divide-y divide-[var(--border-default)]">
-                        {filteredRooms.map((room) => (
-                            <button
-                                key={room.id}
-                                onClick={() => onSelectRoom(room)}
-                                className={`w-full p-4 text-left hover:bg-[var(--bg-card)] transition-colors flex gap-3 ${selectedRoomId === room.id ? 'bg-primary/10 border-l-2 border-primary' : ''
-                                    }`}
-                            >
-                                {/* Avatar */}
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden relative ${isSupportUser(room.otherUser) ? 'bg-primary/10 border border-primary/30' : 'bg-[var(--bg-card)]'}`}>
-                                    {isSupportUser(room.otherUser) ? (
-                                        <Image src="/assets/images/logo.png" alt="" fill sizes="48px" className="object-contain p-2" />
-                                    ) : room.otherUser?.profileImage ? (
-                                        <Image
-                                            src={room.otherUser.profileImage}
-                                            alt=""
-                                            fill
-                                            sizes="48px"
-                                            className="object-cover"
-                                        />
-                                    ) : (
-                                        <User className="text-[var(--text-muted)]" size={24} />
-                                    )}
-                                </div>
+                        {filteredRooms.map((room) => {
+                            const support = isSupportUser(room.otherUser)
+                            const isSelected = selectedRoomId === room.id
+                            return (
+                                <button
+                                    key={room.id}
+                                    onClick={() => onSelectRoom(room)}
+                                    className={`w-full p-4 text-left transition-colors flex gap-3 relative ${isSelected ? 'bg-primary/10' : 'hover:bg-[var(--bg-card)]'}`}
+                                >
+                                    {isSelected && <span className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary" aria-hidden />}
 
-                                {/* Content */}
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <h4 className="font-bold text-[var(--text-primary)] truncate flex items-center gap-1.5">
-                                            {getChatDisplayName(room.otherUser)}
-                                            {isSupportUser(room.otherUser) && (
-                                                <BadgeCheck size={13} className="text-primary shrink-0" />
+                                    {/* Avatar */}
+                                    <div className="relative shrink-0">
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden relative ${support ? 'bg-[var(--bg-input)] ring-1 ring-primary/30' : 'bg-[var(--bg-card)]'}`}>
+                                            {support ? (
+                                                <Image src="/assets/images/logo.png" alt="" fill sizes="48px" className="object-contain p-2.5" />
+                                            ) : room.otherUser?.profileImage ? (
+                                                <Image
+                                                    src={room.otherUser.profileImage}
+                                                    alt=""
+                                                    fill
+                                                    sizes="48px"
+                                                    className="object-cover"
+                                                />
+                                            ) : (
+                                                <User className="text-[var(--text-muted)]" size={22} />
                                             )}
-                                        </h4>
-                                        {room.lastMessage && (
-                                            <span className="text-xs text-[var(--text-muted)] flex-shrink-0 ml-2">
-                                                {formatTime(room.lastMessage.createdAt)}
+                                        </div>
+                                        {support && (
+                                            <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary ring-2 ring-[var(--bg-input)] flex items-center justify-center">
+                                                <Check size={9} strokeWidth={3.5} className="text-white" />
                                             </span>
                                         )}
                                     </div>
 
-                                    {room.listing && (
-                                        <p className="text-xs text-primary truncate mb-1">
-                                            {room.listing.title}
-                                        </p>
-                                    )}
+                                    {/* Content */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-2 mb-0.5">
+                                            <h4 className="font-bold text-[var(--text-primary)] truncate text-[15px]">
+                                                {getChatDisplayName(room.otherUser)}
+                                            </h4>
+                                            {room.lastMessage && (
+                                                <span className="text-[11px] text-[var(--text-muted)] shrink-0 tabular-nums">
+                                                    {formatTime(room.lastMessage.createdAt)}
+                                                </span>
+                                            )}
+                                        </div>
 
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-sm text-[var(--text-muted)] truncate">
-                                            {room.lastMessage
-                                                ? truncateMessage(room.lastMessage.content)
-                                                : 'No messages yet'}
-                                        </p>
-                                        {room.unreadCount > 0 && (
-                                            <span className="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ml-2">
-                                                {room.unreadCount}
-                                            </span>
+                                        {room.listing && (
+                                            <p className="text-xs text-primary/90 truncate mb-1 font-medium">
+                                                {room.listing.title}
+                                            </p>
                                         )}
+
+                                        <div className="flex items-center justify-between gap-2">
+                                            <p className={`text-sm truncate ${room.unreadCount > 0 ? 'text-[var(--text-secondary)] font-semibold' : 'text-[var(--text-muted)]'}`}>
+                                                {room.lastMessage
+                                                    ? truncateMessage(room.lastMessage.content)
+                                                    : 'No messages yet'}
+                                            </p>
+                                            {room.unreadCount > 0 && (
+                                                <span className="bg-primary text-white text-[11px] font-bold min-w-[18px] h-[18px] px-1 rounded-full shrink-0 flex items-center justify-center tabular-nums">
+                                                    {room.unreadCount > 9 ? '9+' : room.unreadCount}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            </button>
-                        ))}
+                                </button>
+                            )
+                        })}
                     </div>
                 )}
             </div>

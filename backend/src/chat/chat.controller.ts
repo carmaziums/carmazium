@@ -19,6 +19,7 @@ import {
     ApiParam,
 } from '@nestjs/swagger';
 import { ChatService } from './chat.service';
+import { ChatGateway } from './chat.gateway';
 import { CreateRoomDto, SendMessageDto } from './dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -33,7 +34,10 @@ import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dt
 @UseGuards(SessionAuthGuard)
 @ApiCookieAuth()
 export class ChatController {
-    constructor(private readonly chatService: ChatService) { }
+    constructor(
+        private readonly chatService: ChatService,
+        private readonly chatGateway: ChatGateway,
+    ) { }
 
     /**
      * Get all chat rooms for the current user.
@@ -61,6 +65,10 @@ export class ChatController {
             user.id,
             createRoomDto,
         );
+        // Room may be brand new — make sure both participants' live sockets
+        // (if any) are actually subscribed to it, not just the DB record.
+        this.chatGateway.joinRoomForUser(user.id, room.id);
+        this.chatGateway.joinRoomForUser(createRoomDto.participantId, room.id);
         return new StandardResponse(room);
     }
 
@@ -74,6 +82,8 @@ export class ChatController {
     @ApiOperation({ summary: 'Get or create my support conversation with CarMazium' })
     async getSupportRoom(@CurrentUser() user: any) {
         const room = await this.chatService.findOrCreateSupportRoom(user.id);
+        this.chatGateway.joinRoomForUser(user.id, room.id);
+        this.chatGateway.joinRoomForUser((room as any).otherUser.id, room.id);
         return new StandardResponse(room);
     }
 

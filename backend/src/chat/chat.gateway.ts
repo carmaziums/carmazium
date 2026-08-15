@@ -104,6 +104,7 @@ export class ChatGateway
                     oldestSocket.disconnect(true);
                 }
             }
+            const wasOffline = socketIds.length === 0;
             socketIds.push(client.id);
 
             // Auto-join user's existing chat rooms
@@ -111,6 +112,24 @@ export class ChatGateway
             for (const roomId of roomIds) {
                 await client.join(`room:${roomId}`);
             }
+
+            // First socket for this user this session — tell everyone who
+            // shares a room with them that they're actually reachable now.
+            if (wasOffline) {
+                for (const roomId of roomIds) {
+                    client.to(`room:${roomId}`).emit('presence:update', { userId, online: true });
+                }
+            }
+
+            // The above only covers *future* presence changes — this client
+            // also needs to know who's already online right now, otherwise
+            // every conversation partner reads as offline until their next
+            // connect/disconnect.
+            const rooms = await this.chatService.getUserRooms(userId);
+            const onlineUserIds = rooms
+                .map((r: any) => r.otherUser?.id as string | undefined)
+                .filter((id): id is string => !!id && this.connectedUsers.has(id));
+            client.emit('presence:snapshot', { onlineUserIds });
 
             this.logger.log(
                 `User ${userId} connected with ${roomIds.length} rooms - Socket: ${client.id}`,
@@ -131,17 +150,30 @@ export class ChatGateway
     /**
      * Handle WebSocket disconnection.
      */
-    handleDisconnect(client: Socket): void {
+    async handleDisconnect(client: Socket): Promise<void> {
         const userId = client.data.userId;
         if (userId) {
             const socketIds = this.connectedUsers.get(userId);
+            let wentOffline = false;
             if (socketIds) {
                 const idx = socketIds.indexOf(client.id);
                 if (idx !== -1) socketIds.splice(idx, 1);
                 if (socketIds.length === 0) {
                     this.connectedUsers.delete(userId);
+                    wentOffline = true;
                 }
             }
+
+            // Last socket for this user gone — tell their conversation
+            // partners so the "Online" indicator doesn't lie after they've
+            // actually left.
+            if (wentOffline) {
+                const roomIds = await this.chatService.getUserRoomIds(userId);
+                for (const roomId of roomIds) {
+                    this.server.to(`room:${roomId}`).emit('presence:update', { userId, online: false });
+                }
+            }
+
             this.logger.log(
                 `User ${userId} disconnected - Socket: ${client.id}`,
             );
@@ -262,6 +294,23 @@ export class ChatGateway
             userId,
             isTyping: false,
         });
+    }
+
+    /**
+     * Makes every currently-connected socket for this user join a room's
+     * channel. `handleConnection` only auto-joins the rooms that already
+     * existed at connect time, so a room created afterwards via REST (any
+     * findOrCreateRoom call — new listing chat, admin-initiated chat,
+     * support chat) is invisible to an already-open socket until it
+     * reconnects. Called right after room creation so real-time delivery
+     * works immediately for both participants, not just after a refresh.
+     */
+    joinRoomForUser(userId: string, roomId: string): void {
+        const socketIds = this.connectedUsers.get(userId);
+        if (!socketIds) return;
+        for (const socketId of socketIds) {
+            this.server?.sockets?.sockets?.get(socketId)?.join(`room:${roomId}`);
+        }
     }
 
     /**

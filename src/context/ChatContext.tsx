@@ -23,6 +23,8 @@ interface ChatContextType {
     unreadCount: number
     isConnected: boolean
     isLoading: boolean
+    /** User IDs of conversation partners who currently have a live connection. */
+    onlineUserIds: Set<string>
 
     // Actions
     refreshRooms: () => Promise<void>
@@ -51,6 +53,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const [unreadCount, setUnreadCount] = useState(0)
     const [isConnected, setIsConnected] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
+    const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set())
 
     const socketRef = useRef<Socket | null>(null)
     const messageCallbacks = useRef<Set<(message: ChatMessage) => void>>(new Set())
@@ -64,6 +67,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             socketRef.current?.disconnect()
             socketRef.current = null
             setIsConnected(false)
+            setOnlineUserIds(new Set())
             hasInitiallyLoaded.current = false
             return
         }
@@ -104,7 +108,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                 // Optimistically move the affected room to the top with updated last-message preview
                 setRooms(prev => {
                     const idx = prev.findIndex(r => r.id === message.chatRoomId)
-                    if (idx === -1) return prev
+                    if (idx === -1) {
+                        // First message of a conversation we don't have yet (someone just
+                        // started a brand-new chat with us) — a per-message patch has
+                        // nothing to update, so pull the real room record instead of
+                        // silently dropping the event until the next manual refresh.
+                        getChatRooms().then(setRooms).catch(() => { })
+                        return prev
+                    }
                     const updated = {
                         ...prev[idx],
                         lastMessage: {
@@ -126,6 +137,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
             socket.on('user:typing', (data: any) => {
                 typingCallbacks.current.forEach(cb => cb(data))
+            })
+
+            socket.on('presence:snapshot', (data: { onlineUserIds: string[] }) => {
+                setOnlineUserIds(new Set(data.onlineUserIds))
+            })
+
+            socket.on('presence:update', (data: { userId: string; online: boolean }) => {
+                setOnlineUserIds(prev => {
+                    const next = new Set(prev)
+                    if (data.online) next.add(data.userId)
+                    else next.delete(data.userId)
+                    return next
+                })
             })
 
             socket.on('messages:read', (data: any) => {
@@ -249,6 +273,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         unreadCount,
         isConnected,
         isLoading,
+        onlineUserIds,
         refreshRooms,
         refreshUnreadCount,
         sendMessage,

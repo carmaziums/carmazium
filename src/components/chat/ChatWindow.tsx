@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { MessageSquare, Send, Loader2, ArrowLeft, User, BadgeCheck } from "lucide-react"
+import { MessageSquare, Send, Loader2, ArrowLeft, User, Check } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import Image from "next/image"
 import { useChat } from "@/context/ChatContext"
@@ -17,7 +17,8 @@ interface ChatWindowProps {
  * Displays messages and handles sending new messages
  */
 export function ChatWindow({ room, onBack }: ChatWindowProps) {
-    const { sendMessage, onNewMessage, onTyping, markAsRead, isConnected } = useChat()
+    const { sendMessage, onNewMessage, onTyping, markAsRead, isConnected, onlineUserIds } = useChat()
+    const otherUserOnline = room.otherUser ? onlineUserIds.has(room.otherUser.id) : false
     const [messages, setMessages] = React.useState<ChatMessage[]>([])
     const [newMessage, setNewMessage] = React.useState("")
     const [loading, setLoading] = React.useState(true)
@@ -205,43 +206,50 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             {/* Header */}
             <div className="flex items-center gap-3 p-4 border-b border-[var(--border-default)]">
                 {onBack && (
-                    <button onClick={onBack} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                    <button onClick={onBack} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors shrink-0">
                         <ArrowLeft size={20} />
                     </button>
                 )}
-                <div className={`relative w-10 h-10 rounded-full flex items-center justify-center overflow-hidden ${isSupportUser(room.otherUser) ? 'bg-primary/10 border border-primary/30' : 'bg-[var(--bg-card)]'}`}>
-                    {isSupportUser(room.otherUser) ? (
-                        <Image src="/assets/images/logo.png" alt="" fill sizes="40px" className="object-contain p-1.5" />
-                    ) : room.otherUser?.profileImage ? (
-                        <Image src={room.otherUser.profileImage} alt="" fill sizes="40px" className="object-cover" />
-                    ) : (
-                        <User size={20} className="text-[var(--text-muted)]" />
+                <div className="relative shrink-0">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center overflow-hidden relative ${isSupportUser(room.otherUser) ? 'bg-[var(--bg-card)] ring-1 ring-primary/30' : 'bg-[var(--bg-card)]'}`}>
+                        {isSupportUser(room.otherUser) ? (
+                            <Image src="/assets/images/logo.png" alt="" fill sizes="40px" className="object-contain p-2" />
+                        ) : room.otherUser?.profileImage ? (
+                            <Image src={room.otherUser.profileImage} alt="" fill sizes="40px" className="object-cover" />
+                        ) : (
+                            <User size={20} className="text-[var(--text-muted)]" />
+                        )}
+                    </div>
+                    {isSupportUser(room.otherUser) && (
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-primary ring-2 ring-[var(--bg-input)] flex items-center justify-center">
+                            <Check size={8} strokeWidth={3.5} className="text-white" />
+                        </span>
                     )}
                 </div>
-                <div className="flex-1">
-                    <h3 className="font-bold flex items-center gap-1.5">
+                <div className="flex-1 min-w-0">
+                    <h3 className="font-bold truncate">
                         {getChatDisplayName(room.otherUser)}
-                        {isSupportUser(room.otherUser) && <BadgeCheck size={14} className="text-primary shrink-0" />}
                     </h3>
-                    {room.listing && (
+                    {room.listing ? (
                         <p className="text-xs text-[var(--text-muted)] truncate">
                             Re: {room.listing.title}
                         </p>
+                    ) : (
+                        <div className="flex items-center gap-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${otherUserOnline ? 'bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.8)]' : 'bg-[var(--text-muted)]'}`} />
+                            <span className={`text-xs ${otherUserOnline ? 'text-emerald-400' : 'text-[var(--text-muted)]'}`}>
+                                {otherUserOnline ? 'Online' : 'Offline'}
+                            </span>
+                        </div>
                     )}
                 </div>
-                {/* Connection status indicator */}
-                <div className="flex items-center gap-1.5">
-                    <div className={`w-2 h-2 rounded-full transition-colors ${
-                        isConnected
-                            ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]'
-                            : 'bg-yellow-500'
-                    }`} />
-                    <span className={`text-xs ${
-                        isConnected ? 'text-emerald-400' : 'text-yellow-500'
-                    }`}>
-                        {isConnected ? 'Online' : 'Offline'}
+                {/* My own connection state — only worth surfacing when it's degraded */}
+                {!isConnected && (
+                    <span className="text-xs text-yellow-500 flex items-center gap-1.5 shrink-0" title="Reconnecting — messages will send once you're back online">
+                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
+                        Reconnecting
                     </span>
-                </div>
+                )}
             </div>
 
             {/* Messages */}
@@ -252,9 +260,13 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                     </div>
                 ) : messages.length === 0 ? (
                     <div className="text-center text-[var(--text-muted)] py-8">
-                        <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                        <p>No messages yet</p>
-                        <p className="text-sm">Send a message to start the conversation</p>
+                        <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-40" strokeWidth={1.5} />
+                        <p className="font-semibold text-[var(--text-secondary)]">
+                            {isSupportUser(room.otherUser) ? 'Ask CarMazium anything' : 'No messages yet'}
+                        </p>
+                        <p className="text-sm mt-0.5">
+                            {isSupportUser(room.otherUser) ? "We'll get back to you as soon as we can" : 'Send a message to start the conversation'}
+                        </p>
                     </div>
                 ) : (
                     groupedMessages.map((group, gi) => (
@@ -272,15 +284,20 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                         className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-2`}
                                     >
                                         <div
-                                            className={`max-w-[75%] px-4 py-2 rounded-2xl ${isOwn
+                                            className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm ${isOwn
                                                 ? 'bg-primary text-white rounded-br-sm'
                                                 : 'bg-[var(--bg-card)] text-[var(--text-primary)] rounded-bl-sm'
                                                 }`}
                                         >
                                             <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                                            <p className={`text-[10px] mt-1 ${isOwn ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
+                                            <p className={`flex items-center gap-1 text-[10px] mt-1 ${isOwn ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
                                                 {formatTime(msg.createdAt)}
-                                                {isOwn && msg.isRead && ' ✓✓'}
+                                                {isOwn && (
+                                                    <svg width="13" height="9" viewBox="0 0 16 11" fill="none" className={msg.isRead ? 'text-white' : 'text-white/50'}>
+                                                        <path d="M1 5.5L4.5 9L11 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                                        <path d="M5.5 5.5L9 9L15.5 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                                    </svg>
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -307,7 +324,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
 
             {/* Input */}
             <div className="p-4 border-t border-[var(--border-default)]">
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-end">
                     <input
                         type="text"
                         value={newMessage}
@@ -320,12 +337,15 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                     <Button
                         onClick={handleSend}
                         disabled={!newMessage.trim() || sending}
-                        className="px-4"
+                        shape="pill"
+                        size="icon"
+                        className="h-[46px] w-[46px] shrink-0"
+                        title="Send"
                     >
                         {sending ? (
                             <Loader2 className="h-5 w-5 animate-spin" />
                         ) : (
-                            <Send className="h-5 w-5" />
+                            <Send className="h-4 w-4" />
                         )}
                     </Button>
                 </div>
