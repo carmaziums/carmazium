@@ -26,6 +26,8 @@ import { aiGenerateDescription } from "@/lib/aiApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { CAR_MAKES, getModelsForMake, getVariantsForModel } from "@/lib/carData"
 import { useAuth } from "@/context/AuthContext"
+import { useAnalytics } from "@/hooks/useAnalytics"
+import { SELLER_FUNNEL, listingTypeLabel } from "@/lib/gtm"
 import { VehicleDamageMapper, type DamageRecord } from "./VehicleDamageMapper"
 import { useRouter, useSearchParams } from "next/navigation"
 import { apiClient } from "@/lib/apiClient"
@@ -282,6 +284,7 @@ function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnloc
 
 export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }) {
     const { user, profile, loading: authLoading } = useAuth()
+    const { trackEvent } = useAnalytics()
     const router = useRouter()
 
     const [currentStep, setCurrentStep] = React.useState(1)
@@ -630,10 +633,23 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const handleNext = () => {
         if (!validateStep()) {
             setHasAttemptedNext(true)
+            // Where sellers get stuck is as useful as where they drop —
+            // a step failing validation repeatedly is a UX problem.
+            trackEvent('listing_step_blocked', {
+                listing_type: listingTypeLabel(formData.listingType),
+                step: currentStep,
+                step_name: WIZARD_STEPS.find(s => s.id === currentStep)?.title ?? String(currentStep),
+            })
             alert("Please fill in all required fields before proceeding.")
             return
         }
         setHasAttemptedNext(false)
+        trackEvent(SELLER_FUNNEL.LISTING_STEP_COMPLETED, {
+            listing_type: listingTypeLabel(formData.listingType),
+            step: currentStep,
+            step_name: WIZARD_STEPS.find(s => s.id === currentStep)?.title ?? String(currentStep),
+            total_steps: totalSteps,
+        })
         setCurrentStep(prev => Math.min(prev + 1, totalSteps))
     }
     const handleBack = () => setCurrentStep(prev => Math.max(prev - 1, 1))
@@ -653,10 +669,44 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         }
         set("listingType", "CLASSIFIED")
         setSellingMethod("list")
+        trackEvent(SELLER_FUNNEL.LISTING_STARTED, {
+            listing_type: 'retail',
+            seller_role: profile?.role || 'UNKNOWN',
+        })
         set("status", "ACTIVE")
     }
 
     // ─── Submit ──────────────────────────────────────────────────────────────────
+
+    // handleSubmit has three top-level branches (edit / returning-from-HPI /
+    // new listing), each of which ends in one of the same two outcomes. These
+    // two helpers keep the event payloads identical across all six exit points
+    // instead of copy-pasting the tracking call into each one.
+    const trackListingSubmitted = (
+        payload: CreateListingRequest,
+        listingId: string,
+        outcome: 'pending_review' | 'awaiting_payment',
+    ) => {
+        const listing_type = listingTypeLabel(payload.listingType)
+        const common = {
+            listing_type,
+            listing_id: listingId,
+            badge_tier: payload.badgeTier,
+            make: payload.make,
+            model: payload.model,
+            year: payload.year,
+            seller_role: profile?.role || 'UNKNOWN',
+        }
+        trackEvent(SELLER_FUNNEL.LISTING_SUBMITTED, { ...common, outcome })
+        // Gate the path-specific events on listing_type, not on outcome —
+        // a retail listing can also reach pending_review directly (already
+        // paid, resubmitting after a rejection), and that's not an auction.
+        if (listing_type === 'auction') {
+            trackEvent(SELLER_FUNNEL.AUCTION_SUBMITTED, common)
+        } else if (outcome === 'awaiting_payment') {
+            trackEvent(SELLER_FUNNEL.LISTING_CHECKOUT_STARTED, common)
+        }
+    }
 
     const handleSubmit = async () => {
         if (!isAuthenticated) { setShowLoginModal(true); return }
@@ -777,10 +827,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     }
                     if (publish.pendingReview) {
                         // Already paid (e.g. resubmitting after a rejection) — no need to charge again
+                        trackListingSubmitted(payload, editId, 'pending_review')
                         setPendingReview({ title: payload.title, onContinue: () => router.push('/dashboard/seller/listings') })
                         return
                     }
                     // No completed payment found — go to Stripe
+                    trackListingSubmitted(payload, editId, 'awaiting_payment')
                     const checkout = await createListingCheckoutSession(editId, payload.badgeTier as string)
                     window.location.href = checkout.url
                     return
@@ -789,6 +841,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 // FREE tier (auctions) — no payment step, so publishing (DRAFT/REJECTED
                 // -> PENDING_REVIEW) is the whole submission, not something a webhook does.
                 await publishListing(editId)
+                trackListingSubmitted(payload, editId, 'pending_review')
                 setPendingReview({ title: payload.title, onContinue: () => router.push('/dashboard/seller/listings') })
             } else if (draftListingId) {
                 // User returned from HPI payment — update the existing draft listing instead of creating a new one
@@ -851,6 +904,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     }
                     if (publish.pendingReview) {
                         // Already paid (e.g. resubmitting after a rejection) — no need to charge again
+                        trackListingSubmitted(payload, finalListingId, 'pending_review')
                         setPendingReview({
                             title: payload.title,
                             onContinue: () => {
@@ -863,6 +917,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         return
                     }
                     // No completed payment — go to Stripe
+                    trackListingSubmitted(payload, finalListingId, 'awaiting_payment')
                     const checkout = await createListingCheckoutSession(finalListingId, payload.badgeTier as string)
                     window.location.href = checkout.url
                     return
@@ -871,6 +926,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 // FREE tier (auctions) — no payment step, so publishing (DRAFT -> PENDING_REVIEW)
                 // is the whole submission, not something a webhook does.
                 await publishListing(finalListingId)
+                trackListingSubmitted(payload, finalListingId, 'pending_review')
                 setFormData(INITIAL_FORM)
                 setCurrentStep(1)
                 setSellingMethod(null)
@@ -925,6 +981,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                 if (isPaidTier) {
                     // Redirect to Stripe — webhook moves the listing to PENDING_REVIEW on success
+                    trackListingSubmitted(payload, newListingId, 'awaiting_payment')
                     const checkout = await createListingCheckoutSession(newListingId, payload.badgeTier as string)
                     window.location.href = checkout.url
                     return
@@ -934,6 +991,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 // is the whole submission. Show the same "under review" messaging as the
                 // paid-tier checkout-success flow before sending them onward.
                 await publishListing(newListingId)
+                trackListingSubmitted(payload, newListingId, 'pending_review')
                 setPendingReview({
                     title: payload.title,
                     onContinue: () => {
@@ -947,6 +1005,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             }
         } catch (error: any) {
             console.error("Submission error:", error)
+            // A seller who got all the way to Submit and then hit an error is
+            // the most expensive kind of drop-off — surface it in the funnel.
+            trackEvent('listing_submit_failed', {
+                listing_type: listingTypeLabel(formData.listingType),
+                badge_tier: formData.badgeTier,
+                reason: error?.message || 'unknown',
+            })
             if (error.message?.includes("Unauthorized") || error.message?.includes("401")) {
                 setSubmitError("Please log in to create a listing.")
                 setShowLoginModal(true)
@@ -1102,6 +1167,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     set("badgeTier", "FREE")
                                     setSellingMethod("list")
                                     set("status", "ACTIVE")
+                                    trackEvent(SELLER_FUNNEL.LISTING_STARTED, {
+                                        listing_type: 'auction',
+                                        seller_role: profile?.role || 'UNKNOWN',
+                                    })
                                 }}
                                 className="relative group cursor-pointer"
                             >
@@ -1339,8 +1408,22 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     set("ulezCompliant", false)
                                                 }
                                                 setDvlaSuccess(true)
+                                                // Top of the seller funnel: they've committed a reg and
+                                                // got real vehicle data back. Note: no VRM in the payload
+                                                // on purpose (personal data — see lib/gtm.ts).
+                                                trackEvent(SELLER_FUNNEL.VALUATION_REQUESTED, {
+                                                    listing_type: listingTypeLabel(formData.listingType),
+                                                    make: r.make || undefined,
+                                                    model: r.model || undefined,
+                                                    year: r.year || undefined,
+                                                    fuel_type: r.fuelType || undefined,
+                                                })
                                             } catch (err: any) {
                                                 setDvlaError(err.message || "Lookup failed")
+                                                trackEvent('valuation_failed', {
+                                                    listing_type: listingTypeLabel(formData.listingType),
+                                                    reason: err?.message || 'lookup_failed',
+                                                })
                                             } finally { setDvlaLoading(false) }
                                         }}
                                     >

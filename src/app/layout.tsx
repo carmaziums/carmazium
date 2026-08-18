@@ -15,6 +15,7 @@ import { ChatProvider } from "@/context/ChatContext";
 import { CompareProvider } from "@/context/CompareContext";
 import { LocationProvider } from "@/context/LocationContext";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
+import { GoogleTagManager } from "@/components/analytics/GoogleTagManager";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import { MetaPixel } from "@/components/analytics/MetaPixel";
 import { TikTokPixel } from "@/components/analytics/TikTokPixel";
@@ -93,6 +94,7 @@ export default function RootLayout({
         className={`${inter.className} selection:bg-red-500/30 selection:text-red-200`}
       >
         <AutoDealerJsonLd />
+        <GoogleTagManager />
         <GoogleAnalytics />
         <MetaPixel />
         <TikTokPixel />

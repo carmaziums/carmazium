@@ -12,6 +12,8 @@ import type { SessionStatus } from "@/lib/paymentApi"
 import { publishListing } from "@/lib/listingApi"
 import { useAuth } from "@/context/AuthContext"
 import { trackMetaEvent } from "@/components/analytics/MetaPixel"
+import { useAnalytics } from "@/hooks/useAnalytics"
+import { SELLER_FUNNEL } from "@/lib/gtm"
 
 export default function CheckoutSuccessPage() {
     return (
@@ -29,6 +31,7 @@ function CheckoutSuccessContent() {
     const searchParams = useSearchParams()
     const sessionId = searchParams.get("session_id")
     const { profile } = useAuth()
+    const { trackEvent } = useAnalytics()
     // Won-auction handover list lives at a different path per role — same
     // split used by the notification bell for auction-seller destinations.
     const wonAuctionsHref = profile?.role === "DEALER" ? "/dashboard/dealer/auctions/won" : "/dashboard/buyer/bids"
@@ -60,13 +63,36 @@ function CheckoutSuccessContent() {
                 // Purchase event per completed Stripe Checkout Session.
                 if (data?.paymentStatus === 'paid' && trackedSessionId.current !== sessionId) {
                     trackedSessionId.current = sessionId
+                    const value = data.amountTotal != null ? data.amountTotal / 100 : undefined
+                    const currency = data.currency?.toUpperCase() ?? "GBP"
                     trackMetaEvent("Purchase", {
-                        value: data.amountTotal != null ? data.amountTotal / 100 : undefined,
-                        currency: data.currency?.toUpperCase() ?? "GBP",
+                        value,
+                        currency,
                         content_type: "product",
                         content_ids: data.metadata?.listingId ? [data.metadata.listingId] : undefined,
                         content_name: data.metadata?.type,
                     })
+                    // Generic purchase for GTM — one trigger covers every fee
+                    // type, with `fee_type` to split them in reporting.
+                    // transaction_id is the Stripe session so GA4 can dedupe
+                    // if the seller refreshes the success page.
+                    trackEvent('purchase', {
+                        transaction_id: sessionId,
+                        value,
+                        currency,
+                        fee_type: data.metadata?.type,
+                        listing_id: data.metadata?.listingId,
+                    })
+                    // Seller funnel terminal step: the retail listing fee cleared.
+                    if (data.metadata?.type === 'LISTING_FEE') {
+                        trackEvent(SELLER_FUNNEL.LISTING_FEE_PAID, {
+                            transaction_id: sessionId,
+                            value,
+                            currency,
+                            listing_type: 'retail',
+                            listing_id: data.metadata?.listingId,
+                        })
+                    }
                 }
             } catch {
                 // Silently fail — show generic success

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react"
 import { useAuth } from "@/context/AuthContext"
+import { pushToDataLayer } from "@/lib/gtm"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 
@@ -23,10 +24,20 @@ function getDeviceType(): string {
     return "desktop"
 }
 
+// GTM's own GA4 config tag fires pageviews natively, and GoogleAnalytics.tsx
+// already tracks them too — mirroring our first-party page_view into the
+// dataLayer as well would triple-count. First-party keeps recording it.
+const DATALAYER_EXCLUDED = new Set(["page_view"])
+
 /**
  * Fire-and-forget analytics hook.
  * Every call is non-blocking — failures are silently swallowed.
  * Each event is automatically enriched with url, referrer, and device type.
+ *
+ * Events fan out to two places from this single call: CarMazium's own
+ * /analytics/event store (which powers the admin analytics dashboard) and
+ * the GTM dataLayer (which lets GA4/Meta/TikTok tags be attached per-event
+ * from the GTM console without a redeploy). See lib/gtm.ts.
  */
 export function useAnalytics() {
     const { user } = useAuth()
@@ -44,6 +55,13 @@ export function useAnalytics() {
                     referrer: typeof window !== "undefined" ? (document.referrer || "direct") : "",
                     device: getDeviceType(),
                     ...payload, // caller-supplied fields take precedence
+                }
+
+                // Mirror to GTM. Only the caller-supplied fields go out — url
+                // and referrer are things GTM/GA4 already collect themselves,
+                // and device is derivable there too.
+                if (!DATALAYER_EXCLUDED.has(type)) {
+                    pushToDataLayer(type, payload)
                 }
 
                 fetch(`${API_URL}/analytics/event`, {
