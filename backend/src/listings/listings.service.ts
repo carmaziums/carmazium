@@ -624,7 +624,11 @@ export class ListingsService {
                     },
                 },
                 hpiReport: {
-                    select: { isClear: true, purchasedAt: true }
+                    // `status` lets the buyer-facing page only show the "View
+                    // Report" entry point once one has actually been requested
+                    // — without it every listing showed the button regardless
+                    // of whether the seller ever paid for a report at all.
+                    select: { status: true, isClear: true, purchasedAt: true }
                 },
                 damageRecords: {
                     orderBy: { createdAt: 'asc' },

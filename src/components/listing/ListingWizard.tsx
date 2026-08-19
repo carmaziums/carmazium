@@ -224,12 +224,16 @@ function InfoTooltip({ text }: { text: string }) {
 
 function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnlock: () => void }) {
     if (isUnlocked) {
+        // Payment succeeded, but the report itself is prepared by our team
+        // after review — nothing has actually been checked yet at this point,
+        // so this must not claim a clean result before one exists.
         return (
-            <div className="mt-8 relative overflow-hidden rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 flex flex-col items-center text-center">
+            <div className="mt-8 relative overflow-hidden rounded-xl border border-blue-500/30 bg-blue-500/10 p-4 flex flex-col items-center text-center">
                  <div className="flex items-center gap-3">
-                     <CheckCircle className="text-emerald-400" size={20} />
-                     <h3 className="text-base font-bold text-emerald-300">HPI Report Verified & Clear</h3>
+                     <Clock className="text-blue-400" size={20} />
+                     <h3 className="text-base font-bold text-blue-300">HPI Report Requested</h3>
                  </div>
+                 <p className="text-xs text-[var(--text-muted)] mt-1">Our team will prepare your vehicle history report during review.</p>
             </div>
         )
     }
@@ -2942,9 +2946,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {/* Vehicle Info */}
                             <SummarySection title="Vehicle Identity" onEdit={() => goToStep(1)}>
                                 {isHpiUnlocked && (
-                                    <div className="mb-4 bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-lg flex items-center gap-2">
-                                         <CheckCircle className="text-emerald-400" size={16} />
-                                         <span className="text-sm text-emerald-300 font-bold tracking-wide">HPI Checked & Verified</span>
+                                    <div className="mb-4 bg-blue-500/10 border border-blue-500/20 p-3 rounded-lg flex items-center gap-2">
+                                         <Clock className="text-blue-400" size={16} />
+                                         <span className="text-sm text-blue-300 font-bold tracking-wide">HPI Report Requested — being prepared</span>
                                     </div>
                                 )}
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

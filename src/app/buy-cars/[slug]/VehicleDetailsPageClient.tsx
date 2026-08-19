@@ -1092,26 +1092,34 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                             )
                         })()}
 
-                        {/* HPI Report Section */}
-                        <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-6">
-                            <div className="flex items-center justify-between gap-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                                        <ShieldCheck size={18} className="text-emerald-400" />
+                        {/* HPI Report Section — only when the seller actually
+                            requested one; otherwise this promised a report that
+                            didn't exist and errored the moment it was clicked. */}
+                        {listing.hpiReport && (
+                            <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-6">
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                                            <ShieldCheck size={18} className="text-emerald-400" />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-[var(--text-primary)] text-sm">HPI History Check</p>
+                                            <p className="text-xs text-[var(--text-muted)]">
+                                                {listing.hpiReport.status === 'COMPLETED'
+                                                    ? 'Comprehensive vehicle history report — stolen, finance, write-off & more'
+                                                    : 'Report requested — being prepared by our team'}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-bold text-[var(--text-primary)] text-sm">HPI History Check</p>
-                                        <p className="text-xs text-[var(--text-muted)]">Comprehensive vehicle history report — stolen, finance, write-off & more</p>
-                                    </div>
+                                    <button
+                                        onClick={() => setShowHpiModal(true)}
+                                        className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold transition-colors"
+                                    >
+                                        <ShieldCheck size={13} /> View Report
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => setShowHpiModal(true)}
-                                    className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold transition-colors"
-                                >
-                                    <ShieldCheck size={13} /> View Report
-                                </button>
                             </div>
-                        </div>
+                        )}
 
                         {/* Finance Calculator */}
                         <FinanceCalculator vehiclePrice={Number(listing.price)} />

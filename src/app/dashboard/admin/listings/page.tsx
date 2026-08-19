@@ -360,6 +360,23 @@ export default function AdminListingsPage() {
                                                                     </button>
                                                                 </div>
                                                             )}
+                                                            {/* Report already saved — still editable up until approval, so a
+                                                                typo caught on re-read doesn't require rejecting the whole listing. */}
+                                                            {l.hpiReport?.status === 'COMPLETED' && (
+                                                                <div className="mt-4 p-3 rounded-lg border border-emerald-500/25 bg-emerald-500/5 flex items-center gap-3">
+                                                                    <FileWarning size={16} className="text-emerald-400 shrink-0" />
+                                                                    <p className="flex-1 min-w-0 text-[11px] text-[var(--text-muted)]">
+                                                                        <span className="font-bold text-emerald-400">HPI report prepared.</span> Spot an error? You can still edit it before approving.
+                                                                    </p>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setHpiTarget({ id: l.id, title: l.title })}
+                                                                        className="shrink-0 px-3 py-1.5 rounded-lg border border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-primary/40 text-[11px] font-bold uppercase tracking-widest transition-colors cursor-pointer"
+                                                                    >
+                                                                        Edit report
+                                                                    </button>
+                                                                </div>
+                                                            )}
 
                                                             <div className="flex gap-3 mt-4">
                                                                 <button
