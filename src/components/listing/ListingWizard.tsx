@@ -1065,8 +1065,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 <div className="p-6">
                      <div className="flex justify-between items-center mb-6">
                          <div>
-                             <p className="text-[var(--text-primary)] font-bold">Comprehensive HPI Report</p>
-                             <p className="text-xs text-[var(--text-muted)] mt-1 uppercase font-bold tracking-wider">Powered by OneAuto API</p>
+                             <p className="text-[var(--text-primary)] font-bold">Vehicle History Report</p>
+                             <p className="text-xs text-[var(--text-muted)] mt-1">Prepared by our team while your listing is reviewed</p>
                          </div>
                          <div className="text-xl font-black">£9.99</div>
                      </div>

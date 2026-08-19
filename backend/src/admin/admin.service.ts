@@ -239,6 +239,9 @@ export class AdminService {
                 // BIN/start time) on this related row, not on Listing itself — the
                 // pending-review UI needs it to actually review an auction.
                 auction: true,
+                // Drives the "HPI report required" indicator and the disabled
+                // approve button — a PENDING report blocks approval.
+                hpiReport: { select: { status: true, isClear: true, preparedAt: true } },
             },
         });
     }
@@ -376,12 +379,22 @@ export class AdminService {
     }
 
     async approveListing(id: string) {
-        const listing = await this.prisma.listing.findUnique({ where: { id } });
+        const listing = await this.prisma.listing.findUnique({
+            where: { id },
+            include: { hpiReport: { select: { status: true } } },
+        });
         if (!listing) {
             throw new NotFoundException('Listing not found');
         }
         if (listing.status !== 'PENDING_REVIEW') {
             throw new BadRequestException('Only listings awaiting review can be approved');
+        }
+        // The seller paid for an HPI report, so the listing must not go live
+        // advertising a report that hasn't been produced yet.
+        if (listing.hpiReport?.status === 'PENDING') {
+            throw new BadRequestException(
+                'This seller paid for an HPI report. Prepare and save the report before approving the listing.',
+            );
         }
 
         const isPremium = listing.badgeTier === 'PREMIUM';

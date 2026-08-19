@@ -1,100 +1,241 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import { firstValueFrom } from 'rxjs';
+import { HpiPdfService } from './hpi-pdf.service';
+import {
+    HPI_CHECK_KEYS,
+    HpiReportData,
+    defaultChecks,
+    deriveIsClear,
+} from './hpi-report.types';
 
+/**
+ * HPI reports are prepared by CarMazium staff, not fetched from an API.
+ *
+ * A seller opting in at listing time creates a PENDING row the moment their
+ * payment clears; an admin then fills in the check results from the supplied
+ * third-party check, which computes `isClear` and flips the row to COMPLETED.
+ * A listing cannot be approved while its report is still PENDING (enforced in
+ * AdminService.approveListing).
+ *
+ * Rows created before this change came from OneAutoAPI and carry
+ * source=ONE_AUTO_API with the raw response in `data` — they still render
+ * through parseLegacySummary so nothing a seller already paid for breaks.
+ */
 @Injectable()
 export class HpiService {
     private readonly logger = new Logger(HpiService.name);
-    private readonly API_URL = 'https://api.oneautoapi.com/ukvehicledata/vehicledetailsfromvrm/v2';
 
     constructor(
-        private readonly httpService: HttpService,
-        private readonly configService: ConfigService,
         private readonly prisma: PrismaService,
+        private readonly hpiPdfService: HpiPdfService,
     ) { }
 
     /**
-     * Fetch HPI report from OneAutoAPI and save it to the database
+     * Called when an HPI payment clears. Idempotent: Stripe can deliver the
+     * webhook more than once, and the checkout-success page calls the same
+     * fallback path, so this must never create a second row or clobber a
+     * report an admin has already filled in.
      */
-    async generateAndSaveReport(listingId: string, vrm: string, transactionId?: string) {
-        const apiKey = this.configService.get<string>('ONE_AUTO_API_KEY');
-
-        if (!apiKey) {
-            this.logger.error('ONE_AUTO_API_KEY is not configured');
-            throw new Error('HPI API key not configured');
+    async createPendingReport(listingId: string, vrm: string, transactionId?: string) {
+        const existing = await this.prisma.hpiReport.findUnique({ where: { listingId } });
+        if (existing) {
+            this.logger.log(`HPI report already exists for listing ${listingId} — leaving as-is`);
+            return existing;
         }
 
-        try {
-            const response = await firstValueFrom(
-                this.httpService.get(`${this.API_URL}?vehicle_registration_mark=${vrm}`, {
-                    headers: { 'x-api-key': apiKey },
-                })
-            );
-
-            const data = response.data;
-
-            // Parse OneAutoAPI response structure to determine if vehicle is clear
-            // vehicledetailsfromvrm/v2 returns structured vehicle data
-            let isClear = true;
-            const result = data?.Response?.DataItems || data?.result || data;
-
-            // Check for negative markers in the response
-            const stolen = result?.StolenDetails?.IsStolen === true || result?.stolen === true;
-            const scrapped = result?.VehicleStatus?.IsScrapped === true || result?.scrapped === true;
-            const writtenOff = result?.WriteOffDetails?.IsWrittenOff === true || result?.writtenOff === true;
-            const financeOutstanding = result?.FinanceDetails?.IsOnFinance === true;
-
-            if (stolen || scrapped || writtenOff) {
-                isClear = false;
-            }
-
-            const report = await this.prisma.hpiReport.upsert({
-                where: { listingId },
-                update: {
-                    vrm,
-                    data,
-                    isClear,
-                    transactionId,
-                    purchasedAt: new Date(),
-                },
-                create: {
-                    listingId,
-                    vrm,
-                    data,
-                    isClear,
-                    transactionId,
-                },
-            });
-
-            this.logger.log(`Generated HPI Report for VRM: ${vrm} on Listing: ${listingId}`);
-            return report;
-        } catch (error: any) {
-            this.logger.error(`Failed to fetch HPI report for ${vrm}: ${error.message}`, error.stack);
-            throw new BadRequestException('Failed to generate HPI report. Please try again or contact support.');
-        }
-    }
-
-    /**
-     * Fetch an existing HPI report from the DB
-     */
-    async getReportForListing(listingId: string) {
-        const report = await this.prisma.hpiReport.findUnique({
-            where: { listingId },
+        const report = await this.prisma.hpiReport.create({
+            data: {
+                listingId,
+                vrm,
+                transactionId,
+                status: 'PENDING',
+                source: 'ADMIN',
+                isClear: false,
+            },
         });
 
-        if (!report) {
-            throw new NotFoundException('HPI Report not found for this listing');
-        }
-
+        this.logger.log(`HPI report requested for listing ${listingId} (VRM ${vrm}) — awaiting admin`);
         return report;
     }
 
+    async getReportForListing(listingId: string) {
+        const report = await this.prisma.hpiReport.findUnique({ where: { listingId } });
+        if (!report) {
+            throw new NotFoundException('HPI Report not found for this listing');
+        }
+        return report;
+    }
+
+    /** Listings whose seller has paid but whose report hasn't been produced yet. */
+    async getPendingReports() {
+        return this.prisma.hpiReport.findMany({
+            where: { status: 'PENDING' },
+            orderBy: { purchasedAt: 'asc' },
+            include: {
+                listing: {
+                    select: {
+                        id: true,
+                        title: true,
+                        slug: true,
+                        status: true,
+                        type: true,
+                        vrm: true,
+                        make: true,
+                        model: true,
+                        year: true,
+                        seller: { select: { id: true, firstName: true, lastName: true, email: true } },
+                    },
+                },
+            },
+        });
+    }
+
     /**
-     * Parse the raw OneAutoAPI response into a clean, structured summary for display
+     * Seeds the admin form from what the listing already knows (mostly DVLA
+     * data captured during the wizard), so the admin only types what's unique
+     * to the third-party check rather than re-keying the whole vehicle.
      */
-    parseReportSummary(rawData: any): HpiReportSummary {
+    async buildPrefill(listingId: string): Promise<HpiReportData> {
+        const listing = await this.prisma.listing.findUnique({
+            where: { id: listingId },
+            select: {
+                vrm: true, make: true, model: true, year: true, color: true,
+                fuelType: true, transmission: true, bodyType: true, engineSize: true,
+                vin: true, co2Emissions: true, owners: true, mileage: true,
+                motExpiryDate: true, monthOfFirstRegistration: true,
+            },
+        });
+
+        if (!listing) throw new NotFoundException('Listing not found');
+
+        const existing = await this.prisma.hpiReport.findUnique({ where: { listingId } });
+        // Re-editing a completed report should reopen exactly what was saved,
+        // not silently reset the admin's work back to listing defaults.
+        if (existing?.reportData) {
+            return existing.reportData as unknown as HpiReportData;
+        }
+
+        // motExpiryDate is stored as an ISO string and monthOfFirstRegistration
+        // as "YYYY-MM", so both arrive as strings rather than Dates.
+        const fmtDate = (d: Date | string | null | undefined) => {
+            if (!d) return '';
+            const parsed = new Date(d);
+            return Number.isNaN(parsed.getTime())
+                ? String(d)
+                : parsed.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+        };
+
+        return {
+            sourceName: 'AutoTrader Vehicle Check',
+            sourceCheckDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+            vehicle: {
+                make: listing.make ?? '',
+                model: listing.model ?? '',
+                bodyType: listing.bodyType ?? '',
+                fuelType: listing.fuelType ?? '',
+                transmission: listing.transmission ?? '',
+                engineCapacity: listing.engineSize ? `${listing.engineSize} cc` : '',
+                vrm: listing.vrm ?? '',
+                vin: listing.vin ?? '',
+                engineNumber: '',
+                colour: listing.color ?? '',
+                firstRegistered: fmtDate(listing.monthOfFirstRegistration),
+                yearOfManufacture: listing.year ? String(listing.year) : '',
+                previousOwners: listing.owners != null ? String(listing.owners) : '',
+                currentV5cIssueDate: '',
+                co2Emissions: listing.co2Emissions ? `${listing.co2Emissions} g/km` : '',
+            },
+            checks: defaultChecks(),
+            motStatus: '',
+            motExpiry: fmtDate(listing.motExpiryDate),
+            motMileageRecording: listing.mileage != null ? `${Number(listing.mileage).toLocaleString('en-GB')} miles` : '',
+            motCurrentAdvisory: '',
+            motHistory: [],
+            mileageHistory: [],
+            previousKeepers: listing.owners != null ? String(listing.owners) : '',
+            lastKeeperChange: '',
+            previousSearches: [],
+        };
+    }
+
+    /**
+     * Saves an admin-prepared report and marks it COMPLETED.
+     * `isClear` is derived from the checks rather than accepted from the
+     * client, so the badge shown on listings can never disagree with the
+     * checks printed on the PDF.
+     */
+    async saveAdminReport(listingId: string, data: HpiReportData, adminId: string) {
+        const report = await this.prisma.hpiReport.findUnique({ where: { listingId } });
+        if (!report) {
+            throw new NotFoundException('No HPI report was requested for this listing');
+        }
+
+        this.validate(data);
+
+        const normalised: HpiReportData = {
+            ...data,
+            checks: HPI_CHECK_KEYS.reduce(
+                (acc, key) => {
+                    const entry = data.checks?.[key];
+                    acc[key] = { passed: entry?.passed !== false, ...(entry?.note ? { note: entry.note } : {}) };
+                    return acc;
+                },
+                {} as HpiReportData['checks'],
+            ),
+            motHistory: data.motHistory ?? [],
+            mileageHistory: data.mileageHistory ?? [],
+            previousSearches: data.previousSearches ?? [],
+        };
+
+        const updated = await this.prisma.hpiReport.update({
+            where: { listingId },
+            data: {
+                reportData: normalised as unknown as object,
+                isClear: deriveIsClear(normalised.checks),
+                status: 'COMPLETED',
+                source: 'ADMIN',
+                preparedById: adminId,
+                preparedAt: new Date(),
+                ...(normalised.vehicle?.vrm ? { vrm: normalised.vehicle.vrm } : {}),
+            },
+        });
+
+        this.logger.log(`HPI report completed for listing ${listingId} by admin ${adminId}`);
+        return updated;
+    }
+
+    private validate(data: HpiReportData) {
+        if (!data) throw new BadRequestException('Report data is required');
+        if (!data.sourceName?.trim()) {
+            throw new BadRequestException('Source name is required — the report must disclose where the check came from');
+        }
+        if (!data.sourceCheckDate?.trim()) {
+            throw new BadRequestException('Source check date is required');
+        }
+        if (!data.vehicle?.vrm?.trim()) {
+            throw new BadRequestException('Vehicle registration (VRM) is required');
+        }
+    }
+
+    /** Renders the branded PDF on demand. Never stored — see HpiController. */
+    async renderPdf(listingId: string): Promise<{ buffer: Buffer; filename: string }> {
+        const report = await this.getReportForListing(listingId);
+
+        if (report.status !== 'COMPLETED' || !report.reportData) {
+            throw new BadRequestException('This HPI report has not been prepared yet');
+        }
+
+        const data = report.reportData as unknown as HpiReportData;
+        const buffer = await this.hpiPdfService.render(data);
+        const vrm = (data.vehicle?.vrm || report.vrm || 'vehicle').replace(/[^A-Za-z0-9]/g, '');
+        return { buffer, filename: `CarMazium_Vehicle_History_Report_${vrm}.pdf` };
+    }
+
+    /**
+     * Legacy OneAutoAPI reports only. New admin-prepared reports are returned
+     * as their structured `reportData` instead — see HpiController.getSummary.
+     */
+    parseLegacySummary(rawData: any): HpiReportSummary {
         const items = rawData?.Response?.DataItems || rawData?.result || rawData || {};
 
         const vehicleReg = items?.VehicleRegistration || {};

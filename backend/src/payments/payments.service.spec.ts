@@ -65,7 +65,7 @@ function buildModule(prisma: any) {
             PaymentsService,
             { provide: PrismaService, useValue: prisma },
             { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('sk_test_mock') } },
-            { provide: HpiService, useValue: { generateAndSaveReport: jest.fn() } },
+            { provide: HpiService, useValue: { createPendingReport: jest.fn() } },
             { provide: NotificationsService, useValue: { create: jest.fn().mockResolvedValue(null) } },
             { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
             { provide: EmailService, useValue: {} },

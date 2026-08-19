@@ -319,6 +319,7 @@ model User {
   wonAuctions             Auction[]            @relation("AuctionWinner")
   deliveryRequestsAsBuyer  DeliveryRequest[] @relation("DeliveryBuyer")
   deliveryRequestsAsSeller DeliveryRequest[] @relation("DeliverySeller")
+  hpiReportsPrepared       HpiReport[]       @relation("HpiReportsPrepared")
 
   notifyOnSale    Boolean @default(true)
   showPublicProfile Boolean @default(true)
@@ -719,19 +720,49 @@ model Listing {
 // HPI REPORTS
 // ============================================================================
 
+/// A report is created the moment the seller pays, in PENDING state with no
+/// data — an admin then fills in the check results, which generates the
+/// branded PDF and flips it to COMPLETED. Rows predating that change were
+/// auto-generated from OneAutoAPI and are already COMPLETED/ONE_AUTO_API by
+/// virtue of the column defaults, so they keep rendering from `data` as before.
 model HpiReport {
   id              String   @id @default(uuid())
   listingId       String   @unique
   vrm             String
-  data            Json     // Storing the full raw JSON from OneAutoAPI
-  isClear         Boolean  // Quick flag if the vehicle is "HPI Clear"
+  /// Raw OneAutoAPI response. Only ever populated on legacy ONE_AUTO_API rows.
+  data            Json?
+  isClear         Boolean  @default(false)
   purchasedAt     DateTime @default(now())
   transactionId   String?  // Reference to payment transaction
-  
+
+  status          HpiReportStatus @default(COMPLETED)
+  source          HpiReportSource @default(ONE_AUTO_API)
+  /// Structured check data entered by an admin, rendered into the PDF.
+  /// Shape is owned by HpiReportData in backend/src/hpi/hpi-report.types.ts.
+  reportData      Json?
+  preparedById    String?
+  preparedAt      DateTime?
+
   listing         Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  preparedBy      User?    @relation("HpiReportsPrepared", fields: [preparedById], references: [id], onDelete: SetNull)
 
   @@index([listingId])
+  @@index([status])
   @@map("hpi_reports")
+}
+
+enum HpiReportStatus {
+  PENDING
+  COMPLETED
+
+  @@map("hpi_report_status")
+}
+
+enum HpiReportSource {
+  ONE_AUTO_API
+  ADMIN
+
+  @@map("hpi_report_source")
 }
 
 // ============================================================================

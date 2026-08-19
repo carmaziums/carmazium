@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { X, ShieldCheck, ShieldX, Download, Printer, CheckCircle2, XCircle, AlertTriangle, Car, Loader2 } from "lucide-react"
+import { X, ShieldCheck, ShieldX, Download, Printer, CheckCircle2, XCircle, AlertTriangle, Car, Loader2, Clock, FileText } from "lucide-react"
 import { apiClient } from "@/lib/apiClient"
+import { HPI_CHECK_DEFINITIONS, openHpiPdf, type HpiReportData, type HpiSummaryResponse } from "@/lib/hpiApi"
 
 interface HpiCheck {
     passed: boolean
@@ -47,17 +48,34 @@ const CHECK_LABELS: Record<string, string> = {
     mileageAnomaly: "Mileage Consistency",
 }
 
+/** Admin-prepared reports render from structured data + the branded PDF. */
+type AdminView = {
+    status: 'PENDING' | 'COMPLETED'
+    vrm: string
+    isClear: boolean
+    preparedAt: string | null
+    report: HpiReportData | null
+}
+
 export function HpiReportModal({ listingId, onClose }: Props) {
     const [summary, setSummary] = React.useState<HpiSummary | null>(null)
+    const [adminView, setAdminView] = React.useState<AdminView | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
+    const [pdfLoading, setPdfLoading] = React.useState(false)
     const printRef = React.useRef<HTMLDivElement>(null)
 
     React.useEffect(() => {
         async function fetchSummary() {
             try {
-                const res = await apiClient<{ success: boolean; data: HpiSummary }>(`/hpi/listing/${listingId}/summary`)
-                setSummary(res.data)
+                const res = await apiClient<{ success: boolean; data: HpiSummaryResponse }>(`/hpi/listing/${listingId}/summary`)
+                // Reports prepared by CarMazium staff carry structured data;
+                // pre-existing OneAutoAPI rows keep the original shape.
+                if (res.data?.format === 'ADMIN') {
+                    setAdminView(res.data)
+                } else {
+                    setSummary(res.data as unknown as HpiSummary)
+                }
             } catch (e: any) {
                 setError(e?.message || "Failed to load HPI report")
             } finally {
@@ -66,6 +84,18 @@ export function HpiReportModal({ listingId, onClose }: Props) {
         }
         fetchSummary()
     }, [listingId])
+
+    const handleOpenPdf = async () => {
+        setPdfLoading(true)
+        setError(null)
+        try {
+            await openHpiPdf(listingId)
+        } catch (e: any) {
+            setError(e?.message || 'Failed to open the report PDF')
+        } finally {
+            setPdfLoading(false)
+        }
+    }
 
     function handlePrint() {
         if (!printRef.current) return
@@ -103,6 +133,125 @@ export function HpiReportModal({ listingId, onClose }: Props) {
 
     const allChecks = summary ? Object.entries(summary.checks) : []
     const passCount = allChecks.filter(([, c]) => c.passed).length
+
+    if (adminView) {
+        const r = adminView.report
+        const isPending = adminView.status !== 'COMPLETED' || !r
+        const failed = r ? HPI_CHECK_DEFINITIONS.filter(d => r.checks?.[d.key]?.passed === false) : []
+
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+                <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl shadow-2xl">
+                    <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-[var(--bg-dropdown)] backdrop-blur border-b border-[var(--border-default)]">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                                <ShieldCheck size={18} className="text-primary" />
+                            </div>
+                            <div className="min-w-0">
+                                <h2 className="font-bold text-[var(--text-primary)] text-lg">Vehicle History Report</h2>
+                                <p className="text-xs text-[var(--text-muted)] truncate">
+                                    {adminView.vrm}
+                                    {adminView.preparedAt && ` · Prepared ${new Date(adminView.preparedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}`}
+                                </p>
+                            </div>
+                        </div>
+                        <button onClick={onClose} className="p-2 text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors shrink-0">
+                            <X size={18} />
+                        </button>
+                    </div>
+
+                    <div className="p-6 space-y-5">
+                        {error && (
+                            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm">{error}</div>
+                        )}
+
+                        {isPending ? (
+                            <div className="text-center py-10">
+                                <Clock size={40} className="mx-auto mb-4 text-amber-400 opacity-80" />
+                                <h3 className="font-bold text-lg text-[var(--text-primary)]">Report being prepared</h3>
+                                <p className="text-sm text-[var(--text-muted)] mt-2 max-w-sm mx-auto leading-relaxed">
+                                    Our team is compiling the vehicle history report for this car. It&apos;ll appear
+                                    here as soon as it&apos;s ready.
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className={`rounded-xl border p-4 flex items-center gap-3 ${adminView.isClear
+                                    ? 'bg-emerald-500/10 border-emerald-500/30'
+                                    : 'bg-amber-500/10 border-amber-500/30'}`}>
+                                    {adminView.isClear
+                                        ? <ShieldCheck size={22} className="text-emerald-400 shrink-0" />
+                                        : <ShieldX size={22} className="text-amber-400 shrink-0" />}
+                                    <div>
+                                        <p className={`font-bold ${adminView.isClear ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                            {adminView.isClear ? 'All checks passed' : `${failed.length} check${failed.length === 1 ? '' : 's'} not passed`}
+                                        </p>
+                                        <p className="text-xs text-[var(--text-muted)]">
+                                            {adminView.isClear
+                                                ? 'No adverse history recorded in the supplied check'
+                                                : failed.map(f => f.label.replace(/^Not |^No /, '')).join(', ')}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {([
+                                        ['Make', r!.vehicle?.make],
+                                        ['Model', r!.vehicle?.model],
+                                        ['Year', r!.vehicle?.yearOfManufacture],
+                                        ['Fuel', r!.vehicle?.fuelType],
+                                        ['Transmission', r!.vehicle?.transmission],
+                                        ['Colour', r!.vehicle?.colour],
+                                    ] as [string, string | undefined][]).filter(([, v]) => v).map(([label, value]) => (
+                                        <div key={label} className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] p-2.5">
+                                            <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">{label}</p>
+                                            <p className="text-sm font-bold truncate">{value}</p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    {HPI_CHECK_DEFINITIONS.map(def => {
+                                        const entry = r!.checks?.[def.key]
+                                        const passed = entry?.passed !== false
+                                        return (
+                                            <div key={def.key} className={`flex items-center gap-2.5 p-2.5 rounded-lg border ${passed
+                                                ? 'bg-emerald-500/5 border-emerald-500/20'
+                                                : 'bg-red-500/5 border-red-500/25'}`}>
+                                                {passed
+                                                    ? <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                                                    : <XCircle size={15} className="text-red-400 shrink-0" />}
+                                                <span className="text-sm flex-1 min-w-0">{def.label}</span>
+                                                {!passed && entry?.note && (
+                                                    <span className="text-xs text-red-300 shrink-0">{entry.note}</span>
+                                                )}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+
+                                <button
+                                    onClick={handleOpenPdf}
+                                    disabled={pdfLoading}
+                                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-white text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-colors disabled:opacity-50"
+                                >
+                                    {pdfLoading ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+                                    Open full report (PDF)
+                                </button>
+
+                                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                                    CarMazium presents vehicle-history information from a supplied
+                                    {r!.sourceName ? ` ${r!.sourceName}` : ' third-party check'}
+                                    {r!.sourceCheckDate ? ` dated ${r!.sourceCheckDate}` : ''}. CarMazium did not originate or
+                                    independently verify the underlying third-party data.
+                                </p>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>

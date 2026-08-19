@@ -627,8 +627,10 @@ export class PaymentsService {
 
                 if (type === 'HPI_REPORT') {
                     const { vrm } = session.metadata;
-                    this.hpiService.generateAndSaveReport(listingId, vrm, transactionId).catch(err => {
-                        console.error('Failed to generate HPI report after payment:', err);
+                    // Reports are prepared by an admin, so payment only registers
+                    // the request — it no longer produces the report itself.
+                    this.hpiService.createPendingReport(listingId, vrm, transactionId).catch(err => {
+                        console.error('Failed to register HPI report request after payment:', err);
                     });
                 }
 
@@ -723,8 +725,8 @@ export class PaymentsService {
                 }
 
                 if (type === 'HPI_REPORT' && listingId) {
-                    this.hpiService.generateAndSaveReport(listingId, vrm, transactionId).catch(err => {
-                        console.error('Failed to generate HPI report after Payment Sheet payment:', err);
+                    this.hpiService.createPendingReport(listingId, vrm, transactionId).catch(err => {
+                        console.error('Failed to register HPI report request after Payment Sheet payment:', err);
                     });
                 }
                 break;
@@ -901,10 +903,10 @@ export class PaymentsService {
         if (!transaction.listingId || !vrm) return { applied: false };
 
         try {
-            // Idempotent (upsert on listingId) — safe even if the webhook already ran this.
-            await this.hpiService.generateAndSaveReport(transaction.listingId, vrm, transaction.id);
+            // Idempotent — safe even if the webhook already registered this request.
+            await this.hpiService.createPendingReport(transaction.listingId, vrm, transaction.id);
         } catch (err) {
-            console.error('Failed to generate HPI report in applyHpiFee fallback:', err);
+            console.error('Failed to register HPI report request in applyHpiFee fallback:', err);
             return { applied: false };
         }
         return { applied: true };
