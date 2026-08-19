@@ -22,6 +22,7 @@ import { CountdownTimer } from "@/components/features/CountdownTimer"
 import { CardImageCarousel } from "@/components/features/CardImageCarousel"
 import { ImageLightbox } from "@/components/features/ImageLightbox"
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
+import { HpiReportModal } from "@/components/hpi/HpiReportModal"
 import { useAuth } from "@/context/AuthContext"
 import { getAuction, acceptBidEarly, triggerBuyItNow, confirmBuyItNow, declineBuyItNow, cancelBid, type Auction, type BidBroadcastPayload, type AuctionEndPayload } from "@/lib/auctionApi"
 import { placeBid, getDamageRecords } from "@/lib/listingApi"
@@ -103,6 +104,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const [connectingChat, setConnectingChat] = React.useState(false)
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
     const [selectedDamageZone, setSelectedDamageZone] = React.useState<string | null>(null)
+    const [showHpiModal, setShowHpiModal] = React.useState(false)
     const [damageLightboxOpen, setDamageLightboxOpen] = React.useState(false)
     const [damageLightboxIndex, setDamageLightboxIndex] = React.useState(0)
     const damageImages = React.useMemo(
@@ -1236,6 +1238,33 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             )
                                         })()}
 
+                                        {/* HPI report — visible before bidding, not just to the
+                                            winner, so it can actually inform the bid. */}
+                                        {auction.listing.hpiReport && (
+                                            <div className="rounded-xl border border-emerald-500/20 bg-[var(--bg-input)] p-4 flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                                                        <ShieldCheck size={16} className="text-emerald-400" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-bold text-[var(--text-primary)]">HPI History Check</p>
+                                                        <p className="text-[10px] text-[var(--text-muted)] truncate">
+                                                            {auction.listing.hpiReport.status === 'COMPLETED'
+                                                                ? 'Vehicle history report — stolen, finance, write-off & more'
+                                                                : 'Report requested — being prepared by our team'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowHpiModal(true)}
+                                                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-[11px] font-bold transition-colors"
+                                                >
+                                                    <ShieldCheck size={12} /> View
+                                                </button>
+                                            </div>
+                                        )}
+
                                         {/* ── Auction parameters ───────────────────────────── */}
                                         <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
                                             <h4 className="text-xs font-bold text-primary uppercase tracking-wider mb-3 flex items-center gap-1.5"><Gavel size={11} /> Auction Details</h4>
@@ -1699,6 +1728,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 open={damageLightboxOpen}
                 onClose={() => setDamageLightboxOpen(false)}
             />
+
+            {showHpiModal && (
+                <HpiReportModal listingId={auction.listing.id} onClose={() => setShowHpiModal(false)} />
+            )}
         </div>
     )
 }

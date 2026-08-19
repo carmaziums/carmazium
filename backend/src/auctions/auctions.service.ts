@@ -261,6 +261,12 @@ export class AuctionsService {
                                 bidder: { select: { id: true, firstName: true, lastName: true } },
                             },
                         },
+                        // Bidders should be able to see the report before they bid,
+                        // not just after winning — same "inspect before bidding"
+                        // principle as the damage/condition viewer already gives
+                        // every listing. Not contact-gated: an HPI report isn't
+                        // personal data the way the seller's phone/email is.
+                        hpiReport: { select: { status: true, isClear: true } },
                     },
                 },
                 winner: { select: { id: true, firstName: true, lastName: true } },
@@ -376,7 +382,7 @@ export class AuctionsService {
                             },
                             // Only present if the seller purchased a report — same "if it has
                             // any" gating already used everywhere else HPI data is shown.
-                            hpiReport: { select: { isClear: true } },
+                            hpiReport: { select: { status: true, isClear: true } },
                         },
                     },
                 },

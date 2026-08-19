@@ -16,6 +16,7 @@ import { getWonAuctionById, type Auction } from "@/lib/auctionApi"
 import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
 import { ChatWindow } from "@/components/chat/ChatWindow"
 import { ChatErrorBoundary } from "@/components/chat/ChatErrorBoundary"
+import { HpiReportModal } from "@/components/hpi/HpiReportModal"
 
 // ─── Spec row helper ──────────────────────────────────────────────────────────
 
@@ -65,6 +66,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
     const [chatError, setChatError] = React.useState<string | null>(null)
 
     const [activeImage, setActiveImage] = React.useState(0)
+    const [showHpiModal, setShowHpiModal] = React.useState(false)
 
     const connectChat = React.useCallback((sellerId: string, listingId: string) => {
         setChatLoading(true)
@@ -251,17 +253,34 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                             )}
 
                             {/* Grade / HPI / history — same trust badges shown on the retail listing cards */}
-                            {(listing.exteriorGrade != null || listing.hpiReport?.isClear || listing.owners || listing.serviceHistory) && (
+                            {(listing.exteriorGrade != null || listing.hpiReport || listing.owners || listing.serviceHistory) && (
                                 <div className="flex gap-2 mt-2 flex-wrap">
                                     {listing.exteriorGrade != null && (
                                         <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border bg-violet-500/10 border-violet-500/20 text-violet-400">
                                             <Award size={10} /> Grade {listing.exteriorGrade} — {GRADE_LABELS[listing.exteriorGrade] ?? ''}
                                         </span>
                                     )}
-                                    {listing.hpiReport?.isClear && (
-                                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border bg-emerald-500/10 border-emerald-500/20 text-emerald-400">
-                                            <ShieldCheck size={10} /> HPI Clear
-                                        </span>
+                                    {/* Clickable regardless of clear/not-clear/pending — a winner
+                                        should be able to see a "not clear" or in-progress report
+                                        too, not just a badge that only appears for good news. */}
+                                    {listing.hpiReport && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowHpiModal(true)}
+                                            className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border transition-colors ${
+                                                listing.hpiReport.status !== 'COMPLETED'
+                                                    ? 'bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20'
+                                                    : listing.hpiReport.isClear
+                                                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'
+                                                        : 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20'
+                                            }`}
+                                        >
+                                            {listing.hpiReport.status !== 'COMPLETED'
+                                                ? <><Clock size={10} /> HPI Pending</>
+                                                : listing.hpiReport.isClear
+                                                    ? <><ShieldCheck size={10} /> HPI Clear</>
+                                                    : <><AlertTriangle size={10} /> HPI — Issues Found</>}
+                                        </button>
                                     )}
                                     {listing.owners && (
                                         <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border bg-[var(--bg-card)] border-[var(--border-default)] text-[var(--text-secondary)]">
@@ -490,6 +509,10 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                     </div>
                 </div>
             </div>
+
+            {showHpiModal && (
+                <HpiReportModal listingId={listing.id} onClose={() => setShowHpiModal(false)} />
+            )}
         </div>
     )
 }

@@ -69,7 +69,7 @@ export interface AuctionListing {
     owners: string | null;
     serviceHistory: string | null;
     // Only present if the seller purchased an HPI report
-    hpiReport?: { isClear: boolean } | null;
+    hpiReport?: { status: 'PENDING' | 'COMPLETED'; isClear: boolean } | null;
     // Trust/promo — same fields the Buy Cars card reads
     badgeTier?: string | null;
     isFeatured?: boolean;
