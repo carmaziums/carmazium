@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import Script from "next/script"
+import { useConsent } from "@/context/ConsentContext"
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim()
 // Google Ads conversion tag (AW-...), separate product from GA4 (G-...) but
@@ -41,10 +42,12 @@ function GAPageViewTracker() {
  * manually below to survive App Router client-side navigation) and/or Google
  * Ads conversion tracking, whichever env vars are set. No-op (renders
  * nothing, loads no script) when both NEXT_PUBLIC_GA_MEASUREMENT_ID and
- * NEXT_PUBLIC_GOOGLE_ADS_ID are unset.
+ * NEXT_PUBLIC_GOOGLE_ADS_ID are unset, or until the visitor has accepted
+ * analytics/marketing cookies — see ConsentContext.
  */
 export function GoogleAnalytics() {
-    if (!GA_MEASUREMENT_ID && !GOOGLE_ADS_ID) return null
+    const { granted } = useConsent()
+    if ((!GA_MEASUREMENT_ID && !GOOGLE_ADS_ID) || !granted) return null
 
     // Either ID works to load the shared gtag.js library — prefer GA4's if
     // both are set, purely for a stable script src across renders.

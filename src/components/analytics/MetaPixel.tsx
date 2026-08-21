@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import Script from "next/script"
+import { useConsent } from "@/context/ConsentContext"
 
 // .trim() guards against stray whitespace from a copy-pasted env var value —
 // an untrimmed ID silently breaks the noscript pixel URL's query string and
@@ -52,10 +53,12 @@ function MetaPixelPageViewTracker() {
  * client-side navigations as PageView events, since Next.js SPA routing
  * doesn't reload the page for fbq's own view to pick up automatically.
  * No-op (renders nothing, loads no script) when NEXT_PUBLIC_META_PIXEL_ID
- * is unset.
+ * is unset, or until the visitor has accepted analytics/marketing cookies —
+ * see ConsentContext.
  */
 export function MetaPixel() {
-    if (!META_PIXEL_ID) return null
+    const { granted } = useConsent()
+    if (!META_PIXEL_ID || !granted) return null
 
     return (
         <>

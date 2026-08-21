@@ -1,9 +1,13 @@
+"use client"
+
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 import { Mail, Phone, MapPin } from "lucide-react"
+import { useConsent } from "@/context/ConsentContext"
 
 export function Footer() {
+    const { openPreferences } = useConsent()
     return (
         <footer className="bg-gradient-to-t from-[#1e293b] to-[#2d3c63] text-white pt-16 pb-8 border-t border-white/5 mt-auto">
             <div className="container mx-auto px-5">
@@ -39,6 +43,7 @@ export function Footer() {
                             <li><Link href="/sell" className="hover:text-primary transition-colors">Sell Cars</Link></li>
                             <li><Link href="/about" className="hover:text-primary transition-colors">About</Link></li>
                             <li><Link href="/terms" className="hover:text-primary transition-colors">Terms & Conditions</Link></li>
+                            <li><Link href="/cookie-policy" className="hover:text-primary transition-colors">Cookie Policy</Link></li>
                         </ul>
                     </div>
 
@@ -77,8 +82,11 @@ export function Footer() {
                     </div>
                 </div>
 
-                <div className="border-t border-white/10 pt-8 text-center text-gray-500 text-sm">
+                <div className="border-t border-white/10 pt-8 text-center text-gray-500 text-sm flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
                     <p>&copy; {new Date().getFullYear()} CarMazium. All Rights Reserved.</p>
+                    <button onClick={openPreferences} className="hover:text-primary transition-colors underline underline-offset-2">
+                        Cookie Preferences
+                    </button>
                 </div>
             </div>
         </footer>

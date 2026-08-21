@@ -1,6 +1,7 @@
 "use client"
 
 import Script from "next/script"
+import { useConsent } from "@/context/ConsentContext"
 
 // .trim() guards against stray whitespace from a copy-pasted env var — an
 // untrimmed ID silently breaks the container URL and GTM Preview then reports
@@ -16,14 +17,16 @@ const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID?.trim()
  * needing a code change and redeploy for each one.
  *
  * No-op (renders nothing, loads no script) when NEXT_PUBLIC_GTM_ID is unset,
- * so this is inert until you supply a container ID.
+ * or until the visitor has accepted analytics/marketing cookies — see
+ * ConsentContext.
  *
  * IMPORTANT: if you later move GA4 into GTM as a config tag, remove the
  * <GoogleAnalytics /> component from layout.tsx at the same time — running
  * both would double-count every pageview and conversion.
  */
 export function GoogleTagManager() {
-    if (!GTM_ID) return null
+    const { granted } = useConsent()
+    if (!GTM_ID || !granted) return null
 
     return (
         <>

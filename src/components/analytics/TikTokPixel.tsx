@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import Script from "next/script"
+import { useConsent } from "@/context/ConsentContext"
 
 const TIKTOK_PIXEL_ID = process.env.NEXT_PUBLIC_TIKTOK_PIXEL_ID?.trim()
 
@@ -47,10 +48,12 @@ function TikTokPageViewTracker() {
  * navigations as page views, since Next.js SPA routing doesn't reload the
  * page for ttq's own view to pick up automatically.
  * No-op (renders nothing, loads no script) when NEXT_PUBLIC_TIKTOK_PIXEL_ID
- * is unset.
+ * is unset, or until the visitor has accepted analytics/marketing cookies —
+ * see ConsentContext.
  */
 export function TikTokPixel() {
-    if (!TIKTOK_PIXEL_ID) return null
+    const { granted } = useConsent()
+    if (!TIKTOK_PIXEL_ID || !granted) return null
 
     return (
         <>

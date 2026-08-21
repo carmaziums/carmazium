@@ -19,6 +19,8 @@ import { GoogleTagManager } from "@/components/analytics/GoogleTagManager";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import { MetaPixel } from "@/components/analytics/MetaPixel";
 import { TikTokPixel } from "@/components/analytics/TikTokPixel";
+import { CookieConsentBanner } from "@/components/analytics/CookieConsentBanner";
+import { ConsentProvider } from "@/context/ConsentContext";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -94,31 +96,34 @@ export default function RootLayout({
         className={`${inter.className} selection:bg-red-500/30 selection:text-red-200`}
       >
         <AutoDealerJsonLd />
-        <GoogleTagManager />
-        <GoogleAnalytics />
-        <MetaPixel />
-        <TikTokPixel />
-        <ThemeProvider>
-          <AuthProvider>
-            <ChatProvider>
-              <CompareProvider>
-                <LocationProvider>
-                  <PageViewTracker />
-                  <div className="flex flex-col min-h-screen">
-                    <Header />
-                    <main className="flex-grow pt-20">
-                      {children}
-                    </main>
-                    <ConditionalFooter />
-                    <MaziumWidgetLoader />
-                    <MarketingPopup />
-                    <LocationPromptModal />
-                  </div>
-                </LocationProvider>
-              </CompareProvider>
-            </ChatProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <ConsentProvider>
+          <GoogleTagManager />
+          <GoogleAnalytics />
+          <MetaPixel />
+          <TikTokPixel />
+          <ThemeProvider>
+            <AuthProvider>
+              <ChatProvider>
+                <CompareProvider>
+                  <LocationProvider>
+                    <PageViewTracker />
+                    <div className="flex flex-col min-h-screen">
+                      <Header />
+                      <main className="flex-grow pt-20">
+                        {children}
+                      </main>
+                      <ConditionalFooter />
+                      <MaziumWidgetLoader />
+                      <MarketingPopup />
+                      <LocationPromptModal />
+                      <CookieConsentBanner />
+                    </div>
+                  </LocationProvider>
+                </CompareProvider>
+              </ChatProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </ConsentProvider>
       </body>
     </html>
   );
