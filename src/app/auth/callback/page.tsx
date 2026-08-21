@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { fetchWithRetry } from "@/lib/fetchWithRetry"
 import { Loader2 } from "lucide-react"
+import { trackMetaEvent } from "@/components/analytics/MetaPixel"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev";
 
@@ -142,6 +143,12 @@ function AuthCallbackContent() {
             return
           }
           if (data.user && data.session) {
+            // hashParams.type is Supabase's own tag for which email link this
+            // was — only "signup" is an actual new registration completing;
+            // "magiclink"/other types are returning users and must not count.
+            if (hashParams.type === "signup") {
+              trackMetaEvent("CompleteRegistration")
+            }
             await syncBackendAndRedirect(data.user, data.session.access_token, redirectTo, roleFromUrl)
             return
           }
