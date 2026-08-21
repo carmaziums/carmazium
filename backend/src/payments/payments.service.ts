@@ -291,6 +291,77 @@ export class PaymentsService {
     }
 
     /**
+     * Create a Stripe Checkout Session for a buyer paying to have an HPI
+     * report emailed to them personally. Distinct from createHpiSession
+     * above (the seller's request-a-report payment) — same £9.99 price,
+     * different metadata type, different return destination.
+     *
+     * returnPath comes from the frontend (whichever page the buyer was on —
+     * buy-cars, live auction, or won auction) rather than a fixed URL like
+     * the seller flow uses, since this action is available from three
+     * different pages. Restricted to known-safe internal paths so it can't
+     * be used as an open redirect.
+     */
+    async createHpiEmailSession(listingId: string, userId: string, returnPath: string) {
+        const stripe = await this.getStripe();
+        const baseUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+
+        if (!/^\/(buy-cars|auctions)\//.test(returnPath)) {
+            throw new BadRequestException('Invalid return path');
+        }
+
+        const listing = await this.prisma.listing.findUnique({
+            where: { id: listingId },
+            select: { vrm: true },
+        });
+        if (!listing) throw new NotFoundException('Listing not found');
+
+        const transaction = await this.prisma.transaction.create({
+            data: {
+                userId,
+                listingId,
+                amount: this.HPI_REPORT_PRICE,
+                type: 'HPI_REPORT_EMAIL' as any,
+                status: 'PENDING',
+                description: `Vehicle history report emailed for ${listing.vrm || listingId}`,
+            },
+        });
+
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            mode: 'payment',
+            line_items: [
+                {
+                    price_data: {
+                        currency: 'gbp',
+                        product_data: {
+                            name: 'Vehicle History Report — Emailed Copy',
+                            description: 'Get this vehicle’s history report sent to your email as a PDF',
+                        },
+                        unit_amount: Math.round(this.HPI_REPORT_PRICE * 100),
+                    },
+                    quantity: 1,
+                },
+            ],
+            metadata: {
+                transactionId: transaction.id,
+                userId,
+                listingId,
+                type: 'HPI_REPORT_EMAIL',
+            },
+            success_url: `${baseUrl}${returnPath}?hpi_email_success=true&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${baseUrl}${returnPath}?hpi_email_cancel=true`,
+        });
+
+        await this.prisma.transaction.update({
+            where: { id: transaction.id },
+            data: { stripePaymentId: session.id },
+        });
+
+        return { url: session.url };
+    }
+
+    /**
      * Create a Stripe Checkout Session for a Listing Badge Fee.
      */
     async createListingSession(badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM', userId: string, listingId: string) {
@@ -634,6 +705,17 @@ export class PaymentsService {
                     });
                 }
 
+                if (type === 'HPI_REPORT_EMAIL') {
+                    const buyerId: string | undefined = session.metadata?.userId;
+                    if (buyerId) {
+                        // Delivers immediately if the report's already done, or
+                        // queues delivery for when an admin finishes it.
+                        this.hpiService.requestEmailDelivery(listingId, buyerId, transactionId).catch(err => {
+                            console.error('Failed to register HPI report email delivery after payment:', err);
+                        });
+                    }
+                }
+
                 // Auction buyer fee paid — mark auction and record transaction ID
                 if (type === 'COMMISSION') {
                     const auction = await this.prisma.auction.findFirst({
@@ -728,6 +810,15 @@ export class PaymentsService {
                     this.hpiService.createPendingReport(listingId, vrm, transactionId).catch(err => {
                         console.error('Failed to register HPI report request after Payment Sheet payment:', err);
                     });
+                }
+
+                if (type === 'HPI_REPORT_EMAIL' && listingId) {
+                    const buyerId: string | undefined = pi.metadata?.userId;
+                    if (buyerId) {
+                        this.hpiService.requestEmailDelivery(listingId, buyerId, transactionId).catch(err => {
+                            console.error('Failed to register HPI report email delivery after Payment Sheet payment:', err);
+                        });
+                    }
                 }
                 break;
             }
@@ -907,6 +998,44 @@ export class PaymentsService {
             await this.hpiService.createPendingReport(transaction.listingId, vrm, transaction.id);
         } catch (err) {
             console.error('Failed to register HPI report request in applyHpiFee fallback:', err);
+            return { applied: false };
+        }
+        return { applied: true };
+    }
+
+    /**
+     * Webhook fallback for a buyer's "email me this report" fee — same
+     * reasoning as applyHpiFee above, mirrored for the buyer-side flow.
+     */
+    async applyHpiEmailFee(sessionId: string): Promise<{ applied: boolean }> {
+        const transaction = await this.prisma.transaction.findFirst({
+            where: { stripePaymentId: sessionId, type: 'HPI_REPORT_EMAIL' as any },
+        });
+        if (!transaction) return { applied: false };
+
+        if (transaction.status === 'COMPLETED') {
+            // Already registered — requestEmailDelivery is itself idempotent
+            // on transactionId, but skip the Stripe round-trip when we can.
+            const already = await this.prisma.hpiReportEmailRequest.findFirst({ where: { transactionId: transaction.id } });
+            if (already) return { applied: true };
+        }
+
+        const stripe = await this.getStripe();
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        if (session.payment_status !== 'paid') return { applied: false };
+
+        await this.prisma.transaction.update({
+            where: { id: transaction.id },
+            data: { status: 'COMPLETED' },
+        });
+
+        const buyerId = session.metadata?.userId;
+        if (!transaction.listingId || !buyerId) return { applied: false };
+
+        try {
+            await this.hpiService.requestEmailDelivery(transaction.listingId, buyerId, transaction.id);
+        } catch (err) {
+            console.error('Failed to register HPI report email delivery in applyHpiEmailFee fallback:', err);
             return { applied: false };
         }
         return { applied: true };

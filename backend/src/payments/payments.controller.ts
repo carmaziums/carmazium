@@ -83,6 +83,22 @@ export class PaymentsController {
         return new StandardResponse(result);
     }
 
+    @Post('hpi-email-checkout')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: "Create a Stripe Checkout Session for a buyer's emailed HPI report copy" })
+    async createHpiEmailCheckout(
+        @Body('listingId') listingId: string,
+        @Body('returnPath') returnPath: string,
+        @CurrentUser() user: any,
+    ) {
+        if (!listingId) {
+            throw new BadRequestException('listingId is required for HPI email checkout');
+        }
+        const result = await this.paymentsService.createHpiEmailSession(listingId, user.id, returnPath);
+        return new StandardResponse(result);
+    }
+
     @Post('listing-checkout')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
@@ -132,6 +148,16 @@ export class PaymentsController {
     async applyHpiFee(@Body('sessionId') sessionId: string) {
         if (!sessionId) throw new BadRequestException('sessionId is required');
         const result = await this.paymentsService.applyHpiFee(sessionId);
+        return new StandardResponse(result);
+    }
+
+    @Post('apply-hpi-email-fee')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: "Webhook fallback: register the buyer's emailed HPI report request if the webhook was delayed" })
+    async applyHpiEmailFee(@Body('sessionId') sessionId: string) {
+        if (!sessionId) throw new BadRequestException('sessionId is required');
+        const result = await this.paymentsService.applyHpiEmailFee(sessionId);
         return new StandardResponse(result);
     }
 

@@ -102,6 +102,17 @@ export async function applyHpiFee(sessionId: string): Promise<{ applied: boolean
 }
 
 /**
+ * Webhook fallback: register the buyer's paid HPI report email delivery if the Stripe webhook was delayed or missed.
+ */
+export async function applyHpiEmailFee(sessionId: string): Promise<{ applied: boolean }> {
+    const data = await apiClient<{ data: { applied: boolean } }>('/payments/apply-hpi-email-fee', {
+        method: 'POST',
+        body: JSON.stringify({ sessionId }),
+    })
+    return data.data
+}
+
+/**
  * Fetch payment history for the current user.
  */
 export async function getPaymentHistory(): Promise<PaymentTransaction[]> {

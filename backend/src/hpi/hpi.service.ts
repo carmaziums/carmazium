@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { HpiPdfService } from './hpi-pdf.service';
+import { EmailService } from '../email/email.service';
 import {
     HPI_CHECK_KEYS,
     HpiReportData,
@@ -28,6 +29,7 @@ export class HpiService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly hpiPdfService: HpiPdfService,
+        private readonly emailService: EmailService,
     ) { }
 
     /**
@@ -201,6 +203,14 @@ export class HpiService {
         });
 
         this.logger.log(`HPI report completed for listing ${listingId} by admin ${adminId}`);
+
+        // Fan out to every buyer who paid to have this emailed while it was
+        // still pending. Fire-and-forget: a slow/failed send here must never
+        // block the admin's save.
+        this.deliverAllPendingForReport(updated.id).catch(err =>
+            this.logger.error(`Failed to fan out queued HPI report emails for report ${updated.id}: ${err.message}`),
+        );
+
         return updated;
     }
 
@@ -229,6 +239,133 @@ export class HpiService {
         const buffer = await this.hpiPdfService.render(data);
         const vrm = (data.vehicle?.vrm || report.vrm || 'vehicle').replace(/[^A-Za-z0-9]/g, '');
         return { buffer, filename: `CarMazium_Vehicle_History_Report_${vrm}.pdf` };
+    }
+
+    // ── Buyer-paid email delivery ───────────────────────────────────────────
+    //
+    // Separate from the seller-side flow above: a buyer pays £9.99 to have
+    // the *same* report emailed to them personally. Payment and delivery are
+    // deliberately decoupled — a buyer can pay before a report exists at all,
+    // which itself puts the listing into the admin queue exactly like a
+    // seller's request would. Delivery either fires immediately (report
+    // already COMPLETED) or waits and is picked up by the fan-out in
+    // saveAdminReport() above.
+
+    /**
+     * Called when a buyer's "email me this report" payment clears.
+     * Idempotent against duplicate webhook delivery in the same way
+     * createPendingReport is — Stripe can retry, so this must be safe to
+     * call twice for one payment without double-emailing.
+     */
+    async requestEmailDelivery(listingId: string, buyerId: string, transactionId?: string) {
+        // Never trust a client-supplied address for a paid deliverable —
+        // always the buyer's own verified account email.
+        const buyer = await this.prisma.user.findUnique({ where: { id: buyerId }, select: { email: true } });
+        if (!buyer?.email) {
+            throw new BadRequestException('No email on file for this account');
+        }
+
+        if (transactionId) {
+            const already = await this.prisma.hpiReportEmailRequest.findFirst({ where: { transactionId } });
+            if (already) {
+                this.logger.log(`Email delivery already registered for transaction ${transactionId} — skipping duplicate`);
+                return already;
+            }
+        }
+
+        const listing = await this.prisma.listing.findUnique({ where: { id: listingId }, select: { vrm: true } });
+        if (!listing) throw new NotFoundException('Listing not found');
+
+        let report = await this.prisma.hpiReport.findUnique({ where: { listingId } });
+        if (!report) {
+            // First person to ever request a report for this vehicle — could
+            // be this buyer, not necessarily the seller.
+            report = await this.createPendingReport(listingId, listing.vrm || '', transactionId);
+        }
+
+        const request = await this.prisma.hpiReportEmailRequest.create({
+            data: {
+                hpiReportId: report.id,
+                buyerId,
+                buyerEmail: buyer.email,
+                transactionId,
+                status: 'PENDING',
+            },
+        });
+
+        if (report.status === 'COMPLETED') {
+            // Common case: the listing's report already exists, so this is
+            // effectively instant rather than actually queued.
+            this.deliverEmailRequest(request.id).catch(err =>
+                this.logger.error(`Failed to send HPI report email immediately for request ${request.id}: ${err.message}`),
+            );
+        }
+
+        return request;
+    }
+
+    /** The current buyer's latest delivery request for this listing, if any. */
+    async getMyEmailRequest(listingId: string, buyerId: string) {
+        const report = await this.prisma.hpiReport.findUnique({ where: { listingId }, select: { id: true } });
+        if (!report) return null;
+
+        return this.prisma.hpiReportEmailRequest.findFirst({
+            where: { hpiReportId: report.id, buyerId },
+            orderBy: { requestedAt: 'desc' },
+            select: { status: true, requestedAt: true, sentAt: true },
+        });
+    }
+
+    private async deliverAllPendingForReport(hpiReportId: string) {
+        const pending = await this.prisma.hpiReportEmailRequest.findMany({
+            where: { hpiReportId, status: 'PENDING' },
+            select: { id: true },
+        });
+        for (const { id } of pending) {
+            this.deliverEmailRequest(id).catch(err =>
+                this.logger.error(`Failed to deliver queued HPI report email ${id}: ${err.message}`),
+            );
+        }
+    }
+
+    private async deliverEmailRequest(requestId: string) {
+        const request = await this.prisma.hpiReportEmailRequest.findUnique({
+            where: { id: requestId },
+            include: {
+                hpiReport: {
+                    include: { listing: { select: { title: true, slug: true, make: true, model: true, year: true } } },
+                },
+            },
+        });
+        if (!request || request.status === 'SENT') return;
+
+        const report = request.hpiReport;
+        if (report.status !== 'COMPLETED' || !report.reportData) return; // not ready yet — stays PENDING
+
+        try {
+            const { buffer } = await this.renderPdf(report.listingId);
+            const listing = report.listing;
+            const vehicleTitle = listing?.title
+                || [listing?.year, listing?.make, listing?.model].filter(Boolean).join(' ')
+                || 'Vehicle';
+
+            const sent = await this.emailService.sendHpiReportEmail({
+                toEmail: request.buyerEmail,
+                vehicleTitle,
+                vrm: report.vrm,
+                isClear: report.isClear,
+                listingSlug: listing?.slug || '',
+                pdfBuffer: buffer,
+            });
+
+            await this.prisma.hpiReportEmailRequest.update({
+                where: { id: requestId },
+                data: sent ? { status: 'SENT', sentAt: new Date() } : { status: 'FAILED' },
+            });
+        } catch (err: any) {
+            this.logger.error(`Failed to render/send HPI report email for request ${requestId}: ${err.message}`);
+            await this.prisma.hpiReportEmailRequest.update({ where: { id: requestId }, data: { status: 'FAILED' } }).catch(() => {});
+        }
     }
 
     /**

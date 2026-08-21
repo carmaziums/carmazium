@@ -1001,12 +1001,13 @@ export class AdminService {
 
     /**
      * "Revenue" here means money CarMazium actually retains, not gross Stripe
-     * throughput. LISTING_FEE and HPI_REPORT are kept in full. COMMISSION
-     * (the £125 auction buyer fee) is counted per-transaction at the fixed
-     * £25 platform cut, not by summing `amount` — the stored amount is the
-     * full £125, £100 of which is seller pass-through. DEPOSIT and
-     * FULL_PAYMENT are buyer funds for the vehicle itself — refundable or a
-     * pass-through to the seller — and are excluded entirely; there's
+     * throughput. LISTING_FEE, HPI_REPORT (seller's report request) and
+     * HPI_REPORT_EMAIL (buyer's paid emailed copy) are all kept in full.
+     * COMMISSION (the £125 auction buyer fee) is counted per-transaction at
+     * the fixed £25 platform cut, not by summing `amount` — the stored
+     * amount is the full £125, £100 of which is seller pass-through. DEPOSIT
+     * and FULL_PAYMENT are buyer funds for the vehicle itself — refundable or
+     * a pass-through to the seller — and are excluded entirely; there's
      * currently no seller-payout mechanism for FULL_PAYMENT by design (retail
      * sales settle outside the fee flow), so none of that money is ever
      * CarMazium's to count. BOOST payments don't create Transaction rows at
@@ -1016,7 +1017,7 @@ export class AdminService {
         const createdAt = dateRange ? { createdAt: dateRange } : {};
         const [feeAgg, commissionCount] = await Promise.all([
             this.prisma.transaction.aggregate({
-                where: { status: 'COMPLETED', deletedAt: null, type: { in: ['LISTING_FEE', 'HPI_REPORT'] }, ...createdAt },
+                where: { status: 'COMPLETED', deletedAt: null, type: { in: ['LISTING_FEE', 'HPI_REPORT', 'HPI_REPORT_EMAIL'] }, ...createdAt },
                 _sum: { amount: true },
             }),
             this.prisma.transaction.count({

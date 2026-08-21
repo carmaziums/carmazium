@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
     ArrowLeft, Trophy, Car, Loader2, AlertTriangle,
     Fuel, Cog, Gauge, Palette, DoorOpen, Users2, Zap,
@@ -17,6 +17,7 @@ import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
 import { ChatWindow } from "@/components/chat/ChatWindow"
 import { ChatErrorBoundary } from "@/components/chat/ChatErrorBoundary"
 import { HpiReportModal } from "@/components/hpi/HpiReportModal"
+import { getSessionStatus, applyHpiEmailFee } from "@/lib/paymentApi"
 
 // ─── Spec row helper ──────────────────────────────────────────────────────────
 
@@ -56,6 +57,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
     const auctionId = params.id
     const { user, loading: authLoading } = useAuth()
     const router = useRouter()
+    const searchParams = useSearchParams()
 
     const [auction, setAuction] = React.useState<Auction | null>(null)
     const [loadError, setLoadError] = React.useState<string | null>(null)
@@ -67,6 +69,31 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
 
     const [activeImage, setActiveImage] = React.useState(0)
     const [showHpiModal, setShowHpiModal] = React.useState(false)
+
+    // Returning from Stripe after paying to have the HPI report emailed —
+    // verify the session actually completed, apply the fallback in case the
+    // webhook was delayed, then reopen the modal so the buyer sees it registered.
+    React.useEffect(() => {
+        const hpiEmailSuccess = searchParams.get('hpi_email_success') === 'true'
+        const sessionId = searchParams.get('session_id')
+        if (!hpiEmailSuccess) return
+
+        if (sessionId) {
+            getSessionStatus(sessionId)
+                .then(status => status.paymentStatus === 'paid' ? applyHpiEmailFee(sessionId) : undefined)
+                .catch(() => {})
+                .finally(() => setShowHpiModal(true))
+        } else {
+            setShowHpiModal(true)
+        }
+
+        const url = new URL(window.location.href)
+        url.searchParams.delete('hpi_email_success')
+        url.searchParams.delete('hpi_email_cancel')
+        url.searchParams.delete('session_id')
+        router.replace(url.pathname + url.search, { scroll: false })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     const connectChat = React.useCallback((sellerId: string, listingId: string) => {
         setChatLoading(true)

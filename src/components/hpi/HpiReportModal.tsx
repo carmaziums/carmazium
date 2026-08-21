@@ -1,9 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { X, ShieldCheck, ShieldX, Download, Printer, CheckCircle2, XCircle, AlertTriangle, Car, Loader2, Clock, FileText } from "lucide-react"
+import { X, ShieldCheck, ShieldX, Download, Printer, CheckCircle2, XCircle, AlertTriangle, Car, Loader2, Clock, FileText, Mail } from "lucide-react"
 import { apiClient } from "@/lib/apiClient"
-import { HPI_CHECK_DEFINITIONS, openHpiPdf, type HpiReportData, type HpiSummaryResponse } from "@/lib/hpiApi"
+import { HPI_CHECK_DEFINITIONS, openHpiPdf, createHpiEmailCheckout, getMyHpiEmailRequest, type HpiReportData, type HpiSummaryResponse, type HpiEmailRequestStatus } from "@/lib/hpiApi"
 
 interface HpiCheck {
     passed: boolean
@@ -65,6 +65,14 @@ export function HpiReportModal({ listingId, onClose }: Props) {
     const [pdfLoading, setPdfLoading] = React.useState(false)
     const printRef = React.useRef<HTMLDivElement>(null)
 
+    // Buyer's own £9.99 "email me a copy" purchase — separate from the free
+    // in-app view above. Only offered for admin-prepared reports: legacy
+    // OneAutoAPI rows have no structured data for the PDF pipeline to render.
+    const [emailRequest, setEmailRequest] = React.useState<HpiEmailRequestStatus | null>(null)
+    const [emailRequestLoading, setEmailRequestLoading] = React.useState(false)
+    const [emailCheckoutLoading, setEmailCheckoutLoading] = React.useState(false)
+    const [emailError, setEmailError] = React.useState<string | null>(null)
+
     React.useEffect(() => {
         async function fetchSummary() {
             try {
@@ -73,6 +81,7 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                 // pre-existing OneAutoAPI rows keep the original shape.
                 if (res.data?.format === 'ADMIN') {
                     setAdminView(res.data)
+                    refreshEmailRequest()
                 } else {
                     setSummary(res.data as unknown as HpiSummary)
                 }
@@ -83,7 +92,32 @@ export function HpiReportModal({ listingId, onClose }: Props) {
             }
         }
         fetchSummary()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [listingId])
+
+    async function refreshEmailRequest() {
+        setEmailRequestLoading(true)
+        try {
+            setEmailRequest(await getMyHpiEmailRequest(listingId))
+        } catch {
+            // Non-critical — the "email me a copy" button just falls back to its default state.
+        } finally {
+            setEmailRequestLoading(false)
+        }
+    }
+
+    async function handleEmailMeCopy() {
+        setEmailCheckoutLoading(true)
+        setEmailError(null)
+        try {
+            const returnPath = window.location.pathname
+            const { url } = await createHpiEmailCheckout(listingId, returnPath)
+            window.location.href = url
+        } catch (e: any) {
+            setEmailError(e?.message || 'Failed to start checkout')
+            setEmailCheckoutLoading(false)
+        }
+    }
 
     const handleOpenPdf = async () => {
         setPdfLoading(true)
@@ -247,6 +281,46 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                                 </p>
                             </>
                         )}
+
+                        {/* Buyer's own paid copy — separate from the free view above,
+                            available whether the report is still pending or complete
+                            since payment just queues delivery for whenever it's ready. */}
+                        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 space-y-2.5">
+                            <div className="flex items-center gap-2">
+                                <Mail size={15} className="text-primary shrink-0" />
+                                <p className="text-sm font-bold text-[var(--text-primary)]">Email me a copy</p>
+                            </div>
+
+                            {emailError && <p className="text-xs text-red-400">{emailError}</p>}
+
+                            {emailRequest?.status === 'SENT' ? (
+                                <p className="text-xs text-emerald-400 font-semibold">
+                                    Emailed to you on {emailRequest.sentAt ? new Date(emailRequest.sentAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
+                                </p>
+                            ) : emailRequest?.status === 'PENDING' ? (
+                                <p className="text-xs text-amber-400 font-semibold">
+                                    {isPending
+                                        ? "Paid — we'll email this to you the moment the report is ready."
+                                        : "Payment received — your copy is on its way to your inbox."}
+                                </p>
+                            ) : emailRequest?.status === 'FAILED' ? (
+                                <p className="text-xs text-red-400">We couldn&apos;t send your copy. Please contact support and we&apos;ll get it resent.</p>
+                            ) : (
+                                <>
+                                    <p className="text-xs text-[var(--text-muted)]">
+                                        Get this report sent straight to your inbox as a PDF{isPending ? ' — as soon as it\'s ready' : ''}, for £9.99.
+                                    </p>
+                                    <button
+                                        onClick={handleEmailMeCopy}
+                                        disabled={emailCheckoutLoading || emailRequestLoading}
+                                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[var(--bg-input)] border border-primary/30 text-primary text-xs font-black uppercase tracking-widest hover:bg-primary/10 transition-colors disabled:opacity-50"
+                                    >
+                                        {emailCheckoutLoading ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
+                                        Email me a copy — £9.99
+                                    </button>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

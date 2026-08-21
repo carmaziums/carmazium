@@ -24,9 +24,11 @@ import { ImageLightbox } from "@/components/features/ImageLightbox"
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
 import { HpiReportModal } from "@/components/hpi/HpiReportModal"
 import { useAuth } from "@/context/AuthContext"
+import { useRouter, useSearchParams } from "next/navigation"
 import { getAuction, acceptBidEarly, triggerBuyItNow, confirmBuyItNow, declineBuyItNow, cancelBid, type Auction, type BidBroadcastPayload, type AuctionEndPayload } from "@/lib/auctionApi"
 import { placeBid, getDamageRecords } from "@/lib/listingApi"
 import { getWebSocketUrl, createChatRoom } from "@/lib/chatApi"
+import { getSessionStatus, applyHpiEmailFee } from "@/lib/paymentApi"
 
 const ThreeDVehicleViewer = dynamic(
     () => import("@/components/listing/ThreeDVehicleViewer").then(m => m.ThreeDVehicleViewer),
@@ -79,6 +81,8 @@ function formatCancelCountdown(ms: number): string {
 export default function LiveAuctionPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
     const params = React.use(paramsPromise)
     const { user, profile } = useAuth()
+    const router = useRouter()
+    const searchParams = useSearchParams()
 
     const [auction, setAuction] = React.useState<Auction | null>(null)
     const [loading, setLoading] = React.useState(true)
@@ -105,6 +109,32 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
     const [selectedDamageZone, setSelectedDamageZone] = React.useState<string | null>(null)
     const [showHpiModal, setShowHpiModal] = React.useState(false)
+
+    // Returning from Stripe after paying to have the HPI report emailed —
+    // verify the session actually completed, apply the fallback in case the
+    // webhook was delayed, then reopen the modal so the buyer sees it registered.
+    React.useEffect(() => {
+        const hpiEmailSuccess = searchParams.get('hpi_email_success') === 'true'
+        const sessionId = searchParams.get('session_id')
+        if (!hpiEmailSuccess) return
+
+        if (sessionId) {
+            getSessionStatus(sessionId)
+                .then(status => status.paymentStatus === 'paid' ? applyHpiEmailFee(sessionId) : undefined)
+                .catch(() => {})
+                .finally(() => setShowHpiModal(true))
+        } else {
+            setShowHpiModal(true)
+        }
+
+        const url = new URL(window.location.href)
+        url.searchParams.delete('hpi_email_success')
+        url.searchParams.delete('hpi_email_cancel')
+        url.searchParams.delete('session_id')
+        router.replace(url.pathname + url.search, { scroll: false })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
     const [damageLightboxOpen, setDamageLightboxOpen] = React.useState(false)
     const [damageLightboxIndex, setDamageLightboxIndex] = React.useState(0)
     const damageImages = React.useMemo(

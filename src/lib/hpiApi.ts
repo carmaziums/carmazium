@@ -144,6 +144,31 @@ export async function openHpiPdf(listingId: string): Promise<void> {
     setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
+export interface HpiEmailRequestStatus {
+    status: 'PENDING' | 'SENT' | 'FAILED'
+    requestedAt: string
+    sentAt: string | null
+}
+
+/**
+ * Kicks off Stripe Checkout for a buyer's £9.99 "email me a copy" purchase.
+ * `returnPath` must be a `/buy-cars/...` or `/auctions/...` path — the
+ * backend rejects anything else to prevent it being used as an open redirect.
+ */
+export async function createHpiEmailCheckout(listingId: string, returnPath: string): Promise<{ url: string }> {
+    const res = await apiClient<{ success: boolean; data: { url: string } }>('/payments/hpi-email-checkout', {
+        method: 'POST',
+        body: JSON.stringify({ listingId, returnPath }),
+    })
+    return res.data
+}
+
+/** Whether the current buyer already paid to have this listing's report emailed to them. */
+export async function getMyHpiEmailRequest(listingId: string): Promise<HpiEmailRequestStatus | null> {
+    const res = await apiClient<{ success: boolean; data: HpiEmailRequestStatus | null }>(`/hpi/listing/${listingId}/my-email-request`)
+    return res.data
+}
+
 export function deriveIsClear(checks: Record<string, HpiCheckEntry> | undefined | null): boolean {
     if (!checks) return false
     return HPI_CHECK_DEFINITIONS.every((d) => checks[d.key]?.passed === true)

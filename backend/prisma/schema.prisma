@@ -108,6 +108,7 @@ enum TransactionType {
   COMMISSION
   REFUND
   HPI_REPORT
+  HPI_REPORT_EMAIL
   LISTING_FEE
   BOOST
 
@@ -320,6 +321,7 @@ model User {
   deliveryRequestsAsBuyer  DeliveryRequest[] @relation("DeliveryBuyer")
   deliveryRequestsAsSeller DeliveryRequest[] @relation("DeliverySeller")
   hpiReportsPrepared       HpiReport[]       @relation("HpiReportsPrepared")
+  hpiReportEmailRequests   HpiReportEmailRequest[] @relation("HpiReportEmailRequests")
 
   notifyOnSale    Boolean @default(true)
   showPublicProfile Boolean @default(true)
@@ -746,6 +748,8 @@ model HpiReport {
   listing         Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
   preparedBy      User?    @relation("HpiReportsPrepared", fields: [preparedById], references: [id], onDelete: SetNull)
 
+  emailRequests   HpiReportEmailRequest[]
+
   @@index([listingId])
   @@index([status])
   @@map("hpi_reports")
@@ -763,6 +767,41 @@ enum HpiReportSource {
   ADMIN
 
   @@map("hpi_report_source")
+}
+
+/// A buyer's paid request to have the vehicle history report emailed to them
+/// personally. Deliberately separate from HpiReport itself — payment and
+/// delivery are decoupled in time (a buyer can pay before the report exists),
+/// and many buyers can each pay for their own copy of the same underlying
+/// report, so this is a fan-out list, not a 1:1 field on HpiReport.
+model HpiReportEmailRequest {
+  id            String                   @id @default(uuid())
+  hpiReportId   String
+  buyerId       String
+  /// Snapshot of the buyer's account email at request time — never taken
+  /// from client input, and a later email change on the account shouldn't
+  /// silently redirect an already-queued delivery.
+  buyerEmail    String
+  transactionId String?
+  status        HpiEmailDeliveryStatus  @default(PENDING)
+  requestedAt   DateTime                @default(now())
+  sentAt        DateTime?
+
+  hpiReport     HpiReport @relation(fields: [hpiReportId], references: [id], onDelete: Cascade)
+  buyer         User      @relation("HpiReportEmailRequests", fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@index([hpiReportId])
+  @@index([buyerId])
+  @@index([status])
+  @@map("hpi_report_email_requests")
+}
+
+enum HpiEmailDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+
+  @@map("hpi_email_delivery_status")
 }
 
 // ============================================================================

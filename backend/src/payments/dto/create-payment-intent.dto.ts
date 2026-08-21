@@ -44,8 +44,8 @@ export class CreatePaymentSheetDto {
     @ApiPropertyOptional({ description: 'Payment type', default: 'FULL_PAYMENT' })
     @IsOptional()
     @IsString()
-    @IsIn(['DEPOSIT', 'FULL_PAYMENT', 'COMMISSION', 'LISTING_FEE', 'HPI_REPORT'])
-    type?: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'LISTING_FEE' | 'HPI_REPORT';
+    @IsIn(['DEPOSIT', 'FULL_PAYMENT', 'COMMISSION', 'LISTING_FEE', 'HPI_REPORT', 'HPI_REPORT_EMAIL'])
+    type?: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'LISTING_FEE' | 'HPI_REPORT' | 'HPI_REPORT_EMAIL';
 
     @ApiPropertyOptional({ description: 'ISO 4217 currency code', default: 'gbp' })
     @IsOptional()

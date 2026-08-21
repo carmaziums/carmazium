@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/Input"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { HpiReportModal } from "@/components/hpi/HpiReportModal"
+import { getSessionStatus, applyHpiEmailFee } from "@/lib/paymentApi"
 import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS } from '@/lib/vehicleLabels'
 import { useLocation } from '@/context/LocationContext'
 import { haversineDistanceMiles } from '@/lib/distance'
@@ -254,6 +255,31 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     React.useEffect(() => {
         if (isEditMode) setShowOfferModal(true)
     }, [isEditMode])
+
+    // Returning from Stripe after paying to have the HPI report emailed —
+    // verify the session actually completed, apply the fallback in case the
+    // webhook was delayed, then reopen the modal so the buyer sees it registered.
+    React.useEffect(() => {
+        const hpiEmailSuccess = searchParams.get('hpi_email_success') === 'true'
+        const sessionId = searchParams.get('session_id')
+        if (!hpiEmailSuccess) return
+
+        if (sessionId) {
+            getSessionStatus(sessionId)
+                .then(status => status.paymentStatus === 'paid' ? applyHpiEmailFee(sessionId) : undefined)
+                .catch(() => {})
+                .finally(() => setShowHpiModal(true))
+        } else {
+            setShowHpiModal(true)
+        }
+
+        const url = new URL(window.location.href)
+        url.searchParams.delete('hpi_email_success')
+        url.searchParams.delete('hpi_email_cancel')
+        url.searchParams.delete('session_id')
+        router.replace(url.pathname + url.search, { scroll: false })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     React.useEffect(() => {
         // Server already fetched this exact listing (see page.tsx) and passed

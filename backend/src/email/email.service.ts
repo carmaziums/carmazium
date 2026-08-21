@@ -223,6 +223,7 @@ export class EmailService {
         subject: string;
         bodyHtml: string;
         replyTo?: string;
+        attachments?: { filename: string; content: Buffer }[];
     }) {
         try {
             const { data, error } = await this.resend.emails.send({
@@ -231,6 +232,7 @@ export class EmailService {
                 subject: options.subject,
                 html: this.wrapInBrandTemplate(options.bodyHtml),
                 replyTo: options.replyTo,
+                attachments: options.attachments,
             });
 
             if (error) {
@@ -255,6 +257,7 @@ export class EmailService {
         subject: string;
         html: string;
         replyTo?: string;
+        attachments?: { filename: string; content: Buffer }[];
     }) {
         try {
             const { data, error } = await this.resend.emails.send({
@@ -263,6 +266,7 @@ export class EmailService {
                 subject: options.subject,
                 html: options.html,
                 replyTo: options.replyTo,
+                attachments: options.attachments,
             });
 
             if (error) {
@@ -756,6 +760,57 @@ export class EmailService {
             to: sellerEmail,
             subject: `Your listing "${listingTitle}" is now live — CarMazium 🎉`,
             bodyHtml,
+        });
+    }
+
+    /**
+     * Delivers a buyer's paid HPI report as a PDF attachment. Same disclosure
+     * language as printed on the PDF itself and shown in-app, so a buyer
+     * reading only the email isn't given a different impression than the
+     * document they paid for.
+     */
+    async sendHpiReportEmail(options: {
+        toEmail: string;
+        vehicleTitle: string;
+        vrm: string;
+        isClear: boolean;
+        listingSlug: string;
+        pdfBuffer: Buffer;
+    }) {
+        const { toEmail, vehicleTitle, vrm, isClear, listingSlug, pdfBuffer } = options;
+
+        const bodyHtml = `
+            <h1 style="margin: 0 0 16px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                Your Vehicle History Report
+            </h1>
+            <p style="margin: 0 0 24px; font-size: 15px; color: #cbd5e1; line-height: 1.6;">
+                Attached is the vehicle history report you requested — a PDF, ready to save or print.
+            </p>
+            <div style="background: ${isClear ? 'rgba(74,222,128,0.06)' : 'rgba(251,191,36,0.06)'}; border: 1px solid ${isClear ? 'rgba(74,222,128,0.15)' : 'rgba(251,191,36,0.2)'}; border-radius: 14px; padding: 24px; margin-bottom: 24px;">
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Vehicle</p>
+                <p style="margin: 0 0 14px; font-size: 16px; font-weight: 700; color: #ffffff;">${vehicleTitle} &middot; ${vrm}</p>
+                <p style="margin: 0; font-size: 14px; font-weight: 800; color: ${isClear ? '#4ade80' : '#fbbf24'};">
+                    ${isClear ? 'All checks passed' : 'One or more checks not passed — see attached report for detail'}
+                </p>
+            </div>
+            <div style="text-align: center; margin: 32px 0 24px;">
+                <a href="${this.frontendUrl}/buy-cars/${listingSlug}" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #ff4d4d); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.3);">
+                    View Listing →
+                </a>
+            </div>
+            <p style="margin: 0; font-size: 11px; color: #64748b; line-height: 1.6;">
+                This report presents information from a supplied third-party vehicle check. CarMazium did not originate
+                or independently verify the underlying data, which remains authoritative. Vehicle-history databases can
+                update after a delay — verify the vehicle, V5C and MOT history before completing any purchase.
+            </p>
+        `;
+
+        return this.sendBrandedEmail({
+            to: toEmail,
+            subject: `Your CarMazium Vehicle History Report — ${vehicleTitle} (${vrm})`,
+            bodyHtml,
+            attachments: [{ filename: `CarMazium_Vehicle_History_Report_${vrm.replace(/[^A-Za-z0-9]/g, '')}.pdf`, content: pdfBuffer }],
         });
     }
 

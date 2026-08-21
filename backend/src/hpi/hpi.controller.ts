@@ -72,6 +72,14 @@ export class HpiController {
         res.end(buffer);
     }
 
+    @Get('listing/:listingId/my-email-request')
+    @UseGuards(SessionAuthGuard)
+    @ApiOperation({ summary: "Check whether the current buyer already paid to have this report emailed" })
+    async getMyEmailRequest(@Param('listingId') listingId: string, @CurrentUser() user: any) {
+        const data = await this.hpiService.getMyEmailRequest(listingId, user.id);
+        return { success: true, data };
+    }
+
     // ── Admin ────────────────────────────────────────────────────────────────
 
     @Get('admin/pending')
