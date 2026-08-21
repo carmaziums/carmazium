@@ -23,12 +23,12 @@ export function CookieConsentBanner() {
                 </div>
 
                 <p className="text-sm text-[var(--text-secondary)] leading-relaxed flex-1">
-                    We use cookies for essential site functions, and — only with your permission — for analytics and
-                    advertising. See our{" "}
+                    One cookie keeps you logged in — that&apos;s always on. Everything else (ad and traffic tracking) only
+                    runs if you say yes. See{" "}
                     <Link href="/cookie-policy" className="text-primary hover:underline font-semibold">
                         Cookie Policy
                     </Link>{" "}
-                    for details.
+                    for the breakdown.
                 </p>
 
                 <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
