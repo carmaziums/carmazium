@@ -112,6 +112,26 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
             Sell Your Car <br /> Your <span className="text-primary tracking-tight">Way</span>
           </motion.h1>
 
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1, ease: "easeOut" }}
+            className="text-xl md:text-2xl font-bold mb-3 drop-shadow-lg"
+          >
+            Auction <span className="text-primary">FREE</span> &middot; Retail for <span className="text-primary">£1</span>
+          </motion.p>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.15, ease: "easeOut" }}
+            className="text-white/70 text-sm md:text-base max-w-2xl mx-auto mb-8"
+          >
+            Sell by auction <span className="text-primary font-semibold">FREE</span> and let verified dealers compete
+            or advertise your car for just <span className="text-primary font-semibold">£1</span>. Successful auction
+            sale? Get a <span className="text-primary font-semibold">£100</span> reward.
+          </motion.p>
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
