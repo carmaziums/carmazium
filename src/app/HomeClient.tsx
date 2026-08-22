@@ -109,7 +109,7 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="text-5xl md:text-7xl font-bold font-heading mb-6 leading-tight drop-shadow-2xl"
           >
-            Sell Your Car <br /> <span className="text-primary tracking-tight">and Win £100</span>
+            Sell Your Car <br /> Your <span className="text-primary tracking-tight">Way</span>
           </motion.h1>
 
           <motion.div
@@ -315,6 +315,7 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
                   isDepartedSale={listing.isDepartedSale ?? false}
                   deliveryAvailable={listing.deliveryAvailable ?? false}
                   exteriorGrade={listing.exteriorGrade}
+                  writeOffCategory={listing.writeOffCategory}
                 />
               </motion.div>
             ))}
