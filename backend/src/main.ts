@@ -33,6 +33,7 @@ async function bootstrap() {
   const CORE_ORIGINS = [
     'http://localhost:3000',
     'https://carmazium.vercel.app',
+    'https://carmazium-two.vercel.app',
     'https://carmazium.fly.dev',
     'https://carmazium-hjoh9w.fly.dev',
     'https://carmazium.com',
