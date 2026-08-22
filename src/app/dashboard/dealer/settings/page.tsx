@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
 import { uploadImage } from "@/lib/supabase"
 import { PageHeader } from "@/components/dashboard/PageHeader"
+import { DeleteAccountSection } from "@/components/dashboard/DeleteAccountSection"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { KYC_SKIP_KEY } from "@/components/dashboard/KycOverlayForm"
 import { useRouter } from "next/navigation"
@@ -377,6 +378,8 @@ export default function DealerSettingsPage() {
 
                         </>
                     )}
+
+                    <DeleteAccountSection />
                 </main>
             </div>
         </div>

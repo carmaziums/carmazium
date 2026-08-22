@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext"
 import { updateProfile } from "@/lib/listingApi"
 import { uploadImage } from "@/lib/supabase"
 import { Loader2, Check, AlertCircle, Camera, User, Phone, Mail, Bell, Settings as SettingsIcon, MapPin, Hash } from "lucide-react"
+import { DeleteAccountSection } from "@/components/dashboard/DeleteAccountSection"
 
 export default function BuyerSettingsPage() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -228,6 +229,8 @@ export default function BuyerSettingsPage() {
                         {saveStatus === "success" && <span className="text-emerald-400 text-sm flex items-center gap-1"><Check size={16} /> Saved successfully</span>}
                         {saveStatus === "error" && <span className="text-red-400 text-sm flex items-center gap-1"><AlertCircle size={16} /> {saveError}</span>}
                     </div>
+
+                    <DeleteAccountSection />
                 </main>
             </div>
         </div>

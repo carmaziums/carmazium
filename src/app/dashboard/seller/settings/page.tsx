@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext"
 import { updateProfile, startStripeConnectOnboarding, getStripeConnectStatus, updateBankDetails, type StripeConnectStatus } from "@/lib/listingApi"
 import { uploadImage } from "@/lib/supabase"
 import { Loader2, Check, AlertCircle, Camera, BadgeCheck, CreditCard, ExternalLink, AlertTriangle, Landmark } from "lucide-react"
+import { DeleteAccountSection } from "@/components/dashboard/DeleteAccountSection"
 
 export default function SellerSettingsPage() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -330,6 +331,8 @@ export default function SellerSettingsPage() {
                                 {bankSaveStatus === "error" && <span className="text-red-400 text-sm flex items-center gap-1"><AlertCircle size={14} /> Failed to save</span>}
                             </div>
                         </div>
+
+                        <DeleteAccountSection />
                 </main>
             </div>
         </div>

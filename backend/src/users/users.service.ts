@@ -99,6 +99,69 @@ export class UsersService {
     }
 
     /**
+     * Soft-delete the current user's account — never a hard delete, since
+     * Listing/Bid/Transaction all cascade off User at the DB level and a
+     * real delete would wipe out other people's transaction/auction history
+     * along with it. Anonymizes PII and withdraws listings that haven't
+     * resulted in a live commitment; leaves historical bids/transactions/
+     * chat rooms untouched since they're tied to other parties too.
+     */
+    async deleteAccount(userId: string) {
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) throw new NotFoundException('User not found');
+        if (user.deletedAt) throw new BadRequestException('This account has already been deleted');
+
+        // Don't let a seller delete out from under an auction that's actively
+        // receiving bids right now — that's unfair to bidders and could be
+        // used to dodge losing.
+        const liveAuctionAsSeller = await this.prisma.listing.findFirst({
+            where: { sellerId: userId, deletedAt: null, auction: { status: 'ACTIVE' } },
+            select: { id: true },
+        });
+        if (liveAuctionAsSeller) {
+            throw new BadRequestException(
+                'You have a live auction in progress. Please wait for it to end before deleting your account.',
+            );
+        }
+
+        // Same reasoning for a buyer who's actively bidding right now.
+        const activeBid = await this.prisma.bid.findFirst({
+            where: { bidderId: userId, deletedAt: null, listing: { auction: { status: 'ACTIVE' } } },
+            select: { id: true },
+        });
+        if (activeBid) {
+            throw new BadRequestException(
+                'You have an active bid on a live auction. Please wait for it to end before deleting your account.',
+            );
+        }
+
+        // Withdraw listings that never reached a live commitment. Ended/sold
+        // listings are already inert and stay as historical record.
+        await this.prisma.listing.updateMany({
+            where: { sellerId: userId, deletedAt: null, status: { in: ['DRAFT', 'PENDING_REVIEW', 'ACTIVE'] } },
+            data: { status: 'WITHDRAWN' },
+        });
+
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                deletedAt: new Date(),
+                email: `deleted-${userId}@deleted.carmazium.com`,
+                passwordHash: 'ACCOUNT_DELETED',
+                firstName: 'Deleted',
+                lastName: 'User',
+                phone: null,
+                profileImage: null,
+                bankAccountName: null,
+                bankSortCode: null,
+                bankAccountNumber: null,
+            },
+        });
+
+        return { success: true };
+    }
+
+    /**
      * Update basic profile fields for the authenticated user.
      */
     async updateProfile(

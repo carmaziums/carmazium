@@ -4,10 +4,13 @@ import {
     Post,
     Body,
     Patch,
+    Delete,
     Req,
+    Res,
     UseGuards,
     BadRequestException,
 } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
@@ -214,5 +217,43 @@ export class UsersController {
             success: true,
             data: await this.usersService.getConnectStatus(user.id),
         };
+    }
+
+    /**
+     * Permanently deletes (soft-delete + anonymize) the current user's
+     * account. Requires the user to have typed the literal word "DELETE" as
+     * a deliberate-action confirmation, then destroys their session.
+     */
+    @Delete('me')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Delete (anonymize) the current user account' })
+    async deleteMe(
+        @CurrentUser() user: any,
+        @Body('confirmation') confirmation: string,
+        @Req() req: Request,
+        @Res({ passthrough: true }) res: Response,
+    ) {
+        if (confirmation?.trim().toUpperCase() !== 'DELETE') {
+            throw new BadRequestException('Type DELETE to confirm — this cannot be undone.');
+        }
+
+        await this.usersService.deleteAccount(user.id);
+
+        return new Promise<{ success: boolean }>((resolve, reject) => {
+            if (!req.session) {
+                res.clearCookie('sid');
+                resolve({ success: true });
+                return;
+            }
+            req.session.destroy((err) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                res.clearCookie('sid');
+                resolve({ success: true });
+            });
+        });
     }
 }

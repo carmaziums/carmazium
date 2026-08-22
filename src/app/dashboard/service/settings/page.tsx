@@ -5,6 +5,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { updateProfile } from "@/lib/listingApi"
 import { Loader2, Check, AlertCircle } from "lucide-react"
+import { DeleteAccountSection } from "@/components/dashboard/DeleteAccountSection"
 
 export default function ServiceProviderSettingsPage() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -120,6 +121,8 @@ export default function ServiceProviderSettingsPage() {
                             </div>
                         </div>
                     </div>
+
+                    <DeleteAccountSection />
                 </main>
             </div>
         </div>

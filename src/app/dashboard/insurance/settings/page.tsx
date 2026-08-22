@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Settings, Loader2, Building2, Globe, Key, Save, Shield } from "lucide-react"
+import { DeleteAccountSection } from "@/components/dashboard/DeleteAccountSection"
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -117,6 +118,8 @@ export default function InsuranceSettingsPage() {
                             Save Changes
                         </Button>
                     </div>
+
+                    <DeleteAccountSection />
                 </main>
             </div>
         </div>
