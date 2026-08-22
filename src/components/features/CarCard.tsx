@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/Button"
 import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck, Star, MapPin, Gavel, Truck } from "lucide-react"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
+import { WriteOffCategoryBadge } from "@/components/ui/WriteOffCategoryBadge"
 import { CardImageCarousel } from "@/components/features/CardImageCarousel"
 import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS } from "@/lib/vehicleLabels"
 
@@ -35,6 +36,7 @@ interface CarCardProps {
     isDepartedSale?: boolean
     deliveryAvailable?: boolean
     exteriorGrade?: number | null
+    writeOffCategory?: string | null
 }
 
 // Motorway-style exterior grade colors: 1 best → 5 worst
@@ -66,7 +68,7 @@ export function CarCard({
     title, make, model, price, priceMin, priceMax, image, images, href = "#",
     year, mileage, fuelType, bodyType, location, distanceMi,
     sellerId, sellerScore, isFeatured = false, badgeTier, status, bannerLabel, hasLinkedAuction,
-    isDepartedSale, deliveryAvailable, exteriorGrade
+    isDepartedSale, deliveryAvailable, exteriorGrade, writeOffCategory
 }: CarCardProps) {
     const makeModelLine = [make, model].filter(Boolean).join(" ").trim()
     const gradeStyle = exteriorGrade && exteriorGrade >= 1 && exteriorGrade <= 5 ? GRADE_STYLES[exteriorGrade] : null
@@ -112,14 +114,19 @@ export function CarCard({
                 )}
 
                 {/* Trust Badges Corner */}
-                {(badgeTier === 'STANDARD' || badgeTier === 'PREMIUM') && (
+                {(badgeTier === 'STANDARD' || badgeTier === 'PREMIUM' || writeOffCategory) && (
                     <div className="absolute top-3 right-3 z-30 flex flex-col gap-1.5 items-end drop-shadow-md">
-                        <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md text-emerald-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-emerald-500/30">
-                            <ShieldCheck size={12} className="text-emerald-500" /> Verified
-                        </div>
-                        <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md text-blue-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-blue-500/30">
-                            <BadgeCheck size={12} className="text-blue-500" /> VIN Report
-                        </div>
+                        <WriteOffCategoryBadge category={writeOffCategory} />
+                        {(badgeTier === 'STANDARD' || badgeTier === 'PREMIUM') && (
+                            <>
+                                <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md text-emerald-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-emerald-500/30">
+                                    <ShieldCheck size={12} className="text-emerald-500" /> Verified
+                                </div>
+                                <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md text-blue-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-blue-500/30">
+                                    <BadgeCheck size={12} className="text-blue-500" /> VIN Report
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
 

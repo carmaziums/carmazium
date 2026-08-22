@@ -192,6 +192,7 @@ export interface Listing {
     combinedMpg: number | null
     extraUrbanMpg: number | null
     exteriorGrade: number | null
+    writeOffCategory?: 'NONE' | 'CAT_S' | 'CAT_N' | 'CAT_A' | 'CAT_B' | null
     bannerLabel: string | null
     isDepartedSale?: boolean | null
     departedRelationship?: string | null

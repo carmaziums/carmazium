@@ -9,7 +9,8 @@ import dynamic from "next/dynamic"
 const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
 const ThreeDVehicleViewer = dynamic(() => import("@/components/listing/ThreeDVehicleViewer").then(m => m.ThreeDVehicleViewer), { ssr: false })
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
-import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info, Globe, Fuel, Gavel, Truck, Phone } from "lucide-react"
+import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info, Globe, Fuel, Gavel, Truck, Phone, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react"
+import { ImageLightbox } from "@/components/features/ImageLightbox"
 import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, getDamageRecords, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
 import { triggerBuyItNow } from "@/lib/auctionApi"
 import { createChatRoom } from "@/lib/chatApi"
@@ -19,6 +20,7 @@ import { VehicleJsonLd } from "@/components/seo/JsonLd"
 import { Input } from "@/components/ui/Input"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
+import { WriteOffCategoryBadge } from "@/components/ui/WriteOffCategoryBadge"
 import { HpiReportModal } from "@/components/hpi/HpiReportModal"
 import { getSessionStatus, applyHpiEmailFee } from "@/lib/paymentApi"
 import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS } from '@/lib/vehicleLabels'
@@ -230,6 +232,8 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     const [loading, setLoading] = React.useState(!hasInitialListing)
     const [error, setError] = React.useState<string | null>(null)
     const [activeImage, setActiveImage] = React.useState(0)
+    const [galleryLightboxOpen, setGalleryLightboxOpen] = React.useState(false)
+    const touchStartXRef = React.useRef<number | null>(null)
     const [isDescExpanded, setIsDescExpanded] = React.useState(false)
     const [enquiring, setEnquiring] = React.useState(false)
     const [showOfferModal, setShowOfferModal] = React.useState(false)
@@ -625,6 +629,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                 {listing.isFeatured && (
                                     <FeaturedBadge compact />
                                 )}
+                                <WriteOffCategoryBadge category={listing.writeOffCategory} className="!py-1.5 !text-xs" />
                                 {/* Badge Tier */}
                                 {listing.badgeTier && listing.badgeTier !== 'FREE' && (
                                     <>
@@ -716,7 +721,20 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                     <div className="lg:col-span-2 space-y-8">
                         {/* Gallery */}
                         <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-4">
-                            <div className="relative aspect-video bg-black rounded-lg overflow-hidden mb-4 group">
+                            <div
+                                className="relative aspect-video bg-black rounded-lg overflow-hidden mb-4 group cursor-zoom-in"
+                                onClick={() => setGalleryLightboxOpen(true)}
+                                onTouchStart={(e) => { touchStartXRef.current = e.touches[0].clientX }}
+                                onTouchEnd={(e) => {
+                                    const startX = touchStartXRef.current
+                                    touchStartXRef.current = null
+                                    if (startX == null) return
+                                    const deltaX = e.changedTouches[0].clientX - startX
+                                    if (Math.abs(deltaX) < 40) return
+                                    if (deltaX < 0) setActiveImage((i) => Math.min(vehicle.images.length - 1, i + 1))
+                                    else setActiveImage((i) => Math.max(0, i - 1))
+                                }}
+                            >
                                 <Image
                                     src={vehicle.images[activeImage] || vehicle.images[0]}
                                     alt={vehicle.title}
@@ -724,9 +742,34 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                     sizes="(max-width: 1024px) 100vw, 66vw"
                                     className={`object-cover transition-all duration-300 ${String(listing.status) === 'SOLD' ? 'opacity-50 grayscale' : ''}`}
                                 />
-                                <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-md text-sm font-medium flex items-center gap-2">
+                                <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-md text-sm font-medium flex items-center gap-2 pointer-events-none">
                                     <Camera size={16} /> {activeImage + 1}/{vehicle.images.length}
                                 </div>
+                                <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm text-white p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                    <ZoomIn size={16} />
+                                </div>
+                                {vehicle.images.length > 1 && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            aria-label="Previous image"
+                                            onClick={(e) => { e.stopPropagation(); setActiveImage((i) => Math.max(0, i - 1)) }}
+                                            disabled={activeImage === 0}
+                                            className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 z-10 h-9 w-9 rounded-full bg-black/50 backdrop-blur border border-white/10 text-white items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
+                                        >
+                                            <ChevronLeft size={18} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            aria-label="Next image"
+                                            onClick={(e) => { e.stopPropagation(); setActiveImage((i) => Math.min(vehicle.images.length - 1, i + 1)) }}
+                                            disabled={activeImage === vehicle.images.length - 1}
+                                            className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-10 h-9 w-9 rounded-full bg-black/50 backdrop-blur border border-white/10 text-white items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
+                                        >
+                                            <ChevronRight size={18} />
+                                        </button>
+                                    </>
+                                )}
                                 {/* SOLD watermark */}
                                 {String(listing.status) === 'SOLD' && (
                                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -742,6 +785,13 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                     </div>
                                 )}
                             </div>
+                            <ImageLightbox
+                                images={vehicle.images}
+                                alt={vehicle.title}
+                                startIndex={activeImage}
+                                open={galleryLightboxOpen}
+                                onClose={() => setGalleryLightboxOpen(false)}
+                            />
                             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
                                 {vehicle.images.map((img, idx) => (
                                     <button

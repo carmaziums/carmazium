@@ -1205,6 +1205,7 @@ function SearchPageContent() {
                                         isDepartedSale={listing.isDepartedSale ?? false}
                                         deliveryAvailable={listing.deliveryAvailable ?? false}
                                         exteriorGrade={listing.exteriorGrade}
+                                        writeOffCategory={listing.writeOffCategory}
                                     />
                                 ))}
                             </div>
@@ -1244,6 +1245,7 @@ function SearchPageContent() {
                                     isDepartedSale={listing.isDepartedSale ?? false}
                                     deliveryAvailable={listing.deliveryAvailable ?? false}
                                     exteriorGrade={listing.exteriorGrade}
+                                        writeOffCategory={listing.writeOffCategory}
                                 />
                             ))}
                         </div>

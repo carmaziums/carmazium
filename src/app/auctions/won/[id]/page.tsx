@@ -10,7 +10,9 @@ import {
     CalendarDays, Hash, ShieldCheck, FileText,
     MapPin, CheckCircle2, XCircle, Clock, PoundSterling,
     MessageSquare, User, FileSearch, Phone, Mail, Award,
+    ChevronLeft, ChevronRight, ZoomIn,
 } from "lucide-react"
+import { ImageLightbox } from "@/components/features/ImageLightbox"
 import { useAuth } from "@/context/AuthContext"
 import { getWonAuctionById, type Auction } from "@/lib/auctionApi"
 import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
@@ -68,6 +70,8 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
     const [chatError, setChatError] = React.useState<string | null>(null)
 
     const [activeImage, setActiveImage] = React.useState(0)
+    const [galleryLightboxOpen, setGalleryLightboxOpen] = React.useState(false)
+    const touchStartXRef = React.useRef<number | null>(null)
     const [showHpiModal, setShowHpiModal] = React.useState(false)
 
     // Returning from Stripe after paying to have the HPI report emailed —
@@ -199,7 +203,20 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                         <div className="dealer-glass-card overflow-hidden">
                             {images.length > 0 ? (
                                 <>
-                                    <div className="relative h-72 sm:h-96 bg-black/40">
+                                    <div
+                                        className="relative h-72 sm:h-96 bg-black/40 group cursor-zoom-in"
+                                        onClick={() => setGalleryLightboxOpen(true)}
+                                        onTouchStart={(e) => { touchStartXRef.current = e.touches[0].clientX }}
+                                        onTouchEnd={(e) => {
+                                            const startX = touchStartXRef.current
+                                            touchStartXRef.current = null
+                                            if (startX == null) return
+                                            const deltaX = e.changedTouches[0].clientX - startX
+                                            if (Math.abs(deltaX) < 40) return
+                                            if (deltaX < 0) setActiveImage((i) => Math.min(images.length - 1, i + 1))
+                                            else setActiveImage((i) => Math.max(0, i - 1))
+                                        }}
+                                    >
                                         <Image
                                             src={images[activeImage]}
                                             alt={listing.title}
@@ -208,10 +225,42 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                             priority
                                             className="object-cover"
                                         />
-                                        <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-lg text-xs font-bold text-white">
+                                        <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-lg text-xs font-bold text-white pointer-events-none">
                                             {activeImage + 1} / {images.length}
                                         </div>
+                                        <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                            <ZoomIn size={14} />
+                                        </div>
+                                        {images.length > 1 && (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    aria-label="Previous image"
+                                                    onClick={(e) => { e.stopPropagation(); setActiveImage((i) => Math.max(0, i - 1)) }}
+                                                    disabled={activeImage === 0}
+                                                    className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 z-10 h-9 w-9 rounded-full bg-black/50 backdrop-blur border border-white/10 text-white items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
+                                                >
+                                                    <ChevronLeft size={18} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    aria-label="Next image"
+                                                    onClick={(e) => { e.stopPropagation(); setActiveImage((i) => Math.min(images.length - 1, i + 1)) }}
+                                                    disabled={activeImage === images.length - 1}
+                                                    className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-10 h-9 w-9 rounded-full bg-black/50 backdrop-blur border border-white/10 text-white items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
+                                                >
+                                                    <ChevronRight size={18} />
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
+                                    <ImageLightbox
+                                        images={images}
+                                        alt={listing.title}
+                                        startIndex={activeImage}
+                                        open={galleryLightboxOpen}
+                                        onClose={() => setGalleryLightboxOpen(false)}
+                                    />
                                     {images.length > 1 && (
                                         <div className="flex gap-2 p-3 overflow-x-auto bg-black/20">
                                             {images.map((img, i) => (
