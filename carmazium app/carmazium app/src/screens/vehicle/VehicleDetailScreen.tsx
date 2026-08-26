@@ -38,6 +38,10 @@ import { Elevation, Radius } from '../../constants/spacing';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
+import {
+  getHpiSummary, openHpiPdf, isReportReady, HPI_CHECK_DEFINITIONS,
+  type HpiSummaryResponse,
+} from '../../lib/hpiApi';
 import { createChatRoom } from '../../lib/chatApi';
 import { useChat } from '../../context/ChatContext';
 import { BuyerDamageViewer } from '../../components/damage/BuyerDamageViewer';
@@ -205,7 +209,10 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   // HPI
-  const [hpiData, setHpiData] = useState<any>(null);
+  const [hpiData, setHpiData] = useState<HpiSummaryResponse | null>(null);
+  // Opening the report PDF is a download + share-sheet round trip, so it needs
+  // its own spinner rather than reusing the checkout one.
+  const [hpiPdfLoading, setHpiPdfLoading] = useState(false);
   const [hpiLoading, setHpiLoading] = useState(false);
   const [hpiModalVisible, setHpiModalVisible] = useState(false);
   const [hpiError, setHpiError] = useState<string | null>(null);
@@ -518,9 +525,47 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
+  /**
+   * Load whatever report already exists for this listing.
+   *
+   * This has to happen on mount rather than only after a purchase: a listing
+   * now publishes while its report is still being prepared, so a buyer can
+   * arrive at a vehicle whose report is pending, or one the seller already
+   * paid for. Without this the CTA below would push them to a £9.99 checkout
+   * for a report that already exists.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    if (!listing?.id) return;
+    (async () => {
+      try {
+        const summary = await getHpiSummary(listing.id);
+        if (!cancelled) setHpiData(summary);
+      } catch {
+        // No report, or not signed in — the CTA falls back to the purchase
+        // path, which is the correct outcome either way.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [listing?.id]);
+
+  const handleOpenHpiPdf = async () => {
+    if (!listing?.id) return;
+    setHpiPdfLoading(true);
+    setHpiError(null);
+    try {
+      await openHpiPdf(listing.id, hpiData?.vrm);
+    } catch (err: any) {
+      setHpiError(err?.message ?? 'Could not open the report PDF.');
+    } finally {
+      setHpiPdfLoading(false);
+    }
+  };
+
   const handleHpiCheck = async () => {
     if (!listing.id) return;
-    // Already-purchased report — just re-open the summary modal.
+    // A report already exists — whether it's finished or still being prepared,
+    // open the sheet rather than charging for another one.
     if (hpiData) { setHpiModalVisible(true); return; }
     setHpiLoading(true);
     setHpiError(null);
@@ -1161,37 +1206,53 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <ErrorBanner message={hpiError} onRetry={handleHpiCheck} />
             ) : null}
             {hpiData ? (
-              <View style={styles.hpiInlineCard}>
-                <Text style={styles.hpiInlineTitle}>HPI Report</Text>
-                {hpiData.stolen !== undefined && (
-                  <Text style={styles.hpiInlineField}>
-                    Stolen: {hpiData.stolen ? 'Yes ⚠' : 'No'}
-                  </Text>
-                )}
-                {hpiData.financeOutstanding !== undefined && (
-                  <Text style={styles.hpiInlineField}>
-                    Finance Outstanding: {hpiData.financeOutstanding ? 'Yes ⚠' : 'No'}
-                  </Text>
-                )}
-                {hpiData.writeOff !== undefined && (
-                  <Text style={styles.hpiInlineField}>
-                    Write-off: {hpiData.writeOff ? `Yes (${hpiData.writeOffCategory ?? ''})` : 'No'}
-                  </Text>
-                )}
-                {hpiData.mileageAnomaly !== undefined && (
-                  <Text style={styles.hpiInlineField}>
-                    Mileage Anomaly: {hpiData.mileageAnomaly ? 'Yes ⚠' : 'No'}
-                  </Text>
-                )}
+              /* A report exists. It is either ready, or still being prepared —
+                 the pending case is normal now that a listing publishes without
+                 waiting for its report, so it gets an honest amber state rather
+                 than a green tick it hasn't earned. */
+              isReportReady(hpiData) ? (
                 <TouchableOpacity
-                  style={styles.hpiViewFullBtn}
+                  style={styles.hpiButton}
                   activeOpacity={0.8}
                   onPress={() => setHpiModalVisible(true)}
                 >
-                  <Text style={styles.hpiViewFullText}>View Full Report</Text>
-                  <Ionicons name="chevron-forward" size={14} color={Colors.infoBlue} accessibilityElementsHidden importantForAccessibility="no" />
+                  <View style={styles.hpiReportLeft}>
+                    <View style={styles.hpiIconBg}>
+                      <Ionicons
+                        name={hpiData.isClear ? 'shield-checkmark' : 'warning'}
+                        size={16}
+                        color={hpiData.isClear ? Colors.success : Colors.warning}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.hpiReportTitle}>Vehicle History Report</Text>
+                      <Text style={styles.hpiReportSub}>
+                        {hpiData.isClear ? 'All checks passed · tap to view' : 'Adverse history — tap to review'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
-              </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.hpiButton}
+                  activeOpacity={0.8}
+                  onPress={() => setHpiModalVisible(true)}
+                >
+                  <View style={styles.hpiReportLeft}>
+                    <View style={[styles.hpiIconBg, { backgroundColor: Colors.warningAlpha08 }]}>
+                      <Ionicons name="time-outline" size={16} color={Colors.warning} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.hpiReportTitle}>Vehicle History Report</Text>
+                      <Text style={[styles.hpiReportSub, { color: Colors.warning }]}>
+                        Requested — being prepared by our team
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                </TouchableOpacity>
+              )
             ) : (
               <TouchableOpacity
                 style={styles.hpiButton}
@@ -1892,15 +1953,37 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={styles.modalTitle}>HPI Check Report</Text>
             {hpiData && (
               <Text style={{ fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 }}>
-                {hpiData.vrm} · {hpiData.make} {hpiData.model}
+                {[
+                  hpiData.vrm,
+                  hpiData.format === 'LEGACY'
+                    ? `${hpiData.make ?? ''} ${hpiData.model ?? ''}`.trim()
+                    : `${hpiData.report?.vehicle?.make ?? ''} ${hpiData.report?.vehicle?.model ?? ''}`.trim(),
+                ].filter(Boolean).join(' · ')}
               </Text>
             )}
           </View>
           <IconButton style={styles.modalCloseBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setHpiModalVisible(false)} accessibilityLabel="Close" />
         </View>
 
-        {hpiData && (
+        {hpiData && !isReportReady(hpiData) && (
+          /* Paid for, not yet produced. Reachable on a perfectly normal live
+             listing now that publishing doesn't wait for the report. */
+          <View style={{ alignItems: 'center', paddingVertical: 36, paddingHorizontal: 24 }}>
+            <Ionicons name="time-outline" size={40} color={Colors.warning} />
+            <Text style={[styles.hpiOverallText, { color: Colors.white, marginTop: 14, textAlign: 'center' }]}>
+              Report being prepared
+            </Text>
+            <Text style={[styles.hpiCheckDetail, { textAlign: 'center', marginTop: 8, lineHeight: 18 }]}>
+              Our team is compiling the vehicle history report for this car. It&apos;ll appear
+              here as soon as it&apos;s ready.
+            </Text>
+          </View>
+        )}
+
+        {hpiData && isReportReady(hpiData) && (
           <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
+            {hpiError ? <ErrorBanner message={hpiError} /> : null}
+
             {/* Overall status */}
             <View style={[styles.hpiOverallBanner, { backgroundColor: hpiData.isClear ? Colors.successAlpha08 : Colors.errorAlpha08, borderColor: hpiData.isClear ? Colors.successAlpha25 : Colors.errorAlpha25 }]}>
               <Ionicons name={hpiData.isClear ? 'shield-checkmark' : 'warning'} size={20} color={hpiData.isClear ? Colors.success : Colors.error} />
@@ -1909,8 +1992,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </Text>
             </View>
 
-            {/* Check rows */}
-            {hpiData.checks && Object.entries(hpiData.checks).map(([key, check]: [string, any]) => {
+            {/* Legacy OneAutoAPI rows carry their own check shape, with a
+                human-written detail line per check. */}
+            {hpiData.format === 'LEGACY' && hpiData.checks && Object.entries(hpiData.checks).map(([key, check]: [string, any]) => {
               const labels: Record<string, string> = {
                 stolen: 'Stolen Check',
                 writeOff: 'Insurance Write-Off',
@@ -1933,6 +2017,58 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
               );
             })}
+
+            {/* Admin-prepared via the structured form — the 11 checks are a
+                fixed list, so they render from the definitions rather than
+                from whatever keys happen to be present. */}
+            {hpiData.format === 'ADMIN' && hpiData.report && HPI_CHECK_DEFINITIONS.map((def) => {
+              const entry = hpiData.report!.checks?.[def.key];
+              const passed = entry?.passed !== false;
+              return (
+                <View key={def.key} style={styles.hpiCheckRow}>
+                  <Ionicons
+                    name={passed ? 'checkmark-circle' : 'close-circle'}
+                    size={18}
+                    color={passed ? Colors.success : Colors.error}
+                  />
+                  <View style={styles.hpiCheckText}>
+                    <Text style={styles.hpiCheckLabel}>{def.label}</Text>
+                    {!passed && entry?.note ? (
+                      <Text style={styles.hpiCheckDetail}>{entry.note}</Text>
+                    ) : null}
+                  </View>
+                </View>
+              );
+            })}
+
+            {/* Uploaded PDF with no structured data behind it — the file is
+                the whole report, so there are no rows to show. */}
+            {hpiData.format === 'ADMIN' && !hpiData.report && hpiData.hasPdf && (
+              <Text style={[styles.hpiCheckDetail, { marginTop: 4, marginBottom: 4, lineHeight: 18 }]}>
+                The full vehicle history check is in the report document below.
+              </Text>
+            )}
+
+            {/* Every admin-prepared report has a PDF — either the uploaded one
+                or the branded one rendered from the form data. */}
+            {hpiData.format === 'ADMIN' && (
+              <TouchableOpacity
+                style={styles.hpiViewFullBtn}
+                activeOpacity={0.8}
+                onPress={handleOpenHpiPdf}
+                disabled={hpiPdfLoading}
+              >
+                {hpiPdfLoading
+                  ? <ActivityIndicator size="small" color={Colors.infoBlue} />
+                  : <Text style={styles.hpiViewFullText}>Open full report (PDF)</Text>}
+                <Ionicons name="download-outline" size={14} color={Colors.infoBlue} accessibilityElementsHidden importantForAccessibility="no" />
+              </TouchableOpacity>
+            )}
+
+            <Text style={[styles.hpiCheckDetail, { marginTop: 14, lineHeight: 16 }]}>
+              CarMazium presents vehicle-history information from a supplied third-party check.
+              CarMazium did not originate or independently verify the underlying data.
+            </Text>
 
             <View style={{ height: 20 }} />
           </ScrollView>
@@ -3300,16 +3436,6 @@ const styles = StyleSheet.create({
   hpiReportSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 2 },
 
   // HPI inline card (shown after payment)
-  hpiInlineCard: {
-    backgroundColor: Colors.bgTertiary, borderRadius: Radius.inline, borderWidth: 1,
-    borderColor: Colors.infoBlueAlpha20, padding: 16, gap: 8,
-  },
-  hpiInlineTitle: {
-    fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white, marginBottom: 4,
-  },
-  hpiInlineField: {
-    fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary,
-  },
   hpiViewFullBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8,
   },

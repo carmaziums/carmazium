@@ -239,9 +239,13 @@ export class AdminService {
                 // BIN/start time) on this related row, not on Listing itself — the
                 // pending-review UI needs it to actually review an auction.
                 auction: true,
-                // Drives the "HPI report required" indicator and the disabled
-                // approve button — a PENDING report blocks approval.
-                hpiReport: { select: { status: true, isClear: true, preparedAt: true } },
+                // Drives the "HPI outstanding" indicator. Informational only —
+                // a pending report no longer blocks approval, it just tells the
+                // reviewer this listing will go live owing its seller a report.
+                // pdfUploadedAt distinguishes a report completed by uploading the
+                // supplied PDF from one keyed into the form — the two are edited
+                // through different modals, so the UI has to know which it is.
+                hpiReport: { select: { status: true, isClear: true, preparedAt: true, pdfUploadedAt: true } },
             },
         });
     }
@@ -378,23 +382,22 @@ export class AdminService {
         return updated;
     }
 
+    /**
+     * A pending HPI report deliberately does NOT block approval.
+     *
+     * It used to: a listing whose seller had paid for a report was held back
+     * until staff produced it, which stalled sellers behind our own turnaround.
+     * Now the listing goes live showing "report being prepared" and the report
+     * is attached later from the admin HPI queue. Nothing here needs to know
+     * about it — the report has its own lifecycle.
+     */
     async approveListing(id: string) {
-        const listing = await this.prisma.listing.findUnique({
-            where: { id },
-            include: { hpiReport: { select: { status: true } } },
-        });
+        const listing = await this.prisma.listing.findUnique({ where: { id } });
         if (!listing) {
             throw new NotFoundException('Listing not found');
         }
         if (listing.status !== 'PENDING_REVIEW') {
             throw new BadRequestException('Only listings awaiting review can be approved');
-        }
-        // The seller paid for an HPI report, so the listing must not go live
-        // advertising a report that hasn't been produced yet.
-        if (listing.hpiReport?.status === 'PENDING') {
-            throw new BadRequestException(
-                'This seller paid for an HPI report. Prepare and save the report before approving the listing.',
-            );
         }
 
         const isPremium = listing.badgeTier === 'PREMIUM';

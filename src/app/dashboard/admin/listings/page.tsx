@@ -10,6 +10,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import { ListingEditModal } from "@/components/dashboard/ListingEditModal"
 import { HpiReportForm } from "@/components/admin/HpiReportForm"
+import { HpiPdfUpload } from "@/components/admin/HpiPdfUpload"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminListings, deleteListingForce, getPendingListingReviews, approveListing, rejectListing } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
@@ -56,6 +57,7 @@ export default function AdminListingsPage() {
     const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
     const [editListingId, setEditListingId] = React.useState<string | null>(null)
     const [hpiTarget, setHpiTarget] = React.useState<{ id: string; title: string } | null>(null)
+    const [hpiUploadTarget, setHpiUploadTarget] = React.useState<{ id: string; title: string; hasPdf: boolean } | null>(null)
 
     React.useEffect(() => {
         // Enforce Admin Access
@@ -234,8 +236,10 @@ export default function AdminListingsPage() {
                                 {pendingListings.map((l) => {
                                     const isExpanded = expandedId === l.id
                                     const isRejectedResubmit = l.status === 'REJECTED'
-                                    // Seller paid for an HPI report that hasn't been produced —
-                                    // the backend refuses to approve until it exists.
+                                    // Seller paid for an HPI report that hasn't been produced.
+                                    // Informational only — this no longer blocks approval; the
+                                    // listing goes live and the report is attached afterwards
+                                    // from the HPI queue.
                                     const hpiPending = l.hpiReport?.status === 'PENDING'
                                     return (
                                         <div key={l.id} className={`border rounded-xl overflow-hidden ${isRejectedResubmit ? 'border-red-500/30' : 'border-[var(--border-default)]'}`}>
@@ -257,7 +261,7 @@ export default function AdminListingsPage() {
                                                 </div>
                                                 {hpiPending && (
                                                     <span className="text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 bg-primary/10 text-primary border-primary/30 inline-flex items-center gap-1.5">
-                                                        <FileWarning size={12} /> HPI needed
+                                                        <FileWarning size={12} /> HPI outstanding
                                                     </span>
                                                 )}
                                                 <span className={`text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 ${isRejectedResubmit ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
@@ -343,37 +347,57 @@ export default function AdminListingsPage() {
                                                             </div>
 
                                                             {hpiPending && (
-                                                                <div className="mt-4 p-3 rounded-lg border border-primary/30 bg-primary/5 flex items-start gap-3">
-                                                                    <FileWarning size={16} className="text-primary shrink-0 mt-0.5" />
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <p className="text-xs font-bold text-primary">HPI report required before approval</p>
-                                                                        <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                                                                            This seller paid for a vehicle history report. Prepare it before taking the listing live.
-                                                                        </p>
+                                                                <div className="mt-4 p-3 rounded-lg border border-primary/30 bg-primary/5">
+                                                                    <div className="flex items-start gap-3">
+                                                                        <FileWarning size={16} className="text-primary shrink-0 mt-0.5" />
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <p className="text-xs font-bold text-primary">HPI report outstanding</p>
+                                                                            <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                                                                                This seller paid for a vehicle history report. You can approve now and attach
+                                                                                it later — it stays in the HPI queue until you do.
+                                                                            </p>
+                                                                        </div>
                                                                     </div>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => setHpiTarget({ id: l.id, title: l.title })}
-                                                                        className="shrink-0 px-3 py-2 rounded-lg bg-primary text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary/90 transition-colors cursor-pointer"
-                                                                    >
-                                                                        Prepare report
-                                                                    </button>
+                                                                    <div className="flex gap-2 mt-3">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setHpiUploadTarget({ id: l.id, title: l.title, hasPdf: false })}
+                                                                            className="flex-1 px-3 py-2 rounded-lg bg-primary text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary/90 transition-colors cursor-pointer"
+                                                                        >
+                                                                            Upload PDF
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setHpiTarget({ id: l.id, title: l.title })}
+                                                                            className="flex-1 px-3 py-2 rounded-lg border border-primary/40 text-primary text-[11px] font-black uppercase tracking-widest hover:bg-primary/10 transition-colors cursor-pointer"
+                                                                        >
+                                                                            Fill in form
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
                                                             )}
-                                                            {/* Report already saved — still editable up until approval, so a
-                                                                typo caught on re-read doesn't require rejecting the whole listing. */}
+                                                            {/* Report already saved — still editable at any point, so a typo
+                                                                caught on re-read doesn't require rejecting the whole listing. */}
                                                             {l.hpiReport?.status === 'COMPLETED' && (
                                                                 <div className="mt-4 p-3 rounded-lg border border-emerald-500/25 bg-emerald-500/5 flex items-center gap-3">
                                                                     <FileWarning size={16} className="text-emerald-400 shrink-0" />
                                                                     <p className="flex-1 min-w-0 text-[11px] text-[var(--text-muted)]">
-                                                                        <span className="font-bold text-emerald-400">HPI report prepared.</span> Spot an error? You can still edit it before approving.
+                                                                        <span className="font-bold text-emerald-400">
+                                                                            HPI report {l.hpiReport.pdfUploadedAt ? 'uploaded' : 'prepared'}.
+                                                                        </span>{' '}
+                                                                        Spot an error? You can still edit or replace it.
                                                                     </p>
+                                                                    {/* Send them to whichever editor actually owns this report —
+                                                                        an uploaded PDF is served in preference to form data, so
+                                                                        editing the form wouldn't change what buyers download. */}
                                                                     <button
                                                                         type="button"
-                                                                        onClick={() => setHpiTarget({ id: l.id, title: l.title })}
+                                                                        onClick={() => l.hpiReport.pdfUploadedAt
+                                                                            ? setHpiUploadTarget({ id: l.id, title: l.title, hasPdf: true })
+                                                                            : setHpiTarget({ id: l.id, title: l.title })}
                                                                         className="shrink-0 px-3 py-1.5 rounded-lg border border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-primary/40 text-[11px] font-bold uppercase tracking-widest transition-colors cursor-pointer"
                                                                     >
-                                                                        Edit report
+                                                                        {l.hpiReport.pdfUploadedAt ? 'Replace PDF' : 'Edit report'}
                                                                     </button>
                                                                 </div>
                                                             )}
@@ -382,8 +406,8 @@ export default function AdminListingsPage() {
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleApprove(l.id)}
-                                                                    disabled={actionLoading === l.id || hpiPending}
-                                                                    title={hpiPending ? 'Prepare the HPI report first' : undefined}
+                                                                    disabled={actionLoading === l.id}
+                                                                    title={hpiPending ? 'Goes live with its HPI report still outstanding — attach it later from the HPI queue' : undefined}
                                                                     className="flex-1 px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-xs uppercase tracking-widest hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 cursor-pointer"
                                                                 >
                                                                     {actionLoading === l.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
@@ -559,13 +583,26 @@ export default function AdminListingsPage() {
                 onClose={() => setEditListingId(null)}
                 onSaved={() => { fetchListings(); loadPending() }}
             />
+            {hpiUploadTarget && (
+                <HpiPdfUpload
+                    listingId={hpiUploadTarget.id}
+                    listingTitle={hpiUploadTarget.title}
+                    hasExistingPdf={hpiUploadTarget.hasPdf}
+                    onClose={() => setHpiUploadTarget(null)}
+                    onSaved={() => {
+                        setHpiUploadTarget(null)
+                        loadPending()
+                        setSuccessMsg('HPI report uploaded — the seller and any waiting buyers have been notified.')
+                    }}
+                />
+            )}
             {hpiTarget && (
                 <HpiReportForm
                     listingId={hpiTarget.id}
                     listingTitle={hpiTarget.title}
                     onClose={() => setHpiTarget(null)}
-                    // Reload so the "HPI needed" badge clears and Approve unlocks.
-                    onSaved={() => { loadPending(); setSuccessMsg('HPI report saved — this listing can now be approved.') }}
+                    // Reload so the "HPI outstanding" badge clears.
+                    onSaved={() => { loadPending(); setSuccessMsg('HPI report saved — the seller and any waiting buyers have been notified.') }}
                 />
             )}
         </div>

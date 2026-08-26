@@ -67,8 +67,13 @@ export async function apiClient<T>(
 ): Promise<T> {
     const token = await getAccessToken();
 
+    // FormData has to set its own Content-Type — it carries the multipart
+    // boundary, and forcing application/json here leaves the server unable to
+    // parse the body at all.
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+
     const headers = {
-        'Content-Type': 'application/json',
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
     };

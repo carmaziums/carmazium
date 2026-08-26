@@ -2,6 +2,8 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { PrismaService } from '../prisma/prisma.service';
 import { HpiPdfService } from './hpi-pdf.service';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 import {
     HPI_CHECK_KEYS,
     HpiReportData,
@@ -13,15 +15,24 @@ import {
  * HPI reports are prepared by CarMazium staff, not fetched from an API.
  *
  * A seller opting in at listing time creates a PENDING row the moment their
- * payment clears; an admin then fills in the check results from the supplied
- * third-party check, which computes `isClear` and flips the row to COMPLETED.
- * A listing cannot be approved while its report is still PENDING (enforced in
- * AdminService.approveListing).
+ * payment clears; an admin then completes it one of two ways:
+ *   - the structured form, which computes `isClear` from the checks and lets
+ *     us render our own branded PDF (saveAdminReport), or
+ *   - uploading the supplied third-party PDF wholesale, where `isClear` is a
+ *     deliberate admin call rather than derived (saveAdminPdf).
+ *
+ * A PENDING report does NOT hold up the listing. It publishes, runs, and can
+ * even sell while the report is still outstanding — the admin attaches it
+ * afterwards from the HPI queue, and everyone waiting on it (the seller, and
+ * any buyer who paid for an emailed copy) is notified at that point.
  *
  * Rows created before this change came from OneAutoAPI and carry
  * source=ONE_AUTO_API with the raw response in `data` — they still render
  * through parseLegacySummary so nothing a seller already paid for breaks.
  */
+/** Third-party HPI PDFs run well under this; the cap is a sanity bound. */
+const HPI_PDF_MAX_BYTES = 15 * 1024 * 1024;
+
 @Injectable()
 export class HpiService {
     private readonly logger = new Logger(HpiService.name);
@@ -30,6 +41,8 @@ export class HpiService {
         private readonly prisma: PrismaService,
         private readonly hpiPdfService: HpiPdfService,
         private readonly emailService: EmailService,
+        private readonly notificationsService: NotificationsService,
+        private readonly notificationsGateway: NotificationsGateway,
     ) { }
 
     /**
@@ -68,9 +81,17 @@ export class HpiService {
         return report;
     }
 
-    /** Listings whose seller has paid but whose report hasn't been produced yet. */
+    /**
+     * Reports someone has paid for that haven't been produced yet.
+     *
+     * Since a pending report no longer blocks approval, these listings are
+     * mostly already live — this queue is the only place they surface, so it
+     * carries the listing's own status and the number of buyers whose paid
+     * email copy is stuck waiting on it, which is what makes one row more
+     * urgent than another.
+     */
     async getPendingReports() {
-        return this.prisma.hpiReport.findMany({
+        const reports = await this.prisma.hpiReport.findMany({
             where: { status: 'PENDING' },
             orderBy: { purchasedAt: 'asc' },
             include: {
@@ -88,8 +109,14 @@ export class HpiService {
                         seller: { select: { id: true, firstName: true, lastName: true, email: true } },
                     },
                 },
+                _count: { select: { emailRequests: true } },
             },
         });
+
+        return reports.map(({ _count, ...report }) => ({
+            ...report,
+            waitingBuyers: _count.emailRequests,
+        }));
     }
 
     /**
@@ -171,6 +198,7 @@ export class HpiService {
         if (!report) {
             throw new NotFoundException('No HPI report was requested for this listing');
         }
+        const wasPending = report.status === 'PENDING';
 
         this.validate(data);
 
@@ -203,15 +231,174 @@ export class HpiService {
         });
 
         this.logger.log(`HPI report completed for listing ${listingId} by admin ${adminId}`);
-
-        // Fan out to every buyer who paid to have this emailed while it was
-        // still pending. Fire-and-forget: a slow/failed send here must never
-        // block the admin's save.
-        this.deliverAllPendingForReport(updated.id).catch(err =>
-            this.logger.error(`Failed to fan out queued HPI report emails for report ${updated.id}: ${err.message}`),
-        );
+        this.announceCompletion(updated.id, listingId, wasPending);
 
         return updated;
+    }
+
+    /**
+     * The other way to complete a report: an admin uploads the third-party PDF
+     * as supplied instead of re-keying it into the form. There is no check data
+     * to derive from, so `isClear` is an explicit call by the admin — the badge
+     * on the listing has to come from somewhere, and a human reading the PDF is
+     * the only source available on this path.
+     */
+    async saveAdminPdf(
+        listingId: string,
+        file: { buffer: Buffer; originalname?: string; mimetype?: string; size?: number },
+        isClear: boolean,
+        adminId: string,
+    ) {
+        const report = await this.prisma.hpiReport.findUnique({ where: { listingId } });
+        if (!report) {
+            throw new NotFoundException('No HPI report was requested for this listing');
+        }
+
+        if (!file?.buffer?.length) {
+            throw new BadRequestException('No file was uploaded');
+        }
+        if (file.buffer.length > HPI_PDF_MAX_BYTES) {
+            throw new BadRequestException(`The PDF must be ${HPI_PDF_MAX_BYTES / (1024 * 1024)}MB or smaller`);
+        }
+        // Trust the bytes, not the declared type — the magic number is the only
+        // thing that actually proves we aren't about to serve buyers a renamed
+        // executable as their paid report.
+        if (file.buffer.subarray(0, 5).toString('latin1') !== '%PDF-') {
+            throw new BadRequestException('That file is not a PDF');
+        }
+
+        const wasPending = report.status === 'PENDING';
+        const vrm = (report.vrm || 'vehicle').replace(/[^A-Za-z0-9]/g, '');
+
+        const updated = await this.prisma.hpiReport.update({
+            where: { listingId },
+            data: {
+                // Copied into a plain Uint8Array — Prisma's Bytes field rejects a
+                // Buffer whose backing store is typed as ArrayBufferLike.
+                pdfData: new Uint8Array(file.buffer),
+                pdfFileName: `CarMazium_Vehicle_History_Report_${vrm}.pdf`,
+                pdfSizeBytes: file.buffer.length,
+                pdfUploadedAt: new Date(),
+                isClear,
+                status: 'COMPLETED',
+                source: 'ADMIN',
+                preparedById: adminId,
+                preparedAt: new Date(),
+            },
+        });
+
+        this.logger.log(
+            `HPI report PDF uploaded for listing ${listingId} by admin ${adminId} ` +
+            `(${file.buffer.length} bytes, ${isClear ? 'clear' : 'not clear'})`,
+        );
+        this.announceCompletion(updated.id, listingId, wasPending);
+
+        return this.stripPdfBytes(updated);
+    }
+
+    /**
+     * Removes an uploaded PDF. If nothing was ever entered into the form the
+     * report drops back to PENDING and returns to the admin queue — leaving it
+     * COMPLETED would advertise a report to buyers that no longer exists.
+     */
+    async removeAdminPdf(listingId: string) {
+        const report = await this.prisma.hpiReport.findUnique({ where: { listingId } });
+        if (!report) {
+            throw new NotFoundException('No HPI report was requested for this listing');
+        }
+        if (!report.pdfData) {
+            throw new BadRequestException('There is no uploaded PDF on this report');
+        }
+
+        const hasFormReport = !!report.reportData;
+        const updated = await this.prisma.hpiReport.update({
+            where: { listingId },
+            data: {
+                pdfData: null,
+                pdfFileName: null,
+                pdfSizeBytes: null,
+                pdfUploadedAt: null,
+                ...(hasFormReport ? {} : { status: 'PENDING', isClear: false, preparedAt: null }),
+            },
+        });
+
+        this.logger.log(
+            `HPI report PDF removed for listing ${listingId} ` +
+            `(falls back to ${hasFormReport ? 'form data' : 'PENDING'})`,
+        );
+        return this.stripPdfBytes(updated);
+    }
+
+    /** Never let raw PDF bytes ride back out on a JSON response. */
+    private stripPdfBytes<T extends { pdfData?: Buffer | Uint8Array | null }>(report: T) {
+        const { pdfData, ...rest } = report;
+        return { ...rest, hasPdf: !!pdfData };
+    }
+
+    /**
+     * Everything that has to happen once a report exists, whichever way it was
+     * produced. All fire-and-forget: a slow email must never make the admin's
+     * save appear to fail, and the report itself is already committed.
+     *
+     * `wasPending` guards the seller notification — re-saving a report to fix a
+     * typo shouldn't tell the seller their report is ready all over again.
+     */
+    private announceCompletion(reportId: string, listingId: string, wasPending: boolean) {
+        // Fan out to every buyer who paid to have this emailed while it was
+        // still pending.
+        this.deliverAllPendingForReport(reportId).catch(err =>
+            this.logger.error(`Failed to fan out queued HPI report emails for report ${reportId}: ${err.message}`),
+        );
+
+        if (wasPending) {
+            this.notifySellerReportReady(listingId).catch(err =>
+                this.logger.error(`Failed to notify seller of ready HPI report for listing ${listingId}: ${err.message}`),
+            );
+        }
+    }
+
+    /**
+     * The seller paid for this report and — now that publishing no longer waits
+     * on it — may have been living with a listing that said "being prepared"
+     * for days. Telling them it landed is the whole point of allowing the delay.
+     */
+    private async notifySellerReportReady(listingId: string) {
+        const listing = await this.prisma.listing.findUnique({
+            where: { id: listingId },
+            select: {
+                id: true,
+                title: true,
+                slug: true,
+                sellerId: true,
+                seller: { select: { email: true, firstName: true } },
+            },
+        });
+        if (!listing?.sellerId) return;
+
+        const notification = await this.notificationsService.create({
+            userId: listing.sellerId,
+            type: 'HPI_REPORT_READY',
+            title: 'Your vehicle history report is ready',
+            message: `The report you requested for "${listing.title}" is now attached to your listing.`,
+            link: `/buy-cars/${listing.slug}`,
+            entityType: 'Listing',
+            entityId: listing.id,
+        }).catch(() => null);
+
+        if (notification) {
+            this.notificationsGateway.sendNotification(listing.sellerId, notification);
+        }
+
+        if (listing.seller?.email) {
+            await this.emailService.sendHpiReportReadyAlert({
+                toEmail: listing.seller.email,
+                firstName: listing.seller.firstName || 'there',
+                vehicleTitle: listing.title,
+                listingSlug: listing.slug,
+            }).catch(err =>
+                this.logger.error(`Failed to email seller about ready HPI report for listing ${listingId}: ${err.message}`),
+            );
+        }
     }
 
     private validate(data: HpiReportData) {
@@ -227,9 +414,22 @@ export class HpiService {
         }
     }
 
-    /** Renders the branded PDF on demand. Never stored — see HpiController. */
+    /**
+     * Serves the report PDF. An admin-uploaded file wins over the structured
+     * form — if staff went to the trouble of attaching the real third-party
+     * document, that is the authoritative one to hand out. Otherwise the
+     * branded PDF is rendered on demand and never stored — see HpiController.
+     */
     async renderPdf(listingId: string): Promise<{ buffer: Buffer; filename: string }> {
         const report = await this.getReportForListing(listingId);
+
+        if (report.pdfData) {
+            const vrm = (report.vrm || 'vehicle').replace(/[^A-Za-z0-9]/g, '');
+            return {
+                buffer: Buffer.from(report.pdfData),
+                filename: report.pdfFileName || `CarMazium_Vehicle_History_Report_${vrm}.pdf`,
+            };
+        }
 
         if (report.status !== 'COMPLETED' || !report.reportData) {
             throw new BadRequestException('This HPI report has not been prepared yet');

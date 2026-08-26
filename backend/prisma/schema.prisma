@@ -723,8 +723,11 @@ model Listing {
 // ============================================================================
 
 /// A report is created the moment the seller pays, in PENDING state with no
-/// data — an admin then fills in the check results, which generates the
-/// branded PDF and flips it to COMPLETED. Rows predating that change were
+/// data — an admin then either fills in the check results (generating the
+/// branded PDF) or uploads the supplied PDF directly, which flips it to
+/// COMPLETED. A PENDING report does NOT hold up the listing: it can be
+/// published and even sell first, with the report attached later.
+/// Rows predating that change were
 /// auto-generated from OneAutoAPI and are already COMPLETED/ONE_AUTO_API by
 /// virtue of the column defaults, so they keep rendering from `data` as before.
 model HpiReport {
@@ -742,8 +745,19 @@ model HpiReport {
   /// Structured check data entered by an admin, rendered into the PDF.
   /// Shape is owned by HpiReportData in backend/src/hpi/hpi-report.types.ts.
   reportData      Json?
+  /// An admin can instead upload the third-party PDF wholesale. Stored in-row
+  /// rather than object storage on purpose: a report is paid content, so there
+  /// must be no URL that can be fetched without passing our own auth. When
+  /// this is set it takes precedence over `reportData` when serving the PDF.
+  pdfData         Bytes?
+  pdfFileName     String?
+  pdfSizeBytes    Int?
+  pdfUploadedAt   DateTime?
   preparedById    String?
   preparedAt      DateTime?
+  /// Last time admins were nudged about this report still being outstanding.
+  /// Dedupes the reminder job so one stale report can't mail them daily.
+  reminderSentAt  DateTime?
 
   listing         Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
   preparedBy      User?    @relation("HpiReportsPrepared", fields: [preparedById], references: [id], onDelete: SetNull)

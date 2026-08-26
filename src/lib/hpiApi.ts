@@ -65,6 +65,8 @@ export interface PendingHpiRequest {
     listingId: string
     vrm: string
     purchasedAt: string
+    /** Buyers who paid for an emailed copy and are stuck waiting on this report. */
+    waitingBuyers: number
     listing: {
         id: string
         title: string
@@ -88,7 +90,10 @@ export type HpiSummaryResponse =
         isClear: boolean
         purchasedAt: string
         preparedAt: string | null
+        /** Null when the admin uploaded a PDF instead of filling the form. */
         report: HpiReportData | null
+        hasPdf: boolean
+        pdfUploadedAt: string | null
     }
     | {
         format: 'LEGACY'
@@ -126,6 +131,28 @@ export async function saveHpiReport(listingId: string, report: HpiReportData) {
     return apiClient<{ success: boolean; data: unknown }>(`/hpi/admin/${listingId}`, {
         method: 'POST',
         body: JSON.stringify({ report }),
+    })
+}
+
+/**
+ * Uploads the third-party PDF as supplied, instead of filling in the form.
+ * `isClear` is the admin's own read of the document — with no structured
+ * checks behind it, nothing else can decide the badge shown on the listing.
+ */
+export async function uploadHpiPdf(listingId: string, file: File, isClear: boolean) {
+    const body = new FormData()
+    body.append('file', file)
+    body.append('isClear', String(isClear))
+    return apiClient<{ success: boolean; data: unknown }>(`/hpi/admin/${listingId}/pdf`, {
+        method: 'POST',
+        body,
+    })
+}
+
+/** Removes an uploaded PDF, reverting the report to the form data or to pending. */
+export async function removeHpiPdf(listingId: string) {
+    return apiClient<{ success: boolean; data: unknown }>(`/hpi/admin/${listingId}/pdf`, {
+        method: 'DELETE',
     })
 }
 

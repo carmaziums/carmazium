@@ -1,5 +1,9 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Res } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiCookieAuth } from '@nestjs/swagger';
+import {
+    Controller, Get, Post, Delete, Body, Param, UseGuards, Res,
+    UseInterceptors, UploadedFile, BadRequestException,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiCookieAuth, ApiConsumes } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import type { Response } from 'express';
 import { HpiService } from './hpi.service';
@@ -42,6 +46,12 @@ export class HpiController {
                     purchasedAt: report.purchasedAt,
                     preparedAt: report.preparedAt,
                     report: report.reportData ?? null,
+                    // An uploaded PDF is a complete report with no structured
+                    // data behind it, so the client can't infer "ready" from
+                    // `report` alone — this is what distinguishes that case
+                    // from one still genuinely awaiting an admin.
+                    hasPdf: !!report.pdfData,
+                    pdfUploadedAt: report.pdfUploadedAt,
                 },
             };
         }
@@ -110,6 +120,41 @@ export class HpiController {
         @CurrentUser() user: any,
     ) {
         const report = await this.hpiService.saveAdminReport(listingId, body.report, user.id);
+        return { success: true, data: report };
+    }
+
+    /**
+     * The alternative to the form: upload the third-party PDF as supplied.
+     *
+     * Held in memory and written straight to the row rather than to a bucket —
+     * reports are paid content, and the download route below is the only way
+     * to reach one. `isClear` arrives as a multipart string, so it's compared
+     * rather than trusted as a boolean.
+     */
+    @Post('admin/:listingId/pdf')
+    @UseGuards(SessionAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 15 * 1024 * 1024 } }))
+    @ApiConsumes('multipart/form-data')
+    @ApiOperation({ summary: 'Upload a supplied HPI report PDF and mark the report complete' })
+    async uploadPdf(
+        @Param('listingId') listingId: string,
+        @UploadedFile() file: { buffer: Buffer; originalname?: string; mimetype?: string; size?: number },
+        @Body() body: { isClear?: string },
+        @CurrentUser() user: any,
+    ) {
+        if (!file) throw new BadRequestException('No file was uploaded');
+        const isClear = body?.isClear === 'true';
+        const report = await this.hpiService.saveAdminPdf(listingId, file, isClear, user.id);
+        return { success: true, data: report };
+    }
+
+    @Delete('admin/:listingId/pdf')
+    @UseGuards(SessionAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    @ApiOperation({ summary: 'Remove an uploaded HPI report PDF' })
+    async removePdf(@Param('listingId') listingId: string) {
+        const report = await this.hpiService.removeAdminPdf(listingId);
         return { success: true, data: report };
     }
 }

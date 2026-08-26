@@ -1269,31 +1269,44 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         })()}
 
                                         {/* HPI report — visible before bidding, not just to the
-                                            winner, so it can actually inform the bid. */}
-                                        {auction.listing.hpiReport && (
-                                            <div className="rounded-xl border border-emerald-500/20 bg-[var(--bg-input)] p-4 flex items-center justify-between gap-3">
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                                                        <ShieldCheck size={16} className="text-emerald-400" />
+                                            winner, so it can actually inform the bid.
+
+                                            An auction can now run with its report still
+                                            outstanding, so the pending case is styled amber
+                                            rather than wearing a green shield it hasn't earned. */}
+                                        {auction.listing.hpiReport && (() => {
+                                            const hpiReady = auction.listing.hpiReport.status === 'COMPLETED'
+                                            return (
+                                                <div className={`rounded-xl border bg-[var(--bg-input)] p-4 flex items-center justify-between gap-3 ${hpiReady ? 'border-emerald-500/20' : 'border-amber-500/20'}`}>
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        <div className={`w-9 h-9 rounded-lg border flex items-center justify-center shrink-0 ${hpiReady
+                                                            ? 'bg-emerald-500/10 border-emerald-500/20'
+                                                            : 'bg-amber-500/10 border-amber-500/20'}`}>
+                                                            {hpiReady
+                                                                ? <ShieldCheck size={16} className="text-emerald-400" />
+                                                                : <Clock size={16} className="text-amber-400" />}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className="text-xs font-bold text-[var(--text-primary)]">HPI History Check</p>
+                                                            <p className="text-[10px] text-[var(--text-muted)] truncate">
+                                                                {hpiReady
+                                                                    ? 'Vehicle history report — stolen, finance, write-off & more'
+                                                                    : 'Report requested — being prepared by our team'}
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-xs font-bold text-[var(--text-primary)]">HPI History Check</p>
-                                                        <p className="text-[10px] text-[var(--text-muted)] truncate">
-                                                            {auction.listing.hpiReport.status === 'COMPLETED'
-                                                                ? 'Vehicle history report — stolen, finance, write-off & more'
-                                                                : 'Report requested — being prepared by our team'}
-                                                        </p>
-                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowHpiModal(true)}
+                                                        className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-bold transition-colors ${hpiReady
+                                                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'
+                                                            : 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20'}`}
+                                                    >
+                                                        {hpiReady ? <><ShieldCheck size={12} /> View</> : <><Clock size={12} /> Status</>}
+                                                    </button>
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowHpiModal(true)}
-                                                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-[11px] font-bold transition-colors"
-                                                >
-                                                    <ShieldCheck size={12} /> View
-                                                </button>
-                                            </div>
-                                        )}
+                                            )
+                                        })()}
 
                                         {/* ── Auction parameters ───────────────────────────── */}
                                         <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">

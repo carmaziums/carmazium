@@ -48,13 +48,20 @@ const CHECK_LABELS: Record<string, string> = {
     mileageAnomaly: "Mileage Consistency",
 }
 
-/** Admin-prepared reports render from structured data + the branded PDF. */
+/**
+ * Admin-prepared reports come in two shapes: the structured form (rendered
+ * in full below, with the branded PDF behind it) or a supplied PDF uploaded
+ * wholesale, which has `report: null` and only `hasPdf` to go on. The two are
+ * distinguished by `hasPdf` rather than by `report` being absent — otherwise a
+ * finished upload would be indistinguishable from a report nobody has started.
+ */
 type AdminView = {
     status: 'PENDING' | 'COMPLETED'
     vrm: string
     isClear: boolean
     preparedAt: string | null
     report: HpiReportData | null
+    hasPdf?: boolean
 }
 
 export function HpiReportModal({ listingId, onClose }: Props) {
@@ -170,7 +177,10 @@ export function HpiReportModal({ listingId, onClose }: Props) {
 
     if (adminView) {
         const r = adminView.report
-        const isPending = adminView.status !== 'COMPLETED' || !r
+        const isPending = adminView.status !== 'COMPLETED' || (!r && !adminView.hasPdf)
+        // A completed report with no structured data behind it — the admin
+        // uploaded the supplied PDF instead of re-keying it.
+        const isPdfOnly = !isPending && !r
         const failed = r ? HPI_CHECK_DEFINITIONS.filter(d => r.checks?.[d.key]?.passed === false) : []
 
         return (
@@ -208,6 +218,40 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                                     here as soon as it&apos;s ready.
                                 </p>
                             </div>
+                        ) : isPdfOnly ? (
+                            <>
+                                <div className={`rounded-xl border p-4 flex items-center gap-3 ${adminView.isClear
+                                    ? 'bg-emerald-500/10 border-emerald-500/30'
+                                    : 'bg-amber-500/10 border-amber-500/30'}`}>
+                                    {adminView.isClear
+                                        ? <ShieldCheck size={22} className="text-emerald-400 shrink-0" />
+                                        : <ShieldX size={22} className="text-amber-400 shrink-0" />}
+                                    <div>
+                                        <p className={`font-bold ${adminView.isClear ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                            {adminView.isClear ? 'All checks passed' : 'Adverse history recorded'}
+                                        </p>
+                                        <p className="text-xs text-[var(--text-muted)]">
+                                            {adminView.isClear
+                                                ? 'No adverse history recorded in the supplied check'
+                                                : 'See the full report for detail'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleOpenPdf}
+                                    disabled={pdfLoading}
+                                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-white text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-colors disabled:opacity-50"
+                                >
+                                    {pdfLoading ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+                                    Open full report (PDF)
+                                </button>
+
+                                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                                    CarMazium presents vehicle-history information from a supplied third-party check.
+                                    CarMazium did not originate or independently verify the underlying third-party data.
+                                </p>
+                            </>
                         ) : (
                             <>
                                 <div className={`rounded-xl border p-4 flex items-center gap-3 ${adminView.isClear

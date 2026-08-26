@@ -814,6 +814,100 @@ export class EmailService {
         });
     }
 
+    /**
+     * Tells a seller the report they paid for has finally been attached.
+     *
+     * Only matters because a listing now publishes without waiting for its
+     * report — the seller may have been live for days showing "report being
+     * prepared", so this closes that loop rather than leaving them to
+     * re-check the page.
+     */
+    async sendHpiReportReadyAlert(options: {
+        toEmail: string;
+        firstName: string;
+        vehicleTitle: string;
+        listingSlug: string;
+    }) {
+        const { toEmail, firstName, vehicleTitle, listingSlug } = options;
+
+        const bodyHtml = `
+            <h1 style="margin: 0 0 16px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                Your Vehicle History Report Is Ready
+            </h1>
+            <p style="margin: 0 0 24px; font-size: 15px; color: #cbd5e1; line-height: 1.6;">
+                Hi <strong style="color: #ffffff;">${firstName}</strong> — the vehicle history report you requested has been
+                prepared by our team and is now attached to your listing. Buyers viewing the vehicle can see it straight away.
+            </p>
+            <div style="background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.15); border-radius: 14px; padding: 24px; margin-bottom: 24px;">
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Vehicle</p>
+                <p style="margin: 0; font-size: 16px; font-weight: 700; color: #ffffff;">${vehicleTitle}</p>
+            </div>
+            <div style="text-align: center; margin: 32px 0 24px;">
+                <a href="${this.frontendUrl}/buy-cars/${listingSlug}" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #ff4d4d); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.3);">
+                    View Report →
+                </a>
+            </div>
+            <p style="margin: 0; font-size: 11px; color: #64748b; line-height: 1.6;">
+                This report presents information from a supplied third-party vehicle check. CarMazium did not originate
+                or independently verify the underlying data, which remains authoritative.
+            </p>
+        `;
+
+        return this.sendBrandedEmail({
+            to: toEmail,
+            subject: `Your vehicle history report is ready — ${vehicleTitle}`,
+            bodyHtml,
+        });
+    }
+
+    /**
+     * Nudges staff about reports still outstanding. Sent as one digest rather
+     * than one mail per report so a backlog reads as a backlog — and because
+     * a per-report mail would arrive again every run for the same stale rows.
+     */
+    async sendHpiPendingReminder(options: {
+        toEmail: string;
+        reports: { vehicleTitle: string; vrm: string; daysWaiting: number; waitingBuyers: number }[];
+    }) {
+        const { toEmail, reports } = options;
+
+        const rows = reports.map(r => `
+            <tr>
+                <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+                    <p style="margin: 0 0 2px; font-size: 14px; font-weight: 700; color: #ffffff;">${r.vehicleTitle}</p>
+                    <p style="margin: 0; font-size: 12px; color: #64748b;">
+                        ${r.vrm} &middot; waiting ${r.daysWaiting} day${r.daysWaiting === 1 ? '' : 's'}${r.waitingBuyers > 0
+                            ? ` &middot; <span style="color: #fbbf24;">${r.waitingBuyers} paid buyer${r.waitingBuyers === 1 ? '' : 's'} waiting</span>`
+                            : ''}
+                    </p>
+                </td>
+            </tr>
+        `).join('');
+
+        const bodyHtml = `
+            <h1 style="margin: 0 0 16px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                ${reports.length} HPI report${reports.length === 1 ? '' : 's'} still outstanding
+            </h1>
+            <p style="margin: 0 0 24px; font-size: 15px; color: #cbd5e1; line-height: 1.6;">
+                These vehicles are already live on CarMazium with a report someone has paid for but hasn't received yet.
+            </p>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">${rows}</table>
+            <div style="text-align: center; margin: 32px 0 24px;">
+                <a href="${this.frontendUrl}/dashboard/admin/hpi" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #ff4d4d); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.3);">
+                    Open HPI Queue →
+                </a>
+            </div>
+        `;
+
+        return this.sendBrandedEmail({
+            to: toEmail,
+            subject: `${reports.length} HPI report${reports.length === 1 ? '' : 's'} awaiting preparation — CarMazium`,
+            bodyHtml,
+        });
+    }
+
     async sendListingRejectedAlert(sellerEmail: string, sellerName: string, listingTitle: string, reason: string) {
         const bodyHtml = `
             <h1 style="margin: 0 0 16px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
