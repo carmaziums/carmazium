@@ -4,7 +4,9 @@ import * as React from "react"
 import { createPortal } from "react-dom"
 import {
     X, Loader2, Save, Plus, Trash2, ShieldCheck, ShieldAlert, Car, FileText, Gauge, Users, AlertTriangle,
+    Upload, PenLine,
 } from "lucide-react"
+import { HpiPdfUploadPanel } from "./HpiPdfUpload"
 import {
     HPI_CHECK_DEFINITIONS, getHpiPrefill, saveHpiReport, deriveIsClear, emptyChecks,
     type HpiReportData, type HpiCheckKey,
@@ -121,9 +123,11 @@ function RowEditor({ rows, columns, onChange, addLabel, blank }: {
     )
 }
 
-export function HpiReportForm({ listingId, listingTitle, onClose, onSaved }: {
+export function HpiReportForm({ listingId, listingTitle, hasExistingPdf, onClose, onSaved }: {
     listingId: string
     listingTitle?: string
+    /** Whether a PDF is already attached — switches the upload tab to replace mode. */
+    hasExistingPdf?: boolean
     onClose: () => void
     onSaved?: () => void
 }) {
@@ -131,6 +135,10 @@ export function HpiReportForm({ listingId, listingTitle, onClose, onSaved }: {
     const [loading, setLoading] = React.useState(true)
     const [saving, setSaving] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
+    // Both routes to a finished report live in this one modal. An admin who
+    // opens the form and then realises they already have the supplied PDF
+    // shouldn't have to close it and find a different button.
+    const [mode, setMode] = React.useState<'form' | 'pdf'>('form')
 
     React.useEffect(() => {
         let cancelled = false
@@ -189,27 +197,65 @@ export function HpiReportForm({ listingId, listingTitle, onClose, onSaved }: {
                 className="w-full max-w-3xl h-full bg-[var(--bg-dropdown)] border-l border-[var(--border-default)] shadow-2xl flex flex-col"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="shrink-0 flex items-center justify-between p-5 border-b border-[var(--border-default)]">
-                    <div className="min-w-0">
-                        <h3 className="text-lg font-black uppercase tracking-tight">Prepare HPI Report</h3>
-                        {listingTitle && <p className="text-xs text-[var(--text-muted)] truncate">{listingTitle}</p>}
+                <div className="shrink-0 p-5 border-b border-[var(--border-default)] space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                            <h3 className="text-lg font-black uppercase tracking-tight">Prepare HPI Report</h3>
+                            {listingTitle && <p className="text-xs text-[var(--text-muted)] truncate">{listingTitle}</p>}
+                        </div>
+                        <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] shrink-0">
+                            <X size={20} />
+                        </button>
                     </div>
-                    <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] shrink-0">
-                        <X size={20} />
-                    </button>
+
+                    {/* Two ways to finish the same report — either completes it. */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setMode('form')}
+                            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-black uppercase tracking-widest transition-colors ${mode === 'form'
+                                ? 'bg-primary/10 border-primary/50 text-primary'
+                                : 'bg-[var(--bg-card)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
+                        >
+                            <PenLine size={14} /> Fill in form
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setMode('pdf')}
+                            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-black uppercase tracking-widest transition-colors ${mode === 'pdf'
+                                ? 'bg-primary/10 border-primary/50 text-primary'
+                                : 'bg-[var(--bg-card)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
+                        >
+                            <Upload size={14} /> Upload PDF
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-5 space-y-4">
-                    {loading && (
+                    {mode === 'pdf' && (
+                        <>
+                            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                                Attach the supplied third-party report as-is. This becomes the document buyers
+                                download, in place of the one generated from the form.
+                            </p>
+                            <HpiPdfUploadPanel
+                                listingId={listingId}
+                                hasExistingPdf={hasExistingPdf}
+                                onSaved={() => { onSaved?.(); onClose() }}
+                            />
+                        </>
+                    )}
+
+                    {mode === 'form' && loading && (
                         <div className="flex justify-center py-16"><Loader2 className="animate-spin text-primary" size={28} /></div>
                     )}
-                    {error && (
+                    {mode === 'form' && error && (
                         <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-sm flex items-start gap-2">
                             <AlertTriangle size={16} className="shrink-0 mt-0.5" /> {error}
                         </div>
                     )}
 
-                    {data && (
+                    {mode === 'form' && data && (
                         <>
                             {/* Outcome preview — derived, never entered directly */}
                             <div className={`rounded-xl border p-4 flex items-center gap-3 ${isClear
@@ -372,7 +418,7 @@ export function HpiReportForm({ listingId, listingTitle, onClose, onSaved }: {
                     )}
                 </div>
 
-                {data && (
+                {mode === 'form' && data && (
                     <div className="shrink-0 p-5 border-t border-[var(--border-default)] flex items-center gap-3">
                         <button
                             onClick={handleSave}

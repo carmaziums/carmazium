@@ -989,7 +989,16 @@ export class AdminService {
                             dealerProfile: { select: { companyName: true, isVerified: true } },
                         },
                     },
-                    listing: { select: { id: true, title: true, slug: true, make: true, model: true, year: true } },
+                    // hpiReport rides along so an HPI_REPORT / HPI_REPORT_EMAIL row
+                    // in the ledger can show whether that payment has actually
+                    // been fulfilled, and let an admin attach the report right
+                    // there rather than going looking for the listing.
+                    listing: {
+                        select: {
+                            id: true, title: true, slug: true, make: true, model: true, year: true,
+                            hpiReport: { select: { status: true, isClear: true, pdfUploadedAt: true, preparedAt: true } },
+                        },
+                    },
                 },
             }),
             this.prisma.transaction.count(),

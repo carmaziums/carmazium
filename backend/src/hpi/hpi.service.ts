@@ -194,10 +194,7 @@ export class HpiService {
      * checks printed on the PDF.
      */
     async saveAdminReport(listingId: string, data: HpiReportData, adminId: string) {
-        const report = await this.prisma.hpiReport.findUnique({ where: { listingId } });
-        if (!report) {
-            throw new NotFoundException('No HPI report was requested for this listing');
-        }
+        const report = await this.ensureReportRow(listingId);
         const wasPending = report.status === 'PENDING';
 
         this.validate(data);
@@ -249,10 +246,7 @@ export class HpiService {
         isClear: boolean,
         adminId: string,
     ) {
-        const report = await this.prisma.hpiReport.findUnique({ where: { listingId } });
-        if (!report) {
-            throw new NotFoundException('No HPI report was requested for this listing');
-        }
+        const report = await this.ensureReportRow(listingId);
 
         if (!file?.buffer?.length) {
             throw new BadRequestException('No file was uploaded');
@@ -327,6 +321,32 @@ export class HpiService {
             `(falls back to ${hasFormReport ? 'form data' : 'PENDING'})`,
         );
         return this.stripPdfBytes(updated);
+    }
+
+    /**
+     * Returns the listing's report row, creating a PENDING one if it's missing.
+     *
+     * Normally the row is created the moment a payment clears. But a webhook can
+     * be missed, and staff reaching this from the transaction ledger are looking
+     * at proof that someone paid — refusing to let them attach the report because
+     * of our own bookkeeping gap would strand the payer with no way to be served.
+     * Admin-only, so the worst case is a report attached to a listing that didn't
+     * strictly ask for one, which is recoverable; the alternative isn't.
+     */
+    private async ensureReportRow(listingId: string) {
+        const existing = await this.prisma.hpiReport.findUnique({ where: { listingId } });
+        if (existing) return existing;
+
+        const listing = await this.prisma.listing.findUnique({
+            where: { id: listingId },
+            select: { vrm: true },
+        });
+        if (!listing) throw new NotFoundException('Listing not found');
+
+        this.logger.warn(
+            `No HPI report row for listing ${listingId} — creating one so an admin can attach the report`,
+        );
+        return this.createPendingReport(listingId, listing.vrm || '');
     }
 
     /** Never let raw PDF bytes ride back out on a JSON response. */
