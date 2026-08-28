@@ -199,20 +199,55 @@ export interface ThreeDVehicleViewerProps {
   onZoneClick: (zoneId: string) => void
 }
 
+/**
+ * Fetches only the one GLB this listing actually needs, and only once the
+ * viewer has scrolled into view. This used to load unconditionally on mount —
+ * worse, the module bottom preloaded all three models (~91MB combined) on
+ * every vehicle page regardless of body type, which was the single largest
+ * driver of the site's outbound data transfer given this renders on every
+ * listing detail page.
+ */
 export function ThreeDVehicleViewer({
   bodyType,
   selectedZone,
   markedZones,
   onZoneClick,
 }: ThreeDVehicleViewerProps) {
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const [inView, setInView] = React.useState(false)
+
+  React.useEffect(() => {
+    if (inView) return
+    const el = containerRef.current
+    if (!el) return
+    // 200px rootMargin starts the fetch a little before the viewer is fully
+    // on screen, so it's ready by the time scrolling reaches it.
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0]?.isIntersecting) setInView(true) },
+      { rootMargin: "200px" },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [inView])
+
   const url = (bodyType && MODEL_URL[bodyType]) ?? DEFAULT_MODEL
   const markedSet = new Set(markedZones)
 
   return (
     <div
+      ref={containerRef}
       className="w-full rounded-2xl overflow-hidden bg-slate-950/80 border border-white/8"
       style={{ height: 400 }}
     >
+      {!inView ? (
+        // Plain DOM placeholder — LoadingScreen below uses drei's <Html>,
+        // which portals through react-three-fiber's context and crashes
+        // outside an actual <Canvas>.
+        <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-white">
+          <Loader2 size={28} className="animate-spin text-primary" />
+          <span className="text-sm font-medium text-[var(--text-secondary)]">3D preview</span>
+        </div>
+      ) : (
       <Canvas
         camera={{ position: [5, 3, 7], fov: 42 }}
         gl={{ antialias: true, alpha: true }}
@@ -251,11 +286,7 @@ export function ThreeDVehicleViewer({
           maxDistance={18}
         />
       </Canvas>
+      )}
     </div>
   )
 }
-
-// Preload all models immediately
-useGLTF.preload("/assets/3D/2020_volkswagen_polo__jetta_va3.glb")
-useGLTF.preload("/assets/3D/2023_volkswagen_polo_gti.glb")
-useGLTF.preload("/assets/3D/bmw_x7_m60i.glb")

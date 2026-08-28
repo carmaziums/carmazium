@@ -40,6 +40,9 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
   const heroVideoSrc = mounted && resolvedTheme === "light"
     ? "/assets/videos/hero-cinematic-light.mp4"
     : "/assets/videos/hero-cinematic.mp4"
+  const heroPosterSrc = mounted && resolvedTheme === "light"
+    ? "/assets/videos/hero-cinematic-light-poster.jpg"
+    : "/assets/videos/hero-cinematic-poster.jpg"
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start start", "end start"],
@@ -94,6 +97,8 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
             muted
             loop
             playsInline
+            preload="none"
+            poster={heroPosterSrc}
             className="absolute top-1/2 left-1/2 min-w-full min-h-full object-cover -translate-x-1/2 -translate-y-1/2"
             onEnded={(e) => e.currentTarget.pause()}
           >

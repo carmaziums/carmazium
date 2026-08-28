@@ -35,10 +35,14 @@ export default function AboutPage() {
                         muted
                         loop
                         playsInline
+                        preload="none"
+                        poster="/assets/videos/about-cinematic-poster.jpg"
                         className="absolute inset-0 w-full h-full object-cover blur-[2px] scale-105"
                     >
-                        <source src="/assets/videos/about-cinematic.mov" type="video/quicktime" />
-                        <source src="/assets/videos/about-cinematic.mov" type="video/mp4" /> {/* Fallback if it's actually MP4 container */}
+                        {/* Re-encoded from an 86MB 4K .mov to a 1080p/CRF30 .mp4 —
+                            same 68Mbps 4K master was being served to every visitor
+                            for a background layer the CSS blurs and mutes anyway. */}
+                        <source src="/assets/videos/about-cinematic.mp4" type="video/mp4" />
                     </video>
                 </div>
 

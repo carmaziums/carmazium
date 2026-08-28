@@ -86,7 +86,7 @@ export function DiscoverSection() {
                         }}
                     >
                         <Image
-                            src={isLight ? "/assets/images/discover-hero-light.png" : "/assets/images/discover-hero.png"}
+                            src={isLight ? "/assets/images/discover-hero-light.webp" : "/assets/images/discover-hero.webp"}
                             alt="Discover your perfect car — Blue pickup, Red SUV, White sedan"
                             fill
                             sizes="100vw"
