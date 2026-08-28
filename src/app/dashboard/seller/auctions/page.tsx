@@ -193,9 +193,25 @@ function SellerAuctionsPage() {
                     .filter(a => a.status === "SCHEDULED" || a.status === "ACTIVE")
                     .map(a => a.listingId)
             )
+            // An auction that ends with reserve not met reverts its listing to
+            // DRAFT/CLASSIFIED specifically so the seller can re-auction it later
+            // (see AuctionsService.closeAuction) — that reversion is the whole
+            // point of the "Re-auction" button in AuctionResultsModal. Without
+            // this, that listing can never satisfy the ACTIVE-only check below,
+            // so re-auctioning was silently impossible for every seller: the
+            // dropdown always showed "No eligible listings" for the one listing
+            // they were specifically trying to select. An ENDED auction against
+            // the listing's own ID is what proves this DRAFT is a reverted
+            // auction rather than an ordinary unfinished/unpaid draft, which
+            // must stay excluded.
+            const endedAuctionListingIds = new Set(
+                (freshAuctions ?? [])
+                    .filter(a => a.status === "ENDED")
+                    .map(a => a.listingId)
+            )
             setEligibleListings(
                 listed.filter(l =>
-                    l.status === "ACTIVE" &&
+                    (l.status === "ACTIVE" || (l.status === "DRAFT" && endedAuctionListingIds.has(l.id))) &&
                     !auctionListingIds.has(l.id) &&
                     !(l as any).linkedListingId
                 )
@@ -472,6 +488,7 @@ function SellerAuctionsPage() {
                                                 {eligibleListings.map(l => (
                                                     <option key={l.id} value={l.id}>
                                                         {l.title} — {l.year} {l.make} {l.model}
+                                                        {l.status === "DRAFT" ? " (previous auction ended — reserve not met)" : ""}
                                                     </option>
                                                 ))}
                                             </select>
