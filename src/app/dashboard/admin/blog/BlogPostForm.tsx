@@ -27,6 +27,21 @@ interface BlogPostFormProps {
     post?: BlogPost
 }
 
+/**
+ * The blog index card renders its cover in a fixed `h-48` box with
+ * `object-cover`, three across on desktop (src/app/blog/page.tsx) — roughly a
+ * 2:1 letterbox. Anything materially taller than that gets centre-cropped top
+ * and bottom, which is why cover artwork with text baked into it kept losing
+ * its headline once published.
+ *
+ * Keep COVER_ASPECT in step with that card if its height or column count ever
+ * changes, or this preview starts lying.
+ */
+const COVER_ASPECT = 2 / 1
+const COVER_RECOMMENDED = { w: 1200, h: 600 }
+/** Beyond this much deviation from 2:1, the crop is visible enough to warn. */
+const COVER_ASPECT_TOLERANCE = 0.15
+
 export function BlogPostForm({ post }: BlogPostFormProps) {
     const router = useRouter()
     const isEdit = !!post
@@ -37,6 +52,10 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
     const [excerpt, setExcerpt] = React.useState(post?.excerpt ?? "")
     const [content, setContent] = React.useState(post?.content ?? "")
     const [coverImage, setCoverImage] = React.useState(post?.coverImage ?? "")
+    // Natural pixel size of the chosen cover, read once it loads, so the admin
+    // can be told when the artwork will be cropped rather than discovering it
+    // after publishing.
+    const [coverSize, setCoverSize] = React.useState<{ w: number; h: number } | null>(null)
     const [authorName, setAuthorName] = React.useState(post?.authorName ?? "CarMazium Team")
     const [tagsInput, setTagsInput] = React.useState((post?.tags ?? []).join(", "))
     const [status, setStatus] = React.useState<BlogPostStatus>(post?.status ?? "DRAFT")
@@ -71,6 +90,7 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
         setError(null)
         try {
             const url = await uploadImage(file, 'listings', 'blog')
+            setCoverSize(null)
             setCoverImage(url)
         } catch (err) {
             setError(errorMessage(err, 'Upload failed'))
@@ -201,21 +221,77 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
             {/* Cover image */}
             <div className="glass-card p-6 space-y-3">
                 <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Cover Image</h3>
+                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                    Recommended {COVER_RECOMMENDED.w}&times;{COVER_RECOMMENDED.h} (2:1). The blog card crops to
+                    this shape, so keep any text in the artwork well inside the frame.
+                </p>
+
                 {coverImage ? (
-                    <div className="relative rounded-xl overflow-hidden border border-[var(--border-default)] bg-[var(--bg-input)]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={coverImage} alt="Cover" className="w-full h-48 object-cover" />
-                        <button
-                            type="button"
-                            onClick={() => setCoverImage("")}
-                            className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-lg text-white transition-colors"
+                    <div className="space-y-2">
+                        {/* Exactly how the blog index will render it: same 2:1 box,
+                            same object-cover. Previewing the raw upload instead —
+                            which is what this used to do — hid the crop that was
+                            slicing headlines off published covers. */}
+                        <div
+                            className="relative w-full rounded-xl overflow-hidden border border-[var(--border-default)] bg-[var(--bg-input)]"
+                            style={{ aspectRatio: String(COVER_ASPECT) }}
                         >
-                            <X size={14} />
-                        </button>
-                        {uploading && <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                src={coverImage}
+                                alt="Cover preview as it will appear on the blog card"
+                                className="w-full h-full object-cover"
+                                onLoad={(e) => {
+                                    const img = e.currentTarget
+                                    if (img.naturalWidth) setCoverSize({ w: img.naturalWidth, h: img.naturalHeight })
+                                }}
+                            />
+                            <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/70 text-white text-[10px] font-bold uppercase tracking-wider">
+                                Card preview
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => { setCoverImage(""); setCoverSize(null) }}
+                                className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-lg text-white transition-colors"
+                            >
+                                <X size={14} />
+                            </button>
+                            {uploading && <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
+                        </div>
+
+                        {coverSize && (() => {
+                            const ratio = coverSize.w / coverSize.h
+                            const off = Math.abs(ratio - COVER_ASPECT) / COVER_ASPECT
+                            const tooNarrow = coverSize.w < COVER_RECOMMENDED.w
+                            if (off <= COVER_ASPECT_TOLERANCE && !tooNarrow) {
+                                return (
+                                    <p className="text-[11px] text-emerald-400 flex items-center gap-1.5">
+                                        <CheckCircle2 size={12} className="shrink-0" />
+                                        {coverSize.w}&times;{coverSize.h} ({ratio.toFixed(2)}:1) — fits the card with little or no cropping.
+                                    </p>
+                                )
+                            }
+                            return (
+                                <p className="text-[11px] text-amber-400 flex items-start gap-1.5">
+                                    <AlertCircle size={12} className="shrink-0 mt-0.5" />
+                                    <span>
+                                        {coverSize.w}&times;{coverSize.h} ({ratio.toFixed(2)}:1).
+                                        {off > COVER_ASPECT_TOLERANCE && (
+                                            ratio < COVER_ASPECT
+                                                ? ' Taller than 2:1 — the top and bottom will be cropped off, as shown above.'
+                                                : ' Wider than 2:1 — the sides will be cropped off, as shown above.'
+                                        )}
+                                        {tooNarrow && ` Also under ${COVER_RECOMMENDED.w}px wide, so it will look soft on large screens.`}
+                                    </span>
+                                </p>
+                            )
+                        })()}
                     </div>
                 ) : (
-                    <div className="h-32 rounded-xl border border-dashed border-[var(--border-default)] bg-[var(--bg-input)] flex items-center justify-center">
+                    <div
+                        className="w-full rounded-xl border border-dashed border-[var(--border-default)] bg-[var(--bg-input)] flex items-center justify-center"
+                        style={{ aspectRatio: String(COVER_ASPECT) }}
+                    >
                         <ImageIcon className="text-[var(--text-muted)]" size={28} />
                     </div>
                 )}
