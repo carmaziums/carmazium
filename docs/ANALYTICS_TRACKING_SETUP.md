@@ -1,6 +1,6 @@
 # Analytics, Tag Manager & Google Ads — setup, decisions, and known gaps
 
-Last updated: 2026-08-30
+Last updated: 2026-08-31
 
 This documents the measurement pipeline end to end: what is configured, why it
 is configured that way, what was broken and how it was fixed, and what is still
@@ -22,9 +22,18 @@ of the choices here are deliberate and undoing them will double-count data.
 GA4 property `549182278`, stream `15402469309`, account `404051742`.
 Google Ads account: Carmazium Ltd, `699-823-8086`.
 
-All tags are **consent-gated** — nothing loads until the visitor clicks
-"Accept All" (`context/ConsentContext.tsx`). See "Known gaps" #1, this has real
-consequences for conversion volume.
+Consent handling differs by vendor, and the distinction matters:
+
+- **Google (GA4 + Ads)** uses **Consent Mode v2**. The tag loads for everyone
+  with all storage denied, stores nothing, and is upgraded by
+  `consent: update` if the visitor accepts — so Google receives an explicit
+  signal either way. See §4.5.
+- **GTM, Meta Pixel, TikTok Pixel** are hard-gated: nothing loads until the
+  visitor accepts (`context/ConsentContext.tsx`). They have no equivalent
+  signalling mechanism.
+
+Everything is additionally gated on environment (`lib/analyticsEnv.ts`) so
+Vercel preview builds and local dev cannot report into production.
 
 ---
 
@@ -112,8 +121,9 @@ Verified in production: an existing user hitting `/dashboard`, refreshing, and
 revisiting produced zero conversion pings, and a genuine new registration
 produced exactly one.
 
-Both are Website / "manually with code" actions on `www.carmazium.com`,
-90-day click window, data-driven attribution.
+All three are Website / "manually with code" actions on `www.carmazium.com`,
+data-driven attribution. Purchase and Submit lead form use a 90-day click
+window and count Every; Completed Seller Registration counts One.
 
 Labels live in `lib/googleAds.ts` as committed defaults, with env-var override
 (`NEXT_PUBLIC_GADS_LABEL_*`). They are **not secrets** — they ship in the client
@@ -196,6 +206,39 @@ ad copy unattended; one had already been applied 17–23 Aug 2026.
 
 ---
 
+### 4.5 Google received no consent signal at all
+
+**Symptom:** Ads diagnostics reported *"Verify consent mode set up as 0%
+consent rate detected"*, with conversion reporting flagged as impacted because
+consent is required for website conversions in the EEA/UK. This — not "the
+actions are new" — was what kept the Purchase and Page view goals on
+"Misconfigured".
+
+**Cause:** the site refused to load gtag until the visitor accepted cookies,
+so Google received nothing. Not "denied" — silence, which reads as 0% and
+leaves Google unable to model the conversions it cannot observe.
+
+**Fix:** `components/analytics/GoogleConsentMode.tsx` declares every storage
+type denied *before* any Google tag loads, so the tag loads for everyone while
+storing nothing, and `ConsentContext` sends `consent: update` on the visitor's
+choice — for **both** outcomes, since an explicit "denied" is itself a signal.
+Also sets `ads_data_redaction` and `url_passthrough`.
+
+Ordering is load-bearing: the defaults use `beforeInteractive` so they are
+inline in the initial HTML, and the component is mounted **first** in
+`app/layout.tsx`. Moving it below `GoogleAnalytics` would make them arrive too
+late to apply, silently.
+
+Verified on the wire: `gcs=G100` before consent, `gcs=G111` after accepting,
+and an explicit denied update on reject.
+
+Tradeoff: Google's tag now loads for every visitor. With storage denied it
+sets no cookies and no advertising identifiers, but a cookieless ping does
+reach Google — that is how modelled conversions work and is the mechanism
+Google prescribes for GDPR. If a stricter "no requests before consent" posture
+is ever needed, `GoogleConsentMode.tsx` is the single place to change it, and
+the 0% diagnostic will return.
+
 ## 5. Verified working
 
 Confirmed against production, not assumed:
@@ -213,17 +256,30 @@ Confirmed against production, not assumed:
 
 ## 6. Known gaps
 
-### 1. No Google Consent Mode v2 — highest impact
+### 1. Three Primary actions now share the "Submit lead form" goal
 
-Tags simply don't load until "Accept All" is clicked. Visitors who **ignore**
-the banner (typically a large share) are completely invisible: no pageview, no
-conversion. Google also receives no consent signals at all, so it cannot do
-conversion modelling to fill the gap.
+RESOLVED SEPARATELY: Consent Mode v2 is implemented (§4.5) — this gap used to
+read "no Consent Mode", which Ads diagnostics had flagged as
+"0% consent rate detected".
 
-Implementing Consent Mode v2 (`gtag('consent','default',…)` before the tag
-loads, then `update` on the user's choice) would recover a meaningful share of
-attributable conversions and is expected by Google for UK/EEA traffic.
-This is the single biggest remaining measurement gap.
+What remains is a bidding question, not a tracking one. The "Submit lead form"
+goal currently holds three Primary actions:
+
+- `ads_conversion_Submit_lead_form_1` — auto-created by Google, fires on a
+  **page load of /auctions**. Not a business outcome; should be removed or
+  demoted.
+- `Submit lead form (1)` — ours, fires on `listing_submitted`.
+- `Completed Seller Registration` — ours, fires on a confirmed new account.
+
+Maximise Conversions optimises the **sum** of the Primary actions in a goal, so
+the campaign is currently learning from page loads, listing submissions and
+registrations mixed together. Pick one signal per campaign and demote the rest
+to Secondary — they are still measured, they just stop driving bidding.
+
+Worth knowing when choosing: registration is high-volume and low-intent
+(anyone can make an account to browse), whereas `listing_submitted` is the
+point someone actually becomes a seller. Optimising for the cheaper of two
+Primary actions is what smart bidding will do by default.
 
 ### 2. GCLID attribution — verified working, with one caveat
 
