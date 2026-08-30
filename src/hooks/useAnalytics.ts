@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef } from "react"
 import { useAuth } from "@/context/AuthContext"
 import { pushToDataLayer } from "@/lib/gtm"
+import { trackAdsConversion } from "@/lib/googleAds"
+import { trackGa4Event } from "@/components/analytics/GoogleAnalytics"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 
@@ -34,10 +36,12 @@ const DATALAYER_EXCLUDED = new Set(["page_view"])
  * Every call is non-blocking — failures are silently swallowed.
  * Each event is automatically enriched with url, referrer, and device type.
  *
- * Events fan out to two places from this single call: CarMazium's own
- * /analytics/event store (which powers the admin analytics dashboard) and
- * the GTM dataLayer (which lets GA4/Meta/TikTok tags be attached per-event
- * from the GTM console without a redeploy). See lib/gtm.ts.
+ * Events fan out to three places from this single call: CarMazium's own
+ * /analytics/event store (which powers the admin analytics dashboard), the
+ * GTM dataLayer (which lets GA4/Meta/TikTok tags be attached per-event from
+ * the GTM console without a redeploy), and Google Ads conversion tracking
+ * for the subset of events that have a conversion label configured.
+ * See lib/gtm.ts and lib/googleAds.ts.
  */
 export function useAnalytics() {
     const { user } = useAuth()
@@ -62,7 +66,19 @@ export function useAnalytics() {
                 // and device is derivable there too.
                 if (!DATALAYER_EXCLUDED.has(type)) {
                     pushToDataLayer(type, payload)
+
+                    // Straight to GA4 as well. A dataLayer push alone never
+                    // reached GA4 — that needs a GA4 Event tag built per event
+                    // in the GTM console, which was never done, so none of
+                    // these funnel events showed up in GA4 at all. Excluded
+                    // for page_view for the same reason as the dataLayer:
+                    // GAPageViewTracker already sends it.
+                    trackGa4Event(type, payload)
                 }
+
+                // Google Ads conversions. No-ops unless this event has a
+                // conversion label configured — see lib/googleAds.ts.
+                trackAdsConversion(type, payload)
 
                 fetch(`${API_URL}/analytics/event`, {
                     method: "POST",

@@ -18,6 +18,38 @@ declare global {
     }
 }
 
+/**
+ * Send a custom event straight to GA4.
+ *
+ * WHY THIS EXISTS: the app's events are pushed to the GTM dataLayer
+ * (lib/gtm.ts), but a dataLayer push only reaches GA4 if someone has built a
+ * matching GA4 Event tag + Custom Event trigger inside the GTM console. That
+ * had never been done, so GA4 was only ever showing its own Enhanced
+ * Measurement automatics (page_view, scroll, click, form_start, form_submit,
+ * session_start, first_visit, user_engagement, view_search_results) plus the
+ * ads_conversion_* actions Google Ads creates by itself — and not one of
+ * CarMazium's own funnel events.
+ *
+ * Sending directly here means the funnel works with zero GTM configuration.
+ *
+ * IMPORTANT: because of that, do NOT also create GA4 Event tags in GTM for
+ * these same event names. The dataLayer push still happens (it's what lets
+ * Meta/TikTok tags be attached per-event from the GTM console), so a GA4 tag
+ * on the same custom event would double-count every one of them.
+ */
+export function trackGa4Event(eventName: string, params: Record<string, unknown> = {}) {
+    if (typeof window === "undefined" || typeof window.gtag !== "function") return
+    if (!GA_MEASUREMENT_ID) return
+    try {
+        // send_to pins this to the GA4 property — without it the event would
+        // also be delivered to the Google Ads tag sharing this gtag instance,
+        // which pollutes Ads with non-conversion traffic.
+        window.gtag("event", eventName, { ...params, send_to: GA_MEASUREMENT_ID })
+    } catch {
+        // Never let analytics break a user flow.
+    }
+}
+
 function GAPageViewTracker() {
     const pathname = usePathname()
     const searchParams = useSearchParams()
