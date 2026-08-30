@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase"
 import { fetchWithRetry } from "@/lib/fetchWithRetry"
 import { Loader2 } from "lucide-react"
 import { trackMetaEvent } from "@/components/analytics/MetaPixel"
+import { trackSignupConversion } from "@/lib/googleAds"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev";
 
@@ -234,7 +235,34 @@ function AuthCallbackContent() {
           role: meta.role || roleOverride,
         }),
         signal: syncController.signal,
-      }).then(() => clearTimeout(syncTimeout)).catch((e) => {
+      }).then(async (res) => {
+        clearTimeout(syncTimeout)
+        // The Google Ads "Completed Seller Registration" conversion fires from
+        // here, and only from here.
+        //
+        // This is the one point in the app where a brand-new account is a
+        // confirmed fact rather than an inference: `isNewUser` is true only on
+        // the request that actually inserted the user row, so it cannot be true
+        // for a login, a dashboard refresh, a return visit, or an abandoned or
+        // rejected signup — none of which reach a successful sync at all.
+        // Firing on arrival at /dashboard instead would count every one of
+        // those, and the Search campaign's Maximise Conversions bidding would
+        // learn from the wrong number.
+        //
+        // Both signup routes converge here: email/password (arriving with the
+        // Supabase verification link) and Google OAuth (arriving with ?code=),
+        // so neither needs its own special case.
+        //
+        // router.replace above is a soft navigation, so this promise still
+        // resolves in the same JS context with window.gtag intact.
+        try {
+          const body = await res.json()
+          if (body?.isNewUser) trackSignupConversion(user.id)
+        } catch {
+          // A malformed/failed sync response must never break sign-in. Missing
+          // a conversion is the safe failure here; inventing one is not.
+        }
+      }).catch((e) => {
         clearTimeout(syncTimeout)
         console.warn("Background user sync failed:", e?.message)
       })

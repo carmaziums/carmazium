@@ -143,6 +143,77 @@ export function trackAdsConversion(event: string, params: Record<string, unknown
     }
 }
 
+/**
+ * Google Ads conversion action "Completed Seller Registration".
+ *
+ * Separate from the CONVERSION_LABELS map above because it is not driven by an
+ * analytics event — it fires from one specific point in the auth flow, the
+ * moment the backend confirms it has just created a brand-new account.
+ *
+ * Supplied by the client from the Ads UI; do not substitute another label.
+ * The Ads action is: category "Submit lead form", source Website / Google tag,
+ * manual event, Primary, count One, data-driven attribution. "Count: One" means
+ * Ads would collapse repeats per click anyway, but that is not a substitute for
+ * only firing it once — a duplicate from a different click would still count.
+ */
+const SIGNUP_CONVERSION_LABEL = 'LTNTCIuK4-ocEN6N4qNE'
+
+/**
+ * Accounts already reported, so a conversion can never be sent twice for the
+ * same person.
+ *
+ * localStorage, not sessionStorage: the guarantee needed is "never again",
+ * which has to survive a refresh, a logout/login, and a visit next week — all
+ * of which start a new session. Keyed by account id so a shared browser can
+ * still report a genuine second person's registration.
+ *
+ * This is the second line of defence. The first is the backend's `isNewUser`,
+ * which can only be true on the request that actually inserted the row; this
+ * guard exists for the case where that one request's handler runs twice
+ * (React StrictMode double-invocation, a retried fetch).
+ */
+const SIGNUP_DEDUPE_KEY = 'cm_ads_signup_reported'
+
+function alreadyReportedSignup(userId: string): boolean {
+    try {
+        const raw = localStorage.getItem(SIGNUP_DEDUPE_KEY)
+        const seen: string[] = raw ? JSON.parse(raw) : []
+        if (seen.includes(userId)) return true
+        seen.push(userId)
+        localStorage.setItem(SIGNUP_DEDUPE_KEY, JSON.stringify(seen.slice(-20)))
+        return false
+    } catch {
+        // Storage unavailable (private mode, blocked). Report rather than drop
+        // a genuine registration — the backend flag has already established
+        // this is a real one-off.
+        return false
+    }
+}
+
+/**
+ * Reports a completed seller registration to Google Ads. Call this ONLY where
+ * the backend has confirmed a new account was created — never on a dashboard
+ * render, a login, or any page load, all of which would inflate the number the
+ * Search campaign's Maximise Conversions bidding is learning from.
+ *
+ * Returns true only if a conversion was actually sent, so callers can log it.
+ */
+export function trackSignupConversion(userId: string): boolean {
+    if (typeof window === 'undefined') return false
+    if (!GOOGLE_ADS_ID) return false
+    if (typeof window.gtag !== 'function') return false
+    if (!userId || alreadyReportedSignup(userId)) return false
+
+    try {
+        window.gtag('event', 'conversion', {
+            send_to: `${GOOGLE_ADS_ID}/${SIGNUP_CONVERSION_LABEL}`,
+        })
+        return true
+    } catch {
+        return false
+    }
+}
+
 /** Exposed for the setup docs / debugging — which conversions are live. */
 export function configuredAdsConversions(): string[] {
     if (!GOOGLE_ADS_ID) return []

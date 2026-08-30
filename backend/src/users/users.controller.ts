@@ -148,10 +148,14 @@ export class UsersController {
             throw new BadRequestException('Email is required for sync');
         }
 
-        const user = await this.usersService.syncUser(body);
+        const { user, isNewUser } = await this.usersService.syncUser(body);
         return {
             success: true,
             data: user,
+            // Drives the one-time signup conversion on the frontend — see
+            // src/app/auth/callback/page.tsx. Deliberately outside `data` so
+            // the existing user-shaped payload is untouched.
+            isNewUser,
         };
     }
 

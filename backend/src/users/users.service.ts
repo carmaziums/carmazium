@@ -347,7 +347,14 @@ export class UsersService {
             this.emailService.sendWelcomeEmail(user.email, user.firstName || undefined, user.role).catch(console.error);
         }
 
-        return user;
+        // `isNewUser` is the authoritative "a brand-new account was just
+        // created" signal — it can only ever be true once per account, on the
+        // request that actually inserted the row. The frontend uses it to fire
+        // the Google Ads "Completed Seller Registration" conversion, which must
+        // never fire on a login, a dashboard refresh, or a return visit.
+        // Deriving newness client-side (e.g. from how recent user.created_at
+        // looks) would be a guess; this is a fact.
+        return { user, isNewUser: !userExists };
     }
 
     /**
