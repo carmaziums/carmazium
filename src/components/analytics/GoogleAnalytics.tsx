@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useRef } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import Script from "next/script"
-import { useConsent } from "@/context/ConsentContext"
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim()
 // Google Ads conversion tag (AW-...), separate product from GA4 (G-...) but
@@ -74,12 +73,20 @@ function GAPageViewTracker() {
  * manually below to survive App Router client-side navigation) and/or Google
  * Ads conversion tracking, whichever env vars are set. No-op (renders
  * nothing, loads no script) when both NEXT_PUBLIC_GA_MEASUREMENT_ID and
- * NEXT_PUBLIC_GOOGLE_ADS_ID are unset, or until the visitor has accepted
- * analytics/marketing cookies — see ConsentContext.
+ * NEXT_PUBLIC_GOOGLE_ADS_ID are unset.
+ *
+ * CONSENT: this deliberately does NOT wait for the cookie banner. Under
+ * Consent Mode v2 the tag loads for everyone with every storage type denied
+ * (see GoogleConsentMode.tsx, which must render before this), stores nothing,
+ * and is upgraded by ConsentContext's `consent: update` if the visitor
+ * accepts. Gating the script load instead — which is what this used to do —
+ * sends Google no consent signal at all, which is what produced "0% consent
+ * rate detected" in Ads diagnostics and left the conversion goals
+ * misconfigured. Meta and TikTok are still hard-gated; they have no
+ * equivalent mechanism.
  */
 export function GoogleAnalytics() {
-    const { granted } = useConsent()
-    if ((!GA_MEASUREMENT_ID && !GOOGLE_ADS_ID) || !granted) return null
+    if (!GA_MEASUREMENT_ID && !GOOGLE_ADS_ID) return null
 
     // Either ID works to load the shared gtag.js library — prefer GA4's if
     // both are set, purely for a stable script src across renders.

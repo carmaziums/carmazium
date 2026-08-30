@@ -15,6 +15,7 @@ import { ChatProvider } from "@/context/ChatContext";
 import { CompareProvider } from "@/context/CompareContext";
 import { LocationProvider } from "@/context/LocationContext";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
+import { GoogleConsentMode } from "@/components/analytics/GoogleConsentMode";
 import { GoogleTagManager } from "@/components/analytics/GoogleTagManager";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import { MetaPixel } from "@/components/analytics/MetaPixel";
@@ -97,6 +98,10 @@ export default function RootLayout({
       >
         <AutoDealerJsonLd />
         <ConsentProvider>
+          {/* MUST stay first: sets Consent Mode v2 defaults into the
+              dataLayer before any Google tag loads. Moving it below
+              GoogleAnalytics makes the defaults arrive too late to apply. */}
+          <GoogleConsentMode />
           <GoogleTagManager />
           <GoogleAnalytics />
           <MetaPixel />

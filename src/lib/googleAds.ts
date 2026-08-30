@@ -108,9 +108,12 @@ export function trackAdsConversion(event: string, params: Record<string, unknown
     const label = CONVERSION_LABELS[event]
     if (!label) return
 
-    // gtag is defined by GoogleAnalytics.tsx, which only renders after the
-    // visitor accepts analytics/marketing cookies — so this check is also
-    // what keeps conversions consent-gated.
+    // Presence of gtag is NOT a consent check — under Consent Mode v2 the tag
+    // loads for everyone. Consent is enforced by Google itself from the
+    // consent state set in GoogleConsentMode.tsx / ConsentContext: with
+    // ad_storage denied the conversion is reported without advertising
+    // identifiers and can only ever be modelled, never tied to a person.
+    // This guard is purely "did the script load at all".
     if (typeof window.gtag !== 'function') return
 
     try {
