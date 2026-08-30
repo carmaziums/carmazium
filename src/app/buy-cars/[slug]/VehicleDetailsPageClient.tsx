@@ -233,6 +233,10 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     const [error, setError] = React.useState<string | null>(null)
     const [activeImage, setActiveImage] = React.useState(0)
     const [galleryLightboxOpen, setGalleryLightboxOpen] = React.useState(false)
+    // Damage photos get their own lightbox rather than reusing the gallery's —
+    // they aren't part of vehicle.images, so they can't be addressed by index
+    // into that array.
+    const [damagePhotoUrl, setDamagePhotoUrl] = React.useState<string | null>(null)
     const touchStartXRef = React.useRef<number | null>(null)
     const [isDescExpanded, setIsDescExpanded] = React.useState(false)
     const [enquiring, setEnquiring] = React.useState(false)
@@ -792,6 +796,12 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                 open={galleryLightboxOpen}
                                 onClose={() => setGalleryLightboxOpen(false)}
                             />
+                            <ImageLightbox
+                                images={damagePhotoUrl ? [damagePhotoUrl] : []}
+                                alt="Damage photo"
+                                open={!!damagePhotoUrl}
+                                onClose={() => setDamagePhotoUrl(null)}
+                            />
                             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
                                 {vehicle.images.map((img, idx) => (
                                     <button
@@ -1146,21 +1156,37 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                 {damageRecords.length > 0 && (
                                     <div className="mt-4 space-y-2">
                                         {damageRecords.map((record: any, i: number) => (
-                                            <button
+                                            <div
                                                 key={i}
-                                                onClick={() => setSelectedDamageZone(prev => prev === record.part ? null : record.part)}
-                                                className={`w-full text-left flex items-start gap-3 p-3 rounded-lg border transition-colors ${selectedDamageZone === record.part ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[var(--bg-input)] border-[var(--border-default)] hover:border-[var(--border-default)]'}`}
+                                                className={`w-full flex items-start gap-3 p-3 rounded-lg border transition-colors ${selectedDamageZone === record.part ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[var(--bg-input)] border-[var(--border-default)]'}`}
                                             >
+                                                {/* The photo opens full size; the rest of the row
+                                                    still selects the zone on the 3D model. These were
+                                                    one button before, so tapping the damage photo only
+                                                    ever toggled the highlight — there was no way to
+                                                    actually view the damage a seller had photographed. */}
                                                 {record.imageUrl && (
-                                                    <div className="relative w-12 h-12 rounded-md overflow-hidden flex-shrink-0 border border-[var(--border-default)]">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setDamagePhotoUrl(record.imageUrl)}
+                                                        aria-label={`View ${record.part.replace(/-/g, ' ')} damage photo full size`}
+                                                        className="group relative w-12 h-12 rounded-md overflow-hidden flex-shrink-0 border border-[var(--border-default)] hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors cursor-zoom-in"
+                                                    >
                                                         <Image src={record.imageUrl} alt={record.part} fill className="object-cover" sizes="48px" />
-                                                    </div>
+                                                        <span className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-colors">
+                                                            <ZoomIn size={14} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        </span>
+                                                    </button>
                                                 )}
-                                                <div className="min-w-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedDamageZone(prev => prev === record.part ? null : record.part)}
+                                                    className="min-w-0 text-left flex-1"
+                                                >
                                                     <p className="text-sm font-semibold text-[var(--text-primary)]">{record.part.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
                                                     <p className="text-xs text-[var(--text-muted)]">{record.type}{record.size ? ` — ${record.size}` : ''}</p>
-                                                </div>
-                                            </button>
+                                                </button>
+                                            </div>
                                         ))}
                                     </div>
                                 )}

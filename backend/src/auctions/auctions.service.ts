@@ -279,35 +279,8 @@ export class AuctionsService {
 
         const seller = auction.listing?.seller as any;
         if (seller) {
-            const hasPersonalPhone = !!seller.phone;
-            const hasPersonalEmail = !!seller.email;
-            const hasDealerPhone = !!seller.dealerProfile?.phone;
-            const hasBusinessAddress = !!seller.dealerProfile?.businessAddress;
-            const hasWebsite = !!seller.dealerProfile?.website;
-            // All seller contact details — phone, email, and the dealer's business
-            // address/website — are withheld until the viewer has actually won this
-            // specific auction AND paid the £125 buyer fee. Logging in isn't enough,
-            // so a bidder can't skip the fee, grab contact details and arrange the
-            // handover off-platform.
             const canSeeContactDetails = !!viewerId && viewerId === auction.winnerId && !!auction.buyerFeePaid;
-            (auction.listing as any).seller = {
-                ...seller,
-                phone: canSeeContactDetails ? seller.phone : null,
-                phoneAvailable: hasPersonalPhone,
-                email: canSeeContactDetails ? seller.email : null,
-                emailAvailable: hasPersonalEmail,
-                ...(seller.dealerProfile ? {
-                    dealerProfile: {
-                        ...seller.dealerProfile,
-                        phone: canSeeContactDetails ? seller.dealerProfile.phone : null,
-                        phoneAvailable: hasDealerPhone,
-                        businessAddress: canSeeContactDetails ? seller.dealerProfile.businessAddress : null,
-                        businessAddressAvailable: hasBusinessAddress,
-                        website: canSeeContactDetails ? seller.dealerProfile.website : null,
-                        websiteAvailable: hasWebsite,
-                    },
-                } : {}),
-            };
+            (auction.listing as any).seller = this.gateSellerContactDetails(seller, canSeeContactDetails);
         }
 
         return this.clearExpiredBin(auction);
@@ -341,6 +314,46 @@ export class AuctionsService {
             this.prisma.auction.count({ where }),
         ]);
         return { data, total };
+    }
+
+    /**
+     * Strips every seller contact detail unless the viewer has earned them.
+     *
+     * "Earned" means: they won this specific auction AND paid the £125 buyer
+     * fee. Logging in is not enough, and neither is merely winning — the fee
+     * is what unlocks contact, and this is the only thing enforcing that.
+     *
+     * Shared by findOne() and findWonAuctions() deliberately. They used to
+     * gate separately and drifted: the list view only ever nulled `phone`, so
+     * a winner who hadn't paid still received the seller's EMAIL (plus the
+     * dealer's business address and website) in the API response, and the
+     * won-auctions page rendered the email straight onto the "Pay the £125
+     * fee to unlock messaging" card. Any new route that returns a seller must
+     * call this rather than hand-rolling the check again.
+     *
+     * The `*Available` booleans exist so the UI can show a locked-state
+     * affordance ("this seller has a phone number") without leaking the value.
+     */
+    private gateSellerContactDetails(seller: any, canSeeContactDetails: boolean) {
+        if (!seller) return seller;
+        return {
+            ...seller,
+            phone: canSeeContactDetails ? seller.phone : null,
+            phoneAvailable: !!seller.phone,
+            email: canSeeContactDetails ? seller.email : null,
+            emailAvailable: !!seller.email,
+            ...(seller.dealerProfile ? {
+                dealerProfile: {
+                    ...seller.dealerProfile,
+                    phone: canSeeContactDetails ? seller.dealerProfile.phone : null,
+                    phoneAvailable: !!seller.dealerProfile.phone,
+                    businessAddress: canSeeContactDetails ? seller.dealerProfile.businessAddress : null,
+                    businessAddressAvailable: !!seller.dealerProfile.businessAddress,
+                    website: canSeeContactDetails ? seller.dealerProfile.website : null,
+                    websiteAvailable: !!seller.dealerProfile.website,
+                },
+            } : {}),
+        };
     }
 
     // Auctions the current user WON as a bidder — distinct from findMyAuctions
@@ -393,19 +406,16 @@ export class AuctionsService {
             this.prisma.auction.count({ where }),
         ]);
 
-        // Same fee gate as findOne() — the winner sees this list before paying,
-        // so the raw phone number can't ride along in the response until the
-        // buyer fee is actually paid.
+        // Same fee gate as findOne(), via the same helper. This list is shown
+        // to the winner BEFORE they pay, so every contact detail — not just the
+        // phone number, which is all this used to null — has to be withheld
+        // until buyerFeePaid. `where` already scopes to winnerId === userId, so
+        // reaching this row is itself proof the viewer won it.
         const gated = data.map((auction: any) => {
-            const seller = auction.listing?.seller;
-            if (seller) {
+            if (auction.listing?.seller) {
                 auction.listing = {
                     ...auction.listing,
-                    seller: {
-                        ...seller,
-                        phone: auction.buyerFeePaid ? seller.phone : null,
-                        phoneAvailable: !!seller.phone,
-                    },
+                    seller: this.gateSellerContactDetails(auction.listing.seller, !!auction.buyerFeePaid),
                 };
             }
             return auction;

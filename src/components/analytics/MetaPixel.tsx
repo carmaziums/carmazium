@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import Script from "next/script"
 import { useConsent } from "@/context/ConsentContext"
+import { analyticsEnabled } from "@/lib/analyticsEnv"
 
 // .trim() guards against stray whitespace from a copy-pasted env var value —
 // an untrimmed ID silently breaks the noscript pixel URL's query string and
@@ -58,7 +59,7 @@ function MetaPixelPageViewTracker() {
  */
 export function MetaPixel() {
     const { granted } = useConsent()
-    if (!META_PIXEL_ID || !granted) return null
+    if (!analyticsEnabled || !META_PIXEL_ID || !granted) return null
 
     return (
         <>

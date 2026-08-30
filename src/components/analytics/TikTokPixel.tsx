@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import Script from "next/script"
 import { useConsent } from "@/context/ConsentContext"
+import { analyticsEnabled } from "@/lib/analyticsEnv"
 
 const TIKTOK_PIXEL_ID = process.env.NEXT_PUBLIC_TIKTOK_PIXEL_ID?.trim()
 
@@ -53,7 +54,7 @@ function TikTokPageViewTracker() {
  */
 export function TikTokPixel() {
     const { granted } = useConsent()
-    if (!TIKTOK_PIXEL_ID || !granted) return null
+    if (!analyticsEnabled || !TIKTOK_PIXEL_ID || !granted) return null
 
     return (
         <>

@@ -2,6 +2,7 @@
 
 import Script from "next/script"
 import { useConsent } from "@/context/ConsentContext"
+import { analyticsEnabled } from "@/lib/analyticsEnv"
 
 // .trim() guards against stray whitespace from a copy-pasted env var — an
 // untrimmed ID silently breaks the container URL and GTM Preview then reports
@@ -26,7 +27,7 @@ const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID?.trim()
  */
 export function GoogleTagManager() {
     const { granted } = useConsent()
-    if (!GTM_ID || !granted) return null
+    if (!analyticsEnabled || !GTM_ID || !granted) return null
 
     return (
         <>

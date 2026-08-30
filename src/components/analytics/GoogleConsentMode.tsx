@@ -1,4 +1,5 @@
 import Script from "next/script"
+import { analyticsEnabled } from "@/lib/analyticsEnv"
 
 /**
  * Google Consent Mode v2 defaults.
@@ -34,6 +35,9 @@ import Script from "next/script"
  * `beforeInteractive` only takes effect from the server-rendered root layout.
  */
 export function GoogleConsentMode() {
+    // Nothing to consent to if no tag will load in this environment.
+    if (!analyticsEnabled) return null
+
     return (
         <Script id="google-consent-mode-default" strategy="beforeInteractive">
             {`

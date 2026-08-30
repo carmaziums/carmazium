@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import Script from "next/script"
+import { analyticsEnabled } from "@/lib/analyticsEnv"
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim()
 // Google Ads conversion tag (AW-...), separate product from GA4 (G-...) but
@@ -86,6 +87,7 @@ function GAPageViewTracker() {
  * equivalent mechanism.
  */
 export function GoogleAnalytics() {
+    if (!analyticsEnabled) return null
     if (!GA_MEASUREMENT_ID && !GOOGLE_ADS_ID) return null
 
     // Either ID works to load the shared gtag.js library — prefer GA4's if

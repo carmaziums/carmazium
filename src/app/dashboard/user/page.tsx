@@ -49,6 +49,7 @@ import {
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { DeleteAccountSection } from "@/components/dashboard/DeleteAccountSection"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { MetricCard } from "@/components/dashboard/MetricCard"
@@ -2217,6 +2218,14 @@ function SettingsTab({ profile, refreshProfile }: { profile: any; refreshProfile
                     {bankSaveStatus === "error" && <span className="text-red-400 text-sm flex items-center gap-1"><AlertCircle size={14} /> Failed to save</span>}
                 </div>
             </div>
+
+            {/* Buyers and sellers are both routed to this unified dashboard by
+                app/dashboard/page.tsx, so this settings tab — not
+                buyer/settings or seller/settings, which they never reach — is
+                the only place they can manage their account. It was the one
+                role surface missing account deletion, which every other role
+                (dealer, finance, insurance, service) already had. */}
+            <DeleteAccountSection />
         </div>
     )
 }
