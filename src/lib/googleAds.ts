@@ -11,13 +11,13 @@
  * rather than adding new ones. `useAnalytics().trackEvent(...)` already fans
  * out to the first-party store and the GTM dataLayer; it now also calls
  * `trackAdsConversion` with the same event name and payload. So a conversion
- * is enabled purely by setting its label env var — no call-site changes.
+ * is enabled purely by having a label for it — no call-site changes.
  *
  * CONVERSION LABELS come from the Google Ads UI, one per conversion action
- * (Goals → Conversions → Summary → the action → "Tag setup" → the value shown
- * as `send_to: AW-XXXXXXX/AbCdEfG…`). Only the part AFTER the slash goes in
- * the env var. An unset label silently disables that conversion, so the app
- * behaves identically until Ads is actually configured.
+ * (Goals → Conversions → the action → "Tag setup" → the value shown as
+ * `send_to: AW-XXXXXXX/AbCdEfG…`); only the part AFTER the slash is the label.
+ * An event with no label is silently skipped, so adding one later is a
+ * one-line change and removing one cleanly disables it.
  *
  * PRIVACY: same rule as lib/gtm.ts — no VRM, email, phone or postcode is ever
  * sent. Only internal IDs, vehicle make/model/year and transaction values.
@@ -42,13 +42,26 @@ const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID?.trim()
  * If you genuinely want a separate Ads conversion action for one of those
  * subsets, add it here AND make sure the overlapping parent is either removed
  * or set to "Secondary" in the Ads UI so it doesn't feed bidding twice.
+ *
+ * Labels are NOT secrets — they ship in the client bundle and are visible to
+ * anyone who views source, exactly like the AW-/G- IDs themselves. They're
+ * committed as defaults so a deploy doesn't depend on an env var being set in
+ * whichever Vercel account currently owns the project, while still allowing a
+ * per-environment override (e.g. pointing a staging build at a test action).
  */
 const CONVERSION_LABELS: Record<string, string | undefined> = {
     // Primary money event — every cleared Stripe checkout, split by `fee_type`.
-    purchase: process.env.NEXT_PUBLIC_GADS_LABEL_PURCHASE?.trim(),
+    // Ads conversion action "Purchase" (Primary, value-based, count Every).
+    purchase: process.env.NEXT_PUBLIC_GADS_LABEL_PURCHASE?.trim() || 'KyfHCLLQ1eocEN6N4qNE',
     // Lead: seller completed the wizard, on either the retail or auction path.
-    listing_submitted: process.env.NEXT_PUBLIC_GADS_LABEL_LISTING_SUBMITTED?.trim(),
+    // Ads conversion action "Submit lead form (1)" (Primary).
+    listing_submitted: process.env.NEXT_PUBLIC_GADS_LABEL_LISTING_SUBMITTED?.trim()
+        || 'uD94CLXQ1eocEN6N4qNE',
     // Top-of-funnel micro-conversion: reg entered and real vehicle data returned.
+    // No Ads conversion action exists for this yet — deliberately left unset so
+    // it stays a no-op rather than firing against the wrong action. If one is
+    // created later it should be Secondary: making a cheap top-funnel action
+    // Primary pushes smart bidding towards low-intent traffic.
     valuation_requested: process.env.NEXT_PUBLIC_GADS_LABEL_VALUATION?.trim(),
 }
 
