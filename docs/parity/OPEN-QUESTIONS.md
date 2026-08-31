@@ -227,3 +227,59 @@ The product currently disagrees with itself about what a publishable listing is:
 | Mobile `SellCarFlowScreen` | 1 photo + 8 required detail fields + 5 declarations (`SellCarFlowScreen.tsx:907,1344`) |
 
 **Question:** what is the canonical rule? I need one answer to write mobile against, otherwise I am just picking a side. My assumption unless told otherwise is that `ListingWizard`'s rule is canonical and the backend gate is the minimum floor — but note that would mean the backend should also be validating the declarations it currently accepts as optional (`create-listing.dto.ts:350-373`).
+
+## OQ-17 — Should a socket reconnect resync auction state? — `OPEN`
+**Raised by:** Pass 4 AUCTION (2026-09-01). **Blocks:** AUC-004.
+
+Neither client re-fetches auction state after a socket reconnect — both only re-emit `auction:join`, which subscribes to the room but replays nothing (`auction.gateway.ts:65-75`). Bids, cancellations and `auction:ended` that fired during the gap are lost.
+
+On web the user can reload the page. Mobile's `AuctionDetailScreen` has **no manual refresh control at all**, so a missed `auction:ended` leaves the screen showing ACTIVE with a frozen `00:00:00` countdown, with no way to recover short of backing out and re-entering.
+
+**Question:** is the fix (a) mobile-only — call `loadAuction()` inside the `reconnect` handler, or (b) shared — have the gateway send a state snapshot on `auction:join`? (b) is the more correct fix and would help web too, but it is a backend change, so I am not assuming it.
+
+I would do (a) now regardless, since it is a few lines and entirely within mobile.
+
+---
+
+## OQ-18 — Mobile shows competing bidders' full names — `OPEN`
+**Raised by:** Pass 4 AUCTION (2026-09-01). **Blocks:** AUC-012.
+
+Web maps the bid list to **initials only** and discards the rest (`src/app/auctions/live/[id]/page.tsx:176`). Mobile builds a full name from the same payload and renders it in each bid row (`AuctionDetailScreen.tsx:296-306`, rendered at `:1369`).
+
+The backend returns `bidder.firstName` / `lastName` on the REST payload, so both clients receive it; only web chooses not to display it. Over the socket, only `bidderInitials` is sent (`auction.gateway.ts:13-22`) — so mobile currently shows **full names for bids loaded on entry and initials for bids arriving live**, in the same list.
+
+On a dealer-to-dealer auction platform this tells a dealer exactly who they are bidding against.
+
+**Question:** confirm initials-only is the intended rule (web's behaviour and the socket payload both imply it is). If so this is a small mobile fix. If full names are intentional, the socket payload should carry them too so the list stops being inconsistent — but I would want that decision from you, as it is a disclosure question rather than a formatting one.
+
+---
+
+## OQ-19 — `reservePrice` is sent to every client — `OPEN` (backend)
+**Raised by:** Pass 4 AUCTION (2026-09-01). **Blocks:** nothing in mobile parity; found while tracing AUC-015.
+
+Both clients deliberately hide the reserve from buyers, and mobile documents this in comments (`AuctionDetailScreen.tsx:1098-1100,1296-1298`). But `AuctionsService.findOne` returns the whole auction row and does **not** strip `reservePrice` (`auctions.service.ts:240-287`), unlike seller contact details which have explicit gating (`gateSellerContactDetails`).
+
+So the reserve — described in web's own copy as "never shown to bidders" (`src/app/auctions/page.tsx:454-455`) — is present in the API response and visible to anyone who opens dev tools or inspects the app's traffic. The confidentiality is presentational only.
+
+I have **not** run a request to confirm this end to end; it is a reading of the service method.
+
+**Question:** want this raised as a backend fix (gate `reservePrice` to the seller the way contact details are gated)? Backend change, so flagging rather than acting.
+
+---
+
+## OQ-20 — Which payment deadline is correct for auction winners? — `OPEN`
+**Raised by:** Pass 4 AUCTION (2026-09-01). **Blocks:** AUC-022.
+
+The backend reverts an unpaid win after **72 hours** — `BUYER_FEE_GRACE_MS = 72h` (`auctions.service.ts:23`), enforced hourly by `revertUnpaidWins` (`:618-689`). Web's cancel page states the same 72-hour rule (`src/app/checkout/cancel/page.tsx:69`).
+
+Mobile shows three different things, none of them 72 hours:
+
+| Path | Deadline shown |
+|---|---|
+| `AuctionCompleteScreen` fallback when no param passed | now + **24h** (`AuctionCompleteScreen.tsx:98-115`) |
+| Socket win path (`AuctionDetailScreen.tsx:434`) | passes `paymentDeadline: undefined` → always hits the 24h fallback |
+| `BuyerBidsScreen.tsx:115-117` | `auction.endTime + 24h` |
+
+So a winner can be told they have hours left when they actually have days, and two entry points to the same screen disagree.
+
+**Question:** confirm 72 hours from the auction end (i.e. from `wonAt`) is the rule to display. If so the fix is to pass a real deadline from both entry points and correct the fallback. I want confirmation because it is a countdown users will make decisions against, and I would rather not harmonise on the wrong number.

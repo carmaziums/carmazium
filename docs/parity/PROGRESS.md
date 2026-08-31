@@ -9,7 +9,7 @@ Append-only session log. Read this first at the start of every session.
 | AUTH | 2026-08-31 | Audited | 36 (AUTH-001..036) |
 | BUY | 2026-08-31 | Audited | 32 (BUY-001..032) |
 | SELL | 2026-08-31 | Audited | 32 (SELL-001..032) |
-| AUCTION | — | Not started | — |
+| AUCTION | 2026-09-01 | Audited | 39 (AUC-001..039) |
 | DASH | — | Not started | — |
 | CROSS | — | Not started | — |
 
@@ -216,4 +216,78 @@ answer before any Phase 2 work on this flow.
 
 **Docs-only commit. No source files were modified.**
 
-**Next session should pick up:** Pass 4 — AUCTION.
+**Next session should pick up:** Pass 4 — AUCTION.  _(done — see below)_
+
+### 2026-09-01 — Pass 4: AUCTION
+
+**Method.** Backend contract first, then web UI, then mobile buyer-side and seller-side (split
+because mobile's auction surface is ~7,900 lines). Every citation recorded in the matrix was
+re-read directly before being written.
+
+**Scope covered.**
+- Backend: `auctions/{auctions.controller,auctions.service,auction.gateway}.ts` + dto,
+  `bids/{bids.controller,bids.service}.ts` + dto, `tasks/` lifecycle + unpaid-fee crons,
+  `schema.prisma` (`Auction`, `Bid`, `AuctionStatus`, `Sale`)
+- Web: `src/app/auctions/live/[id]/page.tsx`, `auctions/won/[id]/page.tsx`, `auctions/page.tsx`,
+  `src/app/dashboard/seller/auctions/page.tsx`, `src/lib/auctionApi.ts`,
+  `src/components/features/CountdownTimer.tsx`, `src/components/auctions/AuctionResultsModal.tsx`
+- Mobile: `screens/vehicle/AuctionDetailScreen.tsx`, `screens/main/{Live,AuctionComplete}Screen.tsx`,
+  `screens/buyer/BuyerBidsScreen.tsx`, `screens/seller/SellerAuctionsScreen.tsx` (read in full this
+  time — Pass 3 had only grep-sampled it), `lib/auctionApi.ts`
+
+**Result: 39 rows, AUC-001 through AUC-039.**
+
+| Status | Count |
+|---|---|
+| MISSING | 3 |
+| PARTIAL | 6 |
+| DIVERGENT | 9 |
+| PRESENT | 21 |
+
+**Headline: real-time bidding is at genuine parity.** Both clients connect to the same
+`/auctions` socket namespace, handle all six server events, emit only `auction:join`, place bids
+over REST, and apply anti-snipe `newEndTime` identically. Mobile is *ahead* on five counts:
+min-increment pre-validation (AUC-010), gating the bid console on KYC verification and not just
+role (AUC-011), status tabs on the seller list (AUC-026), 70% starting-bid pre-validation
+(AUC-032), and a webhook-confirmation poll after fee payment that web lacks (AUC-021).
+
+**One P0 (AUC-029) — mobile carries a bug web already fixed.**
+An auction ending below reserve reverts its listing to DRAFT so it can be re-auctioned
+(`auctions.service.ts:845-872`). Web's eligibility filter explicitly admits that DRAFT when an
+ENDED auction exists for the listing (`dashboard/seller/auctions/page.tsx:212-218`) — and its code
+comment states that without it "re-auctioning was silently impossible for every seller". Mobile
+still uses the pre-fix `status === 'ACTIVE'` filter (`SellerAuctionsScreen.tsx:631`), so the
+reverted listing never matches `presetListingId` and never appears in the picker. The mobile
+"Re-auction" button fails for the exact case it exists to serve. The fix is known and documented
+in web's comment.
+
+**Three P1s.** AUC-012 — mobile renders competing bidders' full names where web shows initials
+only, and is internally inconsistent since socket-delivered bids carry only initials (OQ-18).
+AUC-022 — mobile shows a 24h payment deadline from two different computations while the backend
+grace period is 72h (OQ-20). AUC-025 — mobile has no Stripe Connect payout warning, so a seller
+can complete a handover with no payout destination configured.
+
+**Ambiguity resolved:** canonical auction duration is **24 hours** (`auctions.service.ts:19`),
+anti-snipe **3 minutes, repeating, uncapped** (`:20,751-769`), buyer-fee grace **72 hours**
+(`:23`). Note `create-auction.dto.ts:10` and `auctions.controller.ts:99` both still say
+"startTime + 5 hours" — stale docs, logged as AUC-039.
+
+**Two web-side defects logged so mobile does not copy them:** AUC-008, where
+`isAntiSnipeActive()` uses a 10-minute window (`src/lib/auctionApi.ts:268-272`) driving the browse
+page's SNIPE badge while the real rule is 3 minutes; and web's missing min-increment and 70%
+client validations (AUC-010, AUC-032).
+
+**Not traced — stated rather than assumed.**
+- The £125 buyer-fee and £100 seller-bonus *release* endpoints are not in the auctions or bids
+  modules; `buyerFeePaid` and `sellerBonusReleased` are read but never written there. They live in
+  the payments module and/or an admin module, neither of which was read.
+- `adminAssignWinner` (`auctions.service.ts:581-608`) is not wired to any route in
+  `auctions.controller.ts`; its caller was not read.
+- Whether the backend rejects a duplicate also-list-retail call (AUC-035) was not verified.
+- OQ-19 (reserve on the wire) is a reading of `findOne`, not a request I executed.
+
+**Open questions raised: OQ-17 through OQ-20** (20 open in total).
+
+**Docs-only commit. No source files were modified.**
+
+**Next session should pick up:** Pass 5 — DASHBOARDS.
