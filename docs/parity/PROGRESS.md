@@ -8,7 +8,7 @@ Append-only session log. Read this first at the start of every session.
 |---|---|---|---|
 | AUTH | 2026-08-31 | Audited | 36 (AUTH-001..036) |
 | BUY | 2026-08-31 | Audited | 32 (BUY-001..032) |
-| SELL | — | Not started | — |
+| SELL | 2026-08-31 | Audited | 32 (SELL-001..032) |
 | AUCTION | — | Not started | — |
 | DASH | — | Not started | — |
 | CROSS | — | Not started | — |
@@ -141,4 +141,79 @@ contains simulated bidding UI that must not be ported.
 
 **Docs-only commit. No source files were modified.**
 
-**Next session should pick up:** Pass 3 — SELL.
+**Next session should pick up:** Pass 3 — SELL.  _(done — see below)_
+
+### 2026-08-31 — Pass 3: SELL
+
+**Method.** Read web + backend first to establish the contract, then mobile, then diffed.
+Every citation recorded in the matrix was re-read directly before being written.
+
+**Scope covered.**
+- Web: `src/app/sell/{page,layout}.tsx`, `src/app/dashboard/{seller,dealer}/add-listing/page.tsx`,
+  `src/components/listing/{ListingWizard,ImageUpload}.tsx`, `src/components/dealer/DealerQuickList.tsx`,
+  `src/app/dashboard/dealer/{inventory,put-on-auction}/page.tsx`,
+  `src/app/dashboard/seller/{listings,auctions}/page.tsx`, `src/lib/{listingApi,dvlaApi}.ts`
+- Backend: `listings/dto/*` (full `CreateListingDto`), `listings.service.ts` (create, update,
+  publish, updateStatus, recordSale, remove, alsoListRetail, alsoAuction, importFromUrl),
+  `featured-boost/`, `dvla/`, `damage/`, `payments.service.ts` (tier pricing), `schema.prisma` enums
+- Mobile: `screens/sell/{SellCarFlow,MyListingDashboard}Screen.tsx`,
+  `screens/seller/{SellerListings,SellerAuctions,SellerDashboard}Screen.tsx`,
+  `lib/{sellWizardStore,listingsApi,paymentsApi,storageHelper}.ts`
+
+**Result: 32 rows, SELL-001 through SELL-032.**
+
+| Status | Count |
+|---|---|
+| MISSING | 1 |
+| PARTIAL | 5 |
+| DIVERGENT | 8 |
+| PRESENT | 18 |
+
+**Headline: mobile's sell flow is the strongest area of the app so far** — 18 PRESENT rows.
+It mirrors `ListingWizard` closely: full legal declarations, the complete auction schedule step,
+correct badge tiers, DVLA autofill, the 3D damage mapper, and the HPI upsell. It *beats* web in
+four places: image compression before upload (SELL-008), auto-triggered DVLA lookup (SELL-007),
+a Withdraw action web lacks entirely (SELL-023), and using the correct `recordSale` endpoint so
+`soldPrice` is actually captured (SELL-024).
+
+**But there is one P0 money defect (SELL-005 / SELL-006).**
+The backend requires ≥10 photos to publish (`listings.service.ts:941-945`). Web enforces that
+before payment; mobile enforces only ≥1, then charges the card and *then* calls publish
+(`SellCarFlowScreen.tsx:1528-1545`). Worse, the failure `catch` does not `return`
+(`SellCarFlowScreen.tsx:1544-1557`) — so after a failed publish the seller sees "Almost there!"
+immediately followed by **"Published! / Your listing is now live."**, and `clearDraft()` runs.
+Charged, misinformed, draft gone. Mobile's own `SellerListingsScreen.tsx:331-380` already does
+this correctly (publish first, pay only if `requiresPayment`), so the fix has a working local
+precedent. Options are in OQ-14 — I want your call before touching a payment path.
+
+**Two standing ambiguities resolved by this pass:**
+- **Canonical auction duration: 24 hours, hardcoded** — `endTime = startTime + 24h`
+  (`listings.service.ts:1229`), display-only on both clients.
+- **DVLA endpoint auth: none** — `POST /dvla/lookup` has no `@UseGuards`
+  (`backend/src/dvla/dvla.controller.ts:30`); it is a public endpoint.
+
+**Structural finding — web has two create implementations.** `/sell` and the seller dashboard
+render `ListingWizard` (3200 lines); `/dashboard/dealer/add-listing` renders `DealerQuickList`
+(969 lines) which has no legal declarations, a 1-photo minimum, a hard DVLA gate, and an auction
+option that collects no auction fields and never calls `POST /auctions`. Mobile mirrors
+`ListingWizard`. OQ-13 asks you to confirm that is the porting source.
+
+**Not traced — stated rather than assumed.**
+- `SellerAuctionsScreen.tsx` (2426 lines) was grep-sampled for endpoints only; its handover-proof
+  upload, digest/tags and results modal were **not** read. Deferred to Pass 4.
+- `SellerDashboardScreen.tsx` (1141 lines) grep-sampled for navigation/API calls only.
+- `POST /auctions` (used by both clients' create-auction forms) is in `auctions.service.ts`,
+  which was **not** read — so I cannot confirm its validation mirrors `alsoAuction`'s. Pass 4.
+- Web's dealer inventory Publish never visibly calls `POST /listings/:id/publish`; whether the
+  publish gates run inside the checkout-session handler was not traced.
+- Whether the backend accepts `DealerQuickList`'s auction-typed listing with no auction record
+  was not verified (OQ-13).
+- `IN_PREP` appears in web's `STATUS_COLORS` (`inventory/page.tsx:52`) but is not in the
+  `ListingStatus` enum — probably stale, not resolved.
+
+**Open questions raised: OQ-13 through OQ-16** (16 open in total). OQ-14 is the one that needs an
+answer before any Phase 2 work on this flow.
+
+**Docs-only commit. No source files were modified.**
+
+**Next session should pick up:** Pass 4 — AUCTION.

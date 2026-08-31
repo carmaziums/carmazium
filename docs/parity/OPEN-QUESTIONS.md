@@ -147,3 +147,83 @@ Mobile sends `SEMI_AUTO` (`SearchScreen.tsx:915`), which is not a member of the 
 I did not run this. Prisma may throw on an out-of-enum value in an `in` filter (surfacing as a 500) or the query may simply match nothing.
 
 **Question:** can you tap Semi-Auto in the mobile search filter on device and tell me what happens — error toast, or zero results? That determines whether BUY-006 is a P0 crash-level fix or a P1 silent-empty-results fix. Either way the fix is the same one-line enum correction plus adding the missing `CVT` option; the answer only changes its priority.
+
+## OQ-13 — Which web create-listing flow is the porting source of truth? — `OPEN` (recommend `ListingWizard`)
+**Raised by:** Pass 3 SELL (2026-08-31). **Blocks:** SELL-001 and, indirectly, every other SELL row.
+
+Web has **two unrelated create-listing implementations**:
+
+| | `ListingWizard.tsx` (3200 lines) | `DealerQuickList.tsx` (969 lines) |
+|---|---|---|
+| Reached from | `/sell`, `/dashboard/seller/add-listing` | `/dashboard/dealer/add-listing` |
+| Photo minimum | 10 | 1 |
+| Legal declarations | all 5 required | **none at all** |
+| Auction scheduling | full step 4 | **none** — see below |
+| DVLA lookup | optional, manual entry allowed | **hard gate** — the form does not render without a successful lookup |
+| HPI upsell | yes | no |
+
+Mobile's `SellCarFlowScreen.tsx` clearly mirrors `ListingWizard`, so that is my working assumption.
+
+Two follow-on concerns I am **not** acting on without your say-so:
+1. `DealerQuickList` lets a dealer select `listingType: 'AUCTION'` (`DealerQuickList.tsx:393-421`) but collects **no** reserve, starting bid, increment or start time, and never calls `POST /auctions` (grep: zero matches). That path appears to produce an auction-typed listing with no auction record. I did not verify what the backend does with it.
+2. `DealerQuickList` omits every legal declaration, so those columns are left to server defaults for dealer-created listings.
+
+**Question:** confirm `ListingWizard` is the source of truth for mobile parity, and tell me whether the two `DealerQuickList` issues above should be raised as separate web bugs (they are outside mobile-parity scope, so I have not logged them as matrix rows).
+
+---
+
+## OQ-14 — Mobile charges the listing fee before the publish gate can reject — `OPEN`
+**Raised by:** Pass 3 SELL (2026-08-31). **Blocks:** SELL-005, SELL-006.
+
+This is the most serious thing found so far, so I want your call on the fix before touching a payment path.
+
+The backend rejects publish when a listing has fewer than 10 images:
+`listings.service.ts:941-945` — `BadRequestException('Listings require at least 10 photos before publishing. You have N.')`
+
+Web enforces this **before** payment, at the Media step (`ListingWizard.tsx:611`).
+
+Mobile enforces only "at least one photo" (`SellCarFlowScreen.tsx:1344-1347`), then runs, in order (`SellCarFlowScreen.tsx:1528-1557`):
+1. create the listing
+2. `triggerListingFeePayment(...)` — **card is charged**, £1 / £10 / £25
+3. `POST /listings/:id/publish` — **400s** if photos < 10
+4. the `catch` alerts "Almost there!…" but **does not return**, so execution continues to
+5. `clearDraft()` and a second alert: **"Published! / Your listing is now live."**
+
+So a seller with 1-9 photos is charged, told the listing is live when it is not, and loses their draft.
+
+Note mobile's *other* publish path already does this correctly — `SellerListingsScreen.tsx:331-380` calls publish first and only pays if the response says `requiresPayment`.
+
+**Question:** which fix do you want?
+- (a) Enforce ≥10 photos at the mobile Media step, matching web. Smallest change, matches the wizard.
+- (b) Restructure the create flow to publish-then-pay like `SellerListingsScreen` already does. More correct, larger blast radius on a payment path.
+- (c) Both.
+
+I would do (c), with (a) first as the immediate stop-gap. Either way the missing `return` in the catch is a bug I would fix regardless.
+
+---
+
+## OQ-15 — `POST /damage/:listingId/save` has no ownership check — `OPEN` (backend security)
+**Raised by:** Pass 3 SELL (2026-08-31). **Blocks:** nothing in mobile parity; logged because it was found while tracing SELL-012.
+
+`POST /damage/:listingId/save` is guarded by `SessionAuthGuard` (any logged-in user) but the controller and `damage.service.ts` `saveDamageRecords` perform **no check that the caller owns the listing**. The handler deletes all existing `DamageRecord` rows for the given `listingId` and recreates them from the request body, then recomputes `Listing.exteriorGrade`.
+
+As read, any authenticated user could overwrite any listing's damage records and change its displayed condition grade. I have **not** attempted this against a running server — this is a code reading, not a demonstrated exploit.
+
+**Question:** want me to log this as a backend fix? It is outside mobile-parity scope and the working agreement says backend changes need an explicit callout, so I have not touched it.
+
+---
+
+## OQ-16 — Three different definitions of "listing complete" — `OPEN`
+**Raised by:** Pass 3 SELL (2026-08-31). **Blocks:** SELL-031, SELL-004.
+
+The product currently disagrees with itself about what a publishable listing is:
+
+| Source | Rule |
+|---|---|
+| Backend `publishListing` | `images.length >= 10`. Nothing else. (`listings.service.ts:941-945`) |
+| Web `ListingWizard` | 10 photos + 10 required detail fields + 5 declarations (`ListingWizard.tsx:598-611`) |
+| Web dealer inventory gate | `images >= 1` + transmission + bodyType + description + condition (`inventory/page.tsx:26-44`) |
+| Web `DealerQuickList` | 1 photo, no declarations (`DealerQuickList.tsx:211`) |
+| Mobile `SellCarFlowScreen` | 1 photo + 8 required detail fields + 5 declarations (`SellCarFlowScreen.tsx:907,1344`) |
+
+**Question:** what is the canonical rule? I need one answer to write mobile against, otherwise I am just picking a side. My assumption unless told otherwise is that `ListingWizard`'s rule is canonical and the backend gate is the minimum floor — but note that would mean the backend should also be validating the declarations it currently accepts as optional (`create-listing.dto.ts:350-373`).
