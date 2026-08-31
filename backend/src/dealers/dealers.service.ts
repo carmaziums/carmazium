@@ -9,6 +9,7 @@ import { subDays } from 'date-fns';
 import { EmailService } from '../email/email.service';
 import { CreateKycDto } from './dto/create-kyc.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { resolveFrontendUrl } from '../core/frontend-url';
 
 @Injectable()
 export class DealersService {
@@ -305,7 +306,7 @@ export class DealersService {
             } catch { /* Stripe API error — fall through to create new */ }
         }
 
-        const baseUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+        const baseUrl = resolveFrontendUrl(this.config.get<string>('FRONTEND_URL'));
 
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],

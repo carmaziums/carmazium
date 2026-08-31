@@ -18,6 +18,7 @@ import { LoginDto } from './dto/login.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SessionAuthGuard } from './guards/session-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { resolveFrontendUrl } from '../core/frontend-url';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -196,7 +197,7 @@ export class AuthController {
         @Body('redirectTo') redirectTo: string,
     ) {
         if (!email) throw new UnauthorizedException('Email is required');
-        const safeRedirect = redirectTo || `${process.env.FRONTEND_URL || 'https://carmazium.vercel.app'}/auth/callback?redirect_to=/auth/onboarding`;
+        const safeRedirect = redirectTo || `${resolveFrontendUrl(process.env.FRONTEND_URL)}/auth/callback?redirect_to=/auth/onboarding`;
         await this.authService.sendVerificationEmail(email, safeRedirect);
         return { success: true, message: 'Verification email sent' };
     }

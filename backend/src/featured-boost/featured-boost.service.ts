@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { addDays } from 'date-fns';
+import { resolveFrontendUrl } from '../core/frontend-url';
 
 const BOOST_DURATION_DAYS = 28;
 const BOOST_AMOUNT = 25.0;
@@ -50,7 +51,7 @@ export class FeaturedBoostService {
         });
 
         const expiresAt = addDays(new Date(), BOOST_DURATION_DAYS);
-        const baseUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+        const baseUrl = resolveFrontendUrl(this.config.get<string>('FRONTEND_URL'));
 
         // /dashboard/seller/listings is a dead redirect stub that drops query
         // params entirely, and dealers who boost from their own inventory tab

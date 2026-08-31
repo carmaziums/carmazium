@@ -5,6 +5,7 @@ import { HpiService } from '../hpi/hpi.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { EmailService } from '../email/email.service';
+import { resolveFrontendUrl } from '../core/frontend-url';
 
 @Injectable()
 export class PaymentsService {
@@ -163,7 +164,7 @@ export class PaymentsService {
         }
 
         const stripe = await this.getStripe();
-        const baseUrl = this.config.get<string>('FRONTEND_URL') || this.config.get<string>('NEXT_PUBLIC_BASE_URL') || 'http://localhost:3000';
+        const baseUrl = resolveFrontendUrl(this.config.get<string>('FRONTEND_URL') || this.config.get<string>('NEXT_PUBLIC_BASE_URL'));
 
         const descriptionMap: Record<string, string> = {
             DEPOSIT: `Refundable deposit for ${listing.title}`,
@@ -241,7 +242,7 @@ export class PaymentsService {
      */
     async createHpiSession(vrm: string, userId: string, listingId: string) {
         const stripe = await this.getStripe();
-        const baseUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+        const baseUrl = resolveFrontendUrl(this.config.get<string>('FRONTEND_URL'));
 
         // Create a pending transaction record
         const transaction = await this.prisma.transaction.create({
@@ -304,7 +305,7 @@ export class PaymentsService {
      */
     async createHpiEmailSession(listingId: string, userId: string, returnPath: string) {
         const stripe = await this.getStripe();
-        const baseUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+        const baseUrl = resolveFrontendUrl(this.config.get<string>('FRONTEND_URL'));
 
         if (!/^\/(buy-cars|auctions)\//.test(returnPath)) {
             throw new BadRequestException('Invalid return path');
@@ -366,7 +367,7 @@ export class PaymentsService {
      */
     async createListingSession(badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM', userId: string, listingId: string) {
         const stripe = await this.getStripe();
-        const baseUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+        const baseUrl = resolveFrontendUrl(this.config.get<string>('FRONTEND_URL'));
         const amount = this.LISTING_FEES[badgeTier];
 
         // Create a pending transaction record

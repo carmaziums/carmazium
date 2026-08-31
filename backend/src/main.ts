@@ -11,6 +11,7 @@ import { HttpAdapterHost } from '@nestjs/core';
 import helmet from 'helmet';
 import { RedisIoAdapter } from './core/adapters/redis-io.adapter';
 import { loggerConfig } from './core/config/logger.config';
+import { getAllowedOrigins } from './core/allowed-origins';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -29,20 +30,9 @@ async function bootstrap() {
   // CORS — allow frontend origins with credentials (cookies)
   // Production (Vercel): set ALLOWED_ORIGINS=https://carmazium.vercel.app,https://yourdomain.com
   // ---------------------------------------------------------------------------
-  // Always include core production origins, plus any extras from ALLOWED_ORIGINS
-  const CORE_ORIGINS = [
-    'http://localhost:3000',
-    'https://carmazium.vercel.app',
-    'https://carmazium-two.vercel.app',
-    'https://carmazium.fly.dev',
-    'https://carmazium-hjoh9w.fly.dev',
-    'https://carmazium.com',
-    'https://www.carmazium.com',
-  ];
-  const extraOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
-    : [];
-  const allowedOrigins = [...new Set([...CORE_ORIGINS, ...extraOrigins])];
+  // Shared with the WebSocket gateways — see core/allowed-origins.ts. They
+  // used to keep their own copies of this list and drifted out of sync.
+  const allowedOrigins = getAllowedOrigins();
   app.enableCors({
     origin: allowedOrigins,
     credentials: true,

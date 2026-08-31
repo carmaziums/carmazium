@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
+import { resolveFrontendUrl } from '../core/frontend-url';
 
 @Injectable()
 export class EmailService {
@@ -18,7 +19,7 @@ export class EmailService {
 
         this.resend = new Resend(apiKey || '');
         this.fromAddress = process.env.EMAIL_FROM || 'CarMazium <noreply@carmazium.com>';
-        this.frontendUrl = process.env.FRONTEND_URL || 'https://carmazium.vercel.app';
+        this.frontendUrl = resolveFrontendUrl(process.env.FRONTEND_URL);
         this.logoUrl = `${this.frontendUrl}/assets/images/logo.png`;
     }
 

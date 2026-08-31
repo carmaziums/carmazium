@@ -9,16 +9,10 @@ import { Server, Socket } from 'socket.io';
 import { Logger, Inject, forwardRef } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { AuthService } from '../auth/auth.service';
+import { WS_CORS } from '../core/allowed-origins';
 
 @WebSocketGateway({
-    cors: {
-        origin: [
-            'http://localhost:3000',
-            'https://carmazium.vercel.app',
-            'https://carmazium.fly.dev',
-        ],
-        credentials: true,
-    },
+    cors: WS_CORS,
     namespace: '/notifications',
 })
 export class NotificationsGateway

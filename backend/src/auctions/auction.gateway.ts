@@ -8,6 +8,7 @@ import {
 } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
+import { WS_CORS } from '../core/allowed-origins';
 
 export interface BidBroadcastPayload {
     bidId: string;
@@ -28,14 +29,7 @@ export interface AuctionEndPayload {
 }
 
 @WebSocketGateway({
-    cors: {
-        origin: [
-            'http://localhost:3000',
-            'https://carmazium.vercel.app',
-            'https://carmazium.fly.dev',
-        ],
-        credentials: true,
-    },
+    cors: WS_CORS,
     namespace: '/auctions',
 })
 export class AuctionGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {

@@ -13,6 +13,7 @@ import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { AuthService } from '../auth/auth.service';
 import { WsMessageDto, WsTypingDto, WsRoomIdDto } from './dto';
+import { WS_CORS } from '../core/allowed-origins';
 
 /**
  * WebSocket Gateway for real-time chat functionality.
@@ -23,16 +24,7 @@ import { WsMessageDto, WsTypingDto, WsRoomIdDto } from './dto';
  * handshake and the userId is extracted from client.request.session.
  */
 @WebSocketGateway({
-    cors: {
-        origin: [
-            'http://localhost:3000',
-            'https://carmazium.vercel.app',
-            'https://carmazium.fly.dev',
-            'https://carmazium-hjoh9w.fly.dev',
-            ...(process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean) || []),
-        ],
-        credentials: true,
-    },
+    cors: WS_CORS,
     namespace: '/chat',
 })
 export class ChatGateway
