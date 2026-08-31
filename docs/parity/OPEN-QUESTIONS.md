@@ -100,3 +100,50 @@ I have **not** run this, so I am not asserting it fails in production — only t
 Both clients target the same host with no `/api` prefix: web `src/lib/apiClient.ts:3` and mobile `src/lib/apiClient.ts:3` both default to `https://carmazium-hjoh9w.fly.dev`.
 
 So `api-server/` appears to be an unused legacy Vercel path — consistent with the recent commit "fix(payments): stop sending paying customers to a dead deployment". **Question:** can I treat `backend/src/main.ts` (no prefix) as the only contract for all remaining passes and ignore `api-server/`?
+
+## OQ-9 — Stale £95 buyer-fee default in `PurchaseFlowScreen` — `OPEN`
+**Raised by:** Pass 2 BUY (2026-08-31). **Blocks:** BUY-028.
+
+Web's auction buyer fee is a constant `AUCTION_BUYER_FEE = 125` (`src/app/checkout/page.tsx:16`, documented as £100 seller bonus + £25 platform).
+
+Mobile's `PurchaseFlowScreen` declares `buyerFee` with a default of **95** in two places (`PurchaseFlowScreen.tsx:74,80`). I checked every call site: all five pass `buyerFee: 125` explicitly (`BuyerBidsScreen.tsx:376`, `AuctionCompleteScreen.tsx:82`, `ChatScreen.tsx:454`, `AuctionDetailScreen.tsx:422,999`). **So nothing charges £95 today.**
+
+**Question:** can I delete the `95` default (making the param required) as part of the BUY flow work? It is a money path, so I am not changing it on my own initiative — but leaving a wrong default in a payment screen invites a future caller to silently undercharge by £30.
+
+---
+
+## OQ-10 — Retail checkout is dormant on BOTH apps — `OPEN`
+**Raised by:** Pass 2 BUY (2026-08-31). **Blocks:** BUY-029.
+
+Web `/checkout` fully implements a retail deposit (£500) and full-payment mode (`src/app/checkout/page.tsx:327-494`), but no inbound link reaching `mode=deposit` or `mode=full` was found in `src/app`. The detail pages instead state payment is not taken on the platform (`VehicleDetailsPageClient.tsx:1370`). Mobile mirrors this: `PurchaseFlowScreen` supports `DEPOSIT` / `FULL_PAYMENT` but only `COMMISSION` call sites exist.
+
+Caveat: the web check was a grep, so a runtime-constructed URL could evade it. Treat as "apparently dormant", not proven dead.
+
+**Question:** is retail checkout intentionally off (payment handled off-platform), or is this an unfinished feature? If intentionally off, BUY-029 is not a parity gap and I will mark it out-of-scope rather than build it.
+
+---
+
+## OQ-11 — Which web detail page is the porting source of truth? — `OPEN` (recommend `/buy-cars/[slug]`)
+**Raised by:** Pass 2 BUY (2026-08-31). **Blocks:** BUY-013, BUY-015, BUY-016, BUY-024.
+
+Web has two live detail routes resolving the same slug against the same endpoint. `/vehicle/[id]` is self-documented as legacy (`src/app/vehicle/[id]/page.tsx:19-25`), is de-indexed and canonicals to `/buy-cars/` (L40-45) — but it is still linked from Home (`HomeClient.tsx:330`), Compare (`compare/page.tsx:296`), and the checkout cancel page (`cancel/page.tsx:90`), and it carries UI the canonical page does **not** have:
+
+- a simulated `BidModal` with client-seeded fake bid history (`VehicleDetailPageClient.tsx:133-432`)
+- an `EnquireModal` (structured dealer enquiry form)
+- buyer counter-offer Accept/Decline (`VehicleDetailPageClient.tsx:710-737`) — the canonical page has none
+- a dead "Unlock Full Report for £9.99" button with no onClick (`VehicleDetailPageClient.tsx:1354-1356`)
+
+**My recommendation:** port from `/buy-cars/[slug]` only, and treat anything unique to `/vehicle/[id]` as legacy unless you say otherwise. The simulated bidding UI in particular must not be ported — mobile already has real auction bidding.
+
+**Question:** confirm `/buy-cars/[slug]` is the source of truth, and confirm the counter-offer UI missing from it is a web gap rather than a deliberate removal (mobile already implements it correctly — BUY-024).
+
+---
+
+## OQ-12 — Is the mobile `transmissions` filter actually erroring? — `OPEN`
+**Raised by:** Pass 2 BUY (2026-08-31). **Blocks:** BUY-006.
+
+Mobile sends `SEMI_AUTO` (`SearchScreen.tsx:915`), which is not a member of the backend `TransmissionType` enum (`backend/prisma/schema.prisma:49-56`: `MANUAL, AUTOMATIC, CVT, SEMI_AUTOMATIC`). The `transmissions` DTO field has `@IsArray()` but **no** per-item `@IsEnum` (`listing-filter.dto.ts:92-96`), so the value is not rejected at validation and is passed to Prisma.
+
+I did not run this. Prisma may throw on an out-of-enum value in an `in` filter (surfacing as a 500) or the query may simply match nothing.
+
+**Question:** can you tap Semi-Auto in the mobile search filter on device and tell me what happens — error toast, or zero results? That determines whether BUY-006 is a P0 crash-level fix or a P1 silent-empty-results fix. Either way the fix is the same one-line enum correction plus adding the missing `CVT` option; the answer only changes its priority.
