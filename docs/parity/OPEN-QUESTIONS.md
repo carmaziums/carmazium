@@ -283,3 +283,71 @@ Mobile shows three different things, none of them 72 hours:
 So a winner can be told they have hours left when they actually have days, and two entry points to the same screen disagree.
 
 **Question:** confirm 72 hours from the auction end (i.e. from `wonAt`) is the rule to display. If so the fix is to pass a real deadline from both entry points and correct the fallback. I want confirmation because it is a countdown users will make decisions against, and I would rather not harmonise on the wrong number.
+
+## OQ-21 — Which web dashboard is the porting source of truth? — `OPEN` (blocks most of Pass 5)
+**Raised by:** Pass 5 DASHBOARDS (2026-09-01). **Blocks:** DASH-001 and, indirectly, DASH-004 through DASH-017.
+
+Web has **two parallel dashboard implementations** and users only ever reach one of them.
+
+**The reachable one:** `/dashboard` routes BUYER and SELLER to `/dashboard/user` (`src/app/dashboard/page.tsx:31-44`), a single tab-driven page. The sidebar links only to `/dashboard/user?tab=…` plus `/dashboard/seller/auctions` (`DashboardSidebar.tsx:134-150` — I grepped for other `dashboard/buyer` / `dashboard/seller/` hrefs and that auctions link is the only hit).
+
+**The unreachable ones:** nine fully-built standalone pages, none linked from anywhere:
+`/dashboard/buyer`, `/dashboard/buyer/history`, `/dashboard/buyer/settings`, `/dashboard/buyer/messages`, `/dashboard/seller`, `/dashboard/seller/earnings`, `/dashboard/seller/performance`, `/dashboard/seller/offers`, `/dashboard/seller/settings`.
+
+These are not stubs, and several are **better than the live tabs**:
+
+| Capability | Orphaned page | Unified `/dashboard/user` |
+|---|---|---|
+| 7d/30d period toggle | yes | **no** |
+| Auction bonuses (£100) in earnings | yes | **no** |
+| Delivery requests inside offers | yes | **no** |
+| Cancel & relist after accepting | yes | **no** |
+| Purchase history | yes (`buyer/history`) | **no tab at all** |
+
+This matters because **mobile has implemented several features that only exist on the orphaned pages** — the period toggle (DASH-005), delivery requests in offers (DASH-017), cancel-and-relist (DASH-016), and the performance metric set (DASH-012). So mobile currently matches the *unreachable* web app in those places.
+
+**Question:** which is canonical?
+- (a) `/dashboard/user` is the future and the orphans are dead code to delete. Then mobile is ahead of live web in four places and I should leave it alone, but web loses features.
+- (b) The orphans are the richer design and the unified page is the stopgap. Then web needs re-linking work and mobile is already correct.
+- (c) They should be merged.
+
+I am not guessing at this. It changes whether four mobile rows are "ahead", "correct", or "built against dead code".
+
+---
+
+## OQ-22 — Should mobile's notification list update live? — `OPEN`
+**Raised by:** Pass 5 DASHBOARDS (2026-09-01). **Blocks:** DASH-019.
+
+Mobile's real-time notification handling lives entirely in `GlobalToastProvider.tsx:80,107-108`, which connects to the `/notifications` namespace and raises a toast. `NotificationsScreen.tsx` has **no socket** (a grep for `io(` returns 0), so a notification arriving while the list is open shows a toast but does not appear in the list until manual pull-to-refresh.
+
+Separately, `GlobalToastProvider.tsx:107-108` listens for both `notification:new` **and** `notification`. The gateway only ever emits `notification:new` (`notifications.gateway.ts:108`), so the second listener is dead code — harmless, but it suggests the event name was uncertain when written.
+
+**Question:** is a toast considered sufficient, or should the list subscribe too? The fix is small (subscribe in the screen, or lift the socket into a store the screen reads), but it changes an app-wide provider, so I would rather you choose.
+
+---
+
+## OQ-23 — Dealer staff roles are collected but never enforced — `OPEN`
+**Raised by:** Pass 5 DASHBOARDS (2026-09-01). **Blocks:** DASH-040.
+
+Both apps let a dealer invite staff as `ADMIN`, `SALES_AGENT` or `FINANCE_MANAGER` (`DealerRole`, `schema.prisma:204-210`), and both render the role as a coloured label. Neither app branches any behaviour on it.
+
+On the backend I could not find enforcement either. The staff-delegation pattern substitutes the owning `DealerProfile` for any active staff member regardless of role (`dealers.service.ts:38-56`, `dashboard.service.ts:144-155`), and the only place `staff.role` is read at all is to prevent removing the last ADMIN. Web's dealer layout treats every staff member as fully verified (`dealer/layout.tsx:146`), and mobile's `DealerGate` does the same (`components/DealerGate.tsx:51-54`).
+
+As read, a `SALES_AGENT` appears to have the same access as an `ADMIN` — including Team management and Settings.
+
+Caveat: I did not read `dealers.service.ts` in full, so enforcement may exist in a method I did not open. I am reporting what I could and could not find, not asserting a vulnerability.
+
+**Question:** are the three roles meant to be labels only for now, or is per-role permission enforcement expected? If the latter it is a backend change and out of mobile-parity scope, but mobile should not pretend to enforce something the API does not.
+
+---
+
+## OQ-24 — Notification preferences: mobile works, web does not — `OPEN`
+**Raised by:** Pass 5 DASHBOARDS (2026-09-01). **Blocks:** DASH-021.
+
+The backend genuinely honours user notification preferences — mute-all, per-type keys, push channel and quiet hours are all checked before emitting or pushing (`notifications.service.ts:87-140`).
+
+Mobile implements this properly: `NotificationSettingsScreen.tsx:66-113` loads from `GET /users/me` and saves via `PATCH /users/me`.
+
+Web does not. Its dealer settings notification toggles have **no save handler at all** (`dashboard/dealer/settings/page.tsx:314-337`), and buyer settings uses uncontrolled `defaultChecked` boxes that are never included in the save payload (`buyer/settings/page.tsx:205-223`). Both are cosmetic.
+
+**Question:** confirm mobile's implementation is the intended behaviour and the web toggles are the bug. If so this is not a mobile parity item at all, and I will mark DASH-021 as a web defect rather than leaving it as a mobile-ahead row — but I want your confirmation before recording that a shipped web control does nothing.

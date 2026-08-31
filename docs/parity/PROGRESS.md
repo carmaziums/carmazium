@@ -10,7 +10,7 @@ Append-only session log. Read this first at the start of every session.
 | BUY | 2026-08-31 | Audited | 32 (BUY-001..032) |
 | SELL | 2026-08-31 | Audited | 32 (SELL-001..032) |
 | AUCTION | 2026-09-01 | Audited | 39 (AUC-001..039) |
-| DASH | — | Not started | — |
+| DASH | 2026-09-01 | Audited | 47 (DASH-001..047) |
 | CROSS | — | Not started | — |
 
 ## Phase 2 — Implementation (branch `parity/<flow-name>`, one flow per session)
@@ -290,4 +290,87 @@ client validations (AUC-010, AUC-032).
 
 **Docs-only commit. No source files were modified.**
 
-**Next session should pick up:** Pass 5 — DASHBOARDS.
+**Next session should pick up:** Pass 5 — DASHBOARDS.  _(done — see below)_
+
+### 2026-09-01 — Pass 5: DASHBOARDS (including Dealer, per request)
+
+**Method.** Backend contracts first, then web buyer/seller, web dealer, mobile buyer/seller, and
+mobile dealer — five parallel reads, since the surface is roughly 20k lines. Every citation
+recorded in the matrix was re-read directly before being written.
+
+**Scope covered.**
+- Backend: `dashboard/`, `notifications/` (+ gateway), `chat/` (+ gateway), `sellers/`, `dealers/`
+  controllers and DTOs; `schema.prisma` (`Notification`, `ChatRoom`, `Message`, `DealerProfile`,
+  `DealerStaff`, `DealerRole`, `SellerProfile`, `SellerReview`, `Lead`, `LeadStatus`)
+- Web: `dashboard/{layout,page}.tsx`, `dashboard/user/page.tsx`, `dashboard/buyer/**`,
+  `dashboard/seller/{page,earnings,performance,offers,settings}`, all 13 `dashboard/dealer/**`
+  pages incl. `layout.tsx`, `DashboardSidebar.tsx`, `ProfileCompletionGate.tsx`,
+  `config/dealerRouteConfig.ts`
+- Mobile: `UnifiedDashboardScreen`, `Buyer{Dashboard,PurchaseHistory}Screen`,
+  `Seller{Dashboard,Performance,Offers,Profile}Screen`, `EarningsScreen`,
+  `Notifications{,Settings}Screen`, `MessagesScreen`, `SettingsScreen`, `PaymentHistoryScreen`,
+  `ChatContext`, `notificationsApi`, all 11 `Dealer*Screen`s, `DealerGate`, `GlobalDrawer`
+
+**Result: 47 rows, DASH-001 through DASH-047.**
+
+| Status | Count |
+|---|---|
+| MISSING | 6 |
+| PARTIAL | 8 |
+| DIVERGENT | 8 |
+| PRESENT | 25 |
+
+**The finding that reframes this pass: web has two dashboards, and users reach only one.**
+`/dashboard` sends buyers and sellers to `/dashboard/user`, a tab-driven page, and the sidebar
+links nowhere else except `/dashboard/seller/auctions`. But nine fully-built standalone pages
+still exist unlinked — and several are **better** than the live tabs (period toggle, auction
+bonuses in earnings, delivery requests inside offers, cancel-and-relist, purchase history).
+Crucially, **mobile has implemented four features that exist only on those orphaned pages**, so
+mobile currently matches the unreachable web app in those places. OQ-21 asks which is canonical;
+it decides whether four mobile rows read as "ahead", "correct", or "built against dead code".
+
+**Mobile is strong here — 25 PRESENT — and ahead of web in six places:** the 7d/30d period
+toggle on the live path (DASH-005), working notification preferences the backend actually honours
+while web's toggles save nothing (DASH-021, OQ-24), the fullest use of `RecordSaleDto` anywhere
+(DASH-015), trader address verification with no web UI at all (DASH-031), dealer payouts and bank
+details which the web dealer dashboard entirely lacks (DASH-042), and an honest read-only finance
+screen instead of web's dead Approve/Reject buttons referencing non-existent statuses (DASH-043).
+
+**Six MISSING rows.** DASH-030 account deletion (re-confirms AUTH-033 — grep across mobile `src/`
+returns zero matches; app-store relevant). DASH-003 profile completion gate. DASH-023 chat
+presence — the gateway broadcasts `presence:snapshot` and `presence:update` and web consumes both,
+mobile handles neither. DASH-024 contact support — `POST /chat/support` exists and web has a
+sidebar button; grep for `chat/support` in mobile returns zero. DASH-010 auction bonuses in
+earnings. DASH-046 partner/admin dashboards (duplicate of AUTH-029, blocked on OQ-5).
+
+**Dealer dashboard specifically** (added at your request) is at close parity. The open question
+from the mapping is answered: **`DealerLeadsScreen` *is* mobile's CRM** — its own comment says the
+board mirrors web's CRM stage set, same six stages and endpoints, tap-based rather than
+drag-and-drop, plus a List view web lacks (DASH-037). Gaps are narrower than expected: analytics
+is missing four breakdowns and CSV export (DASH-036), and the home KPI tiles differ (DASH-035).
+
+**Web-side defects logged so they are not ported:** the dealer earnings "Financial Report" button
+has no `onClick` (DASH-044); web's `denied` handover stage is unreachable because `stageFor()`
+never returns it (DASH-045); web's notification toggles save nothing (DASH-021).
+
+**Not traced — stated rather than assumed.**
+- `dealers.service.ts` bodies for `getStats`/`getAnalytics`/`getLeads`/`inviteStaff` were not read
+  in full, so exact response field names for `/dealers/stats` and `/dealers/analytics` are
+  unverified, and OQ-23's "roles are not enforced" is scoped to what I read.
+- `sellers.service.ts` was not read at all.
+- Web components `KycOverlayForm`, `ReceiptsTab`, `MetricCard`, `PeriodToggle`,
+  `DeleteAccountSection` were referenced but not opened.
+- Mobile `ChatScreen.tsx` and `chatApi.ts` were not read, so typing-indicator rendering and the
+  exact `/chat/rooms` client contract are unconfirmed.
+- `Notification.type` is a plain `String`, not an enum (`schema.prisma:1072`) — the full set of
+  type values in use was not enumerated; it would need a grep of every `notificationsService.create`
+  call site across all modules.
+
+**Open questions raised: OQ-21 through OQ-24** (24 open in total). OQ-21 should be answered before
+any Phase 2 dashboard work.
+
+**Docs-only commit. No source files were modified.**
+
+**Next session should pick up:** Pass 6 — CROSS-CUTTING (the final audit pass). Note DASH-047
+(silent error handling swallowing failures into zero-value dashboards) was observed across every
+screen in this pass and should be folded into that sweep.
