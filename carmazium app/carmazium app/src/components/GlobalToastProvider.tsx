@@ -18,7 +18,10 @@ export const GlobalToastProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const { toast, show, hide } = useToast();
-  const { isAuthenticated } = useAuthStore();
+  // Selector, not a whole-store subscription. This provider wraps RootNavigator,
+  // so re-rendering it on unrelated auth-store writes propagates further than
+  // anything else in the tree.
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   // ── Watchlist toasts ──────────────────────────────────────────────────────────
   const savedIds = useWatchlistStore((s) => s.savedIds);
