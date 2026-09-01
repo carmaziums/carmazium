@@ -1769,7 +1769,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               value={vrm}
               onChangeText={handlePlateChange}
               placeholder="e.g. AB12 CDE"
-              placeholderTextColor={Colors.darkYellow}
+              // Was Colors.darkYellow — rgba(245,158,11,0.28), i.e. amber at 28%
+              // alpha composited over the plate's own amber background, which
+              // made the placeholder all but invisible on device. The typed
+              // value is Colors.black, so the placeholder should be a muted
+              // version of that, not of the background.
+              placeholderTextColor={Colors.blackAlpha45}
               autoCapitalize="characters"
               autoCorrect={false}
             />
