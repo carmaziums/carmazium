@@ -542,3 +542,60 @@ list).
 - `/auth/partners` is broken and orphaned; `api-server/` is a stale deployment path (OQ-7, OQ-8).
 - Dormant retail-checkout code in both apps should be removed (OQ-10).
 - Backend should validate the legal declarations it currently accepts as optional (OQ-16).
+
+---
+
+## Phase 2 — Flow 0: Baseline (2026-09-01)
+
+`docs/parity/IMPLEMENTATION-PLAN.md` written and committed (`d0f25149`). Four planning
+decisions recorded there as P-1..P-4: branch base is `main`; the near-term APK is side-loaded
+so account deletion (Flow 5) moves to last; offline (CROSS-015/017) folds into Flow 6's
+prebuild cycle; the dead "Adjust Reserve Price" button is removed, not wired.
+
+Flow order: **0 → 1 → 2a → 2b → 3 → 4 → 6 → 7 → 5.**
+
+**Verification is always a hand-off.** This machine has no Android SDK — `adb` not found,
+`ANDROID_HOME` and `ANDROID_SDK_ROOT` both unset, no `%LOCALAPPDATA%\Android\Sdk`. Every flow
+ends with a manual test script for the owner to run on the build machine.
+
+### Quality-gate baseline — no source files modified
+
+Run from `carmazium app/carmazium app/`.
+
+`npx tsc --noEmit` — **exit 2, 22 errors, all in one file:**
+
+```
+src/components/__tests__/VehicleCard.test.tsx — 22 errors
+  TS2708 Cannot use namespace 'jest' as a value  (x9)
+  TS2582 Cannot find name 'describe' / 'it'      (x6)
+  TS2304 Cannot find name 'beforeEach' / 'expect' (x7)
+```
+
+Cause: `@types/jest` is not installed, so the test file's globals are untyped. **Zero errors in
+`src/screens/`, `src/components/` (non-test), `src/lib/`, `src/store/` or `src/navigation/`.**
+Every future flow should reproduce exactly these 22 and nothing else; any additional error is
+that flow's own.
+
+`npm run lint` — **exit 1, 25 problems (12 errors, 13 warnings), all pre-existing:**
+
+```
+errors (12), all no-restricted-syntax token violations:
+  src/constants/spacing.ts:48,55,63,72          raw hex (inside Elevation shadow colours)
+  src/components/GradeChip.tsx:9-13             raw hex (x5 — the 5 grade colours, matches CROSS-004)
+  src/components/AuctionCardBadges.tsx:102      rgba literal with an existing Colors.*Alpha* token
+  src/screens/main/DealerFinanceScreen.tsx:72   rgba literal with an existing token
+  src/screens/vehicle/VehicleDetailScreen.tsx:3094  rgba literal with an existing token
+
+warnings (13): unused eslint-disable directives for react-hooks/exhaustive-deps across
+  DealerInventoryScreen, DealerOnboardingScreen, SearchScreen (x4), SellerAuctionsScreen,
+  SellerDashboardScreen and others.
+```
+
+Two notes for later flows. The lint baseline is not clean, so "lint passes" is never the bar —
+the bar is *these 25 and no more*. And three of the offending files are ones Phase A opens:
+`VehicleDetailScreen` (Flow 3), `SellerAuctionsScreen` (Flow 2a), `SearchScreen` (Flow 3). Per
+`CLAUDE.md`'s migrate-when-you-touch rule these are fair to clean up in the flow that opens
+them, which would shrink the baseline — say so explicitly when it happens rather than letting
+the numbers drift silently.
+
+**Next session:** Flow 1 — `parity/listing-publish-payment` (SELL-005, SELL-006).
