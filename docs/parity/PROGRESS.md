@@ -21,6 +21,7 @@ Append-only session log. Read this first at the start of every session.
 | 1 — listing publish payment | SELL-005, SELL-006 (+SELL-033 logged) | 2026-09-01 | NEEDS_VERIFICATION |
 | 2a — auction correctness | AUC-029, AUC-030, AUC-012, AUC-022, AUC-004/017 | 2026-09-01 | NEEDS_VERIFICATION |
 | 4a — signup role & onboarding flags | AUTH-005, AUTH-001 | 2026-09-01 | NEEDS_VERIFICATION |
+| 4b — session lifecycle | AUTH-013, AUTH-014, AUTH-034, AUTH-035 | 2026-09-01 | NEEDS_VERIFICATION |
 
 ## Session log
 
@@ -1047,3 +1048,175 @@ lands on `main`, this branch's number becomes 24/11 too.
 
 **Next session:** Flow 4b — `parity/session-lifecycle` (AUTH-013, AUTH-014, AUTH-034,
 AUTH-035), chained off this branch.
+
+---
+
+## Phase 2 — Flow 4b: Session lifecycle (2026-09-01)
+
+Branch `parity/session-lifecycle`, chained off `parity/session-and-auth` (Flow 4a) because both
+rewrite `authStore`.
+
+Rows: **AUTH-013, AUTH-014, AUTH-034, AUTH-035** → `NEEDS_VERIFICATION`.
+
+This is the layer every screen sits on. A mistake here signs everyone out, so each change is
+deliberately conservative and guarded.
+
+### An open question from Pass 1, now closed
+
+AUTH-014 was scoped to "no handler in `App.tsx`, `RootNavigator.tsx`, or `authStore.ts`" because
+`ChatContext` had never been read. It has now: `ChatContext.tsx:135-136` **swallows**
+`AUTH_REDIRECT` as an expected condition alongside `NO_SESSION` and `REQUEST_TIMEOUT`. So the
+row holds in its strong form — nothing in the app acted on an expired session.
+
+### AUTH-014 / OQ-6 — 401 now signs the user out
+
+`apiClient` emits before throwing (`apiClient.ts:102`); `authStore` registers `forceLogout` as
+the handler (`:571-573`).
+
+They are connected through a new `lib/authEvents.ts` rather than a direct import. `authStore`
+imports `apiClient`, so importing back would be a require cycle — Metro resolves those by
+handing one module a half-initialised copy of the other, which for an auth store is a bug that
+shows up once in a hundred cold starts. The new module imports nothing.
+
+**The emit is latched.** A screen firing five requests on focus gets five 401s; without a latch
+each runs its own teardown and its own navigation. First wins, rest are ignored. Re-armed on
+`SIGNED_IN`, `TOKEN_REFRESHED` and a successful `login()`, so a later expiry in the same app run
+is still acted on.
+
+`forceLogout` deliberately does **not** call `POST /auth/logout` — the session it would
+authenticate with is the one that just failed. It does call Supabase `signOut()`, so the dead
+refresh token is cleared from SecureStore instead of being retried on next launch. It returns
+early when already signed out, so it cannot yank a user who is legitimately sitting on Login.
+
+### AUTH-034 — the destination survives re-login
+
+`forceLogout()` reads the current route from `navigationRef` **before** the stacks swap
+(`authStore.ts:146-160`), skipping auth screens as destinations.
+`RootNavigator.tsx:32-52` consumes it exactly once after re-login, deferred one tick — the same
+reason `App.tsx`'s deep-link handler defers, since navigating in the same tick targets the
+navigator being unmounted. A route that no longer exists is caught and ignored: the user is
+signed in, and Main's default route beats a blank screen. A deliberate `logout()` clears the
+destination — that is not an interrupted journey.
+
+### AUTH-035 — no more Login flash
+
+**`isLoading` could not have been the fix**, which is worth recording since the row points at
+it. It starts `false`, so there is a window between mount and `initializeAuth` running where it
+and `isAuthenticated` are both false and the app looks signed out. Added `authInitialized`, set
+in `initializeAuth`'s `finally` on success *and* failure (`:311`) — the question it answers is
+"have we looked?", not "did we find one?" — and `App.tsx:253` holds the splash on
+`!fontsLoaded || !authInitialized`.
+
+### AUTH-013 — one app-wide subscription
+
+`subscribeToAuthChanges()` (`authStore.ts:189-247`), mounted once in `App.tsx:197`.
+
+- `SIGNED_OUT` → `forceLogout()`, guarded on `isAuthenticated` so our own logout does not
+  trigger a second teardown racing the first.
+- `PASSWORD_RECOVERY` → deliberately nothing. Recovery tokens 401 against the backend bridge,
+  which is exactly why web skips it (`AuthContext.tsx:124-129`); routing to the reset screen is
+  already handled by `App.tsx`'s deep-link branch.
+- `SIGNED_IN` → **stands aside when `pendingEmailVerification` is true.**
+  `VerifyEmailScreen.tsx:38-48` keeps its own handler to drive its spinner; without this guard
+  the two would race on the same profile fetch. Otherwise rehydrates if not already signed in.
+- `TOKEN_REFRESHED` → rehydrates only when local state thinks it is signed out (a cold restore
+  that lost the race). The backend session outlives a token refresh, so the normal case needs
+  nothing.
+
+Five files: `lib/authEvents.ts` (new), `lib/apiClient.ts`, `store/authStore.ts`,
+`navigation/RootNavigator.tsx`, `App.tsx`. No backend change, no new dependency.
+
+### Quality gates
+
+```
+$ npx tsc --noEmit
+exit=2 — 22 errors, all @types/jest in VehicleCard.test.tsx. Errors elsewhere: 0.
+
+$ npx eslint <the changed source files>
+exit=0. (App.tsx reports "File ignored because no matching configuration" — it sits
+outside the eslint config's src glob, which is pre-existing and not introduced here.)
+
+$ npm run lint
+exit=1 — 25 problems (12 errors, 13 warnings). Same as Flow 4a: this branch chains off
+4a, which is cut from main, so Flow 3's token fix (24/11) is not in this base.
+```
+
+### Manual test script
+
+The theme of this flow is that failure states must not strand or spuriously eject the user, so
+most of these steps are about what should *not* happen.
+
+**A — Cold start (AUTH-035)**
+
+1. Sign in, force-quit, relaunch.
+   *Expect:* splash, then straight into the app. **No flash of the Login screen.** Watch
+   carefully — the old bug was a single frame.
+2. Relaunch in airplane mode while signed in.
+   *Expect:* still no Login flash. The splash may hold slightly longer (the profile fetch times
+   out at 10s), then the app opens. **It must not sign you out** — `authInitialized` is set on
+   failure too, precisely so a failed check does not hang on the splash forever.
+3. Relaunch while signed out. *Expect:* Login (or the carousel on a first run — Flow 4a).
+
+**B — Session expiry (AUTH-014, AUTH-034) — the core of this flow**
+
+4. Sign in and navigate somewhere specific and deep, e.g. a vehicle detail screen.
+5. Invalidate the session server-side (sign the account out from web, or clear its Supabase
+   session), then trigger a request on mobile — pull to refresh, or open a screen that fetches.
+   *Expect:* you are returned to **Login**, once, cleanly. Previously nothing happened at all:
+   the screen just stopped working.
+6. Sign back in.
+   *Expect:* you land back on **the screen from step 4**, not the app root.
+7. Repeat step 5 on a screen that fires several requests at once (a dashboard).
+   *Expect:* **one** trip to Login, not several — and no flicker of repeated navigation. This is
+   what the latch exists for.
+8. After a successful re-login, expire the session again.
+   *Expect:* it still ejects you. The latch must have re-armed.
+
+**C — Sign-out paths (AUTH-013)**
+
+9. Sign out from the app normally. *Expect:* Login, unchanged from before.
+10. Sign back in and go somewhere deep, then sign out normally.
+    *Expect:* signing in again lands you at the **default screen, not** where you were. A
+    deliberate sign-out is not an interrupted journey.
+11. **Remote sign-out:** signed in on the device, sign that account out from the web app.
+    *Expect:* the device notices and returns to Login. Previously unobserved entirely.
+12. Leave the app backgrounded past a token refresh (an hour or so), then return.
+    *Expect:* it still works and does **not** sign you out.
+
+**D — Sitting on Login (the guard)**
+
+13. Sign out, sit on the Login screen, and let any background request fail.
+    *Expect:* nothing happens — no navigation, no flicker. `forceLogout` returns early when
+    already signed out.
+
+**E — Email verification, unchanged (the SIGNED_IN guard)**
+
+14. Sign up a new account and stop on the Verify Email screen.
+15. Click the verification link.
+    *Expect:* the screen shows its spinner and proceeds into the app **once** — not twice, and
+    with no double profile fetch. This is what the `pendingEmailVerification` guard protects.
+
+**F — Password recovery, unchanged**
+
+16. Run forgot-password to completion via the emailed link.
+    *Expect:* exactly as before — the reset screen opens and the reset succeeds. The new
+    `PASSWORD_RECOVERY` branch deliberately does nothing, so any change here is a regression.
+
+### Not verified in this session
+
+- Nothing run on a device; no Android SDK here. For a flow whose failure mode is "everyone gets
+  signed out", **that gap matters more than in any previous flow** — B, C and E are all timing
+  and race behaviour that I have reasoned about but not observed.
+- Step B7 (the latch under concurrent 401s) is reasoned from the latch logic, not observed.
+- Step E15 (no double `initializeAuth`) rests on reading `VerifyEmailScreen`'s handler and the
+  new guard; I did not instrument the calls.
+- Step C12 (token refresh across a long background) cannot be simulated here at all.
+- The 300ms defer in `RootNavigator` matches the existing deep-link handler's timing. It is a
+  heuristic, not a guarantee — if step B6 lands on the app root instead of the intended screen,
+  that constant is the first thing to look at.
+- `GlobalToastProvider` and `ChatContext` both open sockets on auth state; I did not re-read how
+  they react to `forceLogout` clearing the user mid-session.
+
+**Next session:** Flow 6 — `parity/deep-linking-and-offline` (AUTH-020, AUTH-019, AUTH-030 +
+CROSS-015, CROSS-017), the prebuild boundary. Flow 5 (account deletion) was moved after Flow 7
+by decision P-2.

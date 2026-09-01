@@ -1,4 +1,5 @@
 import { getAccessToken } from './supabase';
+import { emitAuthRedirect } from './authEvents';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
 
@@ -91,6 +92,14 @@ export async function apiClient<T>(
     const message = normalizeErrorMessage(parsedBody, response.status, response.statusText);
 
     if (isAuthError(response.status, message)) {
+      // Tell the auth store the session is gone, then throw as before.
+      // Every caller already handles this sentinel (ChatContext, for
+      // instance, deliberately swallows it as expected) — but nothing
+      // navigated, so an expired session simply stopped the app working
+      // with no way back to Login (AUTH-014 / OQ-6). The emit is latched, so
+      // a screen firing five requests on focus triggers one teardown, not
+      // five.
+      emitAuthRedirect();
       throw new Error('AUTH_REDIRECT');
     }
 

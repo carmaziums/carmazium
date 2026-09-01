@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { apiClient } from '../lib/apiClient';
 import * as SecureStore from 'expo-secure-store';
+import { setAuthRedirectHandler, resetAuthRedirectLatch } from '../lib/authEvents';
+import { navigationRef } from '../lib/navigationRef';
 
 /** Post-signup wizard only: name -> verify -> postcode -> preferences.
  *  Key deliberately unchanged so existing installs that already have it are not
@@ -68,6 +70,18 @@ interface AuthState {
   user: User | null;
   isLoading: boolean;
   role: 'buyer' | 'seller' | 'dealer';
+  /** False until initializeAuth has finished once. RootNavigator must not
+   *  decide which stack to show before this is true, or a signed-in user
+   *  sees the Login screen flash while the session is still being restored
+   *  (AUTH-035). `isLoading` cannot serve this purpose: it starts false, so
+   *  there is a window before initializeAuth runs where both it and
+   *  isAuthenticated are false and the app looks signed out. */
+  authInitialized: boolean;
+  /** Where to send the user once they sign back in — captured at the moment
+   *  the session died, so an expiry does not silently dump them at the root
+   *  of the app having lost what they were looking at (AUTH-034). Web does
+   *  this with `?redirect=`. */
+  postLoginRedirect: { name: string; params?: object } | null;
   // The real, backend-sourced account role — unlike `role`, this is never
   // touched by setRole()'s "preview as buyer" toggle (DealerProfileScreen's
   // "VIEW MY PROFILE"). Screens that need to know whether the underlying
@@ -78,6 +92,14 @@ interface AuthState {
   accountRole: 'buyer' | 'seller' | 'dealer';
 
   completeOnboarding: () => Promise<void>;
+  /** Tear down the local session without asking the backend — the session is
+   *  already gone, which is why we are here. Called from apiClient's 401
+   *  path via authEvents (AUTH-014 / OQ-6). */
+  forceLogout: () => Promise<void>;
+  /** Subscribe to Supabase auth changes for the life of the app (AUTH-013).
+   *  Returns an unsubscribe function. */
+  subscribeToAuthChanges: () => () => void;
+  consumePostLoginRedirect: () => { name: string; params?: object } | null;
   /** Marks the pre-auth carousel as seen. Deliberately NOT completeOnboarding —
    *  see INTRO_SEEN_KEY. */
   completeIntro: () => Promise<void>;
@@ -93,6 +115,8 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
+  authInitialized: false,
+  postLoginRedirect: null,
   hasCompletedOnboarding: false,
   // Starts false and is hydrated by initializeAuth. A fresh install has not
   // seen the carousel; an install that has will skip it after that first read.
@@ -111,6 +135,103 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   completeIntro: async () => {
     await SecureStore.setItemAsync(INTRO_SEEN_KEY, '1').catch(() => {});
     set({ hasSeenIntro: true });
+  },
+
+  forceLogout: async () => {
+    // Already signed out — nothing to tear down, and navigating would yank a
+    // user who is legitimately sitting on the Login screen.
+    if (!get().isAuthenticated) return;
+
+    // Remember where they were before the stacks swap. getCurrentRoute() is
+    // read now because RootNavigator is about to unmount the whole Main stack.
+    let target: { name: string; params?: object } | null = null;
+    try {
+      if (navigationRef.isReady()) {
+        const route = navigationRef.getCurrentRoute();
+        // Auth screens are never a sensible destination to return to.
+        if (route?.name && !['Login', 'Signup', 'Onboarding', 'ForgotPassword', 'ResetPassword'].includes(route.name)) {
+          target = { name: route.name, params: route.params as object | undefined };
+        }
+      }
+    } catch {
+      // Navigation not ready — losing the destination is acceptable; failing
+      // to sign the user out is not.
+    }
+
+    // Deliberately no POST /auth/logout: the session this would authenticate
+    // with is the one that just failed. Supabase signOut is still worth doing
+    // so the dead refresh token is cleared from SecureStore rather than being
+    // retried on next launch.
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Offline or already invalid — the local reset below is what matters.
+    }
+
+    set({
+      isAuthenticated: false,
+      pendingEmailVerification: false,
+      user: null,
+      role: 'buyer',
+      accountRole: 'buyer',
+      hasCompletedOnboarding: false,
+      isLoading: false,
+      postLoginRedirect: target,
+    });
+  },
+
+  consumePostLoginRedirect: () => {
+    const target = get().postLoginRedirect;
+    if (target) set({ postLoginRedirect: null });
+    return target;
+  },
+
+  subscribeToAuthChanges: () => {
+    // The only app-wide subscription (AUTH-013). Mobile previously had none:
+    // the sole subscriber repo-wide was VerifyEmailScreen, scoped to SIGNED_IN
+    // and alive only while that screen was mounted — so a remote sign-out or a
+    // failed token refresh was never observed anywhere else.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const state = get();
+
+      if (event === 'SIGNED_OUT') {
+        // Fired by a remote sign-out, or by our own logout()/forceLogout().
+        // Guarded so it is a no-op in the latter case rather than a second
+        // teardown racing the first.
+        if (state.isAuthenticated) await get().forceLogout();
+        return;
+      }
+
+      if (event === 'PASSWORD_RECOVERY') {
+        // Recovery tokens are restricted; bridging them to the backend 401s.
+        // Web skips the bridge for exactly this reason (AuthContext.tsx:124-129).
+        // Routing to the reset screen is already handled by App.tsx's deep-link
+        // branch, so this only needs to not make things worse.
+        return;
+      }
+
+      if (event === 'SIGNED_IN') {
+        resetAuthRedirectLatch();
+        // VerifyEmailScreen runs its own SIGNED_IN handler so it can show a
+        // spinner while the account is confirmed. Standing aside here avoids
+        // two initializeAuth() calls racing over the same profile fetch.
+        if (state.pendingEmailVerification) return;
+        if (!state.isAuthenticated) await get().initializeAuth();
+        return;
+      }
+
+      if (event === 'TOKEN_REFRESHED') {
+        // The backend session outlives a token refresh, so there is nothing to
+        // re-bridge in the normal case. The one case worth catching is a
+        // refresh arriving while local state thinks it is signed out — a cold
+        // restore that lost the race — where rehydrating is right.
+        resetAuthRedirectLatch();
+        if (session?.access_token && !state.isAuthenticated) await get().initializeAuth();
+        return;
+      }
+    });
+
+    return () => subscription.unsubscribe();
   },
 
   setLoading: (loading: boolean) => set({ isLoading: loading }),
@@ -184,7 +305,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // next login/signup attempt and contaminate persisted account data).
       set({ isAuthenticated: false, user: null, role: 'buyer', accountRole: 'buyer' });
     } finally {
-      set({ isLoading: false });
+      // Always true afterwards, success or failure: the question this flag
+      // answers is "have we looked?", not "did we find a session?"
+      // (AUTH-035).
+      set({ isLoading: false, authInitialized: true });
     }
   },
 
@@ -245,6 +369,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         ]);
         const hasCompletedOnboarding = storedFlag === '1' || !!profileLocation;
 
+        // A fresh session — re-arm the 401 latch so a later expiry in this
+        // same app run is acted on rather than swallowed.
+        resetAuthRedirectLatch();
         set({
           isAuthenticated: true,
           hasCompletedOnboarding,
@@ -430,7 +557,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         accountRole: 'buyer',
         hasCompletedOnboarding: false,
         isLoading: false,
+        // A deliberate sign-out is not a session expiry: there is no
+        // destination to come back to.
+        postLoginRedirect: null,
       });
     }
   },
 }));
+
+// Wire apiClient's 401 path to the store. Done here, at module scope, so it
+// is live before any screen can fire a request — and so apiClient never has
+// to import this store (see lib/authEvents.ts on the require cycle).
+setAuthRedirectHandler(() => {
+  void useAuthStore.getState().forceLogout();
+});

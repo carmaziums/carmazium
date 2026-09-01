@@ -49,6 +49,8 @@ const NOTIFICATION_SCREEN_MAP: Record<string, { screen: string; paramsKeys: stri
 
 export default function App() {
   const initializeAuth = useAuthStore((state) => state.initializeAuth);
+  const authInitialized = useAuthStore((state) => state.authInitialized);
+  const subscribeToAuthChanges = useAuthStore.getState().subscribeToAuthChanges;
   const reinitializeAuth = useAuthStore.getState().initializeAuth;
 
   // ── OTA Updates ────────────────────────────────────────────────
@@ -189,6 +191,11 @@ export default function App() {
     }
   }, [fontsLoaded]);
 
+  // One app-wide Supabase auth subscription (AUTH-013). Mounted here rather
+  // than inside a screen so it observes a remote sign-out or a failed token
+  // refresh wherever the user happens to be.
+  useEffect(() => subscribeToAuthChanges(), [subscribeToAuthChanges]);
+
   useEffect(() => {
     const handleDeepLink = async (url: string | null) => {
       if (!url) return;
@@ -239,7 +246,11 @@ export default function App() {
     return () => sub.remove();
   }, []);
 
-  if (!fontsLoaded) {
+  // Wait for the session check as well as the fonts. Gating on fonts alone
+  // mounted RootNavigator while initializeAuth was still running, with
+  // isAuthenticated still at its initial false — so a signed-in user saw the
+  // Login screen flash before their session was restored (AUTH-035).
+  if (!fontsLoaded || !authInitialized) {
     return <AppSplashScreen />;
   }
 
