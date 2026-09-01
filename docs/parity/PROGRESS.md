@@ -20,6 +20,7 @@ Append-only session log. Read this first at the start of every session.
 | 0 — baseline | — | 2026-09-01 | Done — tsc 22 / lint 25 recorded |
 | 1 — listing publish payment | SELL-005, SELL-006 (+SELL-033 logged) | 2026-09-01 | NEEDS_VERIFICATION |
 | 2a — auction correctness | AUC-029, AUC-030, AUC-012, AUC-022, AUC-004/017 | 2026-09-01 | NEEDS_VERIFICATION |
+| 2b — auction truthfulness | AUC-016, AUC-038, AUC-025, BUY-028/OQ-9 | 2026-09-01 | NEEDS_VERIFICATION |
 
 ## Session log
 
@@ -906,3 +907,146 @@ short-scheduled auction if you can.
   `endTime`.
 
 **Next session:** Flow 2b — `parity/auction-truthfulness` (AUC-016, AUC-038, AUC-025, OQ-9).
+
+---
+
+## Phase 2 — Flow 2b: Auction truthfulness (2026-09-01)
+
+Branch `parity/auction-truthfulness`, cut from `main` at `187b88a4` — the first flow cut under
+**P-5**, with Flows 1 and 2a already merged in.
+
+Rows: **AUC-016, AUC-038, AUC-025, BUY-028/OQ-9** → `NEEDS_VERIFICATION`.
+
+Four places where the app stated something untrue or defaulted to a wrong number. Grouped
+because they are one defect class in three adjacent files, not because they are related
+features.
+
+### Changes
+
+**AUC-016 — a button that lied.** The seller panel's RESERVE button opened an "Adjust Reserve
+Price" prompt and, on confirm, alerted "Reserve Updated — your reserve price has been
+updated." It made no API call at all. **Removed** per P-4 (`AuctionDetailScreen.tsx:1661-1673`).
+Wiring it was never an option where it sat: `PATCH /auctions/:id` throws for any auction that
+is not `SCHEDULED` (`auctions.service.ts:434-436`, read this session), and that panel renders
+only on a live auction. The reserve status bar above it is kept — it reads real state and web
+has no equivalent. CLOSE NOW now occupies the action row alone.
+
+**AUC-038 — a header that contradicted the list under it.** The paid state read "PURCHASE
+COMPLETE / Handover confirmed" directly above a journey list showing "Handover to be booked"
+and "Handover confirmed" as *incomplete*. Now reads **"PAYMENT COMPLETE / Buyer fee paid"**
+(`AuctionCompleteScreen.tsx:341-342`) — what has actually happened at that point. The journey
+list is untouched; the two now agree. Mobile still has no live handover status card (AUC-020,
+Phase D) — this row only stops the screen contradicting itself.
+
+**AUC-025 — a warning that arrived too late, i.e. never.** A seller could complete an auction,
+photograph and upload handover proof, get approved, and only then find there was nowhere to
+send the £100. `SellerAuctionsScreen` now reads `GET /users/stripe-connect/status` (`:302-311`,
+the same call `SettingsScreen.tsx:266-274` already makes) and renders an amber tappable warning
+inside the handover block, above the upload button, routing to Settings (`:1013-1026`).
+
+Three states, deliberately, not two: `null` renders **nothing** — a failed status call must not
+accuse a seller of missing setup they actually have; `false` warns; `true` is silent. Also
+suppressed once `sellerBonusReleased`, since by then the money has demonstrably gone somewhere.
+
+**BUY-028 / OQ-9 — a default that was one forgetful caller from undercharging.** `buyerFee` is
+now **required** on `PurchaseFlowParams` (`PurchaseFlowScreen.tsx:45`); the £95 destructuring
+default is gone (`:94`). The bare-navigation fallback object uses **0** rather than a
+plausible-looking fee (`:88`) — that path has no `listingId` and cannot pay anyway, and a
+visible £0 fails obviously where £95 would fail quietly.
+
+The type change produced **no new tsc errors**, which confirms every caller already passes a
+fee; grepped to confirm all five pass **125** (`BuyerBidsScreen:383`, `ChatScreen:454`,
+`AuctionDetailScreen:451,1033,1617`). So nothing was being mispriced — this closes the hole
+rather than fixing an active bug.
+
+Four files: `screens/vehicle/AuctionDetailScreen.tsx`, `screens/main/AuctionCompleteScreen.tsx`,
+`screens/seller/SellerAuctionsScreen.tsx`, `screens/main/PurchaseFlowScreen.tsx`. No backend
+change, no new dependency. Two new style entries, both tokenised (`Colors.warningAlpha10/30`).
+
+### Quality gates
+
+```
+$ npx tsc --noEmit
+exit=2 — 22 errors, all in src/components/__tests__/VehicleCard.test.tsx (@types/jest)
+Errors outside that file: 0.  Identical to the Flow 0 baseline.
+
+$ npx eslint <the four changed files>
+exit=0 — 1 warning, the pre-existing unused eslint-disable in SellerAuctionsScreen
+(baseline line 650, now 712). No new problems.
+
+$ npm run lint
+exit=1 — 25 problems (12 errors, 13 warnings). Identical to the Flow 0 baseline.
+```
+
+Note the merged tree was also gated before Flows 1 and 2a were merged to `main`: same
+22 / 25, so the merge itself introduced nothing.
+
+### Manual test script
+
+Needs a seller account with an ENDED auction that has a winner, and — for step 6 — an account
+whose Stripe Connect onboarding is **not** complete.
+
+**A — Reserve button removed (AUC-016)**
+
+1. As the seller, open your own **live** auction and scroll to the seller panel.
+   *Expect:* the reserve status bar is still there and correct — green "Reserve met — current
+   bid £X" once bidding passes the reserve, amber "Reserve not yet met — need £X" before.
+2. *Expect:* **no RESERVE button.** CLOSE NOW is the only action button and spans the row.
+   **Fail if any control claims to change the reserve.**
+3. Tap CLOSE NOW and cancel the confirmation.
+   *Expect:* unchanged behaviour — this flow did not touch it.
+
+**B — Completion header (AUC-038)**
+
+4. As a buyer who has won an auction, pay the £125 fee and reach the completed state.
+   *Expect:* header reads **"PAYMENT COMPLETE / Buyer fee paid"**. **Fail if it says "Handover
+   confirmed"** while the list below shows handover steps outstanding.
+5. Check the YOUR JOURNEY list directly beneath.
+   *Expect:* "Auction ended" and "Buyer fee paid" ticked; both handover rows still open. Header
+   and list agree.
+
+**C — Payout warning (AUC-025)**
+
+6. As a seller **without** completed Stripe Connect onboarding, open My Auctions and find an
+   ENDED auction with a winner.
+   *Expect:* an amber warning above "Upload Handover Proof" reading "Payout method not set
+   up…". Tapping it opens Settings.
+7. Complete Stripe Connect onboarding, return, pull to refresh.
+   *Expect:* the warning is gone.
+8. **The state that matters most:** put the device in airplane mode and open the screen so the
+   status call fails.
+   *Expect:* **no warning at all.** A seller who *has* set up payouts must never be told they
+   have not because a request failed.
+9. An auction where the £100 has already been released.
+   *Expect:* no warning, and the existing "£100 payout released" pill unchanged.
+
+**D — Buyer fee (OQ-9)**
+
+10. Reach the purchase/payment screen from all the routes that lead there: My Bids, the live
+    auction banner, the auction detail buy-fee button, and a chat "pay" action.
+    *Expect:* **£125** on every one. **Fail on any £95.**
+11. Check the order summary total on each.
+    *Expect:* £125 for a commission payment, with no sale price stacked on top.
+
+**E — Regression sweep**
+
+12. Upload handover proof on an ENDED auction. *Expect:* unchanged — uploads, then "Awaiting
+    admin approval".
+13. Open the auction list tabs (ALL / LIVE / SCHEDULED / ENDED / WON). *Expect:* unchanged.
+14. Re-run Flow 2a's step A2 (re-auction picker) to confirm this flow did not disturb it — both
+    flows edit `SellerAuctionsScreen`.
+
+### Not verified in this session
+
+- Nothing run on a device; no Android SDK here.
+- Step C8 (status call failing) is reasoned from the `null` branch, not observed.
+- The exact `GET /users/stripe-connect/status` response shape was confirmed only as far as
+  `onboardingComplete` (`users.service.ts:482,514`); the rest of the payload was not read.
+- The visual result of CLOSE NOW spanning the action row alone was not rendered — it is a
+  `flex: 1` button in a two-child row that now has one child, so it should fill, but that is
+  reasoning rather than a screenshot.
+- Step D10's chat route (`ChatScreen:454`) was grepped for its `buyerFee` value, not traced
+  through to the screen.
+
+**Next session:** Flow 3 — `parity/search-and-offer-contract`
+(BUY-022, BUY-006, BUY-017, BUY-007, BUY-008).

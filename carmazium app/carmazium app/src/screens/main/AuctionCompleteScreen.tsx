@@ -331,8 +331,15 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
           <View style={styles.header}>
             <View style={{ width: 38 }} />
             <View style={styles.headerCenter}>
-              <Text style={styles.headerLabelGreen}>PURCHASE COMPLETE</Text>
-              <Text style={styles.headerTitle}>Handover confirmed</Text>
+              {/* This read "PURCHASE COMPLETE / Handover confirmed", which the
+                  YOUR JOURNEY list directly below contradicts — it shows
+                  "Handover to be booked" and "Handover confirmed" as still
+                  outstanding, and no buyer-side action can ever complete them
+                  (`submitHandoverProof` is seller-only,
+                  `SellerAuctionsScreen.tsx:309`). What has actually happened at
+                  this point is the buyer fee clearing, nothing more (AUC-038). */}
+              <Text style={styles.headerLabelGreen}>PAYMENT COMPLETE</Text>
+              <Text style={styles.headerTitle}>Buyer fee paid</Text>
             </View>
             <View style={{ width: 38 }} />
           </View>
@@ -370,6 +377,10 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
             {[
               { label: 'Auction ended', done: true },
               { label: 'Buyer fee paid', done: true, bold: true },
+              // Both still outstanding at this point, and both are driven by
+              // the seller. Mobile has no live handover status card (AUC-020),
+              // so these stay static until that lands — but the header above no
+              // longer claims they are done.
               { label: 'Handover to be booked', done: false },
               { label: 'Handover confirmed', done: false },
             ].map((item, i, arr) => (
