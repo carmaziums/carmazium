@@ -145,7 +145,9 @@ export type MainStackParamList = {
   SellerProfile: { sellerId: string };
   SellerPerformance: undefined;
   PaymentHistory: undefined;
-  AcceptInvite: undefined;
+  // Was `undefined`, which is why the invite link could not be routed and the
+  // screen asked the user to paste it instead (AUTH-030).
+  AcceptInvite: { token?: string } | undefined;
   Watchlist: undefined;
 };
 

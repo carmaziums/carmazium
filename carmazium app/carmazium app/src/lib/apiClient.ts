@@ -1,4 +1,6 @@
 import { getAccessToken } from './supabase';
+import { emitAuthRedirect } from './authEvents';
+import { isOnline } from './network';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
 
@@ -76,6 +78,12 @@ export async function apiClient<T>(
   } catch (err: any) {
     clearTimeout(timeoutId);
     if (err?.name === 'AbortError') throw new Error('REQUEST_TIMEOUT');
+    // OFFLINE joins NO_SESSION / REQUEST_TIMEOUT / AUTH_REDIRECT as a
+    // sentinel screens can branch on (CROSS-015). Checked here rather than
+    // before the request: NetInfo can be wrong, and a request that actually
+    // succeeds should never be blocked by a stale reachability flag. Only
+    // once fetch has genuinely failed is 'you are offline' worth saying.
+    if (!isOnline()) throw new Error('OFFLINE');
     throw err;
   }
   clearTimeout(timeoutId);
@@ -91,6 +99,14 @@ export async function apiClient<T>(
     const message = normalizeErrorMessage(parsedBody, response.status, response.statusText);
 
     if (isAuthError(response.status, message)) {
+      // Tell the auth store the session is gone, then throw as before.
+      // Every caller already handles this sentinel (ChatContext, for
+      // instance, deliberately swallows it as expected) — but nothing
+      // navigated, so an expired session simply stopped the app working
+      // with no way back to Login (AUTH-014 / OQ-6). The emit is latched, so
+      // a screen firing five requests on focus triggers one teardown, not
+      // five.
+      emitAuthRedirect();
       throw new Error('AUTH_REDIRECT');
     }
 
