@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../store/authStore';
 import {
@@ -36,7 +36,15 @@ interface ChatContextType {
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
+  // Selectors, not `const { ... } = useAuthStore()`. The destructured form
+  // subscribes this provider to EVERY field in the auth store, so any
+  // unrelated write re-rendered it — and since ChatProvider wraps
+  // RootNavigator, and its context value is consumed across the app, that
+  // re-render propagated widely. CLAUDE.md calls this out as the app's worst
+  // perf bug twice over; this was another instance of it.
+  const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authLoading = useAuthStore((s) => s.isLoading);
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
@@ -96,7 +104,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Our own socket is down, so we no longer know who is online. Holding
         // the last known set would show stale green dots for as long as the
         // disconnection lasts — worse than showing nobody.
-        setOnlineUserIds(new Set());
+        setOnlineUserIds((prev) => (prev.size === 0 ? prev : new Set()));
       });
 
       socket.on('message:new', (message: ChatMessage) => {
@@ -113,13 +121,23 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // partner reads as offline until their next connect/disconnect — which
       // is exactly why the gateway sends it (`chat.gateway.ts:116-124`).
       socket.on('presence:snapshot', (data: { onlineUserIds?: string[] }) => {
-        setOnlineUserIds(new Set(data?.onlineUserIds ?? []));
+        const incoming = data?.onlineUserIds ?? [];
+        setOnlineUserIds((prev) => {
+          if (prev.size === incoming.length && incoming.every((id) => prev.has(id))) return prev;
+          return new Set(incoming);
+        });
       });
 
       // Incremental changes from then on (`chat.gateway.ts:110-113,162-166`).
       socket.on('presence:update', (data: { userId?: string; online?: boolean }) => {
         if (!data?.userId) return;
         setOnlineUserIds((prev) => {
+          // Return the SAME Set when the event tells us nothing new. A fresh
+          // Set on every event changes the context value's identity, which
+          // re-renders every consumer — including MessagesScreen's memoised
+          // row list — for a presence state that did not actually change.
+          const has = prev.has(data.userId!);
+          if (data.online === has) return prev;
           const next = new Set(prev);
           if (data.online) next.add(data.userId!);
           else next.delete(data.userId!);
@@ -244,7 +262,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const value: ChatContextType = {
+  // Memoised. Without this the object identity changed on EVERY provider
+  // render, so every useChat() consumer re-rendered whenever anything in here
+  // moved — a new message, an unread count tick, a silent rooms refresh — and
+  // ChatProvider wraps RootNavigator. All nine functions below are already
+  // useCallback'd, so the only things that legitimately change identity are
+  // the five state values.
+  const value = useMemo<ChatContextType>(() => ({
     rooms,
     unreadCount,
     onlineUserIds,
@@ -259,7 +283,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     onNewMessage,
     onTyping,
     onMessagesRead,
-  };
+  }), [
+    rooms, unreadCount, onlineUserIds, isConnected, isLoading,
+    refreshRooms, refreshUnreadCount, sendMessage, startTyping, stopTyping,
+    markAsRead, onNewMessage, onTyping, onMessagesRead,
+  ]);
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 };
