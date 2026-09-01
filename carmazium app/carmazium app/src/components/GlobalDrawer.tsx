@@ -140,7 +140,10 @@ const USER_ITEMS: MenuItem[] = [
     label: 'Watchlist',
     icon: 'heart-outline',
     iconLib: 'ion',
-    stackScreen: 'Watchlist',
+    // Points at the Saved tab, not the deleted WatchlistScreen. Saved is the
+    // live implementation over the same store — grid/list toggle, status
+    // badges — and WatchlistScreen was a second, thinner copy of it (BUY-021).
+    tabName: 'Saved',
   },
   {
     id: 'user-earnings',
@@ -200,17 +203,15 @@ const DEALER_ITEMS: MenuItem[] = [
     stackScreen: 'DealerInventory',
   },
   {
-    // Same screen the buyer/seller group's "Watchlist" entry (id:
-    // user-watchlist, above) already points at — the watchlist backend
-    // (GET/DELETE /watchlist) and WatchlistScreen.tsx are both role-agnostic,
-    // matching web's dealer wishlist page reusing the same endpoints rather
-    // than introducing a separate one. Dealers previously had no entry point
-    // to this screen at all.
+    // Same destination as the buyer/seller "Watchlist" entry above. The
+    // watchlist backend (GET/DELETE /watchlist) is role-agnostic, matching
+    // web's dealer wishlist page reusing the same endpoints rather than
+    // introducing a separate one. Both now land on the Saved tab.
     id: 'dealer-wishlist',
     label: 'Wishlist',
     icon: 'heart-outline',
     iconLib: 'ion',
-    stackScreen: 'Watchlist',
+    tabName: 'Saved',
   },
   {
     id: 'dealer-analytics',

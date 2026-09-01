@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../store/authStore';
 import { apiClient } from '../../lib/apiClient';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { getFeaturedListings } from '../../lib/listingsApi';
 import { getUnreadCount } from '../../lib/notificationsApi';
 import { Colors } from '../../constants/colors';
@@ -152,6 +153,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const firstName = user?.firstName || user?.email?.split('@')[0] || 'there';
   const displayName = user
@@ -171,6 +173,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const [period, setPeriod] = useState<'7d' | '30d'>('30d');
 
   const fetchData = useCallback(async () => {
+    setError(null);
     try {
       const [dashRes, featuredRes, unreadRes] = await Promise.allSettled([
         apiClient<BuyerDashResponse>(`/dashboard/buyer?period=${period}`),
@@ -180,6 +183,15 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
       if (dashRes.status === 'fulfilled' && dashRes.value?.success) {
         setDash(dashRes.value.data);
+        setError(null);
+      } else {
+        // The dashboard call is the one that drives every KPI tile. Under
+        // allSettled a rejection here never reached the catch, so a dead
+        // network rendered as a buyer with no offers, no bids and nothing
+        // spent (CROSS-025). Featured and unread are decorative by
+        // comparison and are allowed to fail quietly.
+        setDash(null);
+        setError('Could not load your dashboard.');
       }
       if (featuredRes.status === 'fulfilled' && featuredRes.value?.length > 0) {
         const f = featuredRes.value[0] as any;
@@ -189,7 +201,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
         setUnreadCount(unreadRes.value);
       }
     } catch {
-      // silently fail — show zeros
+      setError('Could not load your dashboard.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -262,6 +274,12 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
           />
         }
       >
+        {error ? (
+          <View style={{ marginBottom: 16 }}>
+            <ErrorBanner message={error} onRetry={fetchData} />
+          </View>
+        ) : null}
+
         {/* ── 1. Greeting ── */}
         <View style={styles.greetingSection}>
           <View style={styles.greetingTopRow}>
