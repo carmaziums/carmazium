@@ -1658,25 +1658,18 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </Text>
             </View>
 
-            {/* Seller action buttons */}
+            {/* Seller action buttons.
+                There was a RESERVE button here that opened an "Adjust Reserve
+                Price" prompt and, on confirm, showed "Reserve Updated — your
+                reserve price has been updated." It made **no API call**: the
+                seller's reserve was never touched, and they were told it was.
+                It could not have worked where it sat either — `PATCH
+                /auctions/:id` rejects anything not SCHEDULED
+                (`auctions.service.ts:434-436`) and this panel only renders on a
+                live auction. Removed rather than wired (AUC-016, decision P-4).
+                The reserve status bar above it stays — that part is real, reads
+                from live state, and web has no equivalent. */}
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity
-                style={[s.quickBidBtn, { flex: 1, backgroundColor: Colors.warningAlpha12, borderColor: Colors.warningAlpha30, borderWidth: 1 }]}
-                activeOpacity={0.8}
-                onPress={() =>
-                  Alert.alert(
-                    'Adjust Reserve Price',
-                    `Current reserve: ${fmt(reservePrice)}\n\nEnter a new reserve price to attract more bidders. Lowering the reserve may increase competition.`,
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Lower Reserve', onPress: () => Alert.alert('Reserve Updated', 'Your reserve price has been updated.') },
-                    ]
-                  )
-                }
-              >
-                <Text style={[s.quickBidBtnText, { color: Colors.warning }]}>RESERVE</Text>
-              </TouchableOpacity>
-
               <TouchableOpacity
                 style={[s.quickBidBtn, { flex: 1, backgroundColor: Colors.accentAlpha10, borderColor: Colors.accentAlpha25, borderWidth: 1 }, closingEarly && { opacity: 0.6 }]}
                 activeOpacity={0.8}

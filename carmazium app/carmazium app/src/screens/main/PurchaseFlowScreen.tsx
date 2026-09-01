@@ -31,8 +31,18 @@ export interface PurchaseFlowParams {
    * the auction buyer fee is a standalone charge of `buyerFee` alone.
    */
   salePrice: number;
-  /** Buyer platform fee in GBP (typically £95 for offers, £125 for auction wins) */
-  buyerFee?: number;
+  /**
+   * Buyer platform fee in GBP. **Required** — every caller must state the fee
+   * it is charging.
+   *
+   * This was optional with a £95 default, while web's constant is £125
+   * (`src/app/checkout/page.tsx:16`). All five live callers passed 125
+   * explicitly, so the £95 path was unreachable rather than actively
+   * mispricing anything — but it was one forgetful caller away from silently
+   * undercharging by £30 on a real payment. Making it required means the
+   * compiler catches that caller instead of the accounting (OQ-9 / BUY-028).
+   */
+  buyerFee: number;
   /** Display title for the listing */
   listingTitle: string;
   /** First image URL */
@@ -67,17 +77,21 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   // Nav params — graceful fallback so the screen never crashes if navigated bare
+  // Bare-navigation fallback so the screen cannot crash. The zero fee here is
+  // deliberate and safe: with no listingId the payment path is unusable anyway,
+  // and a visible £0 is a far better failure than a plausible-looking wrong
+  // charge (OQ-9).
   const params: PurchaseFlowParams = route?.params ?? {
     listingId: '',
     salePrice: 0,
     listingTitle: 'Vehicle',
-    buyerFee: 95,
+    buyerFee: 0,
   };
 
   const {
     listingId,
     salePrice,
-    buyerFee = 95,
+    buyerFee,
     listingTitle,
     listingImage,
     sellerName,

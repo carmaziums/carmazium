@@ -158,6 +158,13 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const [activeTab, setActiveTab] = useState<TabFilter>('ALL');
   const [navigating, setNavigating] = useState<string | null>(null);
 
+  // Stripe Connect payout readiness. A seller can otherwise complete a handover,
+  // get approved, and only then discover there is nowhere for the £100 bonus to
+  // go — web warns before the work, mobile did not (AUC-025). `null` means "not
+  // known yet" and shows nothing: a failed status call must not accuse a seller
+  // of missing setup they may well have.
+  const [payoutOnboarded, setPayoutOnboarded] = useState<boolean | null>(null);
+
   // Handover proof upload state — keyed by auctionId
   const [handoverUploading, setHandoverUploading] = useState<Record<string, boolean>>({});
   const [handoverUploaded, setHandoverUploaded] = useState<Record<string, boolean>>({});
@@ -290,6 +297,18 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       setNavigating(null);
     }
   };
+
+  // Same endpoint SettingsScreen reads (`SettingsScreen.tsx:266-274`).
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiClient<{ success: boolean; data: { onboardingComplete?: boolean } }>(
+          '/users/stripe-connect/status',
+        );
+        if (res?.success) setPayoutOnboarded(!!res.data?.onboardingComplete);
+      } catch { /* leave null — unknown, so say nothing */ }
+    })();
+  }, []);
 
   // ── Handover proof upload ──
   async function handleHandoverUpload(auctionId: string) {
@@ -987,6 +1006,21 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   <Text style={styles.handoverFeeValue}>£125</Text>
                 </View>
               </View>
+            )}
+            {/* Payout destination warning — before the handover work, not after
+                (AUC-025). Suppressed once the bonus has been released, since by
+                then it has demonstrably gone somewhere. */}
+            {payoutOnboarded === false && !item.sellerBonusReleased && (
+              <TouchableOpacity
+                style={styles.payoutSetupPill}
+                activeOpacity={0.8}
+                onPress={() => navigation?.navigate('Settings')}
+              >
+                <Ionicons name="alert-circle-outline" size={13} color={Colors.warning} />
+                <Text style={styles.payoutSetupText}>
+                  Payout method not set up — connect a bank account in Settings to receive your £100 after approval.
+                </Text>
+              </TouchableOpacity>
             )}
             {item.stripePayoutError ? (
               <View style={styles.payoutFailPill}>
@@ -2163,6 +2197,26 @@ const styles = StyleSheet.create({
   },
   payoutFailText: {
     color: Colors.paleRed_fca5a5,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size12,
+    flex: 1,
+    lineHeight: 17,
+  },
+  // Warning, not error — nothing has failed yet; the seller is being told
+  // before they do the work. Mirrors the payoutFailPill shape in amber.
+  payoutSetupPill: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    backgroundColor: Colors.warningAlpha10,
+    borderWidth: 1,
+    borderColor: Colors.warningAlpha30,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  payoutSetupText: {
+    color: Colors.warning,
     fontFamily: FontFamily.medium,
     fontSize: FontSize.size12,
     flex: 1,
