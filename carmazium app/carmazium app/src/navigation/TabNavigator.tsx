@@ -20,13 +20,25 @@ import { LiveScreen } from '../screens/main/LiveScreen';
 import { SavedScreen } from '../screens/main/SavedScreen';
 import { DealerProfileScreen } from '../screens/main/DealerProfileScreen';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
+import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
 import { useAuthStore } from '../store/authStore';
 
 // Stable wrapper so the Profile tab's component prop never changes reference,
 // preventing React Navigation from unmounting + remounting the tab when role loads.
 const ProfileTabScreen: React.FC<any> = React.memo((props) => {
   const role = useAuthStore((s) => s.role);
-  return role === 'dealer' ? <DealerProfileScreen {...props} /> : <UnifiedDashboardScreen {...props} />;
+  // Buyers get the buyer-specific dashboard (DASH-004 / OQ-29). It was fully
+  // built and completely unreachable — zero navigate() call sites and absent
+  // from the drawer's 33 stackScreen targets — while carrying the richer tile
+  // set (Active Offers, Watching, Live Bids, Auctions Won, Total Spent) and the
+  // 7d/30d period toggle that the live screen lacks (DASH-005).
+  //
+  // Sellers keep UnifiedDashboard, which is where the inventory/revenue tiles
+  // live. A buyer-role user who also lists still reaches every seller screen
+  // from the drawer — only the tiles differ, not the access.
+  if (role === 'dealer') return <DealerProfileScreen {...props} />;
+  if (role === 'buyer') return <BuyerDashboardScreen {...props} />;
+  return <UnifiedDashboardScreen {...props} />;
 });
 
 export type TabParamList = {

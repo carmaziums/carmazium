@@ -28,6 +28,7 @@ Append-only session log. Read this first at the start of every session.
 | 6 — deep linking & offline | AUTH-020, AUTH-019, AUTH-030, CROSS-015/017 | 2026-09-01 | NEEDS_VERIFICATION (needs prebuild) |
 | 5 — account deletion | AUTH-033, DASH-030 | 2026-09-01 | NEEDS_VERIFICATION |
 | 8 — chat presence & support | DASH-023, DASH-024 | 2026-09-01 | NEEDS_VERIFICATION |
+| 9 — buyer dashboard merge | DASH-004, DASH-005, BUY-021 (+CROSS-025 part) | 2026-09-01 | NEEDS_VERIFICATION |
 
 ## Session log
 
@@ -2091,3 +2092,129 @@ other party) — it cannot be tested single-handed.
   avatar, any admin-specific affordances — is unverified.
 - Presence is surfaced on the thread list only. Web also shows it in the conversation header;
   that is a possible follow-up, not done here.
+
+---
+
+## Phase 3 (Phase D) — Flow 9: Buyer dashboard merge (2026-09-01)
+
+Branch `parity/buyer-dashboard-merge`, cut from `main`.
+Rows: **DASH-004, DASH-005, BUY-021** → `NEEDS_VERIFICATION`. **CROSS-025** partially closed.
+
+### A correction to BUY-021 — the screen was not dead
+
+BUY-021 and CROSS-021 both record `WatchlistScreen` as unreachable dead code, on the strength of
+`grep -rn "navigate('Watchlist'" src/` returning zero. It had **two** live routes:
+
+- the buyer/seller group's **Watchlist** entry (`GlobalDrawer.tsx:138-144`), and
+- the dealer **Wishlist** entry (`:204-213`).
+
+Both go through the drawer's variable `navigate('Main', { screen: item.stackScreen })` — the
+exact indirection CROSS-021 itself warns that greps miss. DASH-034 caught the dealer entry; the
+buyer/seller one went unrecorded, and OQ-29's "delete it, it's dead" was decided on that
+incomplete picture. Deleting it blind would have broken **two** live menu items.
+
+Raised with the repo owner before acting; they confirmed the deletion with both entries
+repointed. This is the second time this session that the drawer's variable navigation has
+hidden a live route — worth treating any future "unreachable screen" claim as unproven until
+the drawer's `stackScreen` and `tabName` lists have both been checked by hand.
+
+### What changed
+
+**DASH-004 / DASH-005 — `BuyerDashboardScreen` revived onto the live path.** `ProfileTabScreen`
+already branched dealer vs everyone-else, so this is one small change there: buyers get
+`BuyerDashboardScreen`, sellers keep `UnifiedDashboardScreen`, dealers keep `DealerProfileScreen`.
+The canonical buyer tile set is therefore the richer one — Active Offers, Watching, Live Bids,
+Auctions Won, Total Spent — and the 7d/30d period toggle becomes reachable for the first time,
+which is the buyer half of DASH-005.
+
+**Trade-off, stated up front rather than discovered later:** a buyer-role user who also lists
+will no longer see UnifiedDashboard's inventory and revenue tiles on the Profile tab. Every
+seller screen remains reachable from the drawer, so this changes which tiles are shown, not what
+can be reached. Owner chose this option with that risk named.
+
+**BUY-021 — `WatchlistScreen` deleted.** Both drawer entries repointed to the **Saved** tab via
+the drawer's existing `tabName` mechanism (already used elsewhere, so no new pattern). The
+screen file, its stack route and its `MainStackParamList` entry are all removed. `SavedScreen`
+is the live equivalent over the same store, with a grid/list toggle and status badges that
+`WatchlistScreen` lacked.
+
+**CROSS-025 — fixed in `BuyerDashboardScreen` in the same commit**, as that row required, so the
+screen was never live with the defect. Its `/dashboard/buyer` call drives every KPI tile, and
+under `allSettled` a rejection never reached the catch — a dead network rendered as a buyer with
+no offers, no bids and nothing spent. Featured-listing and unread-count failures still pass
+quietly, being decorative by comparison. The eight list screens in CROSS-025 remain outstanding.
+
+Four files changed, one deleted: `navigation/TabNavigator.tsx`,
+`navigation/MainStackNavigator.tsx`, `components/GlobalDrawer.tsx`,
+`screens/buyer/BuyerDashboardScreen.tsx`, and `screens/main/WatchlistScreen.tsx` (deleted).
+
+### Quality gates
+
+```
+$ npx tsc --noEmit    22 errors, all @types/jest. Errors elsewhere: 0.
+$ npx eslint <the four changed files>   exit=0, clean.
+$ npm run lint        24 problems (11 errors, 13 warnings) — the merged baseline.
+```
+
+tsc passing is worth more than usual here: it is what proves the deleted screen had no
+remaining referenced import, route or param-list entry.
+
+### Manual test script
+
+**A — Buyer dashboard (DASH-004, DASH-005)**
+
+1. Sign in as a **buyer** and open the Profile tab.
+   *Expect:* the richer dashboard — ACTIVE OFFERS, WATCHING, LIVE BIDS, AUCTIONS WON and a
+   full-width TOTAL SPENT — not the old four-tile overview.
+2. *Expect:* a **7D / 30D toggle**. Switch it.
+   *Expect:* Total Spent re-queries and the sublabel changes between "last 7 days" and "last 30
+   days".
+3. Sign in as a **seller**. *Expect:* the Profile tab is **unchanged** — the old
+   UnifiedDashboard with inventory and revenue tiles.
+4. Sign in as a **dealer**. *Expect:* unchanged — DealerProfile.
+5. As a buyer, check the drawer still lists My Listings, Earnings and the other seller entries.
+   *Expect:* present and working. This is the mitigation for the trade-off above; if these are
+   missing, the trade-off is worse than described.
+
+**B — Watchlist deletion (BUY-021) — the regression risk**
+
+6. As a **buyer/seller**, open the drawer and tap **Watchlist**.
+   *Expect:* the **Saved tab** opens, showing saved cars with the grid/list toggle. **Fail if
+   nothing happens or the app errors** — that would mean the route was deleted without the entry
+   being repointed.
+7. As a **dealer**, open the drawer and tap **Wishlist**.
+   *Expect:* the same Saved tab. This is the second entry the audit did not record.
+8. Save a car from a listing, then reach it by both routes above. *Expect:* it appears in both.
+9. Tap the Saved **bottom tab** directly. *Expect:* unchanged from before.
+
+**C — Error state (CROSS-025)**
+
+10. As a buyer, turn on airplane mode and pull to refresh the Profile tab.
+    *Expect:* a red error banner with **Try again**, and **not** a confident set of zeros.
+11. Reconnect, tap Try again. *Expect:* real numbers return.
+12. Sign in as a **brand-new buyer with no offers, bids or purchases**, on a good connection.
+    *Expect:* zeros and empty states with **no error banner** — the same
+    emptiness-is-not-failure check as Flow 7.
+
+**D — Regression sweep**
+
+13. Navigate the whole drawer, every entry, on each role. *Expect:* no dead taps — this flow
+    removed a route that two entries pointed at.
+14. Deep link `carmazium://` to any route. *Expect:* unaffected; `Watchlist` was never in the
+    linking config.
+
+### Not verified in this session
+
+- Nothing run on a device; no Android SDK here.
+- **Steps B6/B7 are the highest-risk in this flow.** Deleting a route that live menu items point
+  at is exactly the failure this flow was at risk of, and `tabName` navigation for these two
+  entries has not been exercised — only read.
+- `BuyerDashboardScreen` was read only around its fetch, tiles and toggle. The rest of its 624
+  lines — hot deal card, recent activity rows, any navigation out of it — was **not** reviewed,
+  and it has never run in production, so it may carry defects the audit never had reason to
+  find. It is the first time this screen will execute at all.
+- I did not compare `BuyerDashboardScreen`'s navigation targets against the current
+  `MainStackParamList`; a stale route name inside a screen that has never run would only surface
+  at tap time.
+- `SavedScreen` was not read this session; step B8's "appears in both" rests on both reading the
+  same watchlist store, which BUY-021 records.

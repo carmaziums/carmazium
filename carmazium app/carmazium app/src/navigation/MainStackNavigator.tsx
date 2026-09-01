@@ -52,7 +52,6 @@ import { PaymentHistoryScreen } from '../screens/account/PaymentHistoryScreen';
 import { SellerListingsScreen } from '../screens/seller/SellerListingsScreen';
 import { SellerAuctionsScreen } from '../screens/seller/SellerAuctionsScreen';
 import { AcceptInviteScreen } from '../screens/main/AcceptInviteScreen';
-import { WatchlistScreen } from '../screens/main/WatchlistScreen';
 import { CarListing } from '../data/listings';
 import { Colors } from '../constants/colors';
 
@@ -148,7 +147,6 @@ export type MainStackParamList = {
   // Was `undefined`, which is why the invite link could not be routed and the
   // screen asked the user to paste it instead (AUTH-030).
   AcceptInvite: { token?: string } | undefined;
-  Watchlist: undefined;
 };
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -325,7 +323,6 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="SellerPerformance" component={SellerPerformanceScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PaymentHistory" component={PaymentHistoryScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="AcceptInvite" component={AcceptInviteScreen} options={{ animation: 'slide_from_bottom' }} />
-      <Stack.Screen name="Watchlist" component={WatchlistScreen} options={{ animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };
