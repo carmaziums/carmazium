@@ -10,6 +10,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CarListing } from '../../data/listings';
+import { CAR_MAKES } from '../../data/carData';
 import { searchListings } from '../../lib/listingsApi';
 import { naturalLanguageSearch } from '../../lib/aiApi';
 import { HorizontalVehicleCard } from '../../components/HorizontalVehicleCard';
@@ -57,7 +58,13 @@ const QUICK_FILTERS: QuickFilter[] = [
   { id: 'manual',    label: 'Manual',       params: { transmission: 'MANUAL' } },
 ];
 
-const MAKES = ['BMW', 'Audi', 'Mercedes', 'Volkswagen', 'Ford', 'Toyota', 'Honda', 'Porsche', 'Range Rover', 'Tesla'];
+// The ten shown before any search is typed. The full list is CAR_MAKES (71
+// entries, byte-identical to web's `src/lib/carData.ts` — checked, no
+// difference in either direction), which mobile already shipped and this screen
+// simply never used: any make outside these ten was unfilterable (BUY-007).
+// Web solves the same problem with a text input over a datalist; this is the
+// native equivalent.
+const POPULAR_MAKES = ['BMW', 'Audi', 'Mercedes', 'Volkswagen', 'Ford', 'Toyota', 'Honda', 'Porsche', 'Range Rover', 'Tesla'];
 // Display labels only — the backend's FuelType enum uses different casing/wording
 // for several of these ('Plug-in Hybrid' -> 'PLUGIN_HYBRID', 'Hydrogen' ->
 // 'HYDROGEN_CELL', etc.), so FUEL_MAP below must run before any of these reach the
@@ -109,6 +116,9 @@ const YEAR_OPTS = ['Any', '2015', '2017', '2019', '2020', '2021', '2022', '2023'
 const YEAR_OPTS_MAX = ['Any', '2016', '2018', '2020', '2021', '2022', '2023', '2024'];
 const MILES_OPTS = ['Any', '10k', '20k', '30k', '40k', '60k', '80k', '100k'];
 const MILES_OPTS_MIN = ['Any', '5k', '10k', '20k', '30k', '40k', '60k', '80k'];
+// All eight values web offers (`src/app/search/page.tsx:59-68`). CAT_C and CAT_D
+// were missing, so those write-off categories could not be filtered on mobile
+// at all (BUY-008).
 const CONDITIONS = [
   { id: 'EXCELLENT', label: 'Excellent' },
   { id: 'GOOD',      label: 'Good' },
@@ -116,6 +126,21 @@ const CONDITIONS = [
   { id: 'POOR',      label: 'Poor' },
   { id: 'CAT_S',     label: 'Cat S' },
   { id: 'CAT_N',     label: 'Cat N' },
+  { id: 'CAT_C',     label: 'Cat C' },
+  { id: 'CAT_D',     label: 'Cat D' },
+];
+
+// Values are `TransmissionType` members (`backend/prisma/schema.prisma:49-56`);
+// labels are display-only. Mobile used to send `SEMI_AUTO`, which is **not** a
+// member of that enum — and `transmissions` has `@IsArray()` but no per-item
+// `@IsEnum` (`listing-filter.dto.ts:92-96`), so the bad value passed validation
+// and reached Prisma unchecked. `CVT` was missing entirely, making CVT vehicles
+// unreachable through this filter (BUY-006).
+const TRANSMISSIONS = [
+  { id: 'AUTOMATIC',      label: 'Automatic' },
+  { id: 'MANUAL',         label: 'Manual' },
+  { id: 'SEMI_AUTOMATIC', label: 'Semi-Automatic' },
+  { id: 'CVT',            label: 'CVT' },
 ];
 // Mirrors web's src/app/search/page.tsx exactly — same doors/seats quick-select
 // values, same Euro Standard options, same 18-item features checklist.
@@ -161,6 +186,16 @@ export const SearchScreen: React.FC = () => {
   // ── Filter modal state ──
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedMakes, setSelectedMakes] = useState<string[]>([]);
+  // Make filter query. Empty shows the popular ten; typing filters all 71 so a
+  // make outside the popular set is reachable (BUY-007). A selected make is
+  // always kept in the list, so it never disappears from view while active.
+  const [makeQuery, setMakeQuery] = useState('');
+  const makeQueryTrimmed = makeQuery.trim().toLowerCase();
+  const visibleMakes = makeQueryTrimmed
+    ? CAR_MAKES.filter(m => m.toLowerCase().includes(makeQueryTrimmed))
+    // Union, not concat: a selected make outside the popular ten must stay
+    // visible, or the active filter looks unset.
+    : Array.from(new Set([...POPULAR_MAKES, ...selectedMakes]));
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(route.params?.maxPrice ? Number(route.params.maxPrice) : 150000);
   const [selectedBody, setSelectedBody] = useState<string>(route.params?.bodyType ?? '');
@@ -222,7 +257,23 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => { listingsRef.current = listings; }, [listings]);
   const handleCardPress = useCallback((id: string) => {
     const item = listingsRef.current.find(l => l.id === id);
-    if (item) navigation.navigate('VehicleDetail', { listing: item });
+    if (!item) return;
+    // An AUCTION result used to open the retail detail screen like everything
+    // else, so filtering to Auction and tapping a result landed on the wrong
+    // screen with no bidding console (BUY-017). HomeScreen has always routed
+    // auctions correctly (`HomeScreen.tsx:418-419`); search could not, because
+    // `GET /listings` did not return the auction id. It does now.
+    //
+    // Falls through to retail detail when the id is absent rather than blocking
+    // the tap: an auction-typed listing whose auction has not been created yet
+    // is a real state, and the retail screen renders it acceptably.
+    if (item.listingType === 'AUCTION' && item.auction?.id) {
+      navigation.navigate('LiveAuctionDetailed', {
+        listing: { ...item, auctionId: item.auction.id },
+      });
+      return;
+    }
+    navigation.navigate('VehicleDetail', { listing: item });
   }, [navigation]);
   const renderListingItem = useCallback(
     ({ item }: { item: CarListing }) => <HorizontalVehicleCard listing={item} onPress={handleCardPress} />,
@@ -756,28 +807,47 @@ export const SearchScreen: React.FC = () => {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.modalBody}>
 
-              {/* Make */}
+              {/* Make — type to filter the full 71-make list, otherwise the ten
+                  popular ones. Selection stays single-value: the backend has no
+                  `makes[]` param, buildParams() only ever sent selectedMakes[0],
+                  so a second chip silently did nothing. */}
               <Text style={s.filterLabel}>MAKE</Text>
-              <View style={s.chipGrid}>
-                {MAKES.map(m => (
-                  <TouchableOpacity
-                    key={m}
-                    style={[s.filterChip, selectedMakes.includes(m) && s.filterChipActive]}
-                    // Was a multi-select toggle, but the backend's Make filter
-                    // only ever accepts one value (no `makes` array param
-                    // exists) — buildParams() only ever sent selectedMakes[0],
-                    // so picking a 2nd/3rd chip silently did nothing. Single-
-                    // select here is honest about what actually filters,
-                    // matching how Body Type already behaves in this screen.
-                    onPress={() => setSelectedMakes(prev => prev.includes(m) ? [] : [m])}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[s.filterChipText, selectedMakes.includes(m) && s.filterChipTextActive]}>
-                      {m}
-                    </Text>
+              <View style={s.makeSearchBox}>
+                <Ionicons name="search" size={14} color={Colors.iconMuted} />
+                <TextInput
+                  style={s.makeSearchInput}
+                  placeholder="Search all makes"
+                  placeholderTextColor={Colors.iconMuted}
+                  value={makeQuery}
+                  onChangeText={setMakeQuery}
+                  autoCorrect={false}
+                  autoCapitalize="words"
+                  returnKeyType="search"
+                />
+                {makeQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setMakeQuery('')} activeOpacity={0.7} accessibilityLabel="Clear make search">
+                    <Ionicons name="close-circle" size={15} color={Colors.iconMuted} />
                   </TouchableOpacity>
-                ))}
+                )}
               </View>
+              {visibleMakes.length === 0 ? (
+                <Text style={s.makeEmptyText}>No makes match “{makeQuery.trim()}”</Text>
+              ) : (
+                <View style={s.chipGrid}>
+                  {visibleMakes.map(m => (
+                    <TouchableOpacity
+                      key={m}
+                      style={[s.filterChip, selectedMakes.includes(m) && s.filterChipActive]}
+                      onPress={() => setSelectedMakes(prev => prev.includes(m) ? [] : [m])}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[s.filterChipText, selectedMakes.includes(m) && s.filterChipTextActive]}>
+                        {m}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
 
               <View style={s.divider} />
 
@@ -912,21 +982,21 @@ export const SearchScreen: React.FC = () => {
               {/* Transmission — multi-select, mirrors the fuel-types chip pattern */}
               <Text style={s.filterLabel}>TRANSMISSION</Text>
               <View style={s.chipGrid}>
-                {['AUTOMATIC', 'MANUAL', 'SEMI_AUTO'].map(t => {
-                  const selected = transmissions.includes(t);
+                {TRANSMISSIONS.map(t => {
+                  const selected = transmissions.includes(t.id);
                   return (
                     <TouchableOpacity
-                      key={t}
+                      key={t.id}
                       style={[s.filterChip, selected && s.filterChipActive]}
                       onPress={() =>
                         setTransmissions(prev =>
-                          prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t],
+                          prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id],
                         )
                       }
                       activeOpacity={0.7}
                     >
                       <Text style={[s.filterChipText, selected && s.filterChipTextActive]}>
-                        {t.replace('_', ' ')}
+                        {t.label}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -1429,6 +1499,31 @@ const s = StyleSheet.create({
 
   filterLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 1.5, marginBottom: 14 },
   divider: { height: 1, backgroundColor: Colors.whiteAlpha05, marginVertical: 20 },
+  makeSearchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.whiteAlpha04,
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
+    borderRadius: Radius.inline,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 10,
+  },
+  makeSearchInput: {
+    flex: 1,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size14,
+    color: Colors.white,
+    padding: 0,
+  },
+  makeEmptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size12,
+    color: Colors.iconMuted,
+    paddingVertical: 6,
+  },
   chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   filterChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
   filterChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },

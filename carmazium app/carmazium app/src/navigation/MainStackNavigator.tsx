@@ -76,7 +76,12 @@ const GatedDealerFinanceScreen = withDealerGate(DealerFinanceScreen);
 export type MainStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
   VehicleDetail: { listing: CarListing };
-  LiveAuctionDetailed: { listing: CarListing };
+  // `auctionId` is what `AuctionDetailScreen` actually reads to find its auction
+  // (`AuctionDetailScreen.tsx:261`), but the param was typed as a bare
+  // CarListing, so every caller reached it through an `as any` cast
+  // (`auctionToListingParam` returns `CarListing & { auctionId }` and casts).
+  // Typed honestly now that search also routes here (BUY-017).
+  LiveAuctionDetailed: { listing: CarListing & { auctionId?: string } };
   Search: undefined;
   Messages: undefined;
   ChatScreen: { threadId: string };

@@ -187,7 +187,10 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // Dynamic States for Make an Offer
   const [offerModalVisible, setOfferModalVisible] = useState(false);
-  const [offerAmount, setOfferAmount] = useState(listing.price - 2500);
+  // Prefilled at 90% of asking, matching web (`VehicleDetailsPageClient.tsx:118`).
+  // Was a flat `price - 2500`, which on a cheap car could open the modal already
+  // below the 70% floor (BUY-022).
+  const [offerAmount, setOfferAmount] = useState(Math.round(listing.price * 0.9));
   const [offerSubmitted, setOfferSubmitted] = useState(false);
   const [isSubmittingOffer, setIsSubmittingOffer] = useState(false);
 
@@ -311,10 +314,19 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     savedTranslateX.value = target;
   };
 
-  // Floor matches the pre-existing behavior; ceiling is new — the ± steppers
-  // previously had no upper bound at all, so repeatedly tapping "+" could
-  // push an offer arbitrarily above the asking price.
-  const OFFER_MIN = listing.price - 15000;
+  // Floor is the backend's rule, not a local one: `POST /offers` rejects
+  // anything below `Math.floor(askingPrice * 0.7)`
+  // (`backend/src/offers/offers.service.ts:55-64`), and web mirrors that exactly
+  // (`VehicleDetailsPageClient.tsx:115-116`).
+  //
+  // This used to be an absolute `price - 15000` window, which diverged from the
+  // contract in both directions (BUY-022): on a £10k car the floor went
+  // *negative*, so the app happily submitted offers the server then rejected
+  // with a generic alert; on a £100k car the floor was £85k, silently blocking
+  // offers down to £70k that the backend would have accepted.
+  //
+  // Ceiling is a local UX rule — the ± steppers otherwise had no upper bound.
+  const OFFER_MIN = Math.floor(listing.price * 0.7);
   const OFFER_MAX = listing.price;
   const clampOffer = (v: number) => Math.min(OFFER_MAX, Math.max(OFFER_MIN, v));
 
@@ -1874,7 +1886,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Text style={styles.offerLimitHint}>You've reached the asking price</Text>
               )}
               {offerAmount <= OFFER_MIN && (
-                <Text style={styles.offerLimitHint}>You've reached the minimum offer we'll forward</Text>
+                <Text style={styles.offerLimitHint}>
+                  Minimum offer is {formatPrice(OFFER_MIN)} — 70% of the asking price
+                </Text>
               )}
             </View>
 
@@ -3091,7 +3105,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.warningAlpha30,
   },
   statusBannerSold: {
-    backgroundColor: 'rgba(239,68,68,0.10)',
+    backgroundColor: Colors.errorAlpha10, // was a raw rgba literal with an existing token (CROSS-004 lint rule)
     borderColor: 'rgba(239,68,68,0.32)',
   },
   statusBannerText: {

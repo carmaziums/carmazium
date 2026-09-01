@@ -140,6 +140,12 @@ export interface CarListing {
   wheelplan?: string | null;
   typeApproval?: string | null;
   monthOfFirstRegistration?: string | null;
+  /** 'CLASSIFIED' | 'AUCTION'. Present on every listing response; used to route
+   *  an auction result to the auction screen rather than retail detail (BUY-017). */
+  listingType?: string | null;
+  /** The listing's own auction, when it has one — not to be confused with
+   *  `linkedListing.auction`, which is the *other* half of a retail/auction pair. */
+  auction?: { id: string; status: string; endTime: string } | null;
   isSellerVerified?: boolean;
   totalSales?: number | null;
   viewCount?: number;

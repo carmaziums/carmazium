@@ -513,7 +513,17 @@ export class ListingsService {
                                 }
                             }
                         }
-                    }
+                    },
+                    // A result row carries `type: 'AUCTION'` but previously nothing
+                    // that identified *which* auction, so no client could route an
+                    // auction result to its auction — mobile opened every result in
+                    // the retail detail screen, and web links every result to
+                    // /buy-cars/[slug] for the same reason (BUY-017). There is no
+                    // by-listing auction endpoint to look it up with either.
+                    // Scalars only, no bids, so this adds one join and no N+1.
+                    auction: {
+                        select: { id: true, status: true, endTime: true },
+                    },
                 }
             }),
             this.prisma.listing.count({ where }),
