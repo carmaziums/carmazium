@@ -29,6 +29,7 @@ Append-only session log. Read this first at the start of every session.
 | 5 — account deletion | AUTH-033, DASH-030 | 2026-09-01 | NEEDS_VERIFICATION |
 | 8 — chat presence & support | DASH-023, DASH-024 | 2026-09-01 | NEEDS_VERIFICATION |
 | 9 — buyer dashboard merge | DASH-004, DASH-005, BUY-021 (+CROSS-025 part) | 2026-09-01 | NEEDS_VERIFICATION |
+| 10 — profile completion prompt | DASH-003 | 2026-09-01 | NEEDS_VERIFICATION |
 
 ## Session log
 
@@ -2218,3 +2219,122 @@ remaining referenced import, route or param-list entry.
   at tap time.
 - `SavedScreen` was not read this session; step B8's "appears in both" rests on both reading the
   same watchlist store, which BUY-021 records.
+
+---
+
+## Phase 3 (Phase D) — Flow 10: Profile completion prompt (2026-09-01)
+
+Branch `parity/profile-completion-prompt`, cut from `main`.
+Row: **DASH-003** → `NEEDS_VERIFICATION`.
+
+### A deliberate divergence from web, decided rather than drifted into
+
+Web's `ProfileCompletionGate` is a **non-dismissible** modal covering the entire dashboard until
+`firstName`, `lastName` and (for non-dealers) `phone` are set. Porting it faithfully would have
+been the obvious reading of this row.
+
+Mobile has already faced this exact class of problem and gone the other way, with the reasoning
+written into the file: `LocationPromptSheet` handles missing location/postcode as a **dismissible
+nudge** because "blocking an existing user out of the app over a field they were never asked for
+would be a far worse outcome than a missing postcode".
+
+That argument applies with more force to a phone number — an existing seller mid-sale should not
+be locked out of their own dashboard over one. Raised with the repo owner, who chose the
+dismissible prompt. **This is an intentional divergence, not an incomplete port**, and it is
+recorded as such on DASH-003 so a later reader does not "finish the job" by hard-gating it.
+
+### What was built
+
+`ProfileCompletionPromptSheet`, mirroring `LocationPromptSheet` deliberately closely — same
+bottom-sheet shape, same once-per-session module-scope dismissal (so it resets on relaunch
+rather than retiring forever after one tap), same "not shown mid-onboarding" guard, same
+direct-store-update-instead-of-refetch on save.
+
+Differences from the location prompt, each for a reason:
+
+- **Dealers are exempt from the phone requirement**, matching web
+  (`ProfileCompletionGate.tsx:26`) — they supply a dealer phone separately through the dealer
+  profile. Read from `accountRole`, not `role`, so a dealer previewing as a buyer is not suddenly
+  asked for a personal phone number.
+- **The fields shown are only the missing ones**, and the blurb changes accordingly — asking for
+  a name that is already set would look broken.
+- **It defers to `LocationPromptSheet` when both would fire.** Two bottom sheets rendering
+  simultaneously stack badly. The location prompt is the older, already-shipping one, so it goes
+  first and this waits for the next session rather than fighting it for the screen. Worth knowing
+  when testing: an account missing *everything* will be asked about location this session and
+  name/phone the next.
+
+Two files: new `components/ProfileCompletionPromptSheet.tsx`, and `App.tsx` to mount it beside
+the existing prompt. No backend change, no new dependency.
+
+**Known trade-off:** users who keep dismissing stay incomplete, so phone coverage improves more
+slowly than a hard gate would achieve. That is the cost of the option chosen, and it is the right
+cost to pay here.
+
+### Quality gates
+
+```
+$ npx tsc --noEmit    22 errors, all @types/jest. Errors elsewhere: 0.
+$ npx eslint src/components/ProfileCompletionPromptSheet.tsx   exit=0, clean.
+$ npm run lint        24 problems (11 errors, 13 warnings) — the merged baseline.
+```
+
+### Manual test script
+
+Needs accounts in specific states, which is the awkward part — the prompt only appears for
+accounts that are *missing* something. Easiest via direct profile edits, or an older account.
+
+**A — The prompt appears when it should**
+
+1. An account with **no phone number** (non-dealer), past onboarding, with location and postcode
+   set. Sign in.
+   *Expect:* a "Complete your profile" sheet asking for a phone number only — no name fields,
+   since the name is already set.
+2. Enter a number, tap SAVE.
+   *Expect:* the sheet closes and the number is saved. Check Settings — the phone should be
+   there.
+3. Sign out and back in. *Expect:* **no prompt** — the field is now set.
+
+**B — Dismissal behaves like the location prompt**
+
+4. On another incomplete account, tap **Not now**.
+   *Expect:* the sheet closes and does not return for the rest of the session, however much you
+   navigate.
+5. Force-quit and reopen, still signed in.
+   *Expect:* it **asks again**. Once-per-session means per app run, not forever — if it never
+   returns, the dismissal is being persisted, which is wrong.
+
+**C — Exemptions and ordering**
+
+6. A **dealer** account with no personal phone. *Expect:* **no prompt** for phone. Dealers are
+   exempt.
+7. An account missing **name and phone**. *Expect:* both sets of fields in one sheet, with a
+   blurb mentioning both.
+8. **The ordering case:** an account missing location/postcode **and** name/phone.
+   *Expect:* the **location** prompt this session, and **only** that one — no second sheet
+   stacked behind or on top of it. Complete it, force-quit, reopen: *expect* the profile prompt
+   now.
+
+**D — It stays out of the way**
+
+9. A fully complete account. *Expect:* no prompt, ever.
+10. A brand-new signup going through post-signup onboarding.
+    *Expect:* no prompt during onboarding — that flow collects the name itself, and asking twice
+    would look broken.
+11. While the sheet is open, check the app underneath is still reachable by dismissing.
+    *Expect:* yes — this is a nudge, not a gate. **If it cannot be dismissed, the wrong option
+    got built.**
+
+### Not verified in this session
+
+- Nothing run on a device; no Android SDK here.
+- **Step C8 (the two-sheet ordering) is the one I would most want run.** The deferral is a
+  boolean check I reasoned about, not something I have seen; if it is wrong, the symptom is two
+  bottom sheets fighting for the screen, which would be obvious but ugly.
+- `PATCH /users/me` accepting `firstName`/`lastName`/`phone` in one call is taken from
+  `LocationPromptSheet`'s use of the same endpoint and web's gate doing the same; I did not
+  re-read the DTO this session. Given the backend rejects unknown properties, a wrong field name
+  here would fail loudly at step A2 rather than silently.
+- Whether any screen reads `user.phone` and would benefit immediately was not surveyed.
+- The prompt is mounted app-wide, like the location one, so it can appear over any screen. I did
+  not check how it looks over a modal-heavy screen such as the sell wizard.
