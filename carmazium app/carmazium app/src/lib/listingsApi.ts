@@ -30,6 +30,13 @@ export interface ApiListing {
   slug?: string;
   viewCount?: number;
   status?: string;
+  /** 'CLASSIFIED' | 'AUCTION' — a scalar on the Listing model, so it is on every
+   *  response including the search list. */
+  listingType?: string;
+  /** Now included on `GET /listings` as well as the detail route
+   *  (`listings.service.ts:518-525`), so a search result can be routed to its
+   *  auction rather than the retail detail screen (BUY-017). */
+  auction?: { id: string; status: string; endTime: string } | null;
   seller?: {
     id: string;
     firstName?: string;
@@ -296,6 +303,10 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
     importedSource:   l.importedSource   ?? null,
     linkedListingId:  l.linkedListingId  ?? null,
     linkedListing:    l.linkedListing    ?? null,
+    // Carried through so callers can tell an auction row from a retail one and
+    // route accordingly — both were being dropped here (BUY-017).
+    listingType:      (l as any).type ?? l.listingType ?? null,
+    auction:          l.auction          ?? null,
     deliveryAvailable:    l.deliveryAvailable    ?? false,
     deliveryMaxMiles:     l.deliveryMaxMiles     ?? null,
     deliveryPricePerMile: l.deliveryPricePerMile ?? null,

@@ -20,6 +20,7 @@ Append-only session log. Read this first at the start of every session.
 | 0 — baseline | — | 2026-09-01 | Done — tsc 22 / lint 25 recorded |
 | 1 — listing publish payment | SELL-005, SELL-006 (+SELL-033 logged) | 2026-09-01 | NEEDS_VERIFICATION |
 | 2a — auction correctness | AUC-029, AUC-030, AUC-012, AUC-022, AUC-004/017 | 2026-09-01 | NEEDS_VERIFICATION |
+| 3 — search & offer contract | BUY-022, BUY-006, BUY-017, BUY-007, BUY-008 | 2026-09-01 | NEEDS_VERIFICATION (incl. backend change) |
 
 ## Session log
 
@@ -906,3 +907,172 @@ short-scheduled auction if you can.
   `endTime`.
 
 **Next session:** Flow 2b — `parity/auction-truthfulness` (AUC-016, AUC-038, AUC-025, OQ-9).
+
+---
+
+## Phase 2 — Flow 3: Search and offer contract (2026-09-01)
+
+Branch `parity/search-and-offer-contract`, cut from `main` at `187b88a4`.
+Rows: **BUY-022, BUY-006, BUY-017, BUY-007, BUY-008** → `NEEDS_VERIFICATION`.
+
+**This flow contains the first backend change of Phase 2, explicitly approved before it was
+made.** Flow 2b is still unmerged on its own branch; it touches no file this flow touches.
+
+### Two findings that changed the work
+
+**BUY-017 was mis-framed, and the fix was not available client-side.** The row implies mobile
+diverges from web. It does not: web links *every* search result to `/buy-cars/${listing.slug}`
+regardless of listing type (`src/app/search/page.tsx:1191,1231`) — the row's web citation
+(`:969-983`) is the listing-type *filter*, not the routing. So web has the same gap.
+
+More importantly mobile *could not* have fixed it alone: `GET /listings` included only the
+`seller` relation (`listings.service.ts:503-517`), so a search result carried the `type` scalar
+but nothing identifying which auction, and no endpoint resolves an auction by listing id
+(`auctions.controller.ts` exposes `GET /auctions/:id` only). The existing linked-auction banner
+on the retail screen does not cover this — that is for retail↔auction *pairs*, not
+auction-typed listings. Raised as a blocker; the repo owner approved the backend change.
+
+**BUY-007 needed no new data at all.** `src/data/carData.ts` already ships `CAR_MAKES`, 71
+entries, which I diffed against web's `src/lib/carData.ts` — byte-identical, nothing missing in
+either direction. `SearchScreen` simply never imported it and hardcoded ten makes instead.
+
+### Changes
+
+**Backend (approved) — `backend/src/listings/listings.service.ts:518-525`.** `findAll` now
+includes `auction: { select: { id, status, endTime } }`. Scalars only, no bids, so it is one
+join and no N+1. Web receives the same field and could make the same routing fix.
+
+**BUY-022 (P0, money-adjacent).** `OFFER_MIN` is now `Math.floor(listing.price * 0.7)`
+(`VehicleDetailScreen.tsx:329`) instead of an absolute `price - 15000`, matching
+`offers.service.ts:55-64` and web. The old window diverged in both directions: negative floor on
+a £10k car (offers submitted, then rejected by the server with a generic alert), £85k floor on a
+£100k car (blocking offers the backend would have accepted down to £70k). Prefill moved from
+`price - 2500` to 90% of asking (`:193`), matching web — the flat figure could open the modal
+already below the floor on a cheap car. The floor hint now names the number and the rule
+(`:1890`). Mobile still sends only `amount`; the backend checks `amountMax ?? amount`, so the
+check lands on the right value. BUY-023 stays open and out of scope.
+
+**BUY-006.** `TRANSMISSIONS` constant separating enum values from labels
+(`SearchScreen.tsx:139-144`): `SEMI_AUTO` → `SEMI_AUTOMATIC`, `CVT` added. Labels are explicit
+rather than `t.replace('_',' ')`, which would have rendered "SEMI AUTOMATIC".
+
+**BUY-008.** `CAT_C` and `CAT_D` added (`:119-131`) — all eight of web's values.
+
+**BUY-007.** Type-to-filter field over `CAR_MAKES`, falling back to the ten popular makes when
+empty (`:67`, `:193-199`, `:1502-1524`) — the native equivalent of web's input-plus-datalist.
+A selected make outside the popular ten is unioned into the default list so an active filter
+never disappears. Selection stays single-value: the backend has no `makes[]` param and
+`buildParams` only ever sent `selectedMakes[0]`, which the existing comment already recorded.
+
+**BUY-017.** Mapper carries `type` and `auction` through (`listingsApi.ts:308-309`,
+`data/listings.ts`) — both were being dropped. `handleCardPress` routes an AUCTION result with a
+known auction id to `LiveAuctionDetailed` (`SearchScreen.tsx:264-280`), falling through to
+retail detail when the id is absent, since an auction-typed listing whose auction has not been
+created yet is a real state and the retail screen renders it acceptably.
+`MainStackParamList.LiveAuctionDetailed` now types `auctionId`, which
+`AuctionDetailScreen.tsx:261` has always read — every caller previously reached it through an
+`as any` cast.
+
+Six files: `backend/src/listings/listings.service.ts`, `screens/main/SearchScreen.tsx`,
+`screens/vehicle/VehicleDetailScreen.tsx`, `lib/listingsApi.ts`, `data/listings.ts`,
+`navigation/MainStackNavigator.tsx`. No new dependency.
+
+### Quality gates
+
+```
+$ npx tsc --noEmit            (mobile)
+exit=2 — 22 errors, all in src/components/__tests__/VehicleCard.test.tsx (@types/jest)
+Errors outside that file: 0.  Identical to the Flow 0 baseline.
+
+$ npx tsc --noEmit            (backend — first time this flow series has touched it)
+exit=2 — 3 errors: payments.controller.ts:62, sellers.service.ts:195,
+tasks/db-backup.service.ts:45. Confirmed pre-existing by stashing this change and
+re-running against HEAD: same 3. None in listings.service.ts.
+
+$ npm run lint
+exit=1 — 24 problems (11 errors, 13 warnings).
+**One better than the Flow 0 baseline of 25/12** — see below.
+```
+
+**The lint baseline moved, deliberately.** `VehicleDetailScreen.tsx:3108` had a raw
+`rgba(239,68,68,0.10)` where `Colors.errorAlpha10` exists. `CLAUDE.md` says to migrate token
+call sites in files you touch, and this flow opens that file, so it is fixed. **New baseline for
+Flow 4 onward: tsc 22 (mobile) / 3 (backend), lint 24 problems, 11 errors, 13 warnings.**
+
+### Manual test script
+
+**A — Offer floor (BUY-022, the P0)**
+
+1. Open a vehicle priced around **£10,000** and tap Make an Offer.
+   *Expect:* the field opens at **£9,000** (90%). The stated range floor is **£7,000**, not a
+   negative number. Tapping "−" repeatedly stops at £7,000.
+2. Try to submit at the floor. *Expect:* accepted by the server — no "Offer must be at least…"
+   alert. Previously the app allowed below-70% offers and the server rejected them.
+3. Open a vehicle priced around **£100,000**.
+   *Expect:* prefill £90,000, floor **£70,000** — previously £85,000, which blocked legitimate
+   offers. Step down to £70,000 and submit. *Expect:* accepted.
+4. At the floor, check the hint text. *Expect:* "Minimum offer is £X — 70% of the asking price",
+   naming the number.
+5. Tap "+" past the asking price. *Expect:* still capped at asking, unchanged from before.
+
+**B — Transmission and condition filters (BUY-006, BUY-008)**
+
+6. Open Refine Search → TRANSMISSION. *Expect:* four chips — Automatic, Manual,
+   **Semi-Automatic**, **CVT**. Labels read properly, not "SEMI AUTOMATIC".
+7. Select Semi-Automatic, apply. *Expect:* results, or a clean empty state — **no error, no
+   500**. Previously this sent an invalid enum value straight through to Prisma.
+8. Select CVT, apply. *Expect:* CVT vehicles are now reachable.
+9. CONDITION. *Expect:* eight chips including **Cat C** and **Cat D**. Filter on each.
+
+**C — Make filter (BUY-007)**
+
+10. Open Refine Search → MAKE. *Expect:* a search field above the chips, and the familiar ten
+    popular makes below it.
+11. Type "sko". *Expect:* **Skoda** appears. Select it, apply, confirm results are Skodas.
+12. Reopen the filter. *Expect:* Skoda is still visible and still selected, even though it is
+    not one of the popular ten — that is the union behaviour.
+13. Type nonsense ("zzz"). *Expect:* "No makes match "zzz"", not an empty void.
+14. Clear with the ✕. *Expect:* the popular ten return.
+15. Select a second make. *Expect:* it replaces the first — single-select, as before.
+
+**D — Auction routing (BUY-017) — needs the backend deployed**
+
+16. **Deploy the backend first.** Without it, `auction` is absent from search results and every
+    result opens retail detail — i.e. exactly the old behaviour, silently. Worth confirming that
+    fallback is harmless before deploying.
+17. Refine Search → Listing Type → **Auction**, apply, tap a result.
+    *Expect:* the **live auction screen** with the bidding console, countdown and bid history —
+    not the retail detail page.
+18. Tap a CLASSIFIED result. *Expect:* retail detail, unchanged.
+19. Tap an auction result from **Home** (the rails). *Expect:* unchanged — that path already
+    worked and this flow did not touch it.
+
+**E — Regression sweep**
+
+20. Run a normal text search, scroll to trigger pagination. *Expect:* unchanged; the tap handler
+    is still id-keyed via the ref, so cards should not re-render on scroll.
+21. Apply several filters at once and Reset. *Expect:* everything clears including the make
+    search field.
+
+### Not verified in this session
+
+- Nothing run on a device, and **the backend change is not deployed** — step D17 will not pass
+  until it is. Everything in D is untested against a live response.
+- I did not run a request against `GET /listings` to confirm the new `auction` field serialises
+  as expected; the change type-checks and the relation exists (`schema.prisma:697`), but the
+  wire shape is inferred, not observed.
+- `HorizontalVehicleCard.tsx` was not read this session. Pass 2 noted it was only read to L90
+  of 286, so an internal navigation inside the card still cannot be fully excluded — if step
+  D17 fails, that is the first place to look.
+- Backend deployment, migrations and whether web needs redeploying to pick up the extra field
+  were not investigated.
+- Step A2/A3 expectations about server acceptance are read from `offers.service.ts`, not from a
+  request I made.
+
+### Logged for the web app — not mobile parity work
+
+- Web now receives `auction` on `GET /listings` too, and could route auction search results to
+  `/auctions/live/[id]` instead of `/buy-cars/[slug]`. Same defect, same one-line data source.
+
+**Next session:** Flow 4 — `parity/session-and-auth` (AUTH-005, AUTH-013, AUTH-014, AUTH-034,
+AUTH-035, AUTH-003). Largest flow in the plan; split into 4a/4b if it does not fit.
