@@ -62,6 +62,20 @@ const MAX_PHOTOS = 100;
 /** The count worth coaching sellers toward, which is a different number and
  *  should not double as the tracker's maximum. */
 const RECOMMENDED_PHOTOS = 20;
+/** Hard minimum before a listing can be published. The backend rejects publish
+ *  with a 400 below this (`listings.service.ts:940-945`) and the guard runs
+ *  before the badge-tier branch, so it applies to auctions too, not just paid
+ *  classifieds. Web enforces the same number at its Media step
+ *  (`ListingWizard.tsx:611`). Mobile previously only blocked at zero, so a
+ *  seller with 1-9 photos was charged the listing fee and *then* had publish
+ *  400 on them (SELL-005). */
+const MIN_PHOTOS = 10;
+
+/** Shape returned by `POST /listings/:id/publish`
+ *  (`backend/src/listings/listings.service.ts:933`). `activated` is only true
+ *  when the listing was already ACTIVE — a DRAFT that publishes successfully
+ *  comes back as `{ activated: false, pendingReview: true }`. */
+type PublishResult = { activated: boolean; requiresPayment?: boolean; pendingReview?: boolean };
 
 const FUEL_TYPES = [
   { v: 'PETROL', l: 'Petrol' }, { v: 'DIESEL', l: 'Diesel' },
@@ -926,6 +940,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   const allImages = [...exteriorImages, ...interiorImages, ...damageImages];
 
+  // Step 2 (Media) is not field-validated like 1 and 3 — its only rule is the
+  // photo minimum, which is a count, not a touched field. Same shape as the
+  // helpers above so the Next button disables through one consistent path.
+  const step2HasErrors = (): boolean => allImages.length < MIN_PHOTOS;
+
   // ─── DVLA Auto-submit handler ─────────────────────────────────────────────────
 
   const handlePlateChange = (raw: string) => {
@@ -1182,6 +1201,18 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         return false;
       }
     }
+    if (s === 2) {
+      // Photo minimum. The Next button is already disabled below MIN_PHOTOS, so
+      // this is the belt-and-braces path (draft resume landing straight on a
+      // later step, hardware back/forward, any future caller of validateStep).
+      if (allImages.length < MIN_PHOTOS) {
+        Alert.alert(
+          'More Photos Needed',
+          `Listings need at least ${MIN_PHOTOS} photos before they can be published. You have ${allImages.length}.`,
+        );
+        return false;
+      }
+    }
     if (s === 3) {
       if (touchAndCheck(STEP3_FIELD_KEYS)) {
         stepScrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -1341,8 +1372,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // ─── Publish ─────────────────────────────────────────────────────────────────
 
   async function handlePublish() {
-    if (allImages.length === 0) {
-      Alert.alert('Photos Required', 'Please add at least one photo of the vehicle before publishing your listing.');
+    if (allImages.length < MIN_PHOTOS) {
+      // Was `=== 0`. The backend's publish guard is 10 and runs before the
+      // badge-tier branch, so anything below it used to reach the payment sheet
+      // and only fail afterwards (SELL-005).
+      Alert.alert(
+        'More Photos Needed',
+        `Listings need at least ${MIN_PHOTOS} photos before they can be published. You have ${allImages.length}. Go back to the Media step to add more.`,
+      );
       return;
     }
     setIsPublishing(true);
@@ -1501,11 +1538,22 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             );
             return;
           }
-          // Publish auction listing (no fee)
+          // Publish auction listing (no fee — auctions are the FREE tier).
+          // This used to swallow the failure entirely and announce "Auction
+          // Scheduled!" regardless. The backend's 10-photo guard runs before
+          // the FREE-tier branch (`listings.service.ts:940-945`), so a failure
+          // here means the auction was never submitted for review — the
+          // seller must be told, not congratulated (SELL-006).
           try {
             await apiClient(`/listings/${newListingId}/publish`, { method: 'POST' });
-          } catch {
-            // Non-fatal — listing still exists
+          } catch (pubErr: any) {
+            clearDraft();
+            Alert.alert(
+              'Auction saved, not yet submitted',
+              `${pubErr?.message || 'The auction could not be submitted for review.'} Open it from My Auctions to submit it.`,
+              [{ text: 'View Auctions', onPress: () => navigation?.navigate('SellerAuctions') }],
+            );
+            return;
           }
           haptics.success();
           clearDraft();
@@ -1524,35 +1572,82 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             [{ text: 'View Auctions', onPress: () => navigation?.navigate('SellerAuctions') }],
           );
         } else if (newListingId) {
-          // Classified listing: gate behind payment sheet for all tiers (BASIC=£1, STANDARD=£10, PREMIUM=£25)
-          let paid = false;
-          try {
-            paid = await triggerListingFeePayment(newListingId, badgeTier as 'BASIC' | 'STANDARD' | 'PREMIUM');
-          } catch (payErr: any) {
-            Alert.alert('Payment Failed', payErr.message || 'Could not process payment.');
-            return;
-          }
+          // Classified listing — publish first, pay only if the server asks for it.
+          //
+          // This used to run pay-then-publish: the seller was charged, publish
+          // then 400'd on the backend's 10-photo guard, and the failure `catch`
+          // had no `return` — so execution fell through to clearDraft() and a
+          // second alert reading "Published! / Your listing is now live."
+          // Charged, misinformed, draft gone (SELL-005 / SELL-006).
+          //
+          // The ordering below mirrors SellerListingsScreen.tsx's publish action,
+          // which already got this right: POST /publish reports back
+          // { activated, requiresPayment, pendingReview }, so the fee is only
+          // ever taken once the server has confirmed the listing is otherwise
+          // publishable.
+          const publish = () => apiClient<{ success: boolean; data: PublishResult }>(
+            `/listings/${newListingId}/publish`,
+            { method: 'POST' },
+          );
 
-          if (!paid) {
-            // User cancelled — listing exists as draft
-            Alert.alert('Payment cancelled', 'Your listing was saved as a draft. Complete payment to publish.');
-            return;
-          }
-
-          // Payment succeeded — publish the listing
-          haptics.success();
+          let first: { success: boolean; data: PublishResult };
           try {
-            await apiClient(`/listings/${newListingId}/publish`, { method: 'POST' });
-          } catch {
+            first = await publish();
+          } catch (pubErr: any) {
+            // No charge has happened at this point — say so plainly, and leave
+            // the draft alone so the seller can fix and retry.
             Alert.alert(
-              'Almost there!',
-              'Listing created but could not be published automatically. Visit "My Listings" to publish.',
+              'Could not publish',
+              `${pubErr?.message || 'The listing could not be submitted for review.'} You have not been charged. Your listing is saved as a draft in My Listings.`,
+              [{ text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') }],
             );
+            return;
           }
+
+          if (first?.data?.requiresPayment) {
+            let paid = false;
+            try {
+              paid = await triggerListingFeePayment(newListingId, badgeTier as 'BASIC' | 'STANDARD' | 'PREMIUM');
+            } catch (payErr: any) {
+              Alert.alert('Payment Failed', payErr.message || 'Could not process payment.');
+              return;
+            }
+
+            if (!paid) {
+              // User cancelled — listing exists as a draft, and is publishable
+              // as soon as they pay, so point them at where that happens.
+              Alert.alert('Payment cancelled', 'Your listing was saved as a draft. Publish it from My Listings to complete payment.');
+              return;
+            }
+
+            try {
+              await publish();
+            } catch (secondErr: any) {
+              // Charged but not submitted — this is the one state the seller
+              // must never be told is fine.
+              clearDraft();
+              Alert.alert(
+                'Payment received — listing not submitted',
+                `${secondErr?.message || 'The listing could not be submitted for review.'} Your payment went through; publish it again from My Listings and you will not be charged twice.`,
+                [{ text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') }],
+              );
+              return;
+            }
+          }
+
+          // Success. Note publishListing never returns activated:true for a
+          // DRAFT — every success path sets PENDING_REVIEW
+          // (`listings.service.ts:987-991,1030-1036`). The old copy promised
+          // "Your listing is now live", which was false even when nothing
+          // failed. The auction branch above was already corrected for exactly
+          // this; the classified branch had been left behind.
+          haptics.success();
           clearDraft();
           Alert.alert(
-            damageSaved ? 'Published!' : 'Published — damage details not saved',
-            damageSaved ? 'Your listing is now live.' : DAMAGE_SAVE_FAILED_MSG,
+            damageSaved ? 'Submitted for review' : 'Submitted — damage details not saved',
+            damageSaved
+              ? 'Your listing goes live once our team has reviewed it. We’ll notify you when it does.'
+              : DAMAGE_SAVE_FAILED_MSG,
             [{ text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') }],
           );
         }
@@ -2182,6 +2277,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   function renderStep2() {
     const tabImages = photoTab === 'Exterior' ? exteriorImages : photoTab === 'Interior' ? interiorImages : damageImages;
     const totalCount = allImages.length;
+    const belowMinimum = totalCount < MIN_PHOTOS;
+    const remaining = MIN_PHOTOS - totalCount;
 
     return (
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
@@ -2192,7 +2289,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             <Ionicons name="camera" size={14} color={Colors.accent} />
             <Text style={s.photoTrackerLabel}>Photo Tracker</Text>
           </View>
-          <Text style={s.photoTrackerCount}>{totalCount} / {MAX_PHOTOS}</Text>
+          {/* Below the minimum the count that matters is the one blocking Next,
+              not the tracker's ceiling — showing "3 / 100" while Next is
+              disabled tells the seller nothing about why. */}
+          <Text style={[s.photoTrackerCount, belowMinimum && s.photoTrackerCountShort]}>
+            {belowMinimum ? `${totalCount} / ${MIN_PHOTOS} MINIMUM` : `${totalCount} / ${MAX_PHOTOS}`}
+          </Text>
         </View>
         <View style={s.photoTrackerBar}>
           {/* Progress runs to MAX_PHOTOS, matching web (ListingWizard.tsx:1718).
@@ -2204,8 +2306,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               which is where it belonged. */}
           <View style={[s.photoTrackerFill, { width: `${Math.min((totalCount / MAX_PHOTOS) * 100, 100)}%` }]} />
         </View>
-        <Text style={s.photoTrackerHint}>
-          Aim for at least {RECOMMENDED_PHOTOS} photos. Cars with {RECOMMENDED_PHOTOS}+ photos sell on average 40% faster.
+        <Text style={[s.photoTrackerHint, belowMinimum && s.photoTrackerHintBlocking]}>
+          {belowMinimum
+            ? `Add ${remaining} more photo${remaining === 1 ? '' : 's'} to continue — listings need ${MIN_PHOTOS} to publish.`
+            : `Aim for at least ${RECOMMENDED_PHOTOS} photos. Cars with ${RECOMMENDED_PHOTOS}+ photos sell on average 40% faster.`}
         </Text>
 
         {/* Photo Category Tabs */}
@@ -3014,10 +3118,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             )}
             {step < totalSteps ? (
               <TouchableOpacity
-                style={[s.nextBtn, ((step === 1 && step1HasErrors()) || (step === 3 && step3HasErrors())) ? { opacity: 0.5 } : {}]}
+                style={[s.nextBtn, ((step === 1 && step1HasErrors()) || (step === 2 && step2HasErrors()) || (step === 3 && step3HasErrors())) ? { opacity: 0.5 } : {}]}
                 onPress={handleNext}
                 activeOpacity={0.8}
-                disabled={(step === 1 && step1HasErrors()) || (step === 3 && step3HasErrors())}
+                disabled={(step === 1 && step1HasErrors()) || (step === 2 && step2HasErrors()) || (step === 3 && step3HasErrors())}
               >
                 <Text style={s.nextBtnText}>
                   {step === 1 ? 'NEXT · MEDIA'
@@ -3162,6 +3266,10 @@ const s = StyleSheet.create({
   photoTrackerBar: { height: 4, backgroundColor: Colors.whiteAlpha10, borderRadius: 2, marginBottom: 8 },
   photoTrackerFill: { height: 4, backgroundColor: Colors.accent, borderRadius: 2 },
   photoTrackerHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted, marginBottom: 16 },
+  // Below the photo minimum the hint stops being coaching and becomes the
+  // reason Next is disabled, so it carries the warning colour instead of muted.
+  photoTrackerHintBlocking: { color: Colors.warning },
+  photoTrackerCountShort: { color: Colors.warning },
   photoTabs: { flexDirection: 'row', gap: 0, marginBottom: 14, backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, padding: 3 },
   photoTab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
   photoTabActive: { backgroundColor: Colors.accent },

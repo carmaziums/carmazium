@@ -17,6 +17,8 @@ Append-only session log. Read this first at the start of every session.
 
 | Flow | Matrix rows | Session date | Status |
 |---|---|---|---|
+| 0 — baseline | — | 2026-09-01 | Done — tsc 22 / lint 25 recorded |
+| 1 — listing publish payment | SELL-005, SELL-006 (+SELL-033 logged) | 2026-09-01 | NEEDS_VERIFICATION |
 
 ## Session log
 
@@ -599,3 +601,142 @@ them, which would shrink the baseline — say so explicitly when it happens rath
 the numbers drift silently.
 
 **Next session:** Flow 1 — `parity/listing-publish-payment` (SELL-005, SELL-006).
+
+---
+
+## Phase 2 — Flow 1: Listing publish payment path (2026-09-01)
+
+Branch `parity/listing-publish-payment`, cut from `main` (P-1).
+Rows: **SELL-005, SELL-006** → both `NEEDS_VERIFICATION`. One new row logged: **SELL-033**.
+
+**Scope confirmed by the repo owner before any code was written**, including two extensions
+beyond the two rows: the auction branch's silent publish failure, and a blocking photo counter
+on the Media step rather than a bare inline message.
+
+### What was wrong (all re-read in this session, not taken from the matrix)
+
+1. `handlePublish` gated at `allImages.length === 0` while the backend requires 10
+   (`listings.service.ts:940-945`). A seller with 1-9 photos reached the Stripe sheet.
+2. Order was create → pay → publish. The publish `catch` had **no `return`**, so a failed
+   publish fell through to `clearDraft()` and a second alert reading
+   "Published! / Your listing is now live."
+3. **Found in-session, beyond the matrix:** `publishListing` never returns `activated: true`
+   for a DRAFT — every success path sets `PENDING_REVIEW`
+   (`listings.service.ts:987-991,1030-1036`). So "Your listing is now live" was false *even
+   when nothing failed*. The auction branch had already been corrected for exactly this
+   (there is a comment at `SellCarFlowScreen.tsx:1533-1536` saying so); the classified branch
+   was left behind.
+4. **Also found in-session:** the backend's 10-photo guard runs *before* the
+   `badgeTier === 'FREE'` branch (`listings.service.ts:940` vs `:967`), so it applies to
+   auctions too. The auction branch swallowed publish failure (`catch {}` — "Non-fatal") and
+   then announced "Auction Scheduled!" for an auction that was never submitted for review.
+
+### What changed — `src/screens/sell/SellCarFlowScreen.tsx` only
+
+- `MIN_PHOTOS = 10` (`:64-72`) and a `PublishResult` type mirroring the endpoint (`:74-79`).
+- `step2HasErrors()` (`:943-946`) disables Next on the Media step below the minimum, using the
+  same shape as the existing `step1HasErrors` / `step3HasErrors` and wired into the same
+  footer condition (`:3121,3124`).
+- Photo tracker reads `N / 10 MINIMUM` in warning colour while short, and the coaching hint is
+  replaced by "Add N more photos to continue" (`:2266-2296`). Two new style entries; no raw
+  hex, no inline font sizes.
+- `validateStep(2)` blocks as a second path (`:1204-1214`) for draft-resume and hardware-back
+  entries that do not go through the footer button.
+- `handlePublish`'s own gate moved `=== 0` → `< MIN_PHOTOS` (`:1375-1383`).
+- Classified branch restructured to publish-first / pay-only-on `requiresPayment`
+  (`:1575-1653`), copied from `SellerListingsScreen.tsx:331-380`. Every failure path returns
+  and states the money position explicitly — "You have not been charged" before payment,
+  "Your payment went through… you will not be charged twice" after it.
+- Success copy is now "Submitted for review", matching what the backend actually did.
+- Auction branch surfaces publish failure instead of swallowing it (`:1540-1559`).
+
+**No other file was modified.** No backend change. No new dependency.
+
+### Quality gates
+
+```
+$ npx tsc --noEmit
+exit=2 — 22 errors, all in src/components/__tests__/VehicleCard.test.tsx (@types/jest)
+Errors outside that file: 0.  Identical to the Flow 0 baseline.
+
+$ npx eslint src/screens/sell/SellCarFlowScreen.tsx
+exit=0 — clean.
+
+$ npm run lint
+exit=1 — 25 problems (12 errors, 13 warnings). Identical to the Flow 0 baseline;
+none in the changed file.
+```
+
+### Manual test script
+
+Preconditions: a signed-in seller account, a Stripe test card, and a vehicle draft you are
+willing to discard. Auctions are FREE tier, classifieds are paid (BASIC £1 / STANDARD £10 /
+PREMIUM £25) — steps 4-8 involve a real test charge.
+
+**A — Photo minimum blocks before any charge (SELL-005)**
+
+1. Start a new listing, complete Step 1 Details, tap **NEXT · MEDIA**.
+   *Expect:* Media step. Tracker reads `0 / 10 MINIMUM` in amber. Hint reads "Add 10 more
+   photos to continue — listings need 10 to publish." **NEXT · PRICING is greyed out and does
+   nothing when tapped.**
+2. Add 3 photos.
+   *Expect:* tracker `3 / 10 MINIMUM`, hint "Add 7 more photos…". Next still disabled.
+3. Add 7 more (10 total).
+   *Expect:* tracker flips to `10 / 100` in the normal accent colour, hint reverts to the
+   "Aim for at least 20 photos…" coaching line, **Next is enabled.**
+4. Add one more photo, then delete photos back down to 9.
+   *Expect:* the counter and hint return to the blocking state and Next disables again.
+
+**B — Classified: publish succeeds (SELL-006)**
+
+5. With 10+ photos, complete Pricing (pick BASIC £1), reach Review, tap Publish.
+   *Expect:* the Stripe payment sheet appears **only after** a brief publish call — and on a
+   listing that meets every requirement it appears normally. Pay with the test card.
+   *Expect:* exactly **one** alert, titled **"Submitted for review"**, reading "Your listing
+   goes live once our team has reviewed it." **It must not say "now live".** Tap View Listings.
+6. In My Listings, find the listing.
+   *Expect:* status **PENDING_REVIEW**, not ACTIVE. (There is no PENDING_REVIEW tab on mobile
+   yet — SELL-022 — so check the ALL tab.)
+
+**C — Classified: payment cancelled**
+
+7. Start another listing with 10+ photos, reach Publish, and **dismiss the Stripe sheet**.
+   *Expect:* one alert, "Payment cancelled — Your listing was saved as a draft. Publish it
+   from My Listings to complete payment." **No "Published!" alert follows it.** The draft is
+   still in My Listings as DRAFT.
+
+**D — Classified: publish fails after payment (the regression this flow exists to prevent)**
+
+8. Hardest to stage; do it if you can. Force the second publish call to fail — e.g. put the
+   device in airplane mode in the moment between paying and the app returning.
+   *Expect:* one alert titled **"Payment received — listing not submitted"** which states the
+   payment went through and that publishing again will not double-charge.
+   **Fail the flow if you see "Published!", "now live", or two alerts in a row.**
+
+**E — Auction path**
+
+9. Create an AUCTION listing with **9** photos.
+   *Expect:* blocked at the Media step exactly as in A — the minimum is not classified-only.
+10. Create an AUCTION listing with 10+ photos and schedule it.
+    *Expect:* no payment sheet (auctions are FREE tier), and one alert
+    **"Auction Scheduled!"** → View Auctions shows it.
+11. If you can force the auction publish call to fail (airplane mode at the moment of
+    scheduling): *expect* **"Auction saved, not yet submitted"**, never "Auction Scheduled!".
+
+**F — Regression sweep**
+
+12. Resume a saved draft from the Media step. *Expect:* the counter reflects the restored photo
+    count and Next is disabled if under 10. (Note SELL-020: draft resume only restores 12
+    fields, so declarations will need re-entering — that is a known separate gap, not this flow.)
+13. Android hardware back from the Media step. *Expect:* steps back one, does not exit the flow.
+
+### Not verified in this session
+
+- Nothing was run on a device — this machine has no Android SDK. Every expectation above is
+  derived from code read in this session plus the backend contract, not from execution.
+- Step D's post-payment failure path is reasoned, not staged; it is the one branch I could not
+  exercise even in principle from here.
+- `triggerListingFeePayment` internals were not re-read this session; the restructure treats it
+  as the unchanged black box it already was.
+
+**Next session:** Flow 2a — `parity/auction-correctness` (AUC-029, AUC-012, AUC-022, AUC-017).
