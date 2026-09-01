@@ -11,6 +11,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Updates from 'expo-updates';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { linking } from './src/navigation/linking';
+import { OfflineBanner } from './src/components/OfflineBanner';
+import { startNetworkMonitor } from './src/lib/network';
 import { GlobalToastProvider } from './src/components/GlobalToastProvider';
 import { DrawerProvider } from './src/context/DrawerContext';
 import { GlobalDrawer } from './src/components/GlobalDrawer';
@@ -198,6 +200,10 @@ export default function App() {
   // refresh wherever the user happens to be.
   useEffect(() => subscribeToAuthChanges(), [subscribeToAuthChanges]);
 
+  // Reachability monitor (CROSS-015). Started once, for the life of the app,
+  // so apiClient's OFFLINE sentinel and the banner share one source of truth.
+  useEffect(() => startNetworkMonitor(), []);
+
   useEffect(() => {
     // Supabase auth callbacks only. Everything else routes through React
     // Navigation's `linking` config (navigation/linking.ts), whose `filter`
@@ -374,6 +380,9 @@ export default function App() {
               genuinely missing, and gates internally on being authenticated
               and past onboarding. */}
           <LocationPromptSheet />
+          {/* Above everything and outside the navigator, so it covers every
+              route including ones added later. Renders null when online. */}
+          <OfflineBanner />
         </DrawerProvider>
         <StatusBar style="light" />
       </NavigationContainer>

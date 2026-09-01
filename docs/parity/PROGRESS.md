@@ -22,6 +22,7 @@ Append-only session log. Read this first at the start of every session.
 | 2a — auction correctness | AUC-029, AUC-030, AUC-012, AUC-022, AUC-004/017 | 2026-09-01 | NEEDS_VERIFICATION |
 | 4a — signup role & onboarding flags | AUTH-005, AUTH-001 | 2026-09-01 | NEEDS_VERIFICATION |
 | 4b — session lifecycle | AUTH-013, AUTH-014, AUTH-034, AUTH-035 | 2026-09-01 | NEEDS_VERIFICATION |
+| 6 — deep linking & offline | AUTH-020, AUTH-019, AUTH-030, CROSS-015/017 | 2026-09-01 | NEEDS_VERIFICATION (needs prebuild) |
 
 ## Session log
 
@@ -1220,3 +1221,196 @@ most of these steps are about what should *not* happen.
 **Next session:** Flow 6 — `parity/deep-linking-and-offline` (AUTH-020, AUTH-019, AUTH-030 +
 CROSS-015, CROSS-017), the prebuild boundary. Flow 5 (account deletion) was moved after Flow 7
 by decision P-2.
+
+---
+
+## Phase 2 — Flow 6: Deep linking and offline (2026-09-01)
+
+Branch `parity/deep-linking-and-offline`, chained off `parity/session-lifecycle` (4b) — both
+edit `App.tsx` and `apiClient`.
+
+Rows: **AUTH-020, AUTH-019, AUTH-030, CROSS-015, CROSS-017** → `NEEDS_VERIFICATION`.
+
+**This is the prebuild boundary.** `app.json` changed and a native dependency was added, so
+none of this reaches a binary without `npx expo prebuild --clean --platform android` followed by
+a fresh build. `android/` is gitignored, so pulling this branch is not enough. Two commits,
+kept separately reviewable as planned: linking first, offline second.
+
+### AUTH-020 — a real linking config
+
+`NavigationContainer` had no `linking` prop at all, so React Navigation never routed an inbound
+URL and every deep link fell to one ad-hoc `expo-linking` listener that understood Supabase
+tokens and nothing else. New `src/navigation/linking.ts` holds the route map; its `filter`
+excludes auth-callback URLs so the config and the listener never both act on one link.
+
+**Two deliberate limits, both recorded rather than half-built:**
+
+1. **`VehicleDetail` and `LiveAuctionDetailed` are not linkable.** Both take a hydrated
+   `listing: CarListing` route param. A URL can only carry a slug or id, so mapping them would
+   hand the screen `{ slug }` where it reads `route.params.listing` — a crash on every inbound
+   vehicle link. Making them linkable means first giving them an id-only entry path that
+   self-fetches, which is a real change to two large screens and not this flow's job.
+2. **iOS App Links are not configured.** `app.json` gains the Android https intent filter for
+   `/auth/accept-invite`, but iOS needs `associatedDomains` *and* an
+   `apple-app-site-association` file served from `carmazium.com` — server-side work outside this
+   repo. So `https://` links open the app on **Android only**. The `carmazium://` scheme works
+   on both, as before.
+
+### AUTH-019 — the callback handler now covers web's branches
+
+Mobile handled two of seven: implicit tokens, and a bare PKCE exchange. No error branch, no
+rescue when the code had already been consumed, no timeout — so a failed or expired link left
+the user on the splash with no feedback, indistinguishable from a working link that did nothing.
+
+Now, in web's order: error param first; implicit tokens with recovery routing; PKCE with **both**
+rescues — the exchange-error path and the AbortError path each fall back to `getSession()`,
+because a session existing means success even when the exchange itself threw; and a 15s safety
+alert in place of web's 15s forced redirect, since mobile has nowhere to redirect to.
+
+**Those rescues matter more now than when the row was written.** Flow 4b added a global
+`onAuthStateChange` subscription (AUTH-013) — precisely the kind of listener that races the
+handler to consume the code, which is the same race web's own comments describe against its
+`AuthContext`. Adding AUTH-013 without these rescues would have made this worse, not better.
+
+### AUTH-030 — the invite link opens the app
+
+`AcceptInvite` takes `{ token?: string }`, the linking config maps `/auth/accept-invite` to it,
+and the screen auto-accepts when the token arrives by link — matching web, which accepts
+straight from its `?token=` param with no extra tap.
+
+**The paste field stays.** With iOS App Links unconfigured, pasting is still the only route on
+iOS, so removing it would have broken the flow on one platform to tidy the other.
+
+### CROSS-015 / CROSS-017 — offline, minimum viable
+
+`@react-native-community/netinfo` 11.4.1, `src/lib/network.ts`, an `OfflineBanner` mounted once
+above the navigator, and an `OFFLINE` sentinel in `apiClient` joining `NO_SESSION` /
+`REQUEST_TIMEOUT` / `AUTH_REDIRECT`. **Scope is OQ-28's minimum: no request queueing, no cached
+reads.** Both change what "saved" and "up to date" mean app-wide and were held for a separate
+discussion.
+
+Three judgement calls:
+
+- **The monitor starts optimistic.** NetInfo's first callback is asynchronous; treating "not yet
+  known" as offline would break cold start on a perfectly good connection.
+- **The sentinel is raised after `fetch` fails, not pre-flight.** A stale or wrong reachability
+  flag must never block a request that would have succeeded. Only once the request has genuinely
+  failed is "you're offline" worth saying.
+- **Only a definite `false` counts as offline.** `isInternetReachable` false-positives on
+  captive portals and some Android emulators, and a wrong "you're offline" on a working
+  connection is worse than one honest request failure.
+
+`ChatContext.tsx:136` was extended to swallow `OFFLINE` alongside the other sentinels — the
+banner already says it, and a chat error stacked on top is noise.
+
+Nine files across two commits. `App.tsx`, `apiClient.ts`, `ChatContext.tsx`,
+`MainStackNavigator.tsx`, `AcceptInviteScreen.tsx`, `app.json`, `package.json`, plus new
+`navigation/linking.ts`, `lib/network.ts`, `components/OfflineBanner.tsx`.
+
+### Quality gates
+
+```
+$ npx tsc --noEmit
+exit=2 — 22 errors, all @types/jest in VehicleCard.test.tsx. Errors elsewhere: 0.
+
+$ npx eslint <the changed source files>
+exit=0 — clean.
+
+$ npm run lint
+exit=1 — 25 problems (12 errors, 13 warnings). Same as this branch's base.
+```
+
+One self-correction worth noting: the first pass added an `eslint-disable-next-line
+react-hooks/exhaustive-deps` to the invite screen that the rule did not need. That would have
+made the baseline 26/12 by adding a fourteenth unused-directive warning — the exact class of
+lint debt already sitting in this repo. Removed before commit; the comment explaining the empty
+dependency array stayed.
+
+### Manual test script
+
+**Prerequisite: `npx expo prebuild --clean --platform android`, then a fresh build.** Nothing in
+section A or C will work on an existing binary — `app.json` and a native module both changed.
+
+**A — Deep links (AUTH-020, AUTH-030)**
+
+1. With the app **closed**, open `carmazium://notifications` (adb: `adb shell am start -W -a
+   android.intent.action.VIEW -d "carmazium://notifications"`).
+   *Expect:* the app cold-starts on Notifications, not the home screen.
+2. Same link with the app **backgrounded**. *Expect:* it foregrounds onto Notifications.
+3. `carmazium://settings`, `carmazium://messages`, `carmazium://dashboard/listings`.
+   *Expect:* each lands correctly.
+4. A **signed-out** device, then `carmazium://settings`.
+   *Expect:* Login — not a crash, and not a screen that immediately errors. RootNavigator still
+   decides Auth vs Main from session state; the URL does not override it.
+5. `carmazium://this-route-does-not-exist`. *Expect:* the app opens normally, no crash.
+6. **Android https link:** `https://carmazium.com/auth/accept-invite?token=<real token>`.
+   *Expect:* the app opens on Accept Invite and **accepts automatically** — no pasting. First
+   run may show the Android disambiguation dialog until App Links verification completes.
+7. **iOS:** the same https link. *Expect:* it opens the **website**, not the app — that is the
+   documented limitation, not a bug. The paste field must still work there.
+8. Invite screen reached from the drawer with no token. *Expect:* the paste field, unchanged.
+
+**B — Auth callback (AUTH-019)**
+
+9. Sign-up verification email → tap the link. *Expect:* app opens, verification completes.
+10. Forgot password → tap the emailed link. *Expect:* the reset screen, and the reset works.
+    This path is the most likely regression in the whole flow.
+11. Google sign-in, all the way through. *Expect:* returns to the app signed in.
+12. **Tap an already-used verification link a second time.**
+    *Expect:* a clear "Sign-in link problem" alert. **Previously: nothing at all** — the app
+    just sat there, which is the actual bug in AUTH-019.
+13. Let a recovery link expire, then tap it. *Expect:* an alert, not silence.
+
+**C — Offline (CROSS-015)**
+
+14. Turn on airplane mode with the app open.
+    *Expect:* the amber "No internet connection" banner appears at the top within a second or
+    two, over whatever screen you are on.
+15. Pull to refresh a list while offline.
+    *Expect:* a sensible failure, **not** a raw `TypeError: Network request failed`.
+16. Turn airplane mode off. *Expect:* the banner disappears on its own.
+17. Cold-start the app **with a working connection** and watch closely.
+    *Expect:* **no flash of the offline banner.** This is what the optimistic default protects;
+    a flash on every launch would mean the default is wrong.
+18. Cold-start in airplane mode. *Expect:* banner shows; the app still opens (Flow 4b's
+    `authInitialized` handles the failed session check).
+19. Open Messages while offline. *Expect:* no chat error toast stacked on top of the banner.
+
+**D — Regression sweep**
+
+20. Normal navigation around the app with a good connection. *Expect:* the banner never appears
+    and never occupies layout.
+21. Re-run Flow 4b step B5 (session expiry ejects to Login) — `apiClient` changed again here, so
+    confirm the 401 path still works.
+
+### Not verified in this session
+
+- **Nothing here has been prebuilt or run.** This is the flow where that gap is largest: the
+  linking config, the intent filter and the native module are all things whose first honest test
+  is a real build. Everything below is design intent, not observed behaviour.
+- Whether Android App Links verification actually succeeds depends on an `assetlinks.json`
+  served from `carmazium.com/.well-known/` — **I did not check whether one exists.** If it does
+  not, step 6 will show the disambiguation dialog every time rather than opening the app
+  directly. Worth checking before that step is called a failure.
+- The `linking` config's `filter` is the only thing keeping React Navigation and the Supabase
+  listener from both claiming a callback URL. I reasoned about the URL shapes; I did not observe
+  a real Supabase link being filtered.
+- NetInfo's behaviour on the specific test device is unknown — `isInternetReachable` semantics
+  vary, which is why only a definite `false` is treated as offline.
+- I did not audit every screen's error rendering for the new `OFFLINE` sentinel. Only
+  `ChatContext` was updated; other screens will show their generic error path, which is a
+  degradation from the banner's clarity but not a regression from the raw `TypeError` they
+  showed before.
+
+### Logged — not done in this flow
+
+- **iOS App Links**: `associatedDomains` in `app.json` plus `apple-app-site-association` served
+  from the domain.
+- **Android `assetlinks.json`** if not already served.
+- **Linkable vehicle/auction screens**: both need an id-only entry path that self-fetches before
+  they can safely appear in the linking config.
+- **Web has no offline handling either** — CROSS-015 was a shared absence and only mobile is
+  addressed.
+
+**Next session:** Flow 7 — `parity/dashboard-error-states` (CROSS-023, DASH-047), the last
+ship-line flow before Flow 5.
