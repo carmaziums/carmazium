@@ -25,6 +25,7 @@ import { GlobalToastContext } from '../../components/GlobalToastProvider';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { apiClient } from '../../lib/apiClient';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 import { useAuthStore } from '../../store/authStore';
@@ -92,6 +93,7 @@ export const DealerProfileScreen: React.FC = () => {
   const [analytics, setAnalytics] = useState<DealerAnalyticsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Web blocks the whole dealer dashboard with a non-dismissable modal until
   // a verified dealer sets a contact phone (DealerPhoneGate). Mobile uses a
@@ -121,6 +123,7 @@ export const DealerProfileScreen: React.FC = () => {
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
+    setError(null);
     try {
       const [statsRes, analyticsRes] = await Promise.all([
         apiClient<{ success: boolean; data: DealerStats }>('/dealers/stats'),
@@ -129,7 +132,12 @@ export const DealerProfileScreen: React.FC = () => {
       if (statsRes?.success) setStats(statsRes.data);
       if (analyticsRes?.success) setAnalytics(analyticsRes.data);
     } catch {
-      // Keep whatever we already loaded — a transient network error shouldn't blank the screen.
+      // Keeping whatever was already loaded is right — a transient error
+      // should not blank the screen — but it must be *said*, or stale and
+      // zeroed tiles read as authoritative (CROSS-023). Note Promise.all
+      // means one rejection loses both calls, so this fires more often than
+      // the single catch suggests.
+      setError('Could not refresh your dealer stats.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -609,6 +617,12 @@ export const DealerProfileScreen: React.FC = () => {
           <RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={Colors.accent} />
         }
       >
+        {error ? (
+          <View style={{ marginBottom: 16 }}>
+            <ErrorBanner message={error} onRetry={() => loadData()} />
+          </View>
+        ) : null}
+
         {/* Render Dynamic Header */}
         {renderHeader()}
 

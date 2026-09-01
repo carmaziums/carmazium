@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart, LineChart } from 'react-native-gifted-charts';
 import { apiClient } from '../../lib/apiClient';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -108,16 +109,23 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
   const [data, setData] = useState<SellerPerformanceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
+    setError(null);
     try {
       const res = await apiClient<{ success: boolean; data: SellerPerformanceData }>('/listings/performance');
       if (res?.success && res.data) {
         setData(res.data);
+        setError(null);
       }
     } catch {
-      // silently fail — EmptyState covers missing data
+      // Was silent, with a comment claiming EmptyState covered it — but an
+      // empty state says "you have no performance data", which is a different
+      // and wrong claim when the request simply failed (CROSS-023).
+      setData(null);
+      setError('Could not load your performance data.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -164,6 +172,12 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
           />
         }
       >
+        {error ? (
+          <View style={{ marginBottom: 16 }}>
+            <ErrorBanner message={error} onRetry={() => fetchData()} />
+          </View>
+        ) : null}
+
         {loading ? (
           <PerformanceSkeleton />
         ) : !hasData ? (

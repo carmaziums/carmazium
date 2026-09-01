@@ -22,6 +22,7 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 
@@ -230,6 +231,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const doFetch = (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -239,9 +241,14 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
     if (from) params.set('from', from);
     if (to) params.set('to', to);
 
+    setError(null);
     apiClient<{ success: boolean; data: AnalyticsData }>(`/dealers/analytics?${params.toString()}`)
-      .then(res => { if (res.success) setAnalytics(res.data); })
-      .catch(() => {})
+      .then(res => { if (res.success) { setAnalytics(res.data); setError(null); } })
+      // Was a bare `.catch(() => {})`. A dealer whose analytics call failed saw
+      // a dashboard reporting zero sales, zero leads and zero revenue with no
+      // indication anything had gone wrong — the single worst instance of
+      // CROSS-023 in the app.
+      .catch(() => { setAnalytics(null); setError('Could not load your analytics.'); })
       .finally(() => { setLoading(false); setRefreshing(false); });
   };
 
@@ -419,6 +426,11 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
         />
       }
     >
+      {error ? (
+        <View style={{ marginBottom: 16 }}>
+          <ErrorBanner message={error} onRetry={() => doFetch()} />
+        </View>
+      ) : null}
       {/* Header */}
       <View style={styles.header}>
         <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />

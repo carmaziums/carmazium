@@ -22,6 +22,7 @@ Append-only session log. Read this first at the start of every session.
 | 2a — auction correctness | AUC-029, AUC-030, AUC-012, AUC-022, AUC-004/017 | 2026-09-01 | NEEDS_VERIFICATION |
 | 2b — auction truthfulness | AUC-016, AUC-038, AUC-025, BUY-028/OQ-9 | 2026-09-01 | NEEDS_VERIFICATION |
 | 3 — search & offer contract | BUY-022, BUY-006, BUY-017, BUY-007, BUY-008 | 2026-09-01 | NEEDS_VERIFICATION (incl. backend change) |
+| 7 — dashboard error states | CROSS-023, DASH-047 (+CROSS-025 logged) | 2026-09-01 | NEEDS_VERIFICATION |
 
 ## Session log
 
@@ -1220,3 +1221,141 @@ Flow 4 onward: tsc 22 (mobile) / 3 (backend), lint 24 problems, 11 errors, 13 wa
 
 **Next session:** Flow 4 — `parity/session-and-auth` (AUTH-005, AUTH-013, AUTH-014, AUTH-034,
 AUTH-035, AUTH-003). Largest flow in the plan; split into 4a/4b if it does not fit.
+
+---
+
+## Phase 2 — Flow 7: Dashboard error states (2026-09-01)
+
+Branch `parity/dashboard-error-states`, cut from `main` at `187b88a4`. Independent of the
+stack above it (2b → 3, and 4a → 4b → 6) — it touches only dashboard screens, none of which
+those flows opened, so it merges in any order.
+
+Rows: **CROSS-023, DASH-047** → `NEEDS_VERIFICATION`. One new row logged: **CROSS-025**.
+
+One dedicated pass, per OQ-26, rather than folding this into each feature flow.
+
+### The defect had three shapes, not one
+
+The matrix describes `catch { /* show zeros */ }`. That is the *least* common form. Reading all
+seven dashboards turned up three:
+
+1. **The plain silent catch** — `UnifiedDashboardScreen:117`, `SellerPerformanceScreen:119`.
+   `SellerPerformanceScreen`'s comment even claimed "EmptyState covers missing data", which is a
+   different and wrong claim: an empty state says *you have no performance data*, not *we could
+   not load it*.
+2. **`Promise.allSettled` with unchecked results** — `SellerDashboardScreen`, `EarningsScreen`,
+   `DealerEarningsScreen`. Here the `catch` almost never fires, because `allSettled` does not
+   reject. A failed slice simply left its numbers at zero. This is the sneakiest of the three:
+   the error handling *looks* present and does nothing.
+3. **The bare `.catch(() => {})`** — `DealerAnalyticsScreen:244`. The worst instance in the app,
+   and the exact scenario the audit called out: a dealer whose analytics call fails sees zero
+   sales, zero leads and zero revenue, presented with total confidence.
+
+### What changed
+
+Seven screens, each now distinguishing **three** states rather than two — loading,
+loaded-and-genuinely-zero, and failed — via the existing shared `ErrorBanner` with a working
+retry. No new component; this is adoption, not invention.
+
+- `UnifiedDashboardScreen` — fetch extracted to a `useCallback` so retry re-runs it.
+- `SellerDashboardScreen` — counts rejected settlements and distinguishes **total** failure
+  ("Could not load your dashboard") from **partial** ("Some of your dashboard could not be
+  loaded"). Partial matters: the numbers on screen are real but incomplete, which is precisely
+  what a silent zero hides.
+- `EarningsScreen`, `DealerEarningsScreen` — handle the non-fulfilled branch of `allSettled`.
+- `SellerPerformanceScreen` — replaces the misleading "EmptyState covers it" comment.
+- `DealerAnalyticsScreen` — the bare catch now sets an error and clears stale analytics.
+- `DealerProfileScreen` — keeps already-loaded data (right, and unchanged) but now *says* the
+  refresh failed. Note `Promise.all` means one rejection loses both calls, so it fires more
+  often than the single catch suggests.
+
+**Genuinely empty data still renders as zeros with no banner.** That was the whole point of the
+row, and it is the thing most likely to be got wrong by a careless version of this change.
+
+**Screens reset to their empty value on failure** rather than leaving the previous render's
+numbers sitting under an error banner — stale figures beneath a "could not load" message are
+their own kind of lie.
+
+### Scope boundary, and a new row
+
+CROSS-023 and OQ-26 both scope this to *dashboards*. The same pattern survives on **list**
+screens, where a failed fetch renders as an empty list: `PaymentHistoryScreen:120`,
+`DealerMyOffersScreen:148`, `DealerTeamScreen:231`, `NotificationsScreen:86`,
+`SellerAuctionsScreen:233,250`, `SellerListingsScreen:219`, `SellerOffersScreen:187`. Logged as
+**CROSS-025** (P3) rather than silently expanding this flow. Lower severity — an empty list is a
+weaker false claim than a confident zero-revenue figure — but the same lie.
+
+`BuyerDashboardScreen:192` has it too. That screen is dead code today (CROSS-021), so it was
+deliberately not edited here; **Flow 9 must fix it as part of reviving it**, and CROSS-025 says
+so.
+
+Seven files. No backend change, no new dependency, no new component.
+
+### Quality gates
+
+```
+$ npx tsc --noEmit
+exit=2 — 22 errors, all @types/jest in VehicleCard.test.tsx. Errors elsewhere: 0.
+
+$ npm run lint
+exit=1 — 25 problems (12 errors, 13 warnings) — this branch's base (cut from main,
+so without Flow 3's token fix that makes it 24/11).
+```
+
+### Manual test script
+
+The whole flow is about telling failure apart from emptiness, so it needs testing **both** ways
+round. Airplane mode is the easiest way to force failure.
+
+**A — Failure is visible (the fix)**
+
+1. Sign in as a seller with real data. Open the dashboard and confirm the numbers are right.
+2. Turn on airplane mode, pull to refresh.
+   *Expect:* a red error banner with **Try again**, and the tiles **not** showing a confident
+   set of zeros.
+3. Turn airplane mode off, tap **Try again**.
+   *Expect:* the banner disappears and the real numbers come back.
+4. Repeat 2-3 on each of: Seller Performance, Earnings, Dealer home, Dealer Analytics, Dealer
+   Earnings, and the main (Unified) dashboard.
+   *Expect:* the same behaviour on all six. **Dealer Analytics is the important one** — that is
+   where a dealer previously saw zero sales and zero revenue with no warning at all.
+
+**B — Emptiness is still emptiness (the regression risk)**
+
+5. Sign in as a **brand-new account with no listings, no sales, no offers**, on a good
+   connection.
+   *Expect:* zeros and empty states, and **no error banner anywhere**. If a new user sees "Could
+   not load your dashboard", this change is wrong in the opposite direction.
+6. Same account, Earnings.
+   *Expect:* £0 with no banner — not an error.
+
+**C — Partial failure (SellerDashboard specifically)**
+
+7. Hard to stage deliberately; try it if you can. The seller dashboard fires three requests. If
+   only some fail, *expect:* "Some of your dashboard could not be loaded" rather than the total
+   failure message, with whatever loaded still shown.
+
+**D — Regression sweep**
+
+8. Pull-to-refresh on every screen above with a good connection. *Expect:* unchanged.
+9. Dealer Analytics period pills (7d/30d/etc.) while online. *Expect:* still refetch correctly
+   and no banner appears.
+10. Confirm no banner ever appears on a normal, connected session — a banner that shows up
+    spuriously is worse than the silent zeros it replaced.
+
+### Not verified in this session
+
+- Nothing run on a device; no Android SDK here.
+- **Step B is the one I would most want run.** I have reasoned that empty data does not trigger
+  the error path, but "new account sees a scary red banner" is exactly the failure mode a
+  careless version of this change produces, and I cannot rule it out from reading alone.
+- Step C (partial failure) is reasoned from the rejection count; I did not stage three requests
+  with mixed outcomes.
+- `DealerProfileScreen` uses `Promise.all`, so I could not easily distinguish partial from total
+  failure there without restructuring the call — it reports a single "could not refresh"
+  message. Left as is rather than reworking a screen this flow only needed to annotate.
+- I did not audit whether every dashboard's *sub*-fetches (period toggles, secondary calls) are
+  covered — only the primary load path of each screen was traced.
+
+**Next session:** Flow 5 — `parity/account-deletion` (AUTH-033, DASH-030), the last ship-line
+flow, moved here by decision P-2.

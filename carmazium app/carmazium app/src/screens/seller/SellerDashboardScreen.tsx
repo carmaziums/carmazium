@@ -18,7 +18,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { apiClient } from '../../lib/apiClient';
+import { apiClient } from '../../lib/apiClient';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -187,6 +188,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
   const [recentOffers, setRecentOffers] = useState<IncomingOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   // Web's /dashboard/seller has a PeriodToggle (7d/30d) switching the KPI
   // row; mobile always got the backend's 30d default silently (mobile-
   // production-readiness-plan.md F22). Only /dashboard/seller supports
@@ -195,6 +197,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
 
   const fetchData = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
+    setError(null);
     try {
       const [statsRes, listingsRes, dashRes] = await Promise.allSettled([
         apiClient<StatsResponse>('/listings/stats'),
@@ -219,8 +222,21 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
           savedCount: dashData?.savedCount ?? 0,
         }));
       }
+      // allSettled means the catch below almost never fires — a rejected
+      // request just left its slice at zero, indistinguishable from a seller
+      // who genuinely has none (CROSS-023). Count the failures instead.
+      const failed = [statsRes, listingsRes, dashRes].filter(r => r.status === 'rejected').length;
+      if (failed === 3) {
+        setError('Could not load your dashboard.');
+      } else if (failed > 0) {
+        // Partial is worth saying out loud: the numbers on screen are real
+        // but incomplete, which is exactly the case a silent zero hides.
+        setError('Some of your dashboard could not be loaded.');
+      } else {
+        setError(null);
+      }
     } catch {
-      // silently fail — show zeros
+      setError('Could not load your dashboard.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -319,6 +335,12 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
           />
         }
       >
+
+        {error ? (
+          <View style={{ marginBottom: 16 }}>
+            <ErrorBanner message={error} onRetry={() => fetchData()} />
+          </View>
+        ) : null}
 
         {/* ── 1. Hero listing card ── */}
         {heroListing ? (
