@@ -126,10 +126,18 @@ should not "fix" mobile down to web's level:
   `listing.status !== 'SOLD'`; web's dealer offers page still doesn't.
 - `DealerFinanceScreen` deliberately avoids web's `FUNDED`/`REVIEWING` statuses,
   which don't exist in the schema.
-- Mobile's signup hardcoding `role: 'BUYER'` is deliberate, not web's old
-  silent-default bug: reading local role there once wrote `DEALER` into the
-  database. Dealers elevate via `POST /users/elevate`, and buyer/seller are one
-  account on mobile.
+- ~~Mobile's signup hardcoding `role: 'BUYER'` is deliberate~~ — **superseded
+  2026-09-01 (parity AUTH-005).** Signup now offers an explicit **BUYER /
+  DEALER** picker and passes the choice to `signup()`. The original bug this
+  note guarded against was reading `get().role` — the local "preview as dealer"
+  toggle — which silently wrote `DEALER` into the database for users who never
+  asked for it. An explicit choice on the signup form is the opposite of that,
+  and it is what web has always done. **Do not reintroduce `get().role` here.**
+  FINANCE_PARTNER and the other partner roles stay off mobile (OQ-5): there is
+  no partner dashboard, so picking one would create a dead-end account.
+  Choosing DEALER sets the account role only — verification still comes from
+  KYC via `DealerOnboarding`, and `withDealerGate` still blocks dealer screens
+  until then. Buyer/seller remain one account.
 
 ## Backend
 

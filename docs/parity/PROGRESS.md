@@ -20,6 +20,7 @@ Append-only session log. Read this first at the start of every session.
 | 0 — baseline | — | 2026-09-01 | Done — tsc 22 / lint 25 recorded |
 | 1 — listing publish payment | SELL-005, SELL-006 (+SELL-033 logged) | 2026-09-01 | NEEDS_VERIFICATION |
 | 2a — auction correctness | AUC-029, AUC-030, AUC-012, AUC-022, AUC-004/017 | 2026-09-01 | NEEDS_VERIFICATION |
+| 4a — signup role & onboarding flags | AUTH-005, AUTH-001 | 2026-09-01 | NEEDS_VERIFICATION |
 
 ## Session log
 
@@ -906,3 +907,143 @@ short-scheduled auction if you can.
   `endTime`.
 
 **Next session:** Flow 2b — `parity/auction-truthfulness` (AUC-016, AUC-038, AUC-025, OQ-9).
+
+---
+
+## Phase 2 — Flow 4a: Signup role picker and onboarding flag split (2026-09-01)
+
+Branch `parity/session-and-auth`, cut from `main` at `187b88a4`.
+Rows: **AUTH-005, AUTH-001** → `NEEDS_VERIFICATION`.
+
+**Flow 4 was split, as the plan pre-authorised.** 4a is the signup/onboarding half; 4b is the
+session lifecycle half (AUTH-013, AUTH-014, AUTH-034, AUTH-035) and follows on its own branch
+chained off this one, since both edit `authStore` heavily. The plan's instruction was to take
+the split rather than half-land either half.
+
+**A row ID in the plan was wrong.** The plan and the Phase 2 ordering both call the flag split
+"AUTH-003". AUTH-003 is **Google OAuth sign-in**. The flag-pollution row is **AUTH-001**, whose
+notes describe exactly this defect. Corrected in the matrix on AUTH-001; nothing renumbered.
+Flow 4b's row list is unaffected.
+
+### AUTH-005 — signup role picker
+
+Mobile hardcoded `role = 'BUYER'`, so a dealer could not register as one at all: they had to
+sign up as a buyer and then elevate. Now a two-card BUYER / DEALER picker
+(`SignupScreen.tsx:49,151-186`), threaded through `signup(email, password, fullName, role)` to
+`authStore.ts:303`.
+
+**No backend change needed** — `syncUser` already validates `role` against the `UserRole` enum
+and drops anything unrecognised (`users.service.ts:320`), read this session. BUYER + DEALER
+only: FINANCE_PARTNER and the other partner roles are deliberately absent (OQ-5) because mobile
+has no partner dashboard, and SELLER is not offered because buyer and seller are one account
+here.
+
+Choosing DEALER sets the **account role only**. It does not confer verification —
+`dealerProfile.isVerified` still comes from KYC and `withDealerGate` still blocks dealer
+screens — so the DealerOnboarding → KYC road is unchanged, just reachable without registering
+as a buyer first.
+
+**`CLAUDE.md:129-140` was updated in the same commit, and this matters.** That file actively
+defended the BUYER hardcode; a later session reading it would have reverted this change. The
+bug it guarded against was reading `get().role` — the local "preview as dealer" toggle — which
+silently wrote DEALER into the database for people who never asked. An explicit choice on the
+form is the opposite of that. The prohibition on `get().role` stands and is restated in code.
+
+### AUTH-001 / OQ-3 — onboarding flag split
+
+The pre-auth marketing carousel called `completeOnboarding()`, writing the same
+`czm_onboarding_complete` key that gates the post-signup wizard. So a signed-out user tapping
+through three marketing slides marked the wizard complete, and after signing up was never asked
+for name, postcode or preferences.
+
+- Carousel now writes its own `czm_intro_seen` via a new `completeIntro()`
+  (`authStore.ts:16,111-114`, `OnboardingScreen.tsx:132-135`).
+- `czm_onboarding_complete` is left to the wizard alone and its key is **deliberately
+  unchanged**, so installs that already have it are not re-prompted — OQ-3's "default safely".
+  The new key's absence on an existing install means "not seen", whose worst case is one extra
+  viewing of the carousel, never a skipped wizard.
+- **The carousel is now skipped once seen** (`AuthNavigator.tsx:40`) — owner-approved during
+  the session. It was previously the initial route on *every* signed-out launch, so without
+  this the new flag would have been written and never read. `hasSeenIntro` is hydrated
+  unconditionally at the top of `initializeAuth` (`authStore.ts:126`), including on the
+  no-session branch, which is precisely the branch that matters when signed out.
+
+Five files: `screens/auth/SignupScreen.tsx`, `store/authStore.ts`,
+`screens/onboarding/OnboardingScreen.tsx`, `navigation/AuthNavigator.tsx`, `CLAUDE.md`.
+No backend change, no new dependency.
+
+### Quality gates
+
+```
+$ npx tsc --noEmit
+exit=2 — 22 errors, all @types/jest in VehicleCard.test.tsx. Errors elsewhere: 0.
+
+$ npx eslint <the four changed source files>
+exit=0 — clean, no warnings.
+
+$ npm run lint
+exit=1 — 25 problems (12 errors, 13 warnings).
+```
+
+**On the lint number:** this is 25/12, not the 24/11 Flow 3 established. That is correct and
+not a regression — this branch is cut from `main`, which does not yet contain Flow 3's token
+fix in `VehicleDetailScreen`. The baseline is per-base until the flows are merged. When Flow 3
+lands on `main`, this branch's number becomes 24/11 too.
+
+### Manual test script
+
+**A — Dealer signup (AUTH-005)**
+
+1. Sign out, go to Sign Up. *Expect:* an "I AM A" row above Full Name with two cards —
+   **Buyer / Seller** (selected by default) and **Dealer**.
+2. Tap Dealer. *Expect:* the card highlights and a note appears: "You'll complete dealer
+   verification after signing up."
+3. Complete signup as **Dealer**, verify the email, finish the wizard.
+4. Open a dealer screen from the drawer (e.g. Dealer Inventory).
+   *Expect:* the **dealer gate**, offering KYC — *not* the inventory itself, and *not* a
+   buyer-only UI with the dealer entries missing. Choosing DEALER must not fake verification.
+5. Complete DealerOnboarding → KYC. *Expect:* dealer screens unlock as before.
+6. Sign up a second account as **Buyer / Seller**. *Expect:* buyer experience exactly as
+   before this change.
+7. **The regression that matters:** confirm neither account was created with the *other* role.
+   Check the role on each profile after signup.
+
+**B — Onboarding flag split (AUTH-001)**
+
+8. **On a fresh install** (or after clearing app data): launch signed out.
+   *Expect:* the marketing carousel.
+9. Tap through or Skip to the end. *Expect:* Login.
+10. Force-quit and relaunch, still signed out.
+    *Expect:* **Login directly — no carousel.** It should not reappear.
+11. Now sign up a brand-new account from that same install.
+    *Expect:* the post-signup wizard **does** run — name, verify, postcode, preferences.
+    **This is the bug being fixed: before, step 9 silently satisfied this gate and the wizard
+    was skipped entirely.**
+12. **Existing-install check, important:** on a device that had the app *before* this build and
+    had already completed the wizard, update and sign in.
+    *Expect:* **not** re-prompted for the wizard. The wizard's key is unchanged precisely so
+    this holds.
+13. Complete the wizard, sign out, sign back in. *Expect:* no wizard, no carousel.
+
+**C — Regression sweep**
+
+14. Sign out and back in on an existing account. *Expect:* unchanged.
+15. Forgot-password flow. *Expect:* unchanged — it routes through the same Auth stack whose
+    initial route changed.
+16. Sign up with an email that already exists. *Expect:* the existing error handling.
+
+### Not verified in this session
+
+- Nothing run on a device; no Android SDK here.
+- **Step A4 is the one I would most want tested.** That a DEALER-role account still hits the
+  dealer gate is reasoned from `DealerGate` reading `isVerified || isDealerStaff`, neither of
+  which signup sets — but I did not re-read `DealerGate.tsx` this session.
+- Step B12 (existing install not re-prompted) cannot be exercised here at all; it depends on
+  SecureStore state from a previous build.
+- I did not read `PostSignupOnboardingScreen` this session beyond confirming it calls
+  `completeOnboarding()`; its internal step order is untouched by this flow.
+- Whether Supabase stores the chosen role in `user_metadata` usefully for anything downstream
+  was not traced — it is passed, as before, but nothing was verified to read it.
+
+**Next session:** Flow 4b — `parity/session-lifecycle` (AUTH-013, AUTH-014, AUTH-034,
+AUTH-035), chained off this branch.

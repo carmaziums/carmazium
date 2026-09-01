@@ -35,6 +35,18 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
+  // BUYER + DEALER only. Web's picker also offers FINANCE_PARTNER, and
+  // SELLER/CONTRACTOR/INSURANCE_PARTNER are reachable there via ?role= — all
+  // deliberately omitted here: mobile has no partner dashboard, so choosing one
+  // would create an account with nowhere to land (OQ-1/OQ-5, decision recorded
+  // on AUTH-005). Buyer and seller are one account on mobile, so SELLER is not
+  // a separate choice either.
+  //
+  // Choosing DEALER sets the account role; it does **not** make them verified.
+  // A dealer still goes through DealerOnboarding -> KYC before withDealerGate
+  // lets them into dealer screens, which is the same road as before — just
+  // reachable now without registering as a buyer first.
+  const [role, setRole] = useState<'BUYER' | 'DEALER'>('BUYER');
 
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
@@ -92,7 +104,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
     try {
-      await signup(email.trim(), password, name);
+      await signup(email.trim(), password, name, role);
     } catch (err: any) {
       setFormError(err.message || 'An error occurred during account creation.');
     }
@@ -136,6 +148,44 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                 <ErrorBanner message={formError} />
               </View>
             ) : null}
+            {/* Account type (AUTH-005) — mobile previously hardcoded BUYER with
+                no way to register as a dealer at all. */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>I AM A</Text>
+              <View style={styles.roleRow}>
+                {([
+                  { value: 'BUYER' as const, label: 'Buyer / Seller', hint: 'Buy and sell vehicles', icon: 'person-outline' as const },
+                  { value: 'DEALER' as const, label: 'Dealer', hint: 'Trade, bid at auction', icon: 'business-outline' as const },
+                ]).map(opt => {
+                  const selected = role === opt.value;
+                  return (
+                    <TouchableOpacity
+                      key={opt.value}
+                      style={[styles.roleCard, selected && styles.roleCardActive]}
+                      onPress={() => setRole(opt.value)}
+                      activeOpacity={0.8}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      accessibilityLabel={`${opt.label}. ${opt.hint}`}
+                    >
+                      <Ionicons
+                        name={opt.icon}
+                        size={18}
+                        color={selected ? Colors.accent : Colors.textMuted}
+                      />
+                      <Text style={[styles.roleCardLabel, selected && styles.roleCardLabelActive]}>{opt.label}</Text>
+                      <Text style={styles.roleCardHint}>{opt.hint}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              {role === 'DEALER' && (
+                <Text style={styles.roleNote}>
+                  You&apos;ll complete dealer verification after signing up.
+                </Text>
+              )}
+            </View>
+
             {/* Full Name */}
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>FULL NAME</Text>
@@ -423,6 +473,38 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     letterSpacing: 1.5,
     marginBottom: 8,
+  },
+  roleRow: { flexDirection: 'row', gap: 10 },
+  roleCard: {
+    flex: 1,
+    gap: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: Radius.inline,
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
+    backgroundColor: Colors.whiteAlpha04,
+  },
+  roleCardActive: {
+    borderColor: Colors.accent,
+    backgroundColor: Colors.accentAlpha10,
+  },
+  roleCardLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size14,
+    color: Colors.textSecondary,
+  },
+  roleCardLabelActive: { color: Colors.white },
+  roleCardHint: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+  },
+  roleNote: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: 8,
   },
   inputWrapper: {
     flexDirection: 'row',

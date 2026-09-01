@@ -3,7 +3,17 @@ import { supabase } from '../lib/supabase';
 import { apiClient } from '../lib/apiClient';
 import * as SecureStore from 'expo-secure-store';
 
+/** Post-signup wizard only: name -> verify -> postcode -> preferences.
+ *  Key deliberately unchanged so existing installs that already have it are not
+ *  re-prompted (OQ-3). */
 const ONBOARDING_KEY = 'czm_onboarding_complete';
+/** Pre-auth marketing carousel only. Separate key because the carousel used to
+ *  write ONBOARDING_KEY: a signed-out user tapping through three marketing
+ *  slides thereby marked the post-signup wizard complete, so after signing up
+ *  they were never asked for their name, postcode or preferences (AUTH-003).
+ *  Absent on existing installs, which correctly means "not seen yet" — the
+ *  worst case is one extra viewing of the carousel, never a skipped wizard. */
+const INTRO_SEEN_KEY = 'czm_intro_seen';
 
 interface User {
   id: string;
@@ -68,9 +78,13 @@ interface AuthState {
   accountRole: 'buyer' | 'seller' | 'dealer';
 
   completeOnboarding: () => Promise<void>;
+  /** Marks the pre-auth carousel as seen. Deliberately NOT completeOnboarding —
+   *  see INTRO_SEEN_KEY. */
+  completeIntro: () => Promise<void>;
+  hasSeenIntro: boolean;
   initializeAuth: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, fullName: string) => Promise<void>;
+  signup: (email: string, password: string, fullName: string, role?: 'BUYER' | 'DEALER') => Promise<void>;
   logout: () => Promise<void>;
   setLoading: (loading: boolean) => void;
   setRole: (role: 'buyer' | 'seller' | 'dealer') => void;
@@ -80,6 +94,9 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   hasCompletedOnboarding: false,
+  // Starts false and is hydrated by initializeAuth. A fresh install has not
+  // seen the carousel; an install that has will skip it after that first read.
+  hasSeenIntro: false,
   pendingEmailVerification: false,
   user: null,
   isLoading: false,
@@ -91,6 +108,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ hasCompletedOnboarding: true });
   },
 
+  completeIntro: async () => {
+    await SecureStore.setItemAsync(INTRO_SEEN_KEY, '1').catch(() => {});
+    set({ hasSeenIntro: true });
+  },
+
   setLoading: (loading: boolean) => set({ isLoading: loading }),
   setRole: (role: 'buyer' | 'seller' | 'dealer') => set({ role }),
   updateUser: (updates) => set((state) => ({ user: state.user ? { ...state.user, ...updates } : state.user })),
@@ -98,6 +120,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initializeAuth: async () => {
     set({ isLoading: true });
     try {
+      // Read first and unconditionally: the carousel gate matters precisely
+      // when there is no session, which is the branch that returns early below.
+      const introSeen = await SecureStore.getItemAsync(INTRO_SEEN_KEY).catch(() => null);
+      set({ hasSeenIntro: introSeen === '1' });
+
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user && session.access_token) {
         // Bridge the session with NestJS backend
@@ -249,20 +276,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signup: async (email, password, fullName) => {
+  signup: async (email, password, fullName, selectedRole = 'BUYER') => {
     set({ isLoading: true });
     try {
       const parts = fullName.trim().split(/\s+/);
       const firstName = parts[0] || '';
       const lastName = parts.slice(1).join(' ') || '';
-      // Brand-new accounts must ALWAYS be created as BUYER. Dealer status is an
-      // elevated state granted only through a deliberate verification/onboarding
-      // flow (see DealerOnboardingScreen / POST /users/elevate) — it must never
-      // be inherited from `get().role`, which is just the local "preview as
-      // dealer" demo toggle's leftover in-memory value. Reading that stale flag
-      // here was writing `role: DEALER` straight into the database for fresh
-      // signups, i.e. exactly the data-sanitization bug being fixed.
-      const role = 'BUYER';
+      // The role the user explicitly picked on the signup form — BUYER or
+      // DEALER only (AUTH-005).
+      //
+      // Read the distinction carefully, because this used to be hardcoded to
+      // 'BUYER' for a good reason. The original bug was reading `get().role`,
+      // the local "preview as dealer" toggle, which silently wrote
+      // `role: DEALER` into the database for people who never asked to be
+      // dealers. An explicit choice made on this screen is the opposite of
+      // that: it is the user's stated intent, it is one of exactly two values,
+      // and it is never sourced from in-memory preview state. Do not
+      // reintroduce `get().role` here.
+      //
+      // DEALER here sets the account role only. It does not confer
+      // verification: `dealerProfile.isVerified` still comes from KYC, and
+      // withDealerGate still blocks dealer screens until then. The backend
+      // validates this against its own UserRole enum
+      // (`users.service.ts:320`), so an unexpected value is dropped rather
+      // than trusted.
+      const role = selectedRole;
 
       // 1. Supabase Signup
       const { data, error } = await supabase.auth.signUp({
@@ -342,8 +380,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isAuthenticated: false,
           pendingEmailVerification: true,
           hasCompletedOnboarding: false,
-          role: 'buyer',
-          accountRole: 'buyer',
+          // Reflect what they signed up as. Not load-bearing — nothing routes
+          // on role while unauthenticated, and initializeAuth re-hydrates from
+          // the backend once the email is verified — but leaving a DEALER
+          // signup showing 'buyer' here is just a lie waiting to be read.
+          role: selectedRole === 'DEALER' ? 'dealer' : 'buyer',
+          accountRole: selectedRole === 'DEALER' ? 'dealer' : 'buyer',
           user: {
             id: user.id,
             email,

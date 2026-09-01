@@ -7,6 +7,7 @@ import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
 import { ResetPasswordScreen } from '../screens/auth/ResetPasswordScreen';
 import { TermsScreen } from '../screens/main/TermsScreen';
 import { Colors } from '../constants/colors';
+import { useAuthStore } from '../store/authStore';
 
 export type AuthStackParamList = {
   Onboarding: undefined;
@@ -25,8 +26,18 @@ export type AuthStackParamList = {
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 export const AuthNavigator: React.FC = () => {
+  // The carousel is marketing shown once, not a gate. It used to be the initial
+  // route on every signed-out launch, and tapping through it wrote the
+  // post-signup wizard's completion flag (AUTH-003) — so it was both repetitive
+  // and destructive. Now it has its own flag and is skipped once seen.
+  // `hasSeenIntro` is hydrated by initializeAuth before this renders; the worst
+  // case if that read fails is the carousel showing once more, never a skipped
+  // wizard.
+  const hasSeenIntro = useAuthStore((s) => s.hasSeenIntro);
+
   return (
     <Stack.Navigator
+      initialRouteName={hasSeenIntro ? 'Login' : 'Onboarding'}
       screenOptions={{
         headerShown: false,
         animation: 'fade_from_bottom',

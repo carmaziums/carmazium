@@ -129,7 +129,10 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new RNAnimated.Value(0)).current;
-  const completeOnboarding = useAuthStore((s) => s.completeOnboarding);
+  // completeIntro, NOT the post-signup wizard's flag — this carousel is
+  // marketing, and marking it "done" used to mark that wizard done too, so a
+  // new user was never asked for name, postcode or preferences (AUTH-003).
+  const completeIntro = useAuthStore((s) => s.completeIntro);
 
   const handleScroll = RNAnimated.event(
     [{ nativeEvent: { contentOffset: { x: scrollX } } }],
@@ -153,13 +156,13 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
       flatListRef.current?.scrollToIndex({ index: activeIndex + 1, animated: true });
       setActiveIndex(activeIndex + 1);
     } else {
-      completeOnboarding();
+      completeIntro();
       navigation.navigate('Login');
     }
   };
 
   const handleSkip = () => {
-    completeOnboarding();
+    completeIntro();
     navigation.navigate('Login');
   };
 
