@@ -26,6 +26,7 @@ Append-only session log. Read this first at the start of every session.
 | 4a — signup role & onboarding flags | AUTH-005, AUTH-001 | 2026-09-01 | NEEDS_VERIFICATION |
 | 4b — session lifecycle | AUTH-013, AUTH-014, AUTH-034, AUTH-035 | 2026-09-01 | NEEDS_VERIFICATION |
 | 6 — deep linking & offline | AUTH-020, AUTH-019, AUTH-030, CROSS-015/017 | 2026-09-01 | NEEDS_VERIFICATION (needs prebuild) |
+| 5 — account deletion | AUTH-033, DASH-030 | 2026-09-01 | NEEDS_VERIFICATION |
 
 ## Session log
 
@@ -1867,3 +1868,117 @@ section A or C will work on an existing binary — `app.json` and a native modul
 
 **Next session:** Flow 7 — `parity/dashboard-error-states` (CROSS-023, DASH-047), the last
 ship-line flow before Flow 5.
+
+---
+
+## Phase 2 — Flow 5: Account deletion (2026-09-01)
+
+Branch `parity/account-deletion`, cut from `main` **after every prior flow was merged into it**
+at the repo owner's direction — so this is the first flow built on the complete stack, and the
+first whose lint baseline is the merged 24/11 rather than a per-branch number.
+
+Rows: **AUTH-033, DASH-030** → `NEEDS_VERIFICATION`.
+
+Moved to last by decision P-2: it is required before Play Store submission, not before the
+side-loaded APK. It also depends on Flow 4b, whose `logout()` teardown it reuses.
+
+### Contract details established by reading the endpoint, not assumed
+
+Three things the matrix did not record, all of which shape the UI:
+
+1. **The request must carry `{ confirmation: 'DELETE' }` in the body.** The controller 400s
+   otherwise (`users.controller.ts:236-243`). So the typed field is a guard against a pointless
+   round trip, not the only gate — the server enforces it independently.
+2. **It is an anonymise, not a hard delete** (`users.service.ts:145-155`), and it **withdraws
+   DRAFT / PENDING_REVIEW / ACTIVE listings** first (`:140-143`). The copy says exactly that
+   rather than implying everything vanishes.
+3. **The backend refuses deletion outright** while the user has a live auction as seller or an
+   active bid as buyer (`:117-136`) — deliberately, so nobody dodges losing an auction by
+   deleting. Those messages are specific and actionable, so the screen surfaces the server's own
+   text rather than flattening it into "could not delete your account".
+
+### What was built
+
+A danger-zone section at the end of `SettingsScreen`, opening a typed-confirmation bottom sheet
+that mirrors web's `DeleteAccountSection.tsx:73-97`. Confirm is disabled until the field reads
+DELETE; the sheet cannot be dismissed mid-request.
+
+Teardown **reuses the existing `logout()`** rather than writing a second path. It clears the
+backend session, Supabase tokens and local state in the right order, `RootNavigator` swaps to
+the Auth stack off the back of it, and its best-effort `POST /auth/logout` already tolerates the
+session the server has just destroyed. Notably **not** `forceLogout()` — that one captures a
+`postLoginRedirect` for a later return, which is precisely wrong for an account that no longer
+exists.
+
+One file: `src/screens/main/SettingsScreen.tsx`. No backend change, no new dependency.
+
+### Quality gates — run on the fully merged tree
+
+```
+$ npx tsc --noEmit            (mobile)
+exit=2 — 22 errors, all @types/jest in VehicleCard.test.tsx. Errors elsewhere: 0.
+
+$ npx tsc --noEmit            (backend)
+3 errors, all pre-existing (payments.controller, sellers.service, db-backup).
+
+$ npm run lint
+exit=1 — 24 problems (11 errors, 13 warnings) — the merged baseline, including
+Flow 3's token fix.
+```
+
+### Manual test script
+
+**Use a throwaway account.** Deletion is irreversible and the email is rewritten, so the address
+cannot be reused as-is.
+
+**A — The guard**
+
+1. Settings → scroll to the bottom. *Expect:* a red DANGER ZONE card explaining that listings
+   are withdrawn and personal details removed.
+2. Tap DELETE ACCOUNT. *Expect:* a sheet with a confirmation field; the confirm button is
+   **disabled and dimmed**.
+3. Type `delete` (lowercase). *Expect:* enabled — the check is case-insensitive, matching the
+   server's `.toUpperCase()`.
+4. Type `DELETEX` or clear the field. *Expect:* disabled again.
+5. Tap Cancel. *Expect:* the sheet closes, nothing happens, the account still works.
+
+**B — The blocking rules (the interesting cases)**
+
+6. On an account **currently selling a live auction**, attempt deletion.
+   *Expect:* the specific message "You have a live auction in progress. Please wait for it to
+   end before deleting your account." — **not** a generic failure. The account still works.
+7. On an account **with an active bid on a live auction**, attempt deletion.
+   *Expect:* the equivalent bid message, and the account still works.
+
+**C — Deletion itself**
+
+8. On a throwaway account with **one ACTIVE listing**, note the listing, then delete.
+   *Expect:* the sheet closes and the app returns to Login — no crash, no half-signed-in state.
+9. Try to sign in again with those credentials. *Expect:* failure.
+10. From another account, look for that seller's listing.
+    *Expect:* **withdrawn**, not still live. This is the step most likely to reveal a gap
+    between what the copy promises and what the backend does.
+
+**D — Regression sweep**
+
+11. Sign out normally from another account. *Expect:* unchanged.
+12. Everything else in Settings — profile save, password change, payouts, bank details, trader
+    verification. *Expect:* unchanged; this flow only appended to the screen.
+
+### Not verified in this session
+
+- Nothing run on a device; no Android SDK here.
+- **Steps B6/B7 are the ones I would most want run.** That the server's specific message reaches
+  the sheet rests on `apiClient` surfacing the backend's `message` field through
+  `normalizeErrorMessage`, which I did not re-read this session.
+- Step C10 (listing actually withdrawn) is read from `users.service.ts:140-143`, not observed.
+- Whether the Supabase auth user is also removed or merely orphaned was **not traced** — the
+  backend anonymises its own `User` row, and I did not check for a corresponding Supabase admin
+  deletion. If it is orphaned, step 9 may fail in a different way than expected (a session with
+  no backend user rather than a rejected sign-in). Worth watching.
+- The sheet's behaviour if the app is backgrounded mid-request was not considered.
+
+**Phase 2 ship-line status:** all ship-line flows are now built and merged to `main`
+(1, 2a, 2b, 3, 4a, 4b, 6, 7 merged; 5 on its branch pending merge). **None are VERIFIED** —
+every row is `NEEDS_VERIFICATION` and only the repo owner sets otherwise. Flow 6 requires
+`npx expo prebuild --clean` and Flow 3's auction routing requires the backend deployed.

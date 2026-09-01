@@ -45,7 +45,7 @@ const FieldLabel: React.FC<{ label: string }> = ({ label }) => (
 export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
-  const { user, role, updateUser, initializeAuth } = useAuthStore();
+  const { user, role, updateUser, initializeAuth, logout } = useAuthStore();
 
   // ── Profile state ──────────────────────────────────────────────
   const [profileEmail] = useState(user?.email ?? '');
@@ -206,6 +206,14 @@ export const SettingsScreen: React.FC = () => {
   const [sortCode, setSortCode] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [bankSaving, setBankSaving] = useState(false);
+  // ── Account deletion (AUTH-033 / DASH-030) ──
+  // App-store policy generally requires in-app deletion for any app that lets
+  // you create an account. A grep of mobile src/ for deleteAccount previously
+  // returned nothing at all.
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // ── Trader (address) verification state ─────────────────────────
   // Ported from the dead ProfileScreen.tsx (main/ProfileScreen.tsx), which was
@@ -386,6 +394,39 @@ export const SettingsScreen: React.FC = () => {
 
   // ────────────────────────── render ────────────────────────────
 
+  // Typed confirmation is not decoration: the backend independently rejects
+  // anything other than DELETE (`users.controller.ts:241-243`), so the client
+  // check keeps the user from a pointless round trip rather than being the
+  // only gate.
+  const canConfirmDelete = deleteConfirmText.trim().toUpperCase() === 'DELETE';
+
+  const handleDeleteAccount = async () => {
+    if (!canConfirmDelete || deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await apiClient('/users/me', {
+        method: 'DELETE',
+        body: JSON.stringify({ confirmation: 'DELETE' }),
+      });
+      setDeleteModalOpen(false);
+      // Reuse the normal sign-out path rather than writing a second teardown.
+      // It clears the backend session, Supabase tokens and local state in the
+      // right order, and RootNavigator swaps to the Auth stack off the back of
+      // it. Its POST /auth/logout is best-effort and already tolerant of the
+      // session the server has just destroyed.
+      await logout();
+    } catch (err: any) {
+      // Surface the server's own message. The backend blocks deletion during a
+      // live auction you are selling in or actively bidding on
+      // (`users.service.ts:117-136`), and those reasons are specific and
+      // actionable — replacing them with a generic failure would strand the
+      // user with no idea what to do.
+      setDeleteError(err?.message || 'Could not delete your account. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
+  };
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
@@ -856,7 +897,79 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
+        {/* ── Danger zone ── */}
+        <View style={styles.dangerCard}>
+          <SectionHeader icon="warning-outline" label="DANGER ZONE" />
+          <Text style={styles.dangerCopy}>
+            Deleting your account is permanent. Your active listings are withdrawn and your
+            personal details are removed.
+          </Text>
+          <TouchableOpacity
+            style={styles.deleteBtn}
+            activeOpacity={0.8}
+            onPress={() => { setDeleteConfirmText(''); setDeleteError(null); setDeleteModalOpen(true); }}
+            accessibilityRole="button"
+            accessibilityLabel="Delete account"
+          >
+            <Ionicons name="trash-outline" size={15} color={Colors.error} />
+            <Text style={styles.deleteBtnText}>DELETE ACCOUNT</Text>
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
+
+      {/* Delete account — typed confirmation, mirroring web
+          (DeleteAccountSection.tsx:73-97). The backend rejects anything but
+          DELETE independently, so this is a guard, not the only gate. */}
+      <BottomSheet
+        visible={deleteModalOpen}
+        onClose={() => { if (!deleting) { setDeleteModalOpen(false); setDeleteError(null); } }}
+        title="Delete your account?"
+        avoidKeyboard
+      >
+        <View style={styles.verifyModalBody}>
+          {deleteError ? (
+            <View style={{ marginBottom: 16 }}>
+              <ErrorBanner message={deleteError} />
+            </View>
+          ) : null}
+          <Text style={styles.dangerCopy}>
+            This is permanent and cannot be undone. Your active listings will be withdrawn and
+            your personal details removed. Type DELETE below to confirm.
+          </Text>
+          <FieldLabel label="CONFIRMATION" />
+          <TextInput
+            style={styles.inputField}
+            value={deleteConfirmText}
+            onChangeText={setDeleteConfirmText}
+            placeholder="Type DELETE"
+            placeholderTextColor={Colors.iconMuted}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            editable={!deleting}
+          />
+          <TouchableOpacity
+            style={[styles.deleteConfirmBtn, (!canConfirmDelete || deleting) && { opacity: 0.4 }]
+            }
+            activeOpacity={0.8}
+            onPress={handleDeleteAccount}
+            disabled={!canConfirmDelete || deleting}
+            accessibilityRole="button"
+            accessibilityLabel="Permanently delete my account"
+          >
+            {deleting
+              ? <ActivityIndicator size="small" color={Colors.white} />
+              : <Text style={styles.deleteConfirmBtnText}>DELETE MY ACCOUNT</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{ alignItems: 'center', marginTop: 14 }}
+            onPress={() => { if (!deleting) { setDeleteModalOpen(false); setDeleteError(null); } }}
+            disabled={deleting}
+          >
+            <Text style={styles.resendLinkText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
 
       {/* Address Verification Stepper Modal */}
       <BottomSheet
@@ -936,6 +1049,53 @@ export const SettingsScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
+  dangerCard: {
+    backgroundColor: Colors.errorAlpha08,
+    borderWidth: 1,
+    borderColor: Colors.errorAlpha20,
+    borderRadius: Radius.card,
+    padding: 16,
+    marginTop: 8,
+  },
+  dangerCopy: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size12,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+    marginTop: 10,
+    marginBottom: 14,
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: Radius.inline,
+    borderWidth: 1,
+    borderColor: Colors.errorAlpha30,
+    backgroundColor: Colors.errorAlpha10,
+  },
+  deleteBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.error,
+    letterSpacing: 1.1,
+  },
+  deleteConfirmBtn: {
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: Radius.inline,
+    backgroundColor: Colors.error,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteConfirmBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size14,
+    color: Colors.white,
+    letterSpacing: 1.1,
+  },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 24, marginBottom: 16,
