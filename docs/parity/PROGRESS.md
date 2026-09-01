@@ -11,7 +11,7 @@ Append-only session log. Read this first at the start of every session.
 | SELL | 2026-08-31 | Audited | 32 (SELL-001..032) |
 | AUCTION | 2026-09-01 | Audited | 39 (AUC-001..039) |
 | DASH | 2026-09-01 | Audited | 47 (DASH-001..047) |
-| CROSS | — | Not started | — |
+| CROSS | 2026-09-01 | Audited | 24 (CROSS-001..024) |
 
 ## Phase 2 — Implementation (branch `parity/<flow-name>`, one flow per session)
 
@@ -371,6 +371,92 @@ any Phase 2 dashboard work.
 
 **Docs-only commit. No source files were modified.**
 
-**Next session should pick up:** Pass 6 — CROSS-CUTTING (the final audit pass). Note DASH-047
+**Next session should pick up:** Pass 6 — CROSS-CUTTING.  _(done — Phase 1 complete)_
 (silent error handling swallowing failures into zero-value dashboards) was observed across every
 screen in this pass and should be folded into that sweep.
+
+### 2026-09-01 — Pass 6: CROSS-CUTTING (final audit pass)
+
+**Method.** A survey sweep rather than deep feature reads: shared primitives read in full, then
+grep-based pattern counts across all screens/pages, plus a three-way token comparison against the
+design system. Counts below are exact grep hits unless marked as estimates. Every load-bearing
+claim was re-verified directly before being written.
+
+**Scope covered.**
+- Mobile: `components/{GlobalToastProvider,Toast}.tsx`, `components/ui/*`, `lib/apiClient.ts`,
+  `constants/{colors,spacing,typography}.ts`, plus pattern surveys across all 60 screens
+- Web: `lib/{apiClient,fetchWithRetry}.ts`, `app/{error,global-error,template,layout}.tsx`,
+  plus pattern surveys across 98 pages
+- Design system: `CarMazium Design System/{README,SKILL,colors_and_type.css}` + `ui_kits/`,
+  `THEME_MIGRATION_TODO.md`, web `globals.css`
+
+**Result: 24 rows, CROSS-001 through CROSS-024.**
+
+| Status | Count |
+|---|---|
+| MISSING | 1 |
+| PARTIAL | 5 |
+| DIVERGENT | 4 |
+| PRESENT | 12 |
+| NEEDS_VERIFICATION | 2 |
+
+**Headline: mobile's design-token discipline is the best part of the codebase, and on brand colour
+mobile is right where web is wrong.** The design system's `SKILL.md:47` sets a hard rule that the
+primary red is `#FF0037`, "not the old `#ED1C24`". Mobile uses `#FF0037` (`colors.ts:39`); web
+still uses `#ed1c24` (`globals.css:6`). Same story for the secondary brand colour. Mobile also has
+**zero** hardcoded hex in `src/screens/` and **zero** inline `fontSize`/`fontFamily` literals —
+web has no shared skeleton or empty-state component at all, and reaches for native
+`alert()`/`confirm()` at 74 call sites across 23 files. Several rows here are web defects recorded
+specifically so nobody "fixes" mobile toward web (CROSS-001, CROSS-002, CROSS-008, CROSS-010).
+
+**Where mobile genuinely needs work:**
+- **CROSS-023 (P2, highest-value fix)** — dashboards `catch { /* show zeros */ }`, so a failed
+  request is indistinguishable from real zero data. A dealer whose analytics call fails sees a
+  dashboard reporting zero sales and zero revenue with no error shown. The shared `ErrorBanner`
+  already exists in 18 screens, so this is mechanical.
+- **CROSS-018 (P1)** — only `SearchScreen` paginates. Seven other lists fetch a fixed page-1 limit
+  (20-100) and stop silently; a dealer with 60 leads loses 10 with no indication. Web has the same
+  problem on 10 pages, so it is not a mobile regression.
+- **CROSS-015 (P1)** — no offline detection on either app, but it bites mobile harder: no
+  reachability branch in `apiClient`, a shorter 10s timeout than web's 30s, and no retry wrapper
+  where web at least hardened its auth cold-start path with `fetchWithRetry`.
+- **CROSS-009 (P2)** — `Alert.alert` at 173 call sites vs `ErrorBanner` in 18 screens, with 13
+  screens using both and no rule distinguishing them.
+
+**A Pass 5 row was corrected.** CROSS-021 found `BuyerDashboardScreen.tsx` (624 lines) is
+unreachable dead code — zero `navigate()` call sites, absent from the drawer's 33 `stackScreen`
+targets. It holds the richer buyer tile set and a period toggle that the live
+`UnifiedDashboardScreen` lacks. **DASH-004 has been amended** to say so. Note the subtlety that
+made this worth double-checking: `UnifiedDashboardScreen`'s stack route is *also* never navigated
+to, yet its component is live because `TabNavigator.tsx:29` renders it directly — route-deadness
+and screen-deadness are different things, and a naive grep would have called both dead.
+
+**Also corrected during this pass:** the mobile agent reported `Earnings` as possibly unreachable.
+It is not — `GlobalDrawer.tsx` navigates via `navigation.navigate('Main', { screen: item.stackScreen })`
+(`GlobalDrawer.tsx:349`), a variable, so `navigate('Earnings')` greps miss it. All 33 drawer
+`stackScreen` values are reachable. Any future dead-screen check must account for that indirection.
+
+**Not traced — stated rather than assumed.**
+- CROSS-011: I did not grep mobile for a root React error boundary — marked NEEDS_VERIFICATION
+  rather than recorded as a gap.
+- CROSS-024: mobile `accessibilityLabel` coverage was not audited at all; the web `aria-label`
+  ratio is a rough signal that overstates the issue since visible text also satisfies an
+  accessible name. Recorded as a known-unaudited area.
+- Empty-state adoption on mobile is a component-import count (26 screens), not a per-screen
+  confirmation that every list has one.
+- The design system's `ui_kits/carmazium-mobile/` has no manifest file, so mobile's documented
+  claim that its deeper ground colour `#0A0D14` "comes from the design system's mobile kit"
+  (`colors.ts:24-27`) could not be verified against that kit's source.
+- Haptics adoption (15 of 60 screens) was counted by import, not by auditing every primary action.
+
+**Open questions raised: OQ-25 through OQ-29** (29 open in total).
+
+**Docs-only commit. No source files were modified.**
+
+## Phase 1 complete
+
+All six audit passes are done: **210 rows** across AUTH (36), BUY (32), SELL (32), AUCTION (39),
+DASH (47) and CROSS (24), with 29 open questions. No source file has been modified in Phase 1.
+
+**Next session:** answer the open questions, then prioritise the matrix. Phase 2 is one flow per
+session on `parity/<flow-name>`, starting only once rows are confirmed and prioritised.

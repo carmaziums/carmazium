@@ -351,3 +351,81 @@ Mobile implements this properly: `NotificationSettingsScreen.tsx:66-113` loads f
 Web does not. Its dealer settings notification toggles have **no save handler at all** (`dashboard/dealer/settings/page.tsx:314-337`), and buyer settings uses uncontrolled `defaultChecked` boxes that are never included in the save payload (`buyer/settings/page.tsx:205-223`). Both are cosmetic.
 
 **Question:** confirm mobile's implementation is the intended behaviour and the web toggles are the bug. If so this is not a mobile parity item at all, and I will mark DASH-021 as a web defect rather than leaving it as a mobile-ahead row — but I want your confirmation before recording that a shipped web control does nothing.
+
+## OQ-25 — Web renders the wrong brand red — `OPEN` (web fix, mobile is correct)
+**Raised by:** Pass 6 CROSS-CUTTING (2026-09-01). **Blocks:** CROSS-001, CROSS-002.
+
+The design system states as a hard rule: *"The primary brand red is `#FF0037`, not the old `#ED1C24`"* (`CarMazium Design System/SKILL.md:47`), implemented as `--cz-primary: #ff0037` (`colors_and_type.css:13`).
+
+- **Mobile: correct.** `accent = '#FF0037'` (`src/constants/colors.ts:39`).
+- **Web: stale.** `--color-primary: #ed1c24` (`src/app/globals.css:6`). Same for secondary — design system `#2d3c63`, mobile `#2D3C63`, web `#1e293b`.
+
+So the entire web app renders the superseded brand colour, and mobile is the conformant one.
+
+Caveat: the design-system file is itself mid-migration — its `--gradient-vip-tab` (`colors_and_type.css:164`) and shadow tokens (`:77-79`) still contain `#ed1c24`, and `README.md:128` still says `#ed1c24` while `SKILL.md:47` says `#FF0037`. `THEME_MIGRATION_TODO.md` does not mention this divergence at all.
+
+**Question:** confirm `#FF0037` is canonical and web is the thing to fix. This is out of mobile-parity scope so I will not touch it — I want it recorded so nobody later "corrects" mobile toward web and reintroduces the old red.
+
+---
+
+## OQ-26 — Fix the silent-failure pattern on mobile dashboards? — `OPEN`
+**Raised by:** Pass 6 CROSS-CUTTING (2026-09-01). **Blocks:** CROSS-023, DASH-047.
+
+Mobile dashboard screens almost universally catch fetch failures as `catch { /* show zeros */ }`. A failed request is therefore indistinguishable from real zero data: a dealer whose `/dealers/analytics` call fails sees a dashboard reporting zero sales, zero leads and zero revenue, with no error indicator and no retry.
+
+Only `BuyerPurchaseHistoryScreen` and `EarningsScreen`'s Stripe flow surface an `ErrorBanner`.
+
+The shared `ErrorBanner` component already exists and is used in 18 screens, so the fix is mechanical rather than architectural.
+
+**Question:** do you want this as a dedicated Phase 2 flow (one pass over the dashboard screens adding error state + retry), or folded into each feature flow as I touch it? I would do it as one dedicated pass — it is a consistent mechanical change and doing it piecemeal means the app is half-fixed for a long time.
+
+---
+
+## OQ-27 — Pagination: which lists actually need it? — `OPEN`
+**Raised by:** Pass 6 CROSS-CUTTING (2026-09-01). **Blocks:** CROSS-018, BUY-020.
+
+Only `SearchScreen` paginates on mobile. Every other list fetches page 1 at a fixed limit and stops, with no indication anything is missing:
+
+| Screen | Limit |
+|---|---|
+| `DealerPurchasesScreen.tsx:129` | 100 |
+| `DealerInventoryScreen.tsx:572` | 50 |
+| `DealerLeadsScreen.tsx:487` | 50 |
+| `SellerListingsScreen.tsx:215` | 50 |
+| `SellerAuctionsScreen.tsx:217,238` | 50 |
+| `CompareScreen.tsx:124` | 30 |
+| `MyListingDashboardScreen.tsx:125` | 20 |
+| watchlist store (BUY-020) | 50 |
+
+The backend imposes no `@Max` on `limit` (`listing-filter.dto.ts:209-214`), so raising the numbers is possible but only moves the cliff.
+
+Web has the same problem on 10 pages, so this is not a mobile regression — but a dealer with 60 leads silently loses 10 of them on both platforms.
+
+**Question:** which of these realistically exceed their limit for your users? I would prioritise dealer inventory, dealer leads and seller listings (a real dealership plausibly passes 50) and leave compare/dashboard previews alone, since those are deliberately capped previews. Tell me if that ranking is wrong.
+
+---
+
+## OQ-28 — Offline handling: in scope or not? — `OPEN`
+**Raised by:** Pass 6 CROSS-CUTTING (2026-09-01). **Blocks:** CROSS-015.
+
+Neither app has any network detection — no `@react-native-community/netinfo` dependency or usage on mobile, no `navigator.onLine` or service worker on web (all greps empty).
+
+On mobile this bites harder: `src/lib/apiClient.ts` has no reachability branch, so an offline request rejects with a raw `TypeError: Network request failed` which is not one of the app's sentinels (`NO_SESSION` / `REQUEST_TIMEOUT` / `AUTH_REDIRECT`), and each screen renders it however it happens to handle unknown errors. There is no offline banner and no retry-on-reconnect.
+
+Mobile also has a **shorter** timeout than web (10s vs 30s) and **no** retry wrapper, where web at least has `fetchWithRetry` for its auth cold-start path — so mobile is more exposed to backend cold starts than web is.
+
+**Question:** is offline support in scope for this parity effort at all? It is arguably a mobile-native expectation rather than a web-parity item, so I have not assumed it. If yes, the minimum useful version is: add NetInfo, an offline banner, and an `OFFLINE` sentinel in `apiClient` so screens can distinguish it — I would not attempt request queueing or cached reads without a separate discussion.
+
+---
+
+## OQ-29 — Two more dead screens: revive or delete? — `OPEN`
+**Raised by:** Pass 6 CROSS-CUTTING (2026-09-01). **Blocks:** CROSS-021, BUY-021, DASH-004.
+
+Two mobile screens are registered but unreachable — zero `navigate()` call sites and absent from the 33 `stackScreen` targets in `GlobalDrawer.tsx`:
+
+1. **`WatchlistScreen.tsx`** (146 lines, BUY-021) — duplicates the live `SavedScreen` from the same store.
+2. **`BuyerDashboardScreen.tsx`** (624 lines, CROSS-021) — and this one matters more, because it holds a **richer buyer tile set** (ACTIVE OFFERS, WATCHING, LIVE BIDS, AUCTIONS WON, TOTAL SPENT) plus a 7d/30d period toggle that the live `UnifiedDashboardScreen` does not have. I have amended DASH-004 accordingly.
+
+For contrast, `UnifiedDashboardScreen`'s stack route is also never navigated to, but the component **is** live because `TabNavigator.tsx:29` renders it directly — so route-deadness and screen-deadness are not the same thing here.
+
+**Question:** for each — delete, or wire up? `BuyerDashboardScreen` looks like the better buyer dashboard that simply never got connected; if you want it, wiring it up is small and would also settle DASH-004's "which tile set is canonical" question.
