@@ -75,12 +75,16 @@ const getAvatarBg = (initials: string) => {
 interface ThreadRowProps {
   room: ChatRoom;
   onPress: (roomId: string) => void;
+  /** Passed as a primitive, not the whole online set: handing the row a Set
+   *  would give it a new prop identity on every presence change and defeat
+   *  the React.memo this row exists for. */
+  isOnline: boolean;
 }
 
 // Hoisted + memoized so FlatList only re-renders the thread row whose props
 // actually changed, instead of recreating this JSX inline in renderItem on
 // every parent re-render (mobile-audit.md P3/P4).
-const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress }) => {
+const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress, isOnline }) => {
   const isUnread = room.unreadCount > 0;
   const displayName = getDisplayName(room.otherUser);
   const initials = getInitials(displayName);
@@ -107,6 +111,12 @@ const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress }) => {
           <View style={styles.verifiedBadge}>
             <Ionicons name="checkmark-circle" size={14} color={Colors.lightBlue_0084ff} />
           </View>
+        )}
+        {/* Presence (DASH-023). Only ever shown when we positively know the
+            partner is online — absence means "unknown or offline", never a
+            claim either way. */}
+        {isOnline && (
+          <View style={styles.onlineDot} accessibilityLabel="Online" />
         )}
       </View>
 
@@ -172,7 +182,7 @@ const renderSkeletonRows = () => (
 export const MessagesScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
-  const { rooms, unreadCount, markAsRead, refreshRooms, isLoading } = useChat();
+  const { rooms, unreadCount, markAsRead, refreshRooms, isLoading, onlineUserIds } = useChat();
 
   const [activeTab, setActiveTab] = useState<'all' | 'offers' | 'archived'>('all');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -222,8 +232,14 @@ export const MessagesScreen: React.FC = () => {
   }, [markAsRead, navigation]);
 
   const renderThreadRow = useCallback(
-    ({ item: room }: { item: ChatRoom }) => <ThreadRow room={room} onPress={handleThreadPress} />,
-    [handleThreadPress],
+    ({ item: room }: { item: ChatRoom }) => (
+      <ThreadRow
+        room={room}
+        onPress={handleThreadPress}
+        isOnline={!!room.otherUser?.id && onlineUserIds.has(room.otherUser.id)}
+      />
+    ),
+    [handleThreadPress, onlineUserIds],
   );
 
   return (
@@ -473,6 +489,17 @@ const styles = StyleSheet.create({
   },
   threadCardUnread: {
     borderColor: Colors.accentAlpha25,
+  },
+  onlineDot: {
+    position: 'absolute',
+    right: -1,
+    bottom: -1,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: Colors.success,
+    borderWidth: 2,
+    borderColor: Colors.bgPrimary,
   },
   avatarContainer: {
     position: 'relative',

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDrawer } from '../context/DrawerContext';
 import { useAuthStore } from '../store/authStore';
 import { apiClient } from '../lib/apiClient';
+import { getOrCreateSupportRoom } from '../lib/chatApi';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { MainStackParamList } from '../navigation/MainStackNavigator';
 import { TabParamList } from '../navigation/TabNavigator';
@@ -277,6 +278,21 @@ export const GlobalDrawer: React.FC = () => {
   const { isOpen, closeDrawer } = useDrawer();
   const user         = useAuthStore((s) => s.user);
   const logout       = useAuthStore((s) => s.logout);
+  const [supportLoading, setSupportLoading] = useState(false);
+
+  const handleContactSupport = async () => {
+    if (supportLoading) return;
+    setSupportLoading(true);
+    try {
+      const room = await getOrCreateSupportRoom();
+      closeDrawer();
+      navigation.navigate('Main', { screen: 'ChatScreen', params: { threadId: room.id } });
+    } catch (err: any) {
+      Alert.alert('Could not open support', err?.message || 'Please try again in a moment.');
+    } finally {
+      setSupportLoading(false);
+    }
+  };
   const role         = useAuthStore((s) => s.role);
   const accountRole  = useAuthStore((s) => s.accountRole);
   const setRole      = useAuthStore((s) => s.setRole);
@@ -626,6 +642,20 @@ export const GlobalDrawer: React.FC = () => {
           )}
 
           <View style={styles.divider} />
+
+          {/* Contact Support (DASH-024). Web has had this in its sidebar for
+              every role; mobile had no in-app route to support at all. Opens
+              the support chat room rather than an email client, matching web
+              and keeping the conversation in the product. */}
+          <TouchableOpacity style={styles.row} onPress={handleContactSupport} activeOpacity={0.7} disabled={supportLoading}>
+            <View style={styles.bar} />
+            <View style={styles.iconWrap}>
+              {supportLoading
+                ? <ActivityIndicator size="small" color={Colors.accent} />
+                : <Ionicons name="help-buoy-outline" size={19} color={Colors.accent} />}
+            </View>
+            <Text style={styles.rowLabel}>Contact Support</Text>
+          </TouchableOpacity>
 
           {/* Sign Out row */}
           <TouchableOpacity style={styles.row} onPress={handleSignOut} activeOpacity={0.7}>

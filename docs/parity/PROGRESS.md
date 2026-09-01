@@ -27,6 +27,7 @@ Append-only session log. Read this first at the start of every session.
 | 4b — session lifecycle | AUTH-013, AUTH-014, AUTH-034, AUTH-035 | 2026-09-01 | NEEDS_VERIFICATION |
 | 6 — deep linking & offline | AUTH-020, AUTH-019, AUTH-030, CROSS-015/017 | 2026-09-01 | NEEDS_VERIFICATION (needs prebuild) |
 | 5 — account deletion | AUTH-033, DASH-030 | 2026-09-01 | NEEDS_VERIFICATION |
+| 8 — chat presence & support | DASH-023, DASH-024 | 2026-09-01 | NEEDS_VERIFICATION |
 
 ## Session log
 
@@ -1982,3 +1983,111 @@ cannot be reused as-is.
 (1, 2a, 2b, 3, 4a, 4b, 6, 7 merged; 5 on its branch pending merge). **None are VERIFIED** —
 every row is `NEEDS_VERIFICATION` and only the repo owner sets otherwise. Flow 6 requires
 `npx expo prebuild --clean` and Flow 3's auction routing requires the backend deployed.
+
+---
+
+## Phase 3 (Phase D) — Flow 8: Chat presence and contact support (2026-09-01)
+
+Branch `parity/chat-presence-support`, cut from `main` with the whole ship-line merged in.
+Rows: **DASH-023, DASH-024** → `NEEDS_VERIFICATION`.
+
+First flow below the ship-line. Both rows are pure consumption of things the backend already
+does — no backend change, no new dependency.
+
+### DASH-023 — presence
+
+The gateway broadcasts `presence:update` on connect and disconnect, and sends a
+`presence:snapshot` of who is already online when you connect. Web consumes both.
+`ChatContext` listened for `message:new`, `user:typing`, `messages:read` and `error` — neither
+presence event — so mobile could never show who was reachable.
+
+`ChatContext` now handles both and exposes `onlineUserIds: Set<string>`; `MessagesScreen`
+renders a green dot on the partner's avatar.
+
+Three choices worth recording:
+
+- **The snapshot is handled, not just the update.** Without it every partner reads as offline
+  until their next connect/disconnect, which is exactly why the gateway sends it
+  (`chat.gateway.ts:116-124`). Handling only `presence:update` would look correct in a quick
+  two-device test and be wrong in practice.
+- **The set is cleared when our own socket disconnects.** Holding the last known state would
+  show stale green dots for the length of the outage — a confident claim about something we can
+  no longer observe.
+- **The row takes a boolean, not the Set.** `ThreadRow` is `React.memo`'d specifically so a
+  `FlatList` only re-renders the row that changed; passing the Set would hand every row a new
+  prop identity on every presence change and defeat that.
+
+Absence of a dot means "offline or unknown" — it never claims someone is offline.
+
+### DASH-024 — contact support
+
+`POST /chat/support` finds-or-creates a room with the oldest ADMIN and joins both parties
+server-side. Mobile had no route to it at all. Added `getOrCreateSupportRoom()` to `chatApi` and
+a **Contact Support** row in `GlobalDrawer` above Sign Out — the drawer is mobile's equivalent
+of web's sidebar, where this sits for every role.
+
+Opens the support chat room rather than an email client, matching web and keeping the
+conversation in the product. The endpoint is idempotent, and the handler additionally guards on
+its own in-flight state, because this is a button people will double-tap.
+
+Four files: `context/ChatContext.tsx`, `screens/main/MessagesScreen.tsx`, `lib/chatApi.ts`,
+`components/GlobalDrawer.tsx`.
+
+### Quality gates
+
+```
+$ npx tsc --noEmit    22 errors, all @types/jest. Errors elsewhere: 0.
+$ npx eslint <the four changed files>   exit=0, clean.
+$ npm run lint        24 problems (11 errors, 13 warnings) — the merged baseline.
+```
+
+### Manual test script
+
+Presence needs **two accounts on two devices** (or one device plus the web app signed in as the
+other party) — it cannot be tested single-handed.
+
+**A — Presence (DASH-023)**
+
+1. Devices A and B, each signed in as a different account, with an existing conversation between
+   them. Open Messages on A while B is signed in with the app open.
+   *Expect:* a green dot on B's avatar in the thread list.
+2. Force-quit the app on B. Wait a few seconds.
+   *Expect:* the dot on A disappears without A refreshing.
+3. Reopen the app on B. *Expect:* the dot returns on A.
+4. **The snapshot case:** with B already online, force-quit and reopen the app on **A**.
+   *Expect:* the dot is there immediately on A's first load — not only after B next reconnects.
+   This is the case that fails if only `presence:update` is handled.
+5. Put A in airplane mode. *Expect:* all dots clear rather than freezing as they were.
+6. A conversation with someone offline. *Expect:* no dot, and no "offline" label either.
+
+**B — Contact support (DASH-024)**
+
+7. Open the drawer. *Expect:* a Contact Support row above Sign Out, on every role — buyer,
+   seller and dealer.
+8. Tap it. *Expect:* the drawer closes and a chat opens with CarMazium support.
+9. Send a message, then go back to Messages. *Expect:* the support conversation is in the list.
+10. Tap Contact Support again. *Expect:* the same conversation, not a second one — the endpoint
+    is find-or-create.
+11. Double-tap it quickly. *Expect:* one navigation, no duplicate rooms, no error.
+12. Tap it with no connection. *Expect:* "Could not open support" with a real message, and the
+    drawer stays usable.
+
+**C — Regression sweep**
+
+13. Normal chat: send and receive a message, typing indicator, unread badge. *Expect:*
+    unchanged.
+14. Scroll a long thread list. *Expect:* no jank — the memoised row should not be re-rendering.
+
+### Not verified in this session
+
+- Nothing run on a device; no Android SDK here, and presence is inherently a two-device test.
+- **Step A4 (the snapshot) is the one I would most want run.** It is the difference between
+  presence that looks right in a quick test and presence that is right, and I have only reasoned
+  about the gateway's emit order.
+- Whether an ADMIN user actually exists in the target environment was **not checked**.
+  `findOrCreateSupportRoom` pairs the user with the oldest ADMIN — if there is none, step 8 may
+  fail server-side. Worth confirming before treating a failure there as a client bug.
+- `ChatScreen` was not read this session, so how the support room renders once opened — title,
+  avatar, any admin-specific affordances — is unverified.
+- Presence is surfaced on the thread list only. Web also shows it in the conversation header;
+  that is a possible follow-up, not done here.

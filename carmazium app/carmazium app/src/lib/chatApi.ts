@@ -137,3 +137,22 @@ export async function getUnreadCount(): Promise<number> {
     return 0;
   }
 }
+
+/**
+ * Opens (or reuses) the user's support conversation with CarMazium.
+ *
+ * `POST /chat/support` finds-or-creates a room with the oldest ADMIN user and
+ * joins both parties to it server-side (`chat.controller.ts:80-88`). Web has had
+ * a "Contact Support" button in its sidebar for every role; a grep of mobile
+ * `src/` for `chat/support` previously returned nothing, so mobile users had no
+ * in-app route to support at all (DASH-024).
+ *
+ * Idempotent — calling it twice returns the same room, so it is safe to wire to
+ * a button that people will inevitably double-tap.
+ */
+export async function getOrCreateSupportRoom(): Promise<{ id: string }> {
+  const response = await apiClient<{ data: { id: string } }>('/chat/support', {
+    method: 'POST',
+  });
+  return response.data;
+}
