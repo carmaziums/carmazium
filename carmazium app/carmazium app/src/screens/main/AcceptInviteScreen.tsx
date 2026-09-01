@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
@@ -46,13 +46,19 @@ export const AcceptInviteScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const { initializeAuth } = useAuthStore();
 
-  const [input, setInput] = useState('');
+  // A token arriving as a route param means the invite link opened the app
+  // directly (AUTH-030) — the paste field stays as the fallback for anyone
+  // whose email client or platform does not hand the link over.
+  const route = useRoute<RouteProp<MainStackParamList, 'AcceptInvite'>>();
+  const routeToken = route.params?.token;
+
+  const [input, setInput] = useState(routeToken ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const handleAccept = async () => {
-    const token = extractToken(input);
+  const acceptToken = useCallback(async (raw: string) => {
+    const token = extractToken(raw);
     setError(null);
     if (!token) {
       setError('Paste the invite link or code from your email.');
@@ -71,7 +77,19 @@ export const AcceptInviteScreen: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
-  };
+    // No dependencies on purpose: initializeAuth is a stable zustand action,
+    // and taking it as one would give this callback a new identity on every
+    // store write, re-running the auto-accept effect below.
+  }, []);
+
+  const handleAccept = () => acceptToken(input);
+
+  // Auto-accept when the token came from the link, matching web, which
+  // accepts straight from its `?token=` param with no extra tap
+  // (`auth/accept-invite/page.tsx:22-55`). Runs once.
+  useEffect(() => {
+    if (routeToken) void acceptToken(routeToken);
+  }, [routeToken, acceptToken]);
 
   return (
     <KeyboardStickyView style={styles.container} behavior="padding">

@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { Alert } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
@@ -9,6 +10,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Updates from 'expo-updates';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { linking } from './src/navigation/linking';
 import { GlobalToastProvider } from './src/components/GlobalToastProvider';
 import { DrawerProvider } from './src/context/DrawerContext';
 import { GlobalDrawer } from './src/components/GlobalDrawer';
@@ -197,46 +199,113 @@ export default function App() {
   useEffect(() => subscribeToAuthChanges(), [subscribeToAuthChanges]);
 
   useEffect(() => {
+    // Supabase auth callbacks only. Everything else routes through React
+    // Navigation's `linking` config (navigation/linking.ts), whose `filter`
+    // excludes exactly the URLs this handler claims, so the two never both act
+    // on one link.
+    //
+    // Web handles seven ordered branches (`auth/callback/page.tsx:44-199`);
+    // mobile handled two — implicit tokens and a bare PKCE exchange — with no
+    // error branch, no rescue when the code was already consumed, and no
+    // timeout, so a link that failed left the user on the splash with no
+    // feedback at all (AUTH-019). The branch order below mirrors web's.
     const handleDeepLink = async (url: string | null) => {
       if (!url) return;
 
-      // Parse both hash (implicit flow) and query string (PKCE flow)
       const hashFragment = url.includes('#') ? url.split('#')[1] : '';
       const queryFragment = url.includes('?') ? url.split('?')[1].split('#')[0] : '';
       const hashParams = new URLSearchParams(hashFragment);
       const queryParams = new URLSearchParams(queryFragment);
 
+      // 1. Error param — Supabase reports failures this way (expired link,
+      //    already-used link). Previously ignored entirely, so an expired
+      //    verification link looked identical to a working one that did nothing.
+      const errorCode = queryParams.get('error') || hashParams.get('error');
+      if (errorCode) {
+        const description =
+          queryParams.get('error_description') || hashParams.get('error_description') || errorCode;
+        Alert.alert('Sign-in link problem', decodeURIComponent(description.replace(/\+/g, ' ')));
+        return;
+      }
+
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
       const type = hashParams.get('type');
-      const code = queryParams.get('code'); // PKCE flow
+      const code = queryParams.get('code');
 
-      if (accessToken && refreshToken) {
-        // Implicit flow — tokens arrive in the URL hash (email links + Google OAuth)
-        try {
-          await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
+      // A link that reaches none of the branches below must not leave the user
+      // staring at a splash screen forever — web keeps a 15s safety timer for
+      // the same reason.
+      let settled = false;
+      const safety = setTimeout(() => {
+        if (!settled) {
+          Alert.alert('Sign-in link timed out', 'Please try opening the link again, or sign in manually.');
+        }
+      }, 15000);
 
+      try {
+        // 2. Implicit flow — tokens in the hash (email links, Google OAuth).
+        if (accessToken && refreshToken) {
+          await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
           if (type === 'recovery') {
+            // Recovery tokens are restricted: bridging them to the backend
+            // 401s, so go straight to the reset screen without rehydrating.
             setTimeout(() => {
               (navigationRef.current as any)?.navigate('Auth', { screen: 'ResetPassword' });
             }, 300);
           } else {
             await reinitializeAuth();
           }
-        } catch (err) {
-          console.warn('Failed to set session from link:', err);
+          return;
         }
-      } else if (code) {
-        // PKCE flow — exchange the code for a session (fallback safety net)
-        try {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (!error) await reinitializeAuth();
-        } catch (err) {
-          console.warn('Failed to exchange OAuth code for session:', err);
+
+        // 3. PKCE — exchange the code, with the two rescues web needs.
+        if (code) {
+          const isRecovery = type === 'recovery' || queryParams.get('type') === 'recovery';
+          try {
+            const { error } = await supabase.auth.exchangeCodeForSession(code);
+            if (error) {
+              // The code may already have been consumed by the global
+              // onAuthStateChange subscription (AUTH-013) racing us to it. A
+              // session existing is success, not failure.
+              const { data: { session } } = await supabase.auth.getSession();
+              if (!session?.user) {
+                Alert.alert('Could not complete sign-in', error.message);
+                return;
+              }
+            }
+          } catch (exchangeErr: any) {
+            // Same rescue for the abort case, which is what that race throws.
+            const aborted =
+              exchangeErr?.name === 'AbortError' || String(exchangeErr?.message ?? '').includes('aborted');
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.user) {
+              Alert.alert(
+                'Could not complete sign-in',
+                aborted ? 'Please try opening the link again.' : (exchangeErr?.message ?? 'Unknown error'),
+              );
+              return;
+            }
+          }
+
+          if (isRecovery) {
+            setTimeout(() => {
+              (navigationRef.current as any)?.navigate('Auth', { screen: 'ResetPassword' });
+            }, 300);
+          } else {
+            await reinitializeAuth();
+          }
+          return;
         }
+
+        // 4. No tokens and no code — if a session already exists this link was
+        //    redundant, which is fine. Otherwise it is not ours to handle and
+        //    React Navigation's linking config will have taken it.
+      } catch (err: any) {
+        Alert.alert('Could not complete sign-in', err?.message ?? 'Please try again.');
+      } finally {
+        settled = true;
+        clearTimeout(safety);
       }
     };
 
@@ -264,6 +333,10 @@ export default function App() {
     <SafeAreaProvider>
       <NavigationContainer
         ref={navigationRef}
+        // AUTH-020: the container had no `linking` prop at all, so React
+        // Navigation never routed an inbound URL and every deep link fell to
+        // the ad-hoc listener above, which only understood Supabase tokens.
+        linking={linking}
         theme={{
           dark: true,
           colors: {

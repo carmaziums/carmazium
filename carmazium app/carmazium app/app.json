@@ -56,6 +56,26 @@
             "BROWSABLE",
             "DEFAULT"
           ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "pathPrefix": "/auth/accept-invite"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "pathPrefix": "/auth/accept-invite"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
