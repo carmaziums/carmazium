@@ -150,10 +150,38 @@ function SignupForm() {
         }
     }
 
+    // Each role carries its own accent so the three are distinguishable at a
+    // glance — they previously all rendered in brand red, which made the
+    // dropdown read as one repeated option.
+    //
+    // Tailwind classes are written out in full rather than composed from a
+    // colour name: the JIT compiler only sees complete class strings in the
+    // source, so `bg-${colour}-500/20` would silently produce no styles.
     const roles = [
-        { id: 'BUYER', icon: Car, label: 'User - Buy & Sell Vehicles', sub: 'Individual trading account' },
-        { id: 'DEALER', icon: Building2, label: 'Dealer - Dealership Account', sub: 'Manage inventory, leads & team' },
-        { id: 'FINANCE_PARTNER', icon: CreditCard, label: 'Finance Provider', sub: 'Vehicle financing services' }
+        {
+            id: 'BUYER',
+            icon: Car,
+            label: 'User - Retail Customers',
+            sub: 'Buy & Sell Vehicles',
+            active: 'bg-blue-500/20 text-blue-400',
+            hover: 'group-hover:bg-blue-500/20 group-hover:text-blue-400',
+        },
+        {
+            id: 'DEALER',
+            icon: Building2,
+            label: 'Dealer - Trade Buyer Account',
+            sub: 'Dealership account',
+            active: 'bg-primary/20 text-primary',
+            hover: 'group-hover:bg-primary/20 group-hover:text-primary',
+        },
+        {
+            id: 'FINANCE_PARTNER',
+            icon: CreditCard,
+            label: 'Finance Provider',
+            sub: 'Vehicle financing services',
+            active: 'bg-emerald-500/20 text-emerald-400',
+            hover: 'group-hover:bg-emerald-500/20 group-hover:text-emerald-400',
+        },
     ]
 
     const selectedRole = roles.find(r => r.id === formData.role)
@@ -249,7 +277,7 @@ function SignupForm() {
                             <label htmlFor="dropdown-toggle" className="flex items-center justify-between w-full h-14 px-4 bg-slate-900/60 border border-white/10 rounded-xl cursor-pointer text-white hover:border-primary/50 transition-colors">
                                 {selectedRole ? (
                                     <span className="flex items-center gap-3">
-                                        <span className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                                        <span className={`w-8 h-8 rounded-full flex items-center justify-center ${selectedRole.active}`}>
                                             <selectedRole.icon size={16} />
                                         </span>
                                         <span>{selectedRole.label}</span>
@@ -273,7 +301,7 @@ function SignupForm() {
                                         }}
                                         className="flex items-center gap-4 p-4 hover:bg-white/5 cursor-pointer border-b border-white/5 last:border-0 transition-colors group"
                                     >
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${formData.role === role.id ? 'bg-primary/20 text-primary' : 'bg-slate-800 text-gray-400 group-hover:bg-primary/20 group-hover:text-primary'}`}>
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${formData.role === role.id ? role.active : `bg-slate-800 text-gray-400 ${role.hover}`}`}>
                                             <role.icon size={20} />
                                         </div>
                                         <div>
