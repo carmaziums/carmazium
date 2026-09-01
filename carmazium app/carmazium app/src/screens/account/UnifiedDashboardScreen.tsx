@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Alert,
   Animated,
@@ -15,6 +15,7 @@ import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { Logo } from '../../components/Logo';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { apiClient } from '../../lib/apiClient';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
@@ -107,18 +108,32 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
   const { user, role, accountRole, logout } = useAuthStore();
   const [data, setData] = useState<UnifiedDashboardData>(EMPTY);
   const [loading, setLoading] = useState(true);
+  // Three states, not two. `loading` covers the fetch; `error` covers a
+  // failure; and no error with zeroed data means the account genuinely has
+  // nothing yet, which must still render as zeros (CROSS-023 / DASH-047).
+  // Previously the catch swallowed everything into `/* show zeros */`, so a
+  // dead network rendered as a confident, wrong dashboard.
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await apiClient<UnifiedDashboardResponse>('/dashboard/unified');
-        if (mounted && res?.success) setData(res.data);
-      } catch { /* show zeros */ }
-      finally { if (mounted) setLoading(false); }
-    })();
-    return () => { mounted = false; };
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiClient<UnifiedDashboardResponse>('/dashboard/unified');
+      if (res?.success) setData(res.data);
+    } catch (err: any) {
+      // Reset to EMPTY as well as flagging: leaving the previous render's
+      // numbers on screen under an error banner is its own kind of lie.
+      setData(EMPTY);
+      setError(err?.message === 'REQUEST_TIMEOUT'
+        ? 'Timed out loading your dashboard.'
+        : 'Could not load your dashboard.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { void load(); }, [load]);
 
   const { buyer, seller, unreadMessages } = data;
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User';
@@ -167,6 +182,12 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 110 }]} showsVerticalScrollIndicator={false}>
+
+        {error ? (
+          <View style={{ marginBottom: 16 }}>
+            <ErrorBanner message={error} onRetry={load} />
+          </View>
+        ) : null}
 
         {/* ── Profile card ── */}
         <View style={styles.profileCard}>

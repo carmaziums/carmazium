@@ -82,6 +82,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
   const [totalSales, setTotalSales] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
   // Stripe Connect
@@ -99,9 +100,18 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
         setSales(Array.isArray(d?.sales) ? d.sales : []);
         setTotalRevenue(d?.totalRevenue ?? 0);
         setTotalSales(d?.totalSales ?? 0);
+        setError(null);
+      } else {
+        // allSettled swallows the rejection, so without this a failed
+        // earnings call rendered as £0 earned — indistinguishable from a
+        // seller who has genuinely earned nothing (CROSS-023).
+        setSales([]);
+        setTotalRevenue(0);
+        setTotalSales(0);
+        setError('Could not load your earnings.');
       }
     } catch {
-      // silently fail — show zeros
+      setError('Could not load your earnings.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -267,6 +277,12 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
           />
         }
       >
+        {error ? (
+          <View style={{ marginBottom: 16 }}>
+            <ErrorBanner message={error} onRetry={() => fetchData()} />
+          </View>
+        ) : null}
+
         {/* ── Summary card ── */}
         <View style={styles.summaryCard}>
           {/* Left: total revenue */}
