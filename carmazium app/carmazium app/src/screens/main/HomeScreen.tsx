@@ -288,7 +288,18 @@ function Rail<T>({
       initialNumToRender={3}
       maxToRenderPerBatch={3}
       windowSize={5}
-      removeClippedSubviews
+      // `removeClippedSubviews` deliberately NOT set (QA-003). It is an
+      // Android-only view-detachment optimisation that React Native's own docs
+      // flag as buggy — "may have bugs (missing content)" — and each row here
+      // contains a nested horizontal FlatList (ImageCarousel) plus four
+      // absolutely-positioned overlays, which is the combination it handles
+      // worst: detached subviews reattach in the wrong place and stay there.
+      // It was the only use of the prop in the entire app, and the stray-image
+      // artifact appeared only on these rails.
+      //
+      // The three props above do the actual virtualisation and are untouched,
+      // so the perf win from the rail-virtualisation commit is retained; only
+      // the incorrect-rendering part is dropped.
     />
   );
 }
