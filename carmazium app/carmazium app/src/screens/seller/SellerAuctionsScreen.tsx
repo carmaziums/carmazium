@@ -116,6 +116,9 @@ interface EligibleListing {
   images?: string[];
   type?: string;
   status?: string;
+  /** Set when this listing is the retail half of an also-list-retail pair — such
+   *  a listing must not be offered for a new auction (AUC-030). */
+  linkedListingId?: string | null;
 }
 
 // ─────────────────────────── Status Config ───────────────────────────
@@ -622,13 +625,53 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     setCreateModalVisible(true);
     setListingsLoading(true);
     try {
-      const res = await apiClient<{ success: boolean; data: EligibleListing[]; pagination: any }>(
-        '/listings/my?page=1&limit=100'
-      );
+      // Auctions are refetched alongside the listings rather than read from
+      // state: the re-auction path arrives straight from the results modal of
+      // an auction that has just ended, and the ENDED status below is the whole
+      // basis for admitting its reverted DRAFT. Web does the same for the same
+      // reason (it calls this set `freshAuctions`).
+      const [res, auctionsRes] = await Promise.all([
+        apiClient<{ success: boolean; data: EligibleListing[]; pagination: any }>(
+          '/listings/my?page=1&limit=100'
+        ),
+        apiClient<{ success: boolean; data: { data?: AuctionItem[] } | AuctionItem[] }>(
+          '/auctions/my/list?page=1&limit=50'
+        ).catch(() => null),
+      ]);
       if (res.success) {
         const items = Array.isArray(res.data) ? res.data : [];
-        // Only ACTIVE CLASSIFIED listings can be put in an auction
-        const eligible = items.filter(l => l.type === 'CLASSIFIED' && l.status === 'ACTIVE');
+
+        const inner = (auctionsRes as any)?.data;
+        const knownAuctions: AuctionItem[] = Array.isArray(inner)
+          ? inner
+          : Array.isArray(inner?.data) ? inner.data : [];
+        // A listing already tied to a scheduled or running auction cannot enter
+        // another one — offering it just produces a server-side rejection
+        // (AUC-030).
+        const busyListingIds = new Set(
+          knownAuctions.filter(a => a.status === 'SCHEDULED' || a.status === 'ACTIVE').map(a => a.listingId),
+        );
+        // An auction that ends below reserve reverts its listing to
+        // DRAFT/CLASSIFIED precisely so it can be re-auctioned
+        // (`auctions.service.ts:845-872`). The old filter demanded status
+        // ACTIVE, so that reverted DRAFT never matched `presetListingId` and
+        // the picker showed "no eligible listings" for the one listing the
+        // seller was trying to select — the Re-auction button failed for the
+        // exact case it exists to serve (AUC-029). An ENDED auction against the
+        // listing's own id is what distinguishes a reverted auction from an
+        // ordinary unfinished draft, which must stay excluded. Web carries this
+        // same fix and the same reasoning at
+        // `dashboard/seller/auctions/page.tsx:196-218`.
+        const revertedListingIds = new Set(
+          knownAuctions.filter(a => a.status === 'ENDED').map(a => a.listingId),
+        );
+
+        const eligible = items.filter(l =>
+          l.type === 'CLASSIFIED' &&
+          (l.status === 'ACTIVE' || (l.status === 'DRAFT' && revertedListingIds.has(l.id))) &&
+          !busyListingIds.has(l.id) &&
+          !l.linkedListingId
+        );
         setEligibleListings(eligible);
         if (presetListingId) {
           const match = eligible.find(l => l.id === presetListingId);

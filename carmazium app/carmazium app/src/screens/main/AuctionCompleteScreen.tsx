@@ -94,25 +94,33 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
     paymentDeadline,
   } = params;
 
-  // Countdown — initialised from paymentDeadline if provided, else 24h default
-  const getInitialSeconds = () => {
-    if (paymentDeadline) {
-      const diff = Math.floor(
-        (new Date(paymentDeadline).getTime() - Date.now()) / 1000,
-      );
-      return Math.max(0, diff);
-    }
-    return 24 * 3600; // 24h fallback
+  // Countdown to the real payment deadline, or nothing at all.
+  //
+  // This used to fall back to "24 hours from whenever this screen mounted" when
+  // no deadline was passed — and the socket win path passed none, so that
+  // fabricated figure was what most winners saw. The real grace period is 72h
+  // from `wonAt` (`auctions.service.ts:23,618-626`), so a winner could be told
+  // they had hours left when they had days, and the number changed every time
+  // they reopened the screen (AUC-022).
+  //
+  // Both callers now pass a real deadline. If one ever does not, show no
+  // countdown rather than inventing one — `null` also leaves payment enabled,
+  // since refusing a payment on a deadline we do not know would be worse than
+  // showing no timer.
+  const getInitialSeconds = (): number | null => {
+    if (!paymentDeadline) return null;
+    return Math.max(0, Math.floor((new Date(paymentDeadline).getTime() - Date.now()) / 1000));
   };
 
-  const [timeLeft, setTimeLeft] = useState(getInitialSeconds);
+  const [timeLeft, setTimeLeft] = useState<number | null>(getInitialSeconds);
   useEffect(() => {
+    if (timeLeft === null) return;
     const timer = setInterval(
-      () => setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0)),
+      () => setTimeLeft((prev) => (prev !== null && prev > 0 ? prev - 1 : prev)),
       1000,
     );
     return () => clearInterval(timer);
-  }, []);
+  }, [timeLeft === null]);
 
   // ── Count-up price animation (JS-driven, updates React state) ─────────────
   const [displayPrice, setDisplayPrice] = useState(0);
@@ -176,6 +184,8 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
       return;
     }
     if (timeLeft === 0) {
+      // `=== 0` deliberately, not `<= 0` or a falsy check: timeLeft is null when
+      // no deadline is known, and an unknown deadline must not block payment.
       Alert.alert('Deadline passed', 'The payment deadline has passed. Please contact support.');
       return;
     }
@@ -521,29 +531,34 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
           </Text>
         </View>
 
-        {/* Countdown */}
-        <View style={[styles.timerBox, timeLeft < 3600 && styles.timerBoxUrgent]}>
-          <View style={styles.timerLeft}>
-            <Ionicons
-              name="time-outline"
-              size={20}
-              color={timeLeft < 3600 ? Colors.error : Colors.warning}
-              style={{ marginRight: 10 }}
-            />
-            <View>
-              <Text style={[styles.timerTitle, timeLeft < 3600 && styles.timerTitleUrgent]}>
-                Complete payment within
-              </Text>
-              <Text style={[styles.timerValue, timeLeft < 3600 && styles.timerValueUrgent]}>
-                {formatCountdown(timeLeft)}
-              </Text>
+        {/* Countdown — rendered only when the deadline is actually known.
+            Note `timeLeft` is `number | null`, and `null < 3600` coerces to
+            true, so every urgency comparison must be explicit about the null
+            case rather than relying on the bare `<`. */}
+        {timeLeft !== null && (
+          <View style={[styles.timerBox, timeLeft < 3600 && styles.timerBoxUrgent]}>
+            <View style={styles.timerLeft}>
+              <Ionicons
+                name="time-outline"
+                size={20}
+                color={timeLeft < 3600 ? Colors.error : Colors.warning}
+                style={{ marginRight: 10 }}
+              />
+              <View>
+                <Text style={[styles.timerTitle, timeLeft < 3600 && styles.timerTitleUrgent]}>
+                  Complete payment within
+                </Text>
+                <Text style={[styles.timerValue, timeLeft < 3600 && styles.timerValueUrgent]}>
+                  {formatCountdown(timeLeft)}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.timerRight}>
+              <Text style={styles.timerRightText}>or the lot</Text>
+              <Text style={styles.timerRightText}>goes to next bidder</Text>
             </View>
           </View>
-          <View style={styles.timerRight}>
-            <Text style={styles.timerRightText}>or the lot</Text>
-            <Text style={styles.timerRightText}>goes to next bidder</Text>
-          </View>
-        </View>
+        )}
 
         <Text style={styles.sectionLabel}>ORDER SUMMARY</Text>
 
