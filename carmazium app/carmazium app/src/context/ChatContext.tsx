@@ -16,6 +16,10 @@ interface ChatContextType {
   unreadCount: number;
   isConnected: boolean;
   isLoading: boolean;
+  /** Ids of conversation partners currently online. The gateway broadcasts
+   *  this and web has always consumed it; mobile listened for neither
+   *  presence event, so it could never show who was reachable (DASH-023). */
+  onlineUserIds: Set<string>;
 
   refreshRooms: () => Promise<void>;
   refreshUnreadCount: () => Promise<void>;
@@ -36,6 +40,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
   const socketRef = useRef<Socket | null>(null);
@@ -88,6 +93,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       socket.on('disconnect', () => {
         if (__DEV__) console.log('Mobile chat socket disconnected');
         setIsConnected(false);
+        // Our own socket is down, so we no longer know who is online. Holding
+        // the last known set would show stale green dots for as long as the
+        // disconnection lasts — worse than showing nobody.
+        setOnlineUserIds(new Set());
       });
 
       socket.on('message:new', (message: ChatMessage) => {
@@ -98,6 +107,24 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         // Update rooms list locally
         refreshRoomsSilently();
+      });
+
+      // Who is already online at the moment we connect. Without this every
+      // partner reads as offline until their next connect/disconnect — which
+      // is exactly why the gateway sends it (`chat.gateway.ts:116-124`).
+      socket.on('presence:snapshot', (data: { onlineUserIds?: string[] }) => {
+        setOnlineUserIds(new Set(data?.onlineUserIds ?? []));
+      });
+
+      // Incremental changes from then on (`chat.gateway.ts:110-113,162-166`).
+      socket.on('presence:update', (data: { userId?: string; online?: boolean }) => {
+        if (!data?.userId) return;
+        setOnlineUserIds((prev) => {
+          const next = new Set(prev);
+          if (data.online) next.add(data.userId!);
+          else next.delete(data.userId!);
+          return next;
+        });
       });
 
       socket.on('user:typing', (data: any) => {
@@ -220,6 +247,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value: ChatContextType = {
     rooms,
     unreadCount,
+    onlineUserIds,
     isConnected,
     isLoading,
     refreshRooms,
