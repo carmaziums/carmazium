@@ -17,6 +17,7 @@ import { GlobalToastProvider } from './src/components/GlobalToastProvider';
 import { DrawerProvider } from './src/context/DrawerContext';
 import { GlobalDrawer } from './src/components/GlobalDrawer';
 import { LocationPromptSheet } from './src/components/LocationPromptSheet';
+import { ProfileCompletionPromptSheet } from './src/components/ProfileCompletionPromptSheet';
 import { Colors } from './src/constants/colors';
 import { ChatProvider } from './src/context/ChatContext';
 import { LocationProvider } from './src/context/LocationContext';
@@ -380,6 +381,10 @@ export default function App() {
               genuinely missing, and gates internally on being authenticated
               and past onboarding. */}
           <LocationPromptSheet />
+          {/* Same nudge pattern for name/phone (DASH-003). Defers to the
+              location prompt when both would fire, so two bottom sheets never
+              stack. */}
+          <ProfileCompletionPromptSheet />
           {/* Above everything and outside the navigator, so it covers every
               route including ones added later. Renders null when online. */}
           <OfflineBanner />
