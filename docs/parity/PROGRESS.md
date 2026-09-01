@@ -458,5 +458,87 @@ It is not — `GlobalDrawer.tsx` navigates via `navigation.navigate('Main', { sc
 All six audit passes are done: **210 rows** across AUTH (36), BUY (32), SELL (32), AUCTION (39),
 DASH (47) and CROSS (24), with 29 open questions. No source file has been modified in Phase 1.
 
-**Next session:** answer the open questions, then prioritise the matrix. Phase 2 is one flow per
+**Next session:** Phase 2 Flow 1 — Listing publish payment path (SELL-005, SELL-006). All 29 open questions answered 2026-09-01; see the Decisions Log in OPEN-QUESTIONS.md and the prioritised plan below.
 session on `parity/<flow-name>`, starting only once rows are confirmed and prioritised.
+
+---
+
+## Phase 2 plan — prioritised 2026-09-01
+
+All 29 open questions are answered (see the Decisions Log in `OPEN-QUESTIONS.md`). Six rows are
+now **out of scope**: AUTH-027, AUTH-029, AUTH-031, BUY-029, DASH-046 (partner/admin roles,
+dead partners portal, off-platform retail checkout).
+
+**Nothing below has been built yet. Phase 1 was docs-only — no mobile source file has been
+modified. An APK built from this commit contains the app exactly as it was before the audit.**
+
+Phase 2 rule stands: **one flow per session**, on `parity/<flow-name>`, and I restate the row IDs
+in scope and get confirmation before writing code.
+
+### Suggested order
+
+**Flow 1 — Listing publish payment path (P0, money).**
+Rows: SELL-005, SELL-006. Enforce ≥10 photos at the mobile Media step, fix the missing `return`
+in the failure `catch` (which currently shows a false "Published!" after a failed publish), then
+restructure create to publish-first-pay-second as `SellerListingsScreen` already does. Highest
+priority because sellers are being charged for listings that do not publish.
+
+**Flow 2 — Auction correctness (P0/P1).**
+Rows: AUC-029 (re-auction filter admits the reverted DRAFT — the fix is already written down in
+web's own code comment), AUC-012 (initials only), AUC-022 (72h deadline, real value passed from
+both entry points), AUC-017 (refetch on socket reconnect).
+
+**Flow 3 — Search and offer contract fixes (P0/P1).**
+Rows: BUY-022 (replace the absolute `price - 15000` offer floor with the backend's proportional
+70%), BUY-006 (`SEMI_AUTO` → `SEMI_AUTOMATIC`, add `CVT`), BUY-017 (route AUCTION search results
+to `LiveAuctionDetailed`), BUY-007/BUY-008 (make list, condition values).
+
+**Flow 4 — Session and auth (P0).**
+Rows: AUTH-005 (signup role picker, BUYER + DEALER only), AUTH-013 (global `onAuthStateChange`),
+AUTH-014 + OQ-6 (store-level `forceLogout()` on `AUTH_REDIRECT`), AUTH-034 (preserve destination
+through re-login), AUTH-035 (cold-start gate), AUTH-003/OQ-3 (separate the onboarding flags).
+
+**Flow 5 — Deep linking (P0, structural).**
+Rows: AUTH-020, AUTH-019, AUTH-030, AUTH-003. Add a React Navigation `linking` config. This is
+the root cause behind the invite paste-the-link workaround and the untraceable OAuth return leg;
+several other rows unblock once it exists.
+
+**Flow 6 — Dashboard error states (P2, one dedicated pass — OQ-26).**
+Rows: CROSS-023, DASH-047. Replace `catch { /* show zeros */ }` with the existing shared
+`ErrorBanner` plus retry across the dashboard screens, so a failed request stops looking like
+genuine zero data.
+
+**Flow 7 — Account and settings gaps (P1).**
+Rows: AUTH-033 / DASH-030 (account deletion — app-store relevant), DASH-023 (chat presence),
+DASH-024 (contact support), DASH-003 (profile completion gate).
+
+**Flow 8 — Dashboard feature merge (P2, depends on the OQ-21 web merge).**
+Rows: DASH-004 + OQ-29 (wire up `BuyerDashboardScreen`, delete `WatchlistScreen`), DASH-010
+(auction bonuses in earnings), DASH-005/012 (period toggle, performance metric set).
+
+**Flow 9 — Offline and resilience (P1 — OQ-28).**
+Rows: CROSS-015, CROSS-017. NetInfo, offline banner, `OFFLINE` sentinel in `apiClient`. No request
+queueing or cached reads without a separate discussion.
+
+**Flow 10 — Pagination (P1 — OQ-27).**
+Row: CROSS-018, scoped to dealer inventory, dealer leads and seller listings only. Compare and
+dashboard previews stay deliberately capped.
+
+**Small fixes to fold into whichever flow touches that file:**
+AUC-016 (the "Adjust Reserve Price" stub that alerts success but makes no API call), AUC-038
+(the "Handover confirmed" header contradicting the journey list below it), OQ-9 (remove the £95
+`buyerFee` default), AUC-025 (Stripe Connect payout warning), DASH-019/OQ-22 (live notification
+list).
+
+### Logged for the web app / backend — not mobile parity work
+
+- Web renders the superseded brand red `#ed1c24`; canonical is `#FF0037` (OQ-25, CROSS-001/002).
+- Web's notification preference toggles save nothing (OQ-24, DASH-021).
+- Web's password reset enforces 6 characters; canonical is 8 (OQ-2, AUTH-008).
+- Web's signup has no terms-acceptance gate; mobile's is correct and stays (OQ-4, AUTH-007).
+- `POST /damage/:listingId/save` has no ownership check (OQ-15).
+- `reservePrice` is returned to every client by `AuctionsService.findOne` (OQ-19).
+- `DealerQuickList` omits all legal declarations and has a broken auction path (OQ-13).
+- `/auth/partners` is broken and orphaned; `api-server/` is a stale deployment path (OQ-7, OQ-8).
+- Dormant retail-checkout code in both apps should be removed (OQ-10).
+- Backend should validate the legal declarations it currently accepts as optional (OQ-16).

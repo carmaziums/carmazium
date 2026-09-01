@@ -7,7 +7,7 @@ Format: one section per question. Status is `OPEN` or `ANSWERED`.
 Answered questions stay in the file with the answer recorded inline.
 
 ---
-## OQ-1 — Should mobile support role selection at signup? — `OPEN`
+## OQ-1 — Should mobile support role selection at signup? — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 1 AUTH (2026-08-31). **Blocks:** AUTH-005, AUTH-026, AUTH-029.
 
 Web lets a user pick BUYER / DEALER / FINANCE_PARTNER at signup (`src/app/auth/signup/page.tsx:153-157`) and validates against six roles (`signup/page.tsx:13`). Mobile hardcodes `const role = 'BUYER'` (`carmazium app/carmazium app/src/store/authStore.ts:265`).
@@ -22,7 +22,7 @@ Not guessing. This determines whether AUTH-005 is scoped at all, and whether AUT
 
 ---
 
-## OQ-2 — Which password minimum length is canonical? — `OPEN`
+## OQ-2 — Which password minimum length is canonical? — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 1 AUTH (2026-08-31). **Blocks:** AUTH-008, AUTH-016.
 
 Four different rules in one codebase:
@@ -39,7 +39,7 @@ Four different rules in one codebase:
 
 ---
 
-## OQ-3 — `hasCompletedOnboarding` is set pre-auth by the marketing carousel — `OPEN`
+## OQ-3 — `hasCompletedOnboarding` is set pre-auth by the marketing carousel — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 1 AUTH (2026-08-31). **Blocks:** AUTH-001, AUTH-023, AUTH-025.
 
 `OnboardingScreen.tsx:156,162` calls `completeOnboarding()` — which writes the `czm_onboarding_complete` SecureStore flag (`store/authStore.ts:6,89-92`) — when a user skips or finishes the pre-auth marketing carousel, before they have an account.
@@ -52,7 +52,7 @@ That is the same flag the post-signup wizard gate reads: `hasCompletedOnboarding
 
 ---
 
-## OQ-4 — Terms and Privacy acceptance: mobile enforces it, web does not — `OPEN`
+## OQ-4 — Terms and Privacy acceptance: mobile enforces it, web does not — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 1 AUTH (2026-08-31). **Blocks:** AUTH-007.
 
 Mobile requires an agree-to-terms checkbox before signup is enabled (`SignupScreen.tsx:50,292-305`). A grep for `terms` / `agree` in `src/app/auth/signup/page.tsx` returned no matches.
@@ -61,7 +61,7 @@ Mobile requires an agree-to-terms checkbox before signup is enabled (`SignupScre
 
 ---
 
-## OQ-5 — Are ADMIN and partner roles ever in scope for mobile? — `OPEN`
+## OQ-5 — Are ADMIN and partner roles ever in scope for mobile? — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 1 AUTH (2026-08-31). **Blocks:** AUTH-027, AUTH-029, AUTH-026.
 
 Backend has 7 roles (`backend/prisma/schema.prisma:18-27`). Web routes 6 of them to distinct dashboards plus an admin panel (`src/app/dashboard/page.tsx:25-44`). Mobile's store types `role` as only `'buyer' | 'seller' | 'dealer'` (`store/authStore.ts:60,68`) and maps everything else to `buyer` (`authStore.ts:117`).
@@ -70,7 +70,7 @@ Backend has 7 roles (`backend/prisma/schema.prisma:18-27`). Web routes 6 of them
 
 ---
 
-## OQ-6 — Who handles the mobile `AUTH_REDIRECT` sentinel? — `OPEN`
+## OQ-6 — Who handles the mobile `AUTH_REDIRECT` sentinel? — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 1 AUTH (2026-08-31). **Blocks:** AUTH-014, AUTH-012.
 
 Mobile `src/lib/apiClient.ts:93-95` throws `Error('AUTH_REDIRECT')` on 401, mirroring the web sentinel. But web's `apiClient` *also* navigates first (`src/lib/apiClient.ts:9-20,119`); mobile does not.
@@ -81,7 +81,7 @@ I searched `App.tsx`, `RootNavigator.tsx`, and `store/authStore.ts` and found no
 
 ---
 
-## OQ-7 — `src/app/auth/partners/page.tsx` looks broken against the backend contract — `OPEN`
+## OQ-7 — `src/app/auth/partners/page.tsx` looks broken against the backend contract — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 1 AUTH (2026-08-31). **Blocks:** AUTH-031.
 
 The partners portal posts `{email, supabaseToken}` to `POST /auth/login` (`src/app/auth/partners/page.tsx:54-60`). The backend `LoginDto` accepts only `{email, password}`, and the global validation pipe is configured `whitelist: true, forbidNonWhitelisted: true` (`backend/src/main.ts:115-116`) — so this request should be rejected with a 400 (unknown property `supabaseToken`, missing `password`).
@@ -92,7 +92,7 @@ I have **not** run this, so I am not asserting it fails in production — only t
 
 ---
 
-## OQ-8 — Two deployment paths with different route prefixes — `OPEN` (informational)
+## OQ-8 — Two deployment paths with different route prefixes — `ANSWERED` (informational — see Decisions Log)
 **Raised by:** Pass 1 AUTH (2026-08-31). **Blocks:** nothing yet; flagged so it does not bite later passes.
 
 `backend/src/main.ts` has **no** `setGlobalPrefix` call (grep returned no match), and listens directly (`main.ts:157`). `api-server/index.ts:11` wraps the same `AppModule` for a serverless deploy and **does** call `app.setGlobalPrefix('api')`, rewriting URLs to start with `/api` (`api-server/index.ts:27-29`).
@@ -101,7 +101,7 @@ Both clients target the same host with no `/api` prefix: web `src/lib/apiClient.
 
 So `api-server/` appears to be an unused legacy Vercel path — consistent with the recent commit "fix(payments): stop sending paying customers to a dead deployment". **Question:** can I treat `backend/src/main.ts` (no prefix) as the only contract for all remaining passes and ignore `api-server/`?
 
-## OQ-9 — Stale £95 buyer-fee default in `PurchaseFlowScreen` — `OPEN`
+## OQ-9 — Stale £95 buyer-fee default in `PurchaseFlowScreen` — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 2 BUY (2026-08-31). **Blocks:** BUY-028.
 
 Web's auction buyer fee is a constant `AUCTION_BUYER_FEE = 125` (`src/app/checkout/page.tsx:16`, documented as £100 seller bonus + £25 platform).
@@ -112,7 +112,7 @@ Mobile's `PurchaseFlowScreen` declares `buyerFee` with a default of **95** in tw
 
 ---
 
-## OQ-10 — Retail checkout is dormant on BOTH apps — `OPEN`
+## OQ-10 — Retail checkout is dormant on BOTH apps — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 2 BUY (2026-08-31). **Blocks:** BUY-029.
 
 Web `/checkout` fully implements a retail deposit (£500) and full-payment mode (`src/app/checkout/page.tsx:327-494`), but no inbound link reaching `mode=deposit` or `mode=full` was found in `src/app`. The detail pages instead state payment is not taken on the platform (`VehicleDetailsPageClient.tsx:1370`). Mobile mirrors this: `PurchaseFlowScreen` supports `DEPOSIT` / `FULL_PAYMENT` but only `COMMISSION` call sites exist.
@@ -123,7 +123,7 @@ Caveat: the web check was a grep, so a runtime-constructed URL could evade it. T
 
 ---
 
-## OQ-11 — Which web detail page is the porting source of truth? — `OPEN` (recommend `/buy-cars/[slug]`)
+## OQ-11 — Which web detail page is the porting source of truth? — `ANSWERED` (recommend `/buy-cars/[slug]` — see Decisions Log)
 **Raised by:** Pass 2 BUY (2026-08-31). **Blocks:** BUY-013, BUY-015, BUY-016, BUY-024.
 
 Web has two live detail routes resolving the same slug against the same endpoint. `/vehicle/[id]` is self-documented as legacy (`src/app/vehicle/[id]/page.tsx:19-25`), is de-indexed and canonicals to `/buy-cars/` (L40-45) — but it is still linked from Home (`HomeClient.tsx:330`), Compare (`compare/page.tsx:296`), and the checkout cancel page (`cancel/page.tsx:90`), and it carries UI the canonical page does **not** have:
@@ -139,7 +139,7 @@ Web has two live detail routes resolving the same slug against the same endpoint
 
 ---
 
-## OQ-12 — Is the mobile `transmissions` filter actually erroring? — `OPEN`
+## OQ-12 — Is the mobile `transmissions` filter actually erroring? — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 2 BUY (2026-08-31). **Blocks:** BUY-006.
 
 Mobile sends `SEMI_AUTO` (`SearchScreen.tsx:915`), which is not a member of the backend `TransmissionType` enum (`backend/prisma/schema.prisma:49-56`: `MANUAL, AUTOMATIC, CVT, SEMI_AUTOMATIC`). The `transmissions` DTO field has `@IsArray()` but **no** per-item `@IsEnum` (`listing-filter.dto.ts:92-96`), so the value is not rejected at validation and is passed to Prisma.
@@ -148,7 +148,7 @@ I did not run this. Prisma may throw on an out-of-enum value in an `in` filter (
 
 **Question:** can you tap Semi-Auto in the mobile search filter on device and tell me what happens — error toast, or zero results? That determines whether BUY-006 is a P0 crash-level fix or a P1 silent-empty-results fix. Either way the fix is the same one-line enum correction plus adding the missing `CVT` option; the answer only changes its priority.
 
-## OQ-13 — Which web create-listing flow is the porting source of truth? — `OPEN` (recommend `ListingWizard`)
+## OQ-13 — Which web create-listing flow is the porting source of truth? — `ANSWERED` (recommend `ListingWizard` — see Decisions Log)
 **Raised by:** Pass 3 SELL (2026-08-31). **Blocks:** SELL-001 and, indirectly, every other SELL row.
 
 Web has **two unrelated create-listing implementations**:
@@ -172,7 +172,7 @@ Two follow-on concerns I am **not** acting on without your say-so:
 
 ---
 
-## OQ-14 — Mobile charges the listing fee before the publish gate can reject — `OPEN`
+## OQ-14 — Mobile charges the listing fee before the publish gate can reject — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 3 SELL (2026-08-31). **Blocks:** SELL-005, SELL-006.
 
 This is the most serious thing found so far, so I want your call on the fix before touching a payment path.
@@ -202,7 +202,7 @@ I would do (c), with (a) first as the immediate stop-gap. Either way the missing
 
 ---
 
-## OQ-15 — `POST /damage/:listingId/save` has no ownership check — `OPEN` (backend security)
+## OQ-15 — `POST /damage/:listingId/save` has no ownership check — `ANSWERED` (backend security — see Decisions Log)
 **Raised by:** Pass 3 SELL (2026-08-31). **Blocks:** nothing in mobile parity; logged because it was found while tracing SELL-012.
 
 `POST /damage/:listingId/save` is guarded by `SessionAuthGuard` (any logged-in user) but the controller and `damage.service.ts` `saveDamageRecords` perform **no check that the caller owns the listing**. The handler deletes all existing `DamageRecord` rows for the given `listingId` and recreates them from the request body, then recomputes `Listing.exteriorGrade`.
@@ -213,7 +213,7 @@ As read, any authenticated user could overwrite any listing's damage records and
 
 ---
 
-## OQ-16 — Three different definitions of "listing complete" — `OPEN`
+## OQ-16 — Three different definitions of "listing complete" — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 3 SELL (2026-08-31). **Blocks:** SELL-031, SELL-004.
 
 The product currently disagrees with itself about what a publishable listing is:
@@ -228,7 +228,7 @@ The product currently disagrees with itself about what a publishable listing is:
 
 **Question:** what is the canonical rule? I need one answer to write mobile against, otherwise I am just picking a side. My assumption unless told otherwise is that `ListingWizard`'s rule is canonical and the backend gate is the minimum floor — but note that would mean the backend should also be validating the declarations it currently accepts as optional (`create-listing.dto.ts:350-373`).
 
-## OQ-17 — Should a socket reconnect resync auction state? — `OPEN`
+## OQ-17 — Should a socket reconnect resync auction state? — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 4 AUCTION (2026-09-01). **Blocks:** AUC-004.
 
 Neither client re-fetches auction state after a socket reconnect — both only re-emit `auction:join`, which subscribes to the room but replays nothing (`auction.gateway.ts:65-75`). Bids, cancellations and `auction:ended` that fired during the gap are lost.
@@ -241,7 +241,7 @@ I would do (a) now regardless, since it is a few lines and entirely within mobil
 
 ---
 
-## OQ-18 — Mobile shows competing bidders' full names — `OPEN`
+## OQ-18 — Mobile shows competing bidders' full names — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 4 AUCTION (2026-09-01). **Blocks:** AUC-012.
 
 Web maps the bid list to **initials only** and discards the rest (`src/app/auctions/live/[id]/page.tsx:176`). Mobile builds a full name from the same payload and renders it in each bid row (`AuctionDetailScreen.tsx:296-306`, rendered at `:1369`).
@@ -254,7 +254,7 @@ On a dealer-to-dealer auction platform this tells a dealer exactly who they are 
 
 ---
 
-## OQ-19 — `reservePrice` is sent to every client — `OPEN` (backend)
+## OQ-19 — `reservePrice` is sent to every client — `ANSWERED` (backend — see Decisions Log)
 **Raised by:** Pass 4 AUCTION (2026-09-01). **Blocks:** nothing in mobile parity; found while tracing AUC-015.
 
 Both clients deliberately hide the reserve from buyers, and mobile documents this in comments (`AuctionDetailScreen.tsx:1098-1100,1296-1298`). But `AuctionsService.findOne` returns the whole auction row and does **not** strip `reservePrice` (`auctions.service.ts:240-287`), unlike seller contact details which have explicit gating (`gateSellerContactDetails`).
@@ -267,7 +267,7 @@ I have **not** run a request to confirm this end to end; it is a reading of the 
 
 ---
 
-## OQ-20 — Which payment deadline is correct for auction winners? — `OPEN`
+## OQ-20 — Which payment deadline is correct for auction winners? — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 4 AUCTION (2026-09-01). **Blocks:** AUC-022.
 
 The backend reverts an unpaid win after **72 hours** — `BUYER_FEE_GRACE_MS = 72h` (`auctions.service.ts:23`), enforced hourly by `revertUnpaidWins` (`:618-689`). Web's cancel page states the same 72-hour rule (`src/app/checkout/cancel/page.tsx:69`).
@@ -284,7 +284,7 @@ So a winner can be told they have hours left when they actually have days, and t
 
 **Question:** confirm 72 hours from the auction end (i.e. from `wonAt`) is the rule to display. If so the fix is to pass a real deadline from both entry points and correct the fallback. I want confirmation because it is a countdown users will make decisions against, and I would rather not harmonise on the wrong number.
 
-## OQ-21 — Which web dashboard is the porting source of truth? — `OPEN` (blocks most of Pass 5)
+## OQ-21 — Which web dashboard is the porting source of truth? — `ANSWERED` (blocks most of Pass 5 — see Decisions Log)
 **Raised by:** Pass 5 DASHBOARDS (2026-09-01). **Blocks:** DASH-001 and, indirectly, DASH-004 through DASH-017.
 
 Web has **two parallel dashboard implementations** and users only ever reach one of them.
@@ -315,7 +315,7 @@ I am not guessing at this. It changes whether four mobile rows are "ahead", "cor
 
 ---
 
-## OQ-22 — Should mobile's notification list update live? — `OPEN`
+## OQ-22 — Should mobile's notification list update live? — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 5 DASHBOARDS (2026-09-01). **Blocks:** DASH-019.
 
 Mobile's real-time notification handling lives entirely in `GlobalToastProvider.tsx:80,107-108`, which connects to the `/notifications` namespace and raises a toast. `NotificationsScreen.tsx` has **no socket** (a grep for `io(` returns 0), so a notification arriving while the list is open shows a toast but does not appear in the list until manual pull-to-refresh.
@@ -326,7 +326,7 @@ Separately, `GlobalToastProvider.tsx:107-108` listens for both `notification:new
 
 ---
 
-## OQ-23 — Dealer staff roles are collected but never enforced — `OPEN`
+## OQ-23 — Dealer staff roles are collected but never enforced — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 5 DASHBOARDS (2026-09-01). **Blocks:** DASH-040.
 
 Both apps let a dealer invite staff as `ADMIN`, `SALES_AGENT` or `FINANCE_MANAGER` (`DealerRole`, `schema.prisma:204-210`), and both render the role as a coloured label. Neither app branches any behaviour on it.
@@ -341,7 +341,7 @@ Caveat: I did not read `dealers.service.ts` in full, so enforcement may exist in
 
 ---
 
-## OQ-24 — Notification preferences: mobile works, web does not — `OPEN`
+## OQ-24 — Notification preferences: mobile works, web does not — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 5 DASHBOARDS (2026-09-01). **Blocks:** DASH-021.
 
 The backend genuinely honours user notification preferences — mute-all, per-type keys, push channel and quiet hours are all checked before emitting or pushing (`notifications.service.ts:87-140`).
@@ -352,7 +352,7 @@ Web does not. Its dealer settings notification toggles have **no save handler at
 
 **Question:** confirm mobile's implementation is the intended behaviour and the web toggles are the bug. If so this is not a mobile parity item at all, and I will mark DASH-021 as a web defect rather than leaving it as a mobile-ahead row — but I want your confirmation before recording that a shipped web control does nothing.
 
-## OQ-25 — Web renders the wrong brand red — `OPEN` (web fix, mobile is correct)
+## OQ-25 — Web renders the wrong brand red — `ANSWERED` (web fix, mobile is correct — see Decisions Log)
 **Raised by:** Pass 6 CROSS-CUTTING (2026-09-01). **Blocks:** CROSS-001, CROSS-002.
 
 The design system states as a hard rule: *"The primary brand red is `#FF0037`, not the old `#ED1C24`"* (`CarMazium Design System/SKILL.md:47`), implemented as `--cz-primary: #ff0037` (`colors_and_type.css:13`).
@@ -368,7 +368,7 @@ Caveat: the design-system file is itself mid-migration — its `--gradient-vip-t
 
 ---
 
-## OQ-26 — Fix the silent-failure pattern on mobile dashboards? — `OPEN`
+## OQ-26 — Fix the silent-failure pattern on mobile dashboards? — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 6 CROSS-CUTTING (2026-09-01). **Blocks:** CROSS-023, DASH-047.
 
 Mobile dashboard screens almost universally catch fetch failures as `catch { /* show zeros */ }`. A failed request is therefore indistinguishable from real zero data: a dealer whose `/dealers/analytics` call fails sees a dashboard reporting zero sales, zero leads and zero revenue, with no error indicator and no retry.
@@ -381,7 +381,7 @@ The shared `ErrorBanner` component already exists and is used in 18 screens, so 
 
 ---
 
-## OQ-27 — Pagination: which lists actually need it? — `OPEN`
+## OQ-27 — Pagination: which lists actually need it? — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 6 CROSS-CUTTING (2026-09-01). **Blocks:** CROSS-018, BUY-020.
 
 Only `SearchScreen` paginates on mobile. Every other list fetches page 1 at a fixed limit and stops, with no indication anything is missing:
@@ -405,7 +405,7 @@ Web has the same problem on 10 pages, so this is not a mobile regression — but
 
 ---
 
-## OQ-28 — Offline handling: in scope or not? — `OPEN`
+## OQ-28 — Offline handling: in scope or not? — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 6 CROSS-CUTTING (2026-09-01). **Blocks:** CROSS-015.
 
 Neither app has any network detection — no `@react-native-community/netinfo` dependency or usage on mobile, no `navigator.onLine` or service worker on web (all greps empty).
@@ -418,7 +418,7 @@ Mobile also has a **shorter** timeout than web (10s vs 30s) and **no** retry wra
 
 ---
 
-## OQ-29 — Two more dead screens: revive or delete? — `OPEN`
+## OQ-29 — Two more dead screens: revive or delete? — `ANSWERED` (see Decisions Log)
 **Raised by:** Pass 6 CROSS-CUTTING (2026-09-01). **Blocks:** CROSS-021, BUY-021, DASH-004.
 
 Two mobile screens are registered but unreachable — zero `navigate()` call sites and absent from the 33 `stackScreen` targets in `GlobalDrawer.tsx`:
@@ -429,3 +429,60 @@ Two mobile screens are registered but unreachable — zero `navigate()` call sit
 For contrast, `UnifiedDashboardScreen`'s stack route is also never navigated to, but the component **is** live because `TabNavigator.tsx:29` renders it directly — so route-deadness and screen-deadness are not the same thing here.
 
 **Question:** for each — delete, or wire up? `BuyerDashboardScreen` looks like the better buyer dashboard that simply never got connected; if you want it, wiring it up is small and would also settle DASH-004's "which tile set is canonical" question.
+
+---
+
+# DECISIONS LOG — answered 2026-09-01
+
+All 29 open questions were answered by the repo owner. Recorded verbatim in effect below.
+Where an answer changes a matrix row's scope, the row has been updated and is noted here.
+
+## Source of truth
+
+| # | Decision |
+|---|---|
+| OQ-11 | **`/buy-cars/[slug]` is the canonical vehicle detail page.** Port from it only. Anything unique to the legacy `/vehicle/[id]` — especially the simulated bid modal with client-seeded fake bid history — must never reach mobile. |
+| OQ-13 | **`ListingWizard` is the canonical create-listing flow.** Mobile already mirrors it. `DealerQuickList`'s missing legal declarations and its broken auction path (collects no auction fields, never calls `POST /auctions`) are logged as separate web bugs, outside parity scope. |
+| OQ-16 | **`ListingWizard`'s rule is the canonical definition of "listing complete":** 10 photos + required detail fields + all 5 legal declarations. Implies the backend should eventually validate the declarations it currently accepts as optional — logged as a separate backend item. |
+| OQ-21 | **Merge.** `/dashboard/user` stays the shell users reach, but the five features that currently exist only on the unreachable standalone pages — period toggle, auction bonuses in earnings, delivery requests inside offers, cancel-and-relist, purchase history — are folded into it, and mobile targets that merged set. Mobile already implements four of the five, so these are **not** to be stripped from mobile. |
+| OQ-8 | **`api-server/` is stale.** `backend/src/main.ts` (no global prefix) is the only contract for all parity work. `api-server/` flagged as a deletion candidate. |
+| OQ-25 | **`#FF0037` is the canonical brand red; web is stale.** Mobile is already correct — no mobile change. Recorded prominently so nobody later "fixes" mobile toward web's `#ed1c24`. Same for secondary: `#2d3c63` canonical, mobile matches, web's `#1e293b` is wrong. |
+
+## Scope
+
+| # | Decision | Matrix effect |
+|---|---|---|
+| OQ-1 | **Mobile needs a signup role picker** — web is right, mobile's BUYER-only hardcode is the gap. | AUTH-005 stays **P0**, confirmed in scope. |
+| — | **The picker offers BUYER + DEALER only.** FINANCE_PARTNER is omitted deliberately: mobile has no partner dashboard, so selecting it would create a dead-end account. Divergence from web's picker is intentional. | Recorded on AUTH-005. |
+| OQ-5 | **ADMIN, CONTRACTOR, FINANCE_PARTNER and INSURANCE_PARTNER are out of scope for mobile.** Buyer/seller/dealer only. A non-supported role must get a clear message rather than being silently dropped into the buyer UI. | AUTH-027, AUTH-029, DASH-046 → **out of scope**. |
+| OQ-7 | **`/auth/partners` is dead** — broken against its own backend contract and with zero inbound links. Do not port; logged for web deletion. | AUTH-031 → **out of scope**. |
+| OQ-10 | **Vehicle payments are off-platform.** The dormant retail deposit/full-payment checkout code in both apps is leftover from a bug and should be removed, not wired up. | BUY-029 → **out of scope**; dormant code flagged for removal. |
+| OQ-28 | **Offline handling is in scope — minimum viable version:** NetInfo, an offline banner, and an `OFFLINE` sentinel in `apiClient` so screens can distinguish it. No request queueing or cached reads without a separate discussion. | CROSS-015 confirmed **P1**. |
+| OQ-27 | **Pagination priority: dealer inventory, dealer leads, seller listings first.** Compare and dashboard previews stay deliberately capped. | CROSS-018 scoped to those three. |
+| OQ-26 | **One dedicated pass over all dashboards** for error state + retry, rather than folding it into each feature flow. | CROSS-023 / DASH-047 become their own Phase 2 flow. |
+
+## Correctness fixes confirmed
+
+| # | Decision |
+|---|---|
+| OQ-14 | **Both fixes.** Enforce ≥10 photos at the mobile Media step immediately (stops the charge-then-fail), then restructure create to publish-first-pay-second as `SellerListingsScreen` already does. The missing `return` in the failure `catch` is fixed regardless. |
+| OQ-2 | **8 characters everywhere.** Mobile is already correct. Web's reset page (6) and web signup (no client check) logged as web bugs. |
+| OQ-3 | **Separate the two onboarding flags.** The marketing carousel gets its own; the post-signup wizard gate reads only its own. New flag must default safely so existing installs aren't re-prompted. |
+| OQ-4 | **Mobile's terms checkbox is correct and stays.** Web's absence is a compliance gap logged for web. Must never be "harmonised" by removing it from mobile. |
+| OQ-12 | **Fix without waiting for a device test.** `SEMI_AUTO` → `SEMI_AUTOMATIC`, add the missing `CVT` option. Treated as P1. |
+| OQ-18 | **Initials only on the bid list**, matching web and matching what the socket sends. |
+| OQ-20 | **72 hours from auction end.** Both entry points pass a real deadline; the 24h fallback is corrected. |
+| OQ-9 | **Remove the £95 default** from `PurchaseFlowScreen`; make `buyerFee` required so no future caller can silently undercharge. |
+| OQ-6 | **Add a store-level `forceLogout()`** called by `apiClient` on `AUTH_REDIRECT`, so an expired session returns the user to the Auth stack. |
+| OQ-17 | **Mobile-only fix** — call `loadAuction()` in the socket `reconnect` handler. |
+| OQ-22 | **Make the notification list live**, so the toast and the list stay in sync. |
+| OQ-29 | **Delete `WatchlistScreen`; wire up `BuyerDashboardScreen`.** The latter holds the richer buyer tiles and a period toggle the live screen lacks — wiring it up also settles DASH-004. |
+
+## Recorded, no action
+
+| # | Decision |
+|---|---|
+| OQ-15 | Damage-endpoint ownership check: **logged as a backend fix to do**, not actioned as part of parity. Fix is to verify `listing.sellerId` or dealer-staff delegation before the delete/recreate in `saveDamageRecords`. |
+| OQ-19 | Reserve price is **internal-only; follow web's approach**. Mobile already hides it client-side — no mobile change, AUC-015 stays PRESENT. **Note the tension:** the backend still returns `reservePrice` in `findOne`, so the confidentiality is presentational only; gating it server-side is what would actually make it internal. Noted, not actioned. |
+| OQ-23 | Dealer staff roles are **labels only for now** — not enforced anywhere, by either app or the backend (as far as I read). Recorded so mobile doesn't pretend to enforce what the API doesn't. |
+| OQ-24 | **Mobile's notification preferences are correct; web's toggles are a bug** — they save nothing. DASH-021 is a web defect, not a mobile-ahead row. No mobile change. |
