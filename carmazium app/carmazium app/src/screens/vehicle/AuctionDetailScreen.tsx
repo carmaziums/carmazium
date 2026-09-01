@@ -27,6 +27,7 @@ import { Elevation, Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
 import { useAuthStore } from '../../store/authStore';
 import {
+  AUCTION_PAYMENT_GRACE_MS,
   getAuction, placeBid,
   triggerBuyItNow, confirmBuyItNow, declineBuyItNow,
   type AuctionDetail, type BidBroadcastPayload, type AuctionEndPayload,
@@ -48,8 +49,17 @@ type Props = NativeStackScreenProps<MainStackParamList, 'LiveAuctionDetailed'>;
 
 interface BidEntry {
   id: string;
+  /**
+   * Initials only — never a full name. The API returns the bidder's
+   * `firstName`/`lastName` on the initial load, and this screen used to build a
+   * `name` from them and render it, disclosing exactly who a dealer was bidding
+   * against on a dealer-to-dealer platform. Web discards everything but the
+   * initials (`src/app/auctions/live/[id]/page.tsx:176`), and socket-delivered
+   * bids only ever carry `bidderInitials`, so the old behaviour was also
+   * inconsistent inside a single list (AUC-012 / OQ-18). The `name` field is
+   * deliberately gone rather than reassigned, so it cannot quietly come back.
+   */
   initials: string;
-  name: string;
   amount: number;
   time: string;
   createdAt: string; // ISO timestamp — needed to compute the 24h cancel window
@@ -278,10 +288,13 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // ─── Load auction ─────────────────────────────────────────────────────────
 
-  const loadAuction = useCallback(() => {
+  const loadAuction = useCallback((opts?: { silent?: boolean }) => {
     if (!auctionId) { setLoading(false); return; }
     setLoadError(null);
-    setLoading(true);
+    // A silent load is a resync behind a live screen (socket reconnect, AUC-017).
+    // Showing the full-screen loader there would blank out the auction the user
+    // is watching, which is worse than the stale state it is fixing.
+    if (!opts?.silent) setLoading(true);
     getAuction(auctionId)
       .then(data => {
         setAuction(data);
@@ -296,11 +309,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         setBidHistory(bids.map(b => {
           const first = b.bidder?.firstName ?? '';
           const last = b.bidder?.lastName ?? '';
-          const fullName = `${first} ${last}`.trim();
           return {
             id: b.id,
+            // Initials only — see BidEntry.initials (AUC-012).
             initials: `${first[0] ?? '?'}${last[0] ?? ''}`.toUpperCase(),
-            name: fullName || 'Anonymous',
             amount: Number(b.amount),
             time: new Date(b.timestamp).toLocaleTimeString('en-GB'),
             createdAt: b.timestamp,
@@ -322,11 +334,20 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           setBinPendingBuyerId(data.buyItNowPendingBuyerId);
         }
       })
-      .catch(() => setLoadError('Failed to load auction. Please try again.'))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!opts?.silent) setLoadError('Failed to load auction. Please try again.'); })
+      .finally(() => { if (!opts?.silent) setLoading(false); });
   }, [auctionId, currentUser]);
 
   useEffect(() => { loadAuction(); }, [loadAuction]);
+
+  // Held in a ref so the socket effect can resync on reconnect without taking
+  // `loadAuction` as a dependency. `loadAuction` is keyed on the whole
+  // `currentUser` object while the socket effect is deliberately keyed on
+  // `currentUser?.id` — a comment on that effect records that keying it on the
+  // object tore the socket down mid-auction whenever the stored profile
+  // changed. Putting the callback in its deps would reintroduce exactly that.
+  const loadAuctionRef = useRef(loadAuction);
+  useEffect(() => { loadAuctionRef.current = loadAuction; }, [loadAuction]);
 
   // ─── Damage records fetch ────────────────────────────────────────────────
   // Runs once the linked listingId is known (from route or loaded auction).
@@ -372,7 +393,15 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         socket.emit('auction:join', { auctionId });
       });
       socket.on('disconnect', () => setConnected(false));
-      socket.on('reconnect', () => socket.emit('auction:join', { auctionId }));
+      socket.on('reconnect', () => {
+        socket.emit('auction:join', { auctionId });
+        // `auction:join` only re-subscribes to the room — the gateway replays
+        // nothing (`auction.gateway.ts:65-75`). Any bid, cancellation or
+        // `auction:ended` that fired while the socket was down is simply lost,
+        // which could leave this screen showing ACTIVE with a frozen 00:00:00
+        // timer indefinitely. Refetch the real state (AUC-017, OQ-17).
+        loadAuctionRef.current({ silent: true });
+      });
 
       socket.on('auction:viewers', (d: { count: number }) => setWatchers(d.count));
 
@@ -381,7 +410,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         setCurrentBid(payload.amount);
         setIsWinning(!!currentUser && payload.bidderId === currentUser.id);
         setBidHistory(prev => [
-          { id: payload.bidId, initials: payload.bidderInitials || '??', name: payload.bidderInitials || '??', amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString('en-GB'), createdAt: payload.timestamp, bidderId: payload.bidderId, isNew: true },
+          { id: payload.bidId, initials: payload.bidderInitials || '??', amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString('en-GB'), createdAt: payload.timestamp, bidderId: payload.bidderId, isNew: true },
           ...prev.map(b => ({ ...b, isNew: false })),
         ]);
         // Bid flash + haptic for own bids. The cancel window itself is
@@ -432,7 +461,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               '',
             ) || undefined,
             lotNumber: undefined,
-            paymentDeadline: undefined,
+            // The backend measures the 72h grace from `wonAt`, which is set at
+            // the moment this event fires (`auctions.service.ts:544`) — so
+            // "now" is the exact basis here, not an approximation. This used to
+            // pass undefined, which made AuctionCompleteScreen fall back to a
+            // fabricated 24h-from-mount countdown (AUC-022).
+            paymentDeadline: new Date(Date.now() + AUCTION_PAYMENT_GRACE_MS).toISOString(),
           });
         }
       });
@@ -772,7 +806,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
         <Ionicons name="hammer-outline" size={40} color={Colors.borderMuted} />
         <Text style={s.muted}>{loadError}</Text>
-        <TouchableOpacity style={s.retryBtn} onPress={loadAuction} activeOpacity={0.8}>
+        <TouchableOpacity style={s.retryBtn} onPress={() => loadAuction()} activeOpacity={0.8}>
           <Text style={s.retryBtnText}>Try Again</Text>
         </TouchableOpacity>
       </View>
@@ -1366,7 +1400,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                         <Text style={[s.bidAvatarText, i === 0 && { color: Colors.accent }]}>{bid.initials}</Text>
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={s.bidInitials} numberOfLines={1}>{bid.name}</Text>
+                        <Text style={s.bidInitials} numberOfLines={1}>{bid.initials}</Text>
                         {i === 0 && (
                           <View style={s.leaderChip}><Text style={s.leaderChipText}>LEADER</Text></View>
                         )}

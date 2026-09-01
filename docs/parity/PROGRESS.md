@@ -19,6 +19,7 @@ Append-only session log. Read this first at the start of every session.
 |---|---|---|---|
 | 0 — baseline | — | 2026-09-01 | Done — tsc 22 / lint 25 recorded |
 | 1 — listing publish payment | SELL-005, SELL-006 (+SELL-033 logged) | 2026-09-01 | NEEDS_VERIFICATION |
+| 2a — auction correctness | AUC-029, AUC-030, AUC-012, AUC-022, AUC-004/017 | 2026-09-01 | NEEDS_VERIFICATION |
 
 ## Session log
 
@@ -740,3 +741,168 @@ PREMIUM £25) — steps 4-8 involve a real test charge.
   as the unchanged black box it already was.
 
 **Next session:** Flow 2a — `parity/auction-correctness` (AUC-029, AUC-012, AUC-022, AUC-017).
+
+---
+
+## Phase 2 — Flow 2a: Auction correctness (2026-09-01)
+
+Branch `parity/auction-correctness`, cut from `main` (P-1).
+Rows: **AUC-029, AUC-012, AUC-022, AUC-004/017** → `NEEDS_VERIFICATION`. **AUC-030** folded in.
+
+> Note on branching: this branch was cut from `main` in parallel with Flow 1, so it conflicted
+> with it in this file on merge (the matrix auto-merged — different rows, different lines).
+> Settled as **P-5**: each flow merges to `main` once verified, and the next is cut from there.
+> Flows 1 and 2a were merged to `main` **unverified**, at the repo owner's explicit direction,
+> so that Flow 2b had a single base. Both remain `NEEDS_VERIFICATION`.
+
+### Verified against source this session, not taken from the matrix
+
+- Backend grace is **72h**, and it is measured from **`wonAt`**, not `endTime`
+  (`auctions.service.ts:23`, `revertUnpaidWins` `:618-626` filters `wonAt < now - 72h`).
+  The matrix said 72h but did not say from what — the distinction decides which client can
+  compute the deadline exactly and which can only approximate.
+- `wonAt` is set at the moment the auction closes with a winner (`auctions.service.ts:544`),
+  which is the same moment the `auction:ended` socket event fires. So the live-win path can
+  use `Date.now()` and be exact.
+- `GET /bids/my` selects only `id, status, endTime, winnerId, winningBidAmount` from the
+  auction (`bids.service.ts:203-211`) — **no `wonAt`**. `BuyerBidsScreen` therefore cannot be
+  exact; it approximates off `endTime`. Logged below as a backend item.
+- Web renders initials in **both** the avatar and the label (`live/[id]/page.tsx:1360,1362`),
+  so mirroring web means the mobile row shows initials in both places too — not a name field
+  repointed at initials.
+- `PATCH /auctions/:id` accepts updates only while `SCHEDULED` (`auctions.service.ts:434-436`).
+  Recorded here because it settles AUC-016 for Flow 2b (P-4).
+
+### Changes
+
+**AUC-029 + AUC-030** — `SellerAuctionsScreen.tsx:626-676`. `openCreateModal` now fetches
+`/auctions/my/list` in parallel with `/listings/my` and admits a `DRAFT` listing when an
+`ENDED` auction exists against its id, which is what distinguishes a reserve-not-met revert
+from an ordinary unfinished draft. Also excludes listings already tied to a SCHEDULED/ACTIVE
+auction and any listing carrying a `linkedListingId` (AUC-030 — same filter expression, same
+test, so folding it in was cheaper than a second pass over the same function).
+
+**AUC-012** — `name` **removed from `BidEntry`** rather than reassigned (`:50-62`), so the
+field that carried the leak no longer exists. Initial-load mapper (`:305-313`), socket mapper
+(`:405`) and the row render (`:1403`) all now use `initials` only.
+
+**AUC-022** — shared `AUCTION_PAYMENT_GRACE_MS` in `lib/auctionApi.ts:5-20`. Socket win path
+passes `Date.now() + 72h` (exact); `BuyerBidsScreen` passes `endTime + 72h` (approximate, see
+above). The 24h mount-time fallback is **deleted**: `timeLeft` became `number | null` and the
+countdown block is not rendered when the deadline is unknown, rather than showing an invented
+one. Payment stays enabled in that case — refusing a payment on a deadline we do not know
+would be worse than showing no timer. Note `timeLeft === 0` in the pay guard is deliberately
+an identity check, since `null < 3600` and `!null` both coerce the wrong way.
+
+**AUC-004 / AUC-017** — `AuctionDetailScreen.tsx:396-404`. The `reconnect` handler refetches
+alongside re-emitting `auction:join`, which only re-subscribes and replays nothing.
+`loadAuction` gained `{ silent: true }` (`:291-297`) so the resync does not blank the live
+screen, and is reached via a ref (`:342-350`) so the socket effect keeps its
+`[auctionId, currentUser?.id]` deps — `loadAuction` is keyed on the whole `currentUser`
+object, and that effect carries a comment recording that object-keying tore the socket down
+mid-auction. Also changed the error-state retry from `onPress={loadAuction}` to
+`onPress={() => loadAuction()}`, which otherwise passes the press event as the options object.
+
+Five files: `lib/auctionApi.ts`, `screens/vehicle/AuctionDetailScreen.tsx`,
+`screens/seller/SellerAuctionsScreen.tsx`, `screens/main/AuctionCompleteScreen.tsx`,
+`screens/buyer/BuyerBidsScreen.tsx`. No backend change, no new dependency.
+
+### Quality gates
+
+```
+$ npx tsc --noEmit
+exit=2 — 22 errors, all in src/components/__tests__/VehicleCard.test.tsx (@types/jest)
+Errors outside that file: 0.  Identical to the Flow 0 baseline.
+
+$ npx eslint <the five changed files>
+exit=0 — 1 warning, the pre-existing unused eslint-disable in SellerAuctionsScreen
+(baseline line 650, now 693 after the edit). No new problems.
+
+$ npm run lint
+exit=1 — 25 problems (12 errors, 13 warnings). Identical to the Flow 0 baseline.
+```
+
+### Manual test script
+
+Needs two accounts: a **verified dealer** who can bid, and a **seller** with an auction.
+Several steps need an auction to actually end, so allow for the 24h duration or use a
+short-scheduled auction if you can.
+
+**A — Re-auction a reserve-not-met listing (AUC-029, the P0)**
+
+1. As seller, run an auction to completion with **no bid meeting the reserve** (either no bids
+   or all below reserve).
+   *Expect:* the auction ends; the listing reverts to DRAFT.
+2. Open My Auctions, the ended auction, results modal, then **Re-auction**.
+   *Expect:* the create-auction sheet opens with **that listing already selected**. Before this
+   change it opened showing "no eligible listings" — that is the exact failure being fixed.
+3. Complete the form and schedule.
+   *Expect:* a new SCHEDULED auction against the same vehicle.
+
+**B — Eligibility exclusions (AUC-030)**
+
+4. With a listing already in a SCHEDULED auction, open Create Auction from the header.
+   *Expect:* that listing is **not** in the picker (previously it was, and the server rejected
+   it on submit).
+5. Take a listing you have also-listed for retail, open the picker.
+   *Expect:* not offered.
+6. An ordinary DRAFT that has never been auctioned.
+   *Expect:* **not** offered — only reverted drafts come back, not every draft.
+
+**C — Bidder identity (AUC-012)**
+
+7. As dealer A, open a live auction where dealer B has already bid, and scroll the bid history.
+   *Expect:* every row shows **initials only** (e.g. "JS") in both the avatar and the label.
+   **Fail if any row shows a full name.**
+8. Have dealer B place a bid while you watch.
+   *Expect:* the new row also shows initials — the list is consistent top to bottom. Previously
+   pre-loaded rows showed names and live rows showed initials.
+
+**D — Payment deadline (AUC-022)**
+
+9. Win an auction **while watching the live screen** (socket path).
+   *Expect:* AuctionComplete opens with a countdown reading roughly **71:59:xx**, not 24:00:00.
+10. Kill and reopen the app, then reach the same win from **My Bids**.
+    *Expect:* a countdown still near 72h, counting from the auction's end. It may differ from
+    step 9 by seconds-to-minutes — that is the known `wonAt` vs `endTime` approximation, not a
+    bug. **Fail if either shows ~24h, or if the number resets to a full 24h on every reopen.**
+11. Leave the screen open a minute.
+    *Expect:* it ticks down once per second and does not reset.
+
+**E — Reconnect resync (AUC-017)**
+
+12. On a live auction with the connection banner visible, turn airplane mode on for ~30s, then
+    off.
+    *Expect:* the banner clears and the screen **refreshes to current state** — current bid,
+    bid history and timer all correct — **without** the full-screen loader blanking the page.
+13. Harder, but the case that matters: have the auction **end** while you are disconnected,
+    then reconnect.
+    *Expect:* the screen reflects the ended state. Previously it could sit on ACTIVE with a
+    frozen 00:00:00 forever.
+14. While reconnecting, confirm the socket does not tear down repeatedly (bids keep arriving
+    live afterwards) — this is the regression the ref indirection exists to prevent.
+
+**F — Regression sweep**
+
+15. Force the auction load to fail (airplane mode, then open an auction) and tap **Retry**.
+    *Expect:* it retries and shows the loader — the retry path is still the loud one.
+16. Place a bid, cancel it within 24h, check anti-snipe extension still toasts.
+
+### Not verified in this session
+
+- Nothing run on a device; no Android SDK here. All expectations are derived from code read in
+  this session plus the backend contract.
+- Steps 12-14 (socket reconnect) are the least verifiable from here — the ref indirection is
+  reasoned from the existing comment about mid-auction teardown, not observed.
+- `auction.gateway.ts` was not re-read this session; the "replays nothing on rejoin" claim
+  rests on the Pass 4 citation (`:65-75`), not a fresh read.
+- `AuctionResultsModal`'s mobile equivalent was not read; step A2's "already selected"
+  expectation rests on `presetListingId` handling in `openCreateModal`, which I did read.
+
+### Logged for the backend — not mobile parity work
+
+- `GET /bids/my` should select `wonAt` on the auction (`bids.service.ts:203-211`) so the
+  payment deadline can be computed exactly on the bids screen instead of approximated from
+  `endTime`.
+
+**Next session:** Flow 2b — `parity/auction-truthfulness` (AUC-016, AUC-038, AUC-025, OQ-9).

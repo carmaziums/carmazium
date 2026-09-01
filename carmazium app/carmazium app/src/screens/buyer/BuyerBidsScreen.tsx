@@ -18,7 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
-import { getAuction } from '../../lib/auctionApi';
+import { getAuction, AUCTION_PAYMENT_GRACE_MS } from '../../lib/auctionApi';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -112,8 +112,15 @@ const mapRawBid = (b: RawBid, currentUserId?: string): Bid => {
     isWinning: b.isWinning,
     isWinner: !!auction?.winnerId && auction.winnerId === currentUserId,
     winningBidAmount: auction?.winningBidAmount != null ? Number(auction.winningBidAmount) : null,
+    // 72h, matching the backend's BUYER_FEE_GRACE_MS — this was 24h (AUC-022).
+    // The backend measures from `wonAt`, but `GET /bids/my` does not select it
+    // (`bids.service.ts:203-211` returns only id/status/endTime/winnerId/
+    // winningBidAmount), so `endTime` is the closest basis available here. The
+    // two differ only by how long the close takes to run, but it means this
+    // figure is an approximation where the live-win path is exact. Logged as a
+    // backend item: add `wonAt` to that select.
     paymentDeadline: auction?.endTime
-      ? new Date(new Date(auction.endTime).getTime() + 24 * 60 * 60 * 1000).toISOString()
+      ? new Date(new Date(auction.endTime).getTime() + AUCTION_PAYMENT_GRACE_MS).toISOString()
       : null,
     bidCount: null,
     listing: {

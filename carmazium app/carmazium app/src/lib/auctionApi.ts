@@ -1,6 +1,24 @@
 import { apiClient } from './apiClient';
 import { CarListing } from '../data/listings';
 
+/**
+ * Grace period a declared auction winner has to pay the £125 buyer fee before
+ * the win auto-reverts. Mirrors the backend's `BUYER_FEE_GRACE_MS`
+ * (`backend/src/auctions/auctions.service.ts:23`), enforced hourly by
+ * `revertUnpaidWins` (`:618-626`).
+ *
+ * Three different numbers used to be shown for this, none of them the real one:
+ * `AuctionCompleteScreen` counted 24h from *mount*, `BuyerBidsScreen` computed
+ * `endTime + 24h`, and the socket win path passed no deadline at all so the
+ * mount-time fallback always won (AUC-022). A winner could be told they had
+ * hours left when they had days.
+ *
+ * Note the backend measures from `wonAt`, not `endTime`. Callers that know the
+ * win just happened should use `Date.now()`; callers with only `endTime` are
+ * approximating (see `BuyerBidsScreen` — `wonAt` is not in that payload).
+ */
+export const AUCTION_PAYMENT_GRACE_MS = 72 * 60 * 60 * 1000;
+
 export interface AuctionBid {
   id: string;
   listingId: string;
