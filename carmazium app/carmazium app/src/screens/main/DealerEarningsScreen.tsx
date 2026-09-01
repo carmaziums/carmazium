@@ -46,12 +46,40 @@ interface SaleRecord {
   createdAt?: string;
 }
 
+/**
+ * An auction the seller has actually been paid out on. The backend only
+ * includes auctions with `sellerBonusReleased: true`, which is set once an
+ * admin approves the handover proof — so this never contains auctions still
+ * mid-handover or ones that were denied (`listings.service.ts:1610-1633`).
+ */
+interface AuctionSaleRecord {
+  id: string;
+  listingId: string;
+  winningBidAmount: number;
+  sellerBonus: number;
+  sellerBonusReleasedAt?: string | null;
+  createdAt?: string;
+  listing?: { title?: string; vrm?: string };
+  winner?: { firstName?: string; lastName?: string } | null;
+}
+
 interface EarningsResponse {
   success: boolean;
   data: {
     sales: SaleRecord[];
     totalRevenue: number;
     totalSales: number;
+    // All four already returned by GET /listings/earnings and simply never
+    // read by mobile, so a seller could not see what they had earned in £100
+    // auction bonuses anywhere (DASH-010). No backend change was needed.
+    //
+    // Note totalRevenue and totalSales ALREADY include the auction figures
+    // (`listings.service.ts:1651-1656`) — mobile was not under-reporting, it
+    // just could not show where the money came from.
+    auctionSales?: AuctionSaleRecord[];
+    totalAuctionSales?: number;
+    totalAuctionRevenue?: number;
+    totalAuctionBonus?: number;
   };
 }
 
@@ -83,6 +111,8 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalSales, setTotalSales] = useState(0);
+  const [auctionSales, setAuctionSales] = useState<AuctionSaleRecord[]>([]);
+  const [totalAuctionBonus, setTotalAuctionBonus] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,6 +129,8 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         setSales(Array.isArray(d?.sales) ? d.sales : []);
         setTotalRevenue(d?.totalRevenue ?? 0);
         setTotalSales(d?.totalSales ?? 0);
+        setAuctionSales(Array.isArray(d?.auctionSales) ? d.auctionSales : []);
+        setTotalAuctionBonus(d?.totalAuctionBonus ?? 0);
         setError(null);
       } else {
         // allSettled swallows the rejection, so without this a failed
@@ -107,6 +139,8 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         setSales([]);
         setTotalRevenue(0);
         setTotalSales(0);
+        setAuctionSales([]);
+        setTotalAuctionBonus(0);
         setError('Could not load your earnings.');
       }
     } catch {
@@ -286,6 +320,45 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           </View>
         </View>
 
+
+        {/* ── Auction bonuses (DASH-010) ──
+            The £100 seller bonus is the only money CarMazium itself pays out —
+            the winning bid is settled directly between buyer and seller — so it
+            is shown as its own figure rather than folded into revenue. Only
+            auctions whose handover proof an admin has approved appear here, so
+            this is money actually received, not money expected. ── */}
+        {!loading && auctionSales.length > 0 && (
+          <View style={styles.bonusCard}>
+            <View style={styles.bonusHeader}>
+              <Ionicons name="trophy-outline" size={16} color={Colors.success} />
+              <Text style={styles.bonusTitle}>AUCTION BONUSES</Text>
+              <Text style={styles.bonusTotal}>{formatPrice(totalAuctionBonus)}</Text>
+            </View>
+            <Text style={styles.bonusBlurb}>
+              {auctionSales.length} auction{auctionSales.length === 1 ? '' : 's'} paid out at £100 each.
+            </Text>
+            {auctionSales.slice(0, 5).map((a) => (
+              <View key={a.id} style={styles.bonusRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.bonusRowTitle} numberOfLines={1}>
+                    {a.listing?.title || a.listing?.vrm || 'Vehicle'}
+                  </Text>
+                  <Text style={styles.bonusRowMeta}>
+                    {formatDate(a.sellerBonusReleasedAt ?? a.createdAt)}
+                    {a.winningBidAmount ? ` · won at ${formatPrice(a.winningBidAmount)}` : ''}
+                  </Text>
+                </View>
+                <Text style={styles.bonusRowAmount}>+{formatPrice(a.sellerBonus)}</Text>
+              </View>
+            ))}
+            {auctionSales.length > 5 && (
+              <Text style={styles.bonusMore}>
+                +{auctionSales.length - 5} more
+              </Text>
+            )}
+          </View>
+        )}
+
         {/* ── Receipts — reuses the existing payment-history screen rather
             than re-implementing it inline (web's tab switch, mobile's push
             navigation instead) ── */}
@@ -386,6 +459,63 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: 'row',
     gap: 10,
+  },
+  bonusCard: {
+    backgroundColor: Colors.successAlpha08,
+    borderWidth: 1,
+    borderColor: Colors.successAlpha20,
+    borderRadius: Radius.card,
+    padding: 16,
+    marginTop: 16,
+  },
+  bonusHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  bonusTitle: {
+    flex: 1,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xs,
+    color: Colors.success,
+    letterSpacing: 1.2,
+  },
+  bonusTotal: {
+    fontFamily: FontFamily.mono,
+    fontSize: FontSize.md,
+    color: Colors.success,
+  },
+  bonusBlurb: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size12,
+    color: Colors.textMuted,
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  bonusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.whiteAlpha06,
+  },
+  bonusRowTitle: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size14,
+    color: Colors.white,
+  },
+  bonusRowMeta: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  bonusRowAmount: {
+    fontFamily: FontFamily.mono,
+    fontSize: FontSize.size14,
+    color: Colors.success,
+  },
+  bonusMore: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: 10,
   },
   summaryCard: {
     flex: 1,

@@ -30,6 +30,7 @@ Append-only session log. Read this first at the start of every session.
 | 8 — chat presence & support | DASH-023, DASH-024 | 2026-09-01 | NEEDS_VERIFICATION |
 | 9 — buyer dashboard merge | DASH-004, DASH-005, BUY-021 (+CROSS-025 part) | 2026-09-01 | NEEDS_VERIFICATION |
 | 10 — profile completion prompt | DASH-003 | 2026-09-01 | NEEDS_VERIFICATION |
+| 11 — earnings auction bonuses | DASH-010 | 2026-09-01 | NEEDS_VERIFICATION |
 
 ## Session log
 
@@ -2338,3 +2339,108 @@ accounts that are *missing* something. Easiest via direct profile edits, or an o
 - Whether any screen reads `user.phone` and would benefit immediately was not surveyed.
 - The prompt is mounted app-wide, like the location one, so it can appear over any screen. I did
   not check how it looks over a modal-heavy screen such as the sell wizard.
+
+---
+
+## Phase 3 (Phase D) — Flow 11: Auction bonuses in earnings (2026-09-01)
+
+Branch `parity/earnings-auction-bonuses`, cut from `main`.
+Row: **DASH-010** → `NEEDS_VERIFICATION`. **Phase D complete.**
+
+### The data was already on the wire
+
+The row reads as a missing feature, and I expected this flow to need a backend change. It did
+not. `GET /listings/earnings` already returns `auctionSales`, `totalAuctionSales`,
+`totalAuctionRevenue` and `totalAuctionBonus` (`listings.service.ts:1610-1663`). Mobile's
+`EarningsResponse` type declared three fields and dropped the rest, so the data arrived on every
+request and was discarded before any screen saw it.
+
+### A correction to what the row implies
+
+DASH-010 reads as though mobile sellers were missing auction money from their totals. They were
+not: `totalRevenue` and `totalSales` **already include** the auction figures server-side
+(`listings.service.ts:1651-1656`). The headline numbers on both mobile earnings screens have
+always been right. What was missing was the **breakdown** — a seller could see a total that
+included auction sales but had no way to tell which part came from auctions, and could not see
+the £100 bonuses at all.
+
+### What was built
+
+An AUCTION BONUSES card on both `EarningsScreen` and `DealerEarningsScreen`, showing the total
+bonus and the most recent five payouts with vehicle, date and winning bid.
+
+Four judgement calls:
+
+- **Shown as its own figure, not folded into revenue.** The £100 bonus is the only money
+  CarMazium itself pays out — the winning bid is settled directly between buyer and seller, and
+  the backend's own comment makes that distinction explicitly. Merging it into revenue would blur
+  a line the backend deliberately keeps.
+- **Only approved payouts appear.** The backend filters on `sellerBonusReleased: true`, set when
+  an admin approves the handover proof, so this is money received rather than money expected. A
+  seller mid-handover will not see a bonus they have not been paid.
+- **Hidden entirely when there are none**, rather than rendering a £0 row. A seller who has never
+  auctioned should not see an empty auction section on their earnings screen.
+- **Capped at five rows** with a "+N more" line. This is a summary card on an earnings screen,
+  not a ledger; `PaymentHistoryScreen` already exists for the full record.
+
+Two files: `screens/seller/EarningsScreen.tsx`, `screens/main/DealerEarningsScreen.tsx`. No
+backend change, no new dependency.
+
+### Quality gates
+
+```
+$ npx tsc --noEmit    22 errors, all @types/jest. Errors elsewhere: 0.
+$ npx eslint <both changed files>   exit=0, clean.
+$ npm run lint        24 problems (11 errors, 13 warnings) — the merged baseline.
+```
+
+### Manual test script
+
+Needs a seller or dealer account that has **won at least one auction as the seller and had the
+handover approved** — an auction that merely ended is not enough, since the backend filters on
+`sellerBonusReleased`.
+
+**A — The card appears with real data**
+
+1. As a seller with at least one approved auction handover, open Earnings.
+   *Expect:* an AUCTION BONUSES card showing the total (£100 per approved auction) and a row per
+   auction with the vehicle, the payout date and the winning bid.
+2. Check the total against the row count. *Expect:* rows × £100 = the headline figure.
+3. Cross-check TOTAL REVENUE against the seller's known sales.
+   *Expect:* it **already included** the auction sales before this change — this flow did not
+   alter it. If revenue jumped, something is double-counting.
+4. Repeat on a **dealer** account via Dealer Earnings. *Expect:* the same card.
+
+**B — The card stays away when it should**
+
+5. A seller with **no auctions at all**. *Expect:* **no** auction card — not an empty one, not a
+   £0 one.
+6. A seller with an auction that **ended but whose handover is not yet approved**.
+   *Expect:* still no card, or no row for that auction. Showing a bonus before the payout is
+   released would promise money that has not been paid.
+7. Airplane mode, pull to refresh. *Expect:* the error banner from Flow 7, and the auction card
+   gone rather than showing stale figures.
+
+**C — More than five**
+
+8. An account with six or more approved auction bonuses (if one exists).
+   *Expect:* five rows plus a "+N more" line, and the **total reflecting all of them**, not just
+   the five shown.
+
+**D — Regression sweep**
+
+9. CSV export on both screens. *Expect:* unchanged — this flow did not touch it.
+10. The Payment History link. *Expect:* unchanged.
+
+### Not verified in this session
+
+- Nothing run on a device; no Android SDK here.
+- **Step A3 is the one worth checking carefully.** My reading is that `totalRevenue` already
+  included auction revenue before this change, so the headline should not move. If it does move,
+  my reading of `listings.service.ts:1651-1656` is wrong and the totals need re-examining.
+- I did not confirm what `sellerBonusReleasedAt` looks like when a bonus is released but the
+  timestamp is unset — the row falls back to `createdAt` and then to an em dash, but I have not
+  seen a real record.
+- The CSV export was not extended to include auction bonuses. Web's orphaned page has a separate
+  Auction Sales tab; whether its export includes them was not traced. Possible follow-up.
+- Neither earnings screen was read in full — only the fetch, the summary block and the styles.
