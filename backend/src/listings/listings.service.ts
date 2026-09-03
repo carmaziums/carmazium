@@ -1,5 +1,6 @@
 import {
     Injectable,
+    Logger,
     NotFoundException,
     ForbiddenException,
     BadRequestException,
@@ -87,6 +88,8 @@ const mapBodyType = (body?: DtoBodyType): BodyType | null => {
 
 @Injectable()
 export class ListingsService {
+    private readonly logger = new Logger(ListingsService.name);
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly sellersService: SellersService,
@@ -971,10 +974,31 @@ export class ListingsService {
             throw new BadRequestException('Only DRAFT or REJECTED listings can be submitted for review');
         }
 
+        // Admins list at any tier without being charged. The tier they picked is
+        // kept as-is (it drives badge display and search placement) — only the
+        // payment step is skipped, so an admin listing is indistinguishable from
+        // a paid one apart from the missing transaction.
+        //
+        // Enforced here rather than in the wizard on purpose: the frontend calls
+        // publishListing() first and only redirects to Stripe when this returns
+        // requiresPayment, so returning pendingReview is enough to bypass
+        // checkout entirely — and being server-side, a non-admin can't fake it
+        // by editing the client.
+        const actor = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true },
+        });
+        const isAdmin = actor?.role === 'ADMIN';
+
         // FREE tier listings have no fee — submit for review directly
-        if (listing.badgeTier === 'FREE') {
+        if (listing.badgeTier === 'FREE' || isAdmin) {
             await this.prisma.listing.update({ where: { id }, data: { status: 'PENDING_REVIEW', rejectionReason: null } });
             await this.notifySubmittedForReview(listing);
+            if (isAdmin && listing.badgeTier !== 'FREE') {
+                this.logger.log(
+                    `Listing ${id} submitted by admin ${userId} on the ${listing.badgeTier} tier without a listing fee`,
+                );
+            }
             return { activated: false, pendingReview: true };
         }
 

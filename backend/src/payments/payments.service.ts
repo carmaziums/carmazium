@@ -366,6 +366,21 @@ export class PaymentsService {
      * Create a Stripe Checkout Session for a Listing Badge Fee.
      */
     async createListingSession(badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM', userId: string, listingId: string) {
+        // Admins never pay a listing fee (see ListingsService.publishListing).
+        // In the normal flow they never reach here, because publishListing
+        // returns pendingReview and the wizard skips checkout — but refusing
+        // here too means a stale client, a direct API call, or a future caller
+        // can't accidentally charge an admin.
+        const actor = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true },
+        });
+        if (actor?.role === 'ADMIN') {
+            throw new BadRequestException(
+                'Admin listings are free — no listing fee is charged. Submit the listing directly.',
+            );
+        }
+
         const stripe = await this.getStripe();
         const baseUrl = resolveFrontendUrl(this.config.get<string>('FRONTEND_URL'));
         const amount = this.LISTING_FEES[badgeTier];
