@@ -31,6 +31,7 @@ import { ScraperService } from '../scraper/scraper.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { buildListingActivationData } from './listing-activation';
+import { brandAdminSeller, brandListingSeller } from './admin-seller-branding';
 
 // ─── Enum mappers ─────────────────────────────────────────────────────────────
 
@@ -533,7 +534,9 @@ export class ListingsService {
             this.prisma.listing.count({ where }),
         ]);
 
-        return { data, total };
+        // Admin-created listings are presented as CarMazium's own rather than
+        // under the staff member's personal name — see admin-seller-branding.ts.
+        return { data: data.map((l: any) => brandListingSeller(l)) as Listing[], total };
     }
 
     /**
@@ -712,7 +715,7 @@ export class ListingsService {
             };
         }
 
-        const listingWithCount = { ...listing, seller: sellerWithCount }
+        const listingWithCount = { ...listing, seller: brandAdminSeller(sellerWithCount as any) }
 
         return listingWithCount as any;
     }
