@@ -44,6 +44,10 @@ export default function AdminListingsPage() {
     const [error, setError] = React.useState<string | null>(null)
     const [page, setPage] = React.useState(1)
     const [total, setTotal] = React.useState(0)
+    // "CarMazium" = listings created by an ADMIN account. Admins can list
+    // directly now, so their own vehicles would otherwise be buried among
+    // every seller's in this table.
+    const [ownerFilter, setOwnerFilter] = React.useState<'ALL' | 'ADMIN'>('ALL')
     const limit = 20
 
     // ── Pending review ──
@@ -77,7 +81,7 @@ export default function AdminListingsPage() {
         try {
             setLoading(true)
             setError(null)
-            const result = await getAdminListings(page, limit)
+            const result = await getAdminListings(page, limit, ownerFilter === 'ADMIN' ? 'ADMIN' : undefined)
             setListings(result.data || [])
             setTotal(result.pagination?.total || 0)
         } catch (err: any) {
@@ -92,7 +96,8 @@ export default function AdminListingsPage() {
         if (profile?.role === 'ADMIN') {
             fetchListings()
         }
-    }, [profile, page])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [profile, page, ownerFilter])
 
     const loadPending = async () => {
         try {
@@ -438,6 +443,34 @@ export default function AdminListingsPage() {
                                     )
                                 })}
                             </div>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {([
+                            ['ALL', 'All listings'],
+                            ['ADMIN', 'CarMazium'],
+                        ] as const).map(([value, label]) => (
+                            <button
+                                key={value}
+                                type="button"
+                                onClick={() => {
+                                    // Page 1: the current page number almost
+                                    // certainly doesn't exist in the smaller set.
+                                    setPage(1)
+                                    setOwnerFilter(value)
+                                }}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest border transition-colors cursor-pointer ${ownerFilter === value
+                                    ? 'bg-primary text-white border-primary'
+                                    : 'bg-[var(--bg-input)] text-[var(--text-muted)] border-[var(--border-default)] hover:text-[var(--text-primary)] hover:border-primary/40'}`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                        {!loading && (
+                            <span className="text-xs text-[var(--text-muted)] ml-1">
+                                {total} {total === 1 ? 'listing' : 'listings'}
+                            </span>
                         )}
                     </div>
 

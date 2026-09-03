@@ -194,23 +194,35 @@ export class AdminService {
         });
     }
 
-    async getAllListings(page = 1, limit = 20) {
+    /**
+     * `sellerRole` narrows to listings created by accounts of that role. The
+     * admin dashboard uses it for the "CarMazium" filter — admins can list
+     * directly now, and their vehicles would otherwise be buried among every
+     * seller's.
+     *
+     * The same `where` is applied to the count as well as the rows. Filtering
+     * only the rows would leave the total describing a different set, and the
+     * pager would offer pages that come back empty.
+     */
+    async getAllListings(page = 1, limit = 20, sellerRole?: string) {
         const skip = (page - 1) * limit;
+        const where = sellerRole ? { seller: { role: sellerRole as any } } : {};
         const [data, total] = await Promise.all([
             this.prisma.listing.findMany({
+                where,
                 skip,
                 take: limit,
                 orderBy: { createdAt: 'desc' },
                 include: {
                     seller: {
                         select: {
-                            id: true, email: true, firstName: true, lastName: true, phone: true,
+                            id: true, email: true, firstName: true, lastName: true, phone: true, role: true,
                             dealerProfile: { select: { companyName: true, isVerified: true } },
                         },
                     },
                 },
             }),
-            this.prisma.listing.count(),
+            this.prisma.listing.count({ where }),
         ]);
         return { data, total };
     }
