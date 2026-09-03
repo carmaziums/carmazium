@@ -30,6 +30,7 @@ import { SellersService } from '../sellers/sellers.service';
 import { ScraperService } from '../scraper/scraper.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { buildListingActivationData } from './listing-activation';
 
 // ─── Enum mappers ─────────────────────────────────────────────────────────────
 
@@ -990,15 +991,36 @@ export class ListingsService {
         });
         const isAdmin = actor?.role === 'ADMIN';
 
+        // Admin listings skip both the fee and the review queue — an admin
+        // approving their own listing is a formality, and the review pipeline
+        // exists to check other people's submissions.
+        //
+        // Uses the same activation shape as AdminService.approveListing rather
+        // than just setting status: 'ACTIVE', because going live also grants
+        // PREMIUM listings their 28-day featured window. Setting the status
+        // alone would publish an admin's PREMIUM listing without the placement
+        // that tier is supposed to buy.
+        //
+        // No approval email or notification is sent: those tell a seller that
+        // someone reviewed their listing, and here nobody did.
+        if (isAdmin) {
+            await this.prisma.listing.update({
+                where: { id },
+                data: buildListingActivationData(listing.badgeTier),
+            });
+            if (listing.sellerId) {
+                await this.sellersService.incrementListings(listing.sellerId).catch(() => { });
+            }
+            this.logger.log(
+                `Listing ${id} published directly by admin ${userId} on the ${listing.badgeTier} tier — no fee, no review`,
+            );
+            return { activated: true };
+        }
+
         // FREE tier listings have no fee — submit for review directly
-        if (listing.badgeTier === 'FREE' || isAdmin) {
+        if (listing.badgeTier === 'FREE') {
             await this.prisma.listing.update({ where: { id }, data: { status: 'PENDING_REVIEW', rejectionReason: null } });
             await this.notifySubmittedForReview(listing);
-            if (isAdmin && listing.badgeTier !== 'FREE') {
-                this.logger.log(
-                    `Listing ${id} submitted by admin ${userId} on the ${listing.badgeTier} tier without a listing fee`,
-                );
-            }
             return { activated: false, pendingReview: true };
         }
 

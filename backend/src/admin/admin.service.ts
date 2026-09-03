@@ -10,6 +10,7 @@ import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SellersService } from '../sellers/sellers.service';
 import { AuctionsService } from '../auctions/auctions.service';
+import { buildListingActivationData } from '../listings/listing-activation';
 
 @Injectable()
 export class AdminService {
@@ -400,16 +401,9 @@ export class AdminService {
             throw new BadRequestException('Only listings awaiting review can be approved');
         }
 
-        const isPremium = listing.badgeTier === 'PREMIUM';
         const updated = await this.prisma.listing.update({
             where: { id },
-            data: {
-                status: 'ACTIVE',
-                rejectionReason: null,
-                reviewedAt: new Date(),
-                isFeatured: isPremium,
-                featuredUntil: isPremium ? new Date(Date.now() + 28 * 24 * 60 * 60 * 1000) : null,
-            },
+            data: buildListingActivationData(listing.badgeTier),
         });
 
         if (listing.sellerId) {
