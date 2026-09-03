@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
     LayoutDashboard,
     Car,
+    PlusCircle,
     DollarSign,
     Settings,
     LogOut,
@@ -180,6 +181,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard },
             { href: "/dashboard/admin/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
             { href: "/dashboard/admin/users", label: "Accounts", icon: Users },
+            { href: "/sell", label: "Create Listing", icon: PlusCircle },
             { href: "/dashboard/admin/listings", label: "Listings", icon: Car },
             { href: "/dashboard/admin/hpi", label: "HPI Reports", icon: ShieldCheck },
             { href: "/dashboard/admin/auctions", label: "Auctions", icon: Gavel },

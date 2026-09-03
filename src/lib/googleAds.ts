@@ -108,6 +108,14 @@ export function trackAdsConversion(event: string, params: Record<string, unknown
     const label = CONVERSION_LABELS[event]
     if (!label) return
 
+    // Staff listings are not marketing outcomes. Admins can now create
+    // listings from the admin dashboard, and those fire `listing_submitted`
+    // exactly like a real seller's would — which would quietly inflate the
+    // Ads conversion the Search campaign reports against. GA4 still records
+    // the event (it carries seller_role, so it can be segmented there); only
+    // the paid-media conversion is suppressed.
+    if (params.seller_role === 'ADMIN') return
+
     // Presence of gtag is NOT a consent check — under Consent Mode v2 the tag
     // loads for everyone. Consent is enforced by Google itself from the
     // consent state set in GoogleConsentMode.tsx / ConsentContext: with

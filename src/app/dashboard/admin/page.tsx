@@ -6,8 +6,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import {
     Users, Car, DollarSign, Activity, ShieldAlert, CheckCircle2,
-    Loader2, RefreshCw, Gavel, Handshake, Receipt, TrendingUp, AlertTriangle
-} from "lucide-react"
+    Loader2, RefreshCw, Gavel, Handshake, Receipt, TrendingUp, AlertTriangle, Plus } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminStats, getPendingHandovers, type AdminStats } from "@/lib/adminApi"
@@ -131,6 +130,19 @@ export default function AdminDashboard() {
                         >
                             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh
                         </Button>
+                        {/* Links to the normal /sell wizard rather than an
+                            admin-only form. The wizard is the only place that
+                            knows about DVLA lookup, the photo minimum, the
+                            damage mapper and every tier rule — a second copy
+                            for admins would need all of it duplicated and kept
+                            in step. The admin-specific behaviour (no fee, no
+                            review, listed as CarMazium) is already enforced
+                            server-side, so nothing here needs to know about it. */}
+                        <Link href="/sell">
+                            <Button className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white font-bold">
+                                <Plus size={16} /> Create Listing
+                            </Button>
+                        </Link>
                     </div>
 
                     {error && (
