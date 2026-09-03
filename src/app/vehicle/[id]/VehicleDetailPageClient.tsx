@@ -25,6 +25,7 @@ import { createChatRoom } from "@/lib/chatApi"
 import { trackMetaEvent } from "@/components/analytics/MetaPixel"
 import { useChat } from "@/context/ChatContext"
 import { useRouter } from "next/navigation"
+import { SellerVerificationBadge } from "@/components/listing/SellerVerificationBadge"
 
 // ─── Offer Status Chip ───────────────────────────────────────────────────────
 
@@ -795,19 +796,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                                     {(listing.seller.role === 'DEALER' ? listing.seller.dealerProfile?.companyName : null) || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
                                 </h4>
                                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                    <div className="flex items-center gap-1.5">
-                                        {listing.seller.role === 'DEALER' && listing.seller.dealerProfile ? (
-                                            <>
-                                                <BadgeCheck size={14} className="text-blue-500" />
-                                                <span className="text-xs text-blue-400 font-medium tracking-wide">Verified Dealer</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <CheckCircle size={14} className="text-emerald-500" />
-                                                <span className="text-xs text-emerald-400 font-medium tracking-wide">Verified Seller</span>
-                                            </>
-                                        )}
-                                    </div>
+                                    <SellerVerificationBadge seller={listing.seller} size="md" />
                                     {listing.sellerId && <SellerBadge score={0} sellerUserId={listing.sellerId} size="sm" showLabel asLink={false} />}
                                 </div>
                             </div>
@@ -1415,19 +1404,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                                                 {(listing.seller.role === 'DEALER' ? listing.seller.dealerProfile?.companyName : null) || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
                                             </h3>
                                             <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                                <div className="flex items-center gap-1">
-                                                    {listing.seller.role === 'DEALER' && listing.seller.dealerProfile ? (
-                                                        <>
-                                                            <CheckCircle size={10} className="text-blue-500" />
-                                                            <span className="text-[10px] text-blue-500 font-medium">Verified Dealer</span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <CheckCircle size={10} className="text-emerald-500" />
-                                                            <span className="text-[10px] text-emerald-500 font-medium">Verified Seller</span>
-                                                        </>
-                                                    )}
-                                                </div>
+                                                <SellerVerificationBadge seller={listing.seller} />
                                                 {listing.sellerId && <SellerBadge score={0} sellerUserId={listing.sellerId} size="sm" showLabel asLink={false} />}
                                             </div>
                                         </div>

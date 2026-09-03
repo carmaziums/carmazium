@@ -240,6 +240,12 @@ export interface Listing {
     seller?: {
         id: string
         role?: string
+        /**
+         * Set by the backend for admin-created listings, which are presented as
+         * CarMazium's own rather than under the staff member's name. Drives the
+         * "CarMazium Official" badge — see components/listing/SellerVerificationBadge.
+         */
+        isOfficial?: boolean
         firstName: string | null
         lastName: string | null
         profileImage: string | null

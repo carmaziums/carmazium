@@ -29,6 +29,7 @@ import { haversineDistanceMiles } from '@/lib/distance'
 import { useCompare } from '@/context/CompareContext'
 import { BlurredPhone } from '@/components/shared/BlurredPhone'
 import { trackMetaEvent } from '@/components/analytics/MetaPixel'
+import { SellerVerificationBadge } from "@/components/listing/SellerVerificationBadge"
 
 // ─── Offer Status Chip ───────────────────────────────────────────────────────
 // viewerRole: 'buyer' = the person who made the offer
@@ -837,19 +838,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                                     {(listing.seller.role === 'DEALER' ? listing.seller.dealerProfile?.companyName : null) || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
                                                 </h3>
                                                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                                    <div className="flex items-center gap-1">
-                                                        {listing.seller.role === 'DEALER' && listing.seller.dealerProfile ? (
-                                                            <>
-                                                                <CheckCircle size={10} className="text-blue-500" />
-                                                                <span className="text-[10px] text-blue-500 font-medium">Verified Dealer</span>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <CheckCircle size={10} className="text-emerald-500" />
-                                                                <span className="text-[10px] text-emerald-500 font-medium">Verified Seller</span>
-                                                            </>
-                                                        )}
-                                                    </div>
+                                                    <SellerVerificationBadge seller={listing.seller} />
                                                     {listing.sellerId && <SellerBadge score={0} sellerUserId={listing.sellerId} size="sm" showLabel asLink={false} />}
                                                 </div>
                                             </div>
@@ -1264,19 +1253,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                                 {(listing.seller.role === 'DEALER' ? listing.seller.dealerProfile?.companyName : null) || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
                                             </h3>
                                             <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                                <div className="flex items-center gap-1">
-                                                    {listing.seller.role === 'DEALER' && listing.seller.dealerProfile ? (
-                                                        <>
-                                                            <CheckCircle size={10} className="text-blue-500" />
-                                                            <span className="text-[10px] text-blue-500 font-medium">Verified Dealer</span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <CheckCircle size={10} className="text-emerald-500" />
-                                                            <span className="text-[10px] text-emerald-500 font-medium">Verified Seller</span>
-                                                        </>
-                                                    )}
-                                                </div>
+                                                <SellerVerificationBadge seller={listing.seller} />
                                                 {listing.sellerId && <SellerBadge score={0} sellerUserId={listing.sellerId} size="sm" showLabel asLink={false} />}
                                             </div>
                                         </div>
