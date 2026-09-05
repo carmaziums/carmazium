@@ -106,8 +106,13 @@ export function RequireAuth({
     // With a preview, the prompt floats over a blurred teaser; without one it
     // is just a centred card.
     if (preview) {
+        // Height is capped and clipped on purpose. The preview is a full grid
+        // of cards and runs far taller than the prompt; without a bound, the
+        // opaque end of the scrim below covers hundreds of pixels of blurred
+        // content and the page reads as a large empty void under the wall.
+        // Clipping keeps the teaser to about one screen, which is all it needs.
         return (
-            <div className="relative min-h-[70vh]">
+            <div className="relative min-h-[70vh] max-h-[760px] overflow-hidden">
                 {/*
                     `inert` (React 19) is doing real work here, not decoration.
                     A blur is only paint: without it the cards underneath stay
