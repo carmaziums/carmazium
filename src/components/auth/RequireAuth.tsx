@@ -38,8 +38,8 @@ interface Props {
  */
 export function RequireAuth({
     children,
-    title = "Members only",
-    message = "Sign in to view vehicles in the Trade Exchange.",
+    title = "Sign up to enter the Trade Exchange",
+    message = "Live and upcoming vehicle auctions are open to members. Joining takes a minute.",
 }: Props) {
     const { user, loading } = useAuth()
     const pathname = usePathname()
@@ -72,16 +72,16 @@ export function RequireAuth({
 
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                     <Link
-                        href={`/auth/login?redirect=${redirect}`}
+                        href={`/auth/signup?redirect=${redirect}`}
                         className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-primary text-white text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-colors"
                     >
-                        <LogIn size={16} /> Sign in
+                        <UserPlus size={16} /> Sign up
                     </Link>
                     <Link
-                        href={`/auth/signup?redirect=${redirect}`}
+                        href={`/auth/login?redirect=${redirect}`}
                         className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-[var(--border-default)] text-sm font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-primary/40 transition-colors"
                     >
-                        <UserPlus size={16} /> Create account
+                        <LogIn size={16} /> Sign in
                     </Link>
                 </div>
 

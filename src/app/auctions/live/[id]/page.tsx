@@ -503,8 +503,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
     return (
         <RequireAuth
-            title="Trade Exchange is for members"
-            message="Sign in to view this vehicle and its live bidding."
+            title="Sign up to enter the Trade Exchange"
+            message="Sign up to view this vehicle and bid in the live auction room."
         >
         <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-body)' }}>
 

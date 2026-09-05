@@ -887,8 +887,8 @@ export default function AuctionsPage() {
                 on this very page, so gating the whole route would have made
                 that marketing link bounce into a login wall. */}
             <RequireAuth
-                title="Trade Exchange is for members"
-                message="Sign in to browse live and upcoming vehicle auctions."
+                title="Sign up to enter the Trade Exchange"
+                message="Live and upcoming vehicle auctions are open to members. Joining takes a minute."
             >
 
             {/* ── Trade Exchange section tabs ──────────────────────────────
