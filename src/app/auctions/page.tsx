@@ -888,7 +888,28 @@ export default function AuctionsPage() {
                 that marketing link bounce into a login wall. */}
             <RequireAuth
                 title="Sign up to enter the Trade Exchange"
-                message="Live and upcoming vehicle auctions are open to members. Joining takes a minute."
+                message={
+                    liveAuctions.length > 0
+                        ? `${liveAuctions.length} vehicle${liveAuctions.length === 1 ? '' : 's'} are in the room right now. Join to see them and bid.`
+                        : "Live and upcoming vehicle auctions are open to members. Joining takes a minute."
+                }
+                /* Real cars, blurred — a guest can see there is genuinely
+                   stock in here, which grey placeholder boxes never convey.
+                   Safe to show because /auctions/active is a public endpoint:
+                   nothing is revealed that a guest could not already fetch
+                   directly. The blur sells the room; it is not a privacy
+                   control, and RequireAuth says so where it renders this. */
+                preview={
+                    liveAuctions.length > 0 ? (
+                        <div className="container mx-auto px-4 md:px-6 py-12">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {liveAuctions.slice(0, 6).map((a, i) => (
+                                    <AuctionCard key={a.id} auction={a} index={i} />
+                                ))}
+                            </div>
+                        </div>
+                    ) : null
+                }
             >
 
             {/* ── Trade Exchange section tabs ──────────────────────────────
