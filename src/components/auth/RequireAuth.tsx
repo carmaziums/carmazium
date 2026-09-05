@@ -132,16 +132,20 @@ export function RequireAuth({
                 <div
                     inert
                     aria-hidden="true"
-                    className="pointer-events-none select-none blur-[7px] opacity-50 saturate-75"
+                    className="pointer-events-none select-none blur-[4px]"
                 >
                     {preview}
                 </div>
 
-                {/* Scrim so the prompt stays readable over whatever is behind. */}
-                <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-body)]/70 via-[var(--bg-body)]/85 to-[var(--bg-body)]" />
+                {/* Only enough wash to stop the cards competing with the prompt,
+                    plus a solid finish at the bottom so the clipped edge fades
+                    out instead of cutting cards in half. Readability is handled
+                    by the prompt's own panel below, not by dimming the teaser —
+                    dimming everything was what made the cars invisible. */}
+                <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-body)]/20 via-[var(--bg-body)]/40 to-[var(--bg-body)]" />
 
-                <div className="absolute inset-0 flex items-start justify-center px-5 pt-16 sm:pt-24">
-                    <div className="w-full max-w-md text-center">
+                <div className="absolute inset-0 flex items-start justify-center px-5 pt-12 sm:pt-20">
+                    <div className="w-full max-w-md text-center rounded-2xl border border-[var(--border-default)] bg-[var(--bg-body)]/80 backdrop-blur-xl px-6 py-8 sm:px-8 shadow-2xl">
                         {promptBody}
                     </div>
                 </div>
