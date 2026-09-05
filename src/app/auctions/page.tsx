@@ -30,6 +30,7 @@ import {
     getActiveAuctions, getScheduledAuctions, getCurrentBid,
     getBidCount, isAntiSnipeActive, type Auction,
 } from "@/lib/auctionApi"
+import { RequireAuth } from "@/components/auth/RequireAuth"
 
 // ─── Filters ──────────────────────────────────────────────────────────────────
 
@@ -785,6 +786,10 @@ export default function AuctionsPage() {
     }, [sourceAuctions, search, appliedFilters, userLocation])
 
     return (
+        <RequireAuth
+            title="Trade Exchange is for members"
+            message="Sign in to browse live and upcoming vehicle auctions."
+        >
         <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
 
             {/* ── Hero ─────────────────────────────────────────────────────── */}
@@ -877,6 +882,31 @@ export default function AuctionsPage() {
 
                 <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             </section>
+
+            {/* ── Trade Exchange section tabs ──────────────────────────────
+                The outer layer: which part of the Trade Exchange you're in.
+                Auction is the only section today, so this row looks redundant
+                on its own — it exists so a second section (trade sales, direct
+                buy) can be added without restructuring the page or moving the
+                Live/Upcoming tabs that sit inside this one.
+
+                Deliberately NOT merged with the Live/Upcoming row below: those
+                filter auctions BY STATE, this selects the section. Collapsing
+                them would put "Upcoming" and "Trade Sales" in the same control
+                as if they were the same kind of choice. */}
+            <div className="border-b" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-body)' }}>
+                <div className="container mx-auto px-4 md:px-6">
+                    <nav className="flex items-center gap-1" aria-label="Trade Exchange sections">
+                        <span
+                            aria-current="page"
+                            className="relative px-4 py-3 text-sm font-black uppercase tracking-widest text-primary"
+                        >
+                            Auction
+                            <span className="absolute inset-x-0 bottom-0 h-0.5 bg-primary rounded-full" />
+                        </span>
+                    </nav>
+                </div>
+            </div>
 
             {/* ── Filter bar ───────────────────────────────────────────────── */}
             <div className="sticky top-[80px] z-30 backdrop-blur-xl border-b" style={{ background: 'var(--bg-header)', borderColor: 'var(--border-default)' }}>
@@ -1616,5 +1646,6 @@ export default function AuctionsPage() {
                 </div>
             </section>
         </div>
+        </RequireAuth>
     )
 }

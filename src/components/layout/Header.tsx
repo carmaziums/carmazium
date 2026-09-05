@@ -18,7 +18,10 @@ const navLinks: { name: string; href: string; prefetch?: boolean; badge?: string
     { name: "Home", href: "/" },
     { name: "Buy Cars", href: "/search" },
     { name: "Sell Cars", href: "/sell", prefetch: false },
-    { name: "Auctions", href: "/auctions" },
+    // Label only — the route stays /auctions. Renaming the URL would break
+    // existing links, SEO, the /auctions/live/[id] children, and the
+    // backend's returnPath allowlist (/^\/(buy-cars|auctions)\//).
+    { name: "Trade Exchange", href: "/auctions" },
     { name: "Compare", href: "/compare" },
     { name: "Pricing", href: "/pricing" },
     { name: "About", href: "/about" },

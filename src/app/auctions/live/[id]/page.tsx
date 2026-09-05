@@ -29,6 +29,7 @@ import { getAuction, acceptBidEarly, triggerBuyItNow, confirmBuyItNow, declineBu
 import { placeBid, getDamageRecords } from "@/lib/listingApi"
 import { getWebSocketUrl, createChatRoom } from "@/lib/chatApi"
 import { getSessionStatus, applyHpiEmailFee } from "@/lib/paymentApi"
+import { RequireAuth } from "@/components/auth/RequireAuth"
 
 const ThreeDVehicleViewer = dynamic(
     () => import("@/components/listing/ThreeDVehicleViewer").then(m => m.ThreeDVehicleViewer),
@@ -501,6 +502,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     // ─────────────────────────────────────────────────────────────────────────
 
     return (
+        <RequireAuth
+            title="Trade Exchange is for members"
+            message="Sign in to view this vehicle and its live bidding."
+        >
         <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-body)' }}>
 
             {/* ── Accept Bid Confirmation Modal ─────────────────────────────── */}
@@ -1776,5 +1781,6 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 <HpiReportModal listingId={auction.listing.id} onClose={() => setShowHpiModal(false)} />
             )}
         </div>
+        </RequireAuth>
     )
 }
