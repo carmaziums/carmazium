@@ -888,6 +888,7 @@ export default function AuctionsPage() {
                 that marketing link bounce into a login wall. */}
             <RequireAuth
                 title="Sign up to enter the Trade Exchange"
+                signupRole="DEALER"
                 message={
                     liveAuctions.length > 0
                         ? `${liveAuctions.length} vehicle${liveAuctions.length === 1 ? '' : 's'} are in the room right now. Join to see them and bid.`

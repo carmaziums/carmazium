@@ -18,6 +18,16 @@ interface Props {
      * blurred wrapper below); it is a conversion device, not a privacy one.
      */
     preview?: React.ReactNode
+    /**
+     * Pre-selects a role on the signup form via ?role=. Trade Exchange passes
+     * DEALER because that is who the room is for — bidding is verified-dealers
+     * only, so landing a trade buyer on an empty role picker asks them to guess
+     * at something we already know.
+     *
+     * It is a default, not a lock: the picker stays visible and changeable, so
+     * a retail visitor who wandered in can still correct it.
+     */
+    signupRole?: string
 }
 
 /**
@@ -48,6 +58,7 @@ export function RequireAuth({
     title = "Sign up to enter the Trade Exchange",
     message = "Live and upcoming vehicle auctions are open to members. Joining takes a minute.",
     preview,
+    signupRole,
 }: Props) {
     const { user, loading } = useAuth()
     const pathname = usePathname()
@@ -63,6 +74,7 @@ export function RequireAuth({
     if (user) return <>{children}</>
 
     const redirect = encodeURIComponent(pathname || "/auctions")
+    const signupHref = `/auth/signup?redirect=${redirect}${signupRole ? `&role=${encodeURIComponent(signupRole)}` : ""}`
 
     const promptBody = (
         <>
@@ -79,7 +91,7 @@ export function RequireAuth({
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Link
-                    href={`/auth/signup?redirect=${redirect}`}
+                    href={signupHref}
                     className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-primary text-white text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-colors"
                 >
                     <UserPlus size={16} /> Sign up
