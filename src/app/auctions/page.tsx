@@ -786,10 +786,6 @@ export default function AuctionsPage() {
     }, [sourceAuctions, search, appliedFilters, userLocation])
 
     return (
-        <RequireAuth
-            title="Trade Exchange is for members"
-            message="Sign in to browse live and upcoming vehicle auctions."
-        >
         <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
 
             {/* ── Hero ─────────────────────────────────────────────────────── */}
@@ -882,6 +878,18 @@ export default function AuctionsPage() {
 
                 <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             </section>
+
+            {/* Everything from here to the How It Works section is member-only:
+                the section tabs, the filters and the vehicle grid. The hero
+                above and the How It Works block below stay public on purpose —
+                they are what persuade a guest the account is worth creating,
+                and /auctions/how-it-works redirects to the #how-it-works anchor
+                on this very page, so gating the whole route would have made
+                that marketing link bounce into a login wall. */}
+            <RequireAuth
+                title="Trade Exchange is for members"
+                message="Sign in to browse live and upcoming vehicle auctions."
+            >
 
             {/* ── Trade Exchange section tabs ──────────────────────────────
                 The outer layer: which part of the Trade Exchange you're in.
@@ -1533,6 +1541,8 @@ export default function AuctionsPage() {
                 </div>
             </div>
 
+            </RequireAuth>
+
             {/* ── How Auctions Work ────────────────────────────────────────── */}
             <section id="how-it-works" className="border-t border-[var(--border-default)] bg-[var(--bg-card)] mt-8">
                 <div className="container mx-auto px-6 py-20">
@@ -1646,6 +1656,5 @@ export default function AuctionsPage() {
                 </div>
             </section>
         </div>
-        </RequireAuth>
     )
 }
