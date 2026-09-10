@@ -372,7 +372,8 @@ export class AuthService {
 
     /**
      * Generate a Supabase verification link via admin API and deliver it
-     * through Resend so new users reliably receive their confirmation email.
+     * through our own mailer so new users reliably receive their confirmation
+     * email.
      *
      * Uses type: 'magiclink' rather than 'signup' — 'signup' is for creating a
      * brand-new user in this same call and requires a `password` field (see
@@ -472,12 +473,12 @@ export class AuthService {
             `,
         });
 
-        // sendBrandedEmail() swallows provider failures and returns null rather
-        // than throwing (see EmailService). Logging success unconditionally is
-        // exactly how an invalid RESEND_API_KEY went unnoticed in production:
-        // the logs read "Verification email sent via Resend" on the very line
-        // after "Failed to send branded email. Error: API key is invalid", so
-        // nothing looked wrong while no user received a confirmation email.
+        // sendBrandedEmail() returns null rather than throwing when every
+        // provider refuses the send (see EmailService). Logging success
+        // unconditionally is exactly how an invalid API key went unnoticed in
+        // production: the logs read "Verification email sent" on the very line
+        // after the send failure, so nothing looked wrong while no user
+        // received a confirmation email.
         //
         // Throw instead. The signup form calls this fire-and-forget and the user
         // still reaches onboarding, so failing loudly costs nothing and puts a
@@ -489,6 +490,6 @@ export class AuthService {
             throw new Error('Failed to send verification email');
         }
 
-        this.logger.log(`Verification email sent via Resend to ${email}`);
+        this.logger.log(`Verification email sent to ${email}`);
     }
 }
