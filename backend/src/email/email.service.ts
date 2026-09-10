@@ -1,26 +1,186 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
+import * as nodemailer from 'nodemailer';
 import { resolveFrontendUrl } from '../core/frontend-url';
+
+/** Which service actually puts the mail on the wire. */
+type Provider = 'gmail' | 'resend';
+
+/** One outbound email, in provider-neutral terms. */
+interface Message {
+    to: string[];
+    subject: string;
+    html: string;
+    replyTo?: string;
+    attachments?: { filename: string; content: Buffer }[];
+}
 
 @Injectable()
 export class EmailService {
     private readonly logger = new Logger(EmailService.name);
-    private resend: Resend;
+
+    private readonly resend: Resend | null;
+    private readonly transporter: nodemailer.Transporter | null;
+
+    /** Tried first. */
+    private readonly primary: Provider;
+    /** Tried only when the primary fails, and only if it is configured. */
+    private readonly fallback: Provider | null;
+
     private readonly fromAddress: string;
     private readonly frontendUrl: string;
     private readonly logoUrl: string;
 
+    /**
+     * Two providers, one active.
+     *
+     * Gmail SMTP is the default because Resend's quota is what pushed us off it;
+     * set EMAIL_PROVIDER=resend to go back without touching code. Whichever is
+     * not primary becomes the fallback, so a send refused by one (a quota, a
+     * blip) is retried on the other instead of being logged and dropped — which
+     * is what used to happen to password resets and KYC decisions.
+     */
     constructor() {
-        const apiKey = process.env.RESEND_API_KEY;
+        const resendKey = process.env.RESEND_API_KEY;
+        const gmailUser = process.env.EMAIL_USER;
+        const gmailPass = process.env.EMAIL_APP_PASSWORD;
 
-        if (!apiKey) {
-            this.logger.warn('RESEND_API_KEY not found in environment variables. Email Service will fail.');
-        }
+        this.resend = resendKey ? new Resend(resendKey) : null;
 
-        this.resend = new Resend(apiKey || '');
+        this.transporter = gmailUser && gmailPass
+            ? nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: gmailUser,
+                    // Historically pasted from Google with spaces in it.
+                    pass: gmailPass.trim(),
+                },
+                // Gmail throttles hard on parallel connections; a pool keeps a
+                // burst of auction notifications from tripping it.
+                pool: true,
+                maxConnections: 3,
+                maxMessages: 50,
+            })
+            : null;
+
+        const requested = (process.env.EMAIL_PROVIDER || 'gmail').toLowerCase();
+        this.primary = requested === 'resend' ? 'resend' : 'gmail';
+        this.fallback = this.primary === 'gmail'
+            ? (this.resend ? 'resend' : null)
+            : (this.transporter ? 'gmail' : null);
+
         this.fromAddress = process.env.EMAIL_FROM || 'CarMazium <noreply@carmazium.com>';
         this.frontendUrl = resolveFrontendUrl(process.env.FRONTEND_URL);
         this.logoUrl = `${this.frontendUrl}/assets/images/logo.png`;
+
+        this.warnOnMisconfiguration(gmailUser);
+    }
+
+    /**
+     * Shout at startup about the things that make mail silently disappear,
+     * rather than letting them show up as "why didn't the customer get it?".
+     */
+    private warnOnMisconfiguration(gmailUser?: string) {
+        if (this.primary === 'gmail' && !this.transporter) {
+            this.logger.error(
+                'EMAIL_PROVIDER is gmail but EMAIL_USER / EMAIL_APP_PASSWORD are not set — no mail will send.',
+            );
+        }
+        if (this.primary === 'resend' && !this.resend) {
+            this.logger.error('EMAIL_PROVIDER is resend but RESEND_API_KEY is not set — no mail will send.');
+        }
+        if (!this.fallback) {
+            this.logger.warn(
+                `Email provider "${this.primary}" has no fallback configured — a refused send is a lost email.`,
+            );
+        }
+
+        // The failure mode that does NOT announce itself. Gmail will only send
+        // as a From it owns: a Workspace account on the same domain, or a
+        // verified send-as alias. From a plain @gmail.com account it rewrites
+        // the header or the message fails SPF/DKIM alignment and lands in spam
+        // — with a 250 OK, so nothing in our logs looks wrong.
+        if (this.primary === 'gmail' && gmailUser) {
+            const fromDomain = this.fromAddress.match(/@([^>\s]+)/)?.[1]?.toLowerCase();
+            const userDomain = gmailUser.split('@')[1]?.toLowerCase();
+            if (fromDomain && userDomain && fromDomain !== userDomain) {
+                this.logger.warn(
+                    `EMAIL_FROM (${fromDomain}) does not match EMAIL_USER (${userDomain}). ` +
+                    'Gmail will only honour this From if it is a verified send-as alias on that account; ' +
+                    'otherwise mail is rewritten or spam-filtered. Verify the alias in Gmail settings.',
+                );
+            }
+        }
+    }
+
+    // ─── Dispatch ────────────────────────────────────────────────────
+
+    /**
+     * The single point where mail leaves this service. Every send goes through
+     * here, so provider choice, fallback and logging live in one place instead
+     * of being copy-pasted per email type.
+     *
+     * Never throws. Callers fire these off mid-request (signup, KYC decision,
+     * auction close) and a mail outage must not fail the operation that
+     * triggered it — the return value says whether it went.
+     */
+    private async dispatch(message: Message): Promise<{ id: string } | null> {
+        const order: Provider[] = this.fallback ? [this.primary, this.fallback] : [this.primary];
+
+        for (const provider of order) {
+            try {
+                const id = provider === 'gmail'
+                    ? await this.sendViaGmail(message)
+                    : await this.sendViaResend(message);
+
+                if (id) {
+                    const note = provider === this.primary ? '' : ` (fallback after ${this.primary} failed)`;
+                    this.logger.log(`Email "${message.subject}" sent via ${provider}${note} (id: ${id})`);
+                    return { id };
+                }
+            } catch (error: any) {
+                this.logger.error(
+                    `Email "${message.subject}" failed via ${provider}: ${error?.message || error}`,
+                );
+            }
+        }
+
+        this.logger.error(
+            `Email "${message.subject}" to ${message.to.join(', ')} was NOT sent — every provider failed.`,
+        );
+        return null;
+    }
+
+    private async sendViaGmail(message: Message): Promise<string | null> {
+        if (!this.transporter) throw new Error('Gmail transport not configured');
+
+        const info = await this.transporter.sendMail({
+            from: this.fromAddress,
+            to: message.to,
+            subject: message.subject,
+            html: message.html,
+            replyTo: message.replyTo,
+            attachments: message.attachments,
+        });
+        return info?.messageId || null;
+    }
+
+    private async sendViaResend(message: Message): Promise<string | null> {
+        if (!this.resend) throw new Error('Resend not configured');
+
+        const { data, error } = await this.resend.emails.send({
+            from: this.fromAddress,
+            to: message.to,
+            subject: message.subject,
+            html: message.html,
+            replyTo: message.replyTo,
+            attachments: message.attachments,
+        });
+
+        // Resend reports failure in the body rather than by throwing, so this
+        // has to be turned into one for dispatch's fallback to see it.
+        if (error) throw new Error(error.message);
+        return data?.id || null;
     }
 
     // ─── Brand Template Shell ────────────────────────────────────────
@@ -194,23 +354,11 @@ export class EmailService {
             </div>
         `;
 
-        try {
-            const { data, error } = await this.resend.emails.send({
-                from: this.fromAddress,
-                to: [toEmail],
-                subject: `Welcome to CarMazium, ${name}! 🚗`,
-                html: this.wrapInBrandTemplate(bodyHtml),
-            });
-
-            if (error) {
-                this.logger.error(`Failed to send welcome email to ${toEmail}. Error: ${error.message}`);
-                return;
-            }
-
-            this.logger.log(`Welcome email sent to ${toEmail} (id: ${data?.id})`);
-        } catch (error: any) {
-            this.logger.error(`Failed to send welcome email to ${toEmail}. Error: ${error.message}`);
-        }
+        await this.dispatch({
+            to: [toEmail],
+            subject: `Welcome to CarMazium, ${name}! 🚗`,
+            html: this.wrapInBrandTemplate(bodyHtml),
+        });
     }
 
     // ─── Generic Sender ─────────────────────────────────────────────
@@ -226,27 +374,13 @@ export class EmailService {
         replyTo?: string;
         attachments?: { filename: string; content: Buffer }[];
     }) {
-        try {
-            const { data, error } = await this.resend.emails.send({
-                from: this.fromAddress,
-                to: Array.isArray(options.to) ? options.to : [options.to],
-                subject: options.subject,
-                html: this.wrapInBrandTemplate(options.bodyHtml),
-                replyTo: options.replyTo,
-                attachments: options.attachments,
-            });
-
-            if (error) {
-                this.logger.error(`Failed to send branded email. Error: ${error.message}`);
-                return null;
-            }
-
-            this.logger.log(`Branded email sent (id: ${data?.id})`);
-            return data;
-        } catch (error: any) {
-            this.logger.error(`Failed to send branded email. Error: ${error.message}`);
-            return null;
-        }
+        return this.dispatch({
+            to: Array.isArray(options.to) ? options.to : [options.to],
+            subject: options.subject,
+            html: this.wrapInBrandTemplate(options.bodyHtml),
+            replyTo: options.replyTo,
+            attachments: options.attachments,
+        });
     }
 
     /**
@@ -260,27 +394,13 @@ export class EmailService {
         replyTo?: string;
         attachments?: { filename: string; content: Buffer }[];
     }) {
-        try {
-            const { data, error } = await this.resend.emails.send({
-                from: this.fromAddress,
-                to: Array.isArray(options.to) ? options.to : [options.to],
-                subject: options.subject,
-                html: options.html,
-                replyTo: options.replyTo,
-                attachments: options.attachments,
-            });
-
-            if (error) {
-                this.logger.error(`Failed to send email. Error: ${error.message}`);
-                return null;
-            }
-
-            this.logger.log(`Email sent (id: ${data?.id})`);
-            return data;
-        } catch (error: any) {
-            this.logger.error(`Failed to send email. Error: ${error.message}`);
-            return null;
-        }
+        return this.dispatch({
+            to: Array.isArray(options.to) ? options.to : [options.to],
+            subject: options.subject,
+            html: options.html,
+            replyTo: options.replyTo,
+            attachments: options.attachments,
+        });
     }
 
     async sendStaffInviteEmail(
