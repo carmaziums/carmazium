@@ -603,6 +603,11 @@ model Lead {
 model ContractorProfile {
   id             String    @id @default(uuid())
   userId         String    @unique
+  /// Trading name shown to customers on quotes. A transport firm quotes as
+  /// "Kent Vehicle Transport", not as the owner's first name.
+  businessName   String?
+  /// Business contact number, revealed to the customer on acceptance.
+  phone          String?
   serviceTypes   String[] // e.g., ["Detailing", "Mechanic", "Pre-purchase Inspection"]
   rating         Float     @default(0)
   totalReviews   Int       @default(0)

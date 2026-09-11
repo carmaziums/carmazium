@@ -1,5 +1,6 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ModuleRef } from '@nestjs/core';
 import { PrismaService } from '../prisma/prisma.service';
 import { HpiService } from '../hpi/hpi.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -9,6 +10,8 @@ import { resolveFrontendUrl } from '../core/frontend-url';
 
 @Injectable()
 export class PaymentsService {
+    private readonly logger = new Logger(PaymentsService.name);
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly config: ConfigService,
@@ -16,6 +19,7 @@ export class PaymentsService {
         private readonly notificationsService: NotificationsService,
         private readonly notificationsGateway: NotificationsGateway,
         private readonly emailService: EmailService,
+        private readonly moduleRef: ModuleRef,
     ) {}
 
     /**
@@ -99,6 +103,34 @@ export class PaymentsService {
     /**
      * Lazily create a Stripe SDK instance.
      */
+    /**
+     * Records a paid Trade Exchange service job. Lives here rather than in
+     * ServicesService because ServicesModule imports PaymentsModule for the
+     * Stripe client and the transfer helper; importing back the other way
+     * would be a cycle. The notifications for this event are sent by
+     * ServicesService.markPaid, which this delegates to via a late-bound
+     * lookup so the dependency stays one-directional.
+     */
+    private async markServiceJobPaid(jobId: string, paymentId: string, paymentIntentId: string | null) {
+        try {
+            const { ServicesService } = await import('../services/services.service');
+            const services = this.moduleRef.get(ServicesService, { strict: false });
+            await services.markPaid(jobId, paymentId, paymentIntentId);
+        } catch (e: any) {
+            this.logger.error(`SERVICE_JOB webhook for job ${jobId} failed: ${e?.message}`);
+            throw e; // let Stripe retry
+        }
+    }
+
+    /**
+     * The Stripe client, for modules that create their own Checkout sessions
+     * or refunds (ServicesModule) but must not duplicate the SDK setup. The
+     * webhook handling stays here; only the client is shared.
+     */
+    async getStripeClient() {
+        return this.getStripe();
+    }
+
     private async getStripe() {
         const Stripe = (await import('stripe')).default;
         return new Stripe(this.config.get<string>('STRIPE_SECRET_KEY')!, {
@@ -628,6 +660,17 @@ export class PaymentsService {
                 // 0. Handle Dealer KYC £1 verification fee
                 if (type === 'KYC_VERIFICATION' && kycId) {
                     await this.markKycFeePaid(kycId, session.payment_intent ?? session.id);
+                }
+
+                // 0b. Trade Exchange service job — the customer paid the gross.
+                // Funds are held on the platform; the contractor is paid by a
+                // Connect transfer when the job is confirmed complete.
+                if (type === 'SERVICE_JOB' && session.metadata.jobId && session.metadata.paymentId) {
+                    await this.markServiceJobPaid(
+                        session.metadata.jobId,
+                        session.metadata.paymentId,
+                        typeof session.payment_intent === 'string' ? session.payment_intent : null,
+                    );
                 }
 
                 // 1. Handle Featured Boost (from FeaturedBoostService)
