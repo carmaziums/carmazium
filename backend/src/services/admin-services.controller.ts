@@ -18,10 +18,11 @@ export class AdminServicesController {
     constructor(private readonly services: ServicesService) { }
 
     @Get('capabilities')
-    @ApiQuery({ name: 'status', enum: CapabilityStatus, required: false })
+    @ApiQuery({ name: 'status', enum: Object.values(CapabilityStatus), required: false })
     @ApiOperation({ summary: 'Provider applications, oldest first' })
-    async capabilities(@Query('status') status?: CapabilityStatus) {
-        return new StandardResponse(await this.services.adminListCapabilities(status));
+    // string, not the Prisma enum type -- see the note on ServicesController.feed
+    async capabilities(@Query('status') status?: string) {
+        return new StandardResponse(await this.services.adminListCapabilities(status as CapabilityStatus | undefined));
     }
 
     @Patch('capabilities/:id')
@@ -31,9 +32,9 @@ export class AdminServicesController {
     }
 
     @Get('jobs')
-    @ApiQuery({ name: 'status', enum: ServiceJobStatus, required: false })
-    async jobs(@Query('status') status?: ServiceJobStatus) {
-        return new StandardResponse(await this.services.adminListJobs(status));
+    @ApiQuery({ name: 'status', enum: Object.values(ServiceJobStatus), required: false })
+    async jobs(@Query('status') status?: string) {
+        return new StandardResponse(await this.services.adminListJobs(status as ServiceJobStatus | undefined));
     }
 
     @Post('jobs/:id/resolve')

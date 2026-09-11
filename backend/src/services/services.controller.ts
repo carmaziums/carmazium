@@ -66,10 +66,14 @@ export class ServicesController {
 
     @Get('jobs/feed')
     @UseGuards(ContractorGuard)
-    @ApiQuery({ name: 'serviceType', enum: ServiceType, required: false })
+    @ApiQuery({ name: 'serviceType', enum: Object.values(ServiceType), required: false })
     @ApiOperation({ summary: 'Open jobs in approved service areas (customer identity redacted)' })
-    async feed(@Req() req: any, @Query('serviceType') serviceType?: ServiceType) {
-        return new StandardResponse(await this.services.feed(req.contractorProfileId, req.approvedServiceTypes, serviceType));
+    // Typed as string, not ServiceType, on purpose. Prisma enums are const
+    // objects, so a parameter annotated with one makes TS emit the object as
+    // design-time metadata and Swagger walks its keys as a schema -- which
+    // took production down on 2026-09-11. The service validates the value.
+    async feed(@Req() req: any, @Query('serviceType') serviceType?: string) {
+        return new StandardResponse(await this.services.feed(req.contractorProfileId, req.approvedServiceTypes, serviceType as ServiceType | undefined));
     }
 
     @Get('jobs/assigned')

@@ -167,6 +167,9 @@ export class ServicesService {
     }
 
     async adminListCapabilities(status?: CapabilityStatus) {
+        if (status && !Object.values(CapabilityStatus).includes(status)) {
+            throw new BadRequestException(`Unknown status "${status}"`);
+        }
         return this.prisma.contractorCapability.findMany({
             where: status ? { status } : {},
             orderBy: { appliedAt: 'asc' },
@@ -554,6 +557,9 @@ export class ServicesService {
     // ── Jobs: contractor ───────────────────────────────────────────────────
 
     async feed(contractorProfileId: string, approved: ServiceType[], serviceType?: ServiceType) {
+        if (serviceType && !Object.values(ServiceType).includes(serviceType)) {
+            throw new BadRequestException(`Unknown service type "${serviceType}"`);
+        }
         const types = serviceType ? approved.filter((t) => t === serviceType) : approved;
         if (types.length === 0) return [];
 
@@ -699,6 +705,9 @@ export class ServicesService {
     // ── Admin ──────────────────────────────────────────────────────────────
 
     async adminListJobs(status?: ServiceJobStatus) {
+        if (status && !Object.values(ServiceJobStatus).includes(status)) {
+            throw new BadRequestException(`Unknown status "${status}"`);
+        }
         return this.prisma.serviceJob.findMany({
             where: status ? { status } : {},
             orderBy: { updatedAt: 'desc' },
