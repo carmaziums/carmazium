@@ -34,13 +34,29 @@ const inputCls = "w-full rounded-xl border px-4 py-3 text-sm outline-none focus:
 const labelCls = "block text-[11px] font-extrabold uppercase tracking-widest text-[var(--text-muted)] mb-2"
 
 export default function CapabilitiesPage() {
-    const { user, profile, loading: authLoading } = useAuth()
+    const { user, profile, loading: authLoading, refreshProfile } = useAuth()
     const [data, setData] = React.useState<MyCapabilities | null>(null)
     const [error, setError] = React.useState<string | null>(null)
     const [busy, setBusy] = React.useState<string | null>(null)
+    const [switching, setSwitching] = React.useState(false)
     const [businessName, setBusinessName] = React.useState("")
     const [phone, setPhone] = React.useState("")
     const [serviceArea, setServiceArea] = React.useState("")
+
+    // A Buyer/Seller who lands here (the landing page links straight in) must
+    // not be handed a form whose submit will 403. Offer the role switch in
+    // place instead. Same call the profile page makes; CONTRACTOR is on the
+    // self-service allowlist because the role alone grants nothing.
+    const isProvider = profile?.role === "CONTRACTOR" || profile?.role === "ADMIN"
+
+    const becomeProvider = async () => {
+        setSwitching(true); setError(null)
+        try {
+            await apiClient('/users/elevate', { method: 'POST', body: JSON.stringify({ newRole: 'CONTRACTOR' }) })
+            await refreshProfile()
+        } catch (e: any) { setError(e?.message || "Could not switch your account") }
+        finally { setSwitching(false) }
+    }
 
     const load = React.useCallback(() => {
         getMyCapabilities().then(d => {
@@ -51,7 +67,7 @@ export default function CapabilitiesPage() {
         }).catch(e => setError(e?.message || "Could not load"))
     }, [])
 
-    React.useEffect(() => { if (!authLoading && user) load() }, [authLoading, user, load])
+    React.useEffect(() => { if (!authLoading && user && isProvider) load() }, [authLoading, user, isProvider, load])
 
     const apply = async (type: ServiceType) => {
         setBusy(type); setError(null)
@@ -95,9 +111,22 @@ export default function CapabilitiesPage() {
                         </div>
                     )}
 
-                    {!data && !error && <div className="flex justify-center py-16"><Loader2 className="animate-spin text-primary" /></div>}
+                    {!authLoading && user && !isProvider && (
+                        <section className="rounded-2xl border border-primary/30 bg-primary/5 p-6">
+                            <h2 className="font-heading font-bold text-lg mb-1">Switch this account to Service Provider</h2>
+                            <p className="text-sm text-[var(--text-muted)] mb-5">
+                                Your account is set up as a {profile?.role === "SELLER" ? "seller" : profile?.role === "DEALER" ? "dealer" : "buyer"}.
+                                Providers use the same login — nothing you have is lost — but the account type changes to Service Provider so you can apply for work and get paid.
+                            </p>
+                            <Button onClick={becomeProvider} disabled={switching}>
+                                {switching ? <Loader2 className="animate-spin" size={16} /> : <>Switch to Service Provider <ArrowRight size={16} className="ml-2" /></>}
+                            </Button>
+                        </section>
+                    )}
 
-                    {data && (
+                    {isProvider && !data && !error && <div className="flex justify-center py-16"><Loader2 className="animate-spin text-primary" /></div>}
+
+                    {isProvider && data && (
                         <>
                             {/* 1. Trading details */}
                             <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
