@@ -228,17 +228,23 @@ export class UsersService {
      * Everything absent from this list is privileged and must be granted by an
      * admin, never by the account itself:
      *   ADMIN                       — full platform control
-     *   CONTRACTOR                  — service-provider dashboard and job feed
      *   FINANCE_PARTNER / INSURANCE_PARTNER — partner dashboards and lead access
      *
      * DEALER is self-serve on purpose: it only unlocks the dealer dashboard in
      * limited mode, and everything that matters behind it (bidding, payouts)
      * additionally requires an approved KYC review.
+     *
+     * CONTRACTOR is self-serve for the same reason. The role alone grants
+     * nothing: taking Trade Exchange work requires an admin-APPROVED
+     * ContractorCapability for that service, and payouts require Stripe
+     * Connect onboarding. The role is the door to the application form, not
+     * to the work.
      */
     private static readonly SELF_SERVICE_ROLES: readonly UserRole[] = [
         UserRole.BUYER,
         UserRole.SELLER,
         UserRole.DEALER,
+        UserRole.CONTRACTOR,
     ];
 
     /**
