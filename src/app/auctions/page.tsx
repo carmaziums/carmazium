@@ -57,6 +57,7 @@ const SECTIONS: Section[] = [
         description:
             "Move or recover a vehicle anywhere in the UK. Post the route and approved transport businesses send you a price.",
         points: ["Single and multi-car moves", "Recovery jobs", "Contact shared only with your pick"],
+        href: "/services/delivery",
         cta: "Post a delivery job",
     },
     {
@@ -248,7 +249,7 @@ export default function TradeExchangePage() {
                         Where do you want to go?
                     </h2>
                     <p className="text-[var(--text-muted)] text-sm">
-                        Auctions are open now. The other four service areas are on the way.
+                        Auctions and delivery are open now. Inspections, finance and warranty are on the way.
                     </p>
                 </div>
 

@@ -3,6 +3,7 @@
 import * as React from "react"
 import { getMyOffers, withdrawOffer, respondToCounterOffer, type Offer } from "@/lib/listingApi"
 import { getMyDeliveryRequests, createDeliveryRequest, cancelDeliveryRequest, completeDeliveryRequest, type DeliveryRequest, type DeliveryStatus } from "@/lib/deliveryApi"
+import { ArrangeDelivery } from "@/components/services/ArrangeDelivery"
 import { createChatRoom } from "@/lib/chatApi"
 import { useRouter } from "next/navigation"
 import { Loader2, AlertTriangle, Tag, Clock, CheckCircle, XCircle, Eye, Truck } from "lucide-react"
@@ -563,6 +564,19 @@ export default function BuyerOffersPage() {
                                                             </div>
                                                         </td>
                                                     </tr>
+
+                                                    {/* Trade Exchange delivery — for every accepted offer, whether
+                                                        or not the seller offers delivery themselves. */}
+                                                    {offer.status === 'ACCEPTED' && (
+                                                        <tr className="bg-[var(--bg-input)]">
+                                                            <td colSpan={5} className="px-6 py-3 border-t border-[var(--border-default)]">
+                                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                                                    <p className="text-xs text-[var(--text-muted)]">Need it moved? Approved transporters quote the route and you pay CarMazium, not the driver.</p>
+                                                                    <ArrangeDelivery offerId={offer.id} compact />
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )}
 
                                                     {/* Delivery section row */}
                                                     {listing?.deliveryAvailable && (

@@ -75,6 +75,10 @@ export default function ProfilePage() {
                 router.push('/dashboard/dealer')
                 return
             }
+            if (newRole === 'CONTRACTOR') {
+                router.push('/dashboard/service/capabilities')
+                return
+            }
 
             setSuccess(`Your account is now set up as ${newRole}.`)
         } catch (error: any) {
@@ -97,11 +101,13 @@ export default function ProfilePage() {
     const allRoles = [
         { id: 'BUYER', icon: User, label: 'User', sub: 'Buy and sell vehicles as an individual' },
         { id: 'DEALER', icon: Shield, label: 'Dealer', sub: 'For car dealerships and businesses' },
+        { id: 'CONTRACTOR', icon: Wrench, label: 'Service Provider', sub: 'Quote on delivery, recovery and inspection jobs' },
     ]
     // Show roles that the user is NOT currently on
     const availableRoles = allRoles.filter(r => {
         if (r.id === 'BUYER') return !isUserRole   // hide "User" if already BUYER or SELLER
         if (r.id === 'DEALER') return !isDealerRole // hide "Dealer" if already DEALER
+        if (r.id === 'CONTRACTOR') return profile?.role !== 'CONTRACTOR'
         return true
     })
 

@@ -156,6 +156,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         provider: [
             { href: "/dashboard/service", label: "Overview", icon: LayoutDashboard },
             { href: "/dashboard/service/jobs", label: "Jobs", icon: Briefcase },
+            { href: "/dashboard/service/capabilities", label: "Service areas", icon: ShieldCheck },
             { href: "/dashboard/service/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
             { href: "/dashboard/service/settings", label: "Settings", icon: Settings },
         ],
@@ -189,6 +190,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/dashboard/admin/transactions", label: "Transactions", icon: Receipt },
             { href: "/dashboard/admin/analytics", label: "Analytics", icon: TrendingUp },
             { href: "/dashboard/admin/dealer-verification", label: "Dealer KYC", icon: Shield },
+            { href: "/dashboard/admin/services", label: "Trade Services", icon: Briefcase },
             { href: "/dashboard/admin/dealers", label: "All Dealers", icon: Building2 },
             { href: "/dashboard/admin/marketing-popup", label: "Marketing Popup", icon: Megaphone },
             { href: "/dashboard/admin/blog", label: "Blog", icon: Newspaper },

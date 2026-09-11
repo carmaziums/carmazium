@@ -15,6 +15,7 @@ import {
 import { ImageLightbox } from "@/components/features/ImageLightbox"
 import { useAuth } from "@/context/AuthContext"
 import { RequireAuth } from "@/components/auth/RequireAuth"
+import { ArrangeDelivery } from "@/components/services/ArrangeDelivery"
 import { TRADE_EXCHANGE_ROLES, canAccessTradeStock } from "@/lib/tradeAccess"
 import { getWonAuctionById, type Auction } from "@/lib/auctionApi"
 import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
@@ -544,6 +545,17 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                     </div>
                                 )}
                             </div>
+                        </div>
+
+                        {/* Trade Exchange delivery: the winner is a dealer moving stock,
+                            the most natural delivery customer there is. Pickup and
+                            vehicle are pre-filled from the auction. */}
+                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <p className="font-heading font-bold text-sm">Arrange delivery</p>
+                                <p className="text-xs text-[var(--text-muted)]">Approved transporters quote the route. You pay CarMazium, the driver is paid on arrival.</p>
+                            </div>
+                            <ArrangeDelivery auctionId={auction.id} />
                         </div>
 
                         {/* Handover status — mirrors the stage grouping on /dashboard/dealer/auctions/won */}
