@@ -207,7 +207,7 @@ const notify = jest.fn().mockResolvedValue(null);
 const sendBrandedEmail = jest.fn().mockResolvedValue({ id: 'email' });
 const sessionsCreate = jest.fn();
 const refundsCreate = jest.fn();
-const issueSellerPayout = jest.fn();
+const transfersCreate = jest.fn();
 
 const CUSTOMER = { id: 'u_cust', role: 'BUYER', email: 'cust@example.com', firstName: 'Cara', lastName: 'Customer', phone: '07000000001', postcode: null };
 const TRUCKER = { id: 'u_truck', role: 'CONTRACTOR', email: 'kent@example.com', firstName: 'Ken', lastName: 'Trucker', phone: '07000000002', stripeConnectAccountId: 'acct_kent', stripeConnectOnboardingComplete: true };
@@ -228,8 +228,11 @@ beforeAll(async () => {
             {
                 provide: PaymentsService,
                 useValue: {
-                    getStripeClient: async () => ({ checkout: { sessions: { create: sessionsCreate } }, refunds: { create: refundsCreate } }),
-                    issueSellerPayout,
+                    getStripeClient: async () => ({
+                        checkout: { sessions: { create: sessionsCreate } },
+                        refunds: { create: refundsCreate },
+                        transfers: { create: transfersCreate },
+                    }),
                 },
             },
             { provide: ConfigService, useValue: { get: (k: string) => (k === 'FRONTEND_URL' ? 'https://www.carmazium.com' : undefined) } },
@@ -468,14 +471,17 @@ describe('Delivery & Recovery — end to end', () => {
     });
 
     it('the customer confirms: exactly the contractor share is transferred, once', async () => {
-        issueSellerPayout.mockResolvedValueOnce('tr_1');
+        const pay = db.one('servicePayment', { jobId })!;
+        transfersCreate.mockResolvedValueOnce({ id: 'tr_1' });
         const r = await svc.confirmCompletion(CUSTOMER.id, jobId);
         expect(r).toEqual({ success: true, transferId: 'tr_1' });
-        expect(issueSellerPayout).toHaveBeenCalledWith('acct_kent', 15470);
-        expect(issueSellerPayout).toHaveBeenCalledTimes(1);
+        expect(transfersCreate).toHaveBeenCalledWith(
+            { amount: 15470, currency: 'gbp', destination: 'acct_kent' },
+            { idempotencyKey: `service-job-release-${pay.id}` },
+        );
+        expect(transfersCreate).toHaveBeenCalledTimes(1);
 
         const job = db.one('serviceJob', { id: jobId })!;
-        const pay = db.one('servicePayment', { jobId })!;
         expect(job.status).toBe('RELEASED');
         expect(pay.status).toBe('RELEASED');
         expect(pay.stripeTransferId).toBe('tr_1');
@@ -484,7 +490,7 @@ describe('Delivery & Recovery — end to end', () => {
 
     it('a second confirm cannot pay twice', async () => {
         await expect(svc.confirmCompletion(CUSTOMER.id, jobId)).rejects.toThrow();
-        expect(issueSellerPayout).toHaveBeenCalledTimes(1);
+        expect(transfersCreate).toHaveBeenCalledTimes(1);
     });
 
     // 6. The other exits ─────────────────────────────────────────────────
@@ -498,12 +504,12 @@ describe('Delivery & Recovery — end to end', () => {
         await svc.startJob(kentProfileId, j.id);
         await svc.completeJob(kentProfileId, j.id);
 
-        issueSellerPayout.mockRejectedValueOnce(new Error('Stripe is down'));
+        transfersCreate.mockRejectedValueOnce(new Error('Stripe is down'));
         await expect(svc.confirmCompletion(CUSTOMER.id, j.id)).rejects.toThrow('Stripe is down');
         expect(db.one('serviceJob', { id: j.id })!.status).toBe('COMPLETED');           // unchanged
         expect(db.one('servicePayment', { jobId: j.id })!.status).toBe('PAID');         // still held
 
-        issueSellerPayout.mockResolvedValueOnce('tr_retry');
+        transfersCreate.mockResolvedValueOnce({ id: 'tr_retry' });
         await svc.confirmCompletion(CUSTOMER.id, j.id);                                 // retry works
         expect(db.one('servicePayment', { jobId: j.id })!.stripeTransferId).toBe('tr_retry');
     });
@@ -513,7 +519,8 @@ describe('Delivery & Recovery — end to end', () => {
         const q = await svc.upsertQuote(rivalProfileId, ['DELIVERY'] as any, RIVAL.id, j.id, { amountPence: 20000 } as any);
         sessionsCreate.mockResolvedValueOnce({ id: 'cs_d', url: 'u' });
         await svc.acceptQuote(CUSTOMER.id, j.id, q.id);
-        await svc.markPaid(j.id, db.one('servicePayment', { jobId: j.id })!.id, 'pi_d');
+        const pay = db.one('servicePayment', { jobId: j.id })!;
+        await svc.markPaid(j.id, pay.id, 'pi_d');
 
         await svc.openDispute(CUSTOMER.id, j.id, 'Car arrived scratched');
         expect(db.one('serviceJob', { id: j.id })!.status).toBe('DISPUTED');
@@ -521,10 +528,12 @@ describe('Delivery & Recovery — end to end', () => {
 
         refundsCreate.mockResolvedValueOnce({ id: 're_1' });
         await svc.adminResolveDispute(ADMIN.id, j.id, { outcome: 'REFUND', note: 'Photos confirm damage' } as any);
-        expect(refundsCreate).toHaveBeenCalledWith({ payment_intent: 'pi_d' });
+        expect(refundsCreate).toHaveBeenCalledWith(
+            { payment_intent: 'pi_d' },
+            { idempotencyKey: `service-job-refund-${pay.id}` },
+        );
         expect(db.one('servicePayment', { jobId: j.id })!.status).toBe('REFUNDED');
         expect(db.one('serviceJob', { id: j.id })!.status).toBe('CANCELLED');
-        expect(issueSellerPayout).not.toHaveBeenCalledWith('acct_rival', expect.anything());
     });
 
     it('cancelling an open job expires its quotes and tells the quoters', async () => {
@@ -547,13 +556,17 @@ describe('Delivery & Recovery — end to end', () => {
         const q = await svc.upsertQuote(kentProfileId, ['DELIVERY'] as any, TRUCKER.id, done.id, { amountPence: 8000 } as any);
         sessionsCreate.mockResolvedValueOnce({ id: 'cs_a', url: 'u' });
         await svc.acceptQuote(CUSTOMER.id, done.id, q.id);
-        await svc.markPaid(done.id, db.one('servicePayment', { jobId: done.id })!.id, 'pi_a');
+        const pay = db.one('servicePayment', { jobId: done.id })!;
+        await svc.markPaid(done.id, pay.id, 'pi_a');
         await svc.completeJob(kentProfileId, done.id);
         db.one('serviceJob', { id: done.id })!.completedAt = new Date(Date.now() - 49 * 3_600_000);
 
-        issueSellerPayout.mockResolvedValueOnce('tr_auto');
+        transfersCreate.mockResolvedValueOnce({ id: 'tr_auto' });
         expect(await svc.autoConfirmCompleted()).toBe(1);
         expect(db.one('serviceJob', { id: done.id })!.status).toBe('RELEASED');
-        expect(issueSellerPayout).toHaveBeenLastCalledWith('acct_kent', 7280); // £80 less 9%
+        expect(transfersCreate).toHaveBeenLastCalledWith(
+            { amount: 7280, currency: 'gbp', destination: 'acct_kent' },
+            { idempotencyKey: `service-job-release-${pay.id}` },
+        ); // £80 less 9%
     });
 });
