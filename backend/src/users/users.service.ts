@@ -322,6 +322,23 @@ export class UsersService {
             assertValidPhone(data.phone);
         }
 
+        // Whitelist the fields a dealer may set about themselves. The `data`
+        // type says these are the only keys, but the controller hands this the
+        // raw request body (`@Body() body: any`), so the type proves nothing at
+        // runtime. Spreading the body straight into Prisma let a dealer PATCH
+        // `{ isVerified: true }` and self-approve past KYC — appearing to admins
+        // as a verified dealer without any review. Build the update explicitly:
+        // isVerified and verificationDate live only on the admin KYC-approval
+        // path and must never be writable from this endpoint.
+        const raw = data as Record<string, unknown>;
+        const allowed: Record<string, unknown> = {};
+        for (const key of [
+            'companyName', 'vatNumber', 'registrationNumber', 'businessAddress',
+            'phone', 'website', 'description', 'logo', 'openingHours',
+        ]) {
+            if (raw[key] !== undefined) allowed[key] = raw[key];
+        }
+
         // On create, companyName is required — fall back to a placeholder so the
         // upsert doesn't fail when a dealer saves partial info before KYC.
         const existing = await this.prisma.dealerProfile.findUnique({ where: { userId: user.id } });
@@ -330,7 +347,7 @@ export class UsersService {
             // Allow update if a profile already exists (handles OAuth role-sync edge cases)
             return this.prisma.dealerProfile.update({
                 where: { userId: user.id },
-                data,
+                data: allowed,
             });
         }
 

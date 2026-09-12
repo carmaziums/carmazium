@@ -204,6 +204,18 @@ export default function AdminUsersPage() {
                                                     </span>
                                                 </div>
                                                 <p className="text-xs text-[var(--text-muted)] truncate">{u.email}</p>
+                                                {/* KYC state for dealers — the "OK" pill above is only
+                                                    account health (not banned/locked) and shows for
+                                                    everyone, so on its own it read as "verified". */}
+                                                {u.role === 'DEALER' && (
+                                                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 mt-1 text-[10px] font-bold uppercase tracking-wider border ${u.dealerProfile?.isVerified
+                                                        ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-500'
+                                                        : 'bg-amber-500/10 border-amber-500/25 text-amber-500'}`}>
+                                                        {u.dealerProfile?.isVerified
+                                                            ? <><BadgeCheck size={11} /> KYC verified</>
+                                                            : <><AlertCircle size={11} /> Unverified</>}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 mt-3">
@@ -278,9 +290,26 @@ export default function AdminUsersPage() {
                                                             <p className="font-bold flex items-center gap-2 group-hover:text-primary transition-colors">
                                                                 {u.firstName} {u.lastName}
                                                                 {u.role === 'ADMIN' && <ShieldAlert size={14} className="text-yellow-400" />}
-                                                                {u.dealerProfile?.isVerified && <BadgeCheck size={14} className="text-blue-400" />}
                                                             </p>
-                                                            <p className="text-xs text-[var(--text-muted)]">{u.email}</p>
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                <p className="text-xs text-[var(--text-muted)]">{u.email}</p>
+                                                                {/* Explicit, labelled KYC state for dealers. The old
+                                                                    subtle blue tick showed ONLY for verified dealers and
+                                                                    nothing for unverified ones, so admins could not tell a
+                                                                    KYC-less dealer from a reviewed one at a glance — the
+                                                                    "verified" confusion in the accounts list. */}
+                                                                {u.role === 'DEALER' && (
+                                                                    u.dealerProfile?.isVerified ? (
+                                                                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border bg-emerald-500/10 border-emerald-500/25 text-emerald-500">
+                                                                            <BadgeCheck size={11} /> KYC verified
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border bg-amber-500/10 border-amber-500/25 text-amber-500">
+                                                                            <AlertCircle size={11} /> Unverified
+                                                                        </span>
+                                                                    )
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </td>
