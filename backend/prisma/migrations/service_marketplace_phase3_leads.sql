@@ -84,6 +84,13 @@ CREATE TABLE IF NOT EXISTS "service_lead_recipients" (
     CONSTRAINT "service_lead_recipients_unique" UNIQUE ("leadId", "contractorId")
 );
 
+-- These rows include customer contact details and finance preferences. The
+-- public Supabase/PostgREST surface must never read them directly. The Nest
+-- backend uses the database owner connection and applies the service-specific
+-- authorization rules before returning data.
+ALTER TABLE "service_leads" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "service_lead_recipients" ENABLE ROW LEVEL SECURITY;
+
 CREATE INDEX IF NOT EXISTS "service_leads_customer_status_idx"
     ON "service_leads" ("customerId", "status", "createdAt" DESC);
 CREATE INDEX IF NOT EXISTS "service_leads_type_status_idx"
