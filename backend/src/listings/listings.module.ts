@@ -7,11 +7,12 @@ import { AuthModule } from '../auth/auth.module';
 import { SellersModule } from '../sellers/sellers.module';
 import { ScraperModule } from '../scraper/scraper.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { TradeListingAccessGuard } from '../auctions/trade-access.guard';
 
 @Module({
   imports: [PrismaModule, AuthModule, SellersModule, ConfigModule, ScraperModule, NotificationsModule],
   controllers: [ListingsController],
-  providers: [ListingsService],
+  providers: [ListingsService, TradeListingAccessGuard],
   exports: [ListingsService],
 })
 export class ListingsModule { }

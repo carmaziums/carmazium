@@ -12,6 +12,7 @@ import {
     UseGuards,
     Res,
     BadRequestException,
+    ForbiddenException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import {
@@ -33,6 +34,7 @@ import { Listing } from '@prisma/client';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { OptionalSessionAuthGuard } from '../auth/guards/optional-session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { TradeListingAccessGuard } from '../auctions/trade-access.guard';
 
 
 
@@ -142,6 +144,11 @@ export class ListingsController {
     async findAll(
         @Query() filterDto: ListingFilterDto,
     ): Promise<PaginatedResponse<Listing>> {
+        // Auction stock is trade-only. The public retail endpoint must never
+        // become an alternate Trade Exchange feed via ?listingType=AUCTION.
+        if (filterDto.listingType === 'AUCTION') {
+            throw new ForbiddenException('Auction stock is available only through the Trade Exchange.');
+        }
         const { data, total } = await this.listingsService.findAll(filterDto);
         const page = filterDto.page || 1;
         const limit = filterDto.limit || 20;
@@ -319,7 +326,7 @@ export class ListingsController {
         status: 404,
         description: 'Listing not found',
     })
-    @UseGuards(OptionalSessionAuthGuard)
+    @UseGuards(OptionalSessionAuthGuard, TradeListingAccessGuard)
     async findBySlug(
         @Param('slug') slug: string,
         @CurrentUser() user: any,

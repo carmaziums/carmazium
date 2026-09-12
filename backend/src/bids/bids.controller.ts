@@ -23,6 +23,7 @@ import { CreateBidDto } from './dto/create-bid.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
+import { TradeListingAccessGuard } from '../auctions/trade-access.guard';
 
 @ApiTags('Bids')
 @Controller('bids')
@@ -86,10 +87,13 @@ export class BidsController {
     }
 
     /**
-     * Get all bids for a specific listing (public).
+     * Get bid history for a Trade Exchange auction listing.
+     * Seller, admin and KYC-verified dealers only.
      */
     @Get('listing/:listingId')
-    @ApiOperation({ summary: 'Get all bids for a listing' })
+    @UseGuards(SessionAuthGuard, TradeListingAccessGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Get bid history for a Trade Exchange auction listing' })
     async findByListing(@Param('listingId') listingId: string) {
         const bids = await this.bidsService.findByListing(listingId);
         return new StandardResponse(bids);

@@ -5,6 +5,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
 import { AuctionsModule } from '../auctions/auctions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { TradeListingAccessGuard } from '../auctions/trade-access.guard';
 
 @Module({
     imports: [
@@ -14,7 +15,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
         forwardRef(() => AuctionsModule),
     ],
     controllers: [BidsController],
-    providers: [BidsService],
+    providers: [BidsService, TradeListingAccessGuard],
     exports: [BidsService],
 })
 export class BidsModule { }

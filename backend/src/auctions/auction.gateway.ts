@@ -7,6 +7,9 @@ import {
     OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
+import { AuthService } from '../auth/auth.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { assertTradeAuctionAccess } from './trade-access';
 import { Server, Socket } from 'socket.io';
 import { WS_CORS } from '../core/allowed-origins';
 
@@ -38,12 +41,47 @@ export class AuctionGateway implements OnGatewayInit, OnGatewayConnection, OnGat
 
     private readonly logger = new Logger(AuctionGateway.name);
 
+    constructor(
+        private readonly authService: AuthService,
+        private readonly prisma: PrismaService,
+    ) { }
+
+    private async authenticateClient(client: Socket): Promise<string | null> {
+        if (client.data.userId) return client.data.userId;
+
+        const req = client.request as any;
+        let userId = req?.session?.userId as string | undefined;
+
+        if (!userId) {
+            const rawToken = client.handshake.auth?.token || client.handshake.query?.token;
+            const token = Array.isArray(rawToken) ? rawToken[0] : rawToken;
+            if (typeof token === 'string' && token.trim()) {
+                const user = await this.authService.verifySupabaseToken(token);
+                userId = user?.id;
+            }
+        }
+
+        if (userId) client.data.userId = userId;
+        return userId ?? null;
+    }
+
     afterInit(_server: Server): void {
         this.logger.log('Auction WebSocket Gateway initialized');
     }
 
-    handleConnection(client: Socket): void {
-        this.logger.log(`Auction client connected: ${client.id}`);
+    async handleConnection(client: Socket): Promise<void> {
+        const userId = await this.authenticateClient(client);
+        if (!userId) {
+            this.logger.warn(`Auction connection rejected: unauthenticated socket ${client.id}`);
+            client.emit('error', {
+                code: 'AUTH_REQUIRED',
+                message: 'Please sign in before connecting to the Trade Exchange.',
+            });
+            client.disconnect(true);
+            return;
+        }
+
+        this.logger.log(`Auction client connected: ${client.id} (${userId})`);
     }
 
     handleDisconnect(client: Socket): void {
@@ -64,7 +102,44 @@ export class AuctionGateway implements OnGatewayInit, OnGatewayConnection, OnGat
 
     @SubscribeMessage('auction:join')
     async handleJoin(client: Socket, payload: { auctionId: string }): Promise<void> {
-        const { auctionId } = payload;
+        const auctionId = payload?.auctionId;
+        if (!auctionId) {
+            client.emit('error', { code: 'INVALID_AUCTION', message: 'auctionId is required.' });
+            return;
+        }
+
+        const userId = await this.authenticateClient(client);
+        if (!userId) {
+            client.emit('error', {
+                code: 'AUTH_REQUIRED',
+                message: 'Please sign in before joining a Trade Exchange auction.',
+            });
+            return;
+        }
+
+        const auction = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            select: {
+                deletedAt: true,
+                listing: { select: { sellerId: true } },
+            },
+        });
+
+        if (!auction || auction.deletedAt) {
+            client.emit('error', { code: 'AUCTION_NOT_FOUND', message: 'Auction not found.' });
+            return;
+        }
+
+        try {
+            await assertTradeAuctionAccess(this.prisma, userId, auction.listing?.sellerId);
+        } catch (error: any) {
+            client.emit('error', {
+                code: 'TRADE_ACCESS_DENIED',
+                message: error?.message || 'Trade Exchange access denied.',
+            });
+            return;
+        }
+
         const room = `auction:${auctionId}`;
         await client.join(room);
 
