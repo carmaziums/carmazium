@@ -74,22 +74,24 @@
 }
 
 .dark {
-  --bg-body: #0f172a;
-  --bg-card: rgba(15, 23, 42, 0.6);
-  --bg-card-hover: rgba(15, 23, 42, 0.8);
-  --bg-header: rgba(255, 255, 255, 0.1);
-  --bg-input: rgba(15, 23, 42, 0.5);
-  --bg-dropdown: #0f172a;
+  /* Keep CarMazium dark by default, but lift the navy surfaces by roughly 10%
+     so pages feel less black/heavy without becoming a light theme. */
+  --bg-body: #1b2538;
+  --bg-card: rgba(51, 65, 85, 0.58);
+  --bg-card-hover: rgba(51, 65, 85, 0.72);
+  --bg-header: rgba(30, 41, 59, 0.84);
+  --bg-input: rgba(51, 65, 85, 0.38);
+  --bg-dropdown: #243047;
   --text-primary: #ffffff;
   --text-secondary: #e2e8f0;
-  --text-muted: #94a3b8;
-  --text-faint: #475569;
-  --border-default: rgba(255, 255, 255, 0.1);
-  --border-hover: rgba(255, 255, 255, 0.2);
-  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.3);
-  --shadow-card-hover: 0 8px 40px rgba(0, 0, 0, 0.5);
-  --scrollbar-track: #0f172a;
-  --scrollbar-thumb: #334155;
+  --text-muted: #a3b1c4;
+  --text-faint: #64748b;
+  --border-default: rgba(255, 255, 255, 0.14);
+  --border-hover: rgba(255, 255, 255, 0.24);
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.24);
+  --shadow-card-hover: 0 8px 40px rgba(0, 0, 0, 0.4);
+  --scrollbar-track: #1b2538;
+  --scrollbar-thumb: #475569;
   --scrollbar-hover: #ed1c24;
   --glass-blur: 16px;
   --neon-glow: 0 0 15px rgba(237, 28, 36, 0.3);
@@ -259,4 +261,4 @@
     background-size: 200% 100%;
     animation: shimmer-sweep 2s infinite linear;
   }
-}
+}
