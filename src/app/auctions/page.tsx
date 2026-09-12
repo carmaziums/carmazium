@@ -9,27 +9,20 @@ import {
     ArrowRight, type LucideIcon,
 } from "lucide-react"
 import { HowAuctionsWork } from "@/components/auctions/HowAuctionsWork"
-import { deliveryServiceEnabled } from "@/lib/featureFlags"
+import {
+    deliveryServiceEnabled,
+    inspectionServiceEnabled,
+    financeServiceEnabled,
+    warrantyServiceEnabled,
+} from "@/lib/featureFlags"
 
 /**
- * Trade Exchange landing dashboard — the menu of what the room contains.
+ * Trade Exchange landing dashboard — the public menu for auctions and the
+ * four TradeXchange service areas.
  *
- * /auctions used to BE the auction browser. It is now the section index, and
- * the browser lives at /auctions/browse. The URL was kept rather than moved to
- * /trade-exchange on purpose: renaming it would break existing links and SEO,
- * the /auctions/live/[id] and /auctions/won/[id] children, and the backend's
- * returnPath allowlist (/^\/(buy-cars|auctions)\//) that /auctions/browse still
- * satisfies.
- *
- * THIS WHOLE PAGE IS PUBLIC, deliberately. Hero, section menu and How It Works
- * show no vehicle, no price and no live bid — they are the dealer-recruitment
- * pitch, and gating them would hide the Trade Exchange from search and from the
- * exact audience it exists to attract.
- *
- * The gate sits one click further in. "Enter the auction room" goes to
- * /auctions/browse, which requires a verified dealer, and the auction endpoints
- * refuse everyone else server-side (VerifiedDealerGuard) — so the trade stock is
- * protected by the API, not by whether this menu rendered.
+ * The stock browser itself remains at /auctions/browse and stays protected by
+ * verified-dealer authorization. These public cards contain no vehicle, price
+ * or bid data; they only route visitors into the appropriate workflow.
  */
 
 type Section = {
@@ -37,7 +30,7 @@ type Section = {
     title: string
     description: string
     points: string[]
-    /** Present = live. Absent = the card renders as Coming soon and is inert. */
+    /** Present = live. Absent = the card renders as temporarily unavailable. */
     href?: string
     cta: string
 }
@@ -56,41 +49,41 @@ const SECTIONS: Section[] = [
         icon: Truck,
         title: "Delivery & Recovery",
         description:
-            "Move or recover a vehicle anywhere in the UK. Post the route and approved transport businesses send you a price.",
-        points: ["Single and multi-car moves", "Recovery jobs", "Contact shared only with your pick"],
-        // Live only where the flag is set (staging). On production this stays
-        // href-less, so the card renders as an inert "Coming soon" exactly like
-        // the other three until the loop has been tested end to end.
+            "Move or recover a vehicle anywhere in the UK. Post the route and approved transport businesses send you a fixed-price quote.",
+        points: ["Single and multi-car moves", "Recovery jobs", "9% platform / 91% provider payout"],
         ...(deliveryServiceEnabled ? { href: "/services/delivery" } : {}),
-        cta: "Post a delivery job",
+        cta: "Arrange transport",
     },
     {
         icon: Wrench,
         title: "Vehicle Inspections",
         description:
-            "Independent pre-purchase and trade condition checks. Give the vehicle and location, approved inspectors quote.",
-        points: ["Pre-purchase checks", "Trade condition grading", "Written report from the inspector"],
-        cta: "Post an inspection job",
+            "Request an independent vehicle inspection and let approved inspection providers compete for the job.",
+        points: ["Pre-purchase vehicle checks", "Competitive approved-provider quotes", "Protected service payment"],
+        ...(inspectionServiceEnabled ? { href: "/services/inspection" } : {}),
+        cta: "Request an inspection",
     },
     {
         icon: Banknote,
         title: "Vehicle Finance",
         description:
-            "Send a finance enquiry to approved finance businesses. They respond through CarMazium — any lending, credit checks and agreements happen directly with that provider.",
+            "Send one finance enquiry to approved matching providers. They respond with their own eligibility, terms and regulated disclosures.",
         points: [
-            "Enquiries only — no credit decision here",
-            "Approved finance businesses respond",
-            "Dealer stock funding enquiries too",
+            "Enquiry matching only — no CarMazium lending decision",
+            "Approved finance providers respond",
+            "Provider supplies its own terms and APR",
         ],
-        cta: "Post a finance enquiry",
+        ...(financeServiceEnabled ? { href: "/services/finance" } : {}),
+        cta: "Request finance options",
     },
     {
         icon: ShieldCheck,
         title: "Warranty Providers",
         description:
-            "Ask approved warranty businesses for cover on a vehicle. They quote through CarMazium; the policy itself is issued by the provider.",
-        points: ["Retail warranty quotes", "Dealer-branded cover", "Provider issues the policy"],
-        cta: "Post a warranty request",
+            "Tell us about the vehicle and cover you want. Approved warranty providers can respond with suitable products and indicative prices.",
+        points: ["Choose your preferred cover level", "Approved warranty providers respond", "Provider supplies policy terms and exclusions"],
+        ...(warrantyServiceEnabled ? { href: "/services/warranty" } : {}),
+        cta: "Request warranty options",
     },
 ]
 
@@ -113,7 +106,7 @@ function SectionCard({ section, index }: { section: Section; index: number }) {
                         ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-500"
                         : "bg-amber-500/10 border-amber-500/25 text-amber-500"}`}
                 >
-                    {live ? "Open now" : "Coming soon"}
+                    {live ? "Open now" : "Temporarily unavailable"}
                 </span>
             </div>
 
@@ -143,8 +136,6 @@ function SectionCard({ section, index }: { section: Section; index: number }) {
             className="h-full"
         >
             {live ? (
-                // The whole card is the link — a dealer aiming for "Auction"
-                // should not have to hit a 40px button to get there.
                 <Link href={href!} className={`${shell} group cursor-pointer`}>
                     {body}
                     <span className="mt-auto inline-flex items-center justify-center gap-2 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-black uppercase tracking-widest text-white group-hover:bg-primary/90 transition-colors">
@@ -155,17 +146,10 @@ function SectionCard({ section, index }: { section: Section; index: number }) {
             ) : (
                 <div className={shell}>
                     {body}
-                    {/*
-                        A real disabled button, not a dimmed link. `disabled`
-                        takes it out of the tab order and has screen readers
-                        announce it as unavailable, so the card reads the same to
-                        a keyboard user as it looks — and there is no href for
-                        anyone to follow early.
-                    */}
                     <button
                         type="button"
                         disabled
-                        aria-label={`${cta} — coming soon`}
+                        aria-label={`${cta} — temporarily unavailable`}
                         className="mt-auto w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-4 py-2.5 text-sm font-bold text-[var(--text-muted)] cursor-not-allowed opacity-70"
                     >
                         {cta}
@@ -177,14 +161,18 @@ function SectionCard({ section, index }: { section: Section; index: number }) {
 }
 
 export default function TradeExchangePage() {
+    const allServicesOpen =
+        deliveryServiceEnabled &&
+        inspectionServiceEnabled &&
+        financeServiceEnabled &&
+        warrantyServiceEnabled
+
     return (
         <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
-
-            {/* ── Hero (public — the dealer-recruitment pitch) ──────────────── */}
             <section className="relative overflow-hidden text-white" style={{ marginTop: '-80px', paddingTop: '80px' }}>
                 <Image
                     src="/assets/images/live-auction-hero.jpg"
-                    alt="Live car auction"
+                    alt="TradeXchange vehicle auctions and services"
                     fill
                     priority
                     className="object-cover object-center"
@@ -202,7 +190,7 @@ export default function TradeExchangePage() {
                         >
                             <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
                             <span className="text-xs font-bold text-red-400 uppercase tracking-widest">
-                                Trade Exchange
+                                TradeXchange
                             </span>
                         </motion.div>
 
@@ -222,10 +210,10 @@ export default function TradeExchangePage() {
                             initial={{ opacity: 0, y: 16 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.12 }}
-                            className="text-slate-300 text-lg max-w-lg leading-relaxed"
+                            className="text-slate-300 text-lg max-w-xl leading-relaxed"
                         >
-                            Live auctions today. Delivery, inspections, finance and warranty next —
-                            all through approved trade businesses, all without leaving CarMazium.
+                            Live vehicle auctions alongside delivery, inspections, finance and warranty —
+                            all connected through CarMazium and approved providers.
                         </motion.p>
                     </div>
                 </div>
@@ -233,29 +221,15 @@ export default function TradeExchangePage() {
                 <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             </section>
 
-            {/* ── Section menu (public) ─────────────────────────────────────
-                Shown to everyone, signed in or not. The gate moved off this
-                menu and onto the click-through: "Enter the auction room" leads
-                to /auctions/browse, which is where RequireAuth decides whether
-                you get in.
-
-                Safe to make public because these cards are static copy — no
-                vehicle, no price, no bid, nothing fetched. The thing that had
-                to stay behind the wall is the stock itself, and that lives on
-                /auctions/browse, still gated on a verified dealer and still
-                refused server-side by VerifiedDealerGuard.
-
-                It is also the better funnel: a dealer who cannot see what the
-                room contains has no reason to sign up for it. */}
             <section className="container mx-auto px-4 md:px-6 py-16">
                 <div className="mb-10">
                     <h2 className="text-2xl md:text-3xl font-black font-heading tracking-tight mb-2">
                         Where do you want to go?
                     </h2>
                     <p className="text-[var(--text-muted)] text-sm">
-                        {deliveryServiceEnabled
-                            ? "Auctions and delivery are open now. Inspections, finance and warranty are on the way."
-                            : "Auctions are open now. The other four service areas are on the way."}
+                        {allServicesOpen
+                            ? "Auctions, delivery, inspections, finance and warranty are all open now."
+                            : "Available TradeXchange areas are marked Open now below."}
                     </p>
                 </div>
 
@@ -266,7 +240,6 @@ export default function TradeExchangePage() {
                 </div>
             </section>
 
-            {/* Public on purpose — see the note at the top of this file. */}
             <HowAuctionsWork />
         </div>
     )
