@@ -1,9 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, notFound } from "next/navigation"
 import { Truck, Plus, Trash2, Loader2, AlertCircle, ArrowRight } from "lucide-react"
 import { RequireAuth } from "@/components/auth/RequireAuth"
+import { deliveryServiceEnabled } from "@/lib/featureFlags"
 import { Button } from "@/components/ui/Button"
 import { createJob, type JobVehicle } from "@/lib/servicesApi"
 
@@ -207,6 +208,11 @@ function NewDeliveryJobForm() {
 }
 
 export default function NewDeliveryJobPage() {
+    // The whole service marketplace is behind a flag until it has been tested
+    // end to end. Off (production) this route does not exist, so the feature
+    // cannot be reached by typing the URL even though the card is inert.
+    if (!deliveryServiceEnabled) notFound()
+
     return (
         <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
             {/* Any account may post. No allowedRoles, no verification — the

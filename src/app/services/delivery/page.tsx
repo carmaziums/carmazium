@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { notFound } from "next/navigation"
+import { deliveryServiceEnabled } from "@/lib/featureFlags"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { Truck, ArrowRight, ShieldCheck, Banknote, Users, FileText, Lock, CheckCircle } from "lucide-react"
@@ -20,6 +22,16 @@ const STEPS = [
 
 export default function DeliveryLandingPage() {
     const { user } = useAuth()
+
+    // The whole service marketplace is behind a flag until it has been tested
+    // end to end. Off (production) this route does not exist, so the feature
+    // cannot be reached by typing the URL even though the card is inert.
+    //
+    // Placed after the hook, not before it: an early return above a hook is a
+    // rules-of-hooks violation. The flag is a build-time constant so the order
+    // would happen to be stable, but "happens to work" is not a reason to write
+    // it wrong.
+    if (!deliveryServiceEnabled) notFound()
 
     return (
         <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>

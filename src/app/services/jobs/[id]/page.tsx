@@ -2,11 +2,12 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { useParams, useRouter, useSearchParams, notFound } from "next/navigation"
 import {
     Loader2, ArrowLeft, Star, CheckCircle, AlertCircle, ShieldCheck, Phone, Mail, XCircle, Clock, Banknote,
 } from "lucide-react"
 import { RequireAuth } from "@/components/auth/RequireAuth"
+import { deliveryServiceEnabled } from "@/lib/featureFlags"
 import { Button } from "@/components/ui/Button"
 import {
     getJob, acceptQuote, confirmCompletion, disputeJob, cancelJob, formatPence,
@@ -257,6 +258,11 @@ function QuoteCard({ quote, cheapest, busy, onAccept }: { quote: ServiceQuote; c
 }
 
 export default function ServiceJobPage() {
+    // The whole service marketplace is behind a flag until it has been tested
+    // end to end. Off (production) this route does not exist, so the feature
+    // cannot be reached by typing the URL even though the card is inert.
+    if (!deliveryServiceEnabled) notFound()
+
     return (
         <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
             <RequireAuth title="Sign in to view this job" message="Quotes and contact details are only shown to the account that posted the job.">

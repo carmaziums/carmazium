@@ -4,6 +4,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { Truck, Loader2, ArrowRight } from "lucide-react"
 import { createJobFromPurchase } from "@/lib/servicesApi"
+import { deliveryServiceEnabled } from "@/lib/featureFlags"
 
 /**
  * "Arrange delivery" for a car the user has just bought. Posts a pre-filled
@@ -34,6 +35,10 @@ export function ArrangeDelivery({ offerId, auctionId, compact = false }: { offer
             setBusy(false)
         }
     }
+
+    // Nothing to offer while the service is off. Placed after the hooks so the
+    // hook order stays stable regardless of the flag.
+    if (!deliveryServiceEnabled) return null
 
     if (!open) {
         return (

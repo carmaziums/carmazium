@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins, Montserrat, Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
+import { StagingBanner } from "@/components/layout/StagingBanner";
 import { ConditionalFooter } from "@/components/layout/ConditionalFooter";
 import { MaziumWidgetLoader } from "@/components/features/MaziumWidgetLoader";
 import { MarketingPopup } from "@/components/features/MarketingPopup";
@@ -113,6 +114,10 @@ export default function RootLayout({
                   <LocationProvider>
                     <PageViewTracker />
                     <div className="flex flex-col min-h-screen">
+                      {/* Above the header on purpose: on staging this must be
+                          the first thing seen, before anything that looks like
+                          the real site. Renders nothing on production. */}
+                      <StagingBanner />
                       <Header />
                       <main className="flex-grow pt-20">
                         {children}

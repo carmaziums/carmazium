@@ -9,6 +9,7 @@ import {
     ArrowRight, type LucideIcon,
 } from "lucide-react"
 import { HowAuctionsWork } from "@/components/auctions/HowAuctionsWork"
+import { deliveryServiceEnabled } from "@/lib/featureFlags"
 
 /**
  * Trade Exchange landing dashboard — the menu of what the room contains.
@@ -57,7 +58,10 @@ const SECTIONS: Section[] = [
         description:
             "Move or recover a vehicle anywhere in the UK. Post the route and approved transport businesses send you a price.",
         points: ["Single and multi-car moves", "Recovery jobs", "Contact shared only with your pick"],
-        href: "/services/delivery",
+        // Live only where the flag is set (staging). On production this stays
+        // href-less, so the card renders as an inert "Coming soon" exactly like
+        // the other three until the loop has been tested end to end.
+        ...(deliveryServiceEnabled ? { href: "/services/delivery" } : {}),
         cta: "Post a delivery job",
     },
     {
@@ -249,7 +253,9 @@ export default function TradeExchangePage() {
                         Where do you want to go?
                     </h2>
                     <p className="text-[var(--text-muted)] text-sm">
-                        Auctions and delivery are open now. Inspections, finance and warranty are on the way.
+                        {deliveryServiceEnabled
+                            ? "Auctions and delivery are open now. Inspections, finance and warranty are on the way."
+                            : "Auctions are open now. The other four service areas are on the way."}
                     </p>
                 </div>
 
