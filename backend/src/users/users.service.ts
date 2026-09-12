@@ -388,7 +388,13 @@ export class UsersService {
     }) {
         const email = data.email.toLowerCase().trim();
         const userId = data.id ?? data.supabaseAuthId;
-        const role = data.role && Object.values(UserRole).includes(data.role) ? data.role : undefined;
+
+        // A role chosen at signup may only be one the user is allowed to grant
+        // themselves — the same allowlist that governs /users/elevate. ADMIN,
+        // FINANCE_PARTNER and INSURANCE_PARTNER are privileged and set by staff,
+        // never self-declared through the sync payload.
+        const requestedRole =
+            data.role && UsersService.SELF_SERVICE_ROLES.includes(data.role) ? data.role : undefined;
 
         // Check if user already exists
         const userExists = await this.prisma.user.findUnique({
@@ -401,14 +407,18 @@ export class UsersService {
                 // Only overwrite existing name if we have a non-empty value coming in
                 ...(data.firstName && { firstName: data.firstName }),
                 ...(data.lastName && { lastName: data.lastName }),
-                ...(role !== undefined && { role }),
+                // Role is deliberately NOT updated here. sync runs on every
+                // login, not just signup; changing role from it would let a
+                // returning DEALER be silently downgraded to BUYER, and was half
+                // of the escalation hole. Role changes go through
+                // requestRoleElevation(), which enforces its own allowlist.
             },
             create: {
                 ...(userId && { id: userId }),
                 email,
                 firstName: data.firstName,
                 lastName: data.lastName,
-                ...(role !== undefined && { role }),
+                ...(requestedRole !== undefined && { role: requestedRole }),
                 passwordHash: 'SUPABASE_EXTERNAL_AUTH', // Placeholder since auth is external
             },
         });

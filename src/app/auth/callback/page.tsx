@@ -226,9 +226,13 @@ function AuthCallbackContent() {
       const syncTimeout = setTimeout(() => syncController.abort(), 15000)
       fetch(`${apiBase}/users/sync`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          // Sync now authenticates the caller by their Supabase token and takes
+          // identity from it, not from the body — without this header it 401s.
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({
-          id: user.id,
           email: user.email,
           firstName: resolvedFirstName,
           lastName: resolvedLastName,

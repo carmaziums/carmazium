@@ -7,12 +7,16 @@ import {
     Delete,
     Req,
     Res,
+    Headers,
     UseGuards,
     BadRequestException,
+    UnauthorizedException,
+    ForbiddenException,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
+import { AuthService } from '../auth/auth.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
@@ -24,7 +28,10 @@ import {
 @ApiTags('Users')
 @Controller('users')
 export class UsersController {
-    constructor(private readonly usersService: UsersService) { }
+    constructor(
+        private readonly usersService: UsersService,
+        private readonly authService: AuthService,
+    ) { }
 
     /**
      * Get current authenticated user's profile.
@@ -146,16 +153,45 @@ export class UsersController {
     }
 
     /**
-     * Sync endpoint for frontend onboarding.
+     * Sync a freshly-authenticated Supabase user into the local database on
+     * signup / first login.
+     *
+     * IDENTITY COMES FROM THE TOKEN, NOT THE BODY. This endpoint used to be
+     * unauthenticated and read the id, email and role straight from the request
+     * body, so anyone could POST `{ email: <someone>, role: 'DEALER' }` and
+     * flip an existing account's role — or mint an ADMIN — with no credentials
+     * at all. It now requires the caller's Supabase access token, verifies it,
+     * and takes the user id and email from the verified token. The body may
+     * only supply cosmetic fields (name) and a requested role, and that role is
+     * constrained and applied on creation only (see syncUser). A mismatch
+     * between the token's email and the body's email is refused outright.
      */
     @Post('sync')
-    @ApiOperation({ summary: 'Sync user from Supabase' })
-    async sync(@Body() body: any) {
-        if (!body.email) {
+    @ApiOperation({ summary: 'Sync the authenticated Supabase user into the local DB' })
+    async sync(@Body() body: any, @Headers('authorization') authHeader?: string) {
+        if (!body?.email) {
             throw new BadRequestException('Email is required for sync');
         }
 
-        const { user, isNewUser } = await this.usersService.syncUser(body);
+        const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+        const identity = token ? await this.authService.getSupabaseIdentity(token) : null;
+        if (!identity) {
+            throw new UnauthorizedException('A valid Supabase session is required to sync.');
+        }
+
+        // The token proves who the caller is. If the body claims to be a
+        // different account, refuse rather than trusting the body.
+        if (identity.email !== String(body.email).toLowerCase().trim()) {
+            throw new ForbiddenException('Sync email does not match the authenticated session.');
+        }
+
+        const { user, isNewUser } = await this.usersService.syncUser({
+            id: identity.id,
+            email: identity.email,
+            firstName: body.firstName,
+            lastName: body.lastName,
+            role: body.role,
+        });
         return {
             success: true,
             data: user,

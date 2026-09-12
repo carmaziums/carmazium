@@ -226,6 +226,27 @@ export class AuthService {
      * Verify a Supabase access token and return the local DB user.
      * Used by the auth bridge to create backend sessions from Supabase JWTs.
      */
+    /**
+     * Validate a Supabase access token and return only the identity it proves
+     * — id and email — with no database side effects.
+     *
+     * verifySupabaseToken() below also auto-creates the local user, which is
+     * too much for callers that just need to know "who does this token belong
+     * to" before deciding what to write (e.g. /users/sync, which must trust
+     * the token for identity, never the request body).
+     */
+    async getSupabaseIdentity(token: string): Promise<{ id: string; email: string } | null> {
+        if (!token?.trim()) return null;
+        try {
+            const { data, error } = await this.supabase.auth.getUser(token);
+            if (error || !data.user?.email) return null;
+            return { id: data.user.id, email: data.user.email.toLowerCase().trim() };
+        } catch (e: any) {
+            this.logger.warn(`getSupabaseIdentity failed: ${e?.message}`);
+            return null;
+        }
+    }
+
     async verifySupabaseToken(token: string) {
         if (!token?.trim()) {
             this.logger.warn('verifySupabaseToken: empty token');

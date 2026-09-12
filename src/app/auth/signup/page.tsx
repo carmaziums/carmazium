@@ -95,9 +95,19 @@ function SignupForm() {
                         `${apiBase}/users/sync`,
                         {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: {
+                                'Content-Type': 'application/json',
+                                // sync authenticates by the Supabase token and reads identity
+                                // from it, not the body. When email confirmation is on there is
+                                // no session yet and access_token is undefined; the header is then
+                                // absent, sync 401s, and the user is created on their first
+                                // authenticated call after confirming — which is the existing
+                                // fallback, so nothing breaks.
+                                ...(authData.session?.access_token
+                                    ? { Authorization: `Bearer ${authData.session.access_token}` }
+                                    : {}),
+                            },
                             body: JSON.stringify({
-                                id: authData.user.id,
                                 email: formData.email,
                                 firstName: formData.firstName,
                                 lastName: formData.lastName,
