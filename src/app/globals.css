@@ -50,24 +50,24 @@
 /* ─── Theme Variables ──────────────────────────────────────────────────────── */
 
 :root {
-  /* Light mode (default root) — Warm Stone/Cream */
-  --bg-body: #efe9dd;
-  --bg-card: #fbf8f2;
-  --bg-card-hover: #ffffff;
-  --bg-header: rgba(251, 248, 242, 0.85);
-  --bg-input: #e8e0cd;
-  --bg-dropdown: #fbf8f2;
+  /* Light mode (default root) — Cool Sky */
+  --bg-body: #eef5fb;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f7fbff;
+  --bg-header: rgba(255, 255, 255, 0.88);
+  --bg-input: #e5eef7;
+  --bg-dropdown: #ffffff;
   --text-primary: #0f172a;
   --text-secondary: #334155;
-  --text-muted: #78716c;
-  --text-faint: #a39a8a;
-  --border-default: #ddd3bf;
-  --border-hover: #cbbfa0;
-  --shadow-card: 0 1px 2px rgba(87, 83, 78, 0.05), 0 6px 16px rgba(87, 83, 78, 0.08);
-  --shadow-card-hover: 0 12px 32px rgba(87, 83, 78, 0.12);
-  --scrollbar-track: #e8e0cd;
-  --scrollbar-thumb: #cbbfa0;
-  --scrollbar-hover: #a39a8a;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+  --border-default: #d5e1ec;
+  --border-hover: #b8cadd;
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 18px rgba(51, 65, 85, 0.08);
+  --shadow-card-hover: 0 12px 32px rgba(51, 65, 85, 0.12);
+  --scrollbar-track: #e5eef7;
+  --scrollbar-thumb: #b8cadd;
+  --scrollbar-hover: #8fa6bd;
   --glass-blur: 12px;
   --neon-glow: 0 0 15px rgba(237, 28, 36, 0.2);
   --neon-glow-hover: 0 0 30px rgba(237, 28, 36, 0.4);
