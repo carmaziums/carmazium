@@ -1,14 +1,22 @@
 "use client"
 
-import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import {
-    Gavel, Truck, Wrench, Banknote, ShieldCheck,
-    ArrowRight, type LucideIcon,
+    ArrowRight,
+    BadgeCheck,
+    Banknote,
+    BriefcaseBusiness,
+    Gavel,
+    LayoutDashboard,
+    ShieldCheck,
+    Truck,
+    Users,
+    Wrench,
+    type LucideIcon,
 } from "lucide-react"
-import { HowAuctionsWork } from "@/components/auctions/HowAuctionsWork"
+import { useAuth } from "@/context/AuthContext"
 import {
     deliveryServiceEnabled,
     inspectionServiceEnabled,
@@ -16,231 +24,270 @@ import {
     warrantyServiceEnabled,
 } from "@/lib/featureFlags"
 
-/**
- * Trade Exchange landing dashboard — the public menu for auctions and the
- * four TradeXchange service areas.
- *
- * The stock browser itself remains at /auctions/browse and stays protected by
- * verified-dealer authorization. These public cards contain no vehicle, price
- * or bid data; they only route visitors into the appropriate workflow.
- */
-
-type Section = {
+type Pillar = {
     icon: LucideIcon
     title: string
+    eyebrow: string
     description: string
     points: string[]
-    /** Present = live. Absent = the card renders as temporarily unavailable. */
     href?: string
     cta: string
 }
 
-const SECTIONS: Section[] = [
+const PILLARS: Pillar[] = [
     {
         icon: Gavel,
-        title: "Auction",
-        description:
-            "Bid on verified vehicles in 24-hour live auctions, or see what is scheduled next. Anti-snipe protection on every lot.",
-        points: ["Live and upcoming lots", "Real-time bidding", "Reserve never shown to bidders"],
-        href: "/auctions/browse",
-        cta: "Enter the auction room",
+        title: "Vehicle Auctions",
+        eyebrow: "Buy & sell trade stock",
+        description: "Sell vehicles in 24-hour auctions or bid as a verified trade dealer, with live bidding and anti-snipe protection.",
+        points: ["Free auction listings", "£100 qualifying seller bonus", "£125 fee only for the winning dealer"],
+        href: "/auctions/how-it-works",
+        cta: "Explore auctions",
     },
     {
         icon: Truck,
         title: "Delivery & Recovery",
-        description:
-            "Move or recover a vehicle anywhere in the UK. Post the route and approved transport businesses send you a fixed-price quote.",
-        points: ["Single and multi-car moves", "Recovery jobs", "9% platform / 91% provider payout"],
+        eyebrow: "Move vehicles nationwide",
+        description: "Post a route and let approved transport businesses compete with fixed-price quotes for delivery or recovery work.",
+        points: ["Single and multi-car moves", "Protected service payment", "Providers keep 91% of the job price"],
         ...(deliveryServiceEnabled ? { href: "/services/delivery" } : {}),
-        cta: "Arrange transport",
+        cta: "Explore delivery",
     },
     {
         icon: Wrench,
         title: "Vehicle Inspections",
-        description:
-            "Request an independent vehicle inspection and let approved inspection providers compete for the job.",
-        points: ["Pre-purchase vehicle checks", "Competitive approved-provider quotes", "Protected service payment"],
+        eyebrow: "Check before you commit",
+        description: "Request an independent vehicle inspection and compare fixed-price quotes from approved inspection providers.",
+        points: ["Pre-purchase checks", "Competitive provider quotes", "Providers keep 91% of the job price"],
         ...(inspectionServiceEnabled ? { href: "/services/inspection" } : {}),
-        cta: "Request an inspection",
+        cta: "Explore inspections",
     },
     {
         icon: Banknote,
         title: "Vehicle Finance",
-        description:
-            "Send one finance enquiry to approved matching providers. They respond with their own eligibility, terms and regulated disclosures.",
-        points: [
-            "Enquiry matching only — no CarMazium lending decision",
-            "Approved finance providers respond",
-            "Provider supplies its own terms and APR",
-        ],
+        eyebrow: "Matched finance enquiries",
+        description: "Send one enquiry to approved finance providers and compare the options, eligibility and regulated terms they return.",
+        points: ["One enquiry, matched providers", "Consent-led contact sharing", "Provider controls its own terms and APR"],
         ...(financeServiceEnabled ? { href: "/services/finance" } : {}),
-        cta: "Request finance options",
+        cta: "Explore finance",
     },
     {
         icon: ShieldCheck,
         title: "Warranty Providers",
-        description:
-            "Tell us about the vehicle and cover you want. Approved warranty providers can respond with suitable products and indicative prices.",
-        points: ["Choose your preferred cover level", "Approved warranty providers respond", "Provider supplies policy terms and exclusions"],
+        eyebrow: "Compare vehicle cover",
+        description: "Request warranty options for a vehicle and hear from approved providers offering their own products, cover and exclusions.",
+        points: ["Matched warranty enquiries", "Compare cover levels", "Provider issues its own policy terms"],
         ...(warrantyServiceEnabled ? { href: "/services/warranty" } : {}),
-        cta: "Request warranty options",
+        cta: "Explore warranty",
     },
 ]
 
-function SectionCard({ section, index }: { section: Section; index: number }) {
-    const { icon: Icon, title, description, points, href, cta } = section
+function PillarCard({ pillar, index }: { pillar: Pillar; index: number }) {
+    const { icon: Icon, title, eyebrow, description, points, href, cta } = pillar
     const live = Boolean(href)
 
-    const body = (
-        <>
-            <div className="flex items-start justify-between gap-3 mb-5">
-                <div
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border ${live
-                        ? "bg-primary/10 border-primary/20"
-                        : "bg-[var(--bg-card)] border-[var(--border-default)]"}`}
-                >
-                    <Icon size={22} className={live ? "text-primary" : "text-[var(--text-muted)]"} />
-                </div>
-                <span
-                    className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap border ${live
-                        ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-500"
-                        : "bg-amber-500/10 border-amber-500/25 text-amber-500"}`}
-                >
-                    {live ? "Open now" : "Temporarily unavailable"}
-                </span>
-            </div>
-
-            <h3 className="text-lg font-black font-heading tracking-tight mb-2">{title}</h3>
-            <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-4">{description}</p>
-
-            <ul className="space-y-2 mb-6">
-                {points.map(point => (
-                    <li key={point} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
-                        <span className="mt-[7px] w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                        {point}
-                    </li>
-                ))}
-            </ul>
-        </>
-    )
-
-    const shell =
-        "relative flex flex-col h-full rounded-2xl border p-6 transition-colors border-[var(--border-default)] bg-[var(--bg-input)]" +
-        (live ? " hover:border-primary/40" : "")
-
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 14 }}
+        <motion.article
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05, duration: 0.4 }}
             className="h-full"
         >
             {live ? (
-                <Link href={href!} className={`${shell} group cursor-pointer`}>
-                    {body}
-                    <span className="mt-auto inline-flex items-center justify-center gap-2 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-black uppercase tracking-widest text-white group-hover:bg-primary/90 transition-colors">
+                <Link
+                    href={href!}
+                    className="group flex h-full flex-col rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg"
+                >
+                    <div className="mb-5 flex items-start justify-between gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+                            <Icon size={22} className="text-primary" />
+                        </div>
+                        <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-500">
+                            Open now
+                        </span>
+                    </div>
+                    <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-primary">{eyebrow}</p>
+                    <h2 className="mb-3 text-xl font-black font-heading tracking-tight">{title}</h2>
+                    <p className="mb-5 text-sm leading-relaxed text-[var(--text-muted)]">{description}</p>
+                    <ul className="mb-6 space-y-2.5">
+                        {points.map((point) => (
+                            <li key={point} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
+                                <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                                {point}
+                            </li>
+                        ))}
+                    </ul>
+                    <span className="mt-auto inline-flex items-center justify-between border-t border-[var(--border-default)] pt-4 text-sm font-black text-primary">
                         {cta}
-                        <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
+                        <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
                     </span>
                 </Link>
             ) : (
-                <div className={shell}>
-                    {body}
-                    <button
-                        type="button"
-                        disabled
-                        aria-label={`${cta} — temporarily unavailable`}
-                        className="mt-auto w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-4 py-2.5 text-sm font-bold text-[var(--text-muted)] cursor-not-allowed opacity-70"
-                    >
-                        {cta}
-                    </button>
+                <div className="flex h-full flex-col rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 opacity-70">
+                    <div className="mb-5 flex items-start justify-between gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)]">
+                            <Icon size={22} className="text-[var(--text-muted)]" />
+                        </div>
+                        <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-500">
+                            Temporarily unavailable
+                        </span>
+                    </div>
+                    <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">{eyebrow}</p>
+                    <h2 className="mb-3 text-xl font-black font-heading tracking-tight">{title}</h2>
+                    <p className="mb-5 text-sm leading-relaxed text-[var(--text-muted)]">{description}</p>
+                    <ul className="space-y-2.5">
+                        {points.map((point) => (
+                            <li key={point} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
+                                <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--text-muted)]" />
+                                {point}
+                            </li>
+                        ))}
+                    </ul>
                 </div>
             )}
-        </motion.div>
+        </motion.article>
     )
 }
 
-export default function TradeExchangePage() {
-    const allServicesOpen =
-        deliveryServiceEnabled &&
-        inspectionServiceEnabled &&
-        financeServiceEnabled &&
-        warrantyServiceEnabled
+const PROVIDER_BENEFITS = [
+    {
+        icon: Users,
+        title: "Reach active automotive demand",
+        text: "Approved providers can receive work and enquiries from buyers, sellers and dealers already using CarMazium.",
+    },
+    {
+        icon: BriefcaseBusiness,
+        title: "Work only in approved categories",
+        text: "Apply for Delivery, Inspection, Finance or Warranty separately. Your business is shown only for capabilities CarMazium approves.",
+    },
+    {
+        icon: BadgeCheck,
+        title: "Compete on a trusted platform",
+        text: "Approved-provider status helps customers understand who has been checked before they choose a quote or respond to an enquiry.",
+    },
+    {
+        icon: LayoutDashboard,
+        title: "Manage everything in one dashboard",
+        text: "Track open jobs, accepted work, provider enquiries and capability approvals without relying on scattered calls and messages.",
+    },
+]
+
+export default function TradeXchangePage() {
+    const { user } = useAuth()
+    const providerHref = user
+        ? "/dashboard/service/capabilities"
+        : "/auth/signup?role=CONTRACTOR&redirect=%2Fdashboard%2Fservice%2Fcapabilities"
 
     return (
-        <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
-            <section className="relative overflow-hidden text-white" style={{ marginTop: '-80px', paddingTop: '80px' }}>
+        <div className="min-h-screen" style={{ background: "var(--bg-body)" }}>
+            <section className="relative overflow-hidden text-white" style={{ marginTop: "-80px", paddingTop: "80px" }}>
                 <Image
                     src="/assets/images/live-auction-hero.jpg"
-                    alt="TradeXchange vehicle auctions and services"
+                    alt="TradeXchange automotive marketplace"
                     fill
                     priority
                     className="object-cover object-center"
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent dark:bg-gradient-to-b dark:from-slate-900/80 dark:via-slate-900/70 dark:to-slate-900" />
-                <div className="absolute inset-0 dark:bg-[radial-gradient(ellipse_at_top_left,rgba(237,28,36,0.18)_0%,transparent_55%)]" />
-                <div className="absolute inset-0 dark:bg-[radial-gradient(ellipse_at_bottom_right,rgba(15,23,42,0.85)_0%,transparent_60%)]" />
-
-                <div className="container mx-auto px-6 py-20 md:py-24 relative z-10">
-                    <div className="max-w-3xl">
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="inline-flex items-center gap-2.5 bg-red-600/10 border border-red-500/20 rounded-full px-4 py-1.5 mb-6"
-                        >
-                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                            <span className="text-xs font-bold text-red-400 uppercase tracking-widest">
-                                TradeXchange
-                            </span>
-                        </motion.div>
-
+                <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-black/25" />
+                <div className="container mx-auto px-6 py-20 md:py-28 relative z-10">
+                    <div className="max-w-4xl">
+                        <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-5 text-xs font-black uppercase tracking-[0.22em] text-red-300">
+                            CarMazium TradeXchange
+                        </motion.p>
                         <motion.h1
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.05, duration: 0.6 }}
-                            className="text-5xl md:text-6xl font-black font-heading tracking-tight leading-[0.95] mb-5"
+                            className="mb-6 text-4xl md:text-6xl font-black font-heading tracking-tight leading-[0.98]"
                         >
-                            Everything trade,<br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-red-700">
-                                in one room.
-                            </span>
+                            One trade platform.
+                            <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-red-400">Five ways to do business.</span>
                         </motion.h1>
-
                         <motion.p
                             initial={{ opacity: 0, y: 16 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.12 }}
-                            className="text-slate-300 text-lg max-w-xl leading-relaxed"
+                            transition={{ delay: 0.1 }}
+                            className="max-w-2xl text-lg leading-relaxed text-slate-200"
                         >
-                            Live vehicle auctions alongside delivery, inspections, finance and warranty —
-                            all connected through CarMazium and approved providers.
+                            Auction vehicles, move them, inspect them, arrange finance enquiries and source warranty cover — with each TradeXchange area built around approved businesses and a clear workflow.
                         </motion.p>
                     </div>
                 </div>
-
-                <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             </section>
 
-            <section className="container mx-auto px-4 md:px-6 py-16">
-                <div className="mb-10">
-                    <h2 className="text-2xl md:text-3xl font-black font-heading tracking-tight mb-2">
-                        Where do you want to go?
-                    </h2>
-                    <p className="text-[var(--text-muted)] text-sm">
-                        {allServicesOpen
-                            ? "Auctions, delivery, inspections, finance and warranty are all open now."
-                            : "Available TradeXchange areas are marked Open now below."}
+            <section className="container mx-auto px-4 md:px-6 py-16 md:py-20">
+                <div className="mx-auto mb-10 max-w-3xl text-center">
+                    <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Choose a TradeXchange area</p>
+                    <h2 className="mb-3 text-3xl md:text-4xl font-black font-heading tracking-tight">Five equal parts of the same marketplace</h2>
+                    <p className="text-sm md:text-base text-[var(--text-muted)]">
+                        Each area has its own rules, fees and workflow. Open a card to see exactly how that part of TradeXchange works before you continue.
                     </p>
                 </div>
 
-                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                    {SECTIONS.map((section, i) => (
-                        <SectionCard key={section.title} section={section} index={i} />
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+                    {PILLARS.map((pillar, index) => (
+                        <PillarCard key={pillar.title} pillar={pillar} index={index} />
                     ))}
                 </div>
             </section>
 
-            <HowAuctionsWork />
+            <section className="border-y border-[var(--border-default)] bg-[var(--bg-card)]">
+                <div className="container mx-auto px-6 py-16 md:py-20">
+                    <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+                        <div>
+                            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">For service providers</p>
+                            <h2 className="mb-4 text-3xl md:text-4xl font-black font-heading tracking-tight">Bring your automotive business to TradeXchange</h2>
+                            <p className="mb-6 text-[var(--text-muted)] leading-relaxed">
+                                Delivery companies, recovery operators, vehicle inspectors, finance providers and warranty businesses can apply for the service areas they actually provide. Each capability is approved separately.
+                            </p>
+
+                            <div className="mb-4 rounded-2xl border border-primary/25 bg-primary/5 p-5">
+                                <p className="mb-1 text-sm font-black text-[var(--text-primary)]">Delivery &amp; Inspection jobs: 9% CarMazium fee</p>
+                                <p className="text-sm leading-relaxed text-[var(--text-muted)]">
+                                    On paid Delivery and Inspection jobs, CarMazium keeps 9% of the accepted job price and the provider receives 91% after successful completion and release of payment.
+                                </p>
+                            </div>
+                            <div className="mb-7 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5">
+                                <p className="mb-1 text-sm font-black text-[var(--text-primary)]">Finance &amp; Warranty: matched-enquiry model</p>
+                                <p className="text-sm leading-relaxed text-[var(--text-muted)]">
+                                    Finance and Warranty do not use the 9% service-job payout model. CarMazium matches approved providers with customer enquiries; the provider supplies its own terms, products and regulated information directly.
+                                </p>
+                            </div>
+
+                            <Link
+                                href={providerHref}
+                                className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
+                            >
+                                Apply as a service provider <ArrowRight size={16} />
+                            </Link>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            {PROVIDER_BENEFITS.map((benefit) => (
+                                <div key={benefit.title} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-6">
+                                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+                                        <benefit.icon size={18} className="text-primary" />
+                                    </div>
+                                    <h3 className="mb-2 font-heading font-bold">{benefit.title}</h3>
+                                    <p className="text-sm leading-relaxed text-[var(--text-muted)]">{benefit.text}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="container mx-auto px-6 py-14 md:py-16">
+                <div className="rounded-3xl border border-[var(--border-default)] bg-[var(--bg-input)] p-8 md:p-10 text-center">
+                    <h2 className="mb-3 text-2xl md:text-3xl font-black font-heading">Not sure where to start?</h2>
+                    <p className="mx-auto mb-6 max-w-2xl text-sm md:text-base text-[var(--text-muted)]">
+                        Open the card that matches what you need. Every TradeXchange page explains that service first, then gives you the relevant action — browse, post a job, send an enquiry or apply as a provider.
+                    </p>
+                    <Link href="/services" className="inline-flex items-center gap-2 text-sm font-black text-primary hover:underline">
+                        View the TradeXchange Services hub <ArrowRight size={15} />
+                    </Link>
+                </div>
+            </section>
         </div>
     )
 }
