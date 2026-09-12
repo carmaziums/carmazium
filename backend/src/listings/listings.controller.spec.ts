@@ -3,6 +3,7 @@ import { ListingsController } from './listings.controller';
 import { ListingsService } from './listings.service';
 import { AuthService } from '../auth/auth.service';
 import { TradeListingAccessGuard } from '../auctions/trade-access.guard';
+import { PrismaService } from '../prisma/prisma.service';
 
 describe('ListingsController', () => {
     let controller: ListingsController;
@@ -21,6 +22,10 @@ describe('ListingsController', () => {
                 {
                     provide: AuthService,
                     useValue: { validateSession: jest.fn() },
+                },
+                {
+                    provide: PrismaService,
+                    useValue: {},
                 },
                 {
                     provide: TradeListingAccessGuard,
