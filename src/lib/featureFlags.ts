@@ -1,22 +1,23 @@
 /**
  * Build-time feature flags for the Trade Exchange service marketplace.
  *
- * DEFAULT IS OFF. Customer-facing services only go live after the matching
- * backend/database slice has passed preview and production smoke tests.
+ * The four completed service areas are ON by default after their backend,
+ * database migration and production checks. Set the relevant environment
+ * variable explicitly to "false" for an emergency/customer-facing kill switch.
  */
-const on = (v?: string) => v?.trim().toLowerCase() === 'true'
+const enabledUnlessDisabled = (v?: string) => v?.trim().toLowerCase() !== 'false'
 
 /** Delivery & Recovery — paid job marketplace, 9% CarMazium / 91% provider. */
-export const deliveryServiceEnabled = on(process.env.NEXT_PUBLIC_FEATURE_DELIVERY)
+export const deliveryServiceEnabled = enabledUnlessDisabled(process.env.NEXT_PUBLIC_FEATURE_DELIVERY)
 
 /** Vehicle Inspections — same paid job/quote/payment engine as Delivery. */
-export const inspectionServiceEnabled = on(process.env.NEXT_PUBLIC_FEATURE_INSPECTION)
+export const inspectionServiceEnabled = enabledUnlessDisabled(process.env.NEXT_PUBLIC_FEATURE_INSPECTION)
 
 /** Vehicle Finance — approved-provider enquiry matching; no platform payment. */
-export const financeServiceEnabled = on(process.env.NEXT_PUBLIC_FEATURE_FINANCE_SERVICES)
+export const financeServiceEnabled = enabledUnlessDisabled(process.env.NEXT_PUBLIC_FEATURE_FINANCE_SERVICES)
 
 /** Warranty Providers — approved-provider enquiry matching; no platform payment. */
-export const warrantyServiceEnabled = on(process.env.NEXT_PUBLIC_FEATURE_WARRANTY)
+export const warrantyServiceEnabled = enabledUnlessDisabled(process.env.NEXT_PUBLIC_FEATURE_WARRANTY)
 
 /** True on a Vercel preview deployment — drives the staging banner. */
 export const isPreviewEnvironment =
