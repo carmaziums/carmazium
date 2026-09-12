@@ -1,13 +1,13 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-    title: "Live Auctions — Real-Time Car Bidding",
+    title: "TradeXchange — Live Auctions & Vehicle Services",
     description:
-        "Join live car auctions on CarMazium. Bid in real-time on quality vehicles and get the best deals. Coming soon to UK.",
+        "CarMazium TradeXchange brings together live dealer auctions, vehicle delivery and recovery, inspections, finance enquiries and warranty providers in one place.",
     openGraph: {
-        title: "Live Auctions | CarMazium",
+        title: "TradeXchange | CarMazium",
         description:
-            "Bid in real-time on quality vehicles. Coming soon to UK.",
+            "Live dealer auctions plus vehicle delivery, inspections, finance enquiries and warranty providers through CarMazium.",
     },
 }
 
