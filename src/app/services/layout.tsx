@@ -1,13 +1,13 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-    title: "Service Hub — MOT, Servicing & Repairs",
+    title: "TradeXchange Services — Delivery, Inspections, Finance & Warranty",
     description:
-        "Find trusted mechanics, MOT testing centres, and servicing options near you in UK. Compare quotes and book online through CarMazium.",
+        "CarMazium TradeXchange Services connects customers with approved vehicle delivery, recovery, inspection, finance and warranty providers across the UK.",
     openGraph: {
-        title: "Service Hub — MOT, Servicing & Repairs | CarMazium",
+        title: "TradeXchange Services | CarMazium",
         description:
-            "Find trusted mechanics and book MOT, servicing, or repairs near you in UK.",
+            "Arrange vehicle delivery or inspections, or request finance and warranty options from approved CarMazium providers.",
     },
 }
 
