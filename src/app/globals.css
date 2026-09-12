@@ -262,3 +262,24 @@
     animation: shimmer-sweep 2s infinite linear;
   }
 }
+
+/* TradeXchange pillar cards: make each card's existing CTA read as a real button. */
+#tradexchange-areas article > a > span:last-child {
+  width: 100%;
+  margin-top: auto;
+  padding: 0.8rem 1rem;
+  border-top: 0;
+  border-radius: 0.75rem;
+  background: #ed1c24;
+  color: #ffffff;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 6px 18px rgba(237, 28, 36, 0.22);
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#tradexchange-areas article > a:hover > span:last-child {
+  background: #c9151c;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(237, 28, 36, 0.3);
+}
