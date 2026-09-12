@@ -7,6 +7,7 @@ import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { BidsModule } from '../bids/bids.module';
 import { EmailModule } from '../email/email.module';
+import { TradeAuctionAccessGuard } from './trade-access.guard';
 
 @Module({
     imports: [
@@ -17,7 +18,7 @@ import { EmailModule } from '../email/email.module';
         EmailModule,
     ],
     controllers: [AuctionsController],
-    providers: [AuctionsService, AuctionGateway],
+    providers: [AuctionsService, AuctionGateway, TradeAuctionAccessGuard],
     exports: [AuctionsService, AuctionGateway],
 })
 export class AuctionsModule { }
