@@ -500,6 +500,12 @@ export class ServicesService {
         if (payment.status === ServicePaymentStatus.PAID || payment.status === ServicePaymentStatus.RELEASED) {
             return; // webhook replay
         }
+        if (payment.status !== ServicePaymentStatus.PENDING || payment.job.status !== ServiceJobStatus.ACCEPTED) {
+            this.logger.warn(
+                `markPaid: refusing transition for payment ${paymentId} (${payment.status}) / job ${jobId} (${payment.job.status})`,
+            );
+            return;
+        }
 
         await this.prisma.$transaction([
             this.prisma.servicePayment.update({
@@ -687,7 +693,19 @@ export class ServicesService {
         const isAdmin = viewer.role === UserRole.ADMIN;
         const isAccepted = !!viewer.contractorProfileId && job.contractorId === viewer.contractorProfileId;
         const hasQuoted = !!viewer.contractorProfileId && job.quotes.some((q) => q.contractorId === viewer.contractorProfileId);
-        const isEligible = !!viewer.contractorProfileId && job.status === ServiceJobStatus.OPEN;
+        let isEligible = false;
+        if (viewer.contractorProfileId && job.status === ServiceJobStatus.OPEN) {
+            const capability = await this.prisma.contractorCapability.findUnique({
+                where: {
+                    contractorId_serviceType: {
+                        contractorId: viewer.contractorProfileId,
+                        serviceType: job.serviceType,
+                    },
+                },
+                select: { status: true },
+            });
+            isEligible = capability?.status === CapabilityStatus.APPROVED;
+        }
 
         if (!isCustomer && !isAdmin && !isAccepted && !hasQuoted && !isEligible) {
             throw new ForbiddenException('You do not have access to this job.');
@@ -737,7 +755,10 @@ export class ServicesService {
         // a refund, which is the cost of having taken a job that went wrong.
         const stripe = await this.payments.getStripeClient();
         if (!job.payment.stripePaymentIntentId) throw new BadRequestException('No payment intent on record to refund.');
-        const refund = await stripe.refunds.create({ payment_intent: job.payment.stripePaymentIntentId });
+        const refund = await stripe.refunds.create(
+            { payment_intent: job.payment.stripePaymentIntentId },
+            { idempotencyKey: `service-job-refund-${job.payment.id}` },
+        );
 
         await this.prisma.$transaction([
             this.prisma.servicePayment.update({ where: { id: job.payment.id }, data: { status: ServicePaymentStatus.REFUNDED, refundedAt: new Date() } }),
@@ -789,7 +810,8 @@ export class ServicesService {
     /**
      * Pay the contractor. Transfer first, then record — if the transfer
      * throws we have changed nothing and can retry; if the record fails after
-     * a successful transfer the transfer id is in the logs to reconcile.
+     * a successful transfer the deterministic Stripe idempotency key prevents
+     * a retry from paying the provider twice.
      */
     private async release(jobId: string, why: string) {
         const job = await this.prisma.serviceJob.findUnique({
@@ -802,7 +824,16 @@ export class ServicesService {
         const account = job.contractor.user.stripeConnectAccountId;
         if (!account) throw new BadRequestException('Provider has no Stripe Connect account.');
 
-        const transferId = await this.payments.issueSellerPayout(account, job.payment.contractorPence);
+        const stripe = await this.payments.getStripeClient();
+        const transfer = await stripe.transfers.create(
+            {
+                amount: job.payment.contractorPence,
+                currency: 'gbp',
+                destination: account,
+            },
+            { idempotencyKey: `service-job-release-${job.payment.id}` },
+        );
+        const transferId = transfer.id;
         this.logger.log(`Service job ${jobId}: transferred ${job.payment.contractorPence}p to ${account} (${transferId}) — ${why}`);
 
         await this.prisma.$transaction([
