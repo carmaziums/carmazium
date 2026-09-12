@@ -30,6 +30,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
+import { TradeAuctionAccessGuard } from './trade-access.guard';
 
 @ApiTags('Auctions')
 @Controller('auctions')
@@ -107,8 +108,8 @@ export class AuctionsController {
     }
 
     @Get(':id')
-    @UseGuards(OptionalSessionAuthGuard)
-    @ApiOperation({ summary: 'Get full auction details by ID' })
+    @UseGuards(OptionalSessionAuthGuard, TradeAuctionAccessGuard)
+    @ApiOperation({ summary: 'Get full Trade Exchange auction details by ID' })
     @ApiResponse({ status: 200, description: 'Auction details with bids and listing' })
     @ApiResponse({ status: 404, description: 'Auction not found' })
     async findOne(@Param('id') id: string, @CurrentUser() user: any) {
