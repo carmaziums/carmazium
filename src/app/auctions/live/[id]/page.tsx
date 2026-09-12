@@ -27,7 +27,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getAuction, acceptBidEarly, triggerBuyItNow, confirmBuyItNow, declineBuyItNow, cancelBid, type Auction, type BidBroadcastPayload, type AuctionEndPayload } from "@/lib/auctionApi"
 import { placeBid, getDamageRecords } from "@/lib/listingApi"
-import { getWebSocketUrl, createChatRoom } from "@/lib/chatApi"
+import { getWebSocketUrl, createChatRoom, getAccessToken } from "@/lib/chatApi"
 import { getSessionStatus, applyHpiEmailFee } from "@/lib/paymentApi"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { TRADE_EXCHANGE_ROLES } from "@/lib/tradeAccess"
@@ -220,6 +220,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     React.useEffect(() => {
         if (!auction) return
         const socket = io(`${getWebSocketUrl()}/auctions`, {
+            auth: (cb) => {
+                getAccessToken().then(token => cb(token ? { token } : {})).catch(() => cb({}))
+            },
             withCredentials: true,
             transports: ["websocket"],
             reconnectionAttempts: 5,
