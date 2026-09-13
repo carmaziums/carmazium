@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Loader2, CheckCircle, Clock, XCircle, AlertCircle, CreditCard, ArrowRight, Truck, Wrench, Landmark, ShieldCheck } from "lucide-react"
+import { Loader2, CheckCircle, Clock, XCircle, AlertCircle, CreditCard, ArrowRight, Truck, Wrench, Landmark, ShieldCheck, FileText } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
@@ -104,7 +104,7 @@ export default function CapabilitiesPage() {
                                 const canApply = !cap || cap.status === "REJECTED" || cap.status === "SUSPENDED"
                                 return <div key={type} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 flex flex-col sm:flex-row sm:items-center gap-4">
                                     <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0"><Icon size={20} className="text-primary" /></div>
-                                    <div className="flex-1 min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="font-heading font-bold">{SERVICE_LABELS[type]}</h3>{st && <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${st.cls}`}><st.icon size={11} /> {st.label}</span>}</div><p className="text-xs text-[var(--text-muted)] mt-1">{blurb}</p>{payout && !data.stripeConnect.complete && <p className="text-[11px] text-amber-500 mt-2">Stripe Connect must be completed before admin can approve this paid-job service.</p>}{cap?.reviewNote && (cap.status === "REJECTED" || cap.status === "SUSPENDED") && <p className="text-xs text-red-500 mt-2">{cap.reviewNote}</p>}</div>
+                                    <div className="flex-1 min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="font-heading font-bold">{SERVICE_LABELS[type]}</h3>{st && <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${st.cls}`}><st.icon size={11} /> {st.label}</span>}</div><p className="text-xs text-[var(--text-muted)] mt-1">{blurb}</p>{payout && !data.stripeConnect.complete && <p className="text-[11px] text-amber-500 mt-2">Stripe Connect must be completed before admin can approve this paid-job service.</p>}{cap?.reviewNote && (cap.status === "REJECTED" || cap.status === "SUSPENDED") && <p className="text-xs text-red-500 mt-2">{cap.reviewNote}</p>}{cap && <Link href={`/dashboard/service/capabilities/${cap.id}/verification`} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline mt-2"><FileText size={13}/> Verification documents</Link>}</div>
                                     {canApply ? <Button size="sm" variant="outline" disabled={busy === type} onClick={() => apply(type)} className="shrink-0">{busy === type ? <Loader2 className="animate-spin" size={14} /> : <>{cap ? "Apply again" : "Apply"} <ArrowRight size={14} className="ml-1" /></>}</Button> : cap?.status === "APPROVED" ? <Link href={payout ? "/dashboard/service/jobs" : "/dashboard/service/leads"} className="text-xs font-bold text-primary hover:underline shrink-0">{payout ? "See jobs" : "Open inbox"} →</Link> : null}
                                 </div>
                             })}
