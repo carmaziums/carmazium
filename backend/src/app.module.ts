@@ -18,6 +18,7 @@ import { FinanceModule } from './finance/finance.module';
 import { InsuranceModule } from './insurance/insurance.module';
 import { AdminModule } from './admin/admin.module';
 import { SellersModule } from './sellers/sellers.module';
+import { ProfilesModule } from './profiles/profiles.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PaymentsModule } from './payments/payments.module';
 import { DashboardModule } from './dashboard/dashboard.module';
@@ -51,6 +52,7 @@ import { BlogModule } from './blog/blog.module';
     ScheduleModule.forRoot(),
     ListingsModule,
     SellersModule,
+    ProfilesModule,
     AuctionsModule,
     FinanceModule,
     InsuranceModule,
@@ -91,7 +93,3 @@ export class AppModule implements NestModule {
       .forRoutes('*');
   }
 }
-
-
-
-
