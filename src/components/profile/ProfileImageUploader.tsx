@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Camera, Loader2 } from "lucide-react"
+import { Camera, Loader2, Trash2 } from "lucide-react"
 import { uploadImage } from "@/lib/supabase"
 import { Button } from "@/components/ui/Button"
 
@@ -48,6 +48,22 @@ export function ProfileImageUploader({ currentUrl, fallback, folder, label, onSa
         }
     }
 
+    const removeImage = async () => {
+        if (!currentUrl) return
+        setBusy(true)
+        setError(null)
+        try {
+            // Clear the profile reference. Profile uploads share the existing
+            // listings bucket, so do not guess a storage path and risk deleting
+            // an unrelated object from that shared bucket.
+            await onSave("")
+        } catch (removeError: any) {
+            setError(removeError?.message || "Could not remove this image.")
+        } finally {
+            setBusy(false)
+        }
+    }
+
     return (
         <div className="flex flex-col gap-3">
             <div className="flex items-center gap-4">
@@ -61,10 +77,17 @@ export function ProfileImageUploader({ currentUrl, fallback, folder, label, onSa
                 <div>
                     <p className="font-semibold">{label}</p>
                     <p className="text-xs mt-1 mb-3" style={{ color: "var(--text-muted)" }}>JPG, PNG or WebP. Maximum 5 MB.</p>
-                    <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => inputRef.current?.click()}>
-                        {busy ? <Loader2 size={15} className="animate-spin mr-2" /> : <Camera size={15} className="mr-2" />}
-                        {currentUrl ? "Change image" : "Upload image"}
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => inputRef.current?.click()}>
+                            {busy ? <Loader2 size={15} className="animate-spin mr-2" /> : <Camera size={15} className="mr-2" />}
+                            {currentUrl ? "Change image" : "Upload image"}
+                        </Button>
+                        {currentUrl && (
+                            <Button type="button" variant="outline" size="sm" disabled={busy} onClick={removeImage}>
+                                <Trash2 size={15} className="mr-2" /> Remove image
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
             <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onFile} />
