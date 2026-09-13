@@ -12,21 +12,18 @@ import {
     LogOut,
     MessageSquare,
     Heart,
-    Clock,
     Gavel,
     BarChart3,
     Briefcase,
     Menu,
     X,
     ChevronRight,
-    Banknote,
     FileText,
     Shield,
     ShieldCheck,
     ClipboardList,
     Tag,
     Users,
-    Kanban,
     Building2,
     Handshake,
     Receipt,
@@ -35,6 +32,7 @@ import {
     Newspaper,
     LifeBuoy,
     Loader2,
+    Gift,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
@@ -110,7 +108,6 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         }
     }
 
-    // Resolve user name dynamically
     const userName = (initialUserName && initialUserName !== "John Doe" && initialUserName !== "Apex Customs" && initialUserName !== "User")
         ? initialUserName
         : (profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User"))
@@ -132,9 +129,15 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     const displayType = formatRole(initialUserType || profile?.role)
     const isPartnerOwner = profile?.role === 'DEALER' || profile?.role === 'CONTRACTOR'
 
-    type LinkObj = { href: string; label: string; icon: React.ComponentType<{ size?: number; className?: string }>; badge?: number }
+    type LinkObj = {
+        href: string
+        label: string
+        icon: React.ComponentType<{ size?: number; className?: string }>
+        badge?: number
+        section?: string
+    }
 
-    const unifiedLinks = [
+    const unifiedLinks: LinkObj[] = [
         { href: "/dashboard/user?tab=overview", label: "Overview", icon: LayoutDashboard },
         { href: "/dashboard/user?tab=inventory", label: "Inventory", icon: Car },
         { href: "/dashboard/user?tab=offers", label: "Offers", icon: Tag, badge: pendingOffersCount },
@@ -179,40 +182,63 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             href: route.href,
             label: route.label,
             icon: route.icon,
-            badge: route.href === '/dashboard/dealer/messages' ? unreadCount : undefined
+            badge: route.href === '/dashboard/dealer/messages' ? unreadCount : undefined,
         })),
         admin: [
-            { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard },
-            { href: "/dashboard/admin/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
-            { href: "/dashboard/admin/users", label: "Accounts", icon: Users },
-            { href: "/sell", label: "Create Listing", icon: PlusCircle },
-            { href: "/dashboard/admin/listings", label: "Listings", icon: Car },
-            { href: "/dashboard/admin/hpi", label: "HPI Reports", icon: ShieldCheck },
-            { href: "/dashboard/admin/auctions", label: "Auctions", icon: Gavel },
-            { href: "/dashboard/admin/handovers", label: "Handovers", icon: Handshake },
-            { href: "/dashboard/admin/transactions", label: "Transactions", icon: Receipt },
-            { href: "/dashboard/admin/analytics", label: "Analytics", icon: TrendingUp },
-            { href: "/dashboard/admin/dealer-verification", label: "Dealer KYC", icon: Shield },
-            { href: "/dashboard/admin/services", label: "Trade Services", icon: Briefcase },
-            { href: "/dashboard/admin/dealers", label: "All Dealers", icon: Building2 },
-            { href: "/dashboard/admin/marketing-popup", label: "Marketing Popup", icon: Megaphone },
-            { href: "/dashboard/admin/blog", label: "Blog", icon: Newspaper },
-        ]
+            { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard, section: "Workspace" },
+            { href: "/dashboard/admin/messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Workspace" },
+
+            { href: "/sell", label: "Create Listing", icon: PlusCircle, section: "Marketplace" },
+            { href: "/dashboard/admin/listings", label: "Listings", icon: Car, section: "Marketplace" },
+            { href: "/dashboard/admin/auctions", label: "Auctions", icon: Gavel, section: "Marketplace" },
+            { href: "/dashboard/admin/handovers", label: "Handovers", icon: Handshake, section: "Marketplace" },
+
+            { href: "/dashboard/admin/transactions", label: "Transactions", icon: Receipt, section: "Payments & reports" },
+            { href: "/dashboard/admin/hpi", label: "HPI Reports", icon: ShieldCheck, section: "Payments & reports" },
+            { href: "/dashboard/admin/free-listings", label: "Free Listing Grants", icon: Gift, section: "Payments & reports" },
+
+            { href: "/dashboard/admin/users", label: "Accounts", icon: Users, section: "Accounts & partners" },
+            { href: "/dashboard/admin/dealers", label: "All Dealers", icon: Building2, section: "Accounts & partners" },
+            { href: "/dashboard/admin/dealer-verification", label: "Dealer KYC", icon: Shield, section: "Accounts & partners" },
+            { href: "/dashboard/admin/services", label: "Trade Services", icon: Briefcase, section: "Accounts & partners" },
+
+            { href: "/dashboard/admin/analytics", label: "Analytics", icon: TrendingUp, section: "Content & insights" },
+            { href: "/dashboard/admin/marketing-popup", label: "Marketing Popup", icon: Megaphone, section: "Content & insights" },
+            { href: "/dashboard/admin/blog", label: "Blog", icon: Newspaper, section: "Content & insights" },
+        ],
     }
 
-    const currentLinks = React.useMemo(() => {
-        const base = links[role as keyof typeof links] || []
-        if (!myOffersCounterBadge || myOffersCounterBadge < 1) return base
-        return base.map((link) =>
+    const baseLinks = links[role as keyof typeof links] || []
+    const currentLinks = (!myOffersCounterBadge || myOffersCounterBadge < 1)
+        ? baseLinks
+        : baseLinks.map((link) =>
             link.href.includes("tab=bids")
                 ? { ...link, badge: myOffersCounterBadge }
                 : link,
         )
-    }, [role, myOffersCounterBadge, isPartnerOwner])
-    // Get first 5 items for mobile bottom nav
-    const mobileLinks = currentLinks.slice(0, 5)
+
+    const adminMobileHrefs = [
+        "/dashboard/admin",
+        "/dashboard/admin/listings",
+        "/dashboard/admin/transactions",
+        "/dashboard/admin/messages",
+    ]
+    const mobileLinks = role === 'admin'
+        ? adminMobileHrefs.map(href => currentLinks.find(link => link.href === href)).filter((link): link is LinkObj => Boolean(link))
+        : currentLinks.slice(0, 5)
+    const mobileOverflowLinks = role === 'admin'
+        ? currentLinks.filter(link => !adminMobileHrefs.includes(link.href))
+        : currentLinks.slice(5)
 
     const isAdmin = profile?.role === 'ADMIN'
+
+    const isLinkActive = (href: string) => {
+        const linkPath = href.split('?')[0]
+        if (pathname === "/dashboard/user" && linkPath === "/dashboard/user") {
+            return searchParams.get("tab") === new URL(href, window.location.origin).searchParams.get("tab")
+        }
+        return pathname === linkPath
+    }
 
     return (
         <>
@@ -220,26 +246,19 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 backdrop-blur-lg border-t pb-[env(safe-area-inset-bottom)]" style={{ background: 'var(--bg-dropdown)', borderColor: 'var(--border-default)' }}>
                 <div className="flex justify-around items-center py-2 px-1">
                     {mobileLinks.map((link) => {
-                        const linkPath = link.href.split('?')[0]
-                        const isActive = pathname === "/dashboard/user" && linkPath === "/dashboard/user"
-                            ? (searchParams.get("tab") === new URL(link.href, window.location.origin).searchParams.get("tab"))
-                            : pathname === linkPath
+                        const isActive = isLinkActive(link.href)
                         const Icon = link.icon
                         return (
                             <Link
                                 key={link.href}
                                 href={link.href}
-                                className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg min-w-[60px] relative transition-all ${isActive
-                                    ? "text-primary"
-                                    : ""
-                                    }`}
+                                className={`flex flex-col items-center justify-center py-2 px-2 sm:px-3 rounded-lg min-w-[56px] relative transition-all ${isActive ? "text-primary" : ""}`}
                                 style={!isActive ? { color: 'var(--text-muted)' } : undefined}
                             >
                                 <div className="relative">
                                     <Icon size={20} />
                                     {link.badge && link.badge > 0 && (
                                         link.href.includes('tab=offers') ? (
-                                            // Pulsating dot for offers
                                             <span className="absolute -top-2 -right-2">
                                                 <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-primary opacity-60" />
                                                 <span className="relative inline-flex items-center justify-center rounded-full bg-primary text-white text-[8px] font-black w-4 h-4">
@@ -253,7 +272,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                         )
                                     )}
                                 </div>
-                                <span className={`text-xs mt-1 font-medium ${isActive ? 'text-primary' : ''}`}>
+                                <span className={`text-[11px] sm:text-xs mt-1 font-medium ${isActive ? 'text-primary' : ''}`}>
                                     {link.label}
                                 </span>
                                 {isActive && (
@@ -262,20 +281,17 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                             </Link>
                         )
                     })}
-                    {/* More menu trigger for additional items */}
                     <button
                         onClick={toggleMobileMenu}
-                        className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg min-w-[60px] transition-all ${isMobileMenuOpen ? "text-primary" : ""
-                            }`}
+                        className={`flex flex-col items-center justify-center py-2 px-2 sm:px-3 rounded-lg min-w-[56px] transition-all ${isMobileMenuOpen ? "text-primary" : ""}`}
                         style={!isMobileMenuOpen ? { color: 'var(--text-muted)' } : undefined}
                     >
                         {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-                        <span className="text-xs mt-1 font-medium">More</span>
+                        <span className="text-[11px] sm:text-xs mt-1 font-medium">More</span>
                     </button>
                 </div>
             </div>
 
-            {/* Mobile Full Menu Overlay */}
             {isMobileMenuOpen && (
                 <div
                     className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"
@@ -290,8 +306,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                 transition-transform duration-300 ease-out shadow-[0_-10px_40px_rgba(0,0,0,0.5)]
                 ${isMobileMenuOpen ? "translate-y-0" : "translate-y-[120%]"}
             `} style={{ background: 'var(--bg-dropdown)', borderColor: 'var(--border-default)' }}>
-                <div className="p-4 pb-12 space-y-2 max-h-[60vh] overflow-y-auto">
-                    {/* User Profile */}
+                <div className="p-4 pb-12 max-h-[68vh] overflow-y-auto">
                     <div className="flex items-center gap-3 p-3 rounded-xl mb-4" style={{ background: 'var(--bg-card)' }}>
                         <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm border border-primary/30">
                             {(userName || "U").split(" ").filter(Boolean).map(n => n[0]).join("").toUpperCase().slice(0, 2)}
@@ -302,55 +317,60 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                         </div>
                     </div>
 
-                    {/* Overflow Links (items not in bottom bar) */}
-                    {currentLinks.slice(5).map((link) => {
-                        const isActive = pathname === link.href
-                        const Icon = link.icon
-                        return (
-                            <Link
-                                key={link.href}
-                                href={link.href}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all ${isActive
-                                    ? "bg-primary text-white"
-                                    : "hover:bg-primary/5 dark:hover:bg-[var(--bg-card)]"
-                                    }`}
-                                style={!isActive ? { color: 'var(--text-secondary)' } : undefined}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <Icon size={18} />
-                                    <span className="text-sm font-medium">{link.label}</span>
-                                    {link.badge && link.badge > 0 && (
-                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-primary/20 text-primary'
-                                            }`}>
-                                            {link.badge}
-                                        </span>
+                    <div className="space-y-1">
+                        {mobileOverflowLinks.map((link, index) => {
+                            const isActive = isLinkActive(link.href)
+                            const Icon = link.icon
+                            const previousSection = index > 0 ? mobileOverflowLinks[index - 1]?.section : undefined
+                            const showSection = role === 'admin' && link.section && link.section !== previousSection
+                            return (
+                                <React.Fragment key={link.href}>
+                                    {showSection && (
+                                        <p className="px-4 pt-4 pb-1 text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)] first:pt-1">
+                                            {link.section}
+                                        </p>
                                     )}
-                                </div>
-                                <ChevronRight size={16} className="opacity-40" />
-                            </Link>
-                        )
-                    })}
+                                    <Link
+                                        href={link.href}
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all ${isActive
+                                            ? "bg-primary text-white"
+                                            : "hover:bg-primary/5 dark:hover:bg-[var(--bg-card)]"
+                                            }`}
+                                        style={!isActive ? { color: 'var(--text-secondary)' } : undefined}
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <Icon size={18} className="shrink-0" />
+                                            <span className="text-sm font-medium truncate">{link.label}</span>
+                                            {link.badge && link.badge > 0 && (
+                                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-primary/20 text-primary'}`}>
+                                                    {link.badge}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <ChevronRight size={16} className="opacity-40 shrink-0" />
+                                    </Link>
+                                </React.Fragment>
+                            )
+                        })}
+                    </div>
 
-                    {/* Contact Support */}
                     {role !== "admin" && (
                         <button
                             onClick={handleContactSupport}
                             disabled={contactingSupport}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-primary hover:bg-primary/10 rounded-xl transition-all disabled:opacity-50"
+                            className="w-full flex items-center gap-3 px-4 py-3 mt-2 text-primary hover:bg-primary/10 rounded-xl transition-all disabled:opacity-50"
                         >
                             {contactingSupport ? <Loader2 size={18} className="animate-spin" /> : <LifeBuoy size={18} />}
                             Contact CarMazium Support
                         </button>
                     )}
 
-                    {/* Children */}
                     {children && <div className="pt-2">{children}</div>}
 
-                    {/* Sign Out */}
                     <button
                         onClick={handleSignOut}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+                        className="w-full flex items-center gap-3 px-4 py-3 mt-2 text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
                     >
                         <LogOut size={18} /> Sign Out
                     </button>
@@ -359,10 +379,9 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
 
             {/* Desktop Sidebar */}
             <aside className="hidden lg:block w-72 shrink-0 self-start">
-                <div className="glass-card p-5 !sticky top-24">
-                    {/* User Profile */}
-                    <div className="flex items-center gap-3 mb-6 p-3 rounded-xl" style={{ background: 'var(--bg-input)' }}>
-                        <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-lg border border-primary/30">
+                <div className="glass-card p-5 !sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto">
+                    <div className="flex items-center gap-3 mb-5 p-3 rounded-xl" style={{ background: 'var(--bg-input)' }}>
+                        <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-lg border border-primary/30 shrink-0">
                             {(userName || "U").split(" ").filter(Boolean).map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                         </div>
                         <div className="overflow-hidden">
@@ -371,50 +390,51 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                         </div>
                     </div>
 
-                    {/* Navigation */}
                     <nav className="space-y-1">
-                        {currentLinks.map((link) => {
-                            const linkPath = link.href.split('?')[0]
-                            const isActive = pathname === "/dashboard/user" && linkPath === "/dashboard/user"
-                                ? (searchParams.get("tab") === new URL(link.href, window.location.origin).searchParams.get("tab"))
-                                : pathname === linkPath
+                        {currentLinks.map((link, index) => {
+                            const isActive = isLinkActive(link.href)
                             const Icon = link.icon
+                            const previousSection = index > 0 ? currentLinks[index - 1]?.section : undefined
+                            const showSection = role === 'admin' && link.section && link.section !== previousSection
                             return (
-                                <Link
-                                    key={link.href}
-                                    href={link.href}
-                                    className={`flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-sm transition-all ${isActive
-                                        ? "bg-primary text-white font-semibold"
-                                        : "hover:bg-primary/5 dark:hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white"
-                                        }`}
-                                    style={!isActive ? { color: 'var(--text-muted)' } : undefined}
-                                >
-                                 <div className="flex items-center gap-3 relative">
-                                        <Icon size={18} />
-                                        {link.label}
-                                    </div>
-                                    {link.badge && link.badge > 0 && (
-                                        link.href.includes('tab=offers') ? (
-                                            // Pulsating dot for offers tab
-                                            <span className="relative flex items-center justify-center">
-                                                <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-primary opacity-60" />
-                                                <span className="relative inline-flex items-center justify-center rounded-full bg-primary text-white text-xs font-black min-w-[18px] h-[18px] px-1">
-                                                    {link.badge > 9 ? '9+' : link.badge}
-                                                </span>
-                                            </span>
-                                        ) : (
-                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-primary/20 text-primary'
-                                                }`}>
-                                                {link.badge}
-                                            </span>
-                                        )
+                                <React.Fragment key={link.href}>
+                                    {showSection && (
+                                        <p className="px-3 pt-4 pb-1 text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)] first:pt-0">
+                                            {link.section}
+                                        </p>
                                     )}
-                                </Link>
+                                    <Link
+                                        href={link.href}
+                                        className={`flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-sm transition-all ${isActive
+                                            ? "bg-primary text-white font-semibold"
+                                            : "hover:bg-primary/5 dark:hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white"
+                                            }`}
+                                        style={!isActive ? { color: 'var(--text-muted)' } : undefined}
+                                    >
+                                        <div className="flex items-center gap-3 relative min-w-0">
+                                            <Icon size={18} className="shrink-0" />
+                                            <span className="truncate">{link.label}</span>
+                                        </div>
+                                        {link.badge && link.badge > 0 && (
+                                            link.href.includes('tab=offers') ? (
+                                                <span className="relative flex items-center justify-center">
+                                                    <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-primary opacity-60" />
+                                                    <span className="relative inline-flex items-center justify-center rounded-full bg-primary text-white text-xs font-black min-w-[18px] h-[18px] px-1">
+                                                        {link.badge > 9 ? '9+' : link.badge}
+                                                    </span>
+                                                </span>
+                                            ) : (
+                                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-primary/20 text-primary'}`}>
+                                                    {link.badge}
+                                                </span>
+                                            )
+                                        )}
+                                    </Link>
+                                </React.Fragment>
                             )
                         })}
                     </nav>
 
-                    {/* Admin Switcher */}
                     {isAdmin && role !== 'admin' && (
                         <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-default)' }}>
                             <Link
@@ -426,7 +446,6 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                         </div>
                     )}
 
-                    {/* Contact Support */}
                     {role !== 'admin' && (
                         <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-default)' }}>
                             <button
@@ -440,14 +459,12 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                         </div>
                     )}
 
-                    {/* Children (e.g., Create Listing button) */}
                     {children && (
                         <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-default)' }}>
                             {children}
                         </div>
                     )}
 
-                    {/* Sign Out */}
                     <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-default)' }}>
                         <button
                             onClick={handleSignOut}
@@ -460,7 +477,6 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                 </div>
             </aside>
 
-            {/* Bottom spacing handled by layout.tsx */}
             <div className="hidden" />
         </>
     )
