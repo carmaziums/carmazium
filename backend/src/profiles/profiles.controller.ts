@@ -71,6 +71,24 @@ export class ProfilesController {
         };
     }
 
+    @Get(':userId/reviews/given')
+    @ApiOperation({ summary: 'Get reviews written by a public profile' })
+    @ApiParam({ name: 'userId', description: 'User ID' })
+    @ApiQuery({ name: 'page', required: false, type: Number })
+    @ApiQuery({ name: 'limit', required: false, type: Number })
+    async getPublicReviewsGiven(
+        @Param('userId') userId: string,
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    ) {
+        // Reuse the public profile visibility gate before exposing review history.
+        await this.profilesService.getPublicProfile(userId);
+        return {
+            success: true,
+            data: await this.profilesService.getReviewsGiven(userId, page, Math.min(limit, 50)),
+        };
+    }
+
     @Post(':userId/reviews')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
