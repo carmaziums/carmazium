@@ -51,6 +51,72 @@ export async function getAdminUsers(page = 1, limit = 20, search?: string) {
   return result;
 }
 
+// ─── Admin Broadcast Messaging ────────────────────────────────────────────────
+
+export type AdminMessageAudience =
+  | 'ALL'
+  | 'ROLE'
+  | 'PERSON'
+  | 'DEALERS'
+  | 'SERVICE_PROVIDERS'
+  | 'DELIVERY_PROVIDERS'
+  | 'INSPECTION_PROVIDERS'
+  | 'FINANCE_PROVIDERS'
+  | 'WARRANTY_PROVIDERS'
+  | 'INSURANCE_PROVIDERS';
+
+export type AdminMessageMediaKind = 'IMAGE' | 'VIDEO';
+
+export interface AdminAudienceSelection {
+  audience: AdminMessageAudience;
+  role?: string;
+  userId?: string;
+}
+
+export interface AdminAudiencePreview {
+  count: number;
+  sample: Array<{
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    role: string;
+  }>;
+}
+
+export interface AdminMessagePayload extends AdminAudienceSelection {
+  text?: string;
+  mediaUrl?: string;
+  mediaKind?: AdminMessageMediaKind;
+  mediaName?: string;
+  mediaMime?: string;
+  mediaSize?: number;
+  expectedRecipientCount: number;
+}
+
+export interface AdminMessageSendResult {
+  requested: number;
+  sent: number;
+  failed: number;
+  failures: Array<{ userId: string; error: string }>;
+}
+
+export async function previewAdminMessageAudience(selection: AdminAudienceSelection): Promise<AdminAudiencePreview> {
+  const result = await apiClient<{ data: AdminAudiencePreview }>('/admin/messaging/preview', {
+    method: 'POST',
+    body: JSON.stringify(selection),
+  });
+  return result.data;
+}
+
+export async function sendAdminAudienceMessage(payload: AdminMessagePayload): Promise<AdminMessageSendResult> {
+  const result = await apiClient<{ data: AdminMessageSendResult }>('/admin/messaging/send', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return result.data;
+}
+
 // ─── Admin Free Listing Grants ────────────────────────────────────────────────
 
 export type FreeListingGrantStatus = 'ACTIVE' | 'USED' | 'EXPIRED' | 'REVOKED';
