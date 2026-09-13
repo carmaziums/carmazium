@@ -14,7 +14,6 @@
 
 import type { Metadata } from "next"
 import Link from "next/link"
-import { Suspense } from "react"
 import HomeClient from "./HomeClient"
 import { type Listing } from "@/lib/listingApi"
 import { type BlogPost } from "@/lib/blogApi"
@@ -128,14 +127,12 @@ export default async function Home() {
                     }
                 }
             `}</style>
-            <Suspense>
-                <HomeClient initialListings={featuredListings} latestBlogPosts={latestBlogPosts} />
-            </Suspense>
+
+            <HomeClient initialListings={featuredListings} latestBlogPosts={latestBlogPosts} />
 
             {/*
              * Search-engine-readable homepage copy. This is intentionally rendered by the
-             * server (outside the interactive HomeClient) so crawlers always receive useful
-             * marketplace context, even when they do not execute client-side JavaScript.
+             * server so crawlers receive useful marketplace context in the initial HTML.
              */}
             <section
                 aria-labelledby="carmazium-uk-marketplace"
@@ -151,7 +148,7 @@ export default async function Home() {
                             CarMazium is a UK car marketplace designed to give drivers more choice when they want to sell a car or shop for a used vehicle. If you are looking to sell your car online, you can choose a free dealer auction and let verified dealers compete, or create a retail listing for £1 and advertise directly to buyers. The aim is to keep the process clear, flexible and easy to understand while giving sellers control over how their vehicle is offered.
                         </p>
                         <p>
-                            For buyers, CarMazium brings together used cars for sale across the UK from verified sellers. You can browse retail listings, compare vehicles and use the available vehicle information to help narrow down the right car for your needs. CarMazium is a marketplace rather than the seller of every vehicle, so buyers and sellers deal directly with each other for the vehicle transaction. That makes it important to review the listing details, inspect the vehicle and complete the usual checks before purchase.
+                            For buyers, CarMazium brings together used cars for sale across the UK from verified sellers. You can browse retail listings, compare vehicles and use the available vehicle information to help narrow down the right car for your needs. CarMazium is a marketplace rather than the seller of every vehicle, so buyers and sellers deal directly with each other for the vehicle transaction. That makes it important to review the listing details, inspect the vehicle and complete the usual checks before purchase. For official guidance, see the <a href="https://www.gov.uk/checks-when-buying-a-used-car" className="font-semibold text-primary hover:underline">GOV.UK used-vehicle checks</a>.
                         </p>
                         <p>
                             CarMazium also supports dealer auctions for sellers who prefer competitive trade bidding. A seller can list a vehicle for auction free of charge, verified dealers can compete, and the winning dealer can arrange inspection and collection. Qualifying completed auction sales can also receive CarMazium&apos;s £100 seller incentive after the required handover confirmation. If you prefer to advertise to the public instead, the £1 retail listing gives you another route to market without forcing you into one selling method.
