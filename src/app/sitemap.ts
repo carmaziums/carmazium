@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next"
+import { isSeoIndexableVehicleListing } from "@/lib/seoListingQuality"
 
 // Canonical SEO origin. Keep sitemap URLs on the host that the apex domain redirects to.
 const BASE_URL = "https://www.carmazium.com"
@@ -23,6 +24,9 @@ const STATIC_ROUTES = [
 interface SitemapListing {
     slug: string
     updatedAt?: string | null
+    make?: string | null
+    model?: string | null
+    title?: string | null
 }
 
 async function getActiveListingSlugs(): Promise<SitemapListing[]> {
@@ -56,12 +60,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }))
 
     const listings = await getActiveListingSlugs()
-    const listingEntries = listings.map((listing) => ({
-        url: `${BASE_URL}/buy-cars/${listing.slug}`,
-        ...(listing.updatedAt ? { lastModified: new Date(listing.updatedAt) } : {}),
-        changeFrequency: "weekly" as const,
-        priority: 0.8,
-    }))
+    const listingEntries = listings
+        .filter(isSeoIndexableVehicleListing)
+        .map((listing) => ({
+            url: `${BASE_URL}/buy-cars/${listing.slug}`,
+            ...(listing.updatedAt ? { lastModified: new Date(listing.updatedAt) } : {}),
+            changeFrequency: "weekly" as const,
+            priority: 0.8,
+        }))
 
     const blogPosts = await getPublishedBlogSlugs()
     const blogEntries = blogPosts.map((post) => ({
