@@ -17,6 +17,7 @@ import { AuctionsModule } from './auctions/auctions.module';
 import { FinanceModule } from './finance/finance.module';
 import { InsuranceModule } from './insurance/insurance.module';
 import { AdminModule } from './admin/admin.module';
+import { AdminMessagingModule } from './admin-messaging/admin-messaging.module';
 import { SellersModule } from './sellers/sellers.module';
 import { ProfilesModule } from './profiles/profiles.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -57,6 +58,7 @@ import { BlogModule } from './blog/blog.module';
     FinanceModule,
     InsuranceModule,
     AdminModule,
+    AdminMessagingModule,
     NotificationsModule,
     PaymentsModule,
     DashboardModule,
