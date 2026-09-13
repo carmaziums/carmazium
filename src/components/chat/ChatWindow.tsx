@@ -7,6 +7,7 @@ import Image from "next/image"
 import { useChat } from "@/context/ChatContext"
 import { useAuth } from "@/context/AuthContext"
 import { getChatMessages, sendChatMessage, markMessagesAsRead, getChatDisplayName, isSupportUser, type ChatMessage, type ChatRoom } from "@/lib/chatApi"
+import { parseChatMessageContent } from "@/lib/chatMessageContent"
 
 interface ChatWindowProps {
     room: ChatRoom
@@ -297,19 +298,43 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                             </div>
                             {group.messages.map((msg) => {
                                 const isOwn = msg.senderId !== room.otherUser?.id
+                                const parsed = parseChatMessageContent(msg.content)
                                 return (
                                     <div
                                         key={msg.id}
                                         className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-2`}
                                     >
                                         <div
-                                            className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm ${isOwn
+                                            className={`max-w-[82%] sm:max-w-[75%] px-3 py-2 rounded-2xl shadow-sm ${isOwn
                                                 ? 'bg-primary text-white rounded-br-sm'
                                                 : 'bg-[var(--bg-card)] text-[var(--text-primary)] rounded-bl-sm'
                                                 }`}
                                         >
-                                            <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                                            <p className={`flex items-center gap-1 text-[10px] mt-1 ${isOwn ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
+                                            {parsed.media && (
+                                                <div className="mb-2 overflow-hidden rounded-xl bg-black/10">
+                                                    {parsed.media.kind === 'IMAGE' ? (
+                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                        <img
+                                                            src={parsed.media.url}
+                                                            alt={parsed.media.name || 'Photo from CarMazium'}
+                                                            className="block max-h-[420px] w-auto max-w-full object-contain"
+                                                            loading="lazy"
+                                                        />
+                                                    ) : (
+                                                        <video
+                                                            src={parsed.media.url}
+                                                            controls
+                                                            preload="metadata"
+                                                            playsInline
+                                                            className="block max-h-[420px] w-full bg-black"
+                                                        />
+                                                    )}
+                                                </div>
+                                            )}
+                                            {parsed.text && (
+                                                <p className="text-sm whitespace-pre-wrap break-words px-1">{parsed.text}</p>
+                                            )}
+                                            <p className={`flex items-center gap-1 text-[10px] mt-1 px-1 ${isOwn ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
                                                 {formatTime(msg.createdAt)}
                                                 {isOwn && (
                                                     <svg width="13" height="9" viewBox="0 0 16 11" fill="none" className={msg.isRead ? 'text-white' : 'text-white/50'}>
