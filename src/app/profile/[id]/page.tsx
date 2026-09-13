@@ -35,12 +35,20 @@ type PublicProfile = {
     rating: { average: number; count: number; distribution: Array<{ star: number; count: number }> }
 }
 
-type Review = {
+type ReceivedReview = {
     id: string
     rating: number
     comment: string | null
     createdAt: string
     reviewer: { id: string; displayName: string; avatar: string | null }
+}
+
+type GivenReview = {
+    id: string
+    rating: number
+    comment: string | null
+    createdAt: string
+    target: { id: string; displayName: string; avatar: string | null }
 }
 
 async function getProfile(id: string): Promise<PublicProfile | null> {
@@ -55,9 +63,20 @@ async function getProfile(id: string): Promise<PublicProfile | null> {
     }
 }
 
-async function getReviews(id: string): Promise<{ data: Review[]; total: number }> {
+async function getReceivedReviews(id: string): Promise<{ data: ReceivedReview[]; total: number }> {
     try {
         const response = await fetch(`${API_BASE}/profiles/${id}/reviews?limit=20`, { next: { revalidate: 60 } })
+        if (!response.ok) return { data: [], total: 0 }
+        const json = await response.json()
+        return json.data ?? { data: [], total: 0 }
+    } catch {
+        return { data: [], total: 0 }
+    }
+}
+
+async function getGivenReviews(id: string): Promise<{ data: GivenReview[]; total: number }> {
+    try {
+        const response = await fetch(`${API_BASE}/profiles/${id}/reviews/given?limit=20`, { next: { revalidate: 60 } })
         if (!response.ok) return { data: [], total: 0 }
         const json = await response.json()
         return json.data ?? { data: [], total: 0 }
@@ -82,7 +101,11 @@ function formatDate(value: string) {
 
 export default async function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
-    const [profile, reviews] = await Promise.all([getProfile(id), getReviews(id)])
+    const [profile, receivedReviews, givenReviews] = await Promise.all([
+        getProfile(id),
+        getReceivedReviews(id),
+        getGivenReviews(id),
+    ])
     if (!profile) notFound()
 
     return (
@@ -154,13 +177,13 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                     <section>
                         <div className="mb-4 flex items-center justify-between">
                             <h2 className="text-xl font-bold">Reviews received</h2>
-                            <span className="text-sm" style={{ color: "var(--text-muted)" }}>{reviews.total} total</span>
+                            <span className="text-sm" style={{ color: "var(--text-muted)" }}>{receivedReviews.total} total</span>
                         </div>
-                        {reviews.data.length === 0 ? (
+                        {receivedReviews.data.length === 0 ? (
                             <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-8 text-center" style={{ color: "var(--text-muted)" }}>No reviews yet.</div>
                         ) : (
                             <div className="space-y-4">
-                                {reviews.data.map((review) => (
+                                {receivedReviews.data.map((review) => (
                                     <article key={review.id} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                                         <div className="flex items-center gap-3">
                                             <Link href={`/profile/${review.reviewer.id}`} className="h-10 w-10 overflow-hidden rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -168,6 +191,33 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                                             </Link>
                                             <div className="flex-1">
                                                 <Link href={`/profile/${review.reviewer.id}`} className="font-semibold hover:text-primary">{review.reviewer.displayName}</Link>
+                                                <div className="mt-1 flex items-center gap-2"><Stars rating={review.rating} size={13} /><span className="text-xs" style={{ color: "var(--text-muted)" }}>{formatDate(review.createdAt)}</span></div>
+                                            </div>
+                                        </div>
+                                        {review.comment && <p className="mt-4 text-sm leading-6" style={{ color: "var(--text-muted)" }}>{review.comment}</p>}
+                                    </article>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
+                    <section>
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-xl font-bold">Reviews given</h2>
+                            <span className="text-sm" style={{ color: "var(--text-muted)" }}>{givenReviews.total} total</span>
+                        </div>
+                        {givenReviews.data.length === 0 ? (
+                            <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-8 text-center" style={{ color: "var(--text-muted)" }}>No reviews given yet.</div>
+                        ) : (
+                            <div className="space-y-4">
+                                {givenReviews.data.map((review) => (
+                                    <article key={review.id} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
+                                        <div className="flex items-center gap-3">
+                                            <Link href={`/profile/${review.target.id}`} className="h-10 w-10 overflow-hidden rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                                {review.target.avatar ? <img src={review.target.avatar} alt="" className="h-full w-full object-cover" /> : <span className="font-bold text-primary">{review.target.displayName.charAt(0)}</span>}
+                                            </Link>
+                                            <div className="flex-1">
+                                                <Link href={`/profile/${review.target.id}`} className="font-semibold hover:text-primary">{review.target.displayName}</Link>
                                                 <div className="mt-1 flex items-center gap-2"><Stars rating={review.rating} size={13} /><span className="text-xs" style={{ color: "var(--text-muted)" }}>{formatDate(review.createdAt)}</span></div>
                                             </div>
                                         </div>
