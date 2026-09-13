@@ -62,33 +62,15 @@ export class TradeTeamService {
         return rows[0] ?? null;
     }
 
-    /** Resolve the provider identity an authenticated user is allowed to act as. */
+    /**
+     * Resolve the provider identity an authenticated user is allowed to act as.
+     *
+     * An active dealership-team permission deliberately wins over an independent
+     * contractor profile owned by the same person. This prevents a driver or
+     * inspector who also trades independently from accidentally quoting under
+     * their personal payout account while they are working for the dealership.
+     */
     async tryResolveActor(userId: string): Promise<TradeActorContext | null> {
-        const direct = await this.prisma.contractorProfile.findUnique({
-            where: { userId },
-            include: {
-                capabilities: {
-                    where: { status: CapabilityStatus.APPROVED },
-                    select: { serviceType: true },
-                },
-                user: { select: { id: true } },
-            },
-        });
-        if (direct?.capabilities.length) {
-            return {
-                actingUserId: userId,
-                contractorProfileId: direct.id,
-                businessOwnerUserId: direct.userId,
-                dealerProfileId: null,
-                businessName: direct.businessName ?? null,
-                isStaff: false,
-                allowedServiceTypes: direct.capabilities.map((c) => c.serviceType),
-                canQuote: true,
-                canManage: true,
-                canComplete: true,
-            };
-        }
-
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
             select: { email: true },
@@ -119,7 +101,7 @@ export class TradeTeamService {
             },
         });
 
-        const contexts: TradeActorContext[] = [];
+        const staffContexts: TradeActorContext[] = [];
         for (const membership of memberships) {
             const dealer = membership.dealerProfile;
             const provider = dealer.user.contractorProfile;
@@ -134,7 +116,7 @@ export class TradeTeamService {
             if (permission.inspectionEnabled && approved.has(ServiceType.INSPECTION)) allowed.push(ServiceType.INSPECTION);
             if (!allowed.length) continue;
 
-            contexts.push({
+            staffContexts.push({
                 actingUserId: userId,
                 contractorProfileId: provider.id,
                 businessOwnerUserId: dealer.user.id,
@@ -148,12 +130,40 @@ export class TradeTeamService {
             });
         }
 
-        if (contexts.length > 1) {
+        if (staffContexts.length > 1) {
             throw new ForbiddenException(
                 'You have TradeXchange access for more than one business. Ask the business owner to remove the duplicate membership before acting on jobs.',
             );
         }
-        return contexts[0] ?? null;
+        if (staffContexts.length === 1) return staffContexts[0];
+
+        // No active dealership TradeXchange assignment: fall back to the user's
+        // own independently approved provider profile, preserving the existing
+        // contractor marketplace behaviour.
+        const direct = await this.prisma.contractorProfile.findUnique({
+            where: { userId },
+            include: {
+                capabilities: {
+                    where: { status: CapabilityStatus.APPROVED },
+                    select: { serviceType: true },
+                },
+                user: { select: { id: true } },
+            },
+        });
+        if (!direct?.capabilities.length) return null;
+
+        return {
+            actingUserId: userId,
+            contractorProfileId: direct.id,
+            businessOwnerUserId: direct.userId,
+            dealerProfileId: null,
+            businessName: direct.businessName ?? null,
+            isStaff: false,
+            allowedServiceTypes: direct.capabilities.map((c) => c.serviceType),
+            canQuote: true,
+            canManage: true,
+            canComplete: true,
+        };
     }
 
     async requireActor(userId: string) {
