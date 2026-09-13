@@ -43,8 +43,8 @@ export function ProfileReviewForm({ profileId }: { profileId: string }) {
             setMessage("Your review has been saved.")
             setComment("")
             router.refresh()
-        } catch (submitError: any) {
-            setError(submitError?.message || "Could not save your review.")
+        } catch (submitError) {
+            setError(submitError instanceof Error ? submitError.message : "Could not save your review.")
         } finally {
             setBusy(false)
         }
