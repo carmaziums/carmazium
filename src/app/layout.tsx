@@ -7,7 +7,7 @@ import { ConditionalFooter } from "@/components/layout/ConditionalFooter";
 import { MaziumWidgetLoader } from "@/components/features/MaziumWidgetLoader";
 import { MarketingPopup } from "@/components/features/MarketingPopup";
 import { LocationPromptModal } from "@/components/features/LocationPromptModal";
-import { AutoDealerJsonLd } from "@/components/seo/JsonLd";
+import { MarketplaceJsonLd } from "@/components/seo/JsonLd";
 
 import { Providers } from "@/components/providers/Providers";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
@@ -23,6 +23,8 @@ import { MetaPixel } from "@/components/analytics/MetaPixel";
 import { TikTokPixel } from "@/components/analytics/TikTokPixel";
 import { CookieConsentBanner } from "@/components/analytics/CookieConsentBanner";
 import { ConsentProvider } from "@/context/ConsentContext";
+
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.carmazium.com";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -41,48 +43,54 @@ const montserrat = Montserrat({
 const inter = Inter({ subsets: ["latin"], display: "swap" })
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com"),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "CarMazium — Buy & Sell Cars in UK",
+    default: "CarMazium | Sell Your Car or Buy Used Cars in the UK",
     template: "%s | CarMazium",
   },
   description:
-    "UK's trusted car marketplace. Browse thousands of verified vehicles, sell your car for free, and get the best deals with transparent pricing and seller reviews.",
+    "Sell your car online in the UK with a free dealer auction or £1 retail listing, or browse used cars from verified sellers on CarMazium.",
   keywords: [
-    "buy cars UK",
-    "sell car UK",
-    "used cars",
-    "car marketplace",
+    "sell my car",
+    "sell car online UK",
+    "car auction UK",
+    "sell car to dealers",
+    "buy used cars UK",
+    "used cars for sale UK",
+    "car marketplace UK",
     "CarMazium",
-    "cars for sale",
-    "second hand cars UK",
-    "car dealer UK",
   ],
   openGraph: {
     type: "website",
     locale: "en_GB",
     siteName: "CarMazium",
-    title: "CarMazium — Buy & Sell Cars in UK",
+    title: "CarMazium | Sell Your Car or Buy Used Cars in the UK",
     description:
-      "UK's trusted car marketplace. Browse verified vehicles, sell for free, transparent pricing.",
-    url: process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com",
+      "Sell your car through a free dealer auction or £1 retail listing, or browse used cars from verified sellers across the UK.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "CarMazium — Buy & Sell Cars in UK",
+    title: "CarMazium | Sell Your Car or Buy Used Cars in the UK",
     description:
-      "UK's trusted car marketplace. Browse verified vehicles, sell for free, transparent pricing.",
+      "Free dealer auctions, £1 retail listings and used cars from verified sellers across the UK.",
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
   },
   other: {
     "geo.region": "GB",
-    "geo.placename": "UK",
+    "geo.placename": "United Kingdom",
   },
 };
 
@@ -97,7 +105,7 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${inter.className} selection:bg-red-500/30 selection:text-red-200`}
       >
-        <AutoDealerJsonLd />
+        <MarketplaceJsonLd />
         <ConsentProvider>
           {/* MUST stay first: sets Consent Mode v2 defaults into the
               dataLayer before any Google tag loads. Moving it below
@@ -138,4 +146,3 @@ export default function RootLayout({
     </html>
   );
 }
-

@@ -1,13 +1,27 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-    title: "TradeXchange — Live Auctions & Vehicle Services",
+    title: "TradeXchange Car Auctions & Vehicle Services UK",
     description:
-        "CarMazium TradeXchange brings together live dealer auctions, vehicle delivery and recovery, inspections, finance enquiries and warranty providers in one place.",
+        "Explore CarMazium TradeXchange for live dealer car auctions plus vehicle delivery, recovery, inspections, finance enquiries and warranty services across the UK.",
+    keywords: [
+        "car auctions UK",
+        "dealer car auctions UK",
+        "vehicle auctions UK",
+        "vehicle delivery UK",
+        "vehicle inspection services UK",
+        "TradeXchange",
+        "CarMazium",
+    ],
+    alternates: {
+        canonical: "/auctions",
+    },
     openGraph: {
-        title: "TradeXchange | CarMazium",
+        title: "TradeXchange Car Auctions & Vehicle Services UK | CarMazium",
         description:
-            "Live dealer auctions plus vehicle delivery, inspections, finance enquiries and warranty providers through CarMazium.",
+            "Live dealer vehicle auctions plus delivery, recovery, inspections, finance enquiries and warranty services through CarMazium TradeXchange.",
+        url: "/auctions",
+        type: "website",
     },
 }
 

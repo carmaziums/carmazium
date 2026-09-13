@@ -12,10 +12,29 @@
  * - ISR: cached for 5 minutes, so most visitors get instant responses
  * ============================================================================ */
 
+import type { Metadata } from "next"
 import { Suspense } from "react"
 import HomeClient from "./HomeClient"
 import { type Listing } from "@/lib/listingApi"
 import { type BlogPost } from "@/lib/blogApi"
+
+export const metadata: Metadata = {
+    title: {
+        absolute: "CarMazium | Sell Your Car or Buy Used Cars in the UK",
+    },
+    description:
+        "Sell your car online in the UK with a free dealer auction or £1 retail listing, or browse used cars from verified sellers on CarMazium.",
+    alternates: {
+        canonical: "/",
+    },
+    openGraph: {
+        title: "CarMazium | Sell Your Car or Buy Used Cars in the UK",
+        description:
+            "Sell your car through a free dealer auction or £1 retail listing, or browse used cars from verified sellers across the UK.",
+        url: "/",
+        type: "website",
+    },
+}
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 
