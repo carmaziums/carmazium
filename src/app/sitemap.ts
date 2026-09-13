@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next"
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.carmazium.com"
+// Canonical SEO origin. Keep sitemap URLs on the host that the apex domain redirects to.
+const BASE_URL = "https://www.carmazium.com"
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 
 /** Public, indexable routes that should appear in the sitemap. */
