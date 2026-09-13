@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import * as React from "react"
 import { Button } from "@/components/ui/Button"
@@ -13,6 +13,7 @@ import { apiClient } from "@/lib/apiClient"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { MetricCard } from "@/components/dashboard/MetricCard"
+import { TradeExchangeTeamAccess } from "@/components/dealer/TradeExchangeTeamAccess"
 
 const ROLE_CONFIG: Record<string, { label: string; icon: any; color: string; bg: string }> = {
     ADMIN: { label: "Executive Admin", icon: Shield, color: "text-primary", bg: "bg-primary/10" },
@@ -138,6 +139,9 @@ export default function DealerTeamPage() {
                             </div>
                         </div>
                     )}
+
+                    {/* TradeXchange service permissions — additive to the existing dealership roles above/below. */}
+                    <TradeExchangeTeamAccess staff={staff} pendingInvites={pendingInvites} />
 
                     {/* Role Summary */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
