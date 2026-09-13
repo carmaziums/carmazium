@@ -1,13 +1,26 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-    title: "How It Works — Simple Steps to Buy or Sell",
+    title: "How to Sell Your Car Online or Buy a Car — How It Works",
     description:
-        "Buying or selling a car on CarMazium is easy. Learn how our step-by-step process works, from creating a listing to completing the sale.",
+        "Learn how CarMazium works for UK car sellers and buyers: get a valuation, list your car, let verified dealers bid, arrange collection and complete the sale directly.",
+    keywords: [
+        "how to sell my car online",
+        "sell car online UK",
+        "online car auction UK",
+        "sell car to dealers",
+        "buy used car online UK",
+        "CarMazium how it works",
+    ],
+    alternates: {
+        canonical: "/how-it-works",
+    },
     openGraph: {
-        title: "How It Works | CarMazium",
+        title: "How to Sell Your Car Online or Buy a Car | CarMazium",
         description:
-            "Learn how to buy or sell a car on CarMazium in a few simple steps.",
+            "See the CarMazium process for UK sellers and buyers, from valuation and listing through bidding, collection and handover.",
+        url: "/how-it-works",
+        type: "website",
     },
 }
 
