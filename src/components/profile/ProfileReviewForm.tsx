@@ -2,12 +2,14 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Loader2, Star } from "lucide-react"
 import { apiClient } from "@/lib/apiClient"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
 
 export function ProfileReviewForm({ profileId }: { profileId: string }) {
+    const router = useRouter()
     const { profile, loading } = useAuth()
     const [rating, setRating] = React.useState(5)
     const [comment, setComment] = React.useState("")
@@ -40,6 +42,7 @@ export function ProfileReviewForm({ profileId }: { profileId: string }) {
             })
             setMessage("Your review has been saved.")
             setComment("")
+            router.refresh()
         } catch (submitError: any) {
             setError(submitError?.message || "Could not save your review.")
         } finally {
