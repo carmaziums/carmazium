@@ -25,6 +25,14 @@ interface SitemapListing {
     updatedAt?: string | null
 }
 
+/**
+ * Keep obvious seeded/test records out of search-engine discovery without
+ * deleting, hiding or otherwise changing the listing in the application.
+ */
+function isLikelyTestListingSlug(slug: string): boolean {
+    return /(^|-)(undefined|test\d*|aaa|qqq|www)(-|$)/i.test(slug)
+}
+
 async function getActiveListingSlugs(): Promise<SitemapListing[]> {
     try {
         const res = await fetch(`${API_BASE}/listings?limit=1000&sortBy=newest`, { next: { revalidate: 3600 } })
@@ -55,7 +63,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: route === "" ? 1.0 : route === "/search" || route === "/sell" ? 0.9 : 0.7,
     }))
 
-    const listings = await getActiveListingSlugs()
+    const listings = (await getActiveListingSlugs()).filter((listing) => !isLikelyTestListingSlug(listing.slug))
     const listingEntries = listings.map((listing) => ({
         url: `${BASE_URL}/buy-cars/${listing.slug}`,
         ...(listing.updatedAt ? { lastModified: new Date(listing.updatedAt) } : {}),
