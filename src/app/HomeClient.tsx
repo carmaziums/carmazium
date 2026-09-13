@@ -18,7 +18,7 @@ import { getActiveAuctions, type Auction, getCurrentBid, getBidCount } from "@/l
 import { canAccessTradeStock } from "@/lib/tradeAccess"
 import { useAuth } from "@/context/AuthContext"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
-import { type BlogPost } from "@/lib/blogApi"
+import { type BlogPostSummary } from "@/lib/blogApi"
 
 /* ── Dynamic imports for below-fold heavy components ────────────────────────
  * Code-split these into separate chunks so they don't block initial load.
@@ -30,7 +30,7 @@ const TestimonialsSection = dynamic(() => import("@/components/features/Testimon
 
 interface HomeClientProps {
   initialListings: Listing[]
-  latestBlogPosts?: BlogPost[]
+  latestBlogPosts?: BlogPostSummary[]
 }
 
 export default function HomeClient({ initialListings, latestBlogPosts = [] }: HomeClientProps) {
