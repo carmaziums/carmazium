@@ -1,0 +1,181 @@
+from pathlib import Path
+
+path = Path('src/app/buy-cars/[slug]/VehicleDetailsPageClient.tsx')
+text = path.read_text(encoding='utf-8-sig')
+
+old_helper = '''function getYouTubeEmbedId(url: string): string | null {
+    try {
+        const u = new URL(url)
+        if (u.hostname.includes('youtu.be')) return u.pathname.slice(1).split('?')[0]
+        if (u.hostname.includes('youtube.com')) return u.searchParams.get('v')
+        return null
+    } catch { return null }
+}
+'''
+new_helper = '''function getYouTubeEmbedId(url: string): string | null {
+    try {
+        const raw = url.trim()
+        if (!raw) return null
+
+        // Customers often paste links without a protocol. Normalise them so
+        // youtube.com/watch, Shorts, live and embed URLs all resolve cleanly.
+        const u = new URL(/^https?:\\/\\//i.test(raw) ? raw : `https://${raw}`)
+        const hostname = u.hostname.replace(/^www\\./i, '').toLowerCase()
+        const parts = u.pathname.split('/').filter(Boolean)
+        let id: string | null = null
+
+        if (hostname === 'youtu.be') {
+            id = parts[0] ?? null
+        } else if (hostname === 'youtube.com' || hostname.endsWith('.youtube.com')) {
+            if (u.pathname === '/watch') id = u.searchParams.get('v')
+            else if (['shorts', 'embed', 'live'].includes(parts[0])) id = parts[1] ?? null
+        } else if (hostname === 'youtube-nocookie.com' || hostname.endsWith('.youtube-nocookie.com')) {
+            if (parts[0] === 'embed') id = parts[1] ?? null
+        }
+
+        return id && /^[A-Za-z0-9_-]{6,}$/.test(id) ? id : null
+    } catch {
+        return null
+    }
+}
+'''
+if old_helper not in text:
+    raise SystemExit('Expected YouTube helper was not found; refusing to patch.')
+text = text.replace(old_helper, new_helper, 1)
+
+old_images = '''    // Filter out invalid/placeholder image URLs
+    const validImages = listing.images.filter(img =>
+        img && !img.includes('example.com') && (img.startsWith('https://') || img.startsWith('/')))
+
+    const vehicle = {
+'''
+new_images = '''    // Filter out invalid/placeholder image URLs
+    const validImages = listing.images.filter(img =>
+        img && !img.includes('example.com') && (img.startsWith('https://') || img.startsWith('/')))
+
+    // YouTube is first-class listing media. Valid YouTube links are rendered
+    // ahead of every vehicle photo; other platforms keep their existing link
+    // treatment further down the page.
+    const youtubeVideos = (listing.videoUrls ?? [])
+        .map((url: string) => ({ url, id: getYouTubeEmbedId(url) }))
+        .filter((video): video is { url: string; id: string } => Boolean(video.id))
+    const otherVideoUrls = (listing.videoUrls ?? []).filter((url: string) => !getYouTubeEmbedId(url))
+
+    const vehicle = {
+'''
+if old_images not in text:
+    raise SystemExit('Expected validImages block was not found; refusing to patch.')
+text = text.replace(old_images, new_images, 1)
+
+gallery_anchor = '''                        {/* Gallery */}
+                        <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-4">
+                            <div
+'''
+gallery_replacement = '''                        {/* Gallery — video is always first media when supplied */}
+                        <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-4">
+                            {youtubeVideos.map((video, idx) => (
+                                <div key={`${video.id}-${idx}`} className="mb-4">
+                                    <div className="relative aspect-video rounded-lg overflow-hidden bg-black">
+                                        <iframe
+                                            src={`https://www.youtube-nocookie.com/embed/${video.id}?rel=0`}
+                                            title={`${vehicle.title} vehicle video${youtubeVideos.length > 1 ? ` ${idx + 1}` : ''}`}
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                            referrerPolicy="strict-origin-when-cross-origin"
+                                            allowFullScreen
+                                            className="absolute inset-0 w-full h-full"
+                                        />
+                                    </div>
+                                    <div className="mt-2 flex items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
+                                        <Camera size={13} className="text-primary" /> Vehicle video
+                                    </div>
+                                </div>
+                            ))}
+                            <div
+'''
+if gallery_anchor not in text:
+    raise SystemExit('Expected gallery anchor was not found; refusing to patch.')
+text = text.replace(gallery_anchor, gallery_replacement, 1)
+
+old_video_section = '''                        {/* Video Embeds */}
+                        {listing.videoUrls && listing.videoUrls.length > 0 && (
+                            <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
+                                <h3 className="text-xl font-bold mb-6 border-l-4 border-primary pl-4">Videos</h3>
+                                <div className="space-y-4">
+                                    {(listing.videoUrls as string[]).map((url, idx) => {
+                                        const platform = getVideoPlatform(url)
+                                        const ytId = platform === 'youtube' ? getYouTubeEmbedId(url) : null
+                                        if (ytId) {
+                                            return (
+                                                <div key={idx} className="aspect-video rounded-xl overflow-hidden bg-black">
+                                                    <iframe
+                                                        src={`https://www.youtube.com/embed/${ytId}`}
+                                                        title={`Video ${idx + 1}`}
+                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                        allowFullScreen
+                                                        className="w-full h-full"
+                                                    />
+                                                </div>
+                                            )
+                                        }
+                                        const platformLabel = platform === 'instagram' ? 'Instagram' : platform === 'facebook' ? 'Facebook' : platform === 'x' ? 'X (Twitter)' : 'External Video'
+                                        return (
+                                            <a
+                                                key={idx}
+                                                href={url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-4 p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--border-default)] hover:border-primary/40 hover:bg-primary/5 transition-all group"
+                                            >
+                                                <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
+                                                    <Camera size={20} className="text-primary" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-black uppercase tracking-wider text-primary mb-0.5">{platformLabel}</p>
+                                                    <p className="text-sm text-[var(--text-muted)] truncate">{url}</p>
+                                                </div>
+                                                <ArrowLeft size={16} className="text-[var(--text-muted)] rotate-180 shrink-0 group-hover:text-primary transition-colors" />
+                                            </a>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        )}
+'''
+new_video_section = '''                        {/* Non-YouTube video links keep the existing external-link treatment.
+                            YouTube videos are intentionally omitted here because they are already
+                            the first media in the gallery above. */}
+                        {otherVideoUrls.length > 0 && (
+                            <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
+                                <h3 className="text-xl font-bold mb-6 border-l-4 border-primary pl-4">More Videos</h3>
+                                <div className="space-y-4">
+                                    {otherVideoUrls.map((url: string, idx: number) => {
+                                        const platform = getVideoPlatform(url)
+                                        const platformLabel = platform === 'youtube' ? 'YouTube' : platform === 'instagram' ? 'Instagram' : platform === 'facebook' ? 'Facebook' : platform === 'x' ? 'X (Twitter)' : 'External Video'
+                                        return (
+                                            <a
+                                                key={idx}
+                                                href={url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-4 p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--border-default)] hover:border-primary/40 hover:bg-primary/5 transition-all group"
+                                            >
+                                                <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
+                                                    <Camera size={20} className="text-primary" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-black uppercase tracking-wider text-primary mb-0.5">{platformLabel}</p>
+                                                    <p className="text-sm text-[var(--text-muted)] truncate">{url}</p>
+                                                </div>
+                                                <ArrowLeft size={16} className="text-[var(--text-muted)] rotate-180 shrink-0 group-hover:text-primary transition-colors" />
+                                            </a>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        )}
+'''
+if old_video_section not in text:
+    raise SystemExit('Expected video section was not found; refusing to patch.')
+text = text.replace(old_video_section, new_video_section, 1)
+
+path.write_text(text, encoding='utf-8')
