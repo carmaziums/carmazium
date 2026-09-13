@@ -179,11 +179,14 @@ export class TradeTeamService {
     async assertJobPermission(actor: TradeActorContext, jobId: string, action: TradeTeamAction) {
         const job = await this.prisma.serviceJob.findUnique({
             where: { id: jobId },
-            select: { serviceType: true },
+            select: { serviceType: true, customerId: true },
         });
         if (!job) throw new NotFoundException('Service job not found.');
         if (!actor.allowedServiceTypes.includes(job.serviceType)) {
             throw new ForbiddenException('Your business role does not allow access to this service job.');
+        }
+        if (action === 'quote' && (job.customerId === actor.actingUserId || job.customerId === actor.businessOwnerUserId)) {
+            throw new BadRequestException('You cannot quote on a job posted by you or your business.');
         }
         if (actor.isStaff) {
             const allowed = action === 'quote' ? actor.canQuote : action === 'manage' ? actor.canManage : actor.canComplete;
