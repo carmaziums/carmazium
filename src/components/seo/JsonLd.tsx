@@ -3,7 +3,8 @@
  * Renders <script type="application/ld+json"> tags for search engines.
  */
 
-const DEFAULT_SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.carmazium.com"
+// Canonical SEO origin. The apex domain permanently redirects to www.
+const DEFAULT_SITE_URL = "https://www.carmazium.com"
 
 interface MarketplaceJsonLdProps {
     name?: string
