@@ -10,6 +10,9 @@ import {
     HttpStatus,
     ParseIntPipe,
     DefaultValuePipe,
+    BadRequestException,
+    ForbiddenException,
+    NotFoundException,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -25,11 +28,15 @@ import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { OptionalSessionAuthGuard } from '../auth/guards/optional-session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
+import { PrismaService } from '../prisma/prisma.service';
 
 @ApiTags('Sellers')
 @Controller('sellers')
 export class SellersController {
-    constructor(private readonly sellersService: SellersService) { }
+    constructor(
+        private readonly sellersService: SellersService,
+        private readonly prisma: PrismaService,
+    ) { }
 
     /**
      * GET /sellers/:userId
@@ -102,22 +109,68 @@ export class SellersController {
 
     /**
      * POST /sellers/reviews
-     * Auth required — submit a new review for a seller.
-     * The reviewer must be a different user from the seller.
+     * Legacy seller-review compatibility route.
+     *
+     * SellerReview is also the storage used by the unified profile reputation
+     * system. Historical rows remain untouched, but all new writes through this
+     * legacy endpoint must now prove the reviewer bought the exact listing from
+     * the exact seller. This closes the old arbitrary-review path without
+     * creating a second reputation store or migrating historical reviews.
      */
     @Post('reviews')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
     @HttpCode(HttpStatus.CREATED)
-    @ApiOperation({ summary: 'Submit a seller review (auth required)' })
-    @ApiResponse({ status: 201, description: 'Review submitted and reliability score updated' })
-    @ApiResponse({ status: 400, description: 'Duplicate review or self-review attempt' })
+    @ApiOperation({ summary: 'Submit a verified seller review (auth required)' })
+    @ApiResponse({ status: 201, description: 'Verified review submitted and reliability score updated' })
+    @ApiResponse({ status: 400, description: 'Missing listing, duplicate review or self-review attempt' })
     @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiResponse({ status: 403, description: 'No completed CarMazium transaction for this listing' })
     @ApiResponse({ status: 404, description: 'Seller profile not found' })
     async submitReview(
         @Body() dto: CreateSellerReviewDto,
         @CurrentUser() user: any,
     ): Promise<StandardResponse<any>> {
+        const sellerProfile = await this.prisma.sellerProfile.findUnique({
+            where: { id: dto.sellerId },
+            select: { userId: true },
+        });
+        if (!sellerProfile) {
+            throw new NotFoundException('Seller profile not found');
+        }
+        if (sellerProfile.userId === user.id) {
+            throw new BadRequestException('You cannot review yourself');
+        }
+        if (!dto.listingId) {
+            throw new BadRequestException('A completed CarMazium listing is required to leave a seller review.');
+        }
+
+        const [sale, auctionHandover] = await Promise.all([
+            this.prisma.sale.findFirst({
+                where: {
+                    listingId: dto.listingId,
+                    sellerId: sellerProfile.userId,
+                    buyerId: user.id,
+                },
+                select: { id: true },
+            }),
+            this.prisma.auction.findFirst({
+                where: {
+                    listingId: dto.listingId,
+                    winnerId: user.id,
+                    handoverSubmittedAt: { not: null },
+                    listing: { sellerId: sellerProfile.userId },
+                },
+                select: { id: true },
+            }),
+        ]);
+
+        if (!sale && !auctionHandover) {
+            throw new ForbiddenException(
+                'Reviews can only be left after a completed CarMazium vehicle transaction with this seller.',
+            );
+        }
+
         const review = await this.sellersService.submitReview(user.id, dto);
         return new StandardResponse(review);
     }
