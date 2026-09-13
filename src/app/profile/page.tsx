@@ -154,10 +154,21 @@ export default function ProfilePage() {
         setSuccess(null)
         setRoleError(null)
         try {
+            const payload = businessPayload()
             await apiClient("/users/dealer-profile", {
                 method: "PATCH",
-                body: JSON.stringify(businessPayload()),
+                body: JSON.stringify(payload),
             })
+            // The legacy DealerProfile create branch predates openingHours and
+            // does not persist that field on the first insert. If this is the
+            // Partner's first business save, immediately run the same payload
+            // through the update branch so the complete profile is stored.
+            if (!profile?.dealerProfile) {
+                await apiClient("/users/dealer-profile", {
+                    method: "PATCH",
+                    body: JSON.stringify(payload),
+                })
+            }
             setSuccess("Partner business profile updated successfully.")
             await refreshProfile()
             await loadReputation()
