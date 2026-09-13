@@ -5,6 +5,7 @@ import Image from "next/image"
 import { MessageSquare, Search, User, Loader2, Check } from "lucide-react"
 import { useChat } from "@/context/ChatContext"
 import { getChatDisplayName, isSupportUser, type ChatRoom } from "@/lib/chatApi"
+import { chatMessagePreview } from "@/lib/chatMessageContent"
 
 interface ChatRoomListProps {
     onSelectRoom: (room: ChatRoom) => void
@@ -152,7 +153,7 @@ export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps
                                         <div className="flex items-center justify-between gap-2">
                                             <p className={`text-sm truncate ${room.unreadCount > 0 ? 'text-[var(--text-secondary)] font-semibold' : 'text-[var(--text-muted)]'}`}>
                                                 {room.lastMessage
-                                                    ? truncateMessage(room.lastMessage.content)
+                                                    ? truncateMessage(chatMessagePreview(room.lastMessage.content))
                                                     : 'No messages yet'}
                                             </p>
                                             {room.unreadCount > 0 && (
