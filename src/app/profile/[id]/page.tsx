@@ -2,6 +2,8 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { BadgeCheck, Building2, CalendarDays, MapPin, ShieldCheck, Star } from "lucide-react"
 import { ProfileReviewForm } from "@/components/profile/ProfileReviewForm"
+import { ServiceBadgePill } from "@/components/profile/ServiceBadgePill"
+import { profileImageStyle, type ProfileImageFit } from "@/lib/profileImagePresentation"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
 
@@ -99,6 +101,11 @@ function formatDate(value: string) {
     return new Intl.DateTimeFormat("en-GB", { month: "short", year: "numeric" }).format(new Date(value))
 }
 
+function PresentedImage({ value, alt, className, fallbackFit = "cover" }: { value: string; alt: string; className: string; fallbackFit?: ProfileImageFit }) {
+    const image = profileImageStyle(value, fallbackFit)
+    return <img src={image.src} alt={alt} className={className} style={image.style} />
+}
+
 export default async function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
     const [profile, receivedReviews, givenReviews] = await Promise.all([
@@ -110,39 +117,37 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
     return (
         <main className="min-h-screen">
-            <section className="border-b border-[var(--border-default)] bg-gradient-to-b from-slate-900 to-slate-950 text-white">
-                <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-                    <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-                        <div className="h-28 w-28 overflow-hidden rounded-3xl border border-white/10 bg-white/5 flex items-center justify-center shrink-0">
-                            {profile.avatar ? (
-                                <img src={profile.avatar} alt={profile.displayName} className="h-full w-full object-cover" />
-                            ) : (
-                                <span className="text-4xl font-black">{profile.displayName.charAt(0).toUpperCase()}</span>
-                            )}
-                        </div>
-                        <div className="flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <h1 className="font-heading text-3xl font-extrabold sm:text-4xl">{profile.displayName}</h1>
-                                {profile.verification.business && <BadgeCheck className="text-emerald-400" size={24} aria-label="Verified business" />}
-                            </div>
-                            <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-300">
-                                <span className="inline-flex items-center gap-1.5"><ShieldCheck size={15} /> {profile.accountLabel}</span>
-                                <span className="inline-flex items-center gap-1.5"><CalendarDays size={15} /> Member since {formatDate(profile.memberSince)}</span>
-                                {(profile.business?.businessAddress || profile.provider?.serviceArea || profile.location) && (
-                                    <span className="inline-flex items-center gap-1.5"><MapPin size={15} /> {profile.business?.businessAddress || profile.provider?.serviceArea || profile.location}</span>
+            <section className="border-b border-slate-700/50 bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 text-white">
+                <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+                    <div className="rounded-3xl border border-blue-300/15 bg-white/[0.04] p-5 shadow-[0_24px_80px_rgba(2,8,23,0.35)] backdrop-blur-sm sm:p-7">
+                        <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+                            <div className={`h-28 w-28 overflow-hidden rounded-3xl border border-white/15 flex items-center justify-center shrink-0 shadow-lg sm:h-32 sm:w-32 ${profile.business ? "bg-white" : "bg-white/5"}`}>
+                                {profile.avatar ? (
+                                    <PresentedImage value={profile.avatar} alt={profile.displayName} className="h-full w-full transition-transform duration-200" fallbackFit={profile.business ? "contain" : "cover"} />
+                                ) : (
+                                    <span className="text-4xl font-black">{profile.displayName.charAt(0).toUpperCase()}</span>
                                 )}
                             </div>
-                            <div className="mt-5 flex flex-wrap items-center gap-3">
-                                <div className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2">
-                                    <Stars rating={profile.rating.average} />
-                                    <span className="font-bold">{profile.rating.average.toFixed(1)}</span>
-                                    <span className="text-sm text-slate-400">({profile.rating.count} reviews)</span>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h1 className="font-heading text-3xl font-extrabold sm:text-4xl">{profile.displayName}</h1>
+                                    {profile.verification.business && <BadgeCheck className="text-emerald-400" size={24} aria-label="Verified business" />}
                                 </div>
-                                {profile.badges.map((badge) => (
-                                    <span key={badge.key} className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">
-                                        {badge.verified && <BadgeCheck size={13} />} {badge.label}
-                                    </span>
-                                ))}
+                                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-300">
+                                    <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-400/40 bg-gradient-to-r from-violet-500/25 to-indigo-500/15 px-3 py-1.5 font-bold text-violet-100 shadow-[0_0_18px_rgba(139,92,246,0.12)]"><ShieldCheck size={14} /> {profile.accountLabel}</span>
+                                    <span className="inline-flex items-center gap-1.5 px-1"><CalendarDays size={15} /> Member since {formatDate(profile.memberSince)}</span>
+                                    {(profile.business?.businessAddress || profile.provider?.serviceArea || profile.location) && (
+                                        <span className="inline-flex min-w-0 items-center gap-1.5 px-1"><MapPin size={15} className="shrink-0" /> <span className="truncate">{profile.business?.businessAddress || profile.provider?.serviceArea || profile.location}</span></span>
+                                    )}
+                                </div>
+                                <div className="mt-5 flex flex-wrap items-center gap-3">
+                                    <div className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2 shadow-sm">
+                                        <Stars rating={profile.rating.average} />
+                                        <span className="font-bold">{profile.rating.average.toFixed(1)}</span>
+                                        <span className="text-sm text-slate-400">({profile.rating.count} reviews)</span>
+                                    </div>
+                                    {profile.badges.map((badge) => <ServiceBadgePill key={badge.key} badge={badge} />)}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -187,7 +192,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                                     <article key={review.id} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                                         <div className="flex items-center gap-3">
                                             <Link href={`/profile/${review.reviewer.id}`} className="h-10 w-10 overflow-hidden rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                                {review.reviewer.avatar ? <img src={review.reviewer.avatar} alt="" className="h-full w-full object-cover" /> : <span className="font-bold text-primary">{review.reviewer.displayName.charAt(0)}</span>}
+                                                {review.reviewer.avatar ? <PresentedImage value={review.reviewer.avatar} alt="" className="h-full w-full" /> : <span className="font-bold text-primary">{review.reviewer.displayName.charAt(0)}</span>}
                                             </Link>
                                             <div className="flex-1">
                                                 <Link href={`/profile/${review.reviewer.id}`} className="font-semibold hover:text-primary">{review.reviewer.displayName}</Link>
@@ -214,7 +219,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                                     <article key={review.id} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                                         <div className="flex items-center gap-3">
                                             <Link href={`/profile/${review.target.id}`} className="h-10 w-10 overflow-hidden rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                                {review.target.avatar ? <img src={review.target.avatar} alt="" className="h-full w-full object-cover" /> : <span className="font-bold text-primary">{review.target.displayName.charAt(0)}</span>}
+                                                {review.target.avatar ? <PresentedImage value={review.target.avatar} alt="" className="h-full w-full" /> : <span className="font-bold text-primary">{review.target.displayName.charAt(0)}</span>}
                                             </Link>
                                             <div className="flex-1">
                                                 <Link href={`/profile/${review.target.id}`} className="font-semibold hover:text-primary">{review.target.displayName}</Link>
