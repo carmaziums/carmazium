@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next"
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.carmazium.com"
+// Canonical SEO origin. Keep this independent of the app URL environment value.
+const SITE_URL = "https://www.carmazium.com"
 
 export default function robots(): MetadataRoute.Robots {
     return {
