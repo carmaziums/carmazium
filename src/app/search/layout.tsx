@@ -1,13 +1,26 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-    title: "Buy Cars — Browse Verified Vehicles in UK",
+    title: "Used Cars for Sale UK — Browse Verified Vehicles",
     description:
-        "Search thousands of verified used cars for sale in UK. Filter by price, mileage, fuel type, and more. Transparent pricing with seller reviews.",
+        "Browse used cars for sale across the UK on CarMazium. Search verified vehicle listings and filter by price, mileage, fuel type, transmission and more.",
+    keywords: [
+        "used cars for sale UK",
+        "buy used cars UK",
+        "second hand cars UK",
+        "cars for sale UK",
+        "used car marketplace",
+        "CarMazium",
+    ],
+    alternates: {
+        canonical: "/search",
+    },
     openGraph: {
-        title: "Buy Cars — Browse Verified Vehicles in UK",
+        title: "Used Cars for Sale UK — Browse Verified Vehicles | CarMazium",
         description:
-            "Search thousands of verified used cars for sale in UK. Filter by price, mileage, fuel type, and more.",
+            "Search verified used cars for sale across the UK and filter by price, mileage, fuel type, transmission and more.",
+        url: "/search",
+        type: "website",
     },
 }
 
