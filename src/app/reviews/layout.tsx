@@ -1,13 +1,25 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-    title: "Customer Reviews — See What Buyers & Sellers Say",
+    title: "CarMazium Reviews — Buyer & Seller Experiences",
     description:
-        "Read genuine reviews from CarMazium customers. See what buyers and sellers in UK say about their experience on our platform.",
+        "Read CarMazium reviews and see feedback from buyers and sellers using the UK car marketplace for vehicle listings, auctions and purchases.",
+    keywords: [
+        "CarMazium reviews",
+        "car selling platform reviews UK",
+        "car marketplace reviews UK",
+        "car buyer reviews",
+        "car seller reviews",
+    ],
+    alternates: {
+        canonical: "/reviews",
+    },
     openGraph: {
-        title: "Customer Reviews | CarMazium",
+        title: "CarMazium Reviews — Buyer & Seller Experiences",
         description:
-            "Read genuine reviews from CarMazium buyers and sellers in UK.",
+            "Read feedback from buyers and sellers using CarMazium for vehicle listings, auctions and purchases.",
+        url: "/reviews",
+        type: "website",
     },
 }
 
