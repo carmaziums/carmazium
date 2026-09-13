@@ -64,6 +64,13 @@ export class AnalyticsController {
         return this.analyticsService.getSummary();
     }
 
+    @Get('account-verification')
+    @UseGuards(SessionAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    async getAccountVerification() {
+        return this.analyticsService.getAccountVerificationStats();
+    }
+
     @Get('events')
     @UseGuards(SessionAuthGuard, RolesGuard)
     @Roles(UserRole.ADMIN)
