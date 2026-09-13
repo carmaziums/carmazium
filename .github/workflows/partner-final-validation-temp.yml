@@ -1,0 +1,36 @@
+name: Partner final validation temp
+
+on:
+  push:
+    branches:
+      - feat/partner-account-dashboard
+
+jobs:
+  partner-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint Partner regression file only
+        run: npx eslint src/components/dashboard/DashboardSidebar.tsx
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Scan exact stale account terminology
+        shell: bash
+        run: |
+          echo '=== Dealer Account / Service Provider / Contractor Account ==='
+          grep -RInE --include='*.ts' --include='*.tsx' 'Dealer Account|Service Provider|Contractor Account' src || true
+          echo '=== Mutually-exclusive account-role wording candidates ==='
+          grep -RInE --include='*.ts' --include='*.tsx' 'Switch( this account)? to (Dealer|Service Provider|Contractor)|Become (a |an )?(Dealer|Service Provider|Contractor)|Select Role|select your role' src || true
