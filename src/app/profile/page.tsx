@@ -325,7 +325,7 @@ export default function ProfilePage() {
             <section className="mb-12">
                 <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
                     <div><h3 className="text-xl font-bold">Ratings & Reviews</h3><p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>See what others have written about you and the reviews you have given.</p></div>
-                    {profile?.id && <Link href={`/profile/${profile.id}`} className="text-sm font-semibold text-primary hover:underline">Open public reviews</Link>}
+                    {profile?.id && <Link href={`/profile/${profile.id}`}><Button size="sm">Open public reviews</Button></Link>}
                 </div>
                 <div className="grid gap-6 lg:grid-cols-2">
                     <ReviewPanel title="Reviews received" items={receivedReviews} mode="received" />
