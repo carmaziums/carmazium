@@ -6,6 +6,14 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fl
 // Canonical SEO origin. The apex domain permanently redirects to www.
 const SITE_URL = "https://www.carmazium.com"
 
+/**
+ * Keep obvious seeded/test records out of search results while leaving the
+ * listing itself fully accessible and unchanged inside the application.
+ */
+function isLikelyTestListingSlug(slug: string): boolean {
+    return /(^|-)(undefined|test\d*|aaa|qqq|www)(-|$)/i.test(slug)
+}
+
 async function getListingBySlug(slug: string) {
     try {
         const res = await fetch(`${API_BASE}/listings/${slug}`, { next: { revalidate: 60 } })
@@ -41,9 +49,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const image = listing.images?.find((img: string) => !img.includes('example.com'))
 
     // Only ACTIVE (and post-sale OFFER_ACCEPTED/SOLD, which keep the URL alive for
-    // record-keeping) listings should be indexed — draft/pending/rejected ones
-    // aren't meant to be public yet.
-    const indexable = ['ACTIVE', 'OFFER_ACCEPTED', 'SOLD'].includes(listing.status)
+    // record-keeping) listings should be indexed. Obvious seeded/test slugs remain
+    // accessible in the app but are deliberately excluded from search engines.
+    const indexable =
+        ['ACTIVE', 'OFFER_ACCEPTED', 'SOLD'].includes(listing.status) &&
+        !isLikelyTestListingSlug(slug)
 
     return {
         title,
