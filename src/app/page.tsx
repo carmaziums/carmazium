@@ -16,7 +16,9 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import HomeClient from "./HomeClient"
 import { type Listing } from "@/lib/listingApi"
-import { type BlogPost } from "@/lib/blogApi"
+import { type BlogPost, type BlogPostSummary } from "@/lib/blogApi"
+
+const SOCIAL_IMAGE = "/assets/images/discover-hero.webp"
 
 export const metadata: Metadata = {
     title: {
@@ -33,6 +35,20 @@ export const metadata: Metadata = {
             "Sell your car through a free dealer auction or £1 retail listing, or browse used cars from verified sellers across the UK.",
         url: "/",
         type: "website",
+        siteName: "CarMazium",
+        images: [
+            {
+                url: SOCIAL_IMAGE,
+                alt: "CarMazium UK car marketplace",
+            },
+        ],
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "CarMazium | Sell Your Car or Buy Used Cars in the UK",
+        description:
+            "Free dealer auctions, £1 retail listings and used cars from verified sellers across the UK.",
+        images: [SOCIAL_IMAGE],
     },
 }
 
@@ -42,8 +58,14 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly
  * Server-side fetch for the latest published blog posts, shown on the
  * homepage's "Automotive Insights" section. Same ISR pattern as featured
  * listings above.
+ *
+ * The public blog endpoint returns full article bodies. The homepage only
+ * needs card data, so deliberately project each article down to a compact
+ * summary before it crosses the Server → Client boundary. This keeps large
+ * article bodies out of the homepage HTML/RSC payload without changing the
+ * blog cards or article pages themselves.
  */
-async function getLatestBlogPosts(): Promise<BlogPost[]> {
+async function getLatestBlogPosts(): Promise<BlogPostSummary[]> {
     try {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 10000)
@@ -57,7 +79,15 @@ async function getLatestBlogPosts(): Promise<BlogPost[]> {
 
         if (!res.ok) return []
         const data = await res.json()
-        return data.data || []
+        const posts: BlogPost[] = data.data || []
+
+        return posts.map(({ id, slug, title, excerpt, coverImage }) => ({
+            id,
+            slug,
+            title,
+            excerpt,
+            coverImage,
+        }))
     } catch (err) {
         console.error("Latest blog posts fetch failed during build:", err)
         return []

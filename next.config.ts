@@ -2,6 +2,25 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  async redirects() {
+    return [
+      {
+        source: '/index.html',
+        destination: '/',
+        permanent: true,
+      },
+      {
+        source: '/index.htm',
+        destination: '/',
+        permanent: true,
+      },
+      {
+        source: '/index.php',
+        destination: '/',
+        permanent: true,
+      },
+    ];
+  },
   images: {
     // Vercel's Image Optimization quota has been exhausted repeatedly (402/403
     // on /_next/image across every page using Supabase-hosted photos — the
