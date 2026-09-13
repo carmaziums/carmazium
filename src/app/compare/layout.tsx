@@ -1,13 +1,26 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-    title: "Compare Cars Side-by-Side",
+    title: "Compare Used Cars Side by Side UK",
     description:
-        "Compare up to 3 vehicles side-by-side on CarMazium — specs, pricing, mileage, and features, all in one view.",
+        "Compare used cars side by side on CarMazium, including vehicle specifications, prices, mileage and features to help choose the right car.",
+    keywords: [
+        "compare used cars UK",
+        "car comparison UK",
+        "compare car prices",
+        "compare car specifications",
+        "used car comparison",
+        "CarMazium compare cars",
+    ],
+    alternates: {
+        canonical: "/compare",
+    },
     openGraph: {
-        title: "Compare Cars Side-by-Side — CarMazium",
+        title: "Compare Used Cars Side by Side UK | CarMazium",
         description:
-            "Compare up to 3 vehicles side-by-side — specs, pricing, mileage, and features, all in one view.",
+            "Compare vehicle specifications, prices, mileage and features side by side on CarMazium.",
+        url: "/compare",
+        type: "website",
     },
 }
 
