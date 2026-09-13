@@ -75,6 +75,35 @@ export class ProfilesService {
         return { average, count, distribution };
     }
 
+    /**
+     * Generic profile reviews reuse the existing SellerProfile/SellerReview
+     * storage so existing marketplace reputation is preserved. Keep the legacy
+     * seller reliability score in sync whenever one of those shared reviews is
+     * created or changed, otherwise /seller/:id and /profile/:id could disagree.
+     */
+    private async recalculateReliabilityScore(sellerProfileId: string) {
+        const profile = await this.prisma.sellerProfile.findUnique({
+            where: { id: sellerProfileId },
+            include: { reviews: { select: { rating: true } } },
+        });
+        if (!profile) return;
+
+        const reviewCount = profile.reviews.length;
+        const avgRating = reviewCount
+            ? profile.reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount
+            : 0;
+        const responseScore = (profile.responseRate / 100) * 5;
+        const salesRatio = profile.totalListings > 0 ? profile.totalSales / profile.totalListings : 0;
+        const salesScore = Math.min(salesRatio, 1) * 5;
+        const raw = avgRating * 0.5 + responseScore * 0.3 + salesScore * 0.2;
+        const reliabilityScore = Math.min(Math.max(Math.round(raw * 10) / 10, 0), 5);
+
+        await this.prisma.sellerProfile.update({
+            where: { id: sellerProfileId },
+            data: { reliabilityScore },
+        });
+    }
+
     async getPublicProfile(userId: string) {
         const user = await this.prisma.user.findFirst({
             where: { id: userId, deletedAt: null },
@@ -365,8 +394,9 @@ export class ProfilesService {
             orderBy: { createdAt: 'desc' },
         });
 
+        let review;
         if (existing) {
-            return this.prisma.sellerReview.update({
+            review = await this.prisma.sellerReview.update({
                 where: { id: existing.id },
                 data: {
                     rating: dto.rating,
@@ -374,16 +404,19 @@ export class ProfilesService {
                     ...(existing.listingId ? {} : interaction.listingId ? { listingId: interaction.listingId } : {}),
                 },
             });
+        } else {
+            review = await this.prisma.sellerReview.create({
+                data: {
+                    sellerId: reviewProfile.id,
+                    reviewerId,
+                    listingId: interaction.listingId,
+                    rating: dto.rating,
+                    comment: dto.comment?.trim() || null,
+                },
+            });
         }
 
-        return this.prisma.sellerReview.create({
-            data: {
-                sellerId: reviewProfile.id,
-                reviewerId,
-                listingId: interaction.listingId,
-                rating: dto.rating,
-                comment: dto.comment?.trim() || null,
-            },
-        });
+        await this.recalculateReliabilityScore(reviewProfile.id);
+        return review;
     }
 }
