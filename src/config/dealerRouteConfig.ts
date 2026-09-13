@@ -11,8 +11,8 @@ import {
     Settings,
     Heart,
     Trophy,
-    BriefcaseBusiness,
-    Blocks,
+    Briefcase,
+    Wrench,
     LucideIcon
 } from "lucide-react"
 
@@ -45,14 +45,14 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         label: "Service Add-ons",
         title: "Service Add-ons",
         subHeader: "Delivery, recovery and inspection services",
-        icon: Blocks
+        icon: Wrench
     },
     {
         href: "/dashboard/service/jobs",
         label: "Service Jobs",
         title: "Service Jobs",
         subHeader: "TradeXchange work for your business",
-        icon: BriefcaseBusiness
+        icon: Briefcase
     },
     {
         href: "/dashboard/dealer/inventory",
