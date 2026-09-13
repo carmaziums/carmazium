@@ -207,11 +207,29 @@ function OfferModal({
 
 function getYouTubeEmbedId(url: string): string | null {
     try {
-        const u = new URL(url)
-        if (u.hostname.includes('youtu.be')) return u.pathname.slice(1).split('?')[0]
-        if (u.hostname.includes('youtube.com')) return u.searchParams.get('v')
+        const raw = url.trim()
+        if (!raw) return null
+
+        // Customers often paste links without a protocol. Normalise them so
+        // youtube.com/watch, Shorts, live and embed URLs all resolve cleanly.
+        const u = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`)
+        const hostname = u.hostname.replace(/^www\./i, '').toLowerCase()
+        const parts = u.pathname.split('/').filter(Boolean)
+        let id: string | null = null
+
+        if (hostname === 'youtu.be') {
+            id = parts[0] ?? null
+        } else if (hostname === 'youtube.com' || hostname.endsWith('.youtube.com')) {
+            if (u.pathname === '/watch') id = u.searchParams.get('v')
+            else if (['shorts', 'embed', 'live'].includes(parts[0])) id = parts[1] ?? null
+        } else if (hostname === 'youtube-nocookie.com' || hostname.endsWith('.youtube-nocookie.com')) {
+            if (parts[0] === 'embed') id = parts[1] ?? null
+        }
+
+        return id && /^[A-Za-z0-9_-]{6,}$/.test(id) ? id : null
+    } catch {
         return null
-    } catch { return null }
+    }
 }
 
 function getVideoPlatform(url: string): 'youtube' | 'instagram' | 'facebook' | 'x' | 'other' {
@@ -405,6 +423,14 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     // Filter out invalid/placeholder image URLs
     const validImages = listing.images.filter(img =>
         img && !img.includes('example.com') && (img.startsWith('https://') || img.startsWith('/')))
+
+    // YouTube is first-class listing media. Valid YouTube links are rendered
+    // ahead of every vehicle photo; other platforms keep their existing link
+    // treatment further down the page.
+    const youtubeVideos = (listing.videoUrls ?? [])
+        .map((url: string) => ({ url, id: getYouTubeEmbedId(url) }))
+        .filter((video): video is { url: string; id: string } => Boolean(video.id))
+    const otherVideoUrls = (listing.videoUrls ?? []).filter((url: string) => !getYouTubeEmbedId(url))
 
     const vehicle = {
         id: listing.id,
@@ -724,8 +750,25 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left Column: Gallery & Details */}
                     <div className="lg:col-span-2 space-y-8">
-                        {/* Gallery */}
+                        {/* Gallery — video is always first media when supplied */}
                         <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-4">
+                            {youtubeVideos.map((video, idx) => (
+                                <div key={`${video.id}-${idx}`} className="mb-4">
+                                    <div className="relative aspect-video rounded-lg overflow-hidden bg-black">
+                                        <iframe
+                                            src={`https://www.youtube-nocookie.com/embed/${video.id}?rel=0`}
+                                            title={`${vehicle.title} vehicle video${youtubeVideos.length > 1 ? ` ${idx + 1}` : ''}`}
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                            referrerPolicy="strict-origin-when-cross-origin"
+                                            allowFullScreen
+                                            className="absolute inset-0 w-full h-full"
+                                        />
+                                    </div>
+                                    <div className="mt-2 flex items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
+                                        <Camera size={13} className="text-primary" /> Vehicle video
+                                    </div>
+                                </div>
+                            ))}
                             <div
                                 className="relative aspect-video bg-black rounded-lg overflow-hidden mb-4 group cursor-zoom-in"
                                 onClick={() => setGalleryLightboxOpen(true)}
@@ -962,28 +1005,16 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                             </div>
                         )}
 
-                        {/* Video Embeds */}
-                        {listing.videoUrls && listing.videoUrls.length > 0 && (
+                        {/* Non-YouTube video links keep the existing external-link treatment.
+                            YouTube videos are intentionally omitted here because they are already
+                            the first media in the gallery above. */}
+                        {otherVideoUrls.length > 0 && (
                             <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
-                                <h3 className="text-xl font-bold mb-6 border-l-4 border-primary pl-4">Videos</h3>
+                                <h3 className="text-xl font-bold mb-6 border-l-4 border-primary pl-4">More Videos</h3>
                                 <div className="space-y-4">
-                                    {(listing.videoUrls as string[]).map((url, idx) => {
+                                    {otherVideoUrls.map((url: string, idx: number) => {
                                         const platform = getVideoPlatform(url)
-                                        const ytId = platform === 'youtube' ? getYouTubeEmbedId(url) : null
-                                        if (ytId) {
-                                            return (
-                                                <div key={idx} className="aspect-video rounded-xl overflow-hidden bg-black">
-                                                    <iframe
-                                                        src={`https://www.youtube.com/embed/${ytId}`}
-                                                        title={`Video ${idx + 1}`}
-                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                        allowFullScreen
-                                                        className="w-full h-full"
-                                                    />
-                                                </div>
-                                            )
-                                        }
-                                        const platformLabel = platform === 'instagram' ? 'Instagram' : platform === 'facebook' ? 'Facebook' : platform === 'x' ? 'X (Twitter)' : 'External Video'
+                                        const platformLabel = platform === 'youtube' ? 'YouTube' : platform === 'instagram' ? 'Instagram' : platform === 'facebook' ? 'Facebook' : platform === 'x' ? 'X (Twitter)' : 'External Video'
                                         return (
                                             <a
                                                 key={idx}
