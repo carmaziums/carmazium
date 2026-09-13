@@ -36,6 +36,68 @@ export async function getAdminUsers(page = 1, limit = 20, search?: string) {
   return result;
 }
 
+// ─── Admin Free Listing Grants ────────────────────────────────────────────────
+
+export type FreeListingGrantStatus = 'ACTIVE' | 'USED' | 'EXPIRED' | 'REVOKED';
+export type FreeListingDurationUnit = 'HOURS' | 'DAYS' | 'MONTHS' | 'FOREVER';
+
+export interface FreeListingGrant {
+  id: string;
+  grantedAt: string;
+  grantedById: string;
+  expiresAt: string | null;
+  usedAt: string | null;
+  usedListingId: string | null;
+  revokedAt: string | null;
+  status: FreeListingGrantStatus;
+}
+
+export interface AdminFreeListingUser {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  role: string;
+  createdAt: string;
+  deletedAt: string | null;
+  freeListingGrant: FreeListingGrant | null;
+}
+
+export interface AdminFreeListingUsersResponse {
+  data: AdminFreeListingUser[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export async function getAdminFreeListingUsers(page = 1, limit = 20, search?: string): Promise<AdminFreeListingUsersResponse> {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (search) params.set('search', search);
+  return apiClient<AdminFreeListingUsersResponse>(`/admin/free-listings/users?${params.toString()}`);
+}
+
+export async function grantAdminFreeListing(
+  userId: string,
+  durationUnit: FreeListingDurationUnit,
+  durationValue?: number,
+): Promise<FreeListingGrant> {
+  const result = await apiClient<{ data: FreeListingGrant }>(`/admin/free-listings/users/${userId}`, {
+    method: 'POST',
+    body: JSON.stringify({ durationUnit, durationValue }),
+  });
+  return result.data;
+}
+
+export async function revokeAdminFreeListing(userId: string): Promise<FreeListingGrant | null> {
+  const result = await apiClient<{ data: FreeListingGrant | null }>(`/admin/free-listings/users/${userId}`, {
+    method: 'DELETE',
+  });
+  return result.data;
+}
+
 export async function getAdminUserDetail(id: string) {
   const result = await apiClient<{ data: any }>(`/admin/users/${id}`);
   return result.data;
@@ -231,4 +293,3 @@ export async function getTrafficAnalytics(from?: string, to?: string): Promise<T
   // /analytics/traffic returns the object directly (no StandardResponse wrapper)
   return apiClient<TrafficAnalytics>(`/analytics/traffic${qs ? `?${qs}` : ''}`);
 }
-
