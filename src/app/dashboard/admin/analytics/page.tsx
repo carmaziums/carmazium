@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -6,14 +6,14 @@ import { useRouter } from "next/navigation"
 import {
     TrendingUp, Loader2, ArrowLeft, Users, Car, DollarSign, RefreshCw,
     Eye, Search, Globe, Monitor, Smartphone, Tablet, MousePointerClick,
-    Clock, BarChart3, Calendar,
+    Clock, BarChart3, Calendar, ShieldCheck, UserX, Building2,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import {
-    getAdminAnalytics, getAdminStats, getTrafficAnalytics,
-    type AnalyticsMonth, type AdminStats, type TrafficAnalytics,
+    getAdminAnalytics, getAdminStats, getTrafficAnalytics, getAccountVerificationStats,
+    type AnalyticsMonth, type AdminStats, type TrafficAnalytics, type AccountVerificationStats,
 } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
 import { DateRangeFilter } from "@/components/dealer"
@@ -113,9 +113,10 @@ export default function AdminAnalyticsPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const router = useRouter()
 
-    // Platform stats (6-month)
+    // Platform stats (6-month + account verification)
     const [analytics, setAnalytics] = React.useState<AnalyticsMonth[]>([])
     const [stats, setStats] = React.useState<AdminStats | null>(null)
+    const [verification, setVerification] = React.useState<AccountVerificationStats | null>(null)
     const [platformLoading, setPlatformLoading] = React.useState(true)
     const [platformError, setPlatformError] = React.useState<string | null>(null)
 
@@ -137,8 +138,8 @@ export default function AdminAnalyticsPage() {
         if (profile?.role !== "ADMIN") return
         setPlatformLoading(true)
         setPlatformError(null)
-        Promise.all([getAdminAnalytics(), getAdminStats()])
-            .then(([a, s]) => { setAnalytics(a); setStats(s) })
+        Promise.all([getAdminAnalytics(), getAdminStats(), getAccountVerificationStats()])
+            .then(([a, s, v]) => { setAnalytics(a); setStats(s); setVerification(v) })
             .catch(err => setPlatformError(err.message || "Failed to load platform stats"))
             .finally(() => setPlatformLoading(false))
     }, [profile])
@@ -222,19 +223,42 @@ export default function AdminAnalyticsPage() {
                         <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-secondary)] mb-3 px-1">Platform Overview — Last 6 Months</p>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             {([
-                                { label: "Revenue (6m)", value: formatPrice(totalRevenue6m), icon: DollarSign, color: "bg-yellow-500/20" },
-                                { label: "New Users (6m)", value: totalUsers6m as string | number, icon: Users, color: "bg-blue-500/20" },
+                                { label: "Retained Revenue (6m)", value: formatPrice(totalRevenue6m), icon: DollarSign, color: "bg-yellow-500/20" },
+                                { label: "New Registrations (6m)", value: totalUsers6m as string | number, icon: Users, color: "bg-blue-500/20" },
                                 { label: "New Listings (6m)", value: totalListings6m as string | number, icon: Car, color: "bg-primary/20" },
                             ] as StatCardProps[]).map(c => <StatCard key={c.label} {...c} />)}
                         </div>
                     </div>
 
+                    {/* ── Account verification snapshot ── */}
+                    {verification && (
+                        <div>
+                            <div className="flex items-end justify-between gap-3 mb-3 px-1">
+                                <div>
+                                    <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-secondary)]">Account Verification</p>
+                                    <p className="text-xs text-[var(--text-muted)] mt-1">Unverified accounts remain recoverable in the database but are hidden from public profile surfaces.</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                {([
+                                    { label: "Verified Accounts", value: verification.verifiedAccounts, icon: ShieldCheck, color: "bg-emerald-500/20" },
+                                    { label: "Awaiting Email Verification", value: verification.unverifiedAccounts, icon: UserX, color: "bg-amber-500/20" },
+                                    { label: "Verified Dealer Businesses", value: verification.verifiedDealerBusinesses, icon: Building2, color: "bg-blue-500/20" },
+                                    { label: "Dealer KYC Not Verified", value: verification.unverifiedDealerBusinessRecords, icon: Building2, color: "bg-rose-500/20" },
+                                ] as StatCardProps[]).map(c => <StatCard key={c.label} {...c} />)}
+                            </div>
+                            <p className="mt-3 px-1 text-xs text-[var(--text-muted)]">
+                                {verification.publicVerifiedProfiles.toLocaleString()} verified accounts currently allow a public profile · {verification.activeAccounts.toLocaleString()} active account records in total.
+                            </p>
+                        </div>
+                    )}
+
                     {/* ── Monthly bar charts ── */}
                     {analytics.length > 0 && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                             {[
-                                { key: "revenue" as const, color: "bg-yellow-500/70", label: "Monthly Revenue" },
-                                { key: "newUsers" as const, color: "bg-blue-500/70", label: "New User Registrations" },
+                                { key: "revenue" as const, color: "bg-yellow-500/70", label: "Monthly Retained Revenue" },
+                                { key: "newUsers" as const, color: "bg-blue-500/70", label: "New Account Registrations" },
                                 { key: "newListings" as const, color: "bg-primary/70", label: "New Listings Created" },
                             ].map(({ key, color, label }) => (
                                 <div key={key} className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
@@ -256,9 +280,10 @@ export default function AdminAnalyticsPage() {
                     {stats && (
                         <div className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                             <h2 className="text-sm font-black uppercase tracking-widest text-[var(--text-muted)] mb-4">All-Time Platform Stats</h2>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
                                 {[
-                                    { label: "Total Users", value: stats.totalUsers.toLocaleString() },
+                                    { label: "Registered Accounts", value: stats.totalUsers.toLocaleString() },
+                                    { label: "Retained Revenue", value: formatPrice(stats.totalRevenue) },
                                     { label: "Total Listings", value: stats.totalListings.toLocaleString() },
                                     { label: "Active Listings", value: stats.activeListings.toLocaleString() },
                                     { label: "Vehicles Sold", value: stats.soldListings.toLocaleString() },
@@ -273,6 +298,7 @@ export default function AdminAnalyticsPage() {
                                     </div>
                                 ))}
                             </div>
+                            <p className="text-xs text-[var(--text-muted)] mt-4">Revenue is CarMazium-retained platform income, not customer-to-seller or other pass-through transaction value.</p>
                         </div>
                     )}
 
@@ -282,8 +308,8 @@ export default function AdminAnalyticsPage() {
                     <div>
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-secondary)] mb-1 px-1">Website Traffic & Visitors</p>
-                                <p className="text-xs text-[var(--text-muted)] px-1">Derived from on-site event tracking. Geo data enriches over time.</p>
+                                <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-secondary)] mb-1 px-1">Public Website Traffic</p>
+                                <p className="text-xs text-[var(--text-muted)] px-1">Live first-party CarMazium event data. Dashboard, admin and authentication routes are excluded.</p>
                             </div>
                         </div>
 
@@ -308,13 +334,17 @@ export default function AdminAnalyticsPage() {
                                 {/* ── Traffic KPI overview ── */}
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                     {([
-                                        { label: "Page Views", value: traffic.overview.pageViews.toLocaleString(), icon: Eye, color: "bg-blue-500/20" },
-                                        { label: "Unique Visitors", value: traffic.overview.uniqueVisitors.toLocaleString(), icon: Users, color: "bg-emerald-500/20" },
-                                        { label: "Pages / Visit", value: traffic.overview.pagesPerVisit.toFixed(1), icon: MousePointerClick, color: "bg-purple-500/20" },
+                                        { label: "Public Page Views", value: traffic.overview.pageViews.toLocaleString(), icon: Eye, color: "bg-blue-500/20" },
+                                        { label: "Unique Sessions", value: traffic.overview.uniqueVisitors.toLocaleString(), icon: Users, color: "bg-emerald-500/20" },
+                                        { label: "Pages / Session", value: traffic.overview.pagesPerVisit.toFixed(1), icon: MousePointerClick, color: "bg-purple-500/20" },
                                         { label: "Searches", value: traffic.overview.searches.toLocaleString(), icon: Search, color: "bg-amber-500/20" },
                                     ] as StatCardProps[]).map(card => (
                                         <StatCard key={card.label} {...card} />
                                     ))}
+                                </div>
+
+                                <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 text-xs text-[var(--text-muted)]">
+                                    <strong className="text-cyan-300">Data quality:</strong> “Unique Sessions” is based on CarMazium&apos;s first-party session ID and is not presented as unique people. {traffic.overview.excludedInternalPageViews.toLocaleString()} internal dashboard/admin/auth page views were excluded from this selected period.
                                 </div>
 
                                 {/* ── Traffic by day ── */}
@@ -384,7 +414,7 @@ export default function AdminAnalyticsPage() {
                                     <div className="glass-card border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl overflow-hidden">
                                         <div className="p-4 border-b border-[var(--border-default)] flex items-center gap-2">
                                             <Eye size={13} className="text-blue-400" />
-                                            <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Top Pages</p>
+                                            <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Top Public Pages</p>
                                         </div>
                                         {traffic.topPages.length === 0 ? (
                                             <p className="text-xs text-[var(--text-secondary)] font-bold p-4 text-center">No page view data yet</p>
