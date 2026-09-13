@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -15,46 +16,41 @@ export interface FreeListingGrantView {
     status: 'ACTIVE' | 'USED' | 'EXPIRED' | 'REVOKED';
 }
 
-interface StoredFreeListingGrant {
+interface FreeListingGrantRow {
     id: string;
-    grantedAt: string;
+    userId: string;
     grantedById: string;
-    expiresAt: string | null;
-    usedAt: string | null;
+    expiresAt: Date | null;
+    usedAt: Date | null;
     usedListingId: string | null;
-    revokedAt: string | null;
+    revokedAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
 }
-
-const GRANT_KEY = 'adminFreeListingGrant';
 
 @Injectable()
 export class FreeListingGrantsService {
     constructor(private readonly prisma: PrismaService) {}
 
-    private preferencesObject(value: unknown): Record<string, any> {
-        return value && typeof value === 'object' && !Array.isArray(value)
-            ? { ...(value as Record<string, any>) }
-            : {};
-    }
-
-    private storedGrant(value: unknown): StoredFreeListingGrant | null {
-        const preferences = this.preferencesObject(value);
-        const grant = preferences[GRANT_KEY];
-        if (!grant || typeof grant !== 'object' || Array.isArray(grant)) return null;
-        if (typeof grant.id !== 'string' || typeof grant.grantedAt !== 'string') return null;
-        return grant as StoredFreeListingGrant;
-    }
-
-    private grantStatus(grant: StoredFreeListingGrant): FreeListingGrantView['status'] {
+    private status(grant: FreeListingGrantRow): FreeListingGrantView['status'] {
         if (grant.revokedAt) return 'REVOKED';
         if (grant.usedAt) return 'USED';
-        if (grant.expiresAt && new Date(grant.expiresAt).getTime() <= Date.now()) return 'EXPIRED';
+        if (grant.expiresAt && grant.expiresAt.getTime() <= Date.now()) return 'EXPIRED';
         return 'ACTIVE';
     }
 
-    private toView(grant: StoredFreeListingGrant | null): FreeListingGrantView | null {
+    private toView(grant: FreeListingGrantRow | null): FreeListingGrantView | null {
         if (!grant) return null;
-        return { ...grant, status: this.grantStatus(grant) };
+        return {
+            id: grant.id,
+            grantedAt: grant.createdAt.toISOString(),
+            grantedById: grant.grantedById,
+            expiresAt: grant.expiresAt?.toISOString() ?? null,
+            usedAt: grant.usedAt?.toISOString() ?? null,
+            usedListingId: grant.usedListingId,
+            revokedAt: grant.revokedAt?.toISOString() ?? null,
+            status: this.status(grant),
+        };
     }
 
     private calculateExpiry(unit: FreeListingDurationUnit, rawValue?: number): Date | null {
@@ -73,6 +69,18 @@ export class FreeListingGrantsService {
         if (unit === 'DAYS') expiresAt.setDate(expiresAt.getDate() + value);
         if (unit === 'MONTHS') expiresAt.setMonth(expiresAt.getMonth() + value);
         return expiresAt;
+    }
+
+    private async findGrantByUser(userId: string): Promise<FreeListingGrantRow | null> {
+        const rows = await this.prisma.$queryRaw<FreeListingGrantRow[]>(Prisma.sql`
+            SELECT
+                "id", "userId", "grantedById", "expiresAt", "usedAt",
+                "usedListingId", "revokedAt", "createdAt", "updatedAt"
+            FROM "admin_free_listing_grants"
+            WHERE "userId" = ${userId}
+            LIMIT 1
+        `);
+        return rows[0] ?? null;
     }
 
     async listUsers(page = 1, limit = 20, search?: string) {
@@ -103,16 +111,27 @@ export class FreeListingGrantsService {
                     role: true,
                     createdAt: true,
                     deletedAt: true,
-                    preferences: true,
                 },
             }),
             this.prisma.user.count({ where }),
         ]);
 
+        const userIds = users.map((user) => user.id);
+        const grants = userIds.length
+            ? await this.prisma.$queryRaw<FreeListingGrantRow[]>(Prisma.sql`
+                  SELECT
+                      "id", "userId", "grantedById", "expiresAt", "usedAt",
+                      "usedListingId", "revokedAt", "createdAt", "updatedAt"
+                  FROM "admin_free_listing_grants"
+                  WHERE "userId" IN (${Prisma.join(userIds)})
+              `)
+            : [];
+        const grantsByUser = new Map(grants.map((grant) => [grant.userId, grant]));
+
         return {
-            data: users.map(({ preferences, ...user }) => ({
+            data: users.map((user) => ({
                 ...user,
-                freeListingGrant: this.toView(this.storedGrant(preferences)),
+                freeListingGrant: this.toView(grantsByUser.get(user.id) ?? null),
             })),
             total,
             page: safePage,
@@ -126,66 +145,54 @@ export class FreeListingGrantsService {
         durationUnit: FreeListingDurationUnit,
         durationValue?: number,
     ): Promise<FreeListingGrantView> {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, deletedAt: true },
+        });
+        if (!user) throw new NotFoundException('User not found');
+        if (user.deletedAt) throw new BadRequestException('A banned user cannot be granted a free listing');
+
         const expiresAt = this.calculateExpiry(durationUnit, durationValue);
-        const now = new Date();
+        const id = randomUUID();
 
-        const grant: StoredFreeListingGrant = {
-            id: randomUUID(),
-            grantedAt: now.toISOString(),
-            grantedById: adminId,
-            expiresAt: expiresAt?.toISOString() ?? null,
-            usedAt: null,
-            usedListingId: null,
-            revokedAt: null,
-        };
+        await this.prisma.$executeRaw(Prisma.sql`
+            INSERT INTO "admin_free_listing_grants" (
+                "id", "userId", "grantedById", "expiresAt", "usedAt",
+                "usedListingId", "revokedAt", "createdAt", "updatedAt"
+            ) VALUES (
+                ${id}, ${userId}, ${adminId}, ${expiresAt}, NULL,
+                NULL, NULL, NOW(), NOW()
+            )
+            ON CONFLICT ("userId") DO UPDATE SET
+                "id" = EXCLUDED."id",
+                "grantedById" = EXCLUDED."grantedById",
+                "expiresAt" = EXCLUDED."expiresAt",
+                "usedAt" = NULL,
+                "usedListingId" = NULL,
+                "revokedAt" = NULL,
+                "createdAt" = NOW(),
+                "updatedAt" = NOW()
+        `);
 
-        for (let attempt = 0; attempt < 2; attempt += 1) {
-            const user = await this.prisma.user.findUnique({
-                where: { id: userId },
-                select: { id: true, deletedAt: true, preferences: true, updatedAt: true },
-            });
-            if (!user) throw new NotFoundException('User not found');
-            if (user.deletedAt) throw new BadRequestException('A banned user cannot be granted a free listing');
-
-            const preferences = this.preferencesObject(user.preferences);
-            preferences[GRANT_KEY] = grant;
-
-            const updated = await this.prisma.user.updateMany({
-                where: { id: userId, updatedAt: user.updatedAt },
-                data: { preferences },
-            });
-            if (updated.count === 1) return this.toView(grant)!;
-        }
-
-        throw new BadRequestException('The user account changed while the grant was being saved. Please try again.');
+        const saved = await this.findGrantByUser(userId);
+        if (!saved) throw new BadRequestException('Free listing grant could not be saved');
+        return this.toView(saved)!;
     }
 
     async revoke(userId: string): Promise<FreeListingGrantView | null> {
-        for (let attempt = 0; attempt < 2; attempt += 1) {
-            const user = await this.prisma.user.findUnique({
-                where: { id: userId },
-                select: { id: true, preferences: true, updatedAt: true },
-            });
-            if (!user) throw new NotFoundException('User not found');
+        const existing = await this.findGrantByUser(userId);
+        if (!existing) return null;
+        if (this.status(existing) !== 'ACTIVE') return this.toView(existing);
 
-            const preferences = this.preferencesObject(user.preferences);
-            const grant = this.storedGrant(preferences);
-            if (!grant) return null;
+        await this.prisma.$executeRaw(Prisma.sql`
+            UPDATE "admin_free_listing_grants"
+            SET "revokedAt" = NOW(), "updatedAt" = NOW()
+            WHERE "userId" = ${userId}
+              AND "usedAt" IS NULL
+              AND "revokedAt" IS NULL
+        `);
 
-            const revokedGrant: StoredFreeListingGrant = {
-                ...grant,
-                revokedAt: grant.revokedAt ?? new Date().toISOString(),
-            };
-            preferences[GRANT_KEY] = revokedGrant;
-
-            const updated = await this.prisma.user.updateMany({
-                where: { id: userId, updatedAt: user.updatedAt },
-                data: { preferences },
-            });
-            if (updated.count === 1) return this.toView(revokedGrant);
-        }
-
-        throw new BadRequestException('The user account changed while the grant was being revoked. Please try again.');
+        return this.toView(await this.findGrantByUser(userId));
     }
 
     /**
@@ -223,29 +230,33 @@ export class FreeListingGrantsService {
         });
         if (existingFee) return false;
 
-        const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { preferences: true, updatedAt: true },
-        });
-        if (!user) return false;
-
-        const grant = this.storedGrant(user.preferences);
-        if (!grant || this.grantStatus(grant) !== 'ACTIVE') return false;
-
-        const usedAt = new Date().toISOString();
-        const preferences = this.preferencesObject(user.preferences);
-        preferences[GRANT_KEY] = {
-            ...grant,
-            usedAt,
-            usedListingId: listingId,
-        } satisfies StoredFreeListingGrant;
-
         return this.prisma.$transaction(async (tx) => {
-            const claimed = await tx.user.updateMany({
-                where: { id: userId, updatedAt: user.updatedAt },
-                data: { preferences },
-            });
-            if (claimed.count !== 1) return false;
+            // Lock the entitlement row. Two publish requests cannot consume one
+            // grant twice, and expiry/revocation is checked again while locked.
+            const rows = await tx.$queryRaw<FreeListingGrantRow[]>(Prisma.sql`
+                SELECT
+                    "id", "userId", "grantedById", "expiresAt", "usedAt",
+                    "usedListingId", "revokedAt", "createdAt", "updatedAt"
+                FROM "admin_free_listing_grants"
+                WHERE "userId" = ${userId}
+                FOR UPDATE
+            `);
+            const grant = rows[0];
+            if (!grant || this.status(grant) !== 'ACTIVE') return false;
+
+            const now = new Date();
+            const claimed = await tx.$executeRaw(Prisma.sql`
+                UPDATE "admin_free_listing_grants"
+                SET
+                    "usedAt" = ${now},
+                    "usedListingId" = ${listingId},
+                    "updatedAt" = NOW()
+                WHERE "id" = ${grant.id}
+                  AND "usedAt" IS NULL
+                  AND "revokedAt" IS NULL
+                  AND ("expiresAt" IS NULL OR "expiresAt" > ${now})
+            `);
+            if (claimed !== 1) return false;
 
             await tx.transaction.create({
                 data: {
@@ -254,7 +265,7 @@ export class FreeListingGrantsService {
                     amount: 0,
                     type: 'LISTING_FEE',
                     status: 'COMPLETED',
-                    description: 'Admin-granted free BASIC listing',
+                    description: `Admin-granted free BASIC listing (${grant.id})`,
                 },
             });
             return true;
