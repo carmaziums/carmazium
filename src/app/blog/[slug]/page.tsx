@@ -9,7 +9,8 @@ import { formatPrice } from "@/lib/listingApi"
 import { BlogContent, blogHeadingId } from "@/components/blog/BlogContent"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com"
+// Canonical SEO origin. The apex domain permanently redirects to www.
+const SITE_URL = "https://www.carmazium.com"
 
 async function getPostBySlug(slug: string): Promise<BlogPost | null> {
     try {
