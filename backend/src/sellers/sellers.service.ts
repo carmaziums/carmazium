@@ -57,6 +57,25 @@ export interface ReviewsResponse {
 export class SellersService {
     constructor(private readonly prisma: PrismaService) { }
 
+    private async ensureVerifiedPublicUser(userId: string) {
+        const user = await this.prisma.user.findFirst({
+            where: {
+                id: userId,
+                deletedAt: null,
+                isEmailVerified: true,
+                showPublicProfile: true,
+            },
+            select: { id: true },
+        });
+        if (!user) {
+            // Deliberately use the same public not-found response for missing,
+            // deleted, private and unverified accounts so account state is not
+            // disclosed to visitors.
+            throw new NotFoundException('Seller profile not found');
+        }
+        return user;
+    }
+
     // ── Ensure a SellerProfile exists for a user (upsert) ──────────────────
 
     /**
@@ -78,6 +97,7 @@ export class SellersService {
      * blurred placeholder without a real number ever reaching the network response.
      */
     async getContactPhone(userId: string, viewerAuthenticated: boolean): Promise<{ phone: string | null; phoneAvailable: boolean }> {
+        await this.ensureVerifiedPublicUser(userId);
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
             select: {
@@ -87,7 +107,7 @@ export class SellersService {
         });
 
         if (!user) {
-            throw new NotFoundException(`User "${userId}" not found`);
+            throw new NotFoundException('Seller profile not found');
         }
 
         const realPhone = user.dealerProfile?.phone || user.phone || null;
@@ -100,11 +120,13 @@ export class SellersService {
     // ── Get public seller profile ───────────────────────────────────────────
 
     /**
-     * Returns a public-safe seller profile for the given userId.
+     * Returns a public-safe seller profile for a verified account.
      * Includes: stats, aggregated review count, and average rating.
      * Password hash is never included.
      */
     async getPublicProfile(userId: string): Promise<SellerProfileResponse> {
+        await this.ensureVerifiedPublicUser(userId);
+
         let sellerProfile = await this.prisma.sellerProfile.findUnique({
             where: { userId },
             include: {
@@ -125,16 +147,11 @@ export class SellersService {
         });
 
         if (!sellerProfile) {
-            // Ensure the user actually exists first
-            const user = await this.prisma.user.findUnique({ where: { id: userId } });
-            if (!user) {
-                throw new NotFoundException(`User "${userId}" not found`);
-            }
-            
-            // Auto-create profile
+            // Only verified/public users reach this point. Preserve the legacy
+            // lazy SellerProfile creation behaviour without creating reputation
+            // records for unverified visitor-facing accounts.
             await this.ensureProfile(userId);
-            
-            // Fetch again
+
             sellerProfile = await this.prisma.sellerProfile.findUnique({
                 where: { userId },
                 include: {
@@ -153,9 +170,9 @@ export class SellersService {
                     },
                 },
             });
-            
+
             if (!sellerProfile) {
-                throw new NotFoundException(`Failed to create seller profile for user "${userId}"`);
+                throw new NotFoundException('Seller profile not found');
             }
         }
 
@@ -202,9 +219,10 @@ export class SellersService {
     // ── Get all active listings by a seller ────────────────────────────────
 
     /**
-     * Returns paginated active listings for a given seller (public).
+     * Returns paginated active listings for a verified public seller.
      */
     async getSellerListings(userId: string, page = 1, limit = 12) {
+        await this.ensureVerifiedPublicUser(userId);
         const skip = (page - 1) * limit;
 
         const [data, total] = await this.prisma.$transaction([
@@ -253,11 +271,34 @@ export class SellersService {
         page = 1,
         limit = 10,
     ): Promise<ReviewsResponse> {
+        const publicProfile = await this.prisma.sellerProfile.findFirst({
+            where: {
+                id: sellerProfileId,
+                user: {
+                    is: {
+                        deletedAt: null,
+                        isEmailVerified: true,
+                        showPublicProfile: true,
+                    },
+                },
+            },
+            select: { id: true },
+        });
+        if (!publicProfile) throw new NotFoundException('Seller profile not found');
+
         const skip = (page - 1) * limit;
+        const where = {
+            sellerId: sellerProfileId,
+            reviewer: {
+                isEmailVerified: true,
+                deletedAt: null,
+                showPublicProfile: true,
+            },
+        };
 
         const [data, total] = await this.prisma.$transaction([
             this.prisma.sellerReview.findMany({
-                where: { sellerId: sellerProfileId },
+                where,
                 select: {
                     id: true,
                     rating: true,
@@ -277,7 +318,7 @@ export class SellersService {
                 skip,
                 take: limit,
             }),
-            this.prisma.sellerReview.count({ where: { sellerId: sellerProfileId } }),
+            this.prisma.sellerReview.count({ where }),
         ]);
 
         return { data, total, page, limit };
