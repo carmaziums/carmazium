@@ -1,0 +1,33 @@
+name: Apply dashboard usability patch
+
+on:
+  push:
+    branches:
+      - ui/simplify-user-dealer-dashboards
+    paths:
+      - .github/scripts/apply-dashboard-usability.py
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui/simplify-user-dealer-dashboards
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply exact dashboard usability edits
+        run: python .github/scripts/apply-dashboard-usability.py
+      - name: Commit dashboard edits
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/dashboard/user/page.tsx src/app/dashboard/dealer/page.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "ui(dashboard): simplify user and dealer home screens"
+          git push origin HEAD:ui/simplify-user-dealer-dashboards
