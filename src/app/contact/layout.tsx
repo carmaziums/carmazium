@@ -1,13 +1,18 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-    title: "Contact Us",
+    title: "Contact CarMazium — Car Buying & Selling Support",
     description:
-        "Get in touch with the CarMazium team. Whether you need help buying, selling, or have questions about our platform, we're here to help.",
+        "Contact the CarMazium team for help with buying, selling, auctions, listings or other questions about the UK car marketplace.",
+    alternates: {
+        canonical: "/contact",
+    },
     openGraph: {
-        title: "Contact CarMazium",
+        title: "Contact CarMazium — Car Buying & Selling Support",
         description:
-            "Need help buying or selling a car? Reach out to the CarMazium team.",
+            "Get help with buying, selling, auctions, listings or other CarMazium marketplace questions.",
+        url: "/contact",
+        type: "website",
     },
 }
 
