@@ -134,8 +134,20 @@ export default async function Home() {
              * Its archive link is a desktop-only Tailwind control (`hidden sm:inline-flex`).
              * On phones, promote that same real /blog link into a full-width CTA so the
              * complete archive remains reachable without making the homepage excessively long.
+             *
+             * The hero H1 and its supporting copy are important LCP/search content. Framer
+             * Motion's server-rendered initial state otherwise emits them at opacity:0 until
+             * hydration. Keep those text nodes visible from the first paint; interactive
+             * controls and all marketplace behaviour remain unchanged.
              */}
             <style>{`
+                main .animate-page-in > div > section:first-of-type > div.relative.z-10 > h1,
+                main .animate-page-in > div > section:first-of-type > div.relative.z-10 > p {
+                    opacity: 1 !important;
+                    transform: none !important;
+                    filter: none !important;
+                }
+
                 @media (max-width: 639px) {
                     section:has(> div > a[href="/blog"].hidden) > div:first-child {
                         flex-direction: column;
