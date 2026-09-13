@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 import * as React from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { 
@@ -234,15 +234,35 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Unified Overview</h2>
-                    <p className="text-[var(--text-muted)] text-sm font-medium">Your combined activity as a buyer and seller.</p>
+                    <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Dashboard</h2>
+                    <p className="text-[var(--text-muted)] text-sm font-medium">Everything you need to buy, sell and manage your cars in one place.</p>
                 </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <Link href="/sell" className="flex items-center gap-3 p-4 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors">
+                    <div className="w-9 h-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0"><PlusCircle size={18} /></div>
+                    <div className="min-w-0"><p className="font-bold text-sm">Sell a Car</p><p className="text-[11px] text-[var(--text-muted)] truncate">Create a listing</p></div>
+                </Link>
+                <Link href="/search" className="flex items-center gap-3 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-colors">
+                    <div className="w-9 h-9 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center shrink-0"><Car size={18} /></div>
+                    <div className="min-w-0"><p className="font-bold text-sm">Buy a Car</p><p className="text-[11px] text-[var(--text-muted)] truncate">Browse vehicles</p></div>
+                </Link>
+                <button type="button" onClick={() => setTab('bids')} className="text-left flex items-center gap-3 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 transition-colors">
+                    <div className="w-9 h-9 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0"><Gavel size={18} /></div>
+                    <div className="min-w-0"><p className="font-bold text-sm">My Offers</p><p className="text-[11px] text-[var(--text-muted)] truncate">Track offers sent</p></div>
+                </button>
+                <button type="button" onClick={() => setTab('messages')} className="text-left flex items-center gap-3 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors">
+                    <div className="w-9 h-9 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0"><MessageSquare size={18} /></div>
+                    <div className="min-w-0"><p className="font-bold text-sm">Messages</p><p className="text-[11px] text-[var(--text-muted)] truncate">Open your inbox</p></div>
+                </button>
             </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard 
-                    label="Active Inventory" 
+                    label="My Listings" 
                     value={data?.seller?.activeListings || 0} 
                     icon={Car} 
                     color="text-primary" 
@@ -251,7 +271,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
                     loading={loading} 
                 />
                 <MetricCard 
-                    label="Total Revenue" 
+                    label="Sales Revenue" 
                     value={formatPrice(data?.seller?.totalRevenue || 0)} 
                     icon={DollarSign} 
                     color="text-emerald-400" 
@@ -260,7 +280,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
                     loading={loading} 
                 />
                 <MetricCard 
-                    label="Watchlist" 
+                    label="Saved Cars" 
                     value={data?.buyer?.watchlistCount || 0} 
                     icon={Heart} 
                     color="text-pink-400" 
@@ -269,7 +289,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
                     loading={loading} 
                 />
                 <MetricCard 
-                    label="Total Views" 
+                    label="Listing Views" 
                     value={data?.seller?.totalViews || 0} 
                     icon={Eye} 
                     color="text-yellow-400" 
@@ -283,7 +303,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="glass-card p-6 border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                     <h3 className="text-lg font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-6">
-                        <TrendingUp className="text-primary" size={20} /> Seller Insights
+                        <TrendingUp className="text-primary" size={20} /> Selling
                     </h3>
                     <div className="space-y-4">
                         <div className="flex items-center justify-between p-4 bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)] group hover:border-primary/30 transition-all">
@@ -315,7 +335,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
 
                 <div className="glass-card p-6 border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                     <h3 className="text-lg font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-6">
-                        <Gavel className="text-blue-400" size={20} /> Buyer Insights
+                        <Gavel className="text-blue-400" size={20} /> Buying
                     </h3>
                     <div className="space-y-4">
                         <div className="flex items-center justify-between p-4 bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)] group hover:border-blue-500/30 transition-all">
@@ -340,7 +360,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
                                     <p className="text-xs text-[var(--text-muted)]">You are tracking {data?.buyer?.watchlistCount || 0} vehicles.</p>
                                 </div>
                             </div>
-                            <Button variant="ghost" size="sm" className="text-yellow-400 hover:bg-yellow-500/10">Browse</Button>
+                            <Button variant="ghost" size="sm" className="text-yellow-400 hover:bg-yellow-500/10" onClick={() => setTab('watchlist')}>View Saved</Button>
                         </div>
                     </div>
                 </div>

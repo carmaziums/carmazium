@@ -1,11 +1,11 @@
-﻿"use client"
+"use client"
 
 import * as React from "react"
 import Link from "next/link"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import {
-    Car, Eye, TrendingUp, Users, Kanban,
+    Car, Eye, TrendingUp, Users, Kanban, Gavel,
     PlusCircle, ArrowUpRight, Loader2, Building2, CheckCircle,
     Mail, Activity, Sparkles, ShieldCheck, HeartHandshake, Zap
 } from "lucide-react"
@@ -177,7 +177,7 @@ export default function DealerDashboard() {
 
                     {/* ── Executive Insights Banner (only when verified) ── */}
                     {isEmailVerified && (
-                        <div className="dealer-glass-card p-8 group">
+                        <div className="dealer-glass-card p-5 md:p-8 group">
                             <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl opacity-50 group-hover:opacity-80 transition-opacity duration-700" />
                             <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/5 rounded-full translate-y-1/2 -translate-x-1/3 blur-3xl" />
                             <div className="relative z-10">
@@ -187,7 +187,7 @@ export default function DealerDashboard() {
                                             <Building2 className="text-[var(--text-primary)]" size={24} />
                                         </div>
                                         <div>
-                                            <h1 className="text-3xl font-black font-heading uppercase tracking-tighter metallic-foil">
+                                            <h1 className="text-2xl md:text-3xl font-black font-heading uppercase tracking-tighter metallic-foil">
                                                 {DEALER_ROUTE_CONFIG[0].title}
                                             </h1>
                                             <p className="text-[var(--text-muted)] text-xs font-bold uppercase tracking-widest mt-1 opacity-70">
@@ -262,8 +262,10 @@ export default function DealerDashboard() {
                         />
                     </div>
 
-                    {/* ── Quick Actions & Proprietary Insights ── */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* ── Quick Actions ── */}
+                    <div>
+                        <h2 className="text-lg font-black font-heading uppercase tracking-tight mb-3">Quick Actions</h2>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <Link href="/dashboard/dealer/inventory" className="dealer-glass-card p-5 group flex items-center justify-between col-span-1">
                             <div className="flex items-center gap-3">
                                 <div className="p-2.5 bg-primary/10 border border-primary/20 rounded-xl"><Car size={20} className="text-primary group-hover:scale-110 transition-transform" /></div>
@@ -282,9 +284,24 @@ export default function DealerDashboard() {
                                 </div>
                             </div>
                         </Link>
-                        
-                        <div className="dealer-glass-card p-5 group flex items-center justify-center col-span-1 md:col-span-2">
-                            <p className="text-[var(--text-muted)] text-sm">Dashboard Overview initialized successfully.</p>
+                        <Link href="/dashboard/dealer/add-listing" className="dealer-glass-card p-5 group flex items-center justify-between col-span-1">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl"><PlusCircle size={20} className="text-emerald-400 group-hover:scale-110 transition-transform" /></div>
+                                <div>
+                                    <p className="font-bold text-[var(--text-primary)] text-sm">Add Vehicle</p>
+                                    <p className="text-[var(--text-muted)] text-xs uppercase font-bold tracking-wider mt-0.5">Create Listing</p>
+                                </div>
+                            </div>
+                        </Link>
+                        <Link href="/dashboard/dealer/auctions" className="dealer-glass-card p-5 group flex items-center justify-between col-span-1">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl"><Gavel size={20} className="text-blue-400 group-hover:scale-110 transition-transform" /></div>
+                                <div>
+                                    <p className="font-bold text-[var(--text-primary)] text-sm">Auctions</p>
+                                    <p className="text-[var(--text-muted)] text-xs uppercase font-bold tracking-wider mt-0.5">Buy & Bid</p>
+                                </div>
+                            </div>
+                        </Link>
                         </div>
                     </div>
 

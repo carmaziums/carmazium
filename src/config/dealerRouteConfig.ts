@@ -23,126 +23,144 @@ export interface DealerRoute {
     subHeader: string
     icon: LucideIcon
     hidden?: boolean
+    section?: string
 }
 
 export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     {
         href: "/dashboard/dealer",
-        label: "Vehicle Dealer",
+        label: "Dealer Home",
         title: "Vehicle Dealer",
         subHeader: "Dealer workspace",
-        icon: Car
+        icon: Car,
+        section: "Workspaces"
     },
     {
         href: "/dashboard/partner",
         label: "Partner Home",
         title: "Partner Dashboard",
         subHeader: "Manage your business add-ons",
-        icon: LayoutDashboard
+        icon: LayoutDashboard,
+        section: "Workspaces"
     },
     {
         href: "/dashboard/service/capabilities",
         label: "Service Add-ons",
         title: "Service Add-ons",
         subHeader: "Delivery, recovery and inspection services",
-        icon: Wrench
+        icon: Wrench,
+        section: "Workspaces"
     },
     {
         href: "/dashboard/service/jobs",
         label: "Service Jobs",
         title: "Service Jobs",
         subHeader: "TradeXchange work for your business",
-        icon: Briefcase
+        icon: Briefcase,
+        section: "Workspaces"
     },
     {
         href: "/dashboard/dealer/inventory",
         label: "Inventory",
         title: "Inventory",
         subHeader: "Curate and manage your high-end stock",
-        icon: Car
+        icon: Car,
+        section: "Sales"
     },
     {
         href: "/dashboard/dealer/crm",
         label: "Leads",
         title: "Leads",
         subHeader: "Strategic lead management & conversion tracking",
-        icon: Kanban
+        icon: Kanban,
+        section: "Sales"
     },
     {
         href: "/dashboard/dealer/offers",
-        label: "Offers",
+        label: "Offers Received",
         title: "Offers",
         subHeader: "Direct high-value vehicle acquisition review",
-        icon: Tag
+        icon: Tag,
+        section: "Sales"
     },
     {
         href: "/dashboard/dealer/my-offers",
         label: "My Offers",
         title: "My Offers",
         subHeader: "Outgoing bids placed on other dealers' inventory",
-        icon: Gavel
-    },
-    {
-        href: "/dashboard/dealer/finance",
-        label: "Finance",
-        title: "Finance",
-        subHeader: "Strategic vehicle financing & liquidity oversight",
-        icon: DollarSign
-    },
-    {
-        href: "/dashboard/dealer/messages",
-        label: "Messages",
-        title: "Messages",
-        subHeader: "Direct bespoke communication",
-        icon: MessageSquare
-    },
-    {
-        href: "/dashboard/dealer/analytics",
-        label: "Analytics",
-        title: "Analytics",
-        subHeader: "Strategic market performance & predictive insights",
-        icon: BarChart3
-    },
-    {
-        href: "/dashboard/dealer/team",
-        label: "Team",
-        title: "Team",
-        subHeader: "Manage business personnel & service permissions",
-        icon: Users
-    },
-    {
-        href: "/dashboard/dealer/earnings",
-        label: "Earnings",
-        title: "Revenue & Earnings",
-        subHeader: "Strategic revenue tracking and platform sales history",
-        icon: DollarSign
-    },
-    {
-        href: "/dashboard/dealer/settings",
-        label: "Settings",
-        title: "Settings",
-        subHeader: "Manage your business profile and preferences",
-        icon: Settings
+        icon: Gavel,
+        section: "Buying"
     },
     {
         href: "/dashboard/dealer/auctions",
         label: "Auctions",
         title: "Auctions",
         subHeader: "Manage live vehicle auctions & bidding",
-        icon: Gavel
+        icon: Gavel,
+        section: "Buying"
     },
     {
         href: "/dashboard/dealer/auctions/won",
-        label: "Purchased from Auction",
+        label: "Auction Purchases",
         title: "Purchased from Auction",
         subHeader: "Every auction you're bidding on or have won, and exactly what to do next",
-        icon: Trophy
+        icon: Trophy,
+        section: "Buying"
     },
     {
         href: "/dashboard/dealer/wishlist",
         label: "Wishlist",
         title: "Wishlist",
         subHeader: "Vehicles you're tracking across the marketplace",
-        icon: Heart
+        icon: Heart,
+        section: "Buying"
+    },
+    {
+        href: "/dashboard/dealer/messages",
+        label: "Messages",
+        title: "Messages",
+        subHeader: "Direct bespoke communication",
+        icon: MessageSquare,
+        section: "Business"
+    },
+    {
+        href: "/dashboard/dealer/team",
+        label: "Team",
+        title: "Team",
+        subHeader: "Manage business personnel & service permissions",
+        icon: Users,
+        section: "Business"
+    },
+    {
+        href: "/dashboard/dealer/finance",
+        label: "Finance",
+        title: "Finance",
+        subHeader: "Strategic vehicle financing & liquidity oversight",
+        icon: DollarSign,
+        section: "Business"
+    },
+    {
+        href: "/dashboard/dealer/analytics",
+        label: "Analytics",
+        title: "Analytics",
+        subHeader: "Strategic market performance & predictive insights",
+        icon: BarChart3,
+        section: "Performance"
+    },
+    {
+        href: "/dashboard/dealer/earnings",
+        label: "Earnings",
+        title: "Revenue & Earnings",
+        subHeader: "Strategic revenue tracking and platform sales history",
+        icon: DollarSign,
+        section: "Performance"
+    },
+    {
+        href: "/dashboard/dealer/settings",
+        label: "Settings",
+        title: "Settings",
+        subHeader: "Manage your business profile and preferences",
+        icon: Settings,
+        section: "Account"
     }
 ]
