@@ -8,6 +8,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
 import { ServicesService } from './services.service';
 import { ContractorGuard } from './guards/contractor.guard';
+import { TradeTeamService } from './trade-team.service';
 import {
     CreateJobDto, JobFromPurchaseDto, CancelJobDto, UpsertQuoteDto, ApplyCapabilityDto,
 } from './dto';
@@ -24,7 +25,10 @@ import {
 @Controller('services')
 @UseGuards(SessionAuthGuard)
 export class ServicesController {
-    constructor(private readonly services: ServicesService) { }
+    constructor(
+        private readonly services: ServicesService,
+        private readonly tradeTeam: TradeTeamService,
+    ) { }
 
     // ── Contractor onboarding ──────────────────────────────────────────────
 
@@ -62,55 +66,81 @@ export class ServicesController {
         return new StandardResponse(await this.services.myJobs(user.id));
     }
 
-    // ── Contractor ─────────────────────────────────────────────────────────
+    // ── Provider / authorised dealership team ─────────────────────────────
 
     @Get('jobs/feed')
     @UseGuards(ContractorGuard)
     @ApiQuery({ name: 'serviceType', enum: Object.values(ServiceType), required: false })
     @ApiOperation({ summary: 'Open jobs in approved service areas (customer identity redacted)' })
-    // Typed as string, not ServiceType, on purpose. Prisma enums are const
-    // objects, so a parameter annotated with one makes TS emit the object as
-    // design-time metadata and Swagger walks its keys as a schema -- which
-    // took production down on 2026-09-11. The service validates the value.
     async feed(@Req() req: any, @Query('serviceType') serviceType?: string) {
-        return new StandardResponse(await this.services.feed(req.contractorProfileId, req.approvedServiceTypes, serviceType as ServiceType | undefined));
+        return new StandardResponse(
+            await this.services.feed(
+                req.contractorProfileId,
+                req.approvedServiceTypes,
+                serviceType as ServiceType | undefined,
+            ),
+        );
     }
 
     @Get('jobs/assigned')
     @UseGuards(ContractorGuard)
-    @ApiOperation({ summary: 'Jobs where the caller quote was accepted' })
+    @ApiOperation({ summary: 'Jobs assigned to the provider business and visible to the caller’s role' })
     async assigned(@Req() req: any) {
-        return new StandardResponse(await this.services.assigned(req.contractorProfileId));
+        const jobs = await this.services.assigned(req.contractorProfileId);
+        const allowed = new Set<ServiceType>(req.approvedServiceTypes ?? []);
+        return new StandardResponse(jobs.filter((job: any) => allowed.has(job.serviceType)));
     }
 
     @Put('jobs/:id/quote')
     @UseGuards(ContractorGuard)
-    @ApiOperation({ summary: 'Create or update a quote on a job' })
+    @ApiOperation({ summary: 'Create or update a quote on behalf of the provider business' })
     async quote(@Req() req: any, @CurrentUser() user: any, @Param('id') id: string, @Body() dto: UpsertQuoteDto) {
-        return new StandardResponse(
-            await this.services.upsertQuote(req.contractorProfileId, req.approvedServiceTypes, user.id, id, dto),
+        if (req.tradeActor) await this.tradeTeam.assertJobPermission(req.tradeActor, id, 'quote');
+        const actingUserId = req.tradeActor?.actingUserId ?? user.id;
+        const result = await this.services.upsertQuote(
+            req.contractorProfileId,
+            req.approvedServiceTypes,
+            actingUserId,
+            id,
+            dto,
         );
+        if (req.tradeActor) {
+            await this.tradeTeam.logAction(req.tradeActor, id, 'QUOTE_UPSERTED', {
+                quoteId: result.id,
+                amountPence: dto.amountPence,
+            });
+        }
+        return new StandardResponse(result);
     }
 
     @Delete('jobs/:id/quote')
     @UseGuards(ContractorGuard)
-    @ApiOperation({ summary: 'Withdraw a quote' })
+    @ApiOperation({ summary: 'Withdraw the provider business quote' })
     async withdraw(@Req() req: any, @Param('id') id: string) {
-        return new StandardResponse(await this.services.withdrawQuote(req.contractorProfileId, id));
+        if (req.tradeActor) await this.tradeTeam.assertJobPermission(req.tradeActor, id, 'quote');
+        const result = await this.services.withdrawQuote(req.contractorProfileId, id);
+        if (req.tradeActor) await this.tradeTeam.logAction(req.tradeActor, id, 'QUOTE_WITHDRAWN');
+        return new StandardResponse(result);
     }
 
     @Post('jobs/:id/start')
     @UseGuards(ContractorGuard)
-    @ApiOperation({ summary: 'Mark a paid job as started' })
+    @ApiOperation({ summary: 'Mark a paid job as started on behalf of the provider business' })
     async start(@Req() req: any, @Param('id') id: string) {
-        return new StandardResponse(await this.services.startJob(req.contractorProfileId, id));
+        if (req.tradeActor) await this.tradeTeam.assertJobPermission(req.tradeActor, id, 'manage');
+        const result = await this.services.startJob(req.contractorProfileId, id);
+        if (req.tradeActor) await this.tradeTeam.logAction(req.tradeActor, id, 'JOB_STARTED');
+        return new StandardResponse(result);
     }
 
     @Post('jobs/:id/complete')
     @UseGuards(ContractorGuard)
-    @ApiOperation({ summary: 'Mark a job complete — the customer then confirms (or 48h auto)' })
+    @ApiOperation({ summary: 'Mark a job complete on behalf of the provider business' })
     async complete(@Req() req: any, @Param('id') id: string) {
-        return new StandardResponse(await this.services.completeJob(req.contractorProfileId, id));
+        if (req.tradeActor) await this.tradeTeam.assertJobPermission(req.tradeActor, id, 'complete');
+        const result = await this.services.completeJob(req.contractorProfileId, id);
+        if (req.tradeActor) await this.tradeTeam.logAction(req.tradeActor, id, 'JOB_COMPLETED');
+        return new StandardResponse(result);
     }
 
     // ── Shared / customer actions on a job ─────────────────────────────────
@@ -118,13 +148,9 @@ export class ServicesController {
     @Get('jobs/:id')
     @ApiOperation({ summary: 'A job, shaped for whoever is asking' })
     async getOne(@CurrentUser() user: any, @Param('id') id: string) {
-        // Looked up fresh rather than read off the session user: the session
-        // caches the user object, and a contractor who applied after signing
-        // in would otherwise be treated as having no profile until they
-        // signed out and back in.
-        const contractorProfileId = user.role === 'CONTRACTOR'
-            ? (await this.services.contractorProfileIdFor(user.id))
-            : null;
+        const contractorProfileId = user.role === 'ADMIN'
+            ? null
+            : await this.tradeTeam.contractorProfileForJob(user.id, id);
         return new StandardResponse(
             await this.services.getJob({ userId: user.id, role: user.role, contractorProfileId }, id),
         );
