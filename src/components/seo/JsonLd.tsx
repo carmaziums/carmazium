@@ -22,6 +22,7 @@ export function MarketplaceJsonLd({
     const canonicalUrl = url.replace(/\/$/, "")
     const organizationId = `${canonicalUrl}/#organization`
     const websiteId = `${canonicalUrl}/#website`
+    const logoUrl = `${canonicalUrl}/icon.png`
 
     const schema = {
         "@context": "https://schema.org",
@@ -31,6 +32,13 @@ export function MarketplaceJsonLd({
                 "@id": organizationId,
                 name,
                 url: canonicalUrl,
+                logo: {
+                    "@type": "ImageObject",
+                    url: logoUrl,
+                    width: 192,
+                    height: 192,
+                },
+                image: logoUrl,
                 description:
                     "CarMazium is a UK online car marketplace for buying, selling and auctioning vehicles.",
                 areaServed: {
