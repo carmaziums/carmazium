@@ -1,39 +1,53 @@
 /**
  * JSON-LD structured data components for SEO.
- * Renders <script type="application/ld+json"> tags for Google rich results.
+ * Renders <script type="application/ld+json"> tags for search engines.
  */
 
-interface AutoDealerJsonLdProps {
+const DEFAULT_SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.carmazium.com"
+
+interface MarketplaceJsonLdProps {
     name?: string
     url?: string
-    city?: string
 }
 
 /**
- * Site-wide AutoDealer JSON-LD — add to root layout.
+ * Site-wide Organization + WebSite JSON-LD for the CarMazium marketplace.
+ * CarMazium is a marketplace, not the dealer or seller of every listed vehicle.
  */
-export function AutoDealerJsonLd({
+export function MarketplaceJsonLd({
     name = "CarMazium",
-    url = process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com",
-    city = "UK",
-}: AutoDealerJsonLdProps = {}) {
+    url = DEFAULT_SITE_URL,
+}: MarketplaceJsonLdProps = {}) {
+    const canonicalUrl = url.replace(/\/$/, "")
+    const organizationId = `${canonicalUrl}/#organization`
+    const websiteId = `${canonicalUrl}/#website`
+
     const schema = {
         "@context": "https://schema.org",
-        "@type": "AutoDealer",
-        name,
-        url,
-        description:
-            "UK's trusted car marketplace. Browse verified vehicles, sell for free, transparent pricing.",
-        address: {
-            "@type": "PostalAddress",
-            addressLocality: city,
-            addressCountry: "GB",
-        },
-        areaServed: {
-            "@type": "City",
-            name: city,
-        },
-        priceRange: "££",
+        "@graph": [
+            {
+                "@type": "Organization",
+                "@id": organizationId,
+                name,
+                url: canonicalUrl,
+                description:
+                    "CarMazium is a UK online car marketplace for buying, selling and auctioning vehicles.",
+                areaServed: {
+                    "@type": "Country",
+                    name: "United Kingdom",
+                },
+            },
+            {
+                "@type": "WebSite",
+                "@id": websiteId,
+                url: canonicalUrl,
+                name,
+                publisher: {
+                    "@id": organizationId,
+                },
+                inLanguage: "en-GB",
+            },
+        ],
     }
 
     return (
@@ -64,7 +78,7 @@ interface VehicleJsonLdProps {
 }
 
 /**
- * Per-listing Vehicle JSON-LD — add to vehicle detail pages.
+ * Per-listing Vehicle JSON-LD for vehicle detail pages.
  */
 export function VehicleJsonLd({
     name,
@@ -98,11 +112,6 @@ export function VehicleJsonLd({
             price,
             priceCurrency: currency,
             availability: "https://schema.org/InStock",
-            seller: {
-                "@type": "AutoDealer",
-                name: "CarMazium",
-                url: process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com",
-            },
         },
     }
 
