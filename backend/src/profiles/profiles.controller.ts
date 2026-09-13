@@ -46,7 +46,7 @@ export class ProfilesController {
     }
 
     @Get(':userId')
-    @ApiOperation({ summary: 'Get a public CarMazium profile with rating and service badges' })
+    @ApiOperation({ summary: 'Get a verified public CarMazium profile with rating and service badges' })
     @ApiParam({ name: 'userId', description: 'User ID' })
     async getPublicProfile(@Param('userId') userId: string) {
         return {
@@ -56,7 +56,7 @@ export class ProfilesController {
     }
 
     @Get(':userId/reviews')
-    @ApiOperation({ summary: 'Get reviews received by a profile' })
+    @ApiOperation({ summary: 'Get reviews received by a verified public profile' })
     @ApiParam({ name: 'userId', description: 'User ID' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -72,7 +72,7 @@ export class ProfilesController {
     }
 
     @Get(':userId/reviews/given')
-    @ApiOperation({ summary: 'Get reviews written by a public profile' })
+    @ApiOperation({ summary: 'Get reviews written by a verified public profile' })
     @ApiParam({ name: 'userId', description: 'User ID' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -81,11 +81,13 @@ export class ProfilesController {
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
     ) {
-        // Reuse the public profile visibility gate before exposing review history.
+        // Reuse the public profile verification + visibility gate before exposing
+        // review history, then omit review targets that are themselves no longer
+        // eligible to appear publicly.
         await this.profilesService.getPublicProfile(userId);
         return {
             success: true,
-            data: await this.profilesService.getReviewsGiven(userId, page, Math.min(limit, 50)),
+            data: await this.profilesService.getReviewsGiven(userId, page, Math.min(limit, 50), true),
         };
     }
 

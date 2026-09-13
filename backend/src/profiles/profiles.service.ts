@@ -110,8 +110,17 @@ export class ProfilesService {
     }
 
     async getPublicProfile(userId: string) {
+        // Public identity is only available after the account has verified its
+        // email. Keep the account record itself intact so verification can be
+        // completed later; this gate only removes unverified accounts from
+        // visitor-facing surfaces.
         const user = await this.prisma.user.findFirst({
-            where: { id: userId, deletedAt: null },
+            where: {
+                id: userId,
+                deletedAt: null,
+                showPublicProfile: true,
+                isEmailVerified: true,
+            },
             select: {
                 id: true,
                 firstName: true,
@@ -164,7 +173,7 @@ export class ProfilesService {
             },
         });
 
-        if (!user || !user.showPublicProfile) {
+        if (!user) {
             throw new NotFoundException('Profile not found');
         }
 
@@ -207,16 +216,29 @@ export class ProfilesService {
 
     async getReceivedReviews(userId: string, page = 1, limit = 10) {
         const target = await this.prisma.user.findFirst({
-            where: { id: userId, deletedAt: null, showPublicProfile: true },
+            where: {
+                id: userId,
+                deletedAt: null,
+                showPublicProfile: true,
+                isEmailVerified: true,
+            },
             select: { id: true, sellerProfile: { select: { id: true } } },
         });
         if (!target) throw new NotFoundException('Profile not found');
         if (!target.sellerProfile) return { data: [], total: 0, page, limit };
 
         const skip = (page - 1) * limit;
+        const reviewWhere = {
+            sellerId: target.sellerProfile.id,
+            reviewer: {
+                isEmailVerified: true,
+                deletedAt: null,
+                showPublicProfile: true,
+            },
+        };
         const [data, total] = await this.prisma.$transaction([
             this.prisma.sellerReview.findMany({
-                where: { sellerId: target.sellerProfile.id },
+                where: reviewWhere,
                 select: {
                     id: true,
                     rating: true,
@@ -238,7 +260,7 @@ export class ProfilesService {
                 skip,
                 take: limit,
             }),
-            this.prisma.sellerReview.count({ where: { sellerId: target.sellerProfile.id } }),
+            this.prisma.sellerReview.count({ where: reviewWhere }),
         ]);
 
         return {
@@ -258,11 +280,24 @@ export class ProfilesService {
         };
     }
 
-    async getReviewsGiven(reviewerId: string, page = 1, limit = 10) {
+    async getReviewsGiven(reviewerId: string, page = 1, limit = 10, publicOnly = false) {
         const skip = (page - 1) * limit;
+        const where = publicOnly
+            ? {
+                reviewerId,
+                sellerProfile: {
+                    user: {
+                        isEmailVerified: true,
+                        deletedAt: null,
+                        showPublicProfile: true,
+                    },
+                },
+            }
+            : { reviewerId };
+
         const [data, total] = await this.prisma.$transaction([
             this.prisma.sellerReview.findMany({
-                where: { reviewerId },
+                where,
                 select: {
                     id: true,
                     rating: true,
@@ -288,7 +323,7 @@ export class ProfilesService {
                 skip,
                 take: limit,
             }),
-            this.prisma.sellerReview.count({ where: { reviewerId } }),
+            this.prisma.sellerReview.count({ where }),
         ]);
 
         return {

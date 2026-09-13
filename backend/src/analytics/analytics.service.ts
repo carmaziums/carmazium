@@ -60,6 +60,53 @@ export class AnalyticsService {
         };
     }
 
+    /**
+     * Verification snapshot used by the admin analytics page.
+     * These are live database counts, not marketing estimates. Unverified
+     * accounts remain in the database so their owners can finish verification;
+     * they are simply excluded from visitor-facing account/profile surfaces.
+     */
+    async getAccountVerificationStats() {
+        const [
+            activeAccounts,
+            verifiedAccounts,
+            unverifiedAccounts,
+            publicVerifiedProfiles,
+            verifiedDealerBusinesses,
+            unverifiedDealerBusinessRecords,
+        ] = await Promise.all([
+            this.prisma.user.count({ where: { deletedAt: null } }),
+            this.prisma.user.count({ where: { deletedAt: null, isEmailVerified: true } }),
+            this.prisma.user.count({ where: { deletedAt: null, isEmailVerified: false } }),
+            this.prisma.user.count({
+                where: { deletedAt: null, isEmailVerified: true, showPublicProfile: true },
+            }),
+            this.prisma.dealerProfile.count({
+                where: {
+                    deletedAt: null,
+                    isVerified: true,
+                    user: { is: { deletedAt: null, isEmailVerified: true } },
+                },
+            }),
+            this.prisma.dealerProfile.count({
+                where: {
+                    deletedAt: null,
+                    isVerified: false,
+                    user: { is: { deletedAt: null, isEmailVerified: true } },
+                },
+            }),
+        ]);
+
+        return {
+            activeAccounts,
+            verifiedAccounts,
+            unverifiedAccounts,
+            publicVerifiedProfiles,
+            verifiedDealerBusinesses,
+            unverifiedDealerBusinessRecords,
+        };
+    }
+
     // ─── Admin: Paginated Events ──────────────────────────────────────────────
 
     async getEvents(page = 1, limit = 50, type?: string) {
@@ -93,28 +140,48 @@ export class AnalyticsService {
     // ─── Admin: Traffic Analytics ─────────────────────────────────────────────
 
     async getTrafficAnalytics(from: Date, to: Date) {
-        const [pageViews, searches, uniqueSessionGroups] = await Promise.all([
-            this.prisma.analyticsEvent.count({ where: { type: 'page_view', createdAt: { gte: from, lte: to } } }),
-            this.prisma.analyticsEvent.count({ where: { type: 'search', createdAt: { gte: from, lte: to } } }),
-            this.prisma.analyticsEvent.groupBy({
-                by: ['sessionId'],
-                where: { sessionId: { not: null }, createdAt: { gte: from, lte: to } },
-                _count: true,
-            }),
-        ]);
+        // PageViewTracker runs globally, including on authenticated dashboards
+        // and login pages. Those are product/internal journeys rather than
+        // visitor traffic, so every traffic query uses this same public-route
+        // filter. This keeps overview cards, charts and breakdown tables in sync.
+        const publicRouteFilter = `
+            AND COALESCE(payload->>'url', '') NOT LIKE '/dashboard%'
+            AND COALESCE(payload->>'url', '') NOT LIKE '/admin%'
+            AND COALESCE(payload->>'url', '') NOT LIKE '/auth%'
+        `;
 
-        const uniqueVisitors = uniqueSessionGroups.length;
-        const pagesPerVisit = uniqueVisitors > 0 ? Math.round((pageViews / uniqueVisitors) * 10) / 10 : 0;
-
-        const [trafficByDayRaw, byDowRaw, byHourRaw, topPagesRaw, referrersRaw, citiesRaw, countriesRaw, devicesRaw, topSearchesRaw] =
+        const [overviewRaw, excludedInternalRaw, trafficByDayRaw, byDowRaw, byHourRaw, topPagesRaw, referrersRaw, citiesRaw, countriesRaw, devicesRaw, topSearchesRaw] =
             await Promise.all([
-                // Traffic by day (unique sessions per day)
+                this.prisma.$queryRawUnsafe<Array<{ pageviews: string; sessions: string; searches: string }>>(
+                    `SELECT
+                        COUNT(*) FILTER (WHERE type = 'page_view')::TEXT AS pageviews,
+                        COUNT(DISTINCT "sessionId") FILTER (WHERE "sessionId" IS NOT NULL)::TEXT AS sessions,
+                        COUNT(*) FILTER (WHERE type = 'search')::TEXT AS searches
+                     FROM analytics_events
+                     WHERE "createdAt" >= $1 AND "createdAt" <= $2
+                     ${publicRouteFilter}`,
+                    from, to,
+                ),
+                this.prisma.$queryRawUnsafe<Array<{ pageviews: string }>>(
+                    `SELECT COUNT(*)::TEXT AS pageviews
+                     FROM analytics_events
+                     WHERE type = 'page_view'
+                       AND "createdAt" >= $1 AND "createdAt" <= $2
+                       AND (
+                           COALESCE(payload->>'url', '') LIKE '/dashboard%'
+                           OR COALESCE(payload->>'url', '') LIKE '/admin%'
+                           OR COALESCE(payload->>'url', '') LIKE '/auth%'
+                       )`,
+                    from, to,
+                ),
+                // Traffic by day (unique first-party sessions per day)
                 this.prisma.$queryRawUnsafe<Array<{ date: string; sessions: string; pageviews: string }>>(
                     `SELECT DATE("createdAt")::TEXT AS date,
                             COUNT(DISTINCT "sessionId")::TEXT AS sessions,
                             COUNT(*) FILTER (WHERE type = 'page_view')::TEXT AS pageviews
                      FROM analytics_events
                      WHERE "createdAt" >= $1 AND "createdAt" <= $2
+                     ${publicRouteFilter}
                      GROUP BY DATE("createdAt")
                      ORDER BY date ASC`,
                     from, to,
@@ -125,6 +192,7 @@ export class AnalyticsService {
                             COUNT(DISTINCT "sessionId")::TEXT AS sessions
                      FROM analytics_events
                      WHERE "createdAt" >= $1 AND "createdAt" <= $2
+                     ${publicRouteFilter}
                      GROUP BY EXTRACT(DOW FROM "createdAt")
                      ORDER BY dow ASC`,
                     from, to,
@@ -135,16 +203,18 @@ export class AnalyticsService {
                             COUNT(DISTINCT "sessionId")::TEXT AS sessions
                      FROM analytics_events
                      WHERE "createdAt" >= $1 AND "createdAt" <= $2
+                     ${publicRouteFilter}
                      GROUP BY EXTRACT(HOUR FROM "createdAt")
                      ORDER BY hour ASC`,
                     from, to,
                 ),
-                // Top pages by view count
+                // Top public pages by view count
                 this.prisma.$queryRawUnsafe<Array<{ url: string; views: string }>>(
                     `SELECT payload->>'url' AS url, COUNT(*)::TEXT AS views
                      FROM analytics_events
                      WHERE type = 'page_view'
                        AND "createdAt" >= $1 AND "createdAt" <= $2
+                       ${publicRouteFilter}
                        AND payload->>'url' IS NOT NULL
                        AND payload->>'url' != ''
                      GROUP BY payload->>'url'
@@ -152,12 +222,13 @@ export class AnalyticsService {
                      LIMIT 20`,
                     from, to,
                 ),
-                // Referrers
+                // Referrers for public-site sessions
                 this.prisma.$queryRawUnsafe<Array<{ referrer: string; count: string }>>(
                     `SELECT COALESCE(NULLIF(payload->>'referrer', ''), 'Direct') AS referrer,
                             COUNT(DISTINCT "sessionId")::TEXT AS count
                      FROM analytics_events
                      WHERE "createdAt" >= $1 AND "createdAt" <= $2
+                     ${publicRouteFilter}
                      GROUP BY COALESCE(NULLIF(payload->>'referrer', ''), 'Direct')
                      ORDER BY COUNT(DISTINCT "sessionId") DESC
                      LIMIT 20`,
@@ -169,6 +240,7 @@ export class AnalyticsService {
                             COUNT(DISTINCT "sessionId")::TEXT AS count
                      FROM analytics_events
                      WHERE "createdAt" >= $1 AND "createdAt" <= $2
+                       ${publicRouteFilter}
                        AND payload->>'city' IS NOT NULL
                        AND payload->>'city' != ''
                      GROUP BY payload->>'city'
@@ -182,6 +254,7 @@ export class AnalyticsService {
                             COUNT(DISTINCT "sessionId")::TEXT AS count
                      FROM analytics_events
                      WHERE "createdAt" >= $1 AND "createdAt" <= $2
+                       ${publicRouteFilter}
                        AND payload->>'country' IS NOT NULL
                        AND payload->>'country' != ''
                      GROUP BY payload->>'country'
@@ -195,16 +268,18 @@ export class AnalyticsService {
                             COUNT(DISTINCT "sessionId")::TEXT AS count
                      FROM analytics_events
                      WHERE "createdAt" >= $1 AND "createdAt" <= $2
+                     ${publicRouteFilter}
                      GROUP BY COALESCE(NULLIF(payload->>'device', ''), 'Unknown')
                      ORDER BY COUNT(DISTINCT "sessionId") DESC`,
                     from, to,
                 ),
-                // Top searches
+                // Top searches on visitor-facing routes
                 this.prisma.$queryRawUnsafe<Array<{ query: string; count: string }>>(
                     `SELECT payload->>'query' AS query, COUNT(*)::TEXT AS count
                      FROM analytics_events
                      WHERE type = 'search'
                        AND "createdAt" >= $1 AND "createdAt" <= $2
+                       ${publicRouteFilter}
                        AND payload->>'query' IS NOT NULL
                        AND payload->>'query' != ''
                      GROUP BY payload->>'query'
@@ -214,8 +289,27 @@ export class AnalyticsService {
                 ),
             ]);
 
+        const pageViews = Number(overviewRaw[0]?.pageviews ?? 0);
+        // sessionStorage generates one ID per browser tab/session. This is a
+        // truthful "unique sessions" metric, not a claim of deduplicated people.
+        const uniqueVisitors = Number(overviewRaw[0]?.sessions ?? 0);
+        const searches = Number(overviewRaw[0]?.searches ?? 0);
+        const pagesPerVisit = uniqueVisitors > 0 ? Math.round((pageViews / uniqueVisitors) * 10) / 10 : 0;
+        const excludedInternalPageViews = Number(excludedInternalRaw[0]?.pageviews ?? 0);
+
         return {
-            overview: { pageViews, uniqueVisitors, pagesPerVisit, searches },
+            overview: {
+                pageViews,
+                uniqueVisitors,
+                pagesPerVisit,
+                searches,
+                excludedInternalPageViews,
+            },
+            dataQuality: {
+                source: 'CarMazium first-party analytics events',
+                visitorMetric: 'Unique Sessions',
+                excludedRoutes: ['/dashboard', '/admin', '/auth'],
+            },
             trafficByDay: trafficByDayRaw.map(r => ({
                 date: r.date,
                 sessions: Number(r.sessions),

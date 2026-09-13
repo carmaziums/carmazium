@@ -19,6 +19,15 @@ export interface AnalyticsMonth {
   revenue: number;
 }
 
+export interface AccountVerificationStats {
+  activeAccounts: number;
+  verifiedAccounts: number;
+  unverifiedAccounts: number;
+  publicVerifiedProfiles: number;
+  verifiedDealerBusinesses: number;
+  unverifiedDealerBusinessRecords: number;
+}
+
 export async function getAdminStats(): Promise<AdminStats> {
   const result = await apiClient<{ data: AdminStats }>('/admin/stats');
   return result.data;
@@ -27,6 +36,12 @@ export async function getAdminStats(): Promise<AdminStats> {
 export async function getAdminAnalytics(): Promise<AnalyticsMonth[]> {
   const result = await apiClient<{ data: AnalyticsMonth[] }>('/admin/analytics');
   return result.data;
+}
+
+export async function getAccountVerificationStats(): Promise<AccountVerificationStats> {
+  // This analytics endpoint returns the data object directly rather than using
+  // the admin StandardResponse wrapper.
+  return apiClient<AccountVerificationStats>('/analytics/account-verification');
 }
 
 export async function getAdminUsers(page = 1, limit = 20, search?: string) {
@@ -252,6 +267,13 @@ export interface TrafficOverview {
   uniqueVisitors: number;
   pagesPerVisit: number;
   searches: number;
+  excludedInternalPageViews: number;
+}
+
+export interface TrafficDataQuality {
+  source: string;
+  visitorMetric: string;
+  excludedRoutes: string[];
 }
 
 export interface TrafficByDay {
@@ -274,6 +296,7 @@ export interface SearchItem { query: string; count: number }
 
 export interface TrafficAnalytics {
   overview: TrafficOverview;
+  dataQuality: TrafficDataQuality;
   trafficByDay: TrafficByDay[];
   busyDayOfWeek: { dow: number; sessions: number }[];
   busyHour: { hour: number; sessions: number }[];

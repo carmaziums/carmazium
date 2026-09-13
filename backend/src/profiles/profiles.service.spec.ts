@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { CapabilityStatus, ServiceType, UserRole } from '@prisma/client';
 import { ProfilesService } from './profiles.service';
 
@@ -23,6 +23,26 @@ describe('ProfilesService', () => {
         serviceRequest: { findFirst: jest.fn() },
         auction: { findFirst: jest.fn() },
         $transaction: jest.fn(async (items: any[]) => Promise.all(items)),
+    });
+
+    it('does not expose an unverified account as a public profile', async () => {
+        const prisma = buildPrisma();
+        // The verified/public filter means Prisma returns no row for an account
+        // that has not completed email verification.
+        prisma.user.findFirst.mockResolvedValue(null);
+
+        const service = new ProfilesService(prisma as any);
+        await expect(service.getPublicProfile('unverified-user'))
+            .rejects.toBeInstanceOf(NotFoundException);
+
+        expect(prisma.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+            where: {
+                id: 'unverified-user',
+                deletedAt: null,
+                showPublicProfile: true,
+                isEmailVerified: true,
+            },
+        }));
     });
 
     it('derives public service badges from the Partner business and approved capabilities', async () => {
