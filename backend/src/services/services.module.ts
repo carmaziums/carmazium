@@ -12,6 +12,8 @@ import { ServiceLeadsService } from './service-leads.service';
 import { AdminServicesController } from './admin-services.controller';
 import { ServicesLifecycleService } from './services-lifecycle.service';
 import { ContractorGuard } from './guards/contractor.guard';
+import { ServiceOperationsService } from './service-operations.service';
+import { ServiceOperationsController, AdminServiceOperationsController } from './service-operations.controller';
 
 /**
  * Trade Exchange service marketplace.
@@ -22,8 +24,20 @@ import { ContractorGuard } from './guards/contractor.guard';
  */
 @Module({
     imports: [PrismaModule, ConfigModule, AuthModule, NotificationsModule, EmailModule, PaymentsModule],
-    controllers: [ServicesController, ServiceLeadsController, AdminServicesController],
-    providers: [ServicesService, ServiceLeadsService, ServicesLifecycleService, ContractorGuard],
-    exports: [ServicesService, ServiceLeadsService],
+    controllers: [
+        ServicesController,
+        ServiceLeadsController,
+        AdminServicesController,
+        ServiceOperationsController,
+        AdminServiceOperationsController,
+    ],
+    providers: [
+        ServicesService,
+        ServiceLeadsService,
+        ServiceOperationsService,
+        ServicesLifecycleService,
+        ContractorGuard,
+    ],
+    exports: [ServicesService, ServiceLeadsService, ServiceOperationsService],
 })
 export class ServicesModule { }
