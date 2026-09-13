@@ -14,6 +14,7 @@ import { DbBackupService } from './db-backup.service';
 import { WatchlistReminderService } from './watchlist-reminder.service';
 import { UnpaidAuctionFeeExpiryService } from './unpaid-auction-fee-expiry.service';
 import { HpiPendingReminderService } from './hpi-pending-reminder.service';
+import { UnverifiedAccountCleanupService } from './unverified-account-cleanup.service';
 
 @Module({
     imports: [
@@ -25,6 +26,16 @@ import { HpiPendingReminderService } from './hpi-pending-reminder.service';
         DeliveryModule,
         EmailModule,
     ],
-    providers: [ImageCleanupService, FeaturedBoostExpiryService, AuctionLifecycleService, DeliveryExpiryService, DbBackupService, WatchlistReminderService, UnpaidAuctionFeeExpiryService, HpiPendingReminderService],
+    providers: [
+        ImageCleanupService,
+        FeaturedBoostExpiryService,
+        AuctionLifecycleService,
+        DeliveryExpiryService,
+        DbBackupService,
+        WatchlistReminderService,
+        UnpaidAuctionFeeExpiryService,
+        HpiPendingReminderService,
+        UnverifiedAccountCleanupService,
+    ],
 })
 export class TasksModule { }
