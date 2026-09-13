@@ -43,8 +43,13 @@ export class ProfilesService {
             badges.push({ key, label, verified });
         };
 
-        if (user.dealerProfile) {
-            add('vehicle-dealer', 'Vehicle Dealer', !!user.dealerProfile.isVerified);
+        // DealerProfile is also the reusable Partner business record. Its mere
+        // existence must not claim the Vehicle Dealer add-on. The Partner
+        // dashboard considers that service active only after dealer/KYC
+        // verification, so the public badge follows that same authoritative
+        // state rather than a user-editable business field.
+        if (user.dealerProfile?.isVerified) {
+            add('vehicle-dealer', 'Vehicle Dealer', true);
         }
 
         for (const capability of user.contractorProfile?.capabilities ?? []) {
