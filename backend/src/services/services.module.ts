@@ -14,6 +14,8 @@ import { ServicesLifecycleService } from './services-lifecycle.service';
 import { ContractorGuard } from './guards/contractor.guard';
 import { ServiceOperationsService } from './service-operations.service';
 import { ServiceOperationsController, AdminServiceOperationsController } from './service-operations.controller';
+import { TradeTeamService } from './trade-team.service';
+import { TradeTeamController } from './trade-team.controller';
 
 /**
  * Trade Exchange service marketplace.
@@ -30,14 +32,16 @@ import { ServiceOperationsController, AdminServiceOperationsController } from '.
         AdminServicesController,
         ServiceOperationsController,
         AdminServiceOperationsController,
+        TradeTeamController,
     ],
     providers: [
         ServicesService,
         ServiceLeadsService,
         ServiceOperationsService,
         ServicesLifecycleService,
+        TradeTeamService,
         ContractorGuard,
     ],
-    exports: [ServicesService, ServiceLeadsService, ServiceOperationsService],
+    exports: [ServicesService, ServiceLeadsService, ServiceOperationsService, TradeTeamService],
 })
 export class ServicesModule { }
