@@ -20,6 +20,13 @@ export interface BlogPost {
     updatedAt: string;
 }
 
+/**
+ * Lightweight representation used by listing/card surfaces that do not need
+ * the full article body. Keeping the content field out prevents entire blog
+ * articles from being serialized into unrelated pages such as the homepage.
+ */
+export type BlogPostSummary = Pick<BlogPost, 'id' | 'slug' | 'title' | 'excerpt' | 'coverImage'>;
+
 export interface CreateBlogPostInput {
     title: string;
     slug?: string;
