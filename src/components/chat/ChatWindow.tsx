@@ -298,7 +298,15 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                             </div>
                             {group.messages.map((msg) => {
                                 const isOwn = msg.senderId !== room.otherUser?.id
-                                const parsed = parseChatMessageContent(msg.content)
+                                // The media envelope is an internal admin format. A normal
+                                // member typing the same prefix must never make arbitrary
+                                // text render as trusted CarMazium media.
+                                const trustedAdminSide = isAdminViewer
+                                    ? isOwn
+                                    : isSupportUser(room.otherUser) && !isOwn
+                                const parsed = trustedAdminSide
+                                    ? parseChatMessageContent(msg.content)
+                                    : { text: msg.content, media: null }
                                 return (
                                     <div
                                         key={msg.id}
