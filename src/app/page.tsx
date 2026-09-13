@@ -19,7 +19,9 @@ import { type Listing } from "@/lib/listingApi"
 import { type BlogPost } from "@/lib/blogApi"
 
 export const metadata: Metadata = {
-    title: "CarMazium | Sell Your Car or Buy Used Cars in the UK",
+    title: {
+        absolute: "CarMazium | Sell Your Car or Buy Used Cars in the UK",
+    },
     description:
         "Sell your car online in the UK with a free dealer auction or £1 retail listing, or browse used cars from verified sellers on CarMazium.",
     alternates: {
