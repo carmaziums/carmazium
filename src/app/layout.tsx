@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { Poppins, Montserrat, Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
@@ -60,9 +60,6 @@ export const metadata: Metadata = {
     "car marketplace UK",
     "CarMazium",
   ],
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     type: "website",
     locale: "en_GB",
@@ -70,7 +67,6 @@ export const metadata: Metadata = {
     title: "CarMazium | Sell Your Car or Buy Used Cars in the UK",
     description:
       "Sell your car through a free dealer auction or £1 retail listing, or browse used cars from verified sellers across the UK.",
-    url: "/",
   },
   twitter: {
     card: "summary_large_image",
@@ -96,11 +92,6 @@ export const metadata: Metadata = {
     "geo.region": "GB",
     "geo.placename": "United Kingdom",
   },
-};
-
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
 };
 
 export default function RootLayout({
