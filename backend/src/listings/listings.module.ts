@@ -8,9 +8,10 @@ import { SellersModule } from '../sellers/sellers.module';
 import { ScraperModule } from '../scraper/scraper.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { TradeListingAccessGuard } from '../auctions/trade-access.guard';
+import { FreeListingsModule } from '../free-listings/free-listings.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, SellersModule, ConfigModule, ScraperModule, NotificationsModule],
+  imports: [PrismaModule, AuthModule, SellersModule, ConfigModule, ScraperModule, NotificationsModule, FreeListingsModule],
   controllers: [ListingsController],
   providers: [ListingsService, TradeListingAccessGuard],
   exports: [ListingsService],
