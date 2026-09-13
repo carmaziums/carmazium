@@ -401,7 +401,7 @@ export default function TradeXchangePage() {
                     <p className="mx-auto mb-6 max-w-2xl text-sm md:text-base text-[var(--text-muted)]">
                         Open the card that matches what you need. Every TradeXchange page explains that service first, then gives you the relevant action — browse, post a job, send an enquiry or apply as a provider.
                     </p>
-                    <Link href="/services" className="inline-flex items-center gap-2 text-sm font-black text-primary hover:underline">
+                    <Link href="/services" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 sm:w-auto">
                         View the TradeXchange Services hub <ArrowRight size={15} />
                     </Link>
                 </div>
