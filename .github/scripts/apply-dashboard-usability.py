@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# Temporary exact-replacement helper used only on this feature branch.
 
 def replace_once(text: str, old: str, new: str, label: str) -> str:
     count = text.count(old)
