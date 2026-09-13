@@ -41,8 +41,8 @@ export function ProfileImageUploader({ currentUrl, fallback, folder, label, onSa
         try {
             const url = await uploadImage(file, "listings", folder)
             await onSave(url)
-        } catch (uploadError: any) {
-            setError(uploadError?.message || "Could not upload this image.")
+        } catch (uploadError) {
+            setError(uploadError instanceof Error ? uploadError.message : "Could not upload this image.")
         } finally {
             setBusy(false)
         }
@@ -57,8 +57,8 @@ export function ProfileImageUploader({ currentUrl, fallback, folder, label, onSa
             // listings bucket, so do not guess a storage path and risk deleting
             // an unrelated object from that shared bucket.
             await onSave("")
-        } catch (removeError: any) {
-            setError(removeError?.message || "Could not remove this image.")
+        } catch (removeError) {
+            setError(removeError instanceof Error ? removeError.message : "Could not remove this image.")
         } finally {
             setBusy(false)
         }
