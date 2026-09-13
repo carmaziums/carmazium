@@ -24,7 +24,8 @@ import { TikTokPixel } from "@/components/analytics/TikTokPixel";
 import { CookieConsentBanner } from "@/components/analytics/CookieConsentBanner";
 import { ConsentProvider } from "@/context/ConsentContext";
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.carmazium.com";
+// Canonical SEO origin. The apex domain permanently redirects to this host.
+const SITE_URL = "https://www.carmazium.com";
 
 const poppins = Poppins({
   variable: "--font-poppins",
