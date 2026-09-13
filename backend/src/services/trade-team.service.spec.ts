@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ServiceType } from '@prisma/client';
 import { TradeTeamService, type TradeActorContext } from './trade-team.service';
 
@@ -102,7 +102,7 @@ describe('TradeTeamService', () => {
         const actor = await service.tryResolveActor('staff-user');
         expect(actor?.allowedServiceTypes).toEqual([ServiceType.DELIVERY]);
 
-        prisma.serviceJob.findUnique.mockResolvedValue({ serviceType: ServiceType.INSPECTION });
+        prisma.serviceJob.findUnique.mockResolvedValue({ serviceType: ServiceType.INSPECTION, customerId: 'customer-1' });
         await expect(service.assertJobPermission(actor!, 'inspection-job', 'quote'))
             .rejects.toBeInstanceOf(ForbiddenException);
     });
@@ -120,11 +120,33 @@ describe('TradeTeamService', () => {
             canManage: false,
             canComplete: false,
         };
-        prisma.serviceJob.findUnique.mockResolvedValue({ serviceType: ServiceType.DELIVERY });
+        prisma.serviceJob.findUnique.mockResolvedValue({ serviceType: ServiceType.DELIVERY, customerId: 'customer-1' });
 
         await expect(service.assertJobPermission(actor, 'job-1', 'quote')).resolves.toBeTruthy();
         await expect(service.assertJobPermission(actor, 'job-1', 'manage')).rejects.toBeInstanceOf(ForbiddenException);
         await expect(service.assertJobPermission(actor, 'job-1', 'complete')).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('does not let staff quote on a job posted by the dealership owner', async () => {
+        const actor: TradeActorContext = {
+            actingUserId: 'staff-user',
+            contractorProfileId: 'business-provider',
+            businessOwnerUserId: 'business-owner',
+            dealerProfileId: 'dealer-1',
+            businessName: 'Example Motors',
+            isStaff: true,
+            allowedServiceTypes: [ServiceType.DELIVERY],
+            canQuote: true,
+            canManage: true,
+            canComplete: true,
+        };
+        prisma.serviceJob.findUnique.mockResolvedValue({
+            serviceType: ServiceType.DELIVERY,
+            customerId: 'business-owner',
+        });
+
+        await expect(service.assertJobPermission(actor, 'job-owner-posted', 'quote'))
+            .rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('revokes TradeXchange access immediately when the DealerStaff membership is inactive', async () => {
