@@ -146,4 +146,56 @@ describe('ProfilesService', () => {
             data: { reliabilityScore: 5 },
         });
     });
+
+    it('attributes a completed TradeXchange service review to the Partner business owner profile', async () => {
+        const prisma = buildPrisma();
+        prisma.user.findFirst.mockResolvedValue({ id: 'partner-owner' });
+        prisma.sale.findFirst.mockResolvedValue(null);
+        prisma.deliveryRequest.findFirst.mockResolvedValue(null);
+        prisma.serviceJob.findFirst.mockResolvedValue({ id: 'service-job-1' });
+        prisma.serviceRequest.findFirst.mockResolvedValue(null);
+        prisma.auction.findFirst.mockResolvedValue(null);
+        prisma.sellerProfile.upsert.mockResolvedValue({ id: 'partner-reputation', userId: 'partner-owner' });
+        prisma.sellerReview.findFirst.mockResolvedValue(null);
+        prisma.sellerReview.create.mockResolvedValue({ id: 'review-service-1' });
+        prisma.sellerProfile.findUnique.mockResolvedValue({
+            id: 'partner-reputation',
+            responseRate: 100,
+            totalListings: 0,
+            totalSales: 0,
+            reviews: [{ rating: 5 }],
+        });
+        prisma.sellerProfile.update.mockResolvedValue({});
+
+        const service = new ProfilesService(prisma as any);
+        await service.submitReview('customer-1', 'partner-owner', {
+            rating: 5,
+            comment: 'Excellent delivery service',
+        });
+
+        expect(prisma.serviceJob.findFirst).toHaveBeenCalledWith({
+            where: {
+                status: { in: ['COMPLETED', 'RELEASED'] },
+                OR: [
+                    { customerId: 'customer-1', contractor: { is: { userId: 'partner-owner' } } },
+                    { customerId: 'partner-owner', contractor: { is: { userId: 'customer-1' } } },
+                ],
+            },
+            select: { id: true },
+        });
+        expect(prisma.sellerProfile.upsert).toHaveBeenCalledWith({
+            where: { userId: 'partner-owner' },
+            update: {},
+            create: { userId: 'partner-owner' },
+        });
+        expect(prisma.sellerReview.create).toHaveBeenCalledWith({
+            data: {
+                sellerId: 'partner-reputation',
+                reviewerId: 'customer-1',
+                listingId: null,
+                rating: 5,
+                comment: 'Excellent delivery service',
+            },
+        });
+    });
 });
