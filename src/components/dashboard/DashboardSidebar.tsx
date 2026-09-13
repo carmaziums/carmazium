@@ -138,20 +138,21 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     }
 
     const unifiedLinks: LinkObj[] = [
-        { href: "/dashboard/user?tab=overview", label: "Overview", icon: LayoutDashboard },
-        { href: "/dashboard/user?tab=inventory", label: "Inventory", icon: Car },
-        { href: "/dashboard/user?tab=offers", label: "Offers", icon: Tag, badge: pendingOffersCount },
-        { href: "/dashboard/user?tab=bids", label: "My Offers", icon: Gavel },
-        { href: "/dashboard/user?tab=watchlist", label: "Watchlist", icon: Heart },
-        { href: "/dashboard/user?tab=stats", label: "Stats", icon: BarChart3 },
-        { href: "/dashboard/user?tab=messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
-        { href: "/dashboard/user?tab=earnings", label: "Earnings", icon: DollarSign },
-        { href: "/dashboard/user?tab=settings", label: "Settings", icon: Settings },
+        { href: "/dashboard/user?tab=overview", label: "Home", icon: LayoutDashboard, section: "Dashboard" },
+        { href: "/dashboard/user?tab=inventory", label: "My Listings", icon: Car, section: "Selling" },
+        { href: "/dashboard/user?tab=offers", label: "Offers Received", icon: Tag, badge: pendingOffersCount, section: "Selling" },
+        { href: "/dashboard/user?tab=earnings", label: "Sales & Earnings", icon: DollarSign, section: "Selling" },
+        { href: "/dashboard/user?tab=stats", label: "Listing Performance", icon: BarChart3, section: "Selling" },
+        { href: "/dashboard/user?tab=bids", label: "My Offers", icon: Gavel, section: "Buying" },
+        { href: "/dashboard/user?tab=watchlist", label: "Saved Cars", icon: Heart, section: "Buying" },
+        { href: "/dashboard/user?tab=messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account" },
+        { href: "/dashboard/user?tab=settings", label: "Settings", icon: Settings, section: "Account" },
     ]
 
     const sellerLinks: LinkObj[] = [
-        ...unifiedLinks.slice(0, 2),
-        { href: "/dashboard/seller/auctions", label: "Auctions", icon: Gavel },
+        unifiedLinks[0],
+        unifiedLinks[1],
+        { href: "/dashboard/seller/auctions", label: "My Auctions", icon: Gavel, section: "Selling" },
         ...unifiedLinks.slice(2),
     ]
 
@@ -159,12 +160,12 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         buyer: unifiedLinks,
         seller: sellerLinks,
         provider: [
-            ...(isPartnerOwner ? [{ href: "/dashboard/partner", label: "Partner Home", icon: Building2 }] : []),
-            { href: "/dashboard/service", label: "Overview", icon: LayoutDashboard },
-            { href: "/dashboard/service/jobs", label: "Jobs", icon: Briefcase },
-            { href: "/dashboard/service/capabilities", label: "Service areas", icon: ShieldCheck },
-            { href: "/dashboard/service/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
-            { href: "/dashboard/service/settings", label: "Settings", icon: Settings },
+            ...(isPartnerOwner ? [{ href: "/dashboard/partner", label: "Partner Home", icon: Building2, section: "Business" }] : []),
+            { href: "/dashboard/service", label: "Service Overview", icon: LayoutDashboard, section: "Services" },
+            { href: "/dashboard/service/jobs", label: "Jobs", icon: Briefcase, section: "Services" },
+            { href: "/dashboard/service/capabilities", label: "Service Areas", icon: ShieldCheck, section: "Services" },
+            { href: "/dashboard/service/messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account" },
+            { href: "/dashboard/service/settings", label: "Settings", icon: Settings, section: "Account" },
         ],
         finance: [
             { href: "/dashboard/finance", label: "Overview", icon: LayoutDashboard },
@@ -182,6 +183,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             href: route.href,
             label: route.label,
             icon: route.icon,
+            section: route.section,
             badge: route.href === '/dashboard/dealer/messages' ? unreadCount : undefined,
         })),
         admin: [
@@ -223,12 +225,39 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         "/dashboard/admin/transactions",
         "/dashboard/admin/messages",
     ]
-    const mobileLinks = role === 'admin'
-        ? adminMobileHrefs.map(href => currentLinks.find(link => link.href === href)).filter((link): link is LinkObj => Boolean(link))
-        : currentLinks.slice(0, 5)
-    const mobileOverflowLinks = role === 'admin'
-        ? currentLinks.filter(link => !adminMobileHrefs.includes(link.href))
-        : currentLinks.slice(5)
+    const sellerMobileHrefs = [
+        "/dashboard/user?tab=overview",
+        "/dashboard/user?tab=inventory",
+        "/dashboard/user?tab=offers",
+        "/dashboard/user?tab=watchlist",
+    ]
+    const buyerMobileHrefs = [
+        "/dashboard/user?tab=overview",
+        "/dashboard/user?tab=bids",
+        "/dashboard/user?tab=watchlist",
+        "/dashboard/user?tab=messages",
+    ]
+    const dealerMobileHrefs = [
+        "/dashboard/dealer",
+        "/dashboard/dealer/inventory",
+        "/dashboard/dealer/crm",
+        "/dashboard/dealer/auctions",
+    ]
+
+    const primaryMobileHrefs = role === 'admin'
+        ? adminMobileHrefs
+        : role === 'seller'
+            ? sellerMobileHrefs
+            : role === 'buyer'
+                ? buyerMobileHrefs
+                : role === 'dealer'
+                    ? dealerMobileHrefs
+                    : currentLinks.slice(0, 4).map(link => link.href)
+
+    const mobileLinks = primaryMobileHrefs
+        .map(href => currentLinks.find(link => link.href === href))
+        .filter((link): link is LinkObj => Boolean(link))
+    const mobileOverflowLinks = currentLinks.filter(link => !primaryMobileHrefs.includes(link.href))
 
     const isAdmin = profile?.role === 'ADMIN'
 
@@ -244,7 +273,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         <>
             {/* Mobile Bottom Tab Navigation */}
             <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 backdrop-blur-lg border-t pb-[env(safe-area-inset-bottom)]" style={{ background: 'var(--bg-dropdown)', borderColor: 'var(--border-default)' }}>
-                <div className="flex justify-around items-center py-2 px-1">
+                <div className="grid grid-cols-5 items-center py-2 px-1">
                     {mobileLinks.map((link) => {
                         const isActive = isLinkActive(link.href)
                         const Icon = link.icon
@@ -252,7 +281,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                             <Link
                                 key={link.href}
                                 href={link.href}
-                                className={`flex flex-col items-center justify-center py-2 px-2 sm:px-3 rounded-lg min-w-[56px] relative transition-all ${isActive ? "text-primary" : ""}`}
+                                className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg min-w-0 relative transition-all ${isActive ? "text-primary" : ""}`}
                                 style={!isActive ? { color: 'var(--text-muted)' } : undefined}
                             >
                                 <div className="relative">
@@ -272,7 +301,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                         )
                                     )}
                                 </div>
-                                <span className={`text-[11px] sm:text-xs mt-1 font-medium ${isActive ? 'text-primary' : ''}`}>
+                                <span className={`text-[10px] sm:text-xs mt-1 font-medium text-center leading-tight ${isActive ? 'text-primary' : ''}`}>
                                     {link.label}
                                 </span>
                                 {isActive && (
@@ -283,11 +312,11 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                     })}
                     <button
                         onClick={toggleMobileMenu}
-                        className={`flex flex-col items-center justify-center py-2 px-2 sm:px-3 rounded-lg min-w-[56px] transition-all ${isMobileMenuOpen ? "text-primary" : ""}`}
+                        className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg min-w-0 transition-all ${isMobileMenuOpen ? "text-primary" : ""}`}
                         style={!isMobileMenuOpen ? { color: 'var(--text-muted)' } : undefined}
                     >
                         {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-                        <span className="text-[11px] sm:text-xs mt-1 font-medium">More</span>
+                        <span className="text-[10px] sm:text-xs mt-1 font-medium">More</span>
                     </button>
                 </div>
             </div>
@@ -322,7 +351,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                             const isActive = isLinkActive(link.href)
                             const Icon = link.icon
                             const previousSection = index > 0 ? mobileOverflowLinks[index - 1]?.section : undefined
-                            const showSection = role === 'admin' && link.section && link.section !== previousSection
+                            const showSection = link.section && link.section !== previousSection
                             return (
                                 <React.Fragment key={link.href}>
                                     {showSection && (
@@ -395,7 +424,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                             const isActive = isLinkActive(link.href)
                             const Icon = link.icon
                             const previousSection = index > 0 ? currentLinks[index - 1]?.section : undefined
-                            const showSection = role === 'admin' && link.section && link.section !== previousSection
+                            const showSection = link.section && link.section !== previousSection
                             return (
                                 <React.Fragment key={link.href}>
                                     {showSection && (
