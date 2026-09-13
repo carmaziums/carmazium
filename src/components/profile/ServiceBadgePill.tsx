@@ -12,17 +12,17 @@ const BADGE_STYLES: Record<string, string> = {
     "vehicle-insurance": "border-sky-400/50 bg-gradient-to-r from-sky-500/25 to-cyan-500/10 text-sky-700 dark:text-sky-100 shadow-[0_0_18px_rgba(14,165,233,0.14)]",
 }
 
-function badgeIcon(key: string) {
-    if (key === "vehicle-dealer") return Car
-    if (key === "service-delivery") return Truck
-    if (key === "service-inspection") return Wrench
-    if (key === "service-finance" || key === "vehicle-finance") return Landmark
-    if (key === "service-warranty" || key === "vehicle-insurance") return ShieldCheck
-    return BadgeCheck
+function BadgeIcon({ badgeKey, size }: { badgeKey: string; size: number }) {
+    const props = { size, strokeWidth: 2.2 }
+    if (badgeKey === "vehicle-dealer") return <Car {...props} />
+    if (badgeKey === "service-delivery") return <Truck {...props} />
+    if (badgeKey === "service-inspection") return <Wrench {...props} />
+    if (badgeKey === "service-finance" || badgeKey === "vehicle-finance") return <Landmark {...props} />
+    if (badgeKey === "service-warranty" || badgeKey === "vehicle-insurance") return <ShieldCheck {...props} />
+    return <BadgeCheck {...props} />
 }
 
 export function ServiceBadgePill({ badge, compact = false }: { badge: ServiceBadge; compact?: boolean }) {
-    const Icon = badgeIcon(badge.key)
     const style = BADGE_STYLES[badge.key] || "border-violet-400/50 bg-gradient-to-r from-violet-500/20 to-indigo-500/10 text-violet-700 dark:text-violet-100 shadow-[0_0_18px_rgba(139,92,246,0.12)]"
 
     return (
@@ -30,7 +30,7 @@ export function ServiceBadgePill({ badge, compact = false }: { badge: ServiceBad
             className={`inline-flex items-center gap-2 rounded-full border font-bold transition-transform duration-200 hover:-translate-y-0.5 ${compact ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm"} ${style}`}
             title={badge.verified ? `${badge.label} verified` : badge.label}
         >
-            <Icon size={compact ? 13 : 16} strokeWidth={2.2} />
+            <BadgeIcon badgeKey={badge.key} size={compact ? 13 : 16} />
             <span>{badge.label}</span>
             {badge.verified && <BadgeCheck size={compact ? 12 : 14} strokeWidth={2.3} />}
         </span>
