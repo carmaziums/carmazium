@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -31,14 +31,22 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 /**
- * Transactions that bought a vehicle history report. These are the rows where
- * an admin might owe the payer something, so they get the report controls.
+ * Transactions that entitle a listing to an HPI report. A direct HPI purchase
+ * always qualifies once paid. STANDARD (£10) and PREMIUM (£25) listing fees
+ * also include this admin fulfilment path; the £1 BASIC listing does not.
  */
 const HPI_TYPES = ['HPI_REPORT', 'HPI_REPORT_EMAIL']
+const HPI_LISTING_FEE_AMOUNTS = new Set([10, 25])
+
+function isHpiEligibleTransaction(tx: any) {
+    if (tx.status !== 'COMPLETED') return false
+    if (HPI_TYPES.includes(tx.type)) return true
+    return tx.type === 'LISTING_FEE' && HPI_LISTING_FEE_AMOUNTS.has(Number(tx.amount))
+}
 
 /**
- * The report controls for an HPI transaction, shown wherever a ledger row is
- * expanded.
+ * The report controls for a paid HPI-entitled transaction, shown wherever a
+ * ledger row is expanded.
  *
  * The ledger is where an admin lands when checking what someone paid for, so
  * it is the natural place to discover an unfulfilled report — and now the place
@@ -49,7 +57,7 @@ function HpiTransactionActions({ tx, onUpload, onFillForm }: {
     onUpload: (t: { id: string; title: string; hasPdf: boolean }) => void
     onFillForm: (t: { id: string; title: string; hasPdf: boolean }) => void
 }) {
-    if (!HPI_TYPES.includes(tx.type) || !tx.listing) return null
+    if (!isHpiEligibleTransaction(tx) || !tx.listing) return null
 
     const report = tx.listing.hpiReport
     const target = {
