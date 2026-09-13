@@ -82,6 +82,58 @@ describe('ProfilesService', () => {
         expect(result.rating).toMatchObject({ average: 4.5, count: 2 });
     });
 
+    it('does not claim Vehicle Dealer just because the reusable Partner business profile exists', async () => {
+        const prisma = buildPrisma();
+        prisma.user.findFirst.mockResolvedValue({
+            id: 'partner-delivery-only',
+            firstName: 'Delivery',
+            lastName: 'Partner',
+            profileImage: null,
+            role: UserRole.DEALER,
+            location: 'Birmingham',
+            createdAt: new Date('2026-01-01T00:00:00Z'),
+            showPublicProfile: true,
+            isEmailVerified: true,
+            isAddressVerified: true,
+            dealerProfile: {
+                id: 'business-1',
+                companyName: 'Delivery Partner Ltd',
+                registrationNumber: null,
+                businessAddress: 'Birmingham',
+                logo: null,
+                description: null,
+                phone: null,
+                website: null,
+                openingHours: null,
+                isVerified: false,
+                verificationDate: null,
+            },
+            contractorProfile: {
+                businessName: 'Delivery Partner Ltd',
+                serviceArea: 'West Midlands',
+                certifications: [],
+                capabilities: [
+                    { serviceType: ServiceType.DELIVERY, status: CapabilityStatus.APPROVED },
+                ],
+            },
+            financePartnerProfile: null,
+            insurancePartnerProfile: null,
+            sellerProfile: null,
+        });
+
+        const service = new ProfilesService(prisma as any);
+        const result = await service.getPublicProfile('partner-delivery-only');
+
+        expect(result.badges).toContainEqual({
+            key: 'service-delivery',
+            label: 'Delivery & Recovery',
+            verified: true,
+        });
+        expect(result.badges).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ key: 'vehicle-dealer' }),
+        ]));
+    });
+
     it('blocks a review when the two profiles have no completed CarMazium interaction', async () => {
         const prisma = buildPrisma();
         prisma.user.findFirst.mockResolvedValue({ id: 'target-1' });
