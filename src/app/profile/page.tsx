@@ -126,8 +126,8 @@ export default function ProfilePage() {
             await apiClient("/users/me", { method: "PATCH", body: JSON.stringify(personalForm) })
             await refreshProfile()
             setSuccess("Personal profile updated successfully.")
-        } catch (error: any) {
-            setRoleError(error?.message || "Could not update your profile.")
+        } catch (error) {
+            setRoleError(error instanceof Error ? error.message : "Could not update your profile.")
         } finally {
             setPersonalLoading(false)
         }
@@ -161,8 +161,8 @@ export default function ProfilePage() {
             setSuccess("Partner business profile updated successfully.")
             await refreshProfile()
             await loadReputation()
-        } catch (error: any) {
-            setRoleError(error?.message || "Could not update the Partner business profile.")
+        } catch (error) {
+            setRoleError(error instanceof Error ? error.message : "Could not update the Partner business profile.")
         } finally {
             setBusinessLoading(false)
         }
@@ -191,8 +191,8 @@ export default function ProfilePage() {
                 return
             }
             setSuccess("Your account is now set up as a Personal Account.")
-        } catch (error: any) {
-            setRoleError(error?.message || "Could not change your account type. Please try again.")
+        } catch (error) {
+            setRoleError(error instanceof Error ? error.message : "Could not change your account type. Please try again.")
         } finally {
             setLoading(false)
         }
