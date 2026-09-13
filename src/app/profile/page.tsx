@@ -5,7 +5,6 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
     AlertCircle,
-    BadgeCheck,
     Building2,
     Car,
     CheckCircle2,
@@ -19,6 +18,7 @@ import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
 import { ThemeToggle } from "@/components/ui/ThemeToggle"
 import { ProfileImageUploader } from "@/components/profile/ProfileImageUploader"
+import { ServiceBadgePill } from "@/components/profile/ServiceBadgePill"
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const
 
@@ -240,12 +240,8 @@ export default function ProfilePage() {
                         <h2 className="text-xl font-bold">{profile?.firstName} {profile?.lastName}</h2>
                         <p style={{ color: "var(--text-muted)" }}>{profile?.email}</p>
                         <div className="mt-3 flex flex-wrap gap-2">
-                            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider"><Shield size={12} /> {accountLabel}</span>
-                            {publicSummary?.badges.map((badge) => (
-                                <span key={badge.key} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-primary/30 bg-primary/5 text-primary text-xs font-semibold">
-                                    {badge.verified && <BadgeCheck size={12} />} {badge.label}
-                                </span>
-                            ))}
+                            <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/45 bg-gradient-to-r from-violet-500/20 to-indigo-500/10 px-3 py-1.5 text-xs font-bold text-violet-700 shadow-[0_0_18px_rgba(139,92,246,0.12)] dark:text-violet-100"><Shield size={13} /> {accountLabel}</span>
+                            {publicSummary?.badges.map((badge) => <ServiceBadgePill key={badge.key} badge={badge} compact />)}
                         </div>
                         <div className="mt-4 flex items-center gap-2 text-sm">
                             <Stars rating={publicSummary?.rating.average || 0} />
