@@ -236,9 +236,97 @@ function FormFallback() {
     )
 }
 
+function ListingSelectionLayoutFixes() {
+    return (
+        <style jsx global>{`
+            #sell-options > div.relative.min-h-screen.pt-24.pb-12 {
+                min-height: auto !important;
+                padding-top: 3rem !important;
+                padding-bottom: 2rem !important;
+            }
+
+            #sell-options div[class~="mt-24"][class~="grid"][class~="grid-cols-2"][class~="gap-6"][class~="text-center"] {
+                display: grid !important;
+                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+                gap: 0 !important;
+                margin-top: 2.25rem !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+                max-width: 36rem;
+                padding: 0.85rem 0.5rem 0.75rem;
+                border: 1px solid var(--border-default);
+                border-radius: 1rem;
+                background: var(--bg-card);
+                position: relative;
+                overflow: hidden;
+            }
+
+            #sell-options div[class~="mt-24"][class~="grid"][class~="grid-cols-2"][class~="gap-6"][class~="text-center"]::before {
+                content: "";
+                position: absolute;
+                top: 2rem;
+                left: 12.5%;
+                right: 12.5%;
+                height: 2px;
+                background: var(--border-default);
+                z-index: 0;
+            }
+
+            #sell-options div[class~="mt-24"][class~="grid"][class~="grid-cols-2"][class~="gap-6"][class~="text-center"] > .glass-card {
+                position: relative;
+                z-index: 1;
+                padding: 0.25rem !important;
+                border: 0 !important;
+                background: transparent !important;
+                box-shadow: none !important;
+                backdrop-filter: none !important;
+            }
+
+            #sell-options div[class~="mt-24"][class~="grid"][class~="grid-cols-2"][class~="gap-6"][class~="text-center"] > .glass-card > div {
+                width: 2rem !important;
+                height: 2rem !important;
+                margin-bottom: 0.45rem !important;
+                background: var(--bg-card) !important;
+                border-width: 2px !important;
+                border-color: rgba(237, 28, 36, 0.45) !important;
+                box-shadow: 0 0 0 4px var(--bg-card);
+            }
+
+            #sell-options div[class~="mt-24"][class~="grid"][class~="grid-cols-2"][class~="gap-6"][class~="text-center"] > .glass-card p {
+                font-size: 0.72rem !important;
+                line-height: 1rem !important;
+                font-weight: 700 !important;
+            }
+
+            @media (max-width: 480px) {
+                #sell-options > div.relative.min-h-screen.pt-24.pb-12 {
+                    padding-top: 2rem !important;
+                    padding-bottom: 1.5rem !important;
+                }
+
+                #sell-options div[class~="mt-24"][class~="grid"][class~="grid-cols-2"][class~="gap-6"][class~="text-center"] {
+                    margin-top: 1.75rem !important;
+                    padding: 0.75rem 0.25rem 0.65rem;
+                }
+
+                #sell-options div[class~="mt-24"][class~="grid"][class~="grid-cols-2"][class~="gap-6"][class~="text-center"]::before {
+                    top: 1.9rem;
+                }
+
+                #sell-options div[class~="mt-24"][class~="grid"][class~="grid-cols-2"][class~="gap-6"][class~="text-center"] > .glass-card p {
+                    font-size: 0.66rem !important;
+                    line-height: 0.9rem !important;
+                }
+            }
+        `}</style>
+    )
+}
+
 export default function SellPage() {
     return (
         <>
+            <ListingSelectionLayoutFixes />
+
             <Suspense fallback={<SellerLanding />}>
                 <MarketingGate><SellerLanding /></MarketingGate>
             </Suspense>
