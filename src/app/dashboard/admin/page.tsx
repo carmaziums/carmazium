@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import {
     Users, Car, DollarSign, Activity, ShieldAlert, CheckCircle2,
-    Loader2, RefreshCw, Gavel, Handshake, Receipt, TrendingUp, AlertTriangle, Plus } from "lucide-react"
+    Loader2, RefreshCw, Gavel, Handshake, Receipt, TrendingUp, AlertTriangle, Plus, Gift } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminStats, getPendingHandovers, type AdminStats } from "@/lib/adminApi"
@@ -221,6 +221,15 @@ export default function AdminDashboard() {
                                 desc: "View, verify, and update roles for all registered accounts.",
                                 cta: "Manage Users",
                                 ctaClass: "bg-blue-600 hover:bg-blue-700",
+                            },
+                            {
+                                href: "/dashboard/admin/free-listings",
+                                icon: Gift,
+                                color: "emerald",
+                                title: "Free Listing Grants",
+                                desc: "Give any registered user one free BASIC retail vehicle listing for hours, days, months, or forever.",
+                                cta: "Manage Free Listings",
+                                ctaClass: "bg-emerald-600 hover:bg-emerald-700",
                             },
                             {
                                 href: "/dashboard/admin/listings",
