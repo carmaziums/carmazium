@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { VehicleDetailsPageClient } from "./VehicleDetailsPageClient"
 import { formatPrice } from "@/lib/listingApi"
+import { isSeoIndexableVehicleListing } from "@/lib/seoListingQuality"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 // Canonical SEO origin. The apex domain permanently redirects to www.
@@ -40,10 +41,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const url = `${SITE_URL}/buy-cars/${slug}`
     const image = listing.images?.find((img: string) => !img.includes('example.com'))
 
-    // Only ACTIVE (and post-sale OFFER_ACCEPTED/SOLD, which keep the URL alive for
-    // record-keeping) listings should be indexed — draft/pending/rejected ones
-    // aren't meant to be public yet.
-    const indexable = ['ACTIVE', 'OFFER_ACCEPTED', 'SOLD'].includes(listing.status)
+    // Only public lifecycle states with complete, non-placeholder vehicle data
+    // should be promoted to search engines. Incomplete/test listings remain fully
+    // usable on CarMazium; this changes search indexing only.
+    const publicStatus = ['ACTIVE', 'OFFER_ACCEPTED', 'SOLD'].includes(listing.status)
+    const indexable = publicStatus && isSeoIndexableVehicleListing(listing)
 
     return {
         title,
