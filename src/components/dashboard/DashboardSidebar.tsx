@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -120,15 +120,17 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         switch (key) {
             case 'BUYER':
             case 'SELLER': return 'Buyer/Seller Account'
-            case 'DEALER': return 'Dealer Account'
+            case 'DEALER':
+            case 'CONTRACTOR':
+            case 'SERVICE PROVIDER': return 'Partner Account'
             case 'ADMIN': return 'Admin Account'
-            case 'CONTRACTOR': return 'Service Provider'
             case 'FINANCE_PARTNER': return 'Finance Partner'
             case 'INSURANCE_PARTNER': return 'Insurance Partner'
             default: return raw || (role.charAt(0).toUpperCase() + role.slice(1) + ' Account')
         }
     }
     const displayType = formatRole(initialUserType || profile?.role)
+    const isPartnerOwner = profile?.role === 'DEALER' || profile?.role === 'CONTRACTOR'
 
     type LinkObj = { href: string; label: string; icon: React.ComponentType<{ size?: number; className?: string }>; badge?: number }
 
@@ -154,6 +156,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         buyer: unifiedLinks,
         seller: sellerLinks,
         provider: [
+            ...(isPartnerOwner ? [{ href: "/dashboard/partner", label: "Partner Home", icon: Building2 }] : []),
             { href: "/dashboard/service", label: "Overview", icon: LayoutDashboard },
             { href: "/dashboard/service/jobs", label: "Jobs", icon: Briefcase },
             { href: "/dashboard/service/capabilities", label: "Service areas", icon: ShieldCheck },
@@ -205,7 +208,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                 ? { ...link, badge: myOffersCounterBadge }
                 : link,
         )
-    }, [role, myOffersCounterBadge])
+    }, [role, myOffersCounterBadge, isPartnerOwner])
     // Get first 5 items for mobile bottom nav
     const mobileLinks = currentLinks.slice(0, 5)
 
