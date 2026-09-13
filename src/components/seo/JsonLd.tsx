@@ -6,6 +6,10 @@
 // Canonical SEO origin. The apex domain permanently redirects to www.
 const DEFAULT_SITE_URL = "https://www.carmazium.com"
 
+function canonicaliseCarMaziumUrl(url: string): string {
+    return url.replace(/^https:\/\/carmazium\.com(?=\/|$)/, DEFAULT_SITE_URL)
+}
+
 interface MarketplaceJsonLdProps {
     name?: string
     url?: string
@@ -19,7 +23,7 @@ export function MarketplaceJsonLd({
     name = "CarMazium",
     url = DEFAULT_SITE_URL,
 }: MarketplaceJsonLdProps = {}) {
-    const canonicalUrl = url.replace(/\/$/, "")
+    const canonicalUrl = canonicaliseCarMaziumUrl(url).replace(/\/$/, "")
     const organizationId = `${canonicalUrl}/#organization`
     const websiteId = `${canonicalUrl}/#website`
 
@@ -99,12 +103,13 @@ export function VehicleJsonLd({
     vin,
     engineSize,
 }: VehicleJsonLdProps) {
+    const canonicalVehicleUrl = canonicaliseCarMaziumUrl(url)
     const schema: Record<string, unknown> = {
         "@context": "https://schema.org",
         "@type": "Vehicle",
         name,
         description,
-        url,
+        url: canonicalVehicleUrl,
         manufacturer: { "@type": "Organization", name: make },
         model,
         vehicleModelDate: String(year),
