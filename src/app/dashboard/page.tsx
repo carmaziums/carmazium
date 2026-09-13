@@ -17,11 +17,10 @@ export default function DashboardPage() {
             return
         }
 
-        // No extra refreshProfile() round-trip here — every flow that actually
-        // changes a user's role (dealer/settings, dealer/layout switch-to-buyer,
-        // KycOverlayForm) already calls refreshProfile() itself before pushing
-        // here, so AuthContext's profile is already current by the time this
-        // effect runs.
+        // The database still keeps the legacy DEALER / CONTRACTOR values for
+        // compatibility with existing marketplace rules. Both are now surfaced
+        // to the customer as one Partner Account, where business capabilities
+        // are additive rather than mutually-exclusive account types.
         const role = (
             profile?.role ||
             (user as any)?.user_metadata?.role ||
@@ -30,17 +29,16 @@ export default function DashboardPage() {
 
         if (role === 'BUYER' || role === 'SELLER') {
             router.push('/dashboard/user')
-        } else if (role === 'DEALER') {
-            router.push('/dashboard/dealer')
-        } else if (role === 'CONTRACTOR') {
-            router.push('/dashboard/service')
+        } else if (role === 'DEALER' || role === 'CONTRACTOR') {
+            router.push('/dashboard/partner')
         } else if (role === 'FINANCE_PARTNER') {
             router.push('/dashboard/finance')
         } else if (role === 'INSURANCE_PARTNER') {
             router.push('/dashboard/insurance')
+        } else if (role === 'ADMIN') {
+            router.push('/dashboard/admin')
         } else {
-            // Fallback — unknown role goes to seller dashboard
-            router.push('/dashboard/seller')
+            router.push('/dashboard/user')
         }
     }, [user, profile, loading, router])
 
