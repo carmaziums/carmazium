@@ -223,6 +223,15 @@ export default function AdminDashboard() {
                                 ctaClass: "bg-blue-600 hover:bg-blue-700",
                             },
                             {
+                                href: "/dashboard/admin/free-listings",
+                                icon: Car,
+                                color: "emerald",
+                                title: "Free Listing Access",
+                                desc: "Grant a registered user one free car, free hours or days, one month, or free retail listings forever.",
+                                cta: "Manage Free Access",
+                                ctaClass: "bg-emerald-600 hover:bg-emerald-700",
+                            },
+                            {
                                 href: "/dashboard/admin/listings",
                                 icon: Car,
                                 color: "primary",

@@ -9,12 +9,12 @@ import { EmailModule } from '../email/email.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { SellersModule } from '../sellers/sellers.module';
 import { AuctionsModule } from '../auctions/auctions.module';
+import { FreeListingsModule } from '../free-listings/free-listings.module';
 
 @Module({
-    imports: [PrismaModule, AuthModule, ConfigModule, PaymentsModule, EmailModule, NotificationsModule, SellersModule, AuctionsModule],
+    imports: [PrismaModule, AuthModule, ConfigModule, PaymentsModule, EmailModule, NotificationsModule, SellersModule, AuctionsModule, FreeListingsModule],
     controllers: [AdminController],
     providers: [AdminService],
     exports: [AdminService],
 })
 export class AdminModule { }
-
