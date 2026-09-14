@@ -62,6 +62,9 @@ function mirrorToMeta(type: string, payload: Record<string, unknown>): void {
             return
         }
         case "generate_lead":
+            // Buyer vehicle enquiries are automatically normalised by
+            // trackMetaEvent() to the custom VehicleEnquiry event. This keeps
+            // Meta's standard Lead signal reserved for seller acquisition.
             trackMetaEvent("Lead", compact({
                 content_type: "vehicle",
                 content_ids: payload.content_id ? [String(payload.content_id)] : undefined,
@@ -70,7 +73,14 @@ function mirrorToMeta(type: string, payload: Record<string, unknown>): void {
             }))
             return
         case SELLER_FUNNEL.LISTING_STARTED:
-            if (!isAdmin) trackMetaEvent("SellerStartListing", compact(payload))
+            if (!isAdmin) {
+                // The live seller TOFU campaign already optimises for Meta's
+                // standard Lead event. Make a genuine seller listing-start the
+                // canonical Lead signal, while retaining the custom event for
+                // funnel reporting and future campaign options.
+                trackMetaEvent("Lead", compact({ ...payload, content_category: "seller_listing_start" }))
+                trackMetaEvent("SellerStartListing", compact(payload))
+            }
             return
         case SELLER_FUNNEL.LISTING_SUBMITTED:
             if (!isAdmin) trackMetaEvent("SellerCompleteListing", compact(payload))
