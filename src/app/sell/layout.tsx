@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-    title: "Sell My Car Online | Free Car Valuation | CarMazium",
+    title: "Sell My Car Online | Free Car Valuation",
     description:
         "Get a free car valuation and sell your car online with CarMazium. List in our dealer auction for £0 or advertise retail for £1. Verified dealers compete and qualifying auction sales can receive a £100 seller incentive.",
     keywords: [
