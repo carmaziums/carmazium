@@ -4,26 +4,22 @@ import Script from "next/script"
 import { useConsent } from "@/context/ConsentContext"
 import { analyticsEnabled } from "@/lib/analyticsEnv"
 
-// .trim() guards against stray whitespace from a copy-pasted env var — an
-// untrimmed ID silently breaks the container URL and GTM Preview then reports
-// "no container found", same failure mode as the Meta pixel ID.
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID?.trim()
 
 /**
- * Loads the Google Tag Manager container.
+ * Loads the CarMazium-owned Google Tag Manager container.
  *
- * GTM runs alongside the directly-embedded GA4/Meta/TikTok tags rather than
- * replacing them — those keep working exactly as before. What GTM adds is a
- * place to attach tags to the app's own custom events (see lib/gtm.ts) without
- * needing a code change and redeploy for each one.
+ * GTM is the sole loader/configuration owner for the GA4 and Google Ads base
+ * tags. GoogleAnalytics.tsx only sends application events and manual App
+ * Router page views through the gtag/dataLayer interface established by
+ * GoogleConsentMode; it does not load or configure a second Google tag.
  *
- * No-op (renders nothing, loads no script) when NEXT_PUBLIC_GTM_ID is unset,
- * or until the visitor has accepted analytics/marketing cookies — see
- * ConsentContext.
+ * Meta and TikTok remain independently managed by their existing components.
  *
- * IMPORTANT: if you later move GA4 into GTM as a config tag, remove the
- * <GoogleAnalytics /> component from layout.tsx at the same time — running
- * both would double-count every pageview and conversion.
+ * This component is hard-gated until analytics/marketing consent is granted,
+ * while GoogleConsentMode establishes denied defaults before consent. Once
+ * granted, GTM loads and processes the queued Google commands under the
+ * visitor's updated consent state.
  */
 export function GoogleTagManager() {
     const { granted } = useConsent()
