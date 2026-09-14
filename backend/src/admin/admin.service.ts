@@ -88,8 +88,11 @@ export class AdminService {
                 isEmailVerified: true,
                 isPhoneVerified: true,
                 isAddressVerified: true,
+                addressVerifiedAt: true,
                 location: true,
                 postcode: true,
+                notifyOnSale: true,
+                showPublicProfile: true,
                 createdAt: true,
                 updatedAt: true,
                 deletedAt: true,
@@ -136,7 +139,97 @@ export class AdminService {
             }),
         ]);
 
-        return { ...user, recentListings, recentTransactions };
+        // `User.loginAttempts` is a legacy failed-password streak used by the
+        // backend login endpoint. The live site authenticates through Supabase,
+        // so showing that value as total "Login Attempts" made every active
+        // account appear to have zero. Read the authoritative Supabase Auth
+        // audit history instead. This is read-only and requires no schema change.
+        type AuthActivityRow = {
+            successfulLogins: number;
+            firstLoginAt: Date | null;
+            lastLoginAt: Date | null;
+            lastSignInAt: Date | null;
+            emailConfirmedAt: Date | null;
+            phoneConfirmedAt: Date | null;
+            providers: unknown;
+            primaryProvider: string | null;
+            isSsoUser: boolean | null;
+        };
+
+        let authActivity: Record<string, unknown> = { source: 'UNAVAILABLE' };
+        try {
+            const rows = await this.prisma.$queryRaw<AuthActivityRow[]>`
+                SELECT
+                    (
+                        SELECT COUNT(*)::int
+                        FROM auth.audit_log_entries ale
+                        WHERE ale.payload->>'action' = 'login'
+                          AND (
+                              ale.payload->>'actor_id' = au.id::text
+                              OR lower(coalesce(ale.payload->>'actor_username', '')) = lower(au.email)
+                          )
+                    ) AS "successfulLogins",
+                    (
+                        SELECT MIN(ale.created_at)
+                        FROM auth.audit_log_entries ale
+                        WHERE ale.payload->>'action' = 'login'
+                          AND (
+                              ale.payload->>'actor_id' = au.id::text
+                              OR lower(coalesce(ale.payload->>'actor_username', '')) = lower(au.email)
+                          )
+                    ) AS "firstLoginAt",
+                    (
+                        SELECT MAX(ale.created_at)
+                        FROM auth.audit_log_entries ale
+                        WHERE ale.payload->>'action' = 'login'
+                          AND (
+                              ale.payload->>'actor_id' = au.id::text
+                              OR lower(coalesce(ale.payload->>'actor_username', '')) = lower(au.email)
+                          )
+                    ) AS "lastLoginAt",
+                    au.last_sign_in_at AS "lastSignInAt",
+                    au.email_confirmed_at AS "emailConfirmedAt",
+                    au.phone_confirmed_at AS "phoneConfirmedAt",
+                    coalesce(au.raw_app_meta_data->'providers', '[]'::jsonb) AS providers,
+                    au.raw_app_meta_data->>'provider' AS "primaryProvider",
+                    au.is_sso_user AS "isSsoUser"
+                FROM auth.users au
+                WHERE lower(au.email) = lower(${user.email})
+                LIMIT 1
+            `;
+
+            const row = rows[0];
+            if (row) {
+                const listedProviders = Array.isArray(row.providers)
+                    ? row.providers.map((provider) => String(provider))
+                    : [];
+                const providers = Array.from(new Set([
+                    ...listedProviders,
+                    ...(row.primaryProvider ? [row.primaryProvider] : []),
+                ]));
+
+                authActivity = {
+                    source: 'SUPABASE',
+                    successfulLogins: row.successfulLogins ?? 0,
+                    firstLoginAt: row.firstLoginAt,
+                    lastLoginAt: row.lastLoginAt,
+                    lastSignInAt: row.lastSignInAt,
+                    emailConfirmedAt: row.emailConfirmedAt,
+                    phoneConfirmedAt: row.phoneConfirmedAt,
+                    providers,
+                    isSsoUser: !!row.isSsoUser,
+                };
+            } else {
+                authActivity = { source: 'LOCAL' };
+            }
+        } catch {
+            // Account detail must remain usable even if the deployment's DB
+            // role cannot read Supabase's auth schema. The UI will explicitly
+            // show authentication activity as unavailable instead of lying with 0.
+            authActivity = { source: 'UNAVAILABLE' };
+        }
+
+        return { ...user, authActivity, recentListings, recentTransactions };
     }
 
     async updateUserRole(userId: string, role: UserRole) {
