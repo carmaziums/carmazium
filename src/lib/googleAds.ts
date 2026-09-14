@@ -66,40 +66,27 @@ const CONVERSION_LABELS: Record<string, string | undefined> = {
 }
 
 /**
- * Conversions already reported this session, keyed by
- * `${event}:${transaction_id}`.
+ * In-memory protection against duplicate React/effect execution in one page
+ * lifetime. We deliberately do not use sessionStorage/localStorage here:
+ * those are browser storage and must not be created before cookie consent.
  *
- * Google Ads does dedupe server-side on the transaction/order id, but only
- * for events that actually carry one. The checkout success page can re-run
- * its effect or be refreshed outright, and an in-memory guard there is lost
- * on reload — sessionStorage survives it. Belt and braces on the one event
- * where a duplicate would misreport revenue.
+ * Purchase conversions carry `transaction_id`, so Google Ads can deduplicate
+ * the same order across a full page reload on its side as well.
  */
-const DEDUPE_KEY = 'cm_ads_conversions'
+const reportedConversions = new Set<string>()
 
 function alreadyReported(key: string): boolean {
-    try {
-        const raw = sessionStorage.getItem(DEDUPE_KEY)
-        const seen: string[] = raw ? JSON.parse(raw) : []
-        if (seen.includes(key)) return true
-        seen.push(key)
-        // Bounded — a long session shouldn't grow this without limit.
-        sessionStorage.setItem(DEDUPE_KEY, JSON.stringify(seen.slice(-50)))
-        return false
-    } catch {
-        // Private mode / storage disabled — fall through and report. A
-        // possible duplicate is better than silently dropping a conversion.
-        return false
-    }
+    if (reportedConversions.has(key)) return true
+    reportedConversions.add(key)
+    return false
 }
 
 /**
  * Reports a conversion to Google Ads, if one is configured for this event.
  *
  * Safe to call for every analytics event: no-ops when Ads isn't configured,
- * when the event has no conversion label, when gtag never loaded (consent
- * declined, script blocked), or when this exact conversion was already
- * reported this session.
+ * when the event has no conversion label, when gtag never loaded, or when this
+ * exact conversion was already reported in the current page lifetime.
  */
 export function trackAdsConversion(event: string, params: Record<string, unknown> = {}): void {
     if (typeof window === 'undefined') return
@@ -167,35 +154,17 @@ export function trackAdsConversion(event: string, params: Record<string, unknown
 const SIGNUP_CONVERSION_LABEL = 'LTNTCIuK4-ocEN6N4qNE'
 
 /**
- * Accounts already reported, so a conversion can never be sent twice for the
- * same person.
- *
- * localStorage, not sessionStorage: the guarantee needed is "never again",
- * which has to survive a refresh, a logout/login, and a visit next week — all
- * of which start a new session. Keyed by account id so a shared browser can
- * still report a genuine second person's registration.
- *
- * This is the second line of defence. The first is the backend's `isNewUser`,
- * which can only be true on the request that actually inserted the row; this
- * guard exists for the case where that one request's handler runs twice
- * (React StrictMode double-invocation, a retried fetch).
+ * A second in-memory line of defence for duplicate callback execution. The
+ * authoritative guarantee is the backend's `isNewUser` flag, which can only
+ * be true for the request that actually inserted the account. Avoiding
+ * localStorage here keeps the conversion path compatible with denied consent.
  */
-const SIGNUP_DEDUPE_KEY = 'cm_ads_signup_reported'
+const reportedSignupIds = new Set<string>()
 
 function alreadyReportedSignup(userId: string): boolean {
-    try {
-        const raw = localStorage.getItem(SIGNUP_DEDUPE_KEY)
-        const seen: string[] = raw ? JSON.parse(raw) : []
-        if (seen.includes(userId)) return true
-        seen.push(userId)
-        localStorage.setItem(SIGNUP_DEDUPE_KEY, JSON.stringify(seen.slice(-20)))
-        return false
-    } catch {
-        // Storage unavailable (private mode, blocked). Report rather than drop
-        // a genuine registration — the backend flag has already established
-        // this is a real one-off.
-        return false
-    }
+    if (reportedSignupIds.has(userId)) return true
+    reportedSignupIds.add(userId)
+    return false
 }
 
 /**
