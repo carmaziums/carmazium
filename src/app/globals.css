@@ -99,9 +99,11 @@
 }
 
 /* ─── Homepage palette ──────────────────────────────────────────────────────
-   Keep the warmer, light-pink treatment contained to the marketing homepage
-   so the rest of the marketplace can continue to use the shared site palette.
+   The header sits outside HomeClient in the root layout, so apply the
+   homepage tokens to body whenever the homepage wrapper is present. This keeps
+   the header and page content visually cohesive without changing other routes.
 */
+body:has(.home-page),
 .home-page {
   --bg-body: #fff1f5;
   --bg-card: #fffafd;
@@ -120,7 +122,10 @@
   --scrollbar-track: #ffe4ec;
   --scrollbar-thumb: #e9a9bd;
   --scrollbar-hover: #cf718d;
-  background-color: var(--bg-body);
+}
+
+.home-page {
+  background: linear-gradient(180deg, #fff1f5 0%, #ffe8f0 100%);
 }
 
 /* ─── Base ─────────────────────────────────────────────────────────────────── */
