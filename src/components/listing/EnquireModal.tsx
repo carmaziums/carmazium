@@ -4,7 +4,7 @@ import * as React from "react"
 import { X, Send, User, Mail, Phone, MessageSquare, Loader2, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { apiClient } from "@/lib/apiClient"
-import { trackMetaEvent } from "@/components/analytics/MetaPixel"
+import { useAnalytics } from "@/hooks/useAnalytics"
 
 interface EnquireModalProps {
     listingId: string
@@ -16,6 +16,7 @@ interface EnquireModalProps {
 }
 
 export function EnquireModal({ listingId, dealerProfileId, isOpen, onClose, sellerName, carTitle }: EnquireModalProps) {
+    const { trackEvent } = useAnalytics()
     const [status, setStatus] = React.useState<"idle" | "loading" | "success" | "error">("idle")
     const [errorMsg, setErrorMsg] = React.useState("")
     const [formData, setFormData] = React.useState({
@@ -46,10 +47,12 @@ export function EnquireModal({ listingId, dealerProfileId, isOpen, onClose, sell
                 })
             })
             setStatus("success")
-            trackMetaEvent("Lead", {
+            // Track only non-PII listing context. The buyer's name, email,
+            // phone and message never leave the operational lead request.
+            trackEvent("generate_lead", {
                 content_name: carTitle,
-                content_ids: [listingId],
-                content_category: "vehicle_enquiry",
+                content_id: listingId,
+                lead_type: "vehicle_enquiry",
             })
             setTimeout(() => {
                 onClose()

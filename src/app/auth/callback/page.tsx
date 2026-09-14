@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabase"
 import { fetchWithRetry } from "@/lib/fetchWithRetry"
 import { Loader2 } from "lucide-react"
 import { trackMetaEvent } from "@/components/analytics/MetaPixel"
+import { trackGa4Event } from "@/components/analytics/GoogleAnalytics"
+import { pushToDataLayer } from "@/lib/gtm"
 import { trackSignupConversion } from "@/lib/googleAds"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev";
@@ -144,12 +146,9 @@ function AuthCallbackContent() {
             return
           }
           if (data.user && data.session) {
-            // hashParams.type is Supabase's own tag for which email link this
-            // was — only "signup" is an actual new registration completing;
-            // "magiclink"/other types are returning users and must not count.
-            if (hashParams.type === "signup") {
-              trackMetaEvent("CompleteRegistration")
-            }
+            // Registration tracking happens below only after /users/sync confirms
+            // this is a genuinely new account. That covers email and OAuth with
+            // one deduplicated success point and never counts ordinary logins.
             await syncBackendAndRedirect(data.user, data.session.access_token, redirectTo, roleFromUrl)
             return
           }
@@ -241,27 +240,33 @@ function AuthCallbackContent() {
         signal: syncController.signal,
       }).then(async (res) => {
         clearTimeout(syncTimeout)
-        // The Google Ads "Completed Seller Registration" conversion fires from
-        // here, and only from here.
-        //
-        // This is the one point in the app where a brand-new account is a
-        // confirmed fact rather than an inference: `isNewUser` is true only on
-        // the request that actually inserted the user row, so it cannot be true
-        // for a login, a dashboard refresh, a return visit, or an abandoned or
-        // rejected signup — none of which reach a successful sync at all.
-        // Firing on arrival at /dashboard instead would count every one of
-        // those, and the Search campaign's Maximise Conversions bidding would
-        // learn from the wrong number.
-        //
-        // Both signup routes converge here: email/password (arriving with the
-        // Supabase verification link) and Google OAuth (arriving with ?code=),
-        // so neither needs its own special case.
-        //
-        // router.replace above is a soft navigation, so this promise still
-        // resolves in the same JS context with window.gtag intact.
+        // Registration events fire from this one confirmed success point only.
+        // `isNewUser` is true on the request that inserted the local account,
+        // so logins, refreshes and returning users cannot inflate conversions.
         try {
           const body = await res.json()
-          if (body?.isNewUser) trackSignupConversion(user.id)
+          if (body?.isNewUser) {
+            const resolvedRole = String(
+              body?.data?.role || body?.user?.role || meta.role || roleOverride || ""
+            ).toUpperCase()
+            const accountType = resolvedRole === "DEALER" ? "partner" : "personal"
+            const registrationParams = { account_type: accountType }
+
+            trackGa4Event("sign_up", registrationParams)
+            pushToDataLayer("sign_up", registrationParams)
+            trackMetaEvent("CompleteRegistration", {
+              ...registrationParams,
+              content_name: accountType === "partner" ? "Partner Account" : "Personal Account",
+            })
+
+            if (resolvedRole === "DEALER") {
+              trackGa4Event("dealer_registration", registrationParams)
+              pushToDataLayer("dealer_registration", registrationParams)
+              trackMetaEvent("DealerRegistration", registrationParams)
+            }
+
+            trackSignupConversion(user.id)
+          }
         } catch {
           // A malformed/failed sync response must never break sign-in. Missing
           // a conversion is the safe failure here; inventing one is not.

@@ -5,11 +5,21 @@ import { usePathname, useSearchParams } from "next/navigation"
 import Script from "next/script"
 import { useConsent } from "@/context/ConsentContext"
 import { analyticsEnabled } from "@/lib/analyticsEnv"
+import { hasTrackingConsent } from "@/lib/trackingConsent"
 
 // .trim() guards against stray whitespace from a copy-pasted env var value —
 // an untrimmed ID silently breaks the noscript pixel URL's query string and
 // Meta's own Event Setup Tool then reports "pixel wasn't detected".
 const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim()
+
+const META_STANDARD_EVENTS = new Set([
+    "PageView",
+    "ViewContent",
+    "Search",
+    "Lead",
+    "CompleteRegistration",
+    "Purchase",
+])
 
 declare global {
     interface Window {
@@ -19,12 +29,23 @@ declare global {
 }
 
 /**
- * Fire a Meta Pixel event (standard or custom) from anywhere in the app.
- * No-ops silently if the Pixel never loaded (id unset, script blocked, etc).
+ * Fire a Meta Pixel event from anywhere in the app.
+ *
+ * Meta standard events use `track`; CarMazium-specific lifecycle events use
+ * `trackCustom`. The helper also re-checks the persisted consent decision on
+ * every call. That matters when a visitor accepts cookies, loads the Pixel,
+ * and later changes their preference to Reject All without a full page reload.
  */
 export function trackMetaEvent(eventName: string, params?: Record<string, unknown>) {
+    if (!hasTrackingConsent()) return
     if (typeof window === "undefined" || typeof window.fbq !== "function") return
-    window.fbq("track", eventName, params)
+
+    const command = META_STANDARD_EVENTS.has(eventName) ? "track" : "trackCustom"
+    if (params && Object.keys(params).length > 0) {
+        window.fbq(command, eventName, params)
+    } else {
+        window.fbq(command, eventName)
+    }
 }
 
 function MetaPixelPageViewTracker() {

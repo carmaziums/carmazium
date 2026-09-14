@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { VehicleDetailPageClient } from "./VehicleDetailPageClient"
 import { formatPrice } from "@/lib/listingApi"
+import { VehicleViewTracker } from "@/components/analytics/VehicleViewTracker"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com"
@@ -52,5 +53,20 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     // fetch-on-mount (which used to mean an empty shell + a second,
     // uncached network hit before content ever appeared).
     const initialListing = await getListingBySlug(id)
-    return <VehicleDetailPageClient params={params} initialListing={initialListing} />
+    return (
+        <>
+            {initialListing && (
+                <VehicleViewTracker
+                    id={initialListing.id}
+                    title={initialListing.title}
+                    make={initialListing.make}
+                    model={initialListing.model}
+                    year={initialListing.year}
+                    price={initialListing.price}
+                    listingType={initialListing.listingType}
+                />
+            )}
+            <VehicleDetailPageClient params={params} initialListing={initialListing} />
+        </>
+    )
 }
