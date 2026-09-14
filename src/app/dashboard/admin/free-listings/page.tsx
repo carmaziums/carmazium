@@ -55,10 +55,11 @@ function GrantBadge({ grant }: { grant: FreeListingGrant | null }) {
         EXPIRED: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
         REVOKED: "bg-red-500/15 text-red-700 dark:text-red-300",
     }
+    const label = grant.status === "ACTIVE" && grant.expiresAt === null ? "FOREVER FREE" : grant.status
 
     return (
         <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${styles[grant.status] ?? styles.REVOKED}`}>
-            {grant.status}
+            {label}
         </span>
     )
 }
@@ -132,7 +133,11 @@ export default function AdminFreeListingsPage() {
             setError(null)
             const grant = await grantAdminFreeListing(selected.id, durationUnit, numericValue)
             setRows(current => current.map(row => row.id === selected.id ? { ...row, freeListingGrant: grant } : row))
-            setSuccess(`One free BASIC retail listing granted to ${userDisplayName(selected)}.`)
+            setSuccess(
+                durationUnit === "FOREVER"
+                    ? `Forever-free BASIC retail listings granted to ${userDisplayName(selected)}.`
+                    : `One free BASIC retail listing granted to ${userDisplayName(selected)}.`
+            )
             setSelected(null)
         } catch (err: any) {
             setError(err?.message || "Unable to grant the free listing.")
@@ -142,7 +147,11 @@ export default function AdminFreeListingsPage() {
     }
 
     const handleRevoke = async (row: AdminFreeListingUser) => {
-        if (!window.confirm(`Revoke the unused free listing for ${userDisplayName(row)}?`)) return
+        const forever = row.freeListingGrant?.status === "ACTIVE" && row.freeListingGrant.expiresAt === null
+        const message = forever
+            ? `Revoke forever-free BASIC retail listings for ${userDisplayName(row)}?`
+            : `Revoke the unused free listing for ${userDisplayName(row)}?`
+        if (!window.confirm(message)) return
         try {
             setSaving(true)
             setError(null)
@@ -187,14 +196,14 @@ export default function AdminFreeListingsPage() {
                                     </div>
                                     <div>
                                         <h1 className="text-2xl md:text-3xl font-black font-heading uppercase text-[var(--text-primary)]">Free Listing Grants</h1>
-                                        <p className="text-sm text-[var(--text-muted)]">Admin-only control for one complimentary vehicle listing.</p>
+                                        <p className="text-sm text-[var(--text-muted)]">Grant one complimentary BASIC retail listing, or make BASIC retail listings free forever.</p>
                                     </div>
                                 </div>
                             </div>
                             <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200 max-w-md">
                                 <div className="flex gap-2">
                                     <ShieldCheck size={18} className="shrink-0 mt-0.5" />
-                                    <p><strong>Exactly one BASIC retail listing.</strong> Auctions are already free. STANDARD and PREMIUM upgrades keep their normal fee.</p>
+                                    <p><strong>Timed grants cover one BASIC retail listing. Forever grants cover unlimited BASIC retail listings until revoked.</strong> Auctions are already free. STANDARD and PREMIUM upgrades keep their normal fee.</p>
                                 </div>
                             </div>
                         </div>
@@ -239,7 +248,7 @@ export default function AdminFreeListingsPage() {
                         <div className="p-5 border-b border-[var(--border-default)] flex items-center justify-between">
                             <div>
                                 <h2 className="font-bold text-[var(--text-primary)]">Registered Users</h2>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">Grant, replace, or revoke one free BASIC retail listing entitlement.</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">Grant, replace or revoke one-time and forever-free BASIC retail listing entitlements.</p>
                             </div>
                             {loading && <Loader2 className="animate-spin text-primary" size={20} />}
                         </div>
@@ -273,8 +282,11 @@ export default function AdminFreeListingsPage() {
                                                 </div>
                                                 {grant ? (
                                                     <div className="text-xs text-[var(--text-muted)] space-y-1">
-                                                        {grant.status === "ACTIVE" && (
-                                                            <p className="flex items-center gap-1.5"><CalendarClock size={13} /> Expires: {formatDate(grant.expiresAt)}</p>
+                                                        {grant.status === "ACTIVE" && grant.expiresAt === null && (
+                                                            <p className="flex items-center gap-1.5"><InfinityIcon size={13} /> Unlimited BASIC retail listings — no expiry</p>
+                                                        )}
+                                                        {grant.status === "ACTIVE" && grant.expiresAt !== null && (
+                                                            <p className="flex items-center gap-1.5"><CalendarClock size={13} /> One free listing expires: {formatDate(grant.expiresAt)}</p>
                                                         )}
                                                         {grant.status === "USED" && (
                                                             <p className="flex items-center gap-1.5"><CheckCircle2 size={13} /> Used: {formatDate(grant.usedAt)}</p>
@@ -329,7 +341,12 @@ export default function AdminFreeListingsPage() {
                     <div className="w-full max-w-lg rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-2xl p-6" onMouseDown={event => event.stopPropagation()}>
                         <div className="flex items-start justify-between gap-4 mb-5">
                             <div>
-                                <div className="flex items-center gap-2 text-primary mb-1"><Gift size={19} /><span className="text-xs font-black uppercase tracking-widest">One Free Listing</span></div>
+                                <div className="flex items-center gap-2 text-primary mb-1">
+                                    <Gift size={19} />
+                                    <span className="text-xs font-black uppercase tracking-widest">
+                                        {durationUnit === "FOREVER" ? "Forever Free BASIC Listings" : "One Free Listing"}
+                                    </span>
+                                </div>
                                 <h2 className="text-xl font-bold text-[var(--text-primary)]">{userDisplayName(selected)}</h2>
                                 <p className="text-sm text-[var(--text-muted)]">{selected.email}</p>
                             </div>
@@ -337,7 +354,15 @@ export default function AdminFreeListingsPage() {
                         </div>
 
                         <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4 mb-5 text-sm text-[var(--text-muted)]">
-                            The user can submit <strong className="text-[var(--text-primary)]">one BASIC retail vehicle listing without paying the £1 listing fee</strong>. The entitlement is consumed when that listing is submitted for admin review.
+                            {durationUnit === "FOREVER" ? (
+                                <>
+                                    The user can submit <strong className="text-[var(--text-primary)]">unlimited BASIC retail vehicle listings without paying the £1 listing fee</strong>. This entitlement does not get consumed and remains active until an admin revokes it. STANDARD and PREMIUM upgrades keep their normal fee.
+                                </>
+                            ) : (
+                                <>
+                                    The user can submit <strong className="text-[var(--text-primary)]">one BASIC retail vehicle listing without paying the £1 listing fee</strong>. The entitlement is consumed when that listing is submitted for admin review.
+                                </>
+                            )}
                         </div>
 
                         <div className="space-y-4">
@@ -373,7 +398,7 @@ export default function AdminFreeListingsPage() {
                                 <Button type="button" variant="outline" disabled={saving} onClick={() => setSelected(null)} className="sm:flex-1">Cancel</Button>
                                 <Button type="button" disabled={saving} onClick={handleGrant} className="sm:flex-1 bg-emerald-600 hover:bg-emerald-700 text-white">
                                     {saving ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Gift size={16} className="mr-2" />}
-                                    Grant 1 Free Listing
+                                    {durationUnit === "FOREVER" ? "Grant Forever Free" : "Grant 1 Free Listing"}
                                 </Button>
                             </div>
                         </div>
