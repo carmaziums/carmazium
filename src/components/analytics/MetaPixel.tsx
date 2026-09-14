@@ -5,11 +5,31 @@ import { usePathname, useSearchParams } from "next/navigation"
 import Script from "next/script"
 import { useConsent } from "@/context/ConsentContext"
 import { analyticsEnabled } from "@/lib/analyticsEnv"
+import { hasTrackingConsent } from "@/lib/trackingConsent"
 
 // .trim() guards against stray whitespace from a copy-pasted env var value —
 // an untrimmed ID silently breaks the noscript pixel URL's query string and
 // Meta's own Event Setup Tool then reports "pixel wasn't detected".
 const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim()
+
+const META_STANDARD_EVENTS = new Set([
+    "PageView",
+    "ViewContent",
+    "Search",
+    "Lead",
+    "CompleteRegistration",
+    "Purchase",
+])
+
+// The historic implementation used Meta's generic Lead event for buyer vehicle
+// enquiries as well as seller acquisition. The live seller campaign optimises
+// for Lead, so that mixed buyer and seller intent into one optimisation signal.
+// Keep existing call sites backwards-compatible while separating buyer actions
+// into a custom event. Seller listing-start can then be the canonical Lead.
+const VEHICLE_ENQUIRY_CATEGORIES = new Set([
+    "vehicle_enquiry",
+    "vehicle_chat_enquiry",
+])
 
 declare global {
     interface Window {
@@ -19,12 +39,31 @@ declare global {
 }
 
 /**
- * Fire a Meta Pixel event (standard or custom) from anywhere in the app.
- * No-ops silently if the Pixel never loaded (id unset, script blocked, etc).
+ * Fire a Meta Pixel event from anywhere in the app.
+ *
+ * Meta standard events use `track`; CarMazium-specific lifecycle events use
+ * `trackCustom`. Historic buyer-enquiry Lead calls are normalised to the
+ * VehicleEnquiry custom event so seller campaigns are not trained on buyer
+ * behaviour. The helper also re-checks the persisted consent decision on every
+ * call. That matters when a visitor accepts cookies, loads the Pixel, and later
+ * changes their preference to Reject All without a full page reload.
  */
 export function trackMetaEvent(eventName: string, params?: Record<string, unknown>) {
+    if (!hasTrackingConsent()) return
     if (typeof window === "undefined" || typeof window.fbq !== "function") return
-    window.fbq("track", eventName, params)
+
+    const contentCategory = String(params?.content_category ?? "")
+    const normalisedEventName =
+        eventName === "Lead" && VEHICLE_ENQUIRY_CATEGORIES.has(contentCategory)
+            ? "VehicleEnquiry"
+            : eventName
+
+    const command = META_STANDARD_EVENTS.has(normalisedEventName) ? "track" : "trackCustom"
+    if (params && Object.keys(params).length > 0) {
+        window.fbq(command, normalisedEventName, params)
+    } else {
+        window.fbq(command, normalisedEventName)
+    }
 }
 
 function MetaPixelPageViewTracker() {

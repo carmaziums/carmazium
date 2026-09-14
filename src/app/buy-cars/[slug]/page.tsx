@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { VehicleDetailsPageClient } from "./VehicleDetailsPageClient"
 import { formatPrice } from "@/lib/listingApi"
+import { VehicleViewTracker } from "@/components/analytics/VehicleViewTracker"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 // Canonical SEO origin. The apex domain permanently redirects to www.
@@ -84,5 +85,20 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     // it again itself on mount (that used to mean an empty shell + a second,
     // uncached network hit before content ever appeared).
     const initialListing = await getListingBySlug(slug)
-    return <VehicleDetailsPageClient params={params} initialListing={initialListing} />
+    return (
+        <>
+            {initialListing && (
+                <VehicleViewTracker
+                    id={initialListing.id}
+                    title={initialListing.title}
+                    make={initialListing.make}
+                    model={initialListing.model}
+                    year={initialListing.year}
+                    price={initialListing.price}
+                    listingType={initialListing.listingType}
+                />
+            )}
+            <VehicleDetailsPageClient params={params} initialListing={initialListing} />
+        </>
+    )
 }

@@ -1,3 +1,5 @@
+import { hasTrackingConsent } from "./trackingConsent"
+
 /**
  * Google Tag Manager dataLayer bridge.
  *
@@ -30,9 +32,10 @@ declare global {
     }
 }
 
-/** Push a Custom Event to GTM. Safe to call anywhere, any time. */
+/** Push a consented Custom Event to GTM. Safe to call anywhere, any time. */
 export function pushToDataLayer(event: string, params: Record<string, unknown> = {}): void {
     if (typeof window === 'undefined') return
+    if (!hasTrackingConsent()) return
     try {
         window.dataLayer = window.dataLayer || []
         // Undefined values are dropped — GTM/GA4 show them as the literal
