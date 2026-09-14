@@ -21,6 +21,14 @@ function fmtDateTime(d: string | null | undefined) {
     return new Date(d).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
 }
 
+function fmtProviders(value: unknown) {
+    if (!Array.isArray(value) || value.length === 0) return "—"
+    return value.map((provider) => {
+        const text = String(provider)
+        return text.charAt(0).toUpperCase() + text.slice(1)
+    }).join(", ")
+}
+
 function Section({ title, icon: Icon, children }: { title: string; icon: React.ComponentType<{ size?: number; className?: string }>; children: React.ReactNode }) {
     return (
         <div className="border-t border-[var(--border-default)] pt-4 mt-4 first:border-t-0 first:pt-0 first:mt-0">
@@ -139,12 +147,29 @@ async function exportUserDetailPdf(detail: any) {
     y += 10
 
     addSection("Contact & Account")
+    addField("Account ID", detail.id)
+    addField("Role", detail.role)
     addField("Email", detail.email)
     addField("Phone", detail.phone)
     addField("Location", [detail.location, detail.postcode].filter(Boolean).join(", "))
     addField("Joined", fmtDate(detail.createdAt))
     addField("Last Updated", fmtDateTime(detail.updatedAt))
-    addField("Login Attempts", detail.loginAttempts)
+    addField("Email Verified", detail.isEmailVerified ? "Yes" : "No")
+    addField("Phone Verified", detail.isPhoneVerified ? "Yes" : "No")
+    addField("Address Verified", detail.isAddressVerified ? "Yes" : "No")
+    addField("Address Verified At", detail.addressVerifiedAt ? fmtDateTime(detail.addressVerifiedAt) : "—")
+    addField("Public Profile", detail.showPublicProfile ? "Visible" : "Hidden")
+    addField("Sale Notifications", detail.notifyOnSale ? "Enabled" : "Disabled")
+
+    addSection("Authentication")
+    addField("Auth Source", detail.authActivity?.source === "SUPABASE" ? "Supabase Auth" : detail.authActivity?.source === "LOCAL" ? "Local / legacy account" : "Unavailable")
+    addField("Successful Logins", detail.authActivity?.source === "SUPABASE" ? detail.authActivity?.successfulLogins ?? 0 : "—")
+    addField("Last Sign In", detail.authActivity?.source === "SUPABASE" ? fmtDateTime(detail.authActivity?.lastSignInAt || detail.authActivity?.lastLoginAt) : "—")
+    addField("First Recorded Login", detail.authActivity?.source === "SUPABASE" ? fmtDateTime(detail.authActivity?.firstLoginAt) : "—")
+    addField("Sign-in Providers", detail.authActivity?.source === "SUPABASE" ? fmtProviders(detail.authActivity?.providers) : "—")
+    addField("Email Confirmed At", detail.authActivity?.source === "SUPABASE" ? fmtDateTime(detail.authActivity?.emailConfirmedAt) : "—")
+    addField("Phone Confirmed At", detail.authActivity?.source === "SUPABASE" ? fmtDateTime(detail.authActivity?.phoneConfirmedAt) : "—")
+    addField("SSO Account", detail.authActivity?.source === "SUPABASE" ? (detail.authActivity?.isSsoUser ? "Yes" : "No") : "—")
 
     if (detail.bankAccountNumber || detail.stripeConnectAccountId) {
         addSection("Payout Info")
@@ -203,6 +228,8 @@ async function exportUserDetailPdf(detail: any) {
     addSection("Activity")
     addField("Listings", detail._count?.listings ?? 0)
     addField("Transactions", detail._count?.transactions ?? 0)
+    addField("Sales Completed", detail._count?.salesAsSeller ?? 0)
+    addField("Purchases Completed", detail._count?.purchasesAsBuyer ?? 0)
     addField("Auctions Won", detail._count?.wonAuctions ?? 0)
 
     if (detail.recentListings?.length > 0) {
@@ -338,13 +365,37 @@ export function UserDetailModal({ userId, onClose, onChanged, onMessage }: { use
                             {/* Contact & Account */}
                             <Section title="Contact & Account" icon={Mail}>
                                 <div className="grid grid-cols-2 gap-3">
+                                    <Field label="Account ID" value={<span className="font-mono text-xs">{detail.id}</span>} />
+                                    <Field label="Role" value={detail.role} />
                                     <Field label="Email" value={<a href={`mailto:${detail.email}`} className="hover:text-primary transition-colors">{detail.email}</a>} />
                                     <Field label="Phone" value={detail.phone ? <a href={`tel:${detail.phone}`} className="hover:text-primary transition-colors">{detail.phone}</a> : "Not on file"} />
                                     <Field label="Location" value={[detail.location, detail.postcode].filter(Boolean).join(", ") || "—"} />
                                     <Field label="Joined" value={fmtDate(detail.createdAt)} />
                                     <Field label="Last Updated" value={fmtDateTime(detail.updatedAt)} />
-                                    <Field label="Login Attempts" value={detail.loginAttempts} />
+                                    <Field label="Email Verified" value={detail.isEmailVerified ? "Yes" : "No"} />
+                                    <Field label="Phone Verified" value={detail.isPhoneVerified ? "Yes" : "No"} />
+                                    <Field label="Address Verified" value={detail.isAddressVerified ? "Yes" : "No"} />
+                                    <Field label="Address Verified At" value={detail.addressVerifiedAt ? fmtDateTime(detail.addressVerifiedAt) : "—"} />
+                                    <Field label="Public Profile" value={detail.showPublicProfile ? "Visible" : "Hidden"} />
+                                    <Field label="Sale Notifications" value={detail.notifyOnSale ? "Enabled" : "Disabled"} />
                                 </div>
+                            </Section>
+
+                            {/* Authentication */}
+                            <Section title="Authentication" icon={ShieldCheck}>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Field label="Auth Source" value={detail.authActivity?.source === "SUPABASE" ? "Supabase Auth" : detail.authActivity?.source === "LOCAL" ? "Local / legacy account" : "Unavailable"} />
+                                    <Field label="Successful Logins" value={detail.authActivity?.source === "SUPABASE" ? (detail.authActivity?.successfulLogins ?? 0) : "—"} />
+                                    <Field label="Last Sign In" value={detail.authActivity?.source === "SUPABASE" ? fmtDateTime(detail.authActivity?.lastSignInAt || detail.authActivity?.lastLoginAt) : "—"} />
+                                    <Field label="First Recorded Login" value={detail.authActivity?.source === "SUPABASE" ? fmtDateTime(detail.authActivity?.firstLoginAt) : "—"} />
+                                    <Field label="Sign-in Providers" value={detail.authActivity?.source === "SUPABASE" ? fmtProviders(detail.authActivity?.providers) : "—"} />
+                                    <Field label="Email Confirmed" value={detail.authActivity?.source === "SUPABASE" ? fmtDateTime(detail.authActivity?.emailConfirmedAt) : "—"} />
+                                    <Field label="Phone Confirmed" value={detail.authActivity?.source === "SUPABASE" ? fmtDateTime(detail.authActivity?.phoneConfirmedAt) : "—"} />
+                                    <Field label="SSO Account" value={detail.authActivity?.source === "SUPABASE" ? (detail.authActivity?.isSsoUser ? "Yes" : "No") : "—"} />
+                                </div>
+                                {detail.authActivity?.source === "UNAVAILABLE" && (
+                                    <p className="mt-3 text-xs text-amber-400">Authentication history could not be read. Account details remain available.</p>
+                                )}
                             </Section>
 
                             {/* Payout */}
@@ -447,7 +498,7 @@ export function UserDetailModal({ userId, onClose, onChanged, onMessage }: { use
 
                             {/* Activity counts */}
                             <Section title="Activity" icon={Car}>
-                                <div className="grid grid-cols-3 gap-3 text-center mb-3">
+                                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center mb-3">
                                     <div className="p-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)]">
                                         <p className="text-lg font-bold">{detail._count?.listings ?? 0}</p>
                                         <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Listings</p>
@@ -455,6 +506,14 @@ export function UserDetailModal({ userId, onClose, onChanged, onMessage }: { use
                                     <div className="p-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)]">
                                         <p className="text-lg font-bold">{detail._count?.transactions ?? 0}</p>
                                         <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Transactions</p>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)]">
+                                        <p className="text-lg font-bold">{detail._count?.salesAsSeller ?? 0}</p>
+                                        <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Sales</p>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)]">
+                                        <p className="text-lg font-bold">{detail._count?.purchasesAsBuyer ?? 0}</p>
+                                        <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Purchases</p>
                                     </div>
                                     <div className="p-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)]">
                                         <p className="text-lg font-bold">{detail._count?.wonAuctions ?? 0}</p>
