@@ -17,6 +17,15 @@ describe('FreeListingGrantsService', () => {
         ...overrides,
     });
 
+    const basicDraft = (id = 'listing-1') => ({
+        id,
+        sellerId: 'user-1',
+        type: 'CLASSIFIED',
+        badgeTier: 'BASIC',
+        status: 'DRAFT',
+        images: Array.from({ length: 10 }, (_, i) => `image-${i}`),
+    });
+
     beforeEach(() => {
         prisma = {
             user: {
@@ -38,7 +47,7 @@ describe('FreeListingGrantsService', () => {
         service = new FreeListingGrantsService(prisma);
     });
 
-    it('grants one forever entitlement in the backend-only grant store', async () => {
+    it('grants a reusable forever entitlement in the backend-only grant store', async () => {
         prisma.user.findUnique.mockResolvedValue({ id: 'user-1', deletedAt: null });
         prisma.$executeRaw.mockResolvedValue(1);
         prisma.$queryRaw.mockResolvedValue([
@@ -54,15 +63,8 @@ describe('FreeListingGrantsService', () => {
         expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
     });
 
-    it('consumes an active grant only for one BASIC CLASSIFIED draft and records a £0 completed listing fee', async () => {
-        prisma.listing.findUnique.mockResolvedValue({
-            id: 'listing-1',
-            sellerId: 'user-1',
-            type: 'CLASSIFIED',
-            badgeTier: 'BASIC',
-            status: 'DRAFT',
-            images: Array.from({ length: 10 }, (_, i) => `image-${i}`),
-        });
+    it('consumes a timed grant only for one BASIC CLASSIFIED draft and records a £0 completed listing fee', async () => {
+        prisma.listing.findUnique.mockResolvedValue(basicDraft());
         prisma.transaction.findFirst.mockResolvedValue(null);
         prisma.$queryRaw.mockResolvedValue([activeGrantRow()]);
         prisma.$executeRaw.mockResolvedValue(1);
@@ -85,15 +87,74 @@ describe('FreeListingGrantsService', () => {
         });
     });
 
-    it('does not consume an expired grant', async () => {
-        prisma.listing.findUnique.mockResolvedValue({
-            id: 'listing-1',
-            sellerId: 'user-1',
-            type: 'CLASSIFIED',
-            badgeTier: 'BASIC',
-            status: 'DRAFT',
-            images: Array.from({ length: 10 }, (_, i) => `image-${i}`),
+    it('keeps a FOREVER grant active and reusable for multiple BASIC retail listings', async () => {
+        prisma.listing.findUnique
+            .mockResolvedValueOnce(basicDraft('listing-1'))
+            .mockResolvedValueOnce(basicDraft('listing-2'));
+        prisma.transaction.findFirst.mockResolvedValue(null);
+        prisma.$queryRaw.mockResolvedValue([
+            activeGrantRow({
+                expiresAt: null,
+                usedAt: new Date('2026-09-13T08:00:00.000Z'),
+                usedListingId: 'old-listing',
+            }),
+        ]);
+        prisma.transaction.create.mockResolvedValue({ id: 'tx' });
+
+        const first = await service.applyToListingIfEligible('listing-1', 'user-1');
+        const second = await service.applyToListingIfEligible('listing-2', 'user-1');
+
+        expect(first).toBe(true);
+        expect(second).toBe(true);
+        expect(prisma.$executeRaw).not.toHaveBeenCalled();
+        expect(prisma.transaction.create).toHaveBeenCalledTimes(2);
+        expect(prisma.transaction.create).toHaveBeenNthCalledWith(1, {
+            data: {
+                userId: 'user-1',
+                listingId: 'listing-1',
+                amount: 0,
+                type: 'LISTING_FEE',
+                status: 'COMPLETED',
+                description: 'Admin-granted free BASIC listing (grant-1)',
+            },
         });
+        expect(prisma.transaction.create).toHaveBeenNthCalledWith(2, {
+            data: {
+                userId: 'user-1',
+                listingId: 'listing-2',
+                amount: 0,
+                type: 'LISTING_FEE',
+                status: 'COMPLETED',
+                description: 'Admin-granted free BASIC listing (grant-1)',
+            },
+        });
+    });
+
+    it('allows an admin to revoke a FOREVER grant that was used before this fix', async () => {
+        const legacyUsedForever = activeGrantRow({
+            expiresAt: null,
+            usedAt: new Date('2026-09-13T08:00:00.000Z'),
+            usedListingId: 'old-listing',
+        });
+        const revoked = activeGrantRow({
+            expiresAt: null,
+            usedAt: legacyUsedForever.usedAt,
+            usedListingId: legacyUsedForever.usedListingId,
+            revokedAt: new Date('2026-09-14T12:00:00.000Z'),
+        });
+        prisma.$queryRaw
+            .mockResolvedValueOnce([legacyUsedForever])
+            .mockResolvedValueOnce([revoked]);
+        prisma.$executeRaw.mockResolvedValue(1);
+
+        const result = await service.revoke('user-1');
+
+        expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
+        expect(result?.status).toBe('REVOKED');
+    });
+
+    it('does not consume an expired grant', async () => {
+        prisma.listing.findUnique.mockResolvedValue(basicDraft());
         prisma.transaction.findFirst.mockResolvedValue(null);
         prisma.$queryRaw.mockResolvedValue([
             activeGrantRow({ expiresAt: new Date('2020-01-01T00:00:00.000Z') }),
@@ -108,12 +169,8 @@ describe('FreeListingGrantsService', () => {
 
     it('never waives STANDARD or PREMIUM upgrade fees', async () => {
         prisma.listing.findUnique.mockResolvedValue({
-            id: 'listing-1',
-            sellerId: 'user-1',
-            type: 'CLASSIFIED',
+            ...basicDraft(),
             badgeTier: 'PREMIUM',
-            status: 'DRAFT',
-            images: Array.from({ length: 10 }, (_, i) => `image-${i}`),
         });
 
         const applied = await service.applyToListingIfEligible('listing-1', 'user-1');
@@ -123,15 +180,8 @@ describe('FreeListingGrantsService', () => {
         expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
-    it('does not create a duplicate fee transaction when a concurrent request already claimed the grant', async () => {
-        prisma.listing.findUnique.mockResolvedValue({
-            id: 'listing-1',
-            sellerId: 'user-1',
-            type: 'CLASSIFIED',
-            badgeTier: 'BASIC',
-            status: 'DRAFT',
-            images: Array.from({ length: 10 }, (_, i) => `image-${i}`),
-        });
+    it('does not create a duplicate fee transaction when a concurrent request already claimed a timed grant', async () => {
+        prisma.listing.findUnique.mockResolvedValue(basicDraft());
         prisma.transaction.findFirst.mockResolvedValue(null);
         prisma.$queryRaw.mockResolvedValue([activeGrantRow()]);
         prisma.$executeRaw.mockResolvedValue(0);
@@ -142,15 +192,22 @@ describe('FreeListingGrantsService', () => {
         expect(prisma.transaction.create).not.toHaveBeenCalled();
     });
 
+    it('does not create a duplicate fee transaction for a FOREVER grant after the row lock', async () => {
+        prisma.listing.findUnique.mockResolvedValue(basicDraft());
+        prisma.transaction.findFirst
+            .mockResolvedValueOnce(null)
+            .mockResolvedValueOnce({ id: 'concurrent-fee' });
+        prisma.$queryRaw.mockResolvedValue([activeGrantRow({ expiresAt: null })]);
+
+        const applied = await service.applyToListingIfEligible('listing-1', 'user-1');
+
+        expect(applied).toBe(false);
+        expect(prisma.$executeRaw).not.toHaveBeenCalled();
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
+    });
+
     it('does not consume the grant twice when the listing already has a completed fee transaction', async () => {
-        prisma.listing.findUnique.mockResolvedValue({
-            id: 'listing-1',
-            sellerId: 'user-1',
-            type: 'CLASSIFIED',
-            badgeTier: 'BASIC',
-            status: 'DRAFT',
-            images: Array.from({ length: 10 }, (_, i) => `image-${i}`),
-        });
+        prisma.listing.findUnique.mockResolvedValue(basicDraft());
         prisma.transaction.findFirst.mockResolvedValue({ id: 'existing-fee' });
 
         const applied = await service.applyToListingIfEligible('listing-1', 'user-1');
