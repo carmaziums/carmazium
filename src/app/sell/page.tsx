@@ -55,16 +55,16 @@ function SellerLanding() {
             <div className="container mx-auto max-w-6xl px-5 pt-12 pb-10 md:pt-20 md:pb-16 relative z-10">
                 <div className="max-w-4xl mx-auto text-center">
                     <p className="text-xs md:text-sm font-black uppercase tracking-[0.22em] text-primary mb-4">
-                        Sell your car online
+                        Free car valuation · Sell your car online
                     </p>
                     <h1 className="text-4xl sm:text-5xl md:text-6xl font-black font-heading tracking-tight leading-[1.05] mb-5 text-[var(--text-primary)]">
-                        Sell Your Car <span className="text-primary">Your Way</span>
+                        Sell Your Car <span className="text-primary">Online</span>
                     </h1>
                     <p className="text-xl md:text-2xl font-extrabold text-[var(--text-primary)] mb-4">
-                        Auction FREE <span className="text-[var(--text-muted)]">or</span> Retail for £1
+                        See What Your Car Is Worth, Then Choose Auction or Retail
                     </p>
                     <p className="max-w-3xl mx-auto text-base md:text-lg leading-relaxed text-[var(--text-secondary)] mb-8">
-                        Choose a free dealer auction and let verified dealers compete for your car, or advertise it directly to buyers for £1. Complete a qualifying auction sale and you can receive a £100 CarMazium seller incentive.
+                        Get a free car valuation, then list in our dealer auction for £0 and let verified dealers compete, or advertise directly to buyers for £1. Complete a qualifying auction sale and you can receive a £100 CarMazium seller incentive.
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 mb-9">
