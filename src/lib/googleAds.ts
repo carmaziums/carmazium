@@ -1,41 +1,46 @@
 /**
  * Google Ads conversion tracking.
  *
- * IMPORTANT OWNERSHIP RULE:
- * CarMazium must never ship conversion labels that belong to a programmer,
- * agency, or other third party. All Google Ads IDs and conversion labels are
- * supplied explicitly through CarMazium-owned environment variables.
+ * MIGRATION NOTE:
+ * CarMazium is moving Google tracking to CarMazium-controlled assets. Until
+ * those replacement conversion actions are configured in production and
+ * verified, the existing live labels are retained as temporary fallbacks so
+ * the active Google Ads campaign does not suddenly lose conversion signals.
+ * Explicit NEXT_PUBLIC_GADS_LABEL_* values always override these fallbacks.
  *
  * PRIVACY: no VRM, email, phone or postcode is sent. Only internal IDs,
  * vehicle make/model/year and transaction values. Enhanced Conversions are
- * deliberately not implemented here; sending hashed user-identifying data
- * requires a separate consent/legal review and an explicit CarMazium decision.
+ * deliberately not implemented here; sending hashed identifying data requires
+ * a separate consent/legal review and an explicit CarMazium decision.
  */
 
 const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID?.trim()
 
 /**
- * Event name -> CarMazium-owned Google Ads conversion label.
+ * Event name -> Google Ads conversion label.
  *
- * There are intentionally NO hard-coded fallback labels. If a label is not
- * configured, the event is a no-op. This prevents an old programmer-owned
- * Google Ads action from receiving CarMazium conversion data after migration.
+ * The hard-coded labels below are the existing production actions and are
+ * temporary continuity fallbacks only. Once CarMazium-owned replacement
+ * actions are configured and verified, remove these fallbacks and rely only on
+ * environment variables.
  *
  * Keep overlapping funnel steps out of Primary bidding goals. For example,
  * `listing_fee_paid` is a subset of `purchase`, and
  * `auction_submitted_for_review` is a subset of `listing_submitted`.
  */
 const CONVERSION_LABELS: Record<string, string | undefined> = {
-    purchase: process.env.NEXT_PUBLIC_GADS_LABEL_PURCHASE?.trim(),
-    listing_submitted: process.env.NEXT_PUBLIC_GADS_LABEL_LISTING_SUBMITTED?.trim(),
+    purchase: process.env.NEXT_PUBLIC_GADS_LABEL_PURCHASE?.trim() || 'KyfHCLLQ1eocEN6N4qNE',
+    listing_submitted:
+        process.env.NEXT_PUBLIC_GADS_LABEL_LISTING_SUBMITTED?.trim() || 'uD94CLXQ1eocEN6N4qNE',
     valuation_requested: process.env.NEXT_PUBLIC_GADS_LABEL_VALUATION?.trim(),
 }
 
 /**
- * Completed-registration conversion label. This must also belong to the
- * CarMazium Google Ads account and is configured only through environment.
+ * Completed-registration conversion. The environment value takes priority;
+ * the existing live action remains only as a migration fallback.
  */
-const SIGNUP_CONVERSION_LABEL = process.env.NEXT_PUBLIC_GADS_LABEL_SIGNUP?.trim()
+const SIGNUP_CONVERSION_LABEL =
+    process.env.NEXT_PUBLIC_GADS_LABEL_SIGNUP?.trim() || 'LTNTCIuK4-ocEN6N4qNE'
 
 /**
  * In-memory protection against duplicate React/effect execution in one page
@@ -53,9 +58,7 @@ function alreadyReported(key: string): boolean {
     return false
 }
 
-/**
- * Reports a conversion to Google Ads if a CarMazium-owned action is configured.
- */
+/** Reports a Google Ads conversion when the Ads destination is configured. */
 export function trackAdsConversion(event: string, params: Record<string, unknown> = {}): void {
     if (typeof window === 'undefined') return
     if (!GOOGLE_ADS_ID) return
@@ -95,8 +98,8 @@ export function trackAdsConversion(event: string, params: Record<string, unknown
 }
 
 /**
- * Reports a completed registration to the CarMazium-owned Google Ads action.
- * Call this ONLY where the backend confirms a brand-new account was created.
+ * Reports a completed registration. Call this ONLY where the backend confirms
+ * a brand-new account was created.
  */
 const reportedSignupIds = new Set<string>()
 
@@ -122,7 +125,7 @@ export function trackSignupConversion(userId: string): boolean {
     }
 }
 
-/** Exposed for setup docs/debugging — only explicitly configured actions. */
+/** Exposed for setup/debugging. */
 export function configuredAdsConversions(): string[] {
     if (!GOOGLE_ADS_ID) return []
 
