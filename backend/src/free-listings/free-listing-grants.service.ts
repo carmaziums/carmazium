@@ -34,8 +34,14 @@ export class FreeListingGrantsService {
 
     private status(grant: FreeListingGrantRow): FreeListingGrantView['status'] {
         if (grant.revokedAt) return 'REVOKED';
+
+        // A FOREVER grant is an ongoing entitlement, not a one-use voucher.
+        // Older forever grants may already have usedAt populated from the
+        // previous one-listing behaviour; keep those grants active as well.
+        if (grant.expiresAt === null) return 'ACTIVE';
+
         if (grant.usedAt) return 'USED';
-        if (grant.expiresAt && grant.expiresAt.getTime() <= Date.now()) return 'EXPIRED';
+        if (grant.expiresAt.getTime() <= Date.now()) return 'EXPIRED';
         return 'ACTIVE';
     }
 
@@ -188,19 +194,22 @@ export class FreeListingGrantsService {
             UPDATE "admin_free_listing_grants"
             SET "revokedAt" = NOW(), "updatedAt" = NOW()
             WHERE "userId" = ${userId}
-              AND "usedAt" IS NULL
               AND "revokedAt" IS NULL
+              AND ("expiresAt" IS NULL OR "usedAt" IS NULL)
         `);
 
         return this.toView(await this.findGrantByUser(userId));
     }
 
     /**
-     * Convert one active admin grant into a normal completed £0 LISTING_FEE
+     * Convert an eligible admin grant into a normal completed £0 LISTING_FEE
      * transaction. ListingsService.publishListing already trusts completed
      * LISTING_FEE transactions, so this keeps the existing payment/review flow
-     * untouched and makes rejected listings resubmittable without consuming a
-     * second grant.
+     * untouched and makes rejected listings resubmittable without another fee.
+     *
+     * Timed grants remain one-use entitlements. A FOREVER grant (expiresAt is
+     * null) is deliberately reusable and therefore waives the BASIC retail
+     * listing fee for every eligible listing until an admin revokes the grant.
      *
      * Only BASIC CLASSIFIED listings are eligible. Auction listings are already
      * free, while STANDARD/PREMIUM remain paid upgrades.
@@ -223,7 +232,7 @@ export class FreeListingGrantsService {
         if (listing.status !== 'DRAFT') return false;
         if (listing.images.length < 10) return false;
 
-        // A completed fee transaction already exists — do not consume another grant.
+        // A completed fee transaction already exists — do not create another one.
         const existingFee = await this.prisma.transaction.findFirst({
             where: { listingId, type: 'LISTING_FEE', status: 'COMPLETED' },
             select: { id: true },
@@ -231,8 +240,8 @@ export class FreeListingGrantsService {
         if (existingFee) return false;
 
         return this.prisma.$transaction(async (tx) => {
-            // Lock the entitlement row. Two publish requests cannot consume one
-            // grant twice, and expiry/revocation is checked again while locked.
+            // Lock the entitlement row so revocation, expiry and one-use claims
+            // are evaluated consistently under concurrent publish requests.
             const rows = await tx.$queryRaw<FreeListingGrantRow[]>(Prisma.sql`
                 SELECT
                     "id", "userId", "grantedById", "expiresAt", "usedAt",
@@ -244,19 +253,31 @@ export class FreeListingGrantsService {
             const grant = rows[0];
             if (!grant || this.status(grant) !== 'ACTIVE') return false;
 
-            const now = new Date();
-            const claimed = await tx.$executeRaw(Prisma.sql`
-                UPDATE "admin_free_listing_grants"
-                SET
-                    "usedAt" = ${now},
-                    "usedListingId" = ${listingId},
-                    "updatedAt" = NOW()
-                WHERE "id" = ${grant.id}
-                  AND "usedAt" IS NULL
-                  AND "revokedAt" IS NULL
-                  AND ("expiresAt" IS NULL OR "expiresAt" > ${now})
-            `);
-            if (claimed !== 1) return false;
+            // Re-check after taking the grant lock. A permanent grant is reusable,
+            // so the lock itself no longer marks it as consumed; this prevents two
+            // concurrent publishes for the same listing creating duplicate £0 fees.
+            const feeAfterLock = await tx.transaction.findFirst({
+                where: { listingId, type: 'LISTING_FEE', status: 'COMPLETED' },
+                select: { id: true },
+            });
+            if (feeAfterLock) return false;
+
+            const isForeverGrant = grant.expiresAt === null;
+            if (!isForeverGrant) {
+                const now = new Date();
+                const claimed = await tx.$executeRaw(Prisma.sql`
+                    UPDATE "admin_free_listing_grants"
+                    SET
+                        "usedAt" = ${now},
+                        "usedListingId" = ${listingId},
+                        "updatedAt" = NOW()
+                    WHERE "id" = ${grant.id}
+                      AND "usedAt" IS NULL
+                      AND "revokedAt" IS NULL
+                      AND "expiresAt" > ${now}
+                `);
+                if (claimed !== 1) return false;
+            }
 
             await tx.transaction.create({
                 data: {
