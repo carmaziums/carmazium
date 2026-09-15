@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { ArrowLeft, Building2, Car, Eye, EyeOff, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
-import { fetchWithRetry } from "@/lib/fetchWithRetry"
 import { friendlyAuthError } from "@/lib/authErrors"
 
 // New business signups use one Partner Account. DEALER remains the internal
@@ -55,16 +54,16 @@ function SignupForm() {
     const [error, setError] = React.useState<string | null>(null)
     const [showPassword, setShowPassword] = React.useState(false)
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
     const getBaseUrl = () => typeof window !== "undefined"
         ? window.location.origin
         : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
 
     const registrationDestination = "/auth/registration-complete?next=/auth/onboarding"
-    const getRegistrationCallbackUrl = (baseUrl: string) => {
+    const getRegistrationCallbackPath = () => {
         const role = formData.role ? `&role=${encodeURIComponent(formData.role)}` : ""
-        return `${baseUrl}/auth/callback?redirect_to=${encodeURIComponent(registrationDestination)}${role}`
+        return `/auth/callback?redirect_to=${encodeURIComponent(registrationDestination)}${role}`
     }
+    const getRegistrationCallbackUrl = (baseUrl: string) => `${baseUrl}${getRegistrationCallbackPath()}`
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -91,52 +90,16 @@ function SignupForm() {
             })
             if (authError) throw authError
 
-            if (authData.user) {
-                const apiBase = API_URL.replace(/\/$/, "")
-                try {
-                    const syncResponse = await fetchWithRetry(
-                        `${apiBase}/users/sync`,
-                        {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                                ...(authData.session?.access_token
-                                    ? { Authorization: `Bearer ${authData.session.access_token}` }
-                                    : {}),
-                            },
-                            body: JSON.stringify({
-                                email: formData.email,
-                                firstName: formData.firstName,
-                                lastName: formData.lastName,
-                                role: formData.role,
-                            }),
-                        },
-                        { timeoutMs: 60000, retries: 2 },
-                    )
-                    if (syncResponse.ok && authData.session?.access_token) {
-                        await fetchWithRetry(
-                            `${apiBase}/auth/supabase-session`,
-                            {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ token: authData.session.access_token }),
-                                credentials: "include",
-                            },
-                            { timeoutMs: 60000, retries: 2 },
-                        ).catch(err => console.error("Session bridge failed:", err))
-                    }
-                } catch (syncError) {
-                    console.error("Backend sync failed, but account was created in Supabase", syncError)
-                }
-            }
-
             if (typeof window !== "undefined") {
                 sessionStorage.setItem("pending_verification_email", formData.email)
             }
-            // If Supabase created a session immediately, registration is already
-            // complete. Otherwise onboarding shows the email-verification step;
-            // the verification callback returns to the success page above.
-            router.push(authData.session ? registrationDestination : "/auth/onboarding")
+
+            // All successful registrations must pass through the callback before
+            // the success page. That callback owns the authenticated backend sync
+            // and is the single confirmed point that emits registration tracking.
+            // In particular, do not pre-sync immediate-session signups here: doing
+            // so consumes the backend's isNewUser=true signal before tracking runs.
+            router.push(authData.session ? getRegistrationCallbackPath() : "/auth/onboarding")
         } catch (err: any) {
             console.error("Signup failed:", err)
             setError(friendlyAuthError(err, "An error occurred during signup. Please try again."))
