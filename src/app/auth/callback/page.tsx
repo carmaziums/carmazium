@@ -254,6 +254,7 @@ function AuthCallbackContent() {
 
             trackGa4Event("sign_up", registrationParams)
             pushToDataLayer("sign_up", registrationParams)
+            pushToDataLayer("registration_completed", registrationParams)
             trackMetaEvent("CompleteRegistration", {
               ...registrationParams,
               content_name: accountType === "partner" ? "Partner Account" : "Personal Account",
