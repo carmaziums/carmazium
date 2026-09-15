@@ -1,3 +1,5 @@
+import { hasTrackingConsent } from "@/lib/trackingConsent"
+
 /**
  * Google Ads conversion tracking.
  *
@@ -8,10 +10,11 @@
  * the active Google Ads campaign does not suddenly lose conversion signals.
  * Explicit NEXT_PUBLIC_GADS_LABEL_* values always override these fallbacks.
  *
- * PRIVACY: no VRM, email, phone or postcode is sent. Only internal IDs,
- * vehicle make/model/year and transaction values. Enhanced Conversions are
- * deliberately not implemented here; sending hashed identifying data requires
- * a separate consent/legal review and an explicit CarMazium decision.
+ * PRIVACY: ordinary conversion events never send email, phone or postcode.
+ * The completed-registration conversion can provide the registering user's
+ * email to Google's Enhanced Conversions `user_data` interface, but ONLY after
+ * the visitor has explicitly accepted analytics/marketing tracking. The email
+ * is normalised client-side and the Google tag hashes it before transmission.
  */
 
 const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID?.trim()
@@ -100,6 +103,11 @@ export function trackAdsConversion(event: string, params: Record<string, unknown
 /**
  * Reports a completed registration. Call this ONLY where the backend confirms
  * a brand-new account was created.
+ *
+ * When the visitor explicitly accepted tracking and an email is available,
+ * set Google's `user_data` immediately before the conversion. This is the
+ * Google-tag implementation for Enhanced Conversions and improves attribution
+ * without putting the email into CarMazium's generic dataLayer events.
  */
 const reportedSignupIds = new Set<string>()
 
@@ -109,13 +117,20 @@ function alreadyReportedSignup(userId: string): boolean {
     return false
 }
 
-export function trackSignupConversion(userId: string): boolean {
+export function trackSignupConversion(userId: string, email?: string): boolean {
     if (typeof window === 'undefined') return false
     if (!GOOGLE_ADS_ID || !SIGNUP_CONVERSION_LABEL) return false
     if (typeof window.gtag !== 'function') return false
     if (!userId || alreadyReportedSignup(userId)) return false
 
     try {
+        const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : ''
+        if (normalizedEmail && hasTrackingConsent()) {
+            window.gtag('set', 'user_data', {
+                email: normalizedEmail,
+            })
+        }
+
         window.gtag('event', 'conversion', {
             send_to: `${GOOGLE_ADS_ID}/${SIGNUP_CONVERSION_LABEL}`,
         })
