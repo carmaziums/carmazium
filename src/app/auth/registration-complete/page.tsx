@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo } from "react"
+import { Suspense, useEffect, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
     ArrowRight,
@@ -70,7 +70,15 @@ function safeNextPath(value: string | null): string {
     return value
 }
 
-export default function RegistrationCompletePage() {
+function LoadingScreen() {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-950">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        </div>
+    )
+}
+
+function RegistrationCompleteContent() {
     const { user, profile, loading } = useAuth()
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -97,13 +105,7 @@ export default function RegistrationCompletePage() {
         [searchParams],
     )
 
-    if (loading || !user || !user.email_confirmed_at) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-950">
-                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            </div>
-        )
-    }
+    if (loading || !user || !user.email_confirmed_at) return <LoadingScreen />
 
     return (
         <main className="min-h-screen bg-slate-950 pt-24 pb-14 px-5">
@@ -152,7 +154,7 @@ export default function RegistrationCompletePage() {
                         <div className="mt-6 flex items-start gap-3 rounded-2xl border border-blue-400/20 bg-blue-400/[0.06] p-4">
                             <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-300" />
                             <p className="text-sm leading-relaxed text-slate-300">
-                                Your successful registration is recorded once when CarMazium confirms the new account. Revisiting this page does not create another registration conversion.
+                                Your account is verified and ready. You can continue setup now or go straight to your dashboard.
                             </p>
                         </div>
 
@@ -177,5 +179,13 @@ export default function RegistrationCompletePage() {
                 </section>
             </div>
         </main>
+    )
+}
+
+export default function RegistrationCompletePage() {
+    return (
+        <Suspense fallback={<LoadingScreen />}>
+            <RegistrationCompleteContent />
+        </Suspense>
     )
 }
