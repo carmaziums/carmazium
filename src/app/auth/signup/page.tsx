@@ -60,6 +60,12 @@ function SignupForm() {
         ? window.location.origin
         : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
 
+    const registrationDestination = "/auth/registration-complete?next=/auth/onboarding"
+    const getRegistrationCallbackUrl = (baseUrl: string) => {
+        const role = formData.role ? `&role=${encodeURIComponent(formData.role)}` : ""
+        return `${baseUrl}/auth/callback?redirect_to=${encodeURIComponent(registrationDestination)}${role}`
+    }
+
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!formData.role) {
@@ -75,7 +81,7 @@ function SignupForm() {
                 email: formData.email,
                 password: formData.password,
                 options: {
-                    emailRedirectTo: `${baseUrl}/auth/callback?redirect_to=/auth/onboarding`,
+                    emailRedirectTo: getRegistrationCallbackUrl(baseUrl),
                     data: {
                         first_name: formData.firstName,
                         last_name: formData.lastName,
@@ -127,7 +133,10 @@ function SignupForm() {
             if (typeof window !== "undefined") {
                 sessionStorage.setItem("pending_verification_email", formData.email)
             }
-            router.push("/auth/onboarding")
+            // If Supabase created a session immediately, registration is already
+            // complete. Otherwise onboarding shows the email-verification step;
+            // the verification callback returns to the success page above.
+            router.push(authData.session ? registrationDestination : "/auth/onboarding")
         } catch (err: any) {
             console.error("Signup failed:", err)
             setError(friendlyAuthError(err, "An error occurred during signup. Please try again."))
@@ -143,7 +152,7 @@ function SignupForm() {
             const { error: oauthError } = await supabase.auth.signInWithOAuth({
                 provider: "apple",
                 options: {
-                    redirectTo: `${window.location.origin}/auth/callback?redirect_to=/auth/onboarding`,
+                    redirectTo: getRegistrationCallbackUrl(window.location.origin),
                 },
             })
             if (oauthError) throw oauthError
@@ -253,7 +262,12 @@ function SignupForm() {
                     <Button variant="outline" disabled={googleLoading || appleLoading} onClick={async () => {
                         setGoogleLoading(true); setError(null)
                         try {
-                            const { error: oauthError } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/auth/callback?redirect_to=/auth/onboarding` } })
+                            if (!formData.role) {
+                                setError("Please select an account type before continuing with Google.")
+                                setGoogleLoading(false)
+                                return
+                            }
+                            const { error: oauthError } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: getRegistrationCallbackUrl(window.location.origin) } })
                             if (oauthError) throw oauthError
                         } catch (err: any) {
                             setError(friendlyAuthError(err, "Google sign-in failed")); setGoogleLoading(false)
@@ -266,7 +280,13 @@ function SignupForm() {
                         type="button"
                         variant="outline"
                         disabled={appleLoading || googleLoading}
-                        onClick={handleAppleSignup}
+                        onClick={async () => {
+                            if (!formData.role) {
+                                setError("Please select an account type before continuing with Apple.")
+                                return
+                            }
+                            await handleAppleSignup()
+                        }}
                         className="w-full border-white/20 hover:bg-white/10 text-white h-12 gap-3"
                     >
                         {appleLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <AppleLogo />}
