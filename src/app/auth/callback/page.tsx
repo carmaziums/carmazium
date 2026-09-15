@@ -266,7 +266,7 @@ function AuthCallbackContent() {
               trackMetaEvent("DealerRegistration", registrationParams)
             }
 
-            trackSignupConversion(user.id)
+            trackSignupConversion(user.id, user.email)
           }
         } catch {
           // A malformed/failed sync response must never break sign-in. Missing
