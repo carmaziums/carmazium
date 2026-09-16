@@ -134,7 +134,7 @@ export default function ServiceDashboard() {
 
                     <section className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
                         <StatCard icon={ShieldCheck} label="Approved areas" value={loading ? "…" : String(approvedCount)} />
-                        <StatCard icon={Inbox} label="Open paid jobs" value={loading ? "…" : String(feed.length)} />
+                        <StatCard icon={Inbox} label="Open jobs" value={loading ? "…" : String(feed.length)} />
                         <StatCard icon={Briefcase} label="My active jobs" value={loading ? "…" : String(activeAssigned.length)} />
                         <StatCard icon={PoundSterling} label="Released earnings" value={loading ? "…" : formatPence(releasedEarnings)} />
                     </section>
@@ -146,7 +146,7 @@ export default function ServiceDashboard() {
                                     <div className="w-11 h-11 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0"><Briefcase size={20} /></div>
                                     <div>
                                         <h2 className="font-heading font-bold text-lg">Delivery & Inspection jobs</h2>
-                                        <p className="text-sm text-[var(--text-muted)] mt-1 leading-relaxed">See open jobs in your approved paid service areas, submit quotes and manage jobs you win.</p>
+                                        <p className="text-sm text-[var(--text-muted)] mt-1 leading-relaxed">See open jobs in your approved service areas, submit quotes and manage jobs you win.</p>
                                     </div>
                                 </div>
                                 <ChevronRight className="text-[var(--text-muted)] group-hover:text-primary transition-colors shrink-0" size={20} />
@@ -173,7 +173,7 @@ export default function ServiceDashboard() {
                     <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] overflow-hidden">
                         <div className="p-5 md:p-6 border-b border-[var(--border-default)] flex items-center justify-between gap-4">
                             <div>
-                                <h2 className="text-xl font-bold font-heading">My recent paid jobs</h2>
+                                <h2 className="text-xl font-bold font-heading">My recent assigned jobs</h2>
                                 <p className="text-xs text-[var(--text-muted)] mt-1">Delivery and Inspection jobs assigned to your business.</p>
                             </div>
                             <Link href="/dashboard/service/jobs" className="text-xs font-black uppercase tracking-widest text-primary hover:underline shrink-0">View all</Link>
@@ -184,7 +184,7 @@ export default function ServiceDashboard() {
                         ) : recentAssigned.length === 0 ? (
                             <div className="p-8 md:p-10 text-center">
                                 <Briefcase size={28} className="mx-auto text-[var(--text-muted)] mb-3" />
-                                <p className="text-sm text-[var(--text-muted)]">No assigned paid jobs yet. Approved Delivery or Inspection providers can quote on open jobs.</p>
+                                <p className="text-sm text-[var(--text-muted)]">No assigned jobs yet. Approved Delivery or Inspection providers can quote on open jobs.</p>
                                 <Link href="/dashboard/service/jobs" className="inline-flex items-center gap-1 text-sm font-bold text-primary mt-4">Browse open jobs <ChevronRight size={14} /></Link>
                             </div>
                         ) : (

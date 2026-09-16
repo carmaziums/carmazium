@@ -80,7 +80,7 @@ export default function ContractorJobPage() {
                                     <section className="mb-6 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4 space-y-2 text-sm">
                                         {job.pickupAddress && <p className="flex gap-2"><MapPin size={14} className="text-primary mt-0.5 shrink-0" /><span><span className="text-[var(--text-muted)]">Pickup:</span> {job.pickupAddress}, {job.pickupPostcode}</span></p>}
                                         {job.deliveryAddress && <p className="flex gap-2"><MapPin size={14} className="text-primary mt-0.5 shrink-0" /><span><span className="text-[var(--text-muted)]">Deliver to:</span> {job.deliveryAddress}, {job.deliveryPostcode}</span></p>}
-                                        {job.serviceAddress && <p className="flex gap-2"><MapPin size={14} className="text-primary mt-0.5 shrink-0" /><span>{job.serviceAddress}, {job.servicePostcode}</span></p>}
+                                        {job.serviceAddress && <p className="flex gap-2"><MapPin size={14} className="text-primary mt-0.5 shrink-0" /><span><span className="text-[var(--text-muted)]">Inspection location:</span> {job.serviceAddress}, {job.servicePostcode}</span></p>}
                                     </section>
                                 )}
 
