@@ -59,7 +59,7 @@ export default function ServicesPage() {
     return (
         <div className="min-h-screen pt-24 pb-20">
             <div className="container mx-auto px-5 mb-16 text-center">
-                <p className="text-primary text-xs font-black uppercase tracking-[0.22em] mb-3">TradeXchange Services</p>
+                <p className="text-primary text-xs font-black uppercase tracking-[0.22em] mb-3">Trade Exchange Services</p>
                 <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4">Everything around the vehicle, in one place</h1>
                 <p className="text-lg text-[var(--text-secondary)] max-w-3xl mx-auto mb-8">
                     Transport and inspections use competitive provider quotes with protected payment through CarMazium.
@@ -68,26 +68,17 @@ export default function ServicesPage() {
 
                 {jobMarketplaceEnabled && (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-4xl mx-auto mb-6 text-left">
-                        <Link
-                            href="/services/jobs/new"
-                            className="rounded-2xl bg-primary text-white p-5 hover:bg-primary/90 transition-colors shadow-lg shadow-primary/15"
-                        >
+                        <Link href="/services/jobs/new" className="rounded-2xl bg-primary text-white p-5 hover:bg-primary/90 transition-colors shadow-lg shadow-primary/15">
                             <Plus size={20} className="mb-3" />
                             <span className="block font-black text-base mb-1">Post a Job</span>
                             <span className="block text-xs text-white/80">Delivery, recovery or inspection. Providers compete with quotes.</span>
                         </Link>
-                        <Link
-                            href="/dashboard/service/jobs"
-                            className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 hover:border-primary/50 transition-colors"
-                        >
+                        <Link href="/dashboard/service/jobs" className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 hover:border-primary/50 transition-colors">
                             <Search size={20} className="mb-3 text-primary" />
                             <span className="block font-black text-base mb-1">Available Jobs</span>
                             <span className="block text-xs text-[var(--text-muted)]">Browse open work. Approved providers can send a quote.</span>
                         </Link>
-                        <Link
-                            href="/services/jobs"
-                            className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 hover:border-primary/50 transition-colors"
-                        >
+                        <Link href="/services/jobs" className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 hover:border-primary/50 transition-colors">
                             <ClipboardList size={20} className="mb-3 text-primary" />
                             <span className="block font-black text-base mb-1">My Jobs</span>
                             <span className="block text-xs text-[var(--text-muted)]">See jobs you posted, compare quotes and manage accepted work.</span>
@@ -97,10 +88,7 @@ export default function ServicesPage() {
 
                 {(financeServiceEnabled || warrantyServiceEnabled) && (
                     <div className="flex items-center justify-center mb-10">
-                        <Link
-                            href="/services/leads"
-                            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-[var(--border-default)] text-sm font-bold hover:border-primary/40 transition-colors"
-                        >
+                        <Link href="/services/leads" className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-[var(--border-default)] text-sm font-bold hover:border-primary/40 transition-colors">
                             <Briefcase size={16} /> My finance & warranty enquiries
                         </Link>
                     </div>
@@ -114,9 +102,7 @@ export default function ServicesPage() {
                                 <div className={`w-14 h-14 ${service.bg} ${service.color} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
                                     <service.icon size={28} />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest rounded-full border border-[var(--border-default)] px-3 py-1 text-[var(--text-muted)]">
-                                    {service.badge}
-                                </span>
+                                <span className="text-[10px] font-black uppercase tracking-widest rounded-full border border-[var(--border-default)] px-3 py-1 text-[var(--text-muted)]">{service.badge}</span>
                             </div>
                             <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors">{service.title}</h3>
                             <p className="text-[var(--text-muted)] text-sm leading-relaxed mb-6 flex-grow">{service.desc}</p>
@@ -136,10 +122,7 @@ export default function ServicesPage() {
                         <p className="text-lg text-[var(--text-secondary)] max-w-2xl mx-auto mb-8">
                             Apply for the service areas you provide. CarMazium approves each capability separately so customers only meet providers cleared for that work.
                         </p>
-                        <Link
-                            href="/dashboard/service/capabilities"
-                            className="inline-flex items-center justify-center h-14 px-8 clip-path-carmazium bg-gradient-to-r from-primary to-[#d9161d] text-white text-lg font-bold uppercase tracking-wider shadow-lg shadow-primary/25 hover:from-[#ff4d4d] hover:to-primary transition-all"
-                        >
+                        <Link href="/dashboard/service/capabilities" className="inline-flex items-center justify-center h-14 px-8 clip-path-carmazium bg-gradient-to-r from-primary to-[#d9161d] text-white text-lg font-bold uppercase tracking-wider shadow-lg shadow-primary/25 hover:from-[#ff4d4d] hover:to-primary transition-all">
                             Join as a Provider
                         </Link>
                     </div>
