@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { VehicleDetailsPageClient } from "./VehicleDetailsPageClient"
+import { VehicleDeliveryShortcut } from "./VehicleDeliveryShortcut"
 import { formatPrice } from "@/lib/listingApi"
 import { VehicleViewTracker } from "@/components/analytics/VehicleViewTracker"
 
@@ -88,15 +89,18 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     return (
         <>
             {initialListing && (
-                <VehicleViewTracker
-                    id={initialListing.id}
-                    title={initialListing.title}
-                    make={initialListing.make}
-                    model={initialListing.model}
-                    year={initialListing.year}
-                    price={initialListing.price}
-                    listingType={initialListing.listingType}
-                />
+                <>
+                    <VehicleViewTracker
+                        id={initialListing.id}
+                        title={initialListing.title}
+                        make={initialListing.make}
+                        model={initialListing.model}
+                        year={initialListing.year}
+                        price={initialListing.price}
+                        listingType={initialListing.listingType}
+                    />
+                    <VehicleDeliveryShortcut listing={initialListing} />
+                </>
             )}
             <VehicleDetailsPageClient params={params} initialListing={initialListing} />
         </>
