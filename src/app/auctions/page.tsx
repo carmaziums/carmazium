@@ -8,8 +8,11 @@ import {
     BadgeCheck,
     Banknote,
     BriefcaseBusiness,
+    ClipboardList,
     Gavel,
     LayoutDashboard,
+    Plus,
+    Search,
     ShieldCheck,
     Truck,
     Users,
@@ -210,6 +213,7 @@ export default function TradeXchangePage() {
     const providerHref = user
         ? "/dashboard/service/capabilities"
         : "/auth/signup?role=CONTRACTOR&redirect=%2Fdashboard%2Fservice%2Fcapabilities"
+    const jobMarketplaceEnabled = deliveryServiceEnabled || inspectionServiceEnabled
 
     return (
         <div className="min-h-screen" style={{ background: "var(--bg-body)" }}>
@@ -266,6 +270,34 @@ export default function TradeXchangePage() {
                     </div>
                 </div>
             </section>
+
+            {jobMarketplaceEnabled && (
+                <section className="border-b border-[var(--border-default)] bg-[var(--bg-card)]">
+                    <div className="container mx-auto px-6 py-7">
+                        <div className="mb-4 text-center sm:text-left">
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">TradeXchange Jobs</p>
+                            <p className="mt-1 text-sm text-[var(--text-muted)]">Post work in seconds, compare competing provider quotes, or browse jobs if you provide a service.</p>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-3">
+                            <Link href="/services/jobs/new" className="group rounded-2xl bg-primary p-5 text-white transition-colors hover:bg-primary/90">
+                                <Plus size={20} className="mb-3" />
+                                <span className="block text-base font-black">Post a Job</span>
+                                <span className="mt-1 block text-xs text-white/80">Delivery, collection, recovery or inspection.</span>
+                            </Link>
+                            <Link href="/dashboard/service/jobs" className="group rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 transition-colors hover:border-primary/50">
+                                <Search size={20} className="mb-3 text-primary" />
+                                <span className="block text-base font-black">Available Jobs</span>
+                                <span className="mt-1 block text-xs text-[var(--text-muted)]">See open work. Approved providers can quote.</span>
+                            </Link>
+                            <Link href="/services/jobs" className="group rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 transition-colors hover:border-primary/50">
+                                <ClipboardList size={20} className="mb-3 text-primary" />
+                                <span className="block text-base font-black">My Jobs</span>
+                                <span className="mt-1 block text-xs text-[var(--text-muted)]">Track your posts, compare quotes and manage jobs.</span>
+                            </Link>
+                        </div>
+                    </div>
+                </section>
+            )}
 
             <section className="border-b border-[var(--border-default)] bg-[var(--bg-card)]">
                 <div className="container mx-auto px-6 py-8">
