@@ -1,5 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ListingsModule } from './listings/listings.module';
@@ -22,7 +24,6 @@ import { ProfilesModule } from './profiles/profiles.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PaymentsModule } from './payments/payments.module';
 import { DashboardModule } from './dashboard/dashboard.module';
-import { ThrottlerModule } from '@nestjs/throttler';
 import { CsrfMiddleware } from './core/middleware/csrf.middleware';
 import { HealthModule } from './health/health.module';
 import { DvlaModule } from './dvla/dvla.module';
@@ -84,7 +85,13 @@ import { BlogModule } from './blog/blog.module';
     BlogModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
