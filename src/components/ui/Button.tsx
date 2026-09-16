@@ -6,29 +6,27 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const brandActionClasses =
-    "bg-gradient-to-r from-primary to-[#d9161d] text-white hover:from-[#ff4d4d] hover:to-primary shadow-lg shadow-primary/25 border-0"
+    "bg-gradient-to-r from-primary to-[#d9161d] text-white hover:from-[#ff4d4d] hover:to-primary shadow-lg shadow-primary/20 border border-transparent"
 
 const buttonVariants = cva(
-    "inline-flex cursor-pointer items-center justify-center whitespace-nowrap text-sm font-bold uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 hover:scale-[1.02] active:scale-[0.98] duration-150",
+    "inline-flex cursor-pointer items-center justify-center whitespace-nowrap text-sm font-bold uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-body)] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 hover:-translate-y-0.5 active:translate-y-0 duration-150",
     {
         variants: {
             variant: {
                 default: brandActionClasses,
-                // Keep the existing API for compatibility, but use one visual
-                // treatment for standard CarMazium actions across the website.
-                outline: brandActionClasses,
-                dark: "bg-slate-800/80 border border-[var(--border-default)] text-white hover:bg-slate-700 hover:border-white/20 backdrop-blur-md",
-                ghost: "hover:bg-primary/10 dark:hover:bg-white/10",
-                link: "text-primary underline-offset-4 hover:underline",
+                outline: "border border-primary/35 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/60 shadow-sm",
+                dark: "bg-slate-800/90 border border-slate-700 text-white hover:bg-slate-700 hover:border-slate-600 shadow-sm",
+                ghost: "border border-transparent hover:bg-primary/10 dark:hover:bg-white/10",
+                link: "h-auto border-0 p-0 text-primary normal-case tracking-normal shadow-none underline-offset-4 hover:underline hover:translate-y-0",
             },
             size: {
                 default: "h-11 px-6 py-2",
                 sm: "h-9 px-4 text-xs",
-                lg: "h-14 px-8 text-lg",
+                lg: "h-14 px-8 text-base",
                 icon: "h-11 w-11",
             },
             shape: {
-                default: "clip-path-carmazium",
+                default: "rounded-xl",
                 pill: "rounded-full",
                 square: "rounded-lg",
             }
