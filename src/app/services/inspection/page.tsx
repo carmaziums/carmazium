@@ -38,11 +38,11 @@ export default function InspectionLandingPage() {
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(16,185,129,0.10)_0%,transparent_55%)]" />
                 <div className="container mx-auto px-6 py-16 md:py-24 relative">
                     <Link href="/auctions" className="mb-7 inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary">
-                        <ArrowLeft size={15} /> Back to TradeXchange
+                        <ArrowLeft size={15} /> Back to Trade Exchange
                     </Link>
                     <div className="max-w-3xl">
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-4 py-1.5 mb-6 text-xs font-bold uppercase tracking-widest text-emerald-500">
-                            <FileSearch size={13} /> TradeXchange · Vehicle Inspections
+                            <FileSearch size={13} /> Trade Exchange · Vehicle Inspections
                         </motion.div>
                         <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-6xl font-black font-heading tracking-tight leading-[0.95] mb-5">
                             Inspect the car <span className="text-primary">before you commit.</span>
@@ -92,7 +92,7 @@ export default function InspectionLandingPage() {
                             <p className="text-emerald-500 text-[10px] font-black uppercase tracking-[0.2em] mb-3">For inspection providers</p>
                             <h2 className="text-3xl font-black font-heading mb-4">Turn your inspection expertise into more paid work</h2>
                             <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-5">
-                                Apply for Vehicle Inspection capability. Once approved, you can quote on suitable inspection requests and compete for work through TradeXchange.
+                                Apply for Vehicle Inspection capability. Once approved, you can quote on suitable inspection requests and compete for work through Trade Exchange.
                             </p>
                             <div className="rounded-2xl border border-emerald-500/25 bg-[var(--bg-card)] p-5 mb-6">
                                 <p className="font-black mb-1">9% CarMazium platform fee. You keep 91%.</p>
