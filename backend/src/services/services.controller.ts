@@ -16,6 +16,32 @@ import {
 } from './dto';
 
 /**
+ * Provider-facing private customer details are unlocked only once the service
+ * payment has succeeded. ACCEPTED means a quote was selected, not paid.
+ */
+const PROVIDER_PRIVATE_DETAIL_STATUSES = new Set([
+    'PAID',
+    'IN_PROGRESS',
+    'COMPLETED',
+    'RELEASED',
+    'DISPUTED',
+]);
+
+export function redactProviderJobBeforePayment<T extends Record<string, any>>(job: T): T {
+    if (!job || PROVIDER_PRIVATE_DETAIL_STATUSES.has(job.status)) return job;
+    const customer = job.customer
+        ? { id: job.customer.id, firstName: job.customer.firstName }
+        : null;
+    return {
+        ...job,
+        customer,
+        pickupAddress: null,
+        deliveryAddress: null,
+        serviceAddress: null,
+    } as T;
+}
+
+/**
  * TradeXchange service marketplace.
  *
  * Route order matters: the static contractor routes (`jobs/feed`,
@@ -107,7 +133,11 @@ export class ServicesController {
     async assigned(@Req() req: any) {
         const jobs = await this.services.assigned(req.contractorProfileId);
         const allowed = new Set<ServiceType>(req.approvedServiceTypes ?? []);
-        return new StandardResponse(jobs.filter((job: any) => allowed.has(job.serviceType)));
+        return new StandardResponse(
+            jobs
+                .filter((job: any) => allowed.has(job.serviceType))
+                .map((job: any) => redactProviderJobBeforePayment(job)),
+        );
     }
 
     @Put('jobs/:id/quote')
@@ -170,8 +200,9 @@ export class ServicesController {
         const contractorProfileId = user.role === 'ADMIN'
             ? null
             : await this.tradeTeam.contractorProfileForJob(user.id, id);
+        const job = await this.services.getJob({ userId: user.id, role: user.role, contractorProfileId }, id);
         return new StandardResponse(
-            await this.services.getJob({ userId: user.id, role: user.role, contractorProfileId }, id),
+            job.viewerRole === 'contractor' ? redactProviderJobBeforePayment(job) : job,
         );
     }
 
