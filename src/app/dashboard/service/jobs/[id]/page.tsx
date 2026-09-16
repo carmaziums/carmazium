@@ -8,7 +8,8 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
 import {
-    getJob, upsertQuote, withdrawQuote, startJob, completeJob, formatPence, type ServiceJob,
+    getJob, getServiceSettings, upsertQuote, withdrawQuote, startJob, completeJob, formatPence,
+    type ServiceJob, type ServiceMarketplaceSettings,
 } from "@/lib/servicesApi"
 import { JobStatusBadge, RecoveryBadge, JobRoute, JobTiming, JobVehicles } from "@/components/services/JobBits"
 
@@ -20,12 +21,11 @@ import { JobStatusBadge, RecoveryBadge, JobRoute, JobTiming, JobVehicles } from 
  */
 const inputCls = "w-full rounded-xl border px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-primary)]"
 
-const FEE = 0.09
-
 export default function ContractorJobPage() {
     const { id } = useParams<{ id: string }>()
     const { user, profile } = useAuth()
     const [job, setJob] = React.useState<ServiceJob | null>(null)
+    const [settings, setSettings] = React.useState<ServiceMarketplaceSettings | null>(null)
     const [error, setError] = React.useState<string | null>(null)
     const [flash, setFlash] = React.useState<string | null>(null)
     const [busy, setBusy] = React.useState<string | null>(null)
@@ -40,6 +40,7 @@ export default function ContractorJobPage() {
         }).catch(e => setError(e?.message || "Job not found"))
     }, [id])
     React.useEffect(() => { load() }, [load])
+    React.useEffect(() => { getServiceSettings().then(setSettings).catch(() => setSettings(null)) }, [])
 
     const run = async (key: string, fn: () => Promise<unknown>, after?: string) => {
         setBusy(key); setError(null); setFlash(null)
@@ -53,6 +54,8 @@ export default function ContractorJobPage() {
     const amountPence = Math.round(Number(amount || 0) * 100)
     const isMine = job?.viewerRole === "contractor"
     const canQuote = job?.status === "OPEN"
+    const platformFeePence = settings ? Math.round(amountPence * settings.platformFeeRate) : null
+    const providerPence = platformFeePence == null ? null : amountPence - platformFeePence
 
     return (
         <div className="min-h-screen pt-20 pb-12">
@@ -75,7 +78,6 @@ export default function ContractorJobPage() {
                                 <JobRoute job={job} className="mb-1" />
                                 <div className="mb-6"><JobTiming job={job} /></div>
 
-                                {/* Full addresses only arrive once this contractor is the accepted one. */}
                                 {isMine && (job.pickupAddress || job.deliveryAddress || job.serviceAddress) && (
                                     <section className="mb-6 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4 space-y-2 text-sm">
                                         {job.pickupAddress && <p className="flex gap-2"><MapPin size={14} className="text-primary mt-0.5 shrink-0" /><span><span className="text-[var(--text-muted)]">Pickup:</span> {job.pickupAddress}, {job.pickupPostcode}</span></p>}
@@ -97,7 +99,6 @@ export default function ContractorJobPage() {
                             </div>
 
                             <aside className="space-y-4">
-                                {/* Quote */}
                                 {canQuote && (
                                     <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">{myQuote?.status === "ACTIVE" ? "Your quote" : "Quote this job"}</p>
@@ -106,10 +107,13 @@ export default function ContractorJobPage() {
                                             <input className={`${inputCls} pl-9 text-lg font-bold`} type="number" min={1} step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" aria-label="Quote amount" />
                                         </div>
                                         <textarea className={`${inputCls} resize-none mb-3`} rows={3} value={message} onChange={e => setMessage(e.target.value)} maxLength={1000} placeholder="Collection window, vehicle type, anything that helps the customer pick you" />
-                                        {amountPence >= 100 && (
+                                        {amountPence >= 100 && platformFeePence != null && providerPence != null && (
                                             <p className="text-[11px] text-[var(--text-muted)] mb-3">
-                                                Customer pays {formatPence(amountPence)}. CarMazium fee {formatPence(Math.round(amountPence * FEE))}. <strong className="text-[var(--text-primary)]">You receive {formatPence(amountPence - Math.round(amountPence * FEE))}.</strong>
+                                                Customer pays {formatPence(amountPence)}. CarMazium fee {formatPence(platformFeePence)}. <strong className="text-[var(--text-primary)]">You receive {formatPence(providerPence)}.</strong>
                                             </p>
+                                        )}
+                                        {amountPence >= 100 && platformFeePence == null && (
+                                            <p className="text-[11px] text-[var(--text-muted)] mb-3">The current platform fee and provider payout will be confirmed from TradeXchange when the quote is accepted.</p>
                                         )}
                                         <Button className="w-full" disabled={busy === "quote" || amountPence < 100}
                                             onClick={() => run("quote", () => upsertQuote(job.id, { amountPence, message: message.trim() || undefined }), myQuote ? "Quote updated." : "Quote sent. The customer has been notified.")}>
@@ -122,7 +126,6 @@ export default function ContractorJobPage() {
                                     </div>
                                 )}
 
-                                {/* Won */}
                                 {isMine && job.agreedAmountPence != null && (
                                     <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">Your payout</p>
@@ -158,7 +161,7 @@ export default function ContractorJobPage() {
                                     </div>
                                 )}
 
-                                {isMine && job.status === "ACCEPTED" && <p className="text-sm text-[var(--text-muted)] text-center">Your quote was accepted. Waiting for the customer to pay.</p>}
+                                {isMine && job.status === "ACCEPTED" && <p className="text-sm text-[var(--text-muted)] text-center">Your quote was accepted. Waiting for the customer to pay{settings ? ` within ${settings.acceptedPaymentTimeoutMinutes} minutes` : ""}. If payment is not completed, the job reopens safely.</p>}
                                 {isMine && job.status === "COMPLETED" && <p className="text-sm text-[var(--text-muted)] text-center">Waiting for the customer to confirm. Auto-releases 48h after completion.</p>}
                                 {!isMine && !canQuote && <p className="text-sm text-[var(--text-muted)] text-center">This job is no longer open.</p>}
                             </aside>

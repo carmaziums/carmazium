@@ -8,19 +8,24 @@ import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { createJob } from "@/lib/servicesApi"
 import { inspectionServiceEnabled } from "@/lib/featureFlags"
+import { useSessionDraft } from "@/hooks/useSessionDraft"
 
 const inputCls = "w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-sm outline-none focus:border-primary"
 const labelCls = "block text-[11px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2"
+const EMPTY_FORM = {
+    registration: "", make: "", model: "", year: "", postcode: "", address: "",
+    requestedFor: "", notes: "", title: "Pre-purchase vehicle inspection",
+}
 
 export default function NewInspectionPage() {
     const router = useRouter()
     const { user, loading } = useAuth()
     const [busy, setBusy] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
-    const [form, setForm] = React.useState({
-        registration: "", make: "", model: "", year: "", postcode: "", address: "",
-        requestedFor: "", notes: "", title: "Pre-purchase vehicle inspection",
-    })
+    const { value: form, setValue: setForm, clearDraft } = useSessionDraft(
+        "tradexchange:inspection:new",
+        EMPTY_FORM,
+    )
 
     if (!inspectionServiceEnabled) notFound()
 
@@ -53,6 +58,7 @@ export default function NewInspectionPage() {
                     notes: form.notes.trim() || undefined,
                 }],
             })
+            clearDraft()
             router.push(`/services/jobs/${job.id}`)
         } catch (err: any) {
             setError(err?.message || "Could not post the inspection request.")
@@ -67,7 +73,7 @@ export default function NewInspectionPage() {
                 <p className="text-[var(--text-muted)] mb-8">One request, one vehicle. Approved inspection providers can quote for the work.</p>
 
                 {!loading && !user && (
-                    <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">Sign in before submitting. You can complete the form first.</div>
+                    <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">Sign in before submitting. Your form is saved in this tab and restored when you return.</div>
                 )}
                 {error && <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500">{error}</div>}
 
@@ -98,7 +104,7 @@ export default function NewInspectionPage() {
 
                     <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4 flex gap-3 text-sm">
                         <CheckCircle size={18} className="text-emerald-500 shrink-0 mt-0.5" />
-                        <p>The provider quotes a fixed price. If you accept it, payment is made through CarMazium and their 91% share is released after completion.</p>
+                        <p>The provider quotes a fixed price. If you accept it, payment is made through CarMazium and the provider share is released after completion.</p>
                     </div>
 
                     <Button type="submit" size="lg" className="w-full" disabled={busy || loading}>
