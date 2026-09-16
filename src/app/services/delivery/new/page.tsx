@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter, notFound } from "next/navigation"
-import { Truck, Plus, Trash2, Loader2, AlertCircle, ArrowRight } from "lucide-react"
+import { Truck, Plus, Trash2, Loader2, AlertCircle, ArrowRight, CheckCircle } from "lucide-react"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { deliveryServiceEnabled } from "@/lib/featureFlags"
 import { Button } from "@/components/ui/Button"
@@ -25,6 +25,8 @@ function NewDeliveryJobForm() {
     const router = useRouter()
     const [submitting, setSubmitting] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
+    const [linkedListingTitle, setLinkedListingTitle] = React.useState<string | null>(null)
+    const prefillApplied = React.useRef(false)
 
     const [isRecovery, setIsRecovery] = React.useState(false)
     const [title, setTitle] = React.useState("")
@@ -36,6 +38,37 @@ function NewDeliveryJobForm() {
     const [asap, setAsap] = React.useState(true)
     const [requestedFor, setRequestedFor] = React.useState("")
     const [vehicles, setVehicles] = React.useState<JobVehicle[]>([{ ...EMPTY_VEHICLE }])
+
+    React.useEffect(() => {
+        if (prefillApplied.current || typeof window === "undefined") return
+        prefillApplied.current = true
+
+        const params = new URLSearchParams(window.location.search)
+        const listingId = params.get("listingId")?.trim() || undefined
+        const registration = params.get("registration")?.trim() || undefined
+        const make = params.get("make")?.trim() || undefined
+        const model = params.get("model")?.trim() || undefined
+        const yearValue = params.get("year")?.trim()
+        const year = yearValue && /^\d{4}$/.test(yearValue) ? Number(yearValue) : undefined
+        const pickup = params.get("pickup")?.trim() || ""
+        const sourceTitle = params.get("vehicleTitle")?.trim() || [year, make, model].filter(Boolean).join(" ")
+
+        if (!listingId && !registration && !make && !model) return
+
+        setVehicles([{
+            ...EMPTY_VEHICLE,
+            listingId,
+            registration: registration?.toUpperCase().replace(/\s+/g, ""),
+            make,
+            model,
+            year,
+        }])
+        if (pickup) setPickupAddress(pickup)
+        if (sourceTitle) {
+            setLinkedListingTitle(sourceTitle)
+            setTitle(`${sourceTitle} delivery`)
+        }
+    }, [])
 
     const setVehicle = (i: number, patch: Partial<JobVehicle>) =>
         setVehicles(vs => vs.map((v, idx) => (idx === i ? { ...v, ...patch } : v)))
@@ -60,6 +93,7 @@ function NewDeliveryJobForm() {
                 deliveryAddress: deliveryAddress.trim() || undefined,
                 requestedFor: asap || !requestedFor ? undefined : new Date(requestedFor).toISOString(),
                 vehicles: vehicles.map(v => ({
+                    listingId: v.listingId || undefined,
                     registration: v.registration || undefined,
                     make: v.make || undefined,
                     model: v.model || undefined,
@@ -81,8 +115,18 @@ function NewDeliveryJobForm() {
                     <Truck size={13} /> Delivery &amp; Recovery
                 </div>
                 <h1 className="text-3xl md:text-4xl font-black font-heading tracking-tight mb-2">Post a delivery job</h1>
-                <p className="text-[var(--text-muted)] text-sm">Approved transporters will send you fixed prices. You choose, you pay CarMazium, they get paid when the car arrives.</p>
+                <p className="text-[var(--text-muted)] text-sm">Your job goes live to approved transport providers. They compete with fixed-price quotes, and you choose the provider and price you prefer.</p>
             </div>
+
+            {linkedListingTitle && (
+                <div className="mb-6 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-sm flex items-start gap-3">
+                    <CheckCircle size={18} className="text-emerald-500 shrink-0 mt-0.5" />
+                    <div>
+                        <p className="font-bold">Vehicle filled from the CarMazium advert</p>
+                        <p className="text-xs text-[var(--text-muted)] mt-1">{linkedListingTitle}. Add the pickup postcode and where you want the vehicle delivered.</p>
+                    </div>
+                </div>
+            )}
 
             {error && (
                 <div className="mb-6 p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-300 text-sm flex items-start gap-3">
@@ -90,12 +134,11 @@ function NewDeliveryJobForm() {
                 </div>
             )}
 
-            {/* Kind */}
             <fieldset className="mb-8">
                 <legend className={labelCls}>What kind of move</legend>
                 <div className="grid sm:grid-cols-2 gap-3">
                     {[
-                        { v: false, label: "Delivery", hint: "The car runs and drives. Transported or driven on trade plates." },
+                        { v: false, label: "Delivery / Collection", hint: "The car runs and drives. Transported or driven on trade plates." },
                         { v: true, label: "Recovery", hint: "Non-runner, accident damaged or no keys. Needs a flatbed." },
                     ].map(opt => (
                         <label key={String(opt.v)} className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-colors ${isRecovery === opt.v ? "border-primary bg-primary/5" : "border-[var(--border-default)] bg-[var(--bg-input)] hover:border-primary/40"}`}>
@@ -109,13 +152,11 @@ function NewDeliveryJobForm() {
                 </div>
             </fieldset>
 
-            {/* Title */}
             <div className="mb-8">
                 <label className={labelCls} htmlFor="title">Job title</label>
                 <input id="title" className={inputCls} value={title} onChange={e => setTitle(e.target.value)} maxLength={120} placeholder='e.g. "BMW 3 Series, Leeds to Bristol"' />
             </div>
 
-            {/* Route */}
             <div className="grid sm:grid-cols-2 gap-5 mb-8">
                 <div className="space-y-3">
                     <div>
@@ -139,7 +180,6 @@ function NewDeliveryJobForm() {
                 </div>
             </div>
 
-            {/* Timing */}
             <fieldset className="mb-8">
                 <legend className={labelCls}>When</legend>
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -155,7 +195,6 @@ function NewDeliveryJobForm() {
                 </div>
             </fieldset>
 
-            {/* Vehicles */}
             <fieldset className="mb-8">
                 <div className="flex items-center justify-between mb-3">
                     <legend className={labelCls}>Vehicles ({vehicles.length})</legend>
@@ -189,7 +228,6 @@ function NewDeliveryJobForm() {
                 </div>
             </fieldset>
 
-            {/* Description */}
             <div className="mb-10">
                 <label className={labelCls} htmlFor="desc">Anything else the transporter should know <span className="normal-case font-semibold">(optional)</span></label>
                 <textarea id="desc" className={`${inputCls} resize-none`} rows={3} value={description} onChange={e => setDescription(e.target.value)} maxLength={2000} placeholder="Access restrictions, contact windows, whether the V5 travels with the car…" />
@@ -197,7 +235,7 @@ function NewDeliveryJobForm() {
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <p className="text-xs text-[var(--text-muted)] max-w-sm">
-                    Your job stays open for 7 days. Transporters see the postcodes and the vehicles — not your name, phone or full address.
+                    Your job stays open for 7 days. Approved providers see the route and vehicles and compete with quotes — not your name, phone or full address.
                 </p>
                 <Button type="submit" size="lg" disabled={submitting} className="w-full sm:w-auto">
                     {submitting ? <Loader2 className="animate-spin" size={18} /> : <>Post job <ArrowRight size={16} className="ml-2" /></>}
@@ -208,16 +246,10 @@ function NewDeliveryJobForm() {
 }
 
 export default function NewDeliveryJobPage() {
-    // The whole service marketplace is behind a flag until it has been tested
-    // end to end. Off (production) this route does not exist, so the feature
-    // cannot be reached by typing the URL even though the card is inert.
     if (!deliveryServiceEnabled) notFound()
 
     return (
         <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
-            {/* Any account may post. No allowedRoles, no verification — the
-                gate here is only "are you signed in", so we know who to send
-                the quotes to. */}
             <RequireAuth
                 title="Sign in to post a delivery job"
                 message="Approved transporters will quote your route. You need an account so we can send you their prices."
