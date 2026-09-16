@@ -18,12 +18,12 @@ export default function WarrantyServicePage() {
     return (
         <div className="min-h-screen pt-24 pb-20">
             <main className="container mx-auto px-5 max-w-6xl">
-                <Link href="/auctions" className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary mb-6"><ArrowLeft size={15} /> Back to TradeXchange</Link>
+                <Link href="/auctions" className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary mb-6"><ArrowLeft size={15} /> Back to Trade Exchange</Link>
 
                 <section className="grid lg:grid-cols-[0.8fr_1.2fr] gap-10 items-start mb-16">
                     <aside className="lg:sticky lg:top-24">
                         <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/25 bg-purple-500/10 px-4 py-1.5 mb-5 text-xs font-bold uppercase tracking-widest text-purple-500">
-                            <ShieldCheck size={13} /> TradeXchange · Warranty Providers
+                            <ShieldCheck size={13} /> Trade Exchange · Warranty Providers
                         </div>
                         <h1 className="text-4xl md:text-5xl font-black font-heading mb-4">Vehicle Warranty</h1>
                         <p className="text-[var(--text-muted)] leading-relaxed mb-6">Tell us about the vehicle and the cover you want. Approved matching warranty providers can respond with products and indicative prices for you to compare.</p>
@@ -58,7 +58,7 @@ export default function WarrantyServicePage() {
                         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
                             <div className="flex gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5"><BadgeCheck className="text-primary shrink-0" /><div><h3 className="font-bold text-sm mb-1">Capability-specific approval</h3><p className="text-xs text-[var(--text-muted)]">Only businesses approved for Warranty receive warranty enquiries.</p></div></div>
                             <div className="flex gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5"><Users className="text-primary shrink-0" /><div><h3 className="font-bold text-sm mb-1">Relevant vehicle demand</h3><p className="text-xs text-[var(--text-muted)]">Reach users already buying, selling and managing vehicles through the CarMazium ecosystem.</p></div></div>
-                            <div className="flex gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5"><LayoutDashboard className="text-primary shrink-0" /><div><h3 className="font-bold text-sm mb-1">Dedicated enquiry inbox</h3><p className="text-xs text-[var(--text-muted)]">Review and manage TradeXchange warranty enquiries from your provider dashboard.</p></div></div>
+                            <div className="flex gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5"><LayoutDashboard className="text-primary shrink-0" /><div><h3 className="font-bold text-sm mb-1">Dedicated enquiry inbox</h3><p className="text-xs text-[var(--text-muted)]">Review and manage Trade Exchange warranty enquiries from your provider dashboard.</p></div></div>
                         </div>
                     </div>
                 </section>
