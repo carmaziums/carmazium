@@ -7,7 +7,7 @@ import {
     Loader2, ArrowLeft, Star, CheckCircle, AlertCircle, ShieldCheck, Phone, Mail, XCircle, Clock, Banknote,
 } from "lucide-react"
 import { RequireAuth } from "@/components/auth/RequireAuth"
-import { deliveryServiceEnabled } from "@/lib/featureFlags"
+import { deliveryServiceEnabled, inspectionServiceEnabled } from "@/lib/featureFlags"
 import { Button } from "@/components/ui/Button"
 import {
     getJob, acceptQuote, confirmCompletion, disputeJob, cancelJob, formatPence,
@@ -29,12 +29,7 @@ function JobDetail() {
     const [job, setJob] = React.useState<ServiceJob | null>(null)
     const [error, setError] = React.useState<string | null>(null)
     const [busy, setBusy] = React.useState<string | null>(null)
-    const [flash, setFlash] = React.useState<string | null>(
-        params.get("posted") ? "Job posted. Approved transporters can now quote it — we will email you as prices come in."
-            : params.get("paid") === "1" ? "Payment received. Your transporter has been notified and their contact details are below."
-                : params.get("paid") === "0" ? "Checkout was cancelled. Your quote is still accepted — pay when you are ready."
-                    : null,
-    )
+    const [flash, setFlash] = React.useState<string | null>(null)
 
     const load = React.useCallback(() => {
         getJob(id).then(j => {
@@ -67,6 +62,18 @@ function JobDetail() {
     if (error && !job) return <div className="container mx-auto px-5 py-20 text-center text-red-500">{error}</div>
     if (!job) return <div className="flex justify-center py-32"><Loader2 className="animate-spin text-primary" /></div>
 
+    const isInspection = job.serviceType === "INSPECTION"
+    const providerSingular = isInspection ? "inspection provider" : "transporter"
+    const providerPlural = isInspection ? "inspection providers" : "transporters"
+    const completionNoun = isInspection ? "inspection" : "delivery"
+    const queryFlash = params.get("posted")
+        ? `Job posted. Approved ${providerPlural} can now quote it — we will email you as prices come in.`
+        : params.get("paid") === "1"
+            ? `Payment received. Your ${providerSingular} has been notified and their contact details are below.`
+            : params.get("paid") === "0"
+                ? "Checkout was cancelled. Your quote is still accepted — pay when you are ready."
+                : null
+    const visibleFlash = flash ?? queryFlash
     const activeQuotes = (job.quotes ?? []).filter(q => q.status === "ACTIVE")
     const accepted = (job.quotes ?? []).find(q => q.id === job.acceptedQuoteId)
     const isPaidState = ["PAID", "IN_PROGRESS", "COMPLETED"].includes(job.status)
@@ -77,9 +84,9 @@ function JobDetail() {
                 <ArrowLeft size={14} /> My jobs
             </Link>
 
-            {flash && (
+            {visibleFlash && (
                 <div className="mb-6 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 text-sm flex items-start gap-3">
-                    <CheckCircle size={18} className="shrink-0 mt-0.5" /> {flash}
+                    <CheckCircle size={18} className="shrink-0 mt-0.5" /> {visibleFlash}
                 </div>
             )}
             {error && (
@@ -122,7 +129,7 @@ function JobDetail() {
                             {activeQuotes.length === 0 ? (
                                 <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-10 text-center">
                                     <Clock size={28} className="mx-auto text-[var(--text-muted)] mb-3" />
-                                    <p className="text-sm text-[var(--text-muted)]">No quotes yet. Approved transporters have been notified — most jobs get their first price within a few hours.</p>
+                                    <p className="text-sm text-[var(--text-muted)]">No quotes yet. Approved {providerPlural} have been notified — most jobs get their first price within a few hours.</p>
                                     <p className="text-xs text-[var(--text-muted)] mt-2">Open until {new Date(job.expiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}.</p>
                                 </div>
                             ) : (
@@ -142,7 +149,7 @@ function JobDetail() {
                     {/* Accepted / paid */}
                     {accepted && job.contractor && (
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">Your transporter</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">Your {providerSingular}</p>
                             <p className="font-heading font-bold text-lg">{job.contractor.businessName || job.contractor.user.firstName}</p>
                             <Rating c={job.contractor} />
                             {isPaidState || job.status === "RELEASED" ? (
@@ -170,8 +177,8 @@ function JobDetail() {
                             <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">Price</p>
                             <p className="text-3xl font-black font-heading">{formatPence(job.agreedAmountPence)}</p>
                             <p className="text-xs text-[var(--text-muted)] mt-1">
-                                {job.payment?.status === "RELEASED" ? "Paid to your transporter."
-                                    : job.payment?.status === "PAID" ? "Held by CarMazium until you confirm delivery."
+                                {job.payment?.status === "RELEASED" ? `Paid to your ${providerSingular}.`
+                                    : job.payment?.status === "PAID" ? `Held by CarMazium until you confirm the ${completionNoun}.`
                                         : job.payment?.status === "REFUNDED" ? "Refunded to you."
                                             : "Not yet paid."}
                             </p>
@@ -189,10 +196,10 @@ function JobDetail() {
                         {job.status === "COMPLETED" && (
                             <>
                                 <Button className="w-full" disabled={busy === "confirm"}
-                                    onClick={() => run("confirm", () => confirmCompletion(job.id), "Confirmed. Your transporter has been paid.")}>
-                                    {busy === "confirm" ? <Loader2 className="animate-spin" size={16} /> : <><CheckCircle size={16} className="mr-2" /> Confirm delivery</>}
+                                    onClick={() => run("confirm", () => confirmCompletion(job.id), `Confirmed. Your ${providerSingular} has been paid.`)}>
+                                    {busy === "confirm" ? <Loader2 className="animate-spin" size={16} /> : <><CheckCircle size={16} className="mr-2" /> Confirm {completionNoun}</>}
                                 </Button>
-                                <p className="text-[11px] text-[var(--text-muted)] text-center">Releases {job.contractorAmountPence != null ? formatPence(job.contractorAmountPence) : "payment"} to the transporter. Auto-confirms 48h after they marked it done.</p>
+                                <p className="text-[11px] text-[var(--text-muted)] text-center">Releases {job.contractorAmountPence != null ? formatPence(job.contractorAmountPence) : "payment"} to the {providerSingular}. Auto-confirms 48h after they marked it done.</p>
                             </>
                         )}
                         {isPaidState && (
@@ -258,10 +265,7 @@ function QuoteCard({ quote, cheapest, busy, onAccept }: { quote: ServiceQuote; c
 }
 
 export default function ServiceJobPage() {
-    // The whole service marketplace is behind a flag until it has been tested
-    // end to end. Off (production) this route does not exist, so the feature
-    // cannot be reached by typing the URL even though the card is inert.
-    if (!deliveryServiceEnabled) notFound()
+    if (!deliveryServiceEnabled && !inspectionServiceEnabled) notFound()
 
     return (
         <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
