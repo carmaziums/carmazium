@@ -34,7 +34,10 @@ export function ProfileCompletionGate({ children }: { children: React.ReactNode 
     const router = useRouter()
 
     const role = String(profile?.role || user?.user_metadata?.role || "").toUpperCase()
-    const shouldEnforce = Boolean(user && profile && SELF_SERVICE_ROLES.has(role))
+    // If an authenticated user's profile has not loaded/been created yet, keep
+    // the dashboard closed as well. Once a profile exists, only self-service
+    // account roles are subject to this customer onboarding requirement.
+    const shouldEnforce = Boolean(user && (!profile || SELF_SERVICE_ROLES.has(role)))
     const isComplete = hasRequiredAccountDetails(profile)
     const shouldRedirect = !loading && shouldEnforce && !isComplete
 
