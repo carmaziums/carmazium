@@ -3,14 +3,14 @@ import type { Metadata } from "next"
 export const metadata: Metadata = {
     title: "Vehicle Delivery, Inspection, Finance & Warranty Services UK",
     description:
-        "Find approved vehicle delivery, recovery and inspection providers, plus finance enquiries and warranty services through CarMazium TradeXchange across the UK.",
+        "Find approved vehicle delivery, recovery and inspection providers, plus finance enquiries and warranty services through CarMazium Trade Exchange across the UK.",
     keywords: [
         "vehicle delivery UK",
         "car recovery UK",
         "vehicle inspection UK",
         "car inspection service UK",
         "car warranty services UK",
-        "TradeXchange services",
+        "Trade Exchange services",
         "CarMazium",
     ],
     alternates: {
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     openGraph: {
         title: "Vehicle Delivery, Inspection, Finance & Warranty Services UK | CarMazium",
         description:
-            "Access approved vehicle delivery, recovery, inspection, finance enquiry and warranty services through CarMazium TradeXchange.",
+            "Access approved vehicle delivery, recovery, inspection, finance enquiry and warranty services through CarMazium Trade Exchange.",
         url: "/services",
         type: "website",
     },
