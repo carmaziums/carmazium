@@ -26,7 +26,7 @@ function MyJobsList() {
             <div className="flex items-start justify-between gap-4 mb-8 flex-wrap">
                 <div>
                     <h1 className="text-3xl md:text-4xl font-black font-heading tracking-tight mb-1">My Jobs</h1>
-                    <p className="text-[var(--text-muted)] text-sm">Delivery, recovery and inspection jobs you have posted in TradeXchange.</p>
+                    <p className="text-[var(--text-muted)] text-sm">Delivery, recovery and inspection jobs you have posted in Trade Exchange.</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                     <Link href="/dashboard/service/jobs" className="inline-flex items-center gap-2 px-4 py-3 rounded-xl border border-[var(--border-default)] text-sm font-bold hover:border-primary/40 transition-colors">
