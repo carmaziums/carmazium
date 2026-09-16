@@ -3,9 +3,9 @@
 import * as React from "react"
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { Loader2, Truck, Plus } from "lucide-react"
+import { Loader2, Truck, Plus, Search } from "lucide-react"
 import { RequireAuth } from "@/components/auth/RequireAuth"
-import { deliveryServiceEnabled } from "@/lib/featureFlags"
+import { deliveryServiceEnabled, inspectionServiceEnabled } from "@/lib/featureFlags"
 import { getMyJobs, type ServiceJob } from "@/lib/servicesApi"
 import { JobListCard } from "@/components/services/JobBits"
 
@@ -23,14 +23,19 @@ function MyJobsList() {
 
     return (
         <div className="container mx-auto px-5 py-12 max-w-4xl">
-            <div className="flex items-start justify-between gap-4 mb-8">
+            <div className="flex items-start justify-between gap-4 mb-8 flex-wrap">
                 <div>
-                    <h1 className="text-3xl md:text-4xl font-black font-heading tracking-tight mb-1">My service jobs</h1>
-                    <p className="text-[var(--text-muted)] text-sm">Deliveries and inspections you have posted in the Trade Exchange.</p>
+                    <h1 className="text-3xl md:text-4xl font-black font-heading tracking-tight mb-1">My Jobs</h1>
+                    <p className="text-[var(--text-muted)] text-sm">Delivery, recovery and inspection jobs you have posted in TradeXchange.</p>
                 </div>
-                <Link href="/services/delivery/new" className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-white text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-colors shrink-0">
-                    <Plus size={16} /> Post a job
-                </Link>
+                <div className="flex items-center gap-2 flex-wrap">
+                    <Link href="/dashboard/service/jobs" className="inline-flex items-center gap-2 px-4 py-3 rounded-xl border border-[var(--border-default)] text-sm font-bold hover:border-primary/40 transition-colors">
+                        <Search size={15} /> Available Jobs
+                    </Link>
+                    <Link href="/services/jobs/new" className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-white text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-colors">
+                        <Plus size={16} /> Post a Job
+                    </Link>
+                </div>
             </div>
 
             {error && <p className="text-red-500 text-sm mb-6">{error}</p>}
@@ -40,8 +45,8 @@ function MyJobsList() {
                 <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-12 text-center">
                     <Truck size={32} className="mx-auto text-[var(--text-muted)] mb-4" />
                     <h2 className="font-heading font-bold text-lg mb-2">No jobs yet</h2>
-                    <p className="text-sm text-[var(--text-muted)] mb-6">Post a delivery and approved transporters will quote it.</p>
-                    <Link href="/services/delivery/new" className="text-primary font-bold text-sm hover:underline">Post your first job →</Link>
+                    <p className="text-sm text-[var(--text-muted)] mb-6">Post a delivery, recovery or inspection job and approved providers can compete for it with quotes.</p>
+                    <Link href="/services/jobs/new" className="text-primary font-bold text-sm hover:underline">Post your first job →</Link>
                 </div>
             )}
 
@@ -70,10 +75,7 @@ function MyJobsList() {
 }
 
 export default function MyServiceJobsPage() {
-    // The whole service marketplace is behind a flag until it has been tested
-    // end to end. Off (production) this route does not exist, so the feature
-    // cannot be reached by typing the URL even though the card is inert.
-    if (!deliveryServiceEnabled) notFound()
+    if (!deliveryServiceEnabled && !inspectionServiceEnabled) notFound()
 
     return (
         <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>

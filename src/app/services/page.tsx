@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, Briefcase } from "lucide-react"
+import { ArrowRight, Briefcase, ClipboardList, Plus, Search } from "lucide-react"
 import { GiTowTruck, GiMagnifyingGlass, GiRibbonMedal, GiMoneyStack } from "react-icons/gi"
 import {
     deliveryServiceEnabled,
@@ -11,6 +11,8 @@ import {
 } from "@/lib/featureFlags"
 
 export default function ServicesPage() {
+    const jobMarketplaceEnabled = deliveryServiceEnabled || inspectionServiceEnabled
+
     const services = [
         {
             title: "Delivery & Recovery",
@@ -59,29 +61,50 @@ export default function ServicesPage() {
             <div className="container mx-auto px-5 mb-16 text-center">
                 <p className="text-primary text-xs font-black uppercase tracking-[0.22em] mb-3">TradeXchange Services</p>
                 <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4">Everything around the vehicle, in one place</h1>
-                <p className="text-lg text-[var(--text-secondary)] max-w-3xl mx-auto mb-10">
+                <p className="text-lg text-[var(--text-secondary)] max-w-3xl mx-auto mb-8">
                     Transport and inspections use competitive provider quotes with protected payment through CarMazium.
                     Finance and warranty use matched enquiries to approved providers, with no CarMazium service-job fee or payout.
                 </p>
 
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
-                    {(deliveryServiceEnabled || inspectionServiceEnabled) && (
+                {jobMarketplaceEnabled && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-4xl mx-auto mb-6 text-left">
+                        <Link
+                            href="/services/jobs/new"
+                            className="rounded-2xl bg-primary text-white p-5 hover:bg-primary/90 transition-colors shadow-lg shadow-primary/15"
+                        >
+                            <Plus size={20} className="mb-3" />
+                            <span className="block font-black text-base mb-1">Post a Job</span>
+                            <span className="block text-xs text-white/80">Delivery, recovery or inspection. Providers compete with quotes.</span>
+                        </Link>
+                        <Link
+                            href="/dashboard/service/jobs"
+                            className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 hover:border-primary/50 transition-colors"
+                        >
+                            <Search size={20} className="mb-3 text-primary" />
+                            <span className="block font-black text-base mb-1">Available Jobs</span>
+                            <span className="block text-xs text-[var(--text-muted)]">Browse open work. Approved providers can send a quote.</span>
+                        </Link>
                         <Link
                             href="/services/jobs"
-                            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-[var(--border-default)] text-sm font-bold hover:border-primary/40 transition-colors"
+                            className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 hover:border-primary/50 transition-colors"
                         >
-                            <Briefcase size={16} /> My transport & inspection jobs
+                            <ClipboardList size={20} className="mb-3 text-primary" />
+                            <span className="block font-black text-base mb-1">My Jobs</span>
+                            <span className="block text-xs text-[var(--text-muted)]">See jobs you posted, compare quotes and manage accepted work.</span>
                         </Link>
-                    )}
-                    {(financeServiceEnabled || warrantyServiceEnabled) && (
+                    </div>
+                )}
+
+                {(financeServiceEnabled || warrantyServiceEnabled) && (
+                    <div className="flex items-center justify-center mb-10">
                         <Link
                             href="/services/leads"
                             className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-[var(--border-default)] text-sm font-bold hover:border-primary/40 transition-colors"
                         >
                             <Briefcase size={16} /> My finance & warranty enquiries
                         </Link>
-                    )}
-                </div>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-20 text-left max-w-5xl mx-auto">
                     {services.map((service) => (
