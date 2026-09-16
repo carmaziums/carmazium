@@ -1,106 +1,83 @@
 "use client"
 
-import { useRef, useEffect, useState } from "react"
-import { motion, useScroll, useTransform } from "framer-motion"
-import { TestimonialCard } from "@/components/ui/TestimonialCard"
-import { ArrowLeft, ArrowRight } from "lucide-react"
+import Link from "next/link"
+import { motion } from "framer-motion"
+import { BadgeCheck, Gavel, Handshake, ShieldCheck, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 
-const TESTIMONIALS = [
+const TRUST_POINTS = [
     {
-        name: "James Peterson",
-        role: "Sold BMW M4",
-        content: "I was skeptical about selling online, but CarMazium's auction system got me 15% more than the dealer trade-in offer. The process was completely transparent.",
-        image: "https://i.pravatar.cc/150?u=a042581f4e29026024d",
-        verified: true
+        icon: BadgeCheck,
+        title: "Verified marketplace profiles",
+        text: "Identity and business verification help customers understand who they are dealing with before they transact.",
     },
     {
-        name: "Elena Rodriguez",
-        role: "Bought Porsche 911",
-        content: "The verification report gave me total peace of mind. The car arrived exactly as described. Finally, a luxury marketplace that feels premium.",
-        image: "https://i.pravatar.cc/150?u=a042581f4e29026704d",
-        verified: true
+        icon: Gavel,
+        title: "Transparent selling routes",
+        text: "Choose a free dealer auction or a retail listing, with the relevant fees and workflow shown before you continue.",
     },
     {
-        name: "Michael Chang",
-        role: "Collector",
-        content: "I've used every platform out there. CarMazium's interface is miles ahead. The live auction room feels like a video game in the best way possible.",
-        image: "https://i.pravatar.cc/150?u=a04258114e29026302d",
-        verified: true
+        icon: Handshake,
+        title: "Direct vehicle transactions",
+        text: "Vehicle purchase funds are agreed and paid directly between buyer and seller; CarMazium provides the marketplace tools.",
     },
     {
-        name: "Sarah Connors",
-        role: "Sold Range Rover",
-        content: "Sold my car in 48 hours. The team handled all the paperwork. Exceptional service from start to finish.",
-        image: "https://i.pravatar.cc/150?u=a042581f4e29026024d1",
-        verified: true
-    }
+        icon: ShieldCheck,
+        title: "Checks remain in your control",
+        text: "Review listing information, arrange inspections and complete the usual vehicle checks before purchase or handover.",
+    },
 ]
 
-
 export function TestimonialsSection() {
-    const containerRef = useRef<HTMLDivElement>(null)
-    const [width, setWidth] = useState(0)
-
-    useEffect(() => {
-        if (containerRef.current) {
-            setWidth(containerRef.current.scrollWidth - containerRef.current.offsetWidth)
-        }
-    }, [])
-
     return (
-        <section className="py-24 relative overflow-hidden">
-            {/* Background Elements */}
-            <div className="absolute inset-0 dark:bg-slate-900/50 pointer-events-none" />
-            <div className="absolute top-1/2 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[var(--border-default)] to-transparent pointer-events-none" />
-
-            <div className="container mx-auto px-5 relative z-10">
-                <div className="flex flex-col md:flex-row items-end justify-between mb-16 gap-6">
-                    <div>
-                        <motion.h2
-                            initial={{ opacity: 0, x: -20 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                            className="text-3xl md:text-5xl font-bold font-heading mb-4"
-                        >
-                            Trusted by <span className="text-primary">Thousands</span>
-                        </motion.h2>
-                        <p className="text-[var(--text-muted)] max-w-xl text-lg">
-                            Don't just take our word for it. Join the community of enthusiasts who are changing the way cars are bought and sold.
-                        </p>
-                    </div>
-
-                    {/* Navigation Buttons (Visual only, drag is primary) */}
-                    <div className="hidden md:flex gap-4">
-                        <div className="flex gap-2">
-                            <span className="text-xs text-[var(--text-muted)] uppercase tracking-widest self-center mr-4">Drag to explore</span>
-                        </div>
-                    </div>
+        <section className="py-20 md:py-24 border-y border-[var(--border-default)]" style={{ background: "var(--bg-card)" }}>
+            <div className="container mx-auto px-5">
+                <div className="mx-auto mb-12 max-w-3xl text-center">
+                    <motion.p
+                        initial={{ opacity: 0, y: 10 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-primary"
+                    >
+                        Built for clearer decisions
+                    </motion.p>
+                    <motion.h2
+                        initial={{ opacity: 0, y: 16 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="text-3xl md:text-5xl font-bold font-heading mb-4"
+                    >
+                        A marketplace designed around <span className="text-primary">transparency</span>
+                    </motion.h2>
+                    <p className="text-[var(--text-muted)] text-lg leading-relaxed">
+                        CarMazium gives buyers, sellers and automotive businesses clear tools for listings, auctions and vehicle services without inventing social proof or hiding how each workflow operates.
+                    </p>
                 </div>
 
-                {/* Draggable Carousel */}
-                <motion.div ref={containerRef} className="cursor-grab active:cursor-grabbing overflow-hidden">
-                    <motion.div
-                        drag="x"
-                        dragConstraints={{ right: 0, left: -width }}
-                        whileTap={{ cursor: "grabbing" }}
-                        className="flex gap-8"
-                    >
-                        {TESTIMONIALS.map((testimonial, i) => (
-                            <div key={i} className="min-w-[350px] md:min-w-[450px] h-full">
-                                <TestimonialCard {...testimonial} delay={i * 0.1} />
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+                    {TRUST_POINTS.map((item, index) => (
+                        <motion.article
+                            key={item.title}
+                            initial={{ opacity: 0, y: 18 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: index * 0.06 }}
+                            className="h-full rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-6"
+                        >
+                            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+                                <item.icon size={22} className="text-primary" />
                             </div>
-                        ))}
-                        {/* Call to Action Card in Carousel */}
-                        <div className="min-w-[350px] md:min-w-[450px] h-full flex items-center justify-center p-8">
-                            <div className="text-center">
-                                <h3 className="text-2xl font-bold mb-4">Have a story to tell?</h3>
-                                <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-white">Share Your Experience</Button>
-                            </div>
-                        </div>
-                    </motion.div>
-                </motion.div>
+                            <h3 className="mb-2 text-lg font-bold font-heading">{item.title}</h3>
+                            <p className="text-sm leading-relaxed text-[var(--text-muted)]">{item.text}</p>
+                        </motion.article>
+                    ))}
+                </div>
 
+                <div className="mt-10 flex justify-center">
+                    <Button asChild variant="outline" size="lg">
+                        <Link href="/how-it-works">See how CarMazium works <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                    </Button>
+                </div>
             </div>
         </section>
     )
