@@ -8,7 +8,6 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { BidsModule } from './bids/bids.module';
 import { WatchlistModule } from './watchlist/watchlist.module';
-import { ServiceRequestsModule } from './service-requests/service-requests.module';
 import { ChatModule } from './chat/chat.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TasksModule } from './tasks/tasks.module';
@@ -67,7 +66,6 @@ import { BlogModule } from './blog/blog.module';
     UsersModule,
     BidsModule,
     WatchlistModule,
-    ServiceRequestsModule,
     ChatModule,
     TasksModule,
     TransactionsModule,
