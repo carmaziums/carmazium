@@ -127,8 +127,6 @@ export class ServicesService {
             return existing;
         }
 
-        // REJECTED / SUSPENDED / new → (re)apply. A re-application after
-        // rejection goes back into the queue with a fresh appliedAt.
         const capability = await this.prisma.contractorCapability.upsert({
             where: { contractorId_serviceType: { contractorId: profile.id, serviceType: dto.serviceType } },
             create: { contractorId: profile.id, serviceType: dto.serviceType },
@@ -197,9 +195,6 @@ export class ServicesService {
         });
         if (!cap) throw new NotFoundException('Application not found');
 
-        // Approval requires somewhere to send the money. Enforced here rather
-        // than at payout time so a job can never finish with the contractor's
-        // share stranded on the platform.
         if (dto.status === CapabilityStatus.APPROVED) {
             const u = cap.contractor.user;
             if (!u.stripeConnectAccountId || !u.stripeConnectOnboardingComplete) {
@@ -218,7 +213,7 @@ export class ServicesService {
         const label = this.label(cap.serviceType);
         if (dto.status === CapabilityStatus.APPROVED) {
             await this.notify(u.id, 'SERVICE_CAPABILITY_APPROVED', `Approved for ${label}`,
-                `You can now quote on ${label} jobs in the Trade Exchange.`, '/dashboard/service/jobs');
+                `You can now quote on ${label} jobs in TradeXchange.`, '/dashboard/service/jobs');
             this.sendEmail(u.email, u.firstName, `You're approved for ${label}`,
                 `Your application to provide <strong>${label}</strong> has been approved. Open jobs are waiting in your provider dashboard.`,
                 'See open jobs', '/dashboard/service/jobs');
@@ -281,11 +276,6 @@ export class ServicesService {
         return job;
     }
 
-    /**
-     * Pre-fill a DELIVERY job from a purchase: pickup is the seller's
-     * postcode, the vehicle is the listing. The customer only supplies where
-     * it is going.
-     */
     async createJobFromPurchase(customerId: string, dto: JobFromPurchaseDto) {
         if (!dto.offerId && !dto.auctionId) {
             throw new BadRequestException('Provide an offerId or an auctionId.');
@@ -391,16 +381,9 @@ export class ServicesService {
         return { success: true };
     }
 
-    /**
-     * Accept a quote. Freezes the fee split onto the job, declines every other
-     * quote, and returns a Stripe Checkout URL for the gross. The job becomes
-     * PAID when the webhook confirms the charge.
-     */
     async acceptQuote(customerId: string, jobId: string, quoteId: string): Promise<{ checkoutUrl: string }> {
         const job = await this.ownJob(customerId, jobId, { quotes: true, payment: true, vehicles: true });
 
-        // Re-entry: a customer who abandoned Checkout can come back for a
-        // fresh session without the job being stuck in ACCEPTED forever.
         if (job.status === ServiceJobStatus.ACCEPTED && job.acceptedQuoteId === quoteId && job.payment) {
             const url = await this.freshCheckout(job.id, job.payment.id, job.payment.grossPence, job.title, customerId);
             return { checkoutUrl: url };
@@ -451,8 +434,6 @@ export class ServicesService {
             }),
         ]);
 
-        // Tell the losers. The winner hears once the money lands (webhook) —
-        // "accepted but unpaid" is not something to celebrate yet.
         const declined = job.quotes.filter((q) => q.id !== quote.id && q.status === ServiceQuoteStatus.ACTIVE);
         for (const q of declined) {
             const c = await this.prisma.contractorProfile.findUnique({ where: { id: q.contractorId }, select: { userId: true } });
@@ -464,16 +445,46 @@ export class ServicesService {
         return { checkoutUrl: url };
     }
 
+    /**
+     * Return the existing payable Checkout session whenever possible. This
+     * prevents repeated clicks or checkout re-entry from leaving multiple live
+     * Stripe sessions that could each be paid for the same TradeXchange job.
+     * Expired sessions are replaced using a deterministic idempotency key.
+     */
     private async freshCheckout(jobId: string, paymentId: string, grossPence: number, title: string, userId: string) {
         const stripe = await this.payments.getStripeClient();
         const base = this.frontendUrl();
+        const payment = await this.prisma.servicePayment.findUnique({
+            where: { id: paymentId },
+            select: { stripeCheckoutSessionId: true },
+        });
+        const existingSessionId = payment?.stripeCheckoutSessionId ?? null;
+
+        if (existingSessionId && typeof stripe.checkout.sessions.retrieve === 'function') {
+            try {
+                const existing = await stripe.checkout.sessions.retrieve(existingSessionId);
+                if (existing.status === 'open' && existing.url) return existing.url;
+
+                if (existing.status === 'complete' && existing.payment_status === 'paid') {
+                    await this.markPaid(
+                        jobId,
+                        paymentId,
+                        typeof existing.payment_intent === 'string' ? existing.payment_intent : null,
+                    );
+                    return `${base}/services/jobs/${jobId}?paid=1`;
+                }
+            } catch (e: any) {
+                this.logger.warn(`Could not reuse Stripe Checkout session ${existingSessionId} for service job ${jobId}: ${e?.message}`);
+            }
+        }
+
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             mode: 'payment',
             line_items: [{
                 price_data: {
                     currency: 'gbp',
-                    product_data: { name: title, description: 'Trade Exchange service — held by CarMazium until the job is confirmed complete.' },
+                    product_data: { name: title, description: 'TradeXchange service — held by CarMazium until the job is confirmed complete.' },
                     unit_amount: grossPence,
                 },
                 quantity: 1,
@@ -481,6 +492,8 @@ export class ServicesService {
             metadata: { type: 'SERVICE_JOB', jobId, paymentId, userId },
             success_url: `${base}/services/jobs/${jobId}?paid=1`,
             cancel_url: `${base}/services/jobs/${jobId}?paid=0`,
+        }, {
+            idempotencyKey: `service-job-checkout-${paymentId}-${existingSessionId ?? 'initial'}`,
         });
         await this.prisma.servicePayment.update({
             where: { id: paymentId },
@@ -490,7 +503,6 @@ export class ServicesService {
         return session.url;
     }
 
-    /** Called by the Stripe webhook on checkout.session.completed with metadata.type = SERVICE_JOB. */
     async markPaid(jobId: string, paymentId: string, paymentIntentId: string | null) {
         const payment = await this.prisma.servicePayment.findUnique({ where: { id: paymentId }, include: { job: true } });
         if (!payment || payment.jobId !== jobId) {
@@ -498,7 +510,7 @@ export class ServicesService {
             return;
         }
         if (payment.status === ServicePaymentStatus.PAID || payment.status === ServicePaymentStatus.RELEASED) {
-            return; // webhook replay
+            return;
         }
         if (payment.status !== ServicePaymentStatus.PENDING || payment.job.status !== ServiceJobStatus.ACCEPTED) {
             this.logger.warn(
@@ -535,7 +547,6 @@ export class ServicesService {
             'View the job', `/services/jobs/${jobId}`);
     }
 
-    /** Customer confirms the contractor's completion → payout. */
     async confirmCompletion(customerId: string, jobId: string) {
         const job = await this.ownJob(customerId, jobId);
         if (job.status !== ServiceJobStatus.COMPLETED) {
@@ -544,7 +555,6 @@ export class ServicesService {
         return this.release(jobId, 'customer confirmed');
     }
 
-    /** Customer freezes a paid job for admin. */
     async openDispute(customerId: string, jobId: string, reason?: string) {
         const job = await this.ownJob(customerId, jobId);
         const disputable: ServiceJobStatus[] = [ServiceJobStatus.PAID, ServiceJobStatus.IN_PROGRESS, ServiceJobStatus.COMPLETED];
@@ -666,8 +676,6 @@ export class ServicesService {
         return { success: true };
     }
 
-    // ── Shared views ───────────────────────────────────────────────────────
-
     async contractorProfileIdFor(userId: string): Promise<string | null> {
         const p = await this.prisma.contractorProfile.findUnique({ where: { userId }, select: { id: true } });
         return p?.id ?? null;
@@ -712,15 +720,12 @@ export class ServicesService {
         }
 
         const full = isCustomer || isAdmin || isAccepted;
-        // Contractors see only their own quote; the customer and admin see all.
         const quotes = full && !isAccepted
             ? job.quotes
             : job.quotes.filter((q) => q.contractorId === viewer.contractorProfileId);
 
         return { ...this.redact({ ...job, quotes }, full), viewerRole: isCustomer ? 'customer' : isAccepted ? 'contractor' : isAdmin ? 'admin' : 'bidder' };
     }
-
-    // ── Admin ──────────────────────────────────────────────────────────────
 
     async adminListJobs(status?: ServiceJobStatus) {
         if (status && !Object.values(ServiceJobStatus).includes(status)) {
@@ -751,8 +756,6 @@ export class ServicesService {
             return this.release(jobId, `admin ${adminId} resolved dispute in favour of the provider`);
         }
 
-        // Refund the customer in full. The platform absorbs the Stripe fee on
-        // a refund, which is the cost of having taken a job that went wrong.
         const stripe = await this.payments.getStripeClient();
         if (!job.payment.stripePaymentIntentId) throw new BadRequestException('No payment intent on record to refund.');
         const refund = await stripe.refunds.create(
@@ -767,14 +770,12 @@ export class ServicesService {
         this.logger.log(`Service job ${jobId} refunded (${refund.id}) by admin ${adminId}`);
 
         await this.notify(job.customerId, 'SERVICE_JOB_REFUNDED', 'Refund issued',
-            `Your payment for "${job.title}" has been refunded.`, `/services/jobs/${jobId}`);
+            `"${job.title}" has been refunded.`, `/services/jobs/${jobId}`);
         const c = job.contractorId ? await this.prisma.contractorProfile.findUnique({ where: { id: job.contractorId }, select: { userId: true } }) : null;
         if (c) await this.notify(c.userId, 'SERVICE_JOB_REFUNDED', 'Dispute resolved',
             `"${job.title}" was refunded to the customer.${dto.note ? ` ${dto.note}` : ''}`, `/dashboard/service/jobs/${jobId}`);
         return { success: true, refundId: refund.id };
     }
-
-    // ── Lifecycle (called by cron) ─────────────────────────────────────────
 
     async expireOpenJobs(): Promise<number> {
         const stale = await this.prisma.serviceJob.findMany({
@@ -805,14 +806,6 @@ export class ServicesService {
         return due.length;
     }
 
-    // ── Internals ──────────────────────────────────────────────────────────
-
-    /**
-     * Pay the contractor. Transfer first, then record — if the transfer
-     * throws we have changed nothing and can retry; if the record fails after
-     * a successful transfer the deterministic Stripe idempotency key prevents
-     * a retry from paying the provider twice.
-     */
     private async release(jobId: string, why: string) {
         const job = await this.prisma.serviceJob.findUnique({
             where: { id: jobId },
@@ -854,7 +847,7 @@ export class ServicesService {
             `<p>The job is confirmed complete and <strong>${gbp(job.payment.contractorPence)}</strong> has been transferred to your Stripe account.</p>`,
             'View the job', `/dashboard/service/jobs/${jobId}`);
         await this.notify(job.customerId, 'SERVICE_JOB_RELEASED', 'Job complete',
-            `"${job.title}" is done and your provider has been paid. Thanks for using the Trade Exchange.`, `/services/jobs/${jobId}`);
+            `"${job.title}" is done and your provider has been paid. Thanks for using TradeXchange.`, `/services/jobs/${jobId}`);
         return { success: true, transferId };
     }
 
@@ -872,7 +865,6 @@ export class ServicesService {
         return job;
     }
 
-    /** Strip customer identity and street addresses unless the viewer is entitled to them. */
     private redact<T extends Record<string, any>>(job: T, full: boolean): T {
         if (full) return job;
         const { customer, ...rest } = job;
@@ -902,7 +894,6 @@ export class ServicesService {
         for (const a of admins) await this.notify(a.id, type, title, message, link);
     }
 
-    /** Fire-and-forget branded email. Failures are logged by EmailService; a lost email must never fail the action. */
     private sendEmail(to: string, firstName: string | null, subject: string, bodyHtml: string, ctaLabel: string, ctaPath: string) {
         const name = firstName || 'there';
         const url = `${this.frontendUrl()}${ctaPath}`;
