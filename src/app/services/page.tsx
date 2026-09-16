@@ -1,8 +1,19 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, Briefcase, ClipboardList, Plus, Search } from "lucide-react"
+import {
+    ArrowRight,
+    Briefcase,
+    Building2,
+    ClipboardList,
+    Plus,
+    Search,
+    ShieldCheck,
+    WalletCards,
+} from "lucide-react"
 import { GiTowTruck, GiMagnifyingGlass, GiRibbonMedal, GiMoneyStack } from "react-icons/gi"
+import { Button } from "@/components/ui/Button"
+import { PageHero } from "@/components/layout/PageHero"
 import {
     deliveryServiceEnabled,
     inspectionServiceEnabled,
@@ -15,136 +26,251 @@ export default function ServicesPage() {
 
     const services = [
         {
+            title: "Vehicle Dealer",
+            icon: Building2,
+            desc: "Run your vehicle sales capability from one Partner Account, with dealer tools, stock workflows and access to the parts of CarMazium built for the motor trade.",
+            color: "text-primary",
+            bg: "bg-primary/10",
+            link: "/auth/signup?role=dealer",
+            cta: "Explore dealer access",
+            badge: "Partner capability",
+        },
+        {
             title: "Delivery & Recovery",
             icon: GiTowTruck,
             desc: "Post a single-car, multi-car or recovery job and let approved transport businesses compete with fixed-price quotes.",
-            color: "text-blue-400",
+            color: "text-blue-500 dark:text-blue-400",
             bg: "bg-blue-500/10",
             link: deliveryServiceEnabled ? "/services/delivery" : undefined,
             cta: deliveryServiceEnabled ? "Arrange transport" : "Coming soon",
-            badge: "Competitive quotes",
+            badge: "Paid job marketplace",
         },
         {
-            title: "Vehicle Inspections",
+            title: "Vehicle Inspection",
             icon: GiMagnifyingGlass,
             desc: "Request an independent vehicle inspection and receive quotes from approved inspection providers before you commit to a car.",
-            color: "text-emerald-400",
+            color: "text-emerald-600 dark:text-emerald-400",
             bg: "bg-emerald-500/10",
             link: inspectionServiceEnabled ? "/services/inspection" : undefined,
             cta: inspectionServiceEnabled ? "Book an inspection" : "Coming soon",
-            badge: "Competitive quotes",
+            badge: "Paid job marketplace",
         },
         {
             title: "Vehicle Finance",
             icon: GiMoneyStack,
             desc: "Send one finance enquiry to approved matching providers. Providers respond with their own terms; CarMazium does not lend or guarantee approval.",
-            color: "text-amber-400",
+            color: "text-amber-600 dark:text-amber-400",
             bg: "bg-amber-500/10",
             link: financeServiceEnabled ? "/services/finance" : undefined,
             cta: financeServiceEnabled ? "Request finance options" : "Coming soon",
-            badge: "Provider enquiries",
+            badge: "Matched enquiry",
         },
         {
-            title: "Warranty Providers",
+            title: "Warranty",
             icon: GiRibbonMedal,
             desc: "Tell us about the vehicle and cover you want. Approved warranty providers can respond with suitable products and indicative prices.",
-            color: "text-purple-400",
+            color: "text-purple-600 dark:text-purple-400",
             bg: "bg-purple-500/10",
             link: warrantyServiceEnabled ? "/services/warranty" : undefined,
             cta: warrantyServiceEnabled ? "Request warranty options" : "Coming soon",
-            badge: "Provider enquiries",
+            badge: "Matched enquiry",
         },
     ]
 
     return (
-        <div className="min-h-screen pt-24 pb-20">
-            <div className="container mx-auto px-5 mb-16 text-center">
-                <p className="text-primary text-xs font-black uppercase tracking-[0.22em] mb-3">TradeXchange Services</p>
-                <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4">Everything around the vehicle, in one place</h1>
-                <p className="text-lg text-[var(--text-secondary)] max-w-3xl mx-auto mb-8">
-                    Transport and inspections use competitive provider quotes with protected payment through CarMazium.
-                    Finance and warranty use matched enquiries to approved providers, with no CarMazium service-job fee or payout.
-                </p>
+        <main className="min-h-screen pb-20 pt-20">
+            <PageHero
+                eyebrow="TradeXchange"
+                title="The automotive service hub around every vehicle"
+                description={
+                    <p>
+                        Use one CarMazium ecosystem for motor-trade capability, transport, inspections, finance enquiries and warranty enquiries — with the commercial model made clear for each service.
+                    </p>
+                }
+                actions={
+                    <>
+                        {jobMarketplaceEnabled && (
+                            <Button asChild size="lg">
+                                <Link href="/services/jobs/new">
+                                    <Plus size={17} /> Post a job
+                                </Link>
+                            </Button>
+                        )}
+                        <Button asChild variant="outline" size="lg">
+                            <Link href="/auth/signup?role=dealer">
+                                <Building2 size={17} /> Create Partner Account
+                            </Link>
+                        </Button>
+                    </>
+                }
+            />
 
-                {jobMarketplaceEnabled && (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-4xl mx-auto mb-6 text-left">
-                        <Link
-                            href="/services/jobs/new"
-                            className="rounded-2xl bg-primary text-white p-5 hover:bg-primary/90 transition-colors shadow-lg shadow-primary/15"
-                        >
-                            <Plus size={20} className="mb-3" />
-                            <span className="block font-black text-base mb-1">Post a Job</span>
-                            <span className="block text-xs text-white/80">Delivery, recovery or inspection. Providers compete with quotes.</span>
-                        </Link>
-                        <Link
-                            href="/dashboard/service/jobs"
-                            className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 hover:border-primary/50 transition-colors"
-                        >
-                            <Search size={20} className="mb-3 text-primary" />
-                            <span className="block font-black text-base mb-1">Available Jobs</span>
-                            <span className="block text-xs text-[var(--text-muted)]">Browse open work. Approved providers can send a quote.</span>
-                        </Link>
-                        <Link
-                            href="/services/jobs"
-                            className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 hover:border-primary/50 transition-colors"
-                        >
-                            <ClipboardList size={20} className="mb-3 text-primary" />
-                            <span className="block font-black text-base mb-1">My Jobs</span>
-                            <span className="block text-xs text-[var(--text-muted)]">See jobs you posted, compare quotes and manage accepted work.</span>
-                        </Link>
-                    </div>
-                )}
-
-                {(financeServiceEnabled || warrantyServiceEnabled) && (
-                    <div className="flex items-center justify-center mb-10">
-                        <Link
-                            href="/services/leads"
-                            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-[var(--border-default)] text-sm font-bold hover:border-primary/40 transition-colors"
-                        >
-                            <Briefcase size={16} /> My finance & warranty enquiries
-                        </Link>
-                    </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-20 text-left max-w-5xl mx-auto">
-                    {services.map((service) => (
-                        <div key={service.title} className="glass-card p-8 group hover:bg-[var(--bg-card)] transition-colors duration-300 flex flex-col h-full relative overflow-hidden">
-                            {service.link && <Link href={service.link} className="absolute inset-0 z-20" aria-label={`Go to ${service.title}`} />}
-                            <div className="flex items-start justify-between gap-3 mb-6">
-                                <div className={`w-14 h-14 ${service.bg} ${service.color} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                                    <service.icon size={28} />
-                                </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest rounded-full border border-[var(--border-default)] px-3 py-1 text-[var(--text-muted)]">
-                                    {service.badge}
-                                </span>
-                            </div>
-                            <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors">{service.title}</h3>
-                            <p className="text-[var(--text-muted)] text-sm leading-relaxed mb-6 flex-grow">{service.desc}</p>
-                            <div className="pt-6 border-t border-[var(--border-default)] mt-auto flex items-center text-primary font-bold text-sm group-hover:translate-x-2 transition-transform">
-                                {service.cta} <ArrowRight className="ml-2 w-4 h-4" />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <section className="container mx-auto px-5">
-                <div className="glass-strong p-10 md:p-12 rounded-3xl text-center relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -z-0 translate-x-1/2 -translate-y-1/2" />
-                    <div className="relative z-10">
-                        <h2 className="text-3xl md:text-4xl font-bold font-heading mb-5">Run an automotive service business?</h2>
-                        <p className="text-lg text-[var(--text-secondary)] max-w-2xl mx-auto mb-8">
-                            Apply for the service areas you provide. CarMazium approves each capability separately so customers only meet providers cleared for that work.
+            <section className="container mx-auto px-5 py-16 md:py-20">
+                <div className="mx-auto max-w-6xl">
+                    <div className="mb-10 max-w-3xl">
+                        <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-primary">How it works</p>
+                        <h2 className="text-3xl font-black tracking-tight md:text-4xl">Choose the workflow that fits the job</h2>
+                        <p className="mt-4 leading-7 text-[var(--text-muted)]">
+                            TradeXchange separates paid service jobs from matched provider enquiries, so customers and automotive businesses can see what happens before they start.
                         </p>
-                        <Link
-                            href="/dashboard/service/capabilities"
-                            className="inline-flex items-center justify-center h-14 px-8 clip-path-carmazium bg-gradient-to-r from-primary to-[#d9161d] text-white text-lg font-bold uppercase tracking-wider shadow-lg shadow-primary/25 hover:from-[#ff4d4d] hover:to-primary transition-all"
-                        >
-                            Join as a Provider
-                        </Link>
+                    </div>
+
+                    <div className="grid gap-5 md:grid-cols-3">
+                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
+                            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                <ClipboardList size={20} />
+                            </div>
+                            <h3 className="font-bold">1. Pick a service</h3>
+                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Start with the vehicle need — dealer tools, a paid job, or a provider enquiry.</p>
+                        </div>
+                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
+                            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                <Search size={20} />
+                            </div>
+                            <h3 className="font-bold">2. Get the right response</h3>
+                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Paid jobs receive competitive quotes; finance and warranty requests are matched to approved providers.</p>
+                        </div>
+                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
+                            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                <ShieldCheck size={20} />
+                            </div>
+                            <h3 className="font-bold">3. Manage it in CarMazium</h3>
+                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Keep the relevant job or enquiry workflow together without changing how the underlying service operates.</p>
+                        </div>
                     </div>
                 </div>
             </section>
-        </div>
+
+            <section id="tradexchange-areas" className="border-y border-[var(--border-default)] bg-[var(--bg-card)]/35 py-16 md:py-20">
+                <div className="container mx-auto px-5">
+                    <div className="mx-auto mb-10 max-w-3xl text-center">
+                        <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-primary">Five service areas</p>
+                        <h2 className="text-3xl font-black tracking-tight md:text-4xl">One hub, clearly separated services</h2>
+                        <p className="mt-4 leading-7 text-[var(--text-muted)]">Each area has its own purpose and commercial workflow. Choose the capability you need.</p>
+                    </div>
+
+                    <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-2 lg:grid-cols-6">
+                        {services.map((service, index) => (
+                            <article
+                                key={service.title}
+                                className={`flex h-full flex-col rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[var(--shadow-card-hover)] md:p-7 lg:col-span-2 ${index === 3 ? "lg:col-start-2" : ""}`}
+                            >
+                                <div className="mb-5 flex items-start justify-between gap-3">
+                                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${service.bg} ${service.color}`}>
+                                        <service.icon size={24} />
+                                    </div>
+                                    <span className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                                        {service.badge}
+                                    </span>
+                                </div>
+                                <h3 className="text-xl font-bold">{service.title}</h3>
+                                <p className="mt-3 flex-1 text-sm leading-6 text-[var(--text-muted)]">{service.desc}</p>
+                                <div className="mt-6 border-t border-[var(--border-default)] pt-5">
+                                    {service.link ? (
+                                        <Button asChild variant="outline" className="w-full justify-between">
+                                            <Link href={service.link}>
+                                                {service.cta} <ArrowRight size={15} />
+                                            </Link>
+                                        </Button>
+                                    ) : (
+                                        <Button variant="outline" className="w-full" disabled>
+                                            {service.cta}
+                                        </Button>
+                                    )}
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            <section className="container mx-auto px-5 py-16 md:py-20">
+                <div className="mx-auto max-w-6xl">
+                    <div className="mb-10 max-w-3xl">
+                        <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-primary">Provider economics & requirements</p>
+                        <h2 className="text-3xl font-black tracking-tight md:text-4xl">The fee model depends on the workflow</h2>
+                    </div>
+
+                    <div className="grid gap-6 lg:grid-cols-2">
+                        <div className="rounded-2xl border border-primary/25 bg-primary/[0.05] p-7 md:p-8">
+                            <div className="mb-5 flex items-center gap-3">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><WalletCards size={20} /></div>
+                                <div>
+                                    <p className="text-xs font-black uppercase tracking-wider text-primary">Paid service jobs</p>
+                                    <h3 className="text-xl font-bold">Delivery / Recovery & Vehicle Inspection</h3>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
+                                    <p className="text-3xl font-black text-[var(--text-primary)]">91%</p>
+                                    <p className="mt-1 text-sm text-[var(--text-muted)]">Provider share of the paid job</p>
+                                </div>
+                                <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
+                                    <p className="text-3xl font-black text-primary">9%</p>
+                                    <p className="mt-1 text-sm text-[var(--text-muted)]">CarMazium service fee</p>
+                                </div>
+                            </div>
+                            <p className="mt-5 text-sm leading-6 text-[var(--text-muted)]">Providers must be approved for the relevant capability before they can quote for work.</p>
+                        </div>
+
+                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-7 md:p-8">
+                            <div className="mb-5 flex items-center gap-3">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400"><Briefcase size={20} /></div>
+                                <div>
+                                    <p className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">Matched enquiries</p>
+                                    <h3 className="text-xl font-bold">Finance & Warranty</h3>
+                                </div>
+                            </div>
+                            <p className="text-sm leading-7 text-[var(--text-muted)]">
+                                These are provider-enquiry workflows, not paid TradeXchange service jobs. The 91% provider share / 9% CarMazium job-fee model does not apply to finance or warranty enquiries.
+                            </p>
+                            {(financeServiceEnabled || warrantyServiceEnabled) && (
+                                <Button asChild variant="outline" className="mt-6">
+                                    <Link href="/services/leads">My finance & warranty enquiries</Link>
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+
+                    {jobMarketplaceEnabled && (
+                        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+                            <Link href="/services/jobs/new" className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                                <Plus size={18} className="mb-3 text-primary" />
+                                <span className="block font-bold">Post a job</span>
+                                <span className="mt-1 block text-xs leading-5 text-[var(--text-muted)]">Delivery, recovery or inspection.</span>
+                            </Link>
+                            <Link href="/dashboard/service/jobs" className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                                <Search size={18} className="mb-3 text-primary" />
+                                <span className="block font-bold">Available jobs</span>
+                                <span className="mt-1 block text-xs leading-5 text-[var(--text-muted)]">Approved providers can browse work.</span>
+                            </Link>
+                            <Link href="/services/jobs" className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                                <ClipboardList size={18} className="mb-3 text-primary" />
+                                <span className="block font-bold">My jobs</span>
+                                <span className="mt-1 block text-xs leading-5 text-[var(--text-muted)]">Compare quotes and manage accepted work.</span>
+                            </Link>
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            <section className="container mx-auto px-5">
+                <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl border border-[var(--border-default)] bg-slate-900 px-6 py-10 text-center text-white shadow-xl md:px-10 md:py-12">
+                    <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-red-300">Partner Account</p>
+                    <h2 className="text-3xl font-black md:text-4xl">Run an automotive business on CarMazium</h2>
+                    <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">
+                        Start with one Partner Account, then use the automotive capabilities relevant to your business. Service approvals remain separate so customers only meet providers cleared for that work.
+                    </p>
+                    <div className="mt-7 flex flex-wrap justify-center gap-3">
+                        <Button asChild size="lg">
+                            <Link href="/auth/signup?role=dealer">Create Partner Account</Link>
+                        </Button>
+                        <Button asChild variant="outline" size="lg" className="border-white/25 text-white hover:border-white/50 hover:bg-white/10 hover:text-white">
+                            <Link href="/dashboard/service/capabilities">View service capabilities</Link>
+                        </Button>
+                    </div>
+                </div>
+            </section>
+        </main>
     )
 }
