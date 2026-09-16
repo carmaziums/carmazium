@@ -14,10 +14,10 @@ import {
 import { JobStatusBadge, RecoveryBadge, JobRoute, JobTiming, JobVehicles } from "@/components/services/JobBits"
 
 /**
- * The contractor's view of one job. Before acceptance: quote or update the
- * quote. After: the customer's contact details and the start / complete
- * controls. The API redacts what this account is not entitled to; this page
- * only renders what came back.
+ * The contractor's view of one job. Before payment: quote or manage an accepted
+ * quote without receiving private customer/contact/address details. After a
+ * successful service payment: render the private details returned by the API
+ * together with the start / complete controls.
  */
 const inputCls = "w-full rounded-xl border px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-primary)]"
 
@@ -54,6 +54,7 @@ export default function ContractorJobPage() {
     const amountPence = Math.round(Number(amount || 0) * 100)
     const isMine = job?.viewerRole === "contractor"
     const canQuote = job?.status === "OPEN"
+    const canSeePrivateDetails = !!job && ["PAID", "IN_PROGRESS", "COMPLETED", "RELEASED", "DISPUTED"].includes(job.status)
     const platformFeePence = settings ? Math.round(amountPence * settings.platformFeeRate) : null
     const providerPence = platformFeePence == null ? null : amountPence - platformFeePence
 
@@ -78,7 +79,7 @@ export default function ContractorJobPage() {
                                 <JobRoute job={job} className="mb-1" />
                                 <div className="mb-6"><JobTiming job={job} /></div>
 
-                                {isMine && (job.pickupAddress || job.deliveryAddress || job.serviceAddress) && (
+                                {isMine && canSeePrivateDetails && (job.pickupAddress || job.deliveryAddress || job.serviceAddress) && (
                                     <section className="mb-6 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4 space-y-2 text-sm">
                                         {job.pickupAddress && <p className="flex gap-2"><MapPin size={14} className="text-primary mt-0.5 shrink-0" /><span><span className="text-[var(--text-muted)]">Pickup:</span> {job.pickupAddress}, {job.pickupPostcode}</span></p>}
                                         {job.deliveryAddress && <p className="flex gap-2"><MapPin size={14} className="text-primary mt-0.5 shrink-0" /><span><span className="text-[var(--text-muted)]">Deliver to:</span> {job.deliveryAddress}, {job.deliveryPostcode}</span></p>}
@@ -136,7 +137,7 @@ export default function ContractorJobPage() {
                                     </div>
                                 )}
 
-                                {isMine && job.customer && (job.status === "PAID" || job.status === "IN_PROGRESS" || job.status === "COMPLETED" || job.status === "RELEASED") && (
+                                {isMine && canSeePrivateDetails && job.customer && (
                                     <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">Customer</p>
                                         <p className="font-heading font-bold">{job.customer.firstName} {job.customer.lastName}</p>
