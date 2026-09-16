@@ -7,7 +7,7 @@ import {
     Loader2, ArrowLeft, Star, CheckCircle, AlertCircle, ShieldCheck, Phone, Mail, XCircle, Clock, Banknote,
 } from "lucide-react"
 import { RequireAuth } from "@/components/auth/RequireAuth"
-import { deliveryServiceEnabled } from "@/lib/featureFlags"
+import { deliveryServiceEnabled, inspectionServiceEnabled } from "@/lib/featureFlags"
 import { Button } from "@/components/ui/Button"
 import {
     getJob, acceptQuote, confirmCompletion, disputeJob, cancelJob, formatPence,
@@ -16,11 +16,11 @@ import {
 import { JobStatusBadge, RecoveryBadge, JobRoute, JobTiming, JobVehicles } from "@/components/services/JobBits"
 
 /**
- * The customer's view of one job. Quotes to compare, one to accept, and the
- * confirm / dispute controls once it is paid.
+ * The customer's view of one TradeXchange service job. Quotes can be compared
+ * before payment, then the customer can confirm completion or raise a dispute.
  *
- * A contractor following a notification link here is sent to their own view
- * at /dashboard/service/jobs/[id] — same job, different verbs.
+ * A provider following a notification link here is sent to their provider view
+ * at /dashboard/service/jobs/[id] — same job, different actions and visibility.
  */
 function JobDetail() {
     const { id } = useParams<{ id: string }>()
@@ -30,8 +30,8 @@ function JobDetail() {
     const [error, setError] = React.useState<string | null>(null)
     const [busy, setBusy] = React.useState<string | null>(null)
     const [flash, setFlash] = React.useState<string | null>(
-        params.get("posted") ? "Job posted. Approved transporters can now quote it — we will email you as prices come in."
-            : params.get("paid") === "1" ? "Payment received. Your transporter has been notified and their contact details are below."
+        params.get("posted") ? "Job posted. Approved providers can now quote it — we will email you as prices come in."
+            : params.get("paid") === "1" ? "Payment received. Your provider has been notified and their contact details are below."
                 : params.get("paid") === "0" ? "Checkout was cancelled. Your quote is still accepted — pay when you are ready."
                     : null,
     )
@@ -70,6 +70,9 @@ function JobDetail() {
     const activeQuotes = (job.quotes ?? []).filter(q => q.status === "ACTIVE")
     const accepted = (job.quotes ?? []).find(q => q.id === job.acceptedQuoteId)
     const isPaidState = ["PAID", "IN_PROGRESS", "COMPLETED"].includes(job.status)
+    const isInspection = job.serviceType === "INSPECTION"
+    const providerLabel = isInspection ? "inspector" : "transporter"
+    const completionLabel = isInspection ? "inspection" : "delivery"
 
     return (
         <div className="container mx-auto px-5 py-10 max-w-5xl">
@@ -89,7 +92,6 @@ function JobDetail() {
             )}
 
             <div className="grid lg:grid-cols-[1fr_360px] gap-8">
-                {/* ── Main ── */}
                 <div>
                     <div className="flex items-start justify-between gap-3 mb-2">
                         <h1 className="text-2xl md:text-3xl font-black font-heading tracking-tight">{job.title}</h1>
@@ -113,7 +115,6 @@ function JobDetail() {
                         </section>
                     )}
 
-                    {/* Quotes */}
                     {job.status === "OPEN" && (
                         <section>
                             <h2 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">
@@ -122,7 +123,7 @@ function JobDetail() {
                             {activeQuotes.length === 0 ? (
                                 <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-10 text-center">
                                     <Clock size={28} className="mx-auto text-[var(--text-muted)] mb-3" />
-                                    <p className="text-sm text-[var(--text-muted)]">No quotes yet. Approved transporters have been notified — most jobs get their first price within a few hours.</p>
+                                    <p className="text-sm text-[var(--text-muted)]">No quotes yet. Approved {isInspection ? "inspectors" : "transporters"} have been notified — prices will appear here as they come in.</p>
                                     <p className="text-xs text-[var(--text-muted)] mt-2">Open until {new Date(job.expiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}.</p>
                                 </div>
                             ) : (
@@ -137,12 +138,10 @@ function JobDetail() {
                     )}
                 </div>
 
-                {/* ── Side ── */}
                 <aside className="space-y-4">
-                    {/* Accepted / paid */}
                     {accepted && job.contractor && (
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">Your transporter</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">Your {providerLabel}</p>
                             <p className="font-heading font-bold text-lg">{job.contractor.businessName || job.contractor.user.firstName}</p>
                             <Rating c={job.contractor} />
                             {isPaidState || job.status === "RELEASED" ? (
@@ -164,21 +163,19 @@ function JobDetail() {
                         </div>
                     )}
 
-                    {/* Money */}
                     {job.agreedAmountPence != null && (
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                             <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">Price</p>
                             <p className="text-3xl font-black font-heading">{formatPence(job.agreedAmountPence)}</p>
                             <p className="text-xs text-[var(--text-muted)] mt-1">
-                                {job.payment?.status === "RELEASED" ? "Paid to your transporter."
-                                    : job.payment?.status === "PAID" ? "Held by CarMazium until you confirm delivery."
+                                {job.payment?.status === "RELEASED" ? `Paid to your ${providerLabel}.`
+                                    : job.payment?.status === "PAID" ? `Held by CarMazium until you confirm ${completionLabel}.`
                                         : job.payment?.status === "REFUNDED" ? "Refunded to you."
                                             : "Not yet paid."}
                             </p>
                         </div>
                     )}
 
-                    {/* Actions */}
                     <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 space-y-3">
                         {job.status === "ACCEPTED" && accepted && (
                             <Button className="w-full" disabled={busy === "pay"}
@@ -189,10 +186,10 @@ function JobDetail() {
                         {job.status === "COMPLETED" && (
                             <>
                                 <Button className="w-full" disabled={busy === "confirm"}
-                                    onClick={() => run("confirm", () => confirmCompletion(job.id), "Confirmed. Your transporter has been paid.")}>
-                                    {busy === "confirm" ? <Loader2 className="animate-spin" size={16} /> : <><CheckCircle size={16} className="mr-2" /> Confirm delivery</>}
+                                    onClick={() => run("confirm", () => confirmCompletion(job.id), `Confirmed. Your ${providerLabel} has been paid.`)}>
+                                    {busy === "confirm" ? <Loader2 className="animate-spin" size={16} /> : <><CheckCircle size={16} className="mr-2" /> Confirm {completionLabel}</>}
                                 </Button>
-                                <p className="text-[11px] text-[var(--text-muted)] text-center">Releases {job.contractorAmountPence != null ? formatPence(job.contractorAmountPence) : "payment"} to the transporter. Auto-confirms 48h after they marked it done.</p>
+                                <p className="text-[11px] text-[var(--text-muted)] text-center">Releases {job.contractorAmountPence != null ? formatPence(job.contractorAmountPence) : "payment"} to the {providerLabel}. Auto-confirms 48h after they marked it complete.</p>
                             </>
                         )}
                         {isPaidState && (
@@ -258,10 +255,7 @@ function QuoteCard({ quote, cheapest, busy, onAccept }: { quote: ServiceQuote; c
 }
 
 export default function ServiceJobPage() {
-    // The whole service marketplace is behind a flag until it has been tested
-    // end to end. Off (production) this route does not exist, so the feature
-    // cannot be reached by typing the URL even though the card is inert.
-    if (!deliveryServiceEnabled) notFound()
+    if (!deliveryServiceEnabled && !inspectionServiceEnabled) notFound()
 
     return (
         <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
