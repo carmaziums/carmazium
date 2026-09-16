@@ -16,7 +16,6 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { JobListCard } from "@/components/services/JobBits"
 import { useAuth } from "@/context/AuthContext"
 import {
-    SERVICE_LABELS,
     formatPence,
     getAssignedJobs,
     getJobFeed,
@@ -28,7 +27,7 @@ import {
 } from "@/lib/servicesApi"
 
 /**
- * TradeXchange provider overview.
+ * Trade Exchange provider overview.
  *
  * This page intentionally uses the new service marketplace APIs. The legacy
  * ServiceRequest dashboard was removed because it could show stale counts and
@@ -110,7 +109,7 @@ export default function ServiceDashboard() {
                 <main className="flex-1 min-w-0 space-y-8">
                     <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-5">
                         <div>
-                            <p className="text-primary text-xs font-black uppercase tracking-[0.18em] mb-2">TradeXchange Services</p>
+                            <p className="text-primary text-xs font-black uppercase tracking-[0.18em] mb-2">Trade Exchange Services</p>
                             <h1 className="text-3xl md:text-4xl font-black font-heading mb-2">Provider overview</h1>
                             <p className="text-sm text-[var(--text-muted)] max-w-2xl">
                                 Delivery and Inspection jobs, Finance and Warranty enquiries, approvals and earnings in one place.
@@ -134,7 +133,7 @@ export default function ServiceDashboard() {
 
                     <section className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
                         <StatCard icon={ShieldCheck} label="Approved areas" value={loading ? "…" : String(approvedCount)} />
-                        <StatCard icon={Inbox} label="Open paid jobs" value={loading ? "…" : String(feed.length)} />
+                        <StatCard icon={Inbox} label="Open jobs" value={loading ? "…" : String(feed.length)} />
                         <StatCard icon={Briefcase} label="My active jobs" value={loading ? "…" : String(activeAssigned.length)} />
                         <StatCard icon={PoundSterling} label="Released earnings" value={loading ? "…" : formatPence(releasedEarnings)} />
                     </section>
