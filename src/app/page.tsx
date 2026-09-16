@@ -4,12 +4,6 @@
  * This is a thin Server Component wrapper that:
  * 1. Fetches featured listings at build/request time with ISR (revalidate: 300s)
  * 2. Passes pre-fetched data to the interactive HomeClient component
- *
- * Benefits over the previous "use client" approach:
- * - No client-side fetch waterfall (HTML → JS → API → Render)
- * - Featured listings data is embedded in the initial HTML response
- * - Improved TTFB: data is fetched on the server, closer to the API
- * - ISR: cached for 5 minutes, so most visitors get instant responses
  * ============================================================================ */
 
 import type { Metadata } from "next"
@@ -21,97 +15,55 @@ import { type BlogPost, type BlogPostSummary } from "@/lib/blogApi"
 const SOCIAL_IMAGE = "/assets/images/discover-hero.webp"
 
 export const metadata: Metadata = {
-    title: {
-        absolute: "CarMazium | Sell Your Car or Buy Used Cars in the UK",
-    },
-    description:
-        "Sell your car online in the UK with a free dealer auction or £1 retail listing, or browse used cars from verified sellers on CarMazium.",
-    alternates: {
-        canonical: "/",
-    },
+    title: { absolute: "CarMazium | Sell Your Car or Buy Used Cars in the UK" },
+    description: "Sell your car online in the UK with a free dealer auction or £1 retail listing, or browse used cars from verified sellers on CarMazium.",
+    alternates: { canonical: "/" },
     openGraph: {
         title: "CarMazium | Sell Your Car or Buy Used Cars in the UK",
-        description:
-            "Sell your car through a free dealer auction or £1 retail listing, or browse used cars from verified sellers across the UK.",
+        description: "Sell your car through a free dealer auction or £1 retail listing, or browse used cars from verified sellers across the UK.",
         url: "/",
         type: "website",
         siteName: "CarMazium",
-        images: [
-            {
-                url: SOCIAL_IMAGE,
-                alt: "CarMazium UK car marketplace",
-            },
-        ],
+        images: [{ url: SOCIAL_IMAGE, alt: "CarMazium UK car marketplace" }],
     },
     twitter: {
         card: "summary_large_image",
         title: "CarMazium | Sell Your Car or Buy Used Cars in the UK",
-        description:
-            "Free dealer auctions, £1 retail listings and used cars from verified sellers across the UK.",
+        description: "Free dealer auctions, £1 retail listings and used cars from verified sellers across the UK.",
         images: [SOCIAL_IMAGE],
     },
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 
-/**
- * Server-side fetch for the latest published blog posts, shown on the
- * homepage's "Automotive Insights" section. Same ISR pattern as featured
- * listings above.
- *
- * The public blog endpoint returns full article bodies. The homepage only
- * needs card data, so deliberately project each article down to a compact
- * summary before it crosses the Server → Client boundary. This keeps large
- * article bodies out of the homepage HTML/RSC payload without changing the
- * blog cards or article pages themselves.
- */
 async function getLatestBlogPosts(): Promise<BlogPostSummary[]> {
     try {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 10000)
-
         const res = await fetch(`${API_URL}/blog?page=1&limit=3`, {
             next: { revalidate: 300 },
             signal: controller.signal,
         })
-
         clearTimeout(timeoutId)
-
         if (!res.ok) return []
         const data = await res.json()
         const posts: BlogPost[] = data.data || []
-
-        return posts.map(({ id, slug, title, excerpt, coverImage }) => ({
-            id,
-            slug,
-            title,
-            excerpt,
-            coverImage,
-        }))
+        return posts.map(({ id, slug, title, excerpt, coverImage }) => ({ id, slug, title, excerpt, coverImage }))
     } catch (err) {
         console.error("Latest blog posts fetch failed during build:", err)
         return []
     }
 }
 
-/**
- * Server-side fetch for featured listings with ISR caching.
- * Revalidates every 5 minutes — a good balance between freshness
- * and performance for seller-boosted content.
- */
 async function getFeaturedListings(): Promise<Listing[]> {
     try {
-        // Add a 10s timeout to prevent Vercel build hangs if the backend is slow or down
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 10000)
-
         const res = await fetch(`${API_URL}/listings/featured`, {
             next: { revalidate: 300 },
             signal: controller.signal,
         })
-        
         clearTimeout(timeoutId)
-        
         if (!res.ok) return []
         const data = await res.json()
         return data.data || []
@@ -129,17 +81,6 @@ export default async function Home() {
 
     return (
         <>
-            {/*
-             * HomeClient intentionally shows only the three newest articles.
-             * Its archive link is a desktop-only Tailwind control (`hidden sm:inline-flex`).
-             * On phones, promote that same real /blog link into a full-width CTA so the
-             * complete archive remains reachable without making the homepage excessively long.
-             *
-             * The hero H1 and its supporting copy are important LCP/search content. Framer
-             * Motion's server-rendered initial state otherwise emits them at opacity:0 until
-             * hydration. Keep those text nodes visible from the first paint; interactive
-             * controls and all marketplace behaviour remain unchanged.
-             */}
             <style>{`
                 main .animate-page-in > div > section:first-of-type > div.relative.z-10 > h1,
                 main .animate-page-in > div > section:first-of-type > div.relative.z-10 > p {
@@ -172,32 +113,50 @@ export default async function Home() {
 
             <HomeClient initialListings={featuredListings} latestBlogPosts={latestBlogPosts} />
 
-            {/*
-             * Search-engine-readable homepage copy. This is intentionally rendered by the
-             * server so crawlers receive useful marketplace context in the initial HTML.
-             */}
             <section
                 aria-labelledby="carmazium-uk-marketplace"
-                className="border-t py-16 md:py-20"
+                className="border-t py-14 md:py-16"
                 style={{ background: "var(--bg-body)", borderColor: "var(--border-default)" }}
             >
-                <div className="container mx-auto px-5 max-w-5xl">
-                    <h2 id="carmazium-uk-marketplace" className="text-3xl md:text-4xl font-bold font-heading mb-8">
-                        Sell Your Car or Buy Used Cars in the UK
-                    </h2>
-                    <div className="space-y-5 text-base leading-7" style={{ color: "var(--text-secondary)" }}>
-                        <p>
-                            CarMazium is a UK car marketplace designed to give drivers more choice when they want to sell a car or shop for a used vehicle. If you are looking to sell your car online, you can choose a free dealer auction and let verified dealers compete, or create a retail listing for £1 and advertise directly to buyers. The aim is to keep the process clear, flexible and easy to understand while giving sellers control over how their vehicle is offered.
+                <div className="container mx-auto px-5 max-w-6xl">
+                    <div className="mx-auto mb-9 max-w-3xl text-center">
+                        <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-primary">UK automotive marketplace</p>
+                        <h2 id="carmazium-uk-marketplace" className="text-3xl md:text-4xl font-bold font-heading mb-4">
+                            Buy, sell or auction a car your way
+                        </h2>
+                        <p className="text-base md:text-lg leading-7" style={{ color: "var(--text-muted)" }}>
+                            CarMazium gives UK drivers two clear ways to sell and one place to browse used vehicles, compare cars and access automotive services.
                         </p>
-                        <p>
-                            For buyers, CarMazium brings together used cars for sale across the UK from verified sellers. You can browse retail listings, compare vehicles and use the available vehicle information to help narrow down the right car for your needs. CarMazium is a marketplace rather than the seller of every vehicle, so buyers and sellers deal directly with each other for the vehicle transaction. That makes it important to review the listing details, inspect the vehicle and complete the usual checks before purchase. For official guidance, see the <a href="https://www.gov.uk/checks-when-buying-a-used-car" className="font-semibold text-primary hover:underline">GOV.UK used-vehicle checks</a>.
-                        </p>
-                        <p>
-                            CarMazium also supports dealer auctions for sellers who prefer competitive trade bidding. A seller can list a vehicle for auction free of charge, verified dealers can compete, and the winning dealer can arrange inspection and collection. Qualifying completed auction sales can also receive CarMazium&apos;s £100 seller incentive after the required handover confirmation. If you prefer to advertise to the public instead, the £1 retail listing gives you another route to market without forcing you into one selling method.
-                        </p>
-                        <p>
-                            Whether you want to <Link href="/sell" className="font-semibold text-primary hover:underline">sell your car</Link>, compare car auction options or <Link href="/search" className="font-semibold text-primary hover:underline">browse used cars in the UK</Link>, CarMazium is built around a straightforward marketplace model. Explore current used cars for sale, <Link href="/how-it-works" className="font-semibold text-primary hover:underline">learn how the selling process works</Link>, or start a listing when you are ready.
-                        </p>
+                    </div>
+
+                    <div className="grid gap-5 md:grid-cols-3">
+                        <article className="rounded-2xl border p-6" style={{ background: "var(--bg-card)", borderColor: "var(--border-default)" }}>
+                            <h3 className="mb-3 text-lg font-bold font-heading">Sell by dealer auction</h3>
+                            <p className="text-sm leading-6" style={{ color: "var(--text-muted)" }}>
+                                List a vehicle for auction free of charge and let verified motor traders compete. Qualifying completed auction sales can receive CarMazium&apos;s £100 seller incentive after the required handover confirmation.
+                            </p>
+                            <Link href="/sell" className="mt-5 inline-flex font-bold text-primary hover:underline">Start selling</Link>
+                        </article>
+
+                        <article className="rounded-2xl border p-6" style={{ background: "var(--bg-card)", borderColor: "var(--border-default)" }}>
+                            <h3 className="mb-3 text-lg font-bold font-heading">Advertise for £1</h3>
+                            <p className="text-sm leading-6" style={{ color: "var(--text-muted)" }}>
+                                Prefer to sell directly to the public? Create a retail listing from £1 and give buyers the vehicle information they need to decide whether to enquire and inspect.
+                            </p>
+                            <Link href="/pricing" className="mt-5 inline-flex font-bold text-primary hover:underline">View pricing</Link>
+                        </article>
+
+                        <article className="rounded-2xl border p-6" style={{ background: "var(--bg-card)", borderColor: "var(--border-default)" }}>
+                            <h3 className="mb-3 text-lg font-bold font-heading">Browse used cars</h3>
+                            <p className="text-sm leading-6" style={{ color: "var(--text-muted)" }}>
+                                Search used cars from sellers across the UK, compare vehicles side by side and review listing details before arranging your own inspection and purchase checks.
+                            </p>
+                            <Link href="/search" className="mt-5 inline-flex font-bold text-primary hover:underline">Browse cars</Link>
+                        </article>
+                    </div>
+
+                    <div className="mt-7 rounded-2xl border px-6 py-5 text-sm leading-6" style={{ background: "var(--bg-card)", borderColor: "var(--border-default)", color: "var(--text-secondary)" }}>
+                        <strong style={{ color: "var(--text-primary)" }}>How the marketplace works:</strong> CarMazium provides the platform and marketplace tools; the vehicle transaction is completed directly between buyer and seller. Review the listing, inspect the vehicle and complete the usual checks before purchase. See <a href="https://www.gov.uk/checks-when-buying-a-used-car" className="font-semibold text-primary hover:underline">GOV.UK used-vehicle checks</a> or <Link href="/how-it-works" className="font-semibold text-primary hover:underline">learn how CarMazium works</Link>.
                     </div>
                 </div>
             </section>
