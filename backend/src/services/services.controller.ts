@@ -1,6 +1,7 @@
 import {
     Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Req, HttpCode, HttpStatus,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiTags, ApiOperation, ApiCookieAuth, ApiQuery } from '@nestjs/swagger';
 import { ServiceType } from '@prisma/client';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
@@ -9,18 +10,19 @@ import { StandardResponse } from '../listings/dto/response.dto';
 import { ServicesService } from './services.service';
 import { ContractorGuard } from './guards/contractor.guard';
 import { TradeTeamService } from './trade-team.service';
+import { ACCEPTED_PAYMENT_TIMEOUT_MINUTES } from './services-lifecycle.service';
 import {
     CreateJobDto, JobFromPurchaseDto, CancelJobDto, UpsertQuoteDto, ApplyCapabilityDto,
 } from './dto';
 
 /**
- * Trade Exchange service marketplace.
+ * TradeXchange service marketplace.
  *
  * Route order matters: the static contractor routes (`jobs/feed`,
  * `jobs/assigned`, `jobs/my`) are declared before `jobs/:id` so Nest does not
  * read "feed" as an id.
  */
-@ApiTags('Trade Exchange services')
+@ApiTags('TradeXchange services')
 @ApiCookieAuth()
 @Controller('services')
 @UseGuards(SessionAuthGuard)
@@ -28,7 +30,24 @@ export class ServicesController {
     constructor(
         private readonly services: ServicesService,
         private readonly tradeTeam: TradeTeamService,
+        private readonly config: ConfigService,
     ) { }
+
+    // ── Shared marketplace settings ───────────────────────────────────────
+
+    @Get('settings')
+    @ApiOperation({ summary: 'Current TradeXchange service fee and lifecycle settings' })
+    async settings() {
+        const configured = Number(this.config.get<string>('SERVICE_PLATFORM_FEE_RATE') ?? '0.09');
+        const platformFeeRate = Number.isFinite(configured) && configured >= 0 && configured < 1
+            ? configured
+            : 0.09;
+        return new StandardResponse({
+            platformFeeRate,
+            providerShareRate: 1 - platformFeeRate,
+            acceptedPaymentTimeoutMinutes: ACCEPTED_PAYMENT_TIMEOUT_MINUTES,
+        });
+    }
 
     // ── Contractor onboarding ──────────────────────────────────────────────
 

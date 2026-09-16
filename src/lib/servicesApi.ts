@@ -16,6 +16,12 @@ export const SERVICE_LABELS: Record<ServiceType, string> = {
   WARRANTY: 'Warranty Providers',
 };
 
+export interface ServiceMarketplaceSettings {
+  platformFeeRate: number;
+  providerShareRate: number;
+  acceptedPaymentTimeoutMinutes: number;
+}
+
 export interface JobVehicle {
   id?: string;
   registration?: string | null;
@@ -81,6 +87,7 @@ export interface ServiceJob {
   acceptedQuoteId: string | null;
   contractorId: string | null;
   agreedAmountPence: number | null;
+  platformFeeRate: string | null;
   platformFeePence: number | null;
   contractorAmountPence: number | null;
   sourceOfferId: string | null;
@@ -181,6 +188,11 @@ export interface ServiceLead {
 
 export const formatPence = (p: number) =>
   `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+export async function getServiceSettings(): Promise<ServiceMarketplaceSettings> {
+  const r = await apiClient<{ data: ServiceMarketplaceSettings }>('/services/settings');
+  return r.data;
+}
 
 // Paid jobs: Delivery + Inspection
 export interface CreateJobInput {
