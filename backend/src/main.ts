@@ -45,19 +45,20 @@ async function bootstrap() {
 
   // ---------------------------------------------------------------------------
   // Session middleware — PostgreSQL-backed session store
-  // Production (Render): set SESSION_SECRET and ensure NODE_ENV=production
-  // so cookie is Secure + SameSite=None for cross-origin (Vercel → Render).
+  // Production: SESSION_SECRET is mandatory; development may use the local
+  // fallback so a missing production secret can never silently weaken cookies.
   // ---------------------------------------------------------------------------
   const PgSession = pgConnect(session);
   const isProduction = process.env.NODE_ENV === 'production';
-  
+  const sessionSecret = process.env.SESSION_SECRET?.trim();
+
   if (!process.env.DATABASE_URL) {
     console.error('❌ DATABASE_URL is not set — session store will fail to initialize');
     process.exit(1);
   }
 
-  if (isProduction && !process.env.SESSION_SECRET) {
-    console.warn('SESSION_SECRET is not set in production — session cookies may be insecure');
+  if (isProduction && !sessionSecret) {
+    throw new Error('SESSION_SECRET must be configured in production');
   }
 
   app.use(
@@ -68,7 +69,7 @@ async function bootstrap() {
         createTableIfMissing: true,
       }),
       name: 'sid',
-      secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
+      secret: sessionSecret || 'dev-secret-change-in-production',
       resave: false,
       saveUninitialized: false,
       cookie: {
