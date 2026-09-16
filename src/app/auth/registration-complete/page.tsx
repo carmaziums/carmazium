@@ -1,7 +1,7 @@
 "use client"
 
-import { Suspense, useEffect, useMemo } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import {
     ArrowRight,
     Building2,
@@ -64,10 +64,21 @@ const PARTNER_FEATURES = [
     },
 ]
 
-function safeNextPath(value: string | null): string {
-    if (!value || !value.startsWith("/") || value.startsWith("//")) return "/auth/onboarding"
-    if (value === "/auth/registration-complete") return "/auth/onboarding"
-    return value
+function hasRequiredAccountDetails(profile: {
+    firstName?: string
+    lastName?: string
+    phone?: string
+    location?: string
+    postcode?: string
+} | null): boolean {
+    if (!profile) return false
+    return Boolean(
+        profile.firstName?.trim() &&
+        profile.lastName?.trim() &&
+        profile.phone?.trim() &&
+        profile.location?.trim() &&
+        profile.postcode?.trim()
+    )
 }
 
 function LoadingScreen() {
@@ -78,10 +89,10 @@ function LoadingScreen() {
     )
 }
 
-function RegistrationCompleteContent() {
+export default function RegistrationCompletePage() {
     const { user, profile, loading } = useAuth()
     const router = useRouter()
-    const searchParams = useSearchParams()
+    const profileComplete = hasRequiredAccountDetails(profile)
 
     useEffect(() => {
         if (loading) return
@@ -89,23 +100,21 @@ function RegistrationCompleteContent() {
             router.replace("/auth/login")
             return
         }
-        if (!user.email_confirmed_at) {
+        if (!user.email_confirmed_at || !profileComplete) {
             router.replace("/auth/onboarding")
         }
-    }, [loading, user, router])
+    }, [loading, user, profileComplete, router])
 
-    const role = String(profile?.role || user?.user_metadata?.role || "").toUpperCase()
+    if (loading || !user || !user.email_confirmed_at || !profileComplete) {
+        return <LoadingScreen />
+    }
+
+    const role = String(profile?.role || user.user_metadata?.role || "").toUpperCase()
     const isPartner = role === "DEALER" || role === "CONTRACTOR"
     const accountLabel = isPartner ? "Partner Account" : "Personal Account"
-    const firstName = profile?.firstName || user?.user_metadata?.first_name || user?.user_metadata?.firstName || ""
+    const firstName = profile?.firstName || user.user_metadata?.first_name || user.user_metadata?.firstName || ""
     const features = isPartner ? PARTNER_FEATURES : PERSONAL_FEATURES
-
-    const nextPath = useMemo(
-        () => safeNextPath(searchParams?.get("next") ?? null),
-        [searchParams],
-    )
-
-    if (loading || !user || !user.email_confirmed_at) return <LoadingScreen />
+    const dashboardPath = isPartner ? "/dashboard/partner" : "/dashboard"
 
     return (
         <main className="min-h-screen bg-slate-950 pt-24 pb-14 px-5">
@@ -117,12 +126,12 @@ function RegistrationCompleteContent() {
                             <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/10">
                                 <CheckCircle2 className="h-11 w-11 text-emerald-400" />
                             </div>
-                            <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-primary">Registration complete</p>
+                            <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-primary">Welcome to CarMazium</p>
                             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white">
                                 Congratulations{firstName ? `, ${firstName}` : ""}.
                             </h1>
                             <p className="mx-auto mt-4 max-w-2xl text-base sm:text-lg leading-relaxed text-slate-300">
-                                Your CarMazium {accountLabel} is ready. Welcome to a marketplace built to make buying, selling and automotive services simpler.
+                                Your CarMazium {accountLabel} is complete and ready to use. Here is what you can do with your account.
                             </p>
                             <div className="mx-auto mt-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-white">
                                 {isPartner ? <Building2 className="h-4 w-4 text-primary" /> : <Car className="h-4 w-4 text-primary" />}
@@ -154,38 +163,21 @@ function RegistrationCompleteContent() {
                         <div className="mt-6 flex items-start gap-3 rounded-2xl border border-blue-400/20 bg-blue-400/[0.06] p-4">
                             <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-300" />
                             <p className="text-sm leading-relaxed text-slate-300">
-                                Your account is verified and ready. You can continue setup now or go straight to your dashboard.
+                                Your email is verified and your required account details are complete. You can now continue to your dashboard.
                             </p>
                         </div>
 
-                        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                            <Button
-                                size="lg"
-                                className="flex-1 gap-2"
-                                onClick={() => router.push(nextPath)}
-                            >
-                                Continue <ArrowRight className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                size="lg"
-                                variant="outline"
-                                className="flex-1 border-white/15 text-white hover:bg-white/5"
-                                onClick={() => router.push(isPartner ? "/dashboard/partner" : "/dashboard")}
-                            >
-                                Go to {isPartner ? "Partner Dashboard" : "Dashboard"}
-                            </Button>
-                        </div>
+                        <Button
+                            size="lg"
+                            className="mt-8 w-full gap-2 sm:w-auto sm:min-w-64"
+                            onClick={() => router.push(dashboardPath)}
+                        >
+                            Go to {isPartner ? "Partner Dashboard" : "Dashboard"}
+                            <ArrowRight className="h-4 w-4" />
+                        </Button>
                     </div>
                 </section>
             </div>
         </main>
-    )
-}
-
-export default function RegistrationCompletePage() {
-    return (
-        <Suspense fallback={<LoadingScreen />}>
-            <RegistrationCompleteContent />
-        </Suspense>
     )
 }
