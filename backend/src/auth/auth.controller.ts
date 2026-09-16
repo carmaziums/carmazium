@@ -10,6 +10,7 @@ import {
     UseGuards,
     UnauthorizedException,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -30,6 +31,7 @@ export class AuthController {
      * Creates the user and auto-logs them in by setting the session.
      */
     @Post('register')
+    @Throttle({ default: { limit: 5, ttl: 60_000 } })
     @ApiOperation({ summary: 'Register a new user account' })
     @ApiResponse({ status: 201, description: 'Account created and logged in' })
     @ApiResponse({ status: 409, description: 'Email already in use' })
@@ -39,7 +41,6 @@ export class AuthController {
     ) {
         const user = await this.authService.register(registerDto);
 
-        // Auto-login: set session immediately after registration
         if (req.session) {
             req.session.userId = user.id;
             req.session.userRole = user.role;
@@ -53,11 +54,9 @@ export class AuthController {
         };
     }
 
-    /**
-     * Log in with email and password.
-     * Creates a server-side session and sets a cookie.
-     */
+    /** Log in with email and password. */
     @Post('login')
+    @Throttle({ default: { limit: 10, ttl: 60_000 } })
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Log in with email and password' })
     @ApiResponse({ status: 200, description: 'Logged in successfully' })
@@ -67,25 +66,15 @@ export class AuthController {
         @Req() req: Request,
     ) {
         const user = await this.authService.login(loginDto);
-
-        // Set session data
         if (req.session) {
             req.session.userId = user.id;
             req.session.userRole = user.role;
             req.session.cachedUser = user;
         }
-
-        return {
-            success: true,
-            message: 'Logged in successfully',
-            data: user,
-        };
+        return { success: true, message: 'Logged in successfully', data: user };
     }
 
-    /**
-     * Log out the current user.
-     * Destroys the server-side session and clears the cookie.
-     */
+    /** Log out the current user. */
     @Post('logout')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Log out current user' })
@@ -108,28 +97,19 @@ export class AuthController {
         });
     }
 
-    /**
-     * Get the currently authenticated user's profile.
-     * Requires an active session.
-     */
+    /** Get the currently authenticated user's profile. */
     @Get('me')
     @UseGuards(SessionAuthGuard)
     @ApiOperation({ summary: 'Get current user profile' })
     @ApiResponse({ status: 200, description: 'Current user data' })
     @ApiResponse({ status: 401, description: 'Not authenticated' })
     async getMe(@CurrentUser() user: any) {
-        return {
-            success: true,
-            data: user,
-        };
+        return { success: true, data: user };
     }
 
-    /**
-     * Bridge endpoint: Accept a Supabase JWT and create a backend session.
-     * The frontend calls this after Supabase login/signup so that all
-     * subsequent requests are authenticated via the session cookie.
-     */
+    /** Bridge endpoint: accept a Supabase JWT and create a backend session. */
     @Post('supabase-session')
+    @Throttle({ default: { limit: 30, ttl: 60_000 } })
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Create backend session from Supabase JWT' })
     @ApiResponse({ status: 200, description: 'Session created' })
@@ -138,40 +118,24 @@ export class AuthController {
         @Body('token') token: string,
         @Req() req: Request,
     ) {
-        if (!token) {
-            throw new UnauthorizedException('Supabase token is required');
-        }
-
+        if (!token) throw new UnauthorizedException('Supabase token is required');
         const user = await this.authService.verifySupabaseToken(token);
+        if (!user) throw new UnauthorizedException('Invalid Supabase token or user not found in backend');
 
-        if (!user) {
-            throw new UnauthorizedException('Invalid Supabase token or user not found in backend');
-        }
-
-        // Regenerate the session when a different user is logging in — prevents
-        // session fixation where User A's sid cookie gets reused for User B.
         if (req.session?.userId && req.session.userId !== user.id) {
             await new Promise<void>((resolve) => req.session.regenerate(() => resolve()));
         }
-
-        // Create the backend session
         if (req.session) {
             req.session.userId = user.id;
             req.session.userRole = user.role;
             req.session.cachedUser = user;
         }
-
-        return {
-            success: true,
-            message: 'Backend session created',
-            data: user,
-        };
+        return { success: true, message: 'Backend session created', data: user };
     }
 
-    /**
-     * Reset password for authenticated user.
-     */
+    /** Reset password for authenticated user. */
     @Post('reset-password')
+    @Throttle({ default: { limit: 5, ttl: 60_000 } })
     @UseGuards(SessionAuthGuard)
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Reset authenticated user password' })
@@ -184,11 +148,9 @@ export class AuthController {
         return await this.authService.resetPassword(user.id, resetPasswordDto);
     }
 
-    /**
-     * Send/resend a verification email through our own mailer (bypasses
-     * Supabase's rate-limited built-in one). Safe to call multiple times.
-     */
+    /** Send/resend a verification email through the CarMazium mailer. */
     @Post('send-verification')
+    @Throttle({ default: { limit: 5, ttl: 60_000 } })
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Send verification email' })
     @ApiResponse({ status: 200, description: 'Verification email sent' })
