@@ -21,7 +21,7 @@ const navLinks: { name: string; href: string; prefetch?: boolean; badge?: string
     // Label only — the route stays /auctions. Renaming the URL would break
     // existing links, SEO, the /auctions/live/[id] children, and the
     // backend's returnPath allowlist (/^\/(buy-cars|auctions)\//).
-    { name: "Trade Exchange", href: "/auctions" },
+    { name: "TradeXchange", href: "/auctions" },
     { name: "Compare", href: "/compare" },
     { name: "Pricing", href: "/pricing" },
     { name: "About", href: "/about" },
@@ -41,7 +41,7 @@ export function Header() {
         setActiveLink(pathname || "")
     }, [pathname])
 
-    // Every account sees the Trade Exchange link, dealer or not. Hiding it from
+    // Every account sees the TradeXchange link, dealer or not. Hiding it from
     // buyers and sellers hid the upsell as well as the room: a retail account is
     // exactly who we want to convert into a dealer, and they can't want what they
     // can't see. Non-dealers who follow it land on the upgrade prompt in
