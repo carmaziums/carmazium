@@ -40,11 +40,11 @@ export default function DeliveryLandingPage() {
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(237,28,36,0.10)_0%,transparent_55%)]" />
                 <div className="container mx-auto px-6 py-16 md:py-24 relative">
                     <Link href="/auctions" className="mb-7 inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary">
-                        <ArrowLeft size={15} /> Back to TradeXchange
+                        <ArrowLeft size={15} /> Back to Trade Exchange
                     </Link>
                     <div className="max-w-3xl">
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4 py-1.5 mb-6 text-xs font-bold uppercase tracking-widest text-primary">
-                            <Truck size={13} /> TradeXchange · Delivery &amp; Recovery
+                            <Truck size={13} /> Trade Exchange · Delivery &amp; Recovery
                         </motion.div>
                         <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="text-4xl md:text-6xl font-black font-heading tracking-tight leading-[0.95] mb-5">
                             Move any car,<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-red-700">anywhere in the UK.</span>
@@ -100,7 +100,7 @@ export default function DeliveryLandingPage() {
                     <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
                         <div>
                             <p className="text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-3">For transport providers</p>
-                            <h2 className="text-3xl font-black font-heading mb-4">Win more vehicle movement work through TradeXchange</h2>
+                            <h2 className="text-3xl font-black font-heading mb-4">Win more vehicle movement work through Trade Exchange</h2>
                             <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-5">
                                 Apply for Delivery &amp; Recovery capability and, once approved, quote on suitable jobs posted by CarMazium users.
                             </p>
