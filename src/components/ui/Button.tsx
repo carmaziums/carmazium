@@ -24,7 +24,9 @@ const buttonVariants = cva(
             },
             shape: {
                 default: "rounded-xl",
-                pill: "rounded-full",
+                // Keep the legacy prop for call-site compatibility while using
+                // one CarMazium action geometry throughout the interface.
+                pill: "rounded-xl",
                 square: "rounded-lg",
             },
         },
