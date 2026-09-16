@@ -41,7 +41,7 @@ export function Footer() {
                             <li><Link href="/search" className="hover:text-primary transition-colors">Buy Cars</Link></li>
                             {/* Shown to everyone — see the note in Header.tsx. Non-dealers
                                 get the upgrade prompt, not the trade stock. */}
-                            <li><Link href="/auctions" className="hover:text-primary transition-colors">Trade Exchange</Link></li>
+                            <li><Link href="/auctions" className="hover:text-primary transition-colors">TradeXchange</Link></li>
                             <li><Link href="/sell" className="hover:text-primary transition-colors">Sell Cars</Link></li>
                             <li><Link href="/about" className="hover:text-primary transition-colors">About</Link></li>
                             <li><Link href="/terms" className="hover:text-primary transition-colors">Terms & Conditions</Link></li>
