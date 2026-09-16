@@ -6,21 +6,24 @@ import { CheckCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { createServiceLead } from "@/lib/servicesApi"
+import { useSessionDraft } from "@/hooks/useSessionDraft"
 
 const inputCls = "w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-sm outline-none focus:border-primary"
 const labelCls = "block text-[11px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2"
+const EMPTY_FORM = {
+    registration: "", make: "", model: "", year: "", mileage: "", value: "",
+    postcode: "", phone: "", summary: "", deposit: "", term: "48", monthlyBudget: "",
+    employmentStatus: "", annualIncome: "", warrantyMonths: "12", warrantyLevel: "Comprehensive",
+}
 
 export function ServiceLeadForm({ type }: { type: "FINANCE" | "WARRANTY" }) {
     const router = useRouter()
     const { user, loading } = useAuth()
     const [busy, setBusy] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
-    const [consent, setConsent] = React.useState(false)
-    const [form, setForm] = React.useState({
-        registration: "", make: "", model: "", year: "", mileage: "", value: "",
-        postcode: "", phone: "", summary: "", deposit: "", term: "48", monthlyBudget: "",
-        employmentStatus: "", annualIncome: "", warrantyMonths: "12", warrantyLevel: "Comprehensive",
-    })
+    const draftPrefix = `tradexchange:lead:${type.toLowerCase()}`
+    const { value: consent, setValue: setConsent, clearDraft: clearConsentDraft } = useSessionDraft(`${draftPrefix}:consent`, false)
+    const { value: form, setValue: setForm, clearDraft: clearFormDraft } = useSessionDraft(`${draftPrefix}:form`, EMPTY_FORM)
 
     const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }))
     const money = (v: string) => v.trim() === "" ? undefined : Math.round(Number(v) * 100)
@@ -60,6 +63,8 @@ export function ServiceLeadForm({ type }: { type: "FINANCE" | "WARRANTY" }) {
                 }),
                 consentToProviderContact: true,
             })
+            clearFormDraft()
+            clearConsentDraft()
             router.push(`/services/leads/${lead.id}`)
         } catch (err: any) {
             setError(err?.message || "Could not submit your enquiry.")
@@ -69,6 +74,7 @@ export function ServiceLeadForm({ type }: { type: "FINANCE" | "WARRANTY" }) {
     return (
         <form onSubmit={submit} className="space-y-6">
             {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500">{error}</div>}
+            {!loading && !user && <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">Complete the form now if you want. It is saved in this tab and restored after you sign in.</div>}
 
             <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
                 <h2 className="font-heading font-bold text-lg mb-5">Vehicle</h2>
