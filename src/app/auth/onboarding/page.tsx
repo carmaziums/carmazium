@@ -1,226 +1,189 @@
 "use client"
 
-import { Button } from "@/components/ui/Button"
-import { CheckCircle, Loader2, Mail, MapPin, Heart, ArrowRight, Car, Zap, Gauge, RefreshCw, LayoutDashboard, User as UserIcon } from "lucide-react"
-import { useAuth } from "@/context/AuthContext"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useState, useEffect, useRef } from "react"
+import { CheckCircle2, Loader2, Mail, MapPin, Phone, RefreshCw, ShieldCheck, User as UserIcon } from "lucide-react"
+import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
+import { useAuth } from "@/context/AuthContext"
 import { updateProfile } from "@/lib/listingApi"
 
-// Fresh-signup window: accounts created within this window go through the
-// full wizard (location/preferences); older accounts logging in via a
-// provider that lacks a name/phone only see the missing-field step(s).
-const FRESH_SIGNUP_WINDOW_MS = 10 * 60 * 1000
-
-const FUEL_PREFS = [
-    { value: 'PETROL', label: 'Petrol' },
-    { value: 'DIESEL', label: 'Diesel' },
-    { value: 'ELECTRIC', label: 'Electric' },
-    { value: 'HYBRID', label: 'Hybrid' },
-    { value: 'PLUGIN_HYBRID', label: 'Plug-in Hybrid' },
-    { value: 'LPG', label: 'LPG' },
-    { value: 'HYDROGEN_CELL', label: 'Hydrogen' },
-]
-
-const BUDGET_RANGES = [
-    { value: '0-5000', label: 'Under £5k' },
-    { value: '5000-10000', label: '£5k – £10k' },
-    { value: '10000-20000', label: '£10k – £20k' },
-    { value: '20000-40000', label: '£20k – £40k' },
-    { value: '40000+', label: '£40k+' },
-]
+const ONBOARDING_DRAFT_KEY = "carmazium_onboarding_draft"
 
 export default function OnboardingPage() {
     const { user, profile, loading, refreshProfile } = useAuth()
     const router = useRouter()
+
+    const [firstName, setFirstName] = useState("")
+    const [lastName, setLastName] = useState("")
+    const [phone, setPhone] = useState("")
+    const [location, setLocation] = useState("")
+    const [postcode, setPostcode] = useState("")
+    const [initialized, setInitialized] = useState(false)
+    const [pendingEmail, setPendingEmail] = useState<string | null>(null)
+    const [pendingLoaded, setPendingLoaded] = useState(false)
+    const [saving, setSaving] = useState(false)
+    const [error, setError] = useState("")
+
     const [resending, setResending] = useState(false)
     const [resendSuccess, setResendSuccess] = useState(false)
     const [resendCooldown, setResendCooldown] = useState(0)
     const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
-    const [isVerified, setIsVerified] = useState(false)
-    // Fallback email shown on verify step when user session doesn't exist yet
-    const [pendingEmail, setPendingEmail] = useState<string | null>(null)
 
-    // Post-verification steps
-    const [step, setStep] = useState<'verify' | 'name' | 'location' | 'preferences' | 'done'>('verify')
-    const [firstName, setFirstName] = useState('')
-    const [lastName, setLastName] = useState('')
-    const [nameError, setNameError] = useState('')
-    const [location, setLocation] = useState('')
-    const [postcode, setPostcode] = useState('')
-    const [locationError, setLocationError] = useState('')
-    const [selectedBodyTypes, setSelectedBodyTypes] = useState<string[]>([])
-    const [selectedFuels, setSelectedFuels] = useState<string[]>([])
-    const [selectedBudget, setSelectedBudget] = useState('')
-    const [saving, setSaving] = useState(false)
-    // Tracks whether we've already routed this session, so the profile-driven
-    // effect below doesn't re-run every render once a step has been chosen
-    const routedRef = useRef(false)
+    const isVerified = Boolean(user?.email_confirmed_at)
+    const accountEmail = user?.email || pendingEmail || ""
 
-    // Read stashed email from signup flow
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            setPendingEmail(sessionStorage.getItem('pending_verification_email'))
+        if (typeof window === "undefined") return
+
+        setPendingEmail(sessionStorage.getItem("pending_verification_email"))
+
+        try {
+            const draft = JSON.parse(sessionStorage.getItem(ONBOARDING_DRAFT_KEY) || "{}")
+            setFirstName(typeof draft.firstName === "string" ? draft.firstName : "")
+            setLastName(typeof draft.lastName === "string" ? draft.lastName : "")
+            setPhone(typeof draft.phone === "string" ? draft.phone : "")
+            setLocation(typeof draft.location === "string" ? draft.location : "")
+            setPostcode(typeof draft.postcode === "string" ? draft.postcode : "")
+        } catch {
+            sessionStorage.removeItem(ONBOARDING_DRAFT_KEY)
         }
+
+        setPendingLoaded(true)
     }, [])
 
     useEffect(() => {
-        if (!user) return
-        const verified = !!user.email_confirmed_at
-        setIsVerified(verified)
-        if (!verified) return
-        // Clear stashed email once verified
-        if (typeof window !== 'undefined') sessionStorage.removeItem('pending_verification_email')
+        if (!pendingLoaded || loading || initialized || !user) return
 
-        // Wait for the profile fetch to settle before deciding the next step —
-        // otherwise we'd briefly see profile === null and wrongly show 'name'.
-        if (loading) return
-        if (routedRef.current) return
-        routedRef.current = true
+        setFirstName(current => current || profile?.firstName || user.user_metadata?.first_name || user.user_metadata?.firstName || "")
+        setLastName(current => current || profile?.lastName || user.user_metadata?.last_name || user.user_metadata?.lastName || "")
+        setPhone(current => current || profile?.phone || "")
+        setLocation(current => current || profile?.location || "")
+        setPostcode(current => current || profile?.postcode || "")
+        setInitialized(true)
+    }, [pendingLoaded, loading, initialized, user, profile])
 
-        if (!profile?.firstName || !profile?.lastName) {
-            setFirstName(profile?.firstName || '')
-            setLastName(profile?.lastName || '')
-            setStep('name')
-            return
-        }
+    useEffect(() => {
+        if (!pendingLoaded || typeof window === "undefined") return
+        sessionStorage.setItem(ONBOARDING_DRAFT_KEY, JSON.stringify({
+            firstName,
+            lastName,
+            phone,
+            location,
+            postcode,
+        }))
+    }, [pendingLoaded, firstName, lastName, phone, location, postcode])
 
-        // Existing accounts (e.g. returning via "Continue with Google" on the
-        // login page) already have a name — don't force them through the full
-        // wizard again. Only genuinely fresh signups see location/preferences.
-        const createdAtMs = user.created_at ? new Date(user.created_at).getTime() : 0
-        const isFreshSignup = createdAtMs > 0 && (Date.now() - createdAtMs) < FRESH_SIGNUP_WINDOW_MS
-        if (isFreshSignup) {
-            setStep('location')
-        } else {
-            router.replace('/dashboard')
+    useEffect(() => {
+        if (!pendingLoaded || loading) return
+        if (!user && !pendingEmail) {
+            router.replace("/auth/login")
         }
-    }, [user, profile, loading])
+    }, [pendingLoaded, loading, user, pendingEmail, router])
 
-    const handleSaveName = async () => {
-        const trimmedFirst = firstName.trim()
-        const trimmedLast = lastName.trim()
-        if (!trimmedFirst || !trimmedLast) {
-            setNameError('Please enter both your first and last name.')
-            return
-        }
-        setNameError('')
-        setSaving(true)
-        try {
-            await updateProfile({ firstName: trimmedFirst, lastName: trimmedLast })
-            await refreshProfile()
-            const createdAtMs = user?.created_at ? new Date(user.created_at).getTime() : 0
-            const isFreshSignup = createdAtMs > 0 && (Date.now() - createdAtMs) < FRESH_SIGNUP_WINDOW_MS
-            if (isFreshSignup) {
-                setStep('location')
-            } else {
-                router.replace('/dashboard')
-            }
-        } catch (err: any) {
-            setNameError(err.message || 'Failed to save your name. Please try again.')
-        } finally {
-            setSaving(false)
-        }
-    }
+    useEffect(() => () => {
+        if (cooldownRef.current) clearInterval(cooldownRef.current)
+    }, [])
 
     const getBaseUrl = () => {
-        if (typeof window !== 'undefined') return window.location.origin
-        return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+        if (typeof window !== "undefined") return window.location.origin
+        return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
     }
 
     const startCooldown = (seconds = 60) => {
         setResendCooldown(seconds)
         if (cooldownRef.current) clearInterval(cooldownRef.current)
         cooldownRef.current = setInterval(() => {
-            setResendCooldown(prev => {
-                if (prev <= 1) { clearInterval(cooldownRef.current!); return 0 }
-                return prev - 1
+            setResendCooldown(previous => {
+                if (previous <= 1) {
+                    if (cooldownRef.current) clearInterval(cooldownRef.current)
+                    return 0
+                }
+                return previous - 1
             })
         }, 1000)
     }
 
-    useEffect(() => () => { if (cooldownRef.current) clearInterval(cooldownRef.current) }, [])
-
     const handleResendEmail = async () => {
         const emailToUse = user?.email || pendingEmail
         if (!emailToUse || resendCooldown > 0) return
+
         setResending(true)
         setResendSuccess(false)
+        setError("")
+
         try {
-            const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev').replace(/\/$/, '')
-            const res = await fetch(`${apiBase}/auth/send-verification`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+            const apiBase = (process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev").replace(/\/$/, "")
+            const response = await fetch(`${apiBase}/auth/send-verification`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     email: emailToUse,
                     redirectTo: `${getBaseUrl()}/auth/callback?redirect_to=/auth/onboarding`,
                 }),
             })
-            if (!res.ok) {
-                const data = await res.json().catch(() => ({}))
-                alert(`Failed to resend email: ${data?.message || res.statusText}`)
-            } else {
-                setResendSuccess(true)
-                startCooldown(60)
-                setTimeout(() => setResendSuccess(false), 6000)
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}))
+                throw new Error(data?.message || response.statusText || "Failed to resend verification email.")
             }
+
+            setResendSuccess(true)
+            startCooldown(60)
+            setTimeout(() => setResendSuccess(false), 6000)
         } catch (err: any) {
-            alert(`Failed to resend email: ${err.message}`)
+            setError(err?.message || "Failed to resend verification email. Please try again.")
         } finally {
             setResending(false)
         }
     }
 
-    const handleSaveLocation = async () => {
+    const handleSubmit = async (event: React.FormEvent) => {
+        event.preventDefault()
+        setError("")
+
+        if (!user || !isVerified) {
+            setError("Please verify your email before completing your account.")
+            return
+        }
+
+        const trimmedFirstName = firstName.trim()
+        const trimmedLastName = lastName.trim()
+        const trimmedPhone = phone.trim()
         const trimmedLocation = location.trim()
         const trimmedPostcode = postcode.trim()
-        if (!trimmedLocation) {
-            setLocationError('Please enter your location.')
-            return
-        }
-        if (!trimmedPostcode) {
-            setLocationError('Please enter your postal code.')
-            return
-        }
-        setLocationError('')
-        setSaving(true)
-        try {
-            await updateProfile({ location: trimmedLocation, postcode: trimmedPostcode })
-            localStorage.setItem('carmazium_user_location', trimmedLocation)
-            setStep('preferences')
-        } catch (err: any) {
-            setLocationError(err.message || 'Failed to save your location. Please try again.')
-        } finally {
-            setSaving(false)
-        }
-    }
 
-    const handleSavePreferences = async () => {
+        if (!trimmedFirstName || !trimmedLastName || !trimmedPhone || !trimmedLocation || !trimmedPostcode) {
+            setError("Please complete every required field before continuing.")
+            return
+        }
+
         setSaving(true)
         try {
-            const prefs = {
-                bodyTypes: selectedBodyTypes,
-                fuelTypes: selectedFuels,
-                budget: selectedBudget,
+            await updateProfile({
+                firstName: trimmedFirstName,
+                lastName: trimmedLastName,
+                phone: trimmedPhone,
+                location: trimmedLocation,
+                postcode: trimmedPostcode,
+            })
+
+            if (typeof window !== "undefined") {
+                localStorage.setItem("carmazium_user_location", trimmedLocation)
+                sessionStorage.removeItem("pending_verification_email")
+                sessionStorage.removeItem(ONBOARDING_DRAFT_KEY)
             }
-            await updateProfile({ preferences: prefs })
-            localStorage.setItem('carmazium_user_preferences', JSON.stringify(prefs))
-            setStep('done')
+
+            await refreshProfile()
+            router.replace("/auth/registration-complete")
         } catch (err: any) {
-            console.error('Failed to save preferences:', err)
-            setStep('done')
+            setError(err?.message || "Failed to complete your account. Please try again.")
         } finally {
             setSaving(false)
         }
     }
 
-    const toggleArr = (arr: string[], setArr: (v: string[]) => void, val: string) => {
-        setArr(arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val])
-    }
-
-    if (loading) {
+    if (loading && user) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-900">
                 <Loader2 className="animate-spin text-primary h-12 w-12" />
@@ -228,289 +191,187 @@ export default function OnboardingPage() {
         )
     }
 
-    const stepIndex = step === 'verify' ? 1 : step === 'name' ? 2 : step === 'location' ? 3 : step === 'preferences' ? 4 : 5
-    const steps = ['Verify Email', 'Your Name', 'Your Location', 'Preferences', 'All Done']
-
     return (
-        <div className="min-h-screen pt-24 pb-12 flex items-center justify-center bg-slate-900 relative overflow-hidden">
+        <main className="min-h-screen bg-slate-900 pt-24 pb-12 px-5 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-1/2 h-full bg-[url('/assets/images/hero-bg.png')] bg-cover opacity-20" />
 
-            <div className="relative z-10 w-full max-w-xl px-5">
-                {/* Step indicator */}
-                <div className="flex items-center justify-center gap-2 mb-10">
-                    {steps.map((s, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border transition-all ${i + 1 < stepIndex ? 'bg-emerald-500 border-emerald-500 text-white' : i + 1 === stepIndex ? 'bg-primary border-primary text-white' : 'bg-slate-800 border-white/10 text-gray-500'}`}>
-                                {i + 1 < stepIndex ? <CheckCircle size={14} /> : i + 1}
-                            </div>
-                            <span className={`text-xs font-semibold hidden sm:block ${i + 1 === stepIndex ? 'text-white' : 'text-gray-500'}`}>{s}</span>
-                            {i < steps.length - 1 && <div className={`w-6 h-0.5 ${i + 1 < stepIndex ? 'bg-emerald-500' : 'bg-white/10'}`} />}
-                        </div>
-                    ))}
+            <div className="relative z-10 mx-auto w-full max-w-2xl">
+                <div className="mb-7 text-center">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10">
+                        <ShieldCheck className="h-7 w-7 text-primary" />
+                    </div>
+                    <h1 className="text-3xl font-black font-heading text-white tracking-tight">Complete Your Account</h1>
+                    <p className="mt-2 text-sm text-gray-400">
+                        One short form with the essential details we need to keep CarMazium accounts complete and genuine.
+                    </p>
                 </div>
 
-                <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8">
-
-                    {/* ── Step 1: Verify Email ── */}
-                    {step === 'verify' && (
-                        <div className="text-center space-y-6">
-                            {/* Icon */}
-                            <div className="relative inline-flex items-center justify-center">
-                                <div className="w-20 h-20 rounded-full bg-primary/10 border border-primary/25 flex items-center justify-center">
-                                    <Mail className="text-primary h-9 w-9" />
+                <section className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-6 sm:p-8">
+                    {!isVerified && (
+                        <div className="mb-6 rounded-xl border border-amber-400/25 bg-amber-400/[0.07] p-4">
+                            <div className="flex items-start gap-3">
+                                <Mail className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
+                                <div className="min-w-0 flex-1">
+                                    <h2 className="font-bold text-white">Verify your email</h2>
+                                    <p className="mt-1 text-sm leading-relaxed text-gray-300">
+                                        We sent a verification link to <span className="font-semibold text-white">{accountEmail || "your email address"}</span>. You can fill this form now, but email verification is required before it can be submitted.
+                                    </p>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="mt-3 gap-2 border-white/15 text-white hover:bg-white/5"
+                                        onClick={handleResendEmail}
+                                        disabled={resending || resendCooldown > 0 || !accountEmail}
+                                    >
+                                        {resending ? (
+                                            <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
+                                        ) : resendCooldown > 0 ? (
+                                            <><RefreshCw className="h-4 w-4" /> Resend in {resendCooldown}s</>
+                                        ) : (
+                                            <><RefreshCw className="h-4 w-4" /> Resend Verification Email</>
+                                        )}
+                                    </Button>
                                 </div>
-                                <span className="absolute -top-1 -right-1 flex h-5 w-5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-50" />
-                                    <span className="relative inline-flex rounded-full h-5 w-5 bg-primary items-center justify-center">
-                                        <span className="text-white text-[9px] font-black">1</span>
-                                    </span>
-                                </span>
                             </div>
-
-                            <div>
-                                <h1 className="text-2xl font-black font-heading text-white tracking-tight">Check your inbox</h1>
-                                <p className="text-gray-400 text-sm mt-2 leading-relaxed">
-                                    We've sent a verification link to
-                                </p>
-                                <p className="text-white font-semibold text-sm mt-0.5">
-                                    {user?.email || pendingEmail || 'your email address'}
-                                </p>
-                            </div>
-
-                            {/* Steps hint */}
-                            <div className="bg-slate-900/60 border border-white/5 rounded-xl p-4 text-left space-y-2">
-                                {[
-                                    'Open the email from CarMazium',
-                                    'Click the "Verify My Email" button',
-                                    'You\'ll be brought back here automatically',
-                                ].map((step, i) => (
-                                    <div key={i} className="flex items-center gap-3">
-                                        <div className="w-5 h-5 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
-                                            <span className="text-primary text-[10px] font-black">{i + 1}</span>
-                                        </div>
-                                        <span className="text-gray-300 text-xs">{step}</span>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Success banner */}
-                            {resendSuccess && (
-                                <div className="flex items-center gap-2 p-3 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-300 text-sm">
-                                    <CheckCircle size={16} className="shrink-0" />
-                                    Email sent! Check your inbox (and spam folder).
-                                </div>
-                            )}
-
-                            {/* Primary: Resend */}
-                            <Button
-                                size="lg"
-                                className="w-full gap-2"
-                                onClick={handleResendEmail}
-                                disabled={resending || resendCooldown > 0}
-                            >
-                                {resending ? (
-                                    <><Loader2 className="animate-spin h-4 w-4" /> Sending…</>
-                                ) : resendCooldown > 0 ? (
-                                    <><RefreshCw size={16} /> Resend in {resendCooldown}s</>
-                                ) : (
-                                    <><RefreshCw size={16} /> Resend Verification Email</>
-                                )}
-                            </Button>
-
-                            {/* Secondary: skip to dashboard */}
-                            <Button
-                                variant="outline"
-                                className="w-full gap-2 border-white/10 text-gray-400 hover:text-white"
-                                onClick={() => router.push('/dashboard')}
-                            >
-                                <LayoutDashboard size={15} /> Go to Dashboard anyway
-                            </Button>
-
-                            <p className="text-[11px] text-gray-600">
-                                Wrong email? <button onClick={() => router.push('/auth/signup')} className="text-primary hover:underline">Sign up again</button>
-                            </p>
                         </div>
                     )}
 
-                    {/* ── Step 2: Your Name (mandatory — no skip) ── */}
-                    {step === 'name' && (
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2.5 bg-primary/20 rounded-xl border border-primary/20">
-                                    <UserIcon className="text-primary h-6 w-6" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-white">What's your name?</h2>
-                                    <p className="text-gray-400 text-sm">Shown on your profile and any listings you create</p>
-                                </div>
-                            </div>
-
-                            {nameError && (
-                                <div className="p-3 bg-red-500/15 border border-red-500/40 rounded-xl text-red-300 text-sm">
-                                    {nameError}
-                                </div>
-                            )}
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold uppercase text-gray-400">First Name</label>
-                                    <Input
-                                        placeholder="John"
-                                        value={firstName}
-                                        onChange={e => setFirstName(e.target.value)}
-                                        className="h-12 bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-                                        autoFocus
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold uppercase text-gray-400">Last Name</label>
-                                    <Input
-                                        placeholder="Doe"
-                                        value={lastName}
-                                        onChange={e => setLastName(e.target.value)}
-                                        className="h-12 bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-                                        onKeyDown={e => e.key === 'Enter' && handleSaveName()}
-                                    />
-                                </div>
-                            </div>
-
-                            <Button className="w-full" onClick={handleSaveName} disabled={saving}>
-                                {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <>Continue <ArrowRight size={16} className="ml-1" /></>}
-                            </Button>
+                    {isVerified && (
+                        <div className="mb-6 flex items-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-400/[0.07] px-4 py-3 text-sm text-emerald-200">
+                            <CheckCircle2 className="h-4 w-4 shrink-0" />
+                            Email verified. Complete the required details below to continue.
                         </div>
                     )}
 
-                    {/* ── Step 3: Location ── */}
-                    {step === 'location' && (
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2.5 bg-blue-500/20 rounded-xl border border-blue-500/20">
-                                    <MapPin className="text-blue-400 h-6 w-6" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-white">Where are you based?</h2>
-                                    <p className="text-gray-400 text-sm">Helps show nearby listings and sellers</p>
-                                </div>
-                            </div>
+                    {resendSuccess && (
+                        <div className="mb-6 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+                            <CheckCircle2 className="h-4 w-4 shrink-0" />
+                            Verification email sent. Check your inbox and spam folder.
+                        </div>
+                    )}
 
-                            {locationError && (
-                                <div className="p-3 bg-red-500/15 border border-red-500/40 rounded-xl text-red-300 text-sm">
-                                    {locationError}
-                                </div>
-                            )}
+                    {error && (
+                        <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/15 p-3 text-sm text-red-200">
+                            {error}
+                        </div>
+                    )}
 
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div className="grid gap-4 sm:grid-cols-2">
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-gray-400">City / Location</label>
+                                <label htmlFor="firstName" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-300">
+                                    <UserIcon className="h-3.5 w-3.5" /> First Name
+                                </label>
                                 <Input
-                                    placeholder="e.g. London"
+                                    id="firstName"
+                                    type="text"
+                                    autoComplete="given-name"
+                                    required
+                                    value={firstName}
+                                    onChange={event => setFirstName(event.target.value)}
+                                    placeholder="John"
+                                    className="bg-slate-900/60 border-white/10 text-white placeholder:text-gray-600"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label htmlFor="lastName" className="text-xs font-bold uppercase tracking-wide text-gray-300">Last Name</label>
+                                <Input
+                                    id="lastName"
+                                    type="text"
+                                    autoComplete="family-name"
+                                    required
+                                    value={lastName}
+                                    onChange={event => setLastName(event.target.value)}
+                                    placeholder="Doe"
+                                    className="bg-slate-900/60 border-white/10 text-white placeholder:text-gray-600"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label htmlFor="email" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-300">
+                                <Mail className="h-3.5 w-3.5" /> Email Address
+                            </label>
+                            <Input
+                                id="email"
+                                type="email"
+                                value={accountEmail}
+                                readOnly
+                                aria-readonly="true"
+                                className="cursor-not-allowed bg-slate-950/70 border-white/10 text-gray-400"
+                                placeholder="you@example.com"
+                            />
+                            <p className="text-[11px] text-gray-500">Your account email is shown for reference and cannot be changed here.</p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label htmlFor="phone" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-300">
+                                <Phone className="h-3.5 w-3.5" /> Phone Number
+                            </label>
+                            <Input
+                                id="phone"
+                                type="tel"
+                                autoComplete="tel"
+                                required
+                                value={phone}
+                                onChange={event => setPhone(event.target.value)}
+                                placeholder="07123 456789"
+                                className="bg-slate-900/60 border-white/10 text-white placeholder:text-gray-600"
+                            />
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-2">
+                                <label htmlFor="location" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-300">
+                                    <MapPin className="h-3.5 w-3.5" /> City / Location
+                                </label>
+                                <Input
+                                    id="location"
+                                    type="text"
+                                    autoComplete="address-level2"
+                                    required
                                     value={location}
-                                    onChange={e => setLocation(e.target.value)}
-                                    className="h-12 bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-                                    autoFocus
+                                    onChange={event => setLocation(event.target.value)}
+                                    placeholder="Birmingham"
+                                    className="bg-slate-900/60 border-white/10 text-white placeholder:text-gray-600"
                                 />
                             </div>
-
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-gray-400">Postal Code</label>
+                                <label htmlFor="postcode" className="text-xs font-bold uppercase tracking-wide text-gray-300">Postcode</label>
                                 <Input
-                                    placeholder="e.g. B1 1AA"
+                                    id="postcode"
+                                    type="text"
+                                    autoComplete="postal-code"
+                                    required
                                     value={postcode}
-                                    onChange={e => setPostcode(e.target.value)}
-                                    className="h-12 bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-                                    onKeyDown={e => e.key === 'Enter' && handleSaveLocation()}
+                                    onChange={event => setPostcode(event.target.value.toUpperCase())}
+                                    placeholder="B1 1AA"
+                                    className="bg-slate-900/60 border-white/10 text-white placeholder:text-gray-600"
                                 />
-                                <p className="text-xs text-gray-600">Can be changed later in your profile settings.</p>
-                            </div>
-
-                            <Button className="w-full" onClick={handleSaveLocation} disabled={saving}>
-                                {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <>Continue <ArrowRight size={16} className="ml-1" /></>}
-                            </Button>
-                        </div>
-                    )}
-
-                    {/* ── Step 3: Preferences ── */}
-                    {step === 'preferences' && (
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2.5 bg-primary/20 rounded-xl border border-primary/20">
-                                    <Heart className="text-primary h-6 w-6" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-white">What are you looking for?</h2>
-                                    <p className="text-gray-400 text-sm">Personalise your CarMazium experience</p>
-                                </div>
-                            </div>
-
-                            {/* Budget */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-1.5"><Gauge size={11} /> Budget Range</label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {BUDGET_RANGES.map(b => (
-                                        <button key={b.value} type="button"
-                                            onClick={() => setSelectedBudget(selectedBudget === b.value ? '' : b.value)}
-                                            className={`py-2 rounded-lg border text-xs font-semibold transition-all ${selectedBudget === b.value ? 'border-primary bg-primary/15 text-white' : 'border-white/10 text-gray-400 hover:border-white/20'}`}
-                                        >{b.label}</button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Body types */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-1.5"><Car size={11} /> Vehicle Type</label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {BODY_TYPE_KEYS.slice(0, 9).map(key => (
-                                        <button key={key} type="button"
-                                            onClick={() => toggleArr(selectedBodyTypes, setSelectedBodyTypes, key)}
-                                            className={`py-2 rounded-lg border text-xs font-semibold transition-all ${selectedBodyTypes.includes(key) ? 'border-primary bg-primary/15 text-white' : 'border-white/10 text-gray-400 hover:border-white/20'}`}
-                                        >{BODY_TYPE_LABELS[key]}</button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Fuel type */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-1.5"><Zap size={11} /> Fuel Preference</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {FUEL_PREFS.map(f => (
-                                        <button key={f.value} type="button"
-                                            onClick={() => toggleArr(selectedFuels, setSelectedFuels, f.value)}
-                                            className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${selectedFuels.includes(f.value) ? 'border-primary bg-primary/15 text-white' : 'border-white/10 text-gray-400 hover:border-white/20'}`}
-                                        >{f.label}</button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="flex gap-3">
-                                <Button variant="outline" className="flex-1 border-white/10 text-gray-400 hover:text-white" onClick={() => setStep('done')}>
-                                    Skip
-                                </Button>
-                                <Button className="flex-1" onClick={handleSavePreferences} disabled={saving}>
-                                    {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <>Finish Setup <CheckCircle size={16} className="ml-1" /></>}
-                                </Button>
                             </div>
                         </div>
-                    )}
 
-                    {/* ── Step 4: Done ── */}
-                    {step === 'done' && (
-                        <div className="text-center space-y-5">
-                            <div className="inline-block p-3 bg-emerald-500/20 rounded-full mb-2">
-                                <CheckCircle className="text-emerald-400 h-8 w-8" />
-                            </div>
-                            <h2 className="text-2xl font-bold text-white">You're all set!</h2>
-                            <p className="text-gray-400 text-sm">
-                                Welcome to CarMazium, <strong className="text-white">{profile?.firstName || 'there'}</strong>. Your account is ready to use.
-                            </p>
-                            <Button size="lg" className="w-full" onClick={() => router.push('/dashboard')}>
-                                Go to Dashboard <ArrowRight size={16} className="ml-2" />
-                            </Button>
-                            <Button size="lg" variant="outline" className="w-full border-white/10 text-gray-400 hover:text-white" onClick={() => router.push('/buy-cars')}>
-                                Browse Cars
-                            </Button>
+                        <div className="rounded-xl border border-white/5 bg-slate-950/40 px-4 py-3 text-xs leading-relaxed text-gray-400">
+                            All fields are required. This setup cannot be skipped because CarMazium requires complete basic account-holder details before dashboard access.
                         </div>
-                    )}
-                </div>
+
+                        <Button
+                            type="submit"
+                            size="lg"
+                            className="w-full"
+                            disabled={saving || !isVerified}
+                        >
+                            {saving ? (
+                                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</>
+                            ) : isVerified ? (
+                                "Complete My Account"
+                            ) : (
+                                "Verify Email to Complete"
+                            )}
+                        </Button>
+                    </form>
+                </section>
             </div>
-        </div>
+        </main>
     )
 }
