@@ -7,9 +7,9 @@ import {
     Headers,
     Req,
     UseGuards,
-    RawBody,
     BadRequestException,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import {
     ApiTags,
     ApiOperation,
@@ -171,13 +171,16 @@ export class PaymentsController {
     }
 
     @Post('webhook')
+    @SkipThrottle()
     @ApiOperation({ summary: 'Stripe Webhook Handler' })
     @ApiResponse({ status: 200, description: 'Webhook processed' })
     async handleWebhook(
         @Headers('stripe-signature') sig: string,
         @Req() req: any,
     ) {
-        // rawBody is attached by the raw-body middleware in main.ts
+        // rawBody is attached by Nest because rawBody:true is set in main.ts.
+        // Stripe signature verification remains the authentication mechanism for
+        // this public callback; global IP throttling must not drop valid retries.
         const rawBody = req.rawBody;
         return this.paymentsService.handleWebhook(rawBody, sig);
     }
