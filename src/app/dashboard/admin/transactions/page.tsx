@@ -3,11 +3,13 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Receipt, Loader2, ArrowLeft, ChevronDown, Upload, ShieldCheck, Clock, PenLine } from "lucide-react"
+import { ArrowLeft, ChevronDown, Clock, Loader2, PenLine, ShieldCheck, Upload } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { PageHeader } from "@/components/dashboard/PageHeader"
 import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import { HpiPdfUpload } from "@/components/admin/HpiPdfUpload"
 import { HpiReportForm } from "@/components/admin/HpiReportForm"
+import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminTransactions } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
@@ -24,38 +26,25 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-    PENDING: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-    COMPLETED: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    FAILED: "bg-red-500/10 text-red-400 border-red-500/20",
-    REFUNDED: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    PENDING: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    COMPLETED: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    FAILED: "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300",
+    REFUNDED: "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300",
 }
 
-/**
- * Transactions that entitle a listing to an HPI report. A direct HPI purchase
- * always qualifies once paid. STANDARD (£10) and PREMIUM (£25) listing fees
- * also include this admin fulfilment path; the £1 BASIC listing does not.
- */
-const HPI_TYPES = ['HPI_REPORT', 'HPI_REPORT_EMAIL']
+const HPI_TYPES = ["HPI_REPORT", "HPI_REPORT_EMAIL"]
 const HPI_LISTING_FEE_AMOUNTS = new Set([10, 25])
 
 function isHpiEligibleTransaction(tx: any) {
-    if (tx.status !== 'COMPLETED') return false
+    if (tx.status !== "COMPLETED") return false
     if (HPI_TYPES.includes(tx.type)) return true
-    return tx.type === 'LISTING_FEE' && HPI_LISTING_FEE_AMOUNTS.has(Number(tx.amount))
+    return tx.type === "LISTING_FEE" && HPI_LISTING_FEE_AMOUNTS.has(Number(tx.amount))
 }
 
-/**
- * The report controls for a paid HPI-entitled transaction, shown wherever a
- * ledger row is expanded.
- *
- * The ledger is where an admin lands when checking what someone paid for, so
- * it is the natural place to discover an unfulfilled report — and now the place
- * to fix it, without navigating to the queue and finding the listing again.
- */
 function HpiTransactionActions({ tx, onUpload, onFillForm }: {
     tx: any
-    onUpload: (t: { id: string; title: string; hasPdf: boolean }) => void
-    onFillForm: (t: { id: string; title: string; hasPdf: boolean }) => void
+    onUpload: (target: { id: string; title: string; hasPdf: boolean }) => void
+    onFillForm: (target: { id: string; title: string; hasPdf: boolean }) => void
 }) {
     if (!isHpiEligibleTransaction(tx) || !tx.listing) return null
 
@@ -65,46 +54,43 @@ function HpiTransactionActions({ tx, onUpload, onFillForm }: {
         title: tx.listing.title,
         hasPdf: !!report?.pdfUploadedAt,
     }
-    const done = report?.status === 'COMPLETED'
+    const done = report?.status === "COMPLETED"
 
     return (
-        <div className={`mt-3 p-3 rounded-lg border ${done
-            ? 'border-emerald-500/25 bg-emerald-500/5'
-            : 'border-primary/30 bg-primary/5'}`}>
+        <div className={`mt-4 rounded-xl border p-4 ${done ? "border-emerald-500/25 bg-emerald-500/[0.06]" : "border-primary/30 bg-primary/[0.05]"}`}>
             <div className="flex items-start gap-2.5">
                 {done
-                    ? <ShieldCheck size={15} className="text-emerald-400 shrink-0 mt-0.5" />
-                    : <Clock size={15} className="text-primary shrink-0 mt-0.5" />}
-                <div className="flex-1 min-w-0">
-                    <p className={`text-xs font-bold ${done ? 'text-emerald-400' : 'text-primary'}`}>
+                    ? <ShieldCheck size={16} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    : <Clock size={16} className="mt-0.5 shrink-0 text-primary" />}
+                <div className="min-w-0 flex-1">
+                    <p className={`text-xs font-bold ${done ? "text-emerald-700 dark:text-emerald-300" : "text-primary"}`}>
                         {!report
-                            ? 'No report record for this payment'
+                            ? "No report record for this payment"
                             : done
-                                ? `Report ${report.pdfUploadedAt ? 'uploaded' : 'prepared'}${report.isClear ? ' · all checks passed' : ' · adverse history'}`
-                                : 'Report outstanding — this payer is still owed one'}
+                                ? `Report ${report.pdfUploadedAt ? "uploaded" : "prepared"}${report.isClear ? " · all checks passed" : " · adverse history"}`
+                                : "Report outstanding — this payer is still owed one"}
                     </p>
                     {!report && (
-                        <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                            The payment cleared but no report row exists. Attaching one here creates it.
-                        </p>
+                        <p className="mt-1 text-[11px] leading-5 text-[var(--text-muted)]">The payment cleared but no report row exists. Attaching one here creates it.</p>
                     )}
                 </div>
             </div>
-            <div className="flex gap-2 mt-2.5">
-                <button
+            <div className="mt-3 flex flex-wrap gap-2">
+                <Button
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); onUpload(target) }}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary/90 transition-colors cursor-pointer"
+                    size="sm"
+                    onClick={(event) => { event.stopPropagation(); onUpload(target) }}
                 >
-                    <Upload size={12} /> {target.hasPdf ? 'Replace PDF' : 'Upload PDF'}
-                </button>
-                <button
+                    <Upload size={13} /> {target.hasPdf ? "Replace PDF" : "Upload PDF"}
+                </Button>
+                <Button
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); onFillForm(target) }}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-primary/40 text-primary text-[11px] font-black uppercase tracking-widest hover:bg-primary/10 transition-colors cursor-pointer"
+                    variant="outline"
+                    size="sm"
+                    onClick={(event) => { event.stopPropagation(); onFillForm(target) }}
                 >
-                    <PenLine size={12} /> Fill in form
-                </button>
+                    <PenLine size={13} /> Fill in form
+                </Button>
             </div>
         </div>
     )
@@ -125,197 +111,197 @@ export default function AdminTransactionsPage() {
     const [hpiSuccess, setHpiSuccess] = React.useState<string | null>(null)
     const limit = 20
 
-    /** Re-pull the page so a just-attached report shows as fulfilled. */
     function reloadTransactions() {
         getAdminTransactions(page, limit)
-            .then(r => { setTransactions(r.data || []); setTotal(r.pagination?.total || 0) })
-            .catch(err => setError(err.message || 'Failed to load transactions'))
+            .then(result => {
+                setTransactions(result.data || [])
+                setTotal(result.pagination?.total || 0)
+            })
+            .catch(fetchError => setError(fetchError.message || "Failed to load transactions"))
     }
 
     React.useEffect(() => {
         if (!authLoading) {
-            if (!user) { router.replace('/auth/login'); return }
-            if (profile?.role !== 'ADMIN') { router.replace('/dashboard'); return }
+            if (!user) {
+                router.replace("/auth/login")
+                return
+            }
+            if (profile?.role !== "ADMIN") {
+                router.replace("/dashboard")
+                return
+            }
         }
     }, [user, profile, authLoading, router])
 
     React.useEffect(() => {
-        if (profile?.role !== 'ADMIN') return
+        if (profile?.role !== "ADMIN") return
         setLoading(true)
         setError(null)
         getAdminTransactions(page, limit)
-            .then(r => { setTransactions(r.data || []); setTotal(r.pagination?.total || 0) })
-            .catch(err => setError(err.message || 'Failed to load transactions'))
+            .then(result => {
+                setTransactions(result.data || [])
+                setTotal(result.pagination?.total || 0)
+            })
+            .catch(fetchError => setError(fetchError.message || "Failed to load transactions"))
             .finally(() => setLoading(false))
     }, [profile, page])
 
     if (authLoading || (user && !profile) || (loading && transactions.length === 0)) {
-        return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
+        return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
     }
-    if (!user || profile?.role !== 'ADMIN') return null
+    if (!user || profile?.role !== "ADMIN") return null
 
-    const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "Admin")
+    const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split("@")[0] || "Admin")
 
     return (
-        <div className="min-h-screen pt-20 pb-12">
-            <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
+        <div className="min-h-screen pb-12 pt-20">
+            <div className="container mx-auto flex flex-col gap-8 px-5 lg:flex-row">
                 <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
 
-                <main className="flex-1 space-y-8 min-w-0">
-                    <div className="bg-[var(--bg-input)] p-6 rounded-2xl border border-[var(--border-default)] backdrop-blur-md">
-                        <Link href="/dashboard/admin" className="inline-flex items-center text-[var(--text-muted)] hover:text-primary dark:hover:text-white mb-2 text-sm transition-colors">
-                            <ArrowLeft size={16} className="mr-1" /> Back to Overview
-                        </Link>
-                        <h1 className="text-3xl font-black font-heading uppercase tracking-tight flex items-center gap-3">
-                            <Receipt className="text-emerald-400 hidden sm:block" size={28} />
-                            Transaction Ledger
-                        </h1>
-                        <p className="text-[var(--text-muted)] mt-1 text-sm">{total} total transactions</p>
-                        {hpiSuccess && (
-                            <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm">
-                                {hpiSuccess}
-                            </div>
-                        )}
-                    </div>
+                <main className="min-w-0 flex-1">
+                    <Link
+                        href="/dashboard/admin"
+                        className="mb-4 inline-flex items-center gap-1 rounded-sm text-sm font-semibold text-[var(--text-muted)] transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                        <ArrowLeft size={16} /> Back to Overview
+                    </Link>
 
-                    {error && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200"><strong>Error:</strong> {error}</div>}
+                    <PageHeader title="Transaction Ledger" subHeader={`${total} total transactions · financial records are read-only in this view`} />
 
-                    <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
+                    {hpiSuccess && (
+                        <div className="mb-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300">{hpiSuccess}</div>
+                    )}
+                    {error && (
+                        <div className="mb-5 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-700 dark:text-red-300"><strong>Error:</strong> {error}</div>
+                    )}
 
-                        {/* ── Mobile cards (< sm) ── */}
+                    <section className="overflow-hidden rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-[var(--shadow-card)]" aria-label="Transaction ledger">
                         <div className="sm:hidden divide-y divide-[var(--border-default)]">
-                            {transactions.map((t) => (
-                                <div key={t.id} className="p-4">
+                            {transactions.map((transaction) => (
+                                <article key={transaction.id} className="p-4">
                                     <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0 flex-1 cursor-pointer" onClick={() => t.user?.id && setSelectedUserId(t.user.id)}>
-                                            <p className="text-sm font-bold truncate">{t.user?.firstName} {t.user?.lastName}</p>
-                                            <p className="text-xs text-[var(--text-muted)] truncate">{t.user?.email}</p>
-                                        </div>
-                                        <span className={`text-sm font-black shrink-0 ${t.type === 'REFUND' ? 'text-red-400' : ''}`}>
-                                            {t.type === 'REFUND' ? '-' : ''}{formatPrice(Number(t.amount))}
+                                        <button
+                                            type="button"
+                                            className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                                            onClick={() => transaction.user?.id && setSelectedUserId(transaction.user.id)}
+                                        >
+                                            <p className="truncate text-sm font-bold">{transaction.user?.firstName} {transaction.user?.lastName}</p>
+                                            <p className="truncate text-xs text-[var(--text-muted)]">{transaction.user?.email}</p>
+                                        </button>
+                                        <span className={`shrink-0 text-sm font-black tabular-nums ${transaction.type === "REFUND" ? "text-red-600 dark:text-red-400" : ""}`}>
+                                            {transaction.type === "REFUND" ? "-" : ""}{formatPrice(Number(transaction.amount))}
                                         </span>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                        <span className="inline-flex px-2 py-0.5 rounded border border-[var(--border-default)] bg-[var(--bg-card)] text-xs font-bold text-[var(--text-secondary)]">
-                                            {TYPE_LABELS[t.type] || t.type}
-                                        </span>
-                                        <span className={`inline-flex px-2 py-0.5 rounded border text-xs font-bold ${STATUS_STYLES[t.status] || STATUS_STYLES.PENDING}`}>
-                                            {t.status}
-                                        </span>
-                                        <span className="text-xs text-[var(--text-secondary)]">{new Date(t.createdAt).toLocaleDateString()}</span>
+                                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                                        <span className="inline-flex rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-2 py-1 text-xs font-bold text-[var(--text-secondary)]">{TYPE_LABELS[transaction.type] || transaction.type}</span>
+                                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black uppercase tracking-wide ${STATUS_STYLES[transaction.status] || STATUS_STYLES.PENDING}`}>{transaction.status}</span>
+                                        <span className="text-xs text-[var(--text-muted)]">{new Date(transaction.createdAt).toLocaleDateString()}</span>
                                     </div>
-                                    {t.listing && (
-                                        <p className="text-xs text-[var(--text-muted)] mt-1 truncate">{t.listing.title}</p>
-                                    )}
-                                    <HpiTransactionActions
-                                        tx={t}
-                                        onUpload={setHpiUploadTarget}
-                                        onFillForm={setHpiFormTarget}
-                                    />
-                                </div>
+                                    {transaction.listing && <p className="mt-2 truncate text-xs text-[var(--text-muted)]">{transaction.listing.title}</p>}
+                                    <HpiTransactionActions tx={transaction} onUpload={setHpiUploadTarget} onFillForm={setHpiFormTarget} />
+                                </article>
                             ))}
                         </div>
 
-                        {/* ── Desktop table (≥ sm) ── */}
-                        <div className="hidden sm:block overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-black tracking-widest border-b border-[var(--border-default)]">
+                        <div className="hidden overflow-x-auto sm:block">
+                            <table className="w-full min-w-[980px] border-collapse text-left">
+                                <thead className="sticky top-0 z-10 border-b-2 border-[var(--border-default)] bg-[var(--bg-input)] text-[11px] font-black uppercase tracking-[0.12em] text-[var(--text-muted)] shadow-sm">
                                     <tr>
-                                        <th className="px-6 py-4">User</th>
-                                        <th className="px-6 py-4">Vehicle</th>
-                                        <th className="px-6 py-4 text-center">Type</th>
-                                        <th className="px-6 py-4 text-center">Status</th>
-                                        <th className="px-6 py-4 text-right">Amount</th>
-                                        <th className="px-6 py-4 text-right">Date</th>
-                                        <th className="px-6 py-4 text-right w-8"></th>
+                                        <th scope="col" className="px-6 py-4">User</th>
+                                        <th scope="col" className="px-6 py-4">Vehicle</th>
+                                        <th scope="col" className="px-6 py-4 text-center">Type</th>
+                                        <th scope="col" className="px-6 py-4 text-center">Status</th>
+                                        <th scope="col" className="px-6 py-4 text-right">Amount</th>
+                                        <th scope="col" className="px-6 py-4 text-right">Date</th>
+                                        <th scope="col" className="w-10 px-3 py-4"><span className="sr-only">Details</span></th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-[var(--border-default)]/80">
-                                    {transactions.map((t) => (
-                                        <React.Fragment key={t.id}>
-                                        <tr className="hover:bg-[var(--bg-card)] transition-colors cursor-pointer" onClick={() => setExpandedTxId(expandedTxId === t.id ? null : t.id)}>
-                                            <td className="px-6 py-4 text-xs">
-                                                <div className="group inline-block" onClick={(e) => { e.stopPropagation(); if (t.user?.id) setSelectedUserId(t.user.id) }}>
-                                                    <p className="font-medium group-hover:text-primary transition-colors">{t.user?.firstName} {t.user?.lastName}</p>
-                                                    <p className="text-[var(--text-muted)]">{t.user?.email}</p>
-                                                    {t.user?.dealerProfile?.companyName && (
-                                                        <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                                                            {t.user.dealerProfile.companyName}{t.user.dealerProfile.isVerified ? ' ✓' : ''}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-xs max-w-[160px]">
-                                                {t.listing ? (
-                                                    <div>
-                                                        <p className="truncate">{t.listing.title}</p>
-                                                        <p className="text-[var(--text-muted)]">{t.listing.year} {t.listing.make}</p>
-                                                    </div>
-                                                ) : <span className="text-[var(--text-muted)]">—</span>}
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className="inline-flex px-2 py-1 rounded border border-[var(--border-default)] bg-[var(--bg-card)] text-xs font-bold text-[var(--text-secondary)]">
-                                                    {TYPE_LABELS[t.type] || t.type}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className={`inline-flex px-2 py-1 rounded border text-xs font-bold ${STATUS_STYLES[t.status] || STATUS_STYLES.PENDING}`}>
-                                                    {t.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right font-bold text-sm">
-                                                <span className={t.type === 'REFUND' ? 'text-red-400' : ''}>
-                                                    {t.type === 'REFUND' ? '-' : ''}{formatPrice(Number(t.amount))}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right text-xs text-[var(--text-muted)]">
-                                                {new Date(t.createdAt).toLocaleDateString()}
-                                            </td>
-                                            <td className="px-2 py-4 text-right text-[var(--text-muted)]">
-                                                <ChevronDown size={14} className={`transition-transform inline-block ${expandedTxId === t.id ? 'rotate-180' : ''}`} />
-                                            </td>
-                                        </tr>
-                                        {expandedTxId === t.id && (
-                                            <tr className="bg-[var(--bg-input)]">
-                                                <td colSpan={7} className="px-6 py-4">
-                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                <tbody className="divide-y divide-[var(--border-default)]">
+                                    {transactions.map((transaction, index) => (
+                                        <React.Fragment key={transaction.id}>
+                                            <tr
+                                                className={`cursor-pointer transition-colors hover:bg-primary/[0.035] ${index % 2 === 1 ? "bg-[var(--bg-input)]/20" : ""}`}
+                                                onClick={() => setExpandedTxId(expandedTxId === transaction.id ? null : transaction.id)}
+                                            >
+                                                <td className="px-6 py-4 text-xs">
+                                                    <button
+                                                        type="button"
+                                                        className="group block max-w-[220px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                                                        onClick={(event) => {
+                                                            event.stopPropagation()
+                                                            if (transaction.user?.id) setSelectedUserId(transaction.user.id)
+                                                        }}
+                                                    >
+                                                        <span className="block truncate font-semibold group-hover:text-primary">{transaction.user?.firstName} {transaction.user?.lastName}</span>
+                                                        <span className="mt-0.5 block truncate text-[var(--text-muted)]">{transaction.user?.email}</span>
+                                                        {transaction.user?.dealerProfile?.companyName && (
+                                                            <span className="mt-1 inline-flex items-center gap-1 rounded-lg border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
+                                                                {transaction.user.dealerProfile.companyName}{transaction.user.dealerProfile.isVerified ? " ✓" : ""}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                </td>
+                                                <td className="max-w-[200px] px-6 py-4 text-xs">
+                                                    {transaction.listing ? (
                                                         <div>
-                                                            <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Transaction ID</p>
-                                                            <p className="font-mono break-all">{t.id}</p>
+                                                            <p className="truncate font-medium">{transaction.listing.title}</p>
+                                                            <p className="mt-0.5 text-[var(--text-muted)]">{transaction.listing.year} {transaction.listing.make}</p>
                                                         </div>
-                                                        <div>
-                                                            <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Stripe Reference</p>
-                                                            <p className="font-mono break-all">{t.stripePaymentId || '—'}</p>
-                                                        </div>
-                                                        <div className="col-span-2">
-                                                            <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Description</p>
-                                                            <p>{t.description || '—'}</p>
-                                                        </div>
-                                                    </div>
-                                                    <HpiTransactionActions
-                                                        tx={t}
-                                                        onUpload={setHpiUploadTarget}
-                                                        onFillForm={setHpiFormTarget}
-                                                    />
+                                                    ) : <span className="text-[var(--text-muted)]">—</span>}
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className="inline-flex rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-2.5 py-1 text-xs font-bold text-[var(--text-secondary)]">{TYPE_LABELS[transaction.type] || transaction.type}</span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black uppercase tracking-wide ${STATUS_STYLES[transaction.status] || STATUS_STYLES.PENDING}`}>{transaction.status}</span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right text-sm font-black tabular-nums">
+                                                    <span className={transaction.type === "REFUND" ? "text-red-600 dark:text-red-400" : ""}>{transaction.type === "REFUND" ? "-" : ""}{formatPrice(Number(transaction.amount))}</span>
+                                                </td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-right text-xs text-[var(--text-muted)]">{new Date(transaction.createdAt).toLocaleDateString()}</td>
+                                                <td className="px-3 py-4 text-right text-[var(--text-muted)]">
+                                                    <ChevronDown size={15} className={`inline-block transition-transform ${expandedTxId === transaction.id ? "rotate-180" : ""}`} aria-hidden="true" />
                                                 </td>
                                             </tr>
-                                        )}
+
+                                            {expandedTxId === transaction.id && (
+                                                <tr className="border-b border-[var(--border-default)] bg-[var(--bg-input)]/60">
+                                                    <td colSpan={7} className="px-6 py-5">
+                                                        <div className="grid grid-cols-2 gap-4 text-xs lg:grid-cols-4">
+                                                            <div>
+                                                                <p className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">Transaction ID</p>
+                                                                <p className="mt-1 break-all font-mono">{transaction.id}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">Stripe Reference</p>
+                                                                <p className="mt-1 break-all font-mono">{transaction.stripePaymentId || "—"}</p>
+                                                            </div>
+                                                            <div className="col-span-2">
+                                                                <p className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">Description</p>
+                                                                <p className="mt-1 leading-5">{transaction.description || "—"}</p>
+                                                            </div>
+                                                        </div>
+                                                        <HpiTransactionActions tx={transaction} onUpload={setHpiUploadTarget} onFillForm={setHpiFormTarget} />
+                                                    </td>
+                                                </tr>
+                                            )}
                                         </React.Fragment>
                                     ))}
                                 </tbody>
                             </table>
-                        </div>{/* end hidden sm:block */}
+                        </div>
 
-                        <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-input)] flex items-center justify-between text-xs font-medium text-[var(--text-muted)]">
-                            <span>Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}</span>
+                        <div className="flex flex-col gap-3 border-t border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-xs font-medium text-[var(--text-muted)] sm:flex-row sm:items-center sm:justify-between">
+                            <span>Showing {total === 0 ? 0 : (page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}</span>
                             <div className="flex gap-2">
-                                <button className="px-3 py-1 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] rounded disabled:opacity-50" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Prev</button>
-                                <button className="px-3 py-1 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] rounded disabled:opacity-50" onClick={() => setPage(p => p + 1)} disabled={page * limit >= total}>Next</button>
+                                <Button variant="outline" size="sm" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page === 1}>Previous</Button>
+                                <Button variant="outline" size="sm" onClick={() => setPage(current => current + 1)} disabled={page * limit >= total}>Next</Button>
                             </div>
                         </div>
-                    </div>
+                    </section>
                 </main>
             </div>
+
             <UserDetailModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
 
             {hpiUploadTarget && (
@@ -326,11 +312,12 @@ export default function AdminTransactionsPage() {
                     onClose={() => setHpiUploadTarget(null)}
                     onSaved={() => {
                         setHpiUploadTarget(null)
-                        setHpiSuccess('HPI report uploaded — the seller and any waiting buyers have been notified.')
+                        setHpiSuccess("HPI report uploaded — the seller and any waiting buyers have been notified.")
                         reloadTransactions()
                     }}
                 />
             )}
+
             {hpiFormTarget && (
                 <HpiReportForm
                     listingId={hpiFormTarget.id}
@@ -338,7 +325,7 @@ export default function AdminTransactionsPage() {
                     hasExistingPdf={hpiFormTarget.hasPdf}
                     onClose={() => setHpiFormTarget(null)}
                     onSaved={() => {
-                        setHpiSuccess('HPI report saved — the seller and any waiting buyers have been notified.')
+                        setHpiSuccess("HPI report saved — the seller and any waiting buyers have been notified.")
                         reloadTransactions()
                     }}
                 />

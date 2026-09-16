@@ -82,8 +82,8 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
     router.push(`/search?${qs}`)
   }
 
-  // The homepage auction strip is dealer-only. The Trade Exchange is a trade
-  // room now, so a retail buyer landing on the homepage must not be shown trade
+  // The homepage auction strip is dealer-only. TradeXchange is a trade room
+  // now, so a retail buyer landing on the homepage must not be shown trade
   // stock and its live bids — and the /auctions/active endpoint refuses them
   // anyway, so fetching it for everyone would just be a guaranteed 403.
   const { profile } = useAuth()
@@ -360,9 +360,6 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
         </section>
       )}
 
-
-
-
       {/* Live Auctions Section */}
       {liveAuctions.length > 0 && (
         <section className="container mx-auto px-5 mb-16">
@@ -513,8 +510,8 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
         </div>
       </section>
 
-      {/* Apply as a Dealer */}
-      <section className="py-24">
+      {/* Partner Account */}
+      <section className="py-16 md:py-20">
         <div className="container mx-auto px-5">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -528,26 +525,27 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mb-6">
                 <Building2 size={32} />
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold font-heading mb-4">Are You a Car Dealer?</h2>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-primary mb-3">Partner Account</p>
+              <h2 className="text-3xl md:text-4xl font-bold font-heading mb-4">Built for Automotive Businesses</h2>
               <p className="text-lg max-w-2xl mx-auto mb-10" style={{ color: 'var(--text-muted)' }}>
-                Join CarMazium as a verified dealer and get access to bulk inventory tools, a dedicated CRM, lead management, and priority placement for your listings.
+                Create one Partner Account for your automotive business, then use the Vehicle Dealer and other approved capabilities relevant to the work you provide.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10 text-left">
                 {[
-                  { icon: FileText, title: "Bulk Listing Tools", desc: "Import and manage your entire inventory in minutes." },
-                  { icon: Users, title: "Lead & CRM Suite", desc: "Track buyer enquiries and manage relationships in one place." },
-                  { icon: Star, title: "Priority Placement", desc: "Get your listings featured in front of serious buyers." },
-                ].map((f, i) => (
-                  <div key={i} className="p-5 rounded-2xl border bg-primary/5 border-primary/10">
-                    <f.icon className="text-primary mb-3" size={22} />
-                    <h3 className="font-bold mb-1">{f.title}</h3>
-                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{f.desc}</p>
+                  { icon: FileText, title: "Vehicle Dealer", desc: "Manage vehicle stock and the existing dealer workspace from your business account." },
+                  { icon: Users, title: "Business Workspace", desc: "Keep the tools and account access for your automotive operation together." },
+                  { icon: Star, title: "Approved Services", desc: "Add supported service capabilities as they are approved for your business." },
+                ].map((feature, index) => (
+                  <div key={index} className="p-5 rounded-2xl border bg-primary/5 border-primary/10">
+                    <feature.icon className="text-primary mb-3" size={22} />
+                    <h3 className="font-bold mb-1">{feature.title}</h3>
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{feature.desc}</p>
                   </div>
                 ))}
               </div>
-              <Link href="/auth/signup?role=DEALER" className="block sm:inline-block">
-                <Button size="lg" shape="pill" className="w-full sm:w-auto justify-center px-6 py-5 text-base sm:px-10 sm:py-6 sm:text-lg shadow-neon hover:scale-105 transition-transform">
-                  Apply as a Dealer <ArrowRight className="ml-2 h-5 w-5" />
+              <Link href="/auth/signup?role=dealer" className="block sm:inline-block">
+                <Button size="lg" className="w-full sm:w-auto justify-center px-6 text-base sm:px-10 sm:text-lg shadow-neon">
+                  Create Partner Account <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
             </div>
