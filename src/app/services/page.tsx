@@ -2,11 +2,11 @@
 
 import Link from "next/link"
 import {
+    ArrowLeft,
     ArrowRight,
     Briefcase,
     Building2,
     ClipboardList,
-    Plus,
     Search,
     ShieldCheck,
     WalletCards,
@@ -22,8 +22,6 @@ import {
 } from "@/lib/featureFlags"
 
 export default function ServicesPage() {
-    const jobMarketplaceEnabled = deliveryServiceEnabled || inspectionServiceEnabled
-
     const services = [
         {
             title: "Vehicle Dealer",
@@ -79,29 +77,29 @@ export default function ServicesPage() {
 
     return (
         <main className="min-h-screen pb-20 pt-20">
+            <div className="container mx-auto px-5 pt-7">
+                <Link
+                    href="/auctions"
+                    className="inline-flex items-center gap-1 rounded-sm text-sm font-semibold text-[var(--text-muted)] transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                    <ArrowLeft size={15} /> Back to TradeXchange home
+                </Link>
+            </div>
+
             <PageHero
                 eyebrow="TradeXchange"
-                title="The automotive service hub around every vehicle"
+                title="Vehicle Services Marketplace"
                 description={
                     <p>
                         Use one CarMazium ecosystem for motor-trade capability, transport, inspections, finance enquiries and warranty enquiries — with the commercial model made clear for each service.
                     </p>
                 }
                 actions={
-                    <>
-                        {jobMarketplaceEnabled && (
-                            <Button asChild size="lg">
-                                <Link href="/services/jobs/new">
-                                    <Plus size={17} /> Post a job
-                                </Link>
-                            </Button>
-                        )}
-                        <Button asChild variant="outline" size="lg">
-                            <Link href="/auth/signup?role=dealer">
-                                <Building2 size={17} /> Create Partner Account
-                            </Link>
-                        </Button>
-                    </>
+                    <Button asChild variant="outline" size="lg">
+                        <Link href="/auth/signup?role=dealer">
+                            <Building2 size={17} /> Create Partner Account
+                        </Link>
+                    </Button>
                 }
             />
 
@@ -231,26 +229,6 @@ export default function ServicesPage() {
                             )}
                         </div>
                     </div>
-
-                    {jobMarketplaceEnabled && (
-                        <div className="mt-8 grid gap-4 sm:grid-cols-3">
-                            <Link href="/services/jobs/new" className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                                <Plus size={18} className="mb-3 text-primary" />
-                                <span className="block font-bold">Post a job</span>
-                                <span className="mt-1 block text-xs leading-5 text-[var(--text-muted)]">Delivery, recovery or inspection.</span>
-                            </Link>
-                            <Link href="/dashboard/service/jobs" className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                                <Search size={18} className="mb-3 text-primary" />
-                                <span className="block font-bold">Available jobs</span>
-                                <span className="mt-1 block text-xs leading-5 text-[var(--text-muted)]">Approved providers can browse work.</span>
-                            </Link>
-                            <Link href="/services/jobs" className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                                <ClipboardList size={18} className="mb-3 text-primary" />
-                                <span className="block font-bold">My jobs</span>
-                                <span className="mt-1 block text-xs leading-5 text-[var(--text-muted)]">Compare quotes and manage accepted work.</span>
-                            </Link>
-                        </div>
-                    )}
                 </div>
             </section>
 
