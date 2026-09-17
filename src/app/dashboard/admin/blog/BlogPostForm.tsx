@@ -26,6 +26,8 @@ import { Input } from "@/components/ui/Input"
 import { BlogContent } from "@/components/blog/BlogContent"
 import { uploadImage } from "@/lib/supabase"
 import { createBlogPost, updateBlogPost, type BlogPost, type BlogPostStatus } from "@/lib/blogApi"
+import { extractBlogContentInsights } from "@/lib/blogContentInsights"
+import { stripCarMaziumBrandSuffix, validateBlogPost } from "@/lib/blogValidation"
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com"
 const COVER_ASPECT = 16 / 9
@@ -91,6 +93,8 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
     const contentFileInputRef = React.useRef<HTMLInputElement>(null)
     const contentTextareaRef = React.useRef<HTMLTextAreaElement>(null)
 
+    const slugLocked = isEdit && (post?.status === "PUBLISHED" || status === "PUBLISHED")
+
     React.useEffect(() => {
         if (!slugTouched) setSlug(slugify(title))
     }, [title, slugTouched])
@@ -99,14 +103,37 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
         () => tagsInput.split(",").map((tag) => tag.trim()).filter(Boolean),
         [tagsInput],
     )
-    const effectiveMetaTitle = (metaTitle.trim() || title.trim() || "Your article title").trim()
+
+    const publishValidation = React.useMemo(
+        () => validateBlogPost({
+            title,
+            slug,
+            excerpt,
+            content,
+            coverImage,
+            tags,
+            status: "PUBLISHED",
+            metaTitle,
+            metaDescription,
+            noIndex,
+        }),
+        [title, slug, excerpt, content, coverImage, tags, metaTitle, metaDescription, noIndex],
+    )
+
+    const contentInsights = React.useMemo(() => extractBlogContentInsights(content), [content])
+
+    const cleanMetaTitle = stripCarMaziumBrandSuffix(metaTitle)
+    const effectiveMetaTitle = (cleanMetaTitle || title.trim() || "Your article title").trim()
     const effectiveMetaDescription = (metaDescription.trim() || excerpt.trim() || "Add a useful meta description for this article.").trim()
+    const finalBrowserTitle = publishValidation.metrics.renderedMetaTitle
+    const finalBrowserTitleLength = publishValidation.metrics.renderedMetaTitleLength
+    const metaDescriptionLength = publishValidation.metrics.metaDescriptionLength
     const canonicalSlug = slug.trim() || slugify(title) || "your-post-slug"
     const canonicalUrl = `${SITE_URL}/blog/${canonicalSlug}`
     const words = countWords(content)
     const minutes = Math.max(1, Math.ceil(words / 220))
-    const headingCount = (content.match(/^#{2,3}\s+.+$/gm) || []).length
-    const internalLinkCount = (content.match(/\]\((?:\/|https?:\/\/(?:www\.)?carmazium\.com\/)[^)]+\)/gi) || []).length
+    const headingCount = contentInsights.h2Count + contentInsights.h3Count
+    const internalLinkCount = contentInsights.internalLinkCount
     const primaryTopic = tags[0] || ""
     const topicMentioned = primaryTopic
         ? `${title} ${excerpt} ${content}`.toLowerCase().includes(primaryTopic.toLowerCase())
@@ -114,14 +141,14 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
 
     const seoChecks = [
         {
-            label: "Search title is concise",
-            ok: effectiveMetaTitle.length >= 30 && effectiveMetaTitle.length <= 60,
-            hint: `${effectiveMetaTitle.length} characters — aim roughly for 30–60.`,
+            label: "Final search title is concise",
+            ok: finalBrowserTitleLength >= 30 && finalBrowserTitleLength <= 65,
+            hint: `${finalBrowserTitleLength} characters including “| CarMazium” — aim for 65 or fewer.`,
         },
         {
             label: "Meta description is useful",
-            ok: effectiveMetaDescription.length >= 120 && effectiveMetaDescription.length <= 160,
-            hint: `${effectiveMetaDescription.length} characters — aim roughly for 120–160.`,
+            ok: metaDescriptionLength >= 120 && metaDescriptionLength <= 160,
+            hint: `${metaDescriptionLength} characters — aim roughly for 120–160.`,
         },
         { label: "16:9 cover artwork added", ok: Boolean(coverImage), hint: "Use a clear 1600×900 image with text kept away from the edges." },
         { label: "Article has useful depth", ok: words >= 600, hint: `${words.toLocaleString()} words · about ${minutes} min read.` },
@@ -203,8 +230,13 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
     })
 
     const handleSave = async (nextStatus: BlogPostStatus) => {
-        if (!title.trim() || !excerpt.trim() || !content.trim()) {
-            setError("Title, excerpt, and content are all required.")
+        if (nextStatus === "PUBLISHED" && !publishValidation.canPublish) {
+            const count = publishValidation.errors.length
+            setError(`Fix ${count} blocking publish ${count === 1 ? "error" : "errors"} before publishing. You can still save this post as a draft.`)
+            return
+        }
+        if (nextStatus === "DRAFT" && !title.trim()) {
+            setError("Add a working title before saving this draft.")
             return
         }
         setSaving(true)
@@ -260,6 +292,52 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                 </div>
             </section>
 
+            <section className="glass-card p-5 md:p-6 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div>
+                        <div className="flex items-center gap-2"><Gauge size={17} className="text-primary" /><h3 className="text-xs font-black uppercase tracking-[0.13em] text-[var(--text-primary)]">Publish checks</h3></div>
+                        <p className="mt-1 text-[11px] text-[var(--text-muted)]">Red errors must be fixed before publishing. Amber warnings are SEO or editorial recommendations and do not block publishing.</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black ${publishValidation.errors.length ? "border-red-500/25 bg-red-500/10 text-red-400" : "border-emerald-500/25 bg-emerald-500/10 text-emerald-400"}`}>{publishValidation.errors.length} blocking</span>
+                        <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[10px] font-black text-amber-400">{publishValidation.warnings.length} warnings</span>
+                    </div>
+                </div>
+
+                {publishValidation.errors.length === 0 ? (
+                    <div className="flex items-start gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-4">
+                        <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                        <div><p className="text-xs font-bold text-[var(--text-primary)]">No blocking publish errors</p><p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">The article can be published. Review any recommendations below before going live.</p></div>
+                    </div>
+                ) : (
+                    <div className="grid md:grid-cols-2 gap-3">
+                        {publishValidation.errors.map((issue) => (
+                            <div key={`${issue.code}-${issue.field}`} className="rounded-xl border border-red-500/25 bg-red-500/[0.06] p-4">
+                                <div className="flex items-start gap-2.5">
+                                    <AlertCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
+                                    <div><p className="text-xs font-bold text-red-300">Must fix before publishing</p><p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">{issue.message}</p></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {publishValidation.warnings.length > 0 && (
+                    <div className="grid md:grid-cols-2 gap-3">
+                        {publishValidation.warnings.map((issue) => (
+                            <div key={`${issue.code}-${issue.field}`} className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-4">
+                                <div className="flex items-start gap-2.5">
+                                    <AlertCircle size={15} className="text-amber-400 shrink-0 mt-0.5" />
+                                    <div><p className="text-xs font-bold text-[var(--text-primary)]">Recommendation</p><p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">{issue.message}</p></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <p className="text-[10px] leading-5 text-[var(--text-faint)]">Incomplete work can still be saved as a draft. Only the Publish action is gated by blocking errors.</p>
+            </section>
+
             <section className="glass-card p-5 md:p-6 space-y-5">
                 <div className="flex items-center gap-2"><FileText size={17} className="text-primary" /><h3 className="text-xs font-black uppercase tracking-[0.13em] text-[var(--text-primary)]">Article essentials</h3></div>
                 <div>
@@ -270,12 +348,16 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                     <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="How Car Auctions Help You Get the Best Price" className="text-base" />
                 </div>
                 <div>
-                    <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] mb-1.5 block">URL slug</label>
+                    <div className="flex items-center justify-between gap-3 mb-1.5">
+                        <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">URL slug</label>
+                        {slugLocked && <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-400">Locked after publishing</span>}
+                    </div>
                     <div className="flex items-center gap-2 text-sm">
                         <span className="hidden sm:inline text-[var(--text-muted)] shrink-0">/blog/</span>
-                        <Input value={slug} onChange={(e) => { setSlug(slugify(e.target.value)); setSlugTouched(true) }} placeholder="how-car-auctions-help-you-get-the-best-price" className="text-sm" />
+                        <Input value={slug} disabled={slugLocked} onChange={(e) => { setSlug(slugify(e.target.value)); setSlugTouched(true) }} placeholder="how-car-auctions-help-you-get-the-best-price" className="text-sm disabled:cursor-not-allowed disabled:opacity-60" />
                     </div>
                     <p className="mt-1.5 text-[10px] text-[var(--text-faint)] break-all">Canonical: {canonicalUrl}</p>
+                    {slugLocked && <p className="mt-1.5 text-[10px] leading-4 text-[var(--text-muted)]">This live URL is locked to protect existing Google indexing, bookmarks and backlinks. A published slug should only change together with a permanent redirect from the old URL.</p>}
                 </div>
                 <div>
                     <div className="flex items-center justify-between gap-3 mb-1.5">
@@ -334,7 +416,7 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                         <h3 className="text-xs font-black uppercase tracking-[0.13em] text-[var(--text-primary)]">Content (Markdown)</h3>
-                        <p className="mt-1 text-[10px] text-[var(--text-faint)]">{words.toLocaleString()} words · {minutes} min read · {headingCount} sections · {internalLinkCount} internal links</p>
+                        <p className="mt-1 text-[10px] text-[var(--text-faint)]">{words.toLocaleString()} words · {minutes} min read · {headingCount} sections · {contentInsights.internalLinkCount} internal · {contentInsights.externalLinkCount} external links</p>
                     </div>
                     <div className="flex items-center gap-4">
                         {!showPreview && <button type="button" onClick={() => contentFileInputRef.current?.click()} disabled={contentUploading} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline disabled:opacity-50">{contentUploading ? <Loader2 size={12} className="animate-spin" /> : <ImagePlus size={12} />}{contentUploading ? "Uploading…" : "Insert Image"}</button>}
@@ -347,6 +429,46 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                 ) : (
                     <textarea ref={contentTextareaRef} value={content} onChange={(e) => setContent(e.target.value)} rows={22} placeholder={"## A clear section heading\n\nWrite useful, original content in Markdown. Add internal links such as [Sell your car](/sell), cite sources where relevant, and break long articles into H2/H3 sections.\n\nUse ‘Insert Image’ above to upload an image at the cursor."} className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-3 text-sm font-mono leading-6 placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none resize-y" />
                 )}
+
+                <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3 pt-2">
+                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--text-muted)]">Structure</p>
+                        <p className="mt-2 text-sm font-bold text-[var(--text-primary)]">{contentInsights.h2Count} H2 · {contentInsights.h3Count} H3</p>
+                        <p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">Use H2 for main sections and H3 only for subsections. Never add another H1 inside the body.</p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--text-muted)]">Links</p>
+                        <p className="mt-2 text-sm font-bold text-[var(--text-primary)]">{contentInsights.internalLinkCount} internal · {contentInsights.externalLinkCount} external</p>
+                        <p className={`mt-1 text-[10px] leading-4 ${contentInsights.emptyLinkCount || contentInsights.unsafeLinkCount ? "text-amber-400" : "text-[var(--text-muted)]"}`}>{contentInsights.emptyLinkCount || contentInsights.unsafeLinkCount ? `${contentInsights.emptyLinkCount} empty and ${contentInsights.unsafeLinkCount} unsafe link target${contentInsights.emptyLinkCount + contentInsights.unsafeLinkCount === 1 ? "" : "s"} detected.` : "Link targets look structurally clean."}</p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--text-muted)]">Sources</p>
+                        <p className="mt-2 text-sm font-bold text-[var(--text-primary)]">{contentInsights.authoritySourceLinkCount} recognised authority source{contentInsights.authoritySourceLinkCount === 1 ? "" : "s"}</p>
+                        <p className={`mt-1 text-[10px] leading-4 ${contentInsights.unlinkedAuthorityMentions.length ? "text-amber-400" : "text-[var(--text-muted)]"}`}>{contentInsights.unlinkedAuthorityMentions.length ? `Mentioned without a matching source link: ${contentInsights.unlinkedAuthorityMentions.join(", ")}.` : contentInsights.hasSourceSection ? "A Sources / References section is present." : "Use authoritative inline links or add a Sources & further reading section when the article relies on external facts."}</p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--text-muted)]">Inline images</p>
+                        <p className="mt-2 text-sm font-bold text-[var(--text-primary)]">{contentInsights.imageCount} image{contentInsights.imageCount === 1 ? "" : "s"}</p>
+                        <p className={`mt-1 text-[10px] leading-4 ${contentInsights.imagesMissingAlt ? "text-amber-400" : "text-[var(--text-muted)]"}`}>{contentInsights.imagesMissingAlt ? `${contentInsights.imagesMissingAlt} image${contentInsights.imagesMissingAlt === 1 ? " needs" : "s need"} more descriptive alt text.` : contentInsights.imageCount ? "Inline image alt text looks useful." : "Images are optional; use them only when they help the reader."}</p>
+                    </div>
+                </div>
+
+                <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--text-muted)]">Article heading outline</p>
+                        <span className="text-[10px] text-[var(--text-faint)]">This is the structure readers and the table of contents will follow.</span>
+                    </div>
+                    {contentInsights.headings.length ? (
+                        <div className="mt-3 space-y-1.5">
+                            {contentInsights.headings.slice(0, 12).map((heading, index) => (
+                                <p key={`${heading.level}-${heading.text}-${index}`} className={`text-xs text-[var(--text-secondary)] ${heading.level === 3 ? "pl-5" : "font-bold"}`}>{heading.level === 2 ? "H2" : "H3"} · {heading.text}</p>
+                            ))}
+                            {contentInsights.headings.length > 12 && <p className="text-[10px] text-[var(--text-faint)]">+ {contentInsights.headings.length - 12} more headings</p>}
+                        </div>
+                    ) : (
+                        <p className="mt-2 text-[10px] leading-4 text-amber-400">No H2/H3 outline yet. Add ## section headings so the article is easy to scan and can build a useful “In this article” navigation.</p>
+                    )}
+                </div>
             </section>
 
             <section className="glass-card p-5 md:p-6 space-y-4">
@@ -373,14 +495,15 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                 <div>
                     <div className="flex items-center justify-between gap-3 mb-1.5">
                         <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Meta title <span className="normal-case font-normal text-[var(--text-faint)]">— falls back to article title</span></label>
-                        <span className={`text-[10px] ${effectiveMetaTitle.length > 60 ? "text-amber-400" : "text-[var(--text-faint)]"}`}>{effectiveMetaTitle.length}/60 guide</span>
+                        <span className={`text-[10px] ${finalBrowserTitleLength > 65 ? "text-amber-400" : "text-[var(--text-faint)]"}`}>{finalBrowserTitleLength}/65 final</span>
                     </div>
                     <Input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} placeholder={title || "Meta title"} />
+                    <p className="mt-1.5 text-[10px] leading-4 text-[var(--text-faint)]">Do not type “| CarMazium”. The site adds the brand automatically. Final browser title: <span className="text-[var(--text-secondary)]">{finalBrowserTitle}</span></p>
                 </div>
                 <div>
                     <div className="flex items-center justify-between gap-3 mb-1.5">
                         <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Meta description <span className="normal-case font-normal text-[var(--text-faint)]">— falls back to excerpt</span></label>
-                        <span className={`text-[10px] ${effectiveMetaDescription.length < 120 ? "text-amber-400" : "text-[var(--text-faint)]"}`}>{effectiveMetaDescription.length}/160</span>
+                        <span className={`text-[10px] ${metaDescriptionLength < 120 || metaDescriptionLength > 160 ? "text-amber-400" : "text-[var(--text-faint)]"}`}>{metaDescriptionLength}/160</span>
                     </div>
                     <textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value.slice(0, 160))} rows={3} placeholder={excerpt || "Meta description"} className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2.5 text-sm leading-6 placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none resize-none" />
                 </div>
@@ -399,7 +522,7 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                     <div className="rounded-2xl border border-[var(--border-default)] bg-white p-4 text-slate-900 overflow-hidden">
                         <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500"><Search size={12} /> Google preview</p>
                         <p className="mt-3 text-xs text-emerald-700 truncate">carmazium.com › blog › {canonicalSlug}</p>
-                        <p className="mt-1 text-[18px] leading-6 text-[#1a0dab] line-clamp-2">{effectiveMetaTitle}</p>
+                        <p className="mt-1 text-[18px] leading-6 text-[#1a0dab] line-clamp-2">{finalBrowserTitle}</p>
                         <p className="mt-1 text-[12px] leading-5 text-slate-600 line-clamp-3">{effectiveMetaDescription}</p>
                     </div>
 
@@ -412,7 +535,7 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                         </div>
                         <div className="p-4">
                             <p className="text-[9px] uppercase tracking-wider text-[var(--text-muted)]">carmazium.com</p>
-                            <p className="mt-1 text-sm font-bold text-[var(--text-primary)] line-clamp-2">{effectiveMetaTitle}</p>
+                            <p className="mt-1 text-sm font-bold text-[var(--text-primary)] line-clamp-2">{finalBrowserTitle}</p>
                             <p className="mt-1 text-[11px] leading-4 text-[var(--text-muted)] line-clamp-2">{effectiveMetaDescription}</p>
                         </div>
                     </div>
@@ -449,7 +572,7 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                 <div className="flex-1" />
                 <Link href="/dashboard/admin/blog" className="text-center text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors py-2">Cancel</Link>
                 <Button type="button" variant="outline" onClick={() => handleSave("DRAFT")} disabled={saving}>{saving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}Save as Draft</Button>
-                <Button type="button" onClick={() => handleSave("PUBLISHED")} disabled={saving}>{saving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}{status === "PUBLISHED" ? "Save & Update" : "Publish"}</Button>
+                <Button type="button" onClick={() => handleSave("PUBLISHED")} disabled={saving || !publishValidation.canPublish} title={!publishValidation.canPublish ? "Fix blocking publish errors first" : undefined}>{saving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}{status === "PUBLISHED" ? "Save & Update" : "Publish"}</Button>
             </div>
         </div>
     )
