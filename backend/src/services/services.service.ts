@@ -64,14 +64,9 @@ export class ServicesService {
 
     // ── Money ──────────────────────────────────────────────────────────────
 
-    /** Platform fee as a fraction. Env-overridable; 9% is the agreed default. */
+    /** TradeXchange paid jobs always use the agreed 9% CarMazium / 91% provider split. */
     private feeRate(): number {
-        const raw = Number(this.config.get<string>('SERVICE_PLATFORM_FEE_RATE') ?? '0.09');
-        if (!Number.isFinite(raw) || raw < 0 || raw >= 1) {
-            this.logger.warn(`SERVICE_PLATFORM_FEE_RATE "${raw}" is not a fraction in [0,1) — using 0.09`);
-            return 0.09;
-        }
-        return raw;
+        return 0.09;
     }
 
     /**
@@ -561,10 +556,25 @@ export class ServicesService {
         if (!disputable.includes(job.status)) {
             throw new BadRequestException('Only a paid job can be disputed.');
         }
-        await this.prisma.serviceJob.update({
-            where: { id: jobId },
+
+        // Claim the dispute only while the held payment has no settlement
+        // operation in progress. `stripeTransferId` temporarily carries a
+        // deterministic release/refund claim token during Stripe settlement;
+        // requiring it to be null makes dispute vs payout/refund races fail
+        // closed instead of allowing both external money operations to run.
+        const frozen = await this.prisma.serviceJob.updateMany({
+            where: {
+                id: jobId,
+                customerId,
+                status: { in: disputable },
+                payment: { is: { status: ServicePaymentStatus.PAID, stripeTransferId: null } },
+            },
             data: { status: ServiceJobStatus.DISPUTED, cancelReason: reason?.trim() || null },
         });
+        if (frozen.count !== 1) {
+            throw new ConflictException('This job is already being settled or is no longer disputable.');
+        }
+
         await this.notifyAdmins('SERVICE_JOB_DISPUTED', 'Service job disputed',
             `"${job.title}" was disputed by the customer.${reason ? ` Reason: ${reason}` : ''}`, `/dashboard/admin/services?tab=disputes`);
         return { success: true };
@@ -655,7 +665,15 @@ export class ServicesService {
     async startJob(contractorProfileId: string, jobId: string) {
         const job = await this.assignedJob(contractorProfileId, jobId);
         if (job.status !== ServiceJobStatus.PAID) throw new BadRequestException('The job must be paid before it starts.');
-        await this.prisma.serviceJob.update({ where: { id: jobId }, data: { status: ServiceJobStatus.IN_PROGRESS, startedAt: new Date() } });
+
+        const started = await this.prisma.serviceJob.updateMany({
+            where: { id: jobId, contractorId: contractorProfileId, status: ServiceJobStatus.PAID },
+            data: { status: ServiceJobStatus.IN_PROGRESS, startedAt: new Date() },
+        });
+        if (started.count !== 1) {
+            throw new ConflictException('The job state changed before it could be started.');
+        }
+
         await this.notify(job.customerId, 'SERVICE_JOB_STARTED', 'Job started',
             `Your provider has started "${job.title}".`, `/services/jobs/${jobId}`);
         return { success: true };
@@ -663,10 +681,19 @@ export class ServicesService {
 
     async completeJob(contractorProfileId: string, jobId: string) {
         const job = await this.assignedJob(contractorProfileId, jobId);
-        if (job.status !== ServiceJobStatus.IN_PROGRESS && job.status !== ServiceJobStatus.PAID) {
+        const completable: ServiceJobStatus[] = [ServiceJobStatus.IN_PROGRESS, ServiceJobStatus.PAID];
+        if (!completable.includes(job.status)) {
             throw new BadRequestException('This job cannot be marked complete from its current state.');
         }
-        await this.prisma.serviceJob.update({ where: { id: jobId }, data: { status: ServiceJobStatus.COMPLETED, completedAt: new Date() } });
+
+        const completed = await this.prisma.serviceJob.updateMany({
+            where: { id: jobId, contractorId: contractorProfileId, status: { in: completable } },
+            data: { status: ServiceJobStatus.COMPLETED, completedAt: new Date() },
+        });
+        if (completed.count !== 1) {
+            throw new ConflictException('The job state changed before it could be marked complete.');
+        }
+
         await this.notify(job.customerId, 'SERVICE_JOB_COMPLETED', 'Please confirm completion',
             `Your provider marked "${job.title}" complete. Confirm to release their payment — or it releases automatically in ${AUTO_CONFIRM_HOURS} hours.`,
             `/services/jobs/${jobId}`);
@@ -756,17 +783,68 @@ export class ServicesService {
             return this.release(jobId, `admin ${adminId} resolved dispute in favour of the provider`);
         }
 
-        const stripe = await this.payments.getStripeClient();
         if (!job.payment.stripePaymentIntentId) throw new BadRequestException('No payment intent on record to refund.');
-        const refund = await stripe.refunds.create(
-            { payment_intent: job.payment.stripePaymentIntentId },
-            { idempotencyKey: `service-job-refund-${job.payment.id}` },
-        );
 
-        await this.prisma.$transaction([
-            this.prisma.servicePayment.update({ where: { id: job.payment.id }, data: { status: ServicePaymentStatus.REFUNDED, refundedAt: new Date() } }),
-            this.prisma.serviceJob.update({ where: { id: jobId }, data: { status: ServiceJobStatus.CANCELLED, cancelledAt: new Date(), cancelReason: dto.note?.trim() || 'Refunded after dispute' } }),
-        ]);
+        // A deterministic token in the otherwise-null transfer field acts as
+        // an atomic settlement claim. It blocks a simultaneous RELEASE from
+        // starting while this REFUND is in flight and is recoverable after a
+        // process/DB failure because retries use the same token/idempotency key.
+        const claimToken = `claim:refund:${job.payment.id}`;
+        if (job.payment.stripeTransferId && job.payment.stripeTransferId !== claimToken) {
+            throw new ConflictException('This payment is already being released.');
+        }
+        if (!job.payment.stripeTransferId) {
+            const claimed = await this.prisma.servicePayment.updateMany({
+                where: {
+                    id: job.payment.id,
+                    status: ServicePaymentStatus.PAID,
+                    stripeTransferId: null,
+                    job: { is: { status: ServiceJobStatus.DISPUTED } },
+                },
+                data: { stripeTransferId: claimToken },
+            });
+            if (claimed.count !== 1) {
+                throw new ConflictException('This payment is already being settled.');
+            }
+        }
+
+        const stripe = await this.payments.getStripeClient();
+        let refund: { id: string };
+        try {
+            refund = await stripe.refunds.create(
+                { payment_intent: job.payment.stripePaymentIntentId },
+                { idempotencyKey: `service-job-refund-${job.payment.id}` },
+            );
+        } catch (e) {
+            // Stripe never accepted the refund, so release the DB claim and
+            // leave the held payment available for a clean retry/admin choice.
+            await this.prisma.servicePayment.updateMany({
+                where: { id: job.payment.id, status: ServicePaymentStatus.PAID, stripeTransferId: claimToken },
+                data: { stripeTransferId: null },
+            });
+            throw e;
+        }
+
+        // Do not clear the claim if this DB finalization fails after Stripe has
+        // refunded successfully. A retry will recover using Stripe idempotency
+        // instead of making the same funds eligible for a provider release.
+        await this.prisma.$transaction(async (tx) => {
+            const paymentFinalized = await tx.servicePayment.updateMany({
+                where: { id: job.payment!.id, status: ServicePaymentStatus.PAID, stripeTransferId: claimToken },
+                data: { status: ServicePaymentStatus.REFUNDED, refundedAt: new Date(), stripeTransferId: null },
+            });
+            if (paymentFinalized.count !== 1) {
+                throw new ConflictException('Refund finalization lost its payment claim.');
+            }
+
+            const jobFinalized = await tx.serviceJob.updateMany({
+                where: { id: jobId, status: ServiceJobStatus.DISPUTED },
+                data: { status: ServiceJobStatus.CANCELLED, cancelledAt: new Date(), cancelReason: dto.note?.trim() || 'Refunded after dispute' },
+            });
+            if (jobFinalized.count !== 1) {
+                throw new ConflictException('Refund finalization lost its job state.');
+            }
+        });
         this.logger.log(`Service job ${jobId} refunded (${refund.id}) by admin ${adminId}`);
 
         await this.notify(job.customerId, 'SERVICE_JOB_REFUNDED', 'Refund issued',
@@ -813,32 +891,80 @@ export class ServicesService {
         });
         if (!job?.payment || !job.contractor) throw new BadRequestException('Nothing to release.');
         if (job.payment.status !== ServicePaymentStatus.PAID) throw new BadRequestException('Payment is not in a releasable state.');
+        if (job.status !== ServiceJobStatus.COMPLETED && job.status !== ServiceJobStatus.DISPUTED) {
+            throw new BadRequestException('This job is not in a releasable state.');
+        }
 
         const account = job.contractor.user.stripeConnectAccountId;
         if (!account) throw new BadRequestException('Provider has no Stripe Connect account.');
 
+        // Staff never supply or select this destination. `job.contractor` is
+        // the business ContractorProfile resolved when the quote was accepted,
+        // so the Connect account below is always owned by that provider business.
+        const claimToken = `claim:release:${job.payment.id}`;
+        if (job.payment.stripeTransferId && job.payment.stripeTransferId !== claimToken) {
+            throw new ConflictException('This payment is already being refunded or released.');
+        }
+        if (!job.payment.stripeTransferId) {
+            const claimed = await this.prisma.servicePayment.updateMany({
+                where: {
+                    id: job.payment.id,
+                    status: ServicePaymentStatus.PAID,
+                    stripeTransferId: null,
+                    job: { is: { status: job.status } },
+                },
+                data: { stripeTransferId: claimToken },
+            });
+            if (claimed.count !== 1) {
+                throw new ConflictException('This payment is already being settled or the job state changed.');
+            }
+        }
+
         const stripe = await this.payments.getStripeClient();
-        const transfer = await stripe.transfers.create(
-            {
-                amount: job.payment.contractorPence,
-                currency: 'gbp',
-                destination: account,
-            },
-            { idempotencyKey: `service-job-release-${job.payment.id}` },
-        );
+        let transfer: { id: string };
+        try {
+            transfer = await stripe.transfers.create(
+                {
+                    amount: job.payment.contractorPence,
+                    currency: 'gbp',
+                    destination: account,
+                },
+                { idempotencyKey: `service-job-release-${job.payment.id}` },
+            );
+        } catch (e) {
+            // Stripe did not accept the transfer. Release the claim so the
+            // customer can dispute or the payout can be retried safely.
+            await this.prisma.servicePayment.updateMany({
+                where: { id: job.payment.id, status: ServicePaymentStatus.PAID, stripeTransferId: claimToken },
+                data: { stripeTransferId: null },
+            });
+            throw e;
+        }
+
         const transferId = transfer.id;
         this.logger.log(`Service job ${jobId}: transferred ${job.payment.contractorPence}p to ${account} (${transferId}) — ${why}`);
 
-        await this.prisma.$transaction([
-            this.prisma.servicePayment.update({
-                where: { id: job.payment.id },
+        // If this DB finalization fails after Stripe accepted the transfer, the
+        // claim token is intentionally retained. A retry calls Stripe with the
+        // same idempotency key and then completes this transaction; a refund or
+        // dispute cannot claim the same held payment in the meantime.
+        await this.prisma.$transaction(async (tx) => {
+            const paymentFinalized = await tx.servicePayment.updateMany({
+                where: { id: job.payment!.id, status: ServicePaymentStatus.PAID, stripeTransferId: claimToken },
                 data: { status: ServicePaymentStatus.RELEASED, stripeTransferId: transferId, releasedAt: new Date() },
-            }),
-            this.prisma.serviceJob.update({
-                where: { id: jobId },
+            });
+            if (paymentFinalized.count !== 1) {
+                throw new ConflictException('Payout finalization lost its payment claim.');
+            }
+
+            const jobFinalized = await tx.serviceJob.updateMany({
+                where: { id: jobId, status: job.status },
                 data: { status: ServiceJobStatus.RELEASED, confirmedAt: job.confirmedAt ?? new Date() },
-            }),
-        ]);
+            });
+            if (jobFinalized.count !== 1) {
+                throw new ConflictException('Payout finalization lost its job state.');
+            }
+        });
 
         const c = job.contractor.user;
         await this.notify(c.id, 'SERVICE_PAYOUT_RELEASED', 'Payment released',
