@@ -12,11 +12,12 @@
 --   * no non-tradexchange table has a foreign-key dependency on these tables;
 --   * no public view/materialized view/trigger depends on this reference system;
 --   * RLS policies that reference tradexchange_* objects are attached only to
---     the obsolete tradexchange_* tables and disappear with those tables.
+--     the obsolete tradexchange_* tables.
 --
 -- This migration is deliberately defensive. It refuses to run if any obsolete
 -- reference table contains data, or if the canonical service_jobs table is not
--- present. Do NOT replace this with prisma db push.
+-- present. It explicitly removes policies before policy-dependent helper RPCs,
+-- and never uses CASCADE. Do NOT replace this with prisma db push.
 
 BEGIN;
 
@@ -52,6 +53,45 @@ BEGIN
                 RAISE EXCEPTION 'Refusing cleanup: table % contains % row(s)', table_name, row_count;
             END IF;
         END IF;
+    END LOOP;
+END
+$$;
+
+-- RLS policies on the obsolete tables may call obsolete SECURITY DEFINER helper
+-- functions. Remove only policies attached to the fourteen named obsolete
+-- tables before dropping those helpers. This avoids CASCADE and keeps an
+-- unexpected dependency outside the obsolete system fail-closed.
+DO $$
+DECLARE
+    policy_row record;
+BEGIN
+    FOR policy_row IN
+        SELECT schemaname, tablename, policyname
+        FROM pg_policies
+        WHERE schemaname = 'public'
+          AND tablename = ANY (ARRAY[
+              'tradexchange_audit_log',
+              'tradexchange_disputes',
+              'tradexchange_finance_leads',
+              'tradexchange_job_events',
+              'tradexchange_jobs',
+              'tradexchange_lead_recipients',
+              'tradexchange_offers',
+              'tradexchange_payments',
+              'tradexchange_provider_accounts',
+              'tradexchange_service_capabilities',
+              'tradexchange_team_members',
+              'tradexchange_team_permissions',
+              'tradexchange_transactions',
+              'tradexchange_warranty_leads'
+          ])
+    LOOP
+        EXECUTE format(
+            'DROP POLICY %I ON %I.%I',
+            policy_row.policyname,
+            policy_row.schemaname,
+            policy_row.tablename
+        );
     END LOOP;
 END
 $$;
