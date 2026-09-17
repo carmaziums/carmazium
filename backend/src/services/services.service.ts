@@ -33,9 +33,8 @@ const AUTO_CONFIRM_HOURS = 48;
 
 /**
  * What a job looks like to whoever is asking. The customer's identity and
- * street addresses are the "contact shared only with your pick" data — they go
- * to the customer, the accepted contractor and admins, and to nobody else.
- * Postcodes are NOT private: a contractor cannot quote a route without them.
+ * street addresses are private until the accepted job is paid. Postcodes are
+ * NOT private: an approved provider cannot quote a route without them.
  */
 type Viewer = { userId: string; role: UserRole; contractorProfileId?: string | null };
 
@@ -348,7 +347,7 @@ export class ServicesService {
         if (job.status !== ServiceJobStatus.OPEN) {
             throw new BadRequestException(
                 job.status === ServiceJobStatus.ACCEPTED
-                    ? 'A quote has been accepted. Raise a dispute if you need to cancel.'
+                    ? 'A quote has been accepted and checkout is pending. Complete payment or let the unpaid acceptance reopen; paid jobs can be disputed.'
                     : 'This job can no longer be cancelled.',
             );
         }
@@ -358,16 +357,19 @@ export class ServicesService {
             include: { contractor: { include: { user: { select: { id: true } } } } },
         });
 
-        await this.prisma.$transaction([
-            this.prisma.serviceJob.update({
-                where: { id: jobId },
+        await this.prisma.$transaction(async (tx) => {
+            const cancelled = await tx.serviceJob.updateMany({
+                where: { id: jobId, customerId, status: ServiceJobStatus.OPEN },
                 data: { status: ServiceJobStatus.CANCELLED, cancelledAt: new Date(), cancelReason: dto.reason?.trim() || null },
-            }),
-            this.prisma.serviceQuote.updateMany({
+            });
+            if (cancelled.count !== 1) {
+                throw new ConflictException('The job state changed before it could be cancelled.');
+            }
+            await tx.serviceQuote.updateMany({
                 where: { jobId, status: ServiceQuoteStatus.ACTIVE },
                 data: { status: ServiceQuoteStatus.EXPIRED },
-            }),
-        ]);
+            });
+        });
 
         for (const q of quotes) {
             await this.notify(q.contractor.user.id, 'SERVICE_JOB_CANCELLED', 'Job cancelled',
@@ -387,19 +389,29 @@ export class ServicesService {
             throw new BadRequestException('This job is no longer open for acceptance.');
         }
 
+        const now = new Date();
+        if (job.expiresAt <= now) {
+            throw new BadRequestException('This job has expired and can no longer accept a quote.');
+        }
+
         const quote = job.quotes.find((q) => q.id === quoteId);
         if (!quote || quote.status !== ServiceQuoteStatus.ACTIVE) {
             throw new BadRequestException('That quote is no longer available.');
         }
-        if (quote.validUntil && quote.validUntil < new Date()) {
+        if (quote.validUntil && quote.validUntil <= now) {
             throw new BadRequestException('That quote has expired. Ask the provider to re-quote.');
         }
 
         const { rate, platformFeePence, contractorPence } = this.split(quote.amountPence);
 
-        const [, , payment] = await this.prisma.$transaction([
-            this.prisma.serviceJob.update({
-                where: { id: jobId },
+        const payment = await this.prisma.$transaction(async (tx) => {
+            const claimedJob = await tx.serviceJob.updateMany({
+                where: {
+                    id: jobId,
+                    customerId,
+                    status: ServiceJobStatus.OPEN,
+                    expiresAt: { gt: now },
+                },
                 data: {
                     status: ServiceJobStatus.ACCEPTED,
                     acceptedQuoteId: quote.id,
@@ -408,11 +420,28 @@ export class ServicesService {
                     platformFeeRate: new Prisma.Decimal(rate),
                     platformFeePence,
                     contractorAmountPence: contractorPence,
-                    acceptedAt: new Date(),
+                    acceptedAt: now,
                 },
-            }),
-            this.prisma.serviceQuote.update({ where: { id: quote.id }, data: { status: ServiceQuoteStatus.ACCEPTED } }),
-            this.prisma.servicePayment.create({
+            });
+            if (claimedJob.count !== 1) {
+                throw new ConflictException('The job state changed before the quote could be accepted.');
+            }
+
+            const claimedQuote = await tx.serviceQuote.updateMany({
+                where: {
+                    id: quote.id,
+                    jobId,
+                    contractorId: quote.contractorId,
+                    status: ServiceQuoteStatus.ACTIVE,
+                    OR: [{ validUntil: null }, { validUntil: { gt: now } }],
+                },
+                data: { status: ServiceQuoteStatus.ACCEPTED },
+            });
+            if (claimedQuote.count !== 1) {
+                throw new ConflictException('The selected quote changed before it could be accepted.');
+            }
+
+            const createdPayment = await tx.servicePayment.create({
                 data: {
                     jobId,
                     customerId,
@@ -422,12 +451,14 @@ export class ServicesService {
                     platformFeePence,
                     contractorPence,
                 },
-            }),
-            this.prisma.serviceQuote.updateMany({
+            });
+
+            await tx.serviceQuote.updateMany({
                 where: { jobId, status: ServiceQuoteStatus.ACTIVE, id: { not: quote.id } },
                 data: { status: ServiceQuoteStatus.DECLINED },
-            }),
-        ]);
+            });
+            return createdPayment;
+        });
 
         const declined = job.quotes.filter((q) => q.id !== quote.id && q.status === ServiceQuoteStatus.ACTIVE);
         for (const q of declined) {
@@ -533,13 +564,28 @@ export class ServicesService {
             return;
         }
 
-        await this.prisma.$transaction([
-            this.prisma.servicePayment.update({
-                where: { id: paymentId },
+        const transitioned = await this.prisma.$transaction(async (tx) => {
+            const paid = await tx.servicePayment.updateMany({
+                where: {
+                    id: paymentId,
+                    jobId,
+                    status: ServicePaymentStatus.PENDING,
+                    job: { is: { status: ServiceJobStatus.ACCEPTED } },
+                },
                 data: { status: ServicePaymentStatus.PAID, stripePaymentIntentId: paymentIntentId, paidAt: new Date() },
-            }),
-            this.prisma.serviceJob.update({ where: { id: jobId }, data: { status: ServiceJobStatus.PAID } }),
-        ]);
+            });
+            if (paid.count !== 1) return false;
+
+            const jobPaid = await tx.serviceJob.updateMany({
+                where: { id: jobId, status: ServiceJobStatus.ACCEPTED },
+                data: { status: ServiceJobStatus.PAID },
+            });
+            if (jobPaid.count !== 1) {
+                throw new ConflictException('The service job state changed while payment was being recorded.');
+            }
+            return true;
+        });
+        if (!transitioned) return;
 
         const job = await this.prisma.serviceJob.findUnique({
             where: { id: jobId },
@@ -622,11 +668,12 @@ export class ServicesService {
     }
 
     async assigned(contractorProfileId: string) {
-        return this.prisma.serviceJob.findMany({
+        const jobs = await this.prisma.serviceJob.findMany({
             where: { contractorId: contractorProfileId },
             orderBy: { updatedAt: 'desc' },
             include: { vehicles: true, customer: { select: CUSTOMER_PRIVATE }, payment: true },
         });
+        return jobs.map((job) => this.redact(job, this.contactUnlocked(job.payment?.status)));
     }
 
     async upsertQuote(contractorProfileId: string, approved: ServiceType[], userId: string, jobId: string, dto: UpsertQuoteDto) {
@@ -640,6 +687,11 @@ export class ServicesService {
         }
         if (job.customerId === userId) throw new BadRequestException('You cannot quote on your own job.');
 
+        const validUntil = dto.validUntil ? new Date(dto.validUntil) : null;
+        if (validUntil && validUntil <= new Date()) {
+            throw new BadRequestException('Quote validity must be in the future.');
+        }
+
         const existing = await this.prisma.serviceQuote.findUnique({
             where: { jobId_contractorId: { jobId, contractorId: contractorProfileId } },
         });
@@ -650,11 +702,11 @@ export class ServicesService {
             create: {
                 jobId, contractorId: contractorProfileId, submittedById: userId,
                 amountPence: dto.amountPence, message: dto.message?.trim() || null,
-                validUntil: dto.validUntil ? new Date(dto.validUntil) : null,
+                validUntil,
             },
             update: {
                 amountPence: dto.amountPence, message: dto.message?.trim() || null,
-                validUntil: dto.validUntil ? new Date(dto.validUntil) : null,
+                validUntil,
                 status: ServiceQuoteStatus.ACTIVE, submittedById: userId,
             },
         });
@@ -765,12 +817,22 @@ export class ServicesService {
             throw new ForbiddenException('You do not have access to this job.');
         }
 
-        const full = isCustomer || isAdmin || isAccepted;
-        const quotes = full && !isAccepted
+        const contactsUnlocked = this.contactUnlocked(job.payment?.status);
+        const canSeeCustomerContact = isCustomer || isAdmin || (isAccepted && contactsUnlocked);
+        const canSeeContractorContact = isAdmin || isAccepted || (isCustomer && contactsUnlocked);
+        const quotes = (isCustomer || isAdmin)
             ? job.quotes
             : job.quotes.filter((q) => q.contractorId === viewer.contractorProfileId);
 
-        return { ...this.redact({ ...job, quotes }, full), viewerRole: isCustomer ? 'customer' : isAccepted ? 'contractor' : isAdmin ? 'admin' : 'bidder' };
+        let shaped = this.redact({ ...job, quotes }, canSeeCustomerContact) as any;
+        if (!canSeeContractorContact && shaped.contractor) {
+            shaped = { ...shaped, contractor: this.contractorPublicView(shaped.contractor) };
+        }
+
+        return {
+            ...shaped,
+            viewerRole: isCustomer ? 'customer' : isAccepted ? 'contractor' : isAdmin ? 'admin' : 'bidder',
+        };
     }
 
     async adminListJobs(status?: ServiceJobStatus) {
@@ -875,19 +937,31 @@ export class ServicesService {
     }
 
     async expireOpenJobs(): Promise<number> {
+        const now = new Date();
         const stale = await this.prisma.serviceJob.findMany({
-            where: { status: ServiceJobStatus.OPEN, expiresAt: { lt: new Date() } },
+            where: { status: ServiceJobStatus.OPEN, expiresAt: { lt: now } },
             select: { id: true, title: true, customerId: true },
         });
+        let expired = 0;
         for (const j of stale) {
-            await this.prisma.$transaction([
-                this.prisma.serviceJob.update({ where: { id: j.id }, data: { status: ServiceJobStatus.EXPIRED } }),
-                this.prisma.serviceQuote.updateMany({ where: { jobId: j.id, status: ServiceQuoteStatus.ACTIVE }, data: { status: ServiceQuoteStatus.EXPIRED } }),
-            ]);
+            const claimed = await this.prisma.$transaction(async (tx) => {
+                const jobExpired = await tx.serviceJob.updateMany({
+                    where: { id: j.id, status: ServiceJobStatus.OPEN, expiresAt: { lt: now } },
+                    data: { status: ServiceJobStatus.EXPIRED },
+                });
+                if (jobExpired.count !== 1) return false;
+                await tx.serviceQuote.updateMany({
+                    where: { jobId: j.id, status: ServiceQuoteStatus.ACTIVE },
+                    data: { status: ServiceQuoteStatus.EXPIRED },
+                });
+                return true;
+            });
+            if (!claimed) continue;
+            expired += 1;
             await this.notify(j.customerId, 'SERVICE_JOB_EXPIRED', 'Job expired',
                 `"${j.title}" closed after ${JOB_OPEN_DAYS} days without an accepted quote. You can post it again.`, `/services/jobs/${j.id}`);
         }
-        return stale.length;
+        return expired;
     }
 
     async autoConfirmCompleted(): Promise<number> {
@@ -896,11 +970,16 @@ export class ServicesService {
             where: { status: ServiceJobStatus.COMPLETED, completedAt: { lt: cutoff } },
             select: { id: true },
         });
+        let released = 0;
         for (const j of due) {
-            try { await this.release(j.id, `auto-confirmed after ${AUTO_CONFIRM_HOURS}h`); }
-            catch (e: any) { this.logger.error(`Auto-confirm failed for ${j.id}: ${e?.message}`); }
+            try {
+                await this.release(j.id, `auto-confirmed after ${AUTO_CONFIRM_HOURS}h`);
+                released += 1;
+            } catch (e: any) {
+                this.logger.error(`Auto-confirm failed for ${j.id}: ${e?.message}`);
+            }
         }
-        return due.length;
+        return released;
     }
 
     private async release(jobId: string, why: string) {
@@ -1008,6 +1087,24 @@ export class ServicesService {
         if (!job) throw new NotFoundException('Job not found');
         if (job.contractorId !== contractorProfileId) throw new ForbiddenException('This job is not assigned to you.');
         return job;
+    }
+
+    private contactUnlocked(status?: ServicePaymentStatus | null): boolean {
+        return status === ServicePaymentStatus.PAID
+            || status === ServicePaymentStatus.RELEASED
+            || status === ServicePaymentStatus.REFUNDED;
+    }
+
+    private contractorPublicView(contractor: any) {
+        if (!contractor) return contractor;
+        return {
+            id: contractor.id,
+            businessName: contractor.businessName,
+            rating: contractor.rating,
+            totalReviews: contractor.totalReviews,
+            serviceArea: contractor.serviceArea,
+            user: contractor.user ? { firstName: contractor.user.firstName } : null,
+        };
     }
 
     private redact<T extends Record<string, any>>(job: T, full: boolean): T {
