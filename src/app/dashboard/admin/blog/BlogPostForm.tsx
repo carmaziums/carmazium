@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/Input"
 import { BlogContent } from "@/components/blog/BlogContent"
 import { uploadImage } from "@/lib/supabase"
 import { createBlogPost, updateBlogPost, type BlogPost, type BlogPostStatus } from "@/lib/blogApi"
+import { validateBlogPost } from "@/lib/blogValidation"
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com"
 const COVER_ASPECT = 16 / 9
@@ -99,6 +100,23 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
         () => tagsInput.split(",").map((tag) => tag.trim()).filter(Boolean),
         [tagsInput],
     )
+
+    const publishValidation = React.useMemo(
+        () => validateBlogPost({
+            title,
+            slug,
+            excerpt,
+            content,
+            coverImage,
+            tags,
+            status: "PUBLISHED",
+            metaTitle,
+            metaDescription,
+            noIndex,
+        }),
+        [title, slug, excerpt, content, coverImage, tags, metaTitle, metaDescription, noIndex],
+    )
+
     const effectiveMetaTitle = (metaTitle.trim() || title.trim() || "Your article title").trim()
     const effectiveMetaDescription = (metaDescription.trim() || excerpt.trim() || "Add a useful meta description for this article.").trim()
     const canonicalSlug = slug.trim() || slugify(title) || "your-post-slug"
@@ -203,8 +221,13 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
     })
 
     const handleSave = async (nextStatus: BlogPostStatus) => {
-        if (!title.trim() || !excerpt.trim() || !content.trim()) {
-            setError("Title, excerpt, and content are all required.")
+        if (nextStatus === "PUBLISHED" && !publishValidation.canPublish) {
+            const count = publishValidation.errors.length
+            setError(`Fix ${count} blocking publish ${count === 1 ? "error" : "errors"} before publishing. You can still save this post as a draft.`)
+            return
+        }
+        if (nextStatus === "DRAFT" && !title.trim()) {
+            setError("Add a working title before saving this draft.")
             return
         }
         setSaving(true)
@@ -258,6 +281,52 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                     <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-3"><p className="text-lg font-black">{minutes} min</p><p className="text-[10px] text-[var(--text-muted)]">Read time</p></div>
                     <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-3"><p className="text-lg font-black">{headingCount}</p><p className="text-[10px] text-[var(--text-muted)]">Sections</p></div>
                 </div>
+            </section>
+
+            <section className="glass-card p-5 md:p-6 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div>
+                        <div className="flex items-center gap-2"><Gauge size={17} className="text-primary" /><h3 className="text-xs font-black uppercase tracking-[0.13em] text-[var(--text-primary)]">Publish checks</h3></div>
+                        <p className="mt-1 text-[11px] text-[var(--text-muted)]">Red errors must be fixed before publishing. Amber warnings are SEO or editorial recommendations and do not block publishing.</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black ${publishValidation.errors.length ? "border-red-500/25 bg-red-500/10 text-red-400" : "border-emerald-500/25 bg-emerald-500/10 text-emerald-400"}`}>{publishValidation.errors.length} blocking</span>
+                        <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[10px] font-black text-amber-400">{publishValidation.warnings.length} warnings</span>
+                    </div>
+                </div>
+
+                {publishValidation.errors.length === 0 ? (
+                    <div className="flex items-start gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-4">
+                        <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                        <div><p className="text-xs font-bold text-[var(--text-primary)]">No blocking publish errors</p><p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">The article can be published. Review any recommendations below before going live.</p></div>
+                    </div>
+                ) : (
+                    <div className="grid md:grid-cols-2 gap-3">
+                        {publishValidation.errors.map((issue) => (
+                            <div key={`${issue.code}-${issue.field}`} className="rounded-xl border border-red-500/25 bg-red-500/[0.06] p-4">
+                                <div className="flex items-start gap-2.5">
+                                    <AlertCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
+                                    <div><p className="text-xs font-bold text-red-300">Must fix before publishing</p><p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">{issue.message}</p></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {publishValidation.warnings.length > 0 && (
+                    <div className="grid md:grid-cols-2 gap-3">
+                        {publishValidation.warnings.map((issue) => (
+                            <div key={`${issue.code}-${issue.field}`} className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-4">
+                                <div className="flex items-start gap-2.5">
+                                    <AlertCircle size={15} className="text-amber-400 shrink-0 mt-0.5" />
+                                    <div><p className="text-xs font-bold text-[var(--text-primary)]">Recommendation</p><p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">{issue.message}</p></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <p className="text-[10px] leading-5 text-[var(--text-faint)]">Incomplete work can still be saved as a draft. Only the Publish action is gated by blocking errors.</p>
             </section>
 
             <section className="glass-card p-5 md:p-6 space-y-5">
@@ -449,7 +518,7 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                 <div className="flex-1" />
                 <Link href="/dashboard/admin/blog" className="text-center text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors py-2">Cancel</Link>
                 <Button type="button" variant="outline" onClick={() => handleSave("DRAFT")} disabled={saving}>{saving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}Save as Draft</Button>
-                <Button type="button" onClick={() => handleSave("PUBLISHED")} disabled={saving}>{saving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}{status === "PUBLISHED" ? "Save & Update" : "Publish"}</Button>
+                <Button type="button" onClick={() => handleSave("PUBLISHED")} disabled={saving || !publishValidation.canPublish} title={!publishValidation.canPublish ? "Fix blocking publish errors first" : undefined}>{saving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}{status === "PUBLISHED" ? "Save & Update" : "Publish"}</Button>
             </div>
         </div>
     )
