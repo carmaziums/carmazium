@@ -16,6 +16,7 @@ import {
     Truck,
     Users,
 } from "lucide-react"
+import { Button } from "@/components/ui/Button"
 import { deliveryServiceEnabled } from "@/lib/featureFlags"
 import { useAuth } from "@/context/AuthContext"
 
@@ -53,13 +54,15 @@ export default function DeliveryLandingPage() {
                             Post a route and approved transport businesses compete with fixed-price quotes. Use it for single vehicles, multi-car moves and recovery jobs for non-runners.
                         </motion.p>
                         <div className="flex flex-col sm:flex-row gap-3">
-                            <Link href="/services/delivery/new" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-primary text-white text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-colors shadow-neon">
-                                Post a delivery job <ArrowRight size={16} />
-                            </Link>
-                            {user && (
-                                <Link href="/services/jobs" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl border border-[var(--border-default)] text-sm font-bold hover:border-primary/40 transition-colors">
-                                    My jobs
+                            <Button asChild size="lg">
+                                <Link href="/services/delivery/new">
+                                    Post a delivery job <ArrowRight size={16} />
                                 </Link>
+                            </Button>
+                            {user && (
+                                <Button asChild variant="outline" size="lg">
+                                    <Link href="/services/jobs">My jobs</Link>
+                                </Button>
                             )}
                         </div>
                     </div>
@@ -91,7 +94,7 @@ export default function DeliveryLandingPage() {
                 <div className="container mx-auto px-6 py-14 grid md:grid-cols-3 gap-6">
                     <div className="flex gap-4"><ShieldCheck size={22} className="text-primary shrink-0 mt-0.5" /><div><h3 className="font-heading font-bold mb-1">Approved transporters only</h3><p className="text-sm text-[var(--text-muted)] leading-relaxed">Only businesses approved by CarMazium for Delivery &amp; Recovery can quote.</p></div></div>
                     <div className="flex gap-4"><Banknote size={22} className="text-primary shrink-0 mt-0.5" /><div><h3 className="font-heading font-bold mb-1">Protected service payment</h3><p className="text-sm text-[var(--text-muted)] leading-relaxed">The accepted job is paid through CarMazium and released to the provider after completion.</p></div></div>
-                    <div className="flex gap-4"><Users size={22} className="text-primary shrink-0 mt-0.5" /><div><h3 className="font-heading font-bold mb-1">Contact shared after payment</h3><p className="text-sm text-[var(--text-muted)] leading-relaxed">The selected provider and customer receive each other's private contact details only after the accepted quote has been paid through CarMazium.</p></div></div>
+                    <div className="flex gap-4"><Users size={22} className="text-primary shrink-0 mt-0.5" /><div><h3 className="font-heading font-bold mb-1">Contact shared after payment</h3><p className="text-sm text-[var(--text-muted)] leading-relaxed">Private contact details are shared only after you choose a provider and the accepted quote has been paid through CarMazium.</p></div></div>
                 </div>
             </section>
 
@@ -108,9 +111,11 @@ export default function DeliveryLandingPage() {
                                 <p className="font-black mb-1">9% CarMazium platform fee. You keep 91%.</p>
                                 <p className="text-sm text-[var(--text-muted)] leading-relaxed">The fee is deducted from the accepted job price. Your 91% provider payout is released after the job is successfully completed and payment is released.</p>
                             </div>
-                            <Link href={providerHref} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-white text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-colors">
-                                Apply as a delivery provider <ArrowRight size={15} />
-                            </Link>
+                            <Button asChild>
+                                <Link href={providerHref}>
+                                    Apply as a delivery provider <ArrowRight size={15} />
+                                </Link>
+                            </Button>
                         </div>
                         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
                             <div className="flex gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5"><BadgeCheck className="text-primary shrink-0" /><div><h3 className="font-bold text-sm mb-1">Approved-provider visibility</h3><p className="text-xs text-[var(--text-muted)]">Customers can see they are choosing from businesses approved for delivery work.</p></div></div>
