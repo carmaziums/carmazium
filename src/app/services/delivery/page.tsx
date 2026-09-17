@@ -91,7 +91,7 @@ export default function DeliveryLandingPage() {
                 <div className="container mx-auto px-6 py-14 grid md:grid-cols-3 gap-6">
                     <div className="flex gap-4"><ShieldCheck size={22} className="text-primary shrink-0 mt-0.5" /><div><h3 className="font-heading font-bold mb-1">Approved transporters only</h3><p className="text-sm text-[var(--text-muted)] leading-relaxed">Only businesses approved by CarMazium for Delivery &amp; Recovery can quote.</p></div></div>
                     <div className="flex gap-4"><Banknote size={22} className="text-primary shrink-0 mt-0.5" /><div><h3 className="font-heading font-bold mb-1">Protected service payment</h3><p className="text-sm text-[var(--text-muted)] leading-relaxed">The accepted job is paid through CarMazium and released to the provider after completion.</p></div></div>
-                    <div className="flex gap-4"><Users size={22} className="text-primary shrink-0 mt-0.5" /><div><h3 className="font-heading font-bold mb-1">Contact shared after selection</h3><p className="text-sm text-[var(--text-muted)] leading-relaxed">The provider gets the customer contact details after the quote is accepted and the job moves forward.</p></div></div>
+                    <div className="flex gap-4"><Users size={22} className="text-primary shrink-0 mt-0.5" /><div><h3 className="font-heading font-bold mb-1">Contact shared after payment</h3><p className="text-sm text-[var(--text-muted)] leading-relaxed">The selected provider and customer receive each other's private contact details only after the accepted quote has been paid through CarMazium.</p></div></div>
                 </div>
             </section>
 
