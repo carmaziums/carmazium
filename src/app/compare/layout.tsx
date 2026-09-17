@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import styles from "./compare-responsive.module.css"
 
 export const metadata: Metadata = {
     title: "Compare Used Cars Side by Side UK",
@@ -25,5 +26,5 @@ export const metadata: Metadata = {
 }
 
 export default function CompareLayout({ children }: { children: React.ReactNode }) {
-    return children
+    return <div className={styles.compareRoute}>{children}</div>
 }
