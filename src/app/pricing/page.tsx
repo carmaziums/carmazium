@@ -129,7 +129,7 @@ export default function PricingPage() {
                             <Lock size={13} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
                             <p className="text-[11px] leading-5 text-amber-700 dark:text-amber-300">Only verified dealers can bid on or buy auction vehicles.</p>
                         </div>
-                        <Button asChild variant="outline" className="mt-auto w-full">
+                        <Button asChild className="mt-auto w-full">
                             <Link href="/sell">Start Auction</Link>
                         </Button>
                     </article>
@@ -150,7 +150,7 @@ export default function PricingPage() {
                             <li className={featureItemClass}><CheckCircle size={15} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" /> Performance analytics</li>
                             <li className={featureItemClass}><XCircle size={15} className="mt-0.5 shrink-0 text-[var(--text-faint)]" /> Priority placement</li>
                         </ul>
-                        <Button asChild variant="outline" className="mt-auto w-full"><Link href="/sell">Get Basic</Link></Button>
+                        <Button asChild className="mt-auto w-full"><Link href="/sell">Get Basic</Link></Button>
                     </article>
 
                     <article className="flex h-full flex-col rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-7 shadow-[var(--shadow-card)]">
@@ -168,7 +168,7 @@ export default function PricingPage() {
                             <li className={featureItemClass}><XCircle size={15} className="mt-0.5 shrink-0 text-[var(--text-faint)]" /> Priority search placement</li>
                             <li className={featureItemClass}><XCircle size={15} className="mt-0.5 shrink-0 text-[var(--text-faint)]" /> Free HPI included</li>
                         </ul>
-                        <Button asChild variant="outline" className="mt-auto w-full"><Link href="/sell">Get Standard</Link></Button>
+                        <Button asChild className="mt-auto w-full"><Link href="/sell">Get Standard</Link></Button>
                     </article>
 
                     <article className="relative flex h-full flex-col rounded-2xl border-2 border-primary/50 bg-gradient-to-b from-primary/[0.08] to-[var(--bg-card)] p-7 shadow-[0_14px_36px_rgba(237,28,36,0.10)]">
