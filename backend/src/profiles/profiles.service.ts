@@ -8,7 +8,6 @@ import {
     CapabilityStatus,
     DeliveryStatus,
     ServiceJobStatus,
-    ServiceStatus,
     ServiceType,
     UserRole,
 } from '@prisma/client';
@@ -352,7 +351,7 @@ export class ProfilesService {
     }
 
     private async hasCompletedInteraction(firstUserId: string, secondUserId: string) {
-        const [sale, delivery, serviceJob, legacyService, auction] = await Promise.all([
+        const [sale, delivery, serviceJob, auction] = await Promise.all([
             this.prisma.sale.findFirst({
                 where: {
                     OR: [
@@ -382,16 +381,6 @@ export class ProfilesService {
                 },
                 select: { id: true },
             }),
-            this.prisma.serviceRequest.findFirst({
-                where: {
-                    status: ServiceStatus.COMPLETED,
-                    OR: [
-                        { requesterId: firstUserId, contractor: { userId: secondUserId } },
-                        { requesterId: secondUserId, contractor: { userId: firstUserId } },
-                    ],
-                },
-                select: { id: true },
-            }),
             this.prisma.auction.findFirst({
                 where: {
                     handoverSubmittedAt: { not: null },
@@ -405,7 +394,7 @@ export class ProfilesService {
         ]);
 
         return {
-            eligible: !!(sale || delivery || serviceJob || legacyService || auction),
+            eligible: !!(sale || delivery || serviceJob || auction),
             listingId: sale?.listingId || delivery?.listingId || auction?.listingId || null,
         };
     }
