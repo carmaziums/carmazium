@@ -116,11 +116,17 @@ export function validateBlogPublication(candidate: BlogPublicationCandidate): Bl
 
     const issues: BlogPublicationIssue[] = [];
     const title = candidate.title?.trim() || '';
+    const slug = candidate.slug?.trim() || '';
     const excerpt = candidate.excerpt?.trim() || '';
     const content = candidate.content?.trim() || '';
     const coverImage = candidate.coverImage?.trim() || '';
 
     if (!title) issues.push({ code: 'required-title', field: 'title', message: 'Title is required before publishing.' });
+    if (!slug) {
+        issues.push({ code: 'required-slug', field: 'slug', message: 'A valid URL slug is required before publishing.' });
+    } else if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+        issues.push({ code: 'slug-format', field: 'slug', message: 'The URL slug must contain only lowercase letters, numbers and single hyphens.' });
+    }
     if (!excerpt) issues.push({ code: 'required-excerpt', field: 'excerpt', message: 'Excerpt is required before publishing.' });
     if (!content) issues.push({ code: 'required-content', field: 'content', message: 'Article content is required before publishing.' });
     if (!coverImage) issues.push({ code: 'required-coverImage', field: 'coverImage', message: 'Cover image is required before publishing.' });
