@@ -47,17 +47,19 @@ describe('ServicesService TradeXchange hardening regressions', () => {
         stripe = {
             refunds: { create: jest.fn() },
             transfers: { create: jest.fn() },
-            checkout: { sessions: { create: jest.fn() } },
+            checkout: { sessions: { create: jest.fn(), retrieve: jest.fn() } },
         };
 
         prisma = {
             serviceJob: {
                 findUnique: jest.fn(),
                 update: jest.fn().mockResolvedValue({}),
+                updateMany: jest.fn().mockResolvedValue({ count: 1 }),
             },
             servicePayment: {
                 findUnique: jest.fn(),
                 update: jest.fn().mockResolvedValue({}),
+                updateMany: jest.fn().mockResolvedValue({ count: 1 }),
             },
             contractorCapability: {
                 findUnique: jest.fn(),
@@ -68,7 +70,7 @@ describe('ServicesService TradeXchange hardening regressions', () => {
             user: {
                 findMany: jest.fn().mockResolvedValue([]),
             },
-            $transaction: jest.fn().mockResolvedValue([]),
+            $transaction: jest.fn(async (work: any) => typeof work === 'function' ? work(prisma) : Promise.all(work)),
         };
 
         notifications = {
@@ -187,6 +189,7 @@ describe('ServicesService TradeXchange hardening regressions', () => {
                 id: 'payment-1',
                 status: ServicePaymentStatus.PAID,
                 stripePaymentIntentId: 'pi_1',
+                stripeTransferId: null,
             },
         });
         stripe.refunds.create.mockResolvedValue({ id: 're_1' });
@@ -204,11 +207,13 @@ describe('ServicesService TradeXchange hardening regressions', () => {
             id: 'job-1',
             title: 'Move vehicle',
             customerId: 'customer-1',
+            status: ServiceJobStatus.COMPLETED,
             confirmedAt: null,
             payment: {
                 id: 'payment-1',
                 status: ServicePaymentStatus.PAID,
                 contractorPence: 9100,
+                stripeTransferId: null,
             },
             contractor: {
                 user: {
