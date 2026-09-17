@@ -1,0 +1,30 @@
+.compareRoute {
+  width: 100%;
+}
+
+/*
+ * The comparison page deliberately uses a wide table on desktop. At tablet
+ * widths that fixed 840px minimum made the third vehicle look clipped even
+ * though the rest of the public site already fit the viewport. Let all three
+ * columns share the available width there, while keeping intentional
+ * horizontal scrolling on genuinely narrow phones.
+ */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .compareRoute :global(table.min-w-\[840px\]) {
+    min-width: 0 !important;
+    table-layout: fixed;
+  }
+
+  .compareRoute :global(table.min-w-\[840px\]) th,
+  .compareRoute :global(table.min-w-\[840px\]) td {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+
+/* Keep phone columns readable, but reduce unnecessary horizontal overflow. */
+@media (max-width: 639px) {
+  .compareRoute :global(table.min-w-\[840px\]) {
+    min-width: 720px !important;
+  }
+}
