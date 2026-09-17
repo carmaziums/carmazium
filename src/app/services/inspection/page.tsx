@@ -14,6 +14,7 @@ import {
     ShieldCheck,
     Users,
 } from "lucide-react"
+import { Button } from "@/components/ui/Button"
 import { inspectionServiceEnabled } from "@/lib/featureFlags"
 import { useAuth } from "@/context/AuthContext"
 
@@ -51,10 +52,16 @@ export default function InspectionLandingPage() {
                             Post one vehicle inspection request and approved inspection businesses can compete for the job. Choose the quote you want and keep the service payment protected through CarMazium until the work is completed.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-3">
-                            <Link href="/services/inspection/new" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-primary text-white text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-colors shadow-neon">
-                                Request an inspection <ArrowRight size={16} />
-                            </Link>
-                            {user && <Link href="/services/jobs" className="inline-flex items-center justify-center px-7 py-3.5 rounded-xl border border-[var(--border-default)] text-sm font-bold">My jobs</Link>}
+                            <Button asChild size="lg">
+                                <Link href="/services/inspection/new">
+                                    Request an inspection <ArrowRight size={16} />
+                                </Link>
+                            </Button>
+                            {user && (
+                                <Button asChild variant="outline" size="lg">
+                                    <Link href="/services/jobs">My jobs</Link>
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -98,9 +105,11 @@ export default function InspectionLandingPage() {
                                 <p className="font-black mb-1">9% CarMazium platform fee. You keep 91%.</p>
                                 <p className="text-sm text-[var(--text-muted)] leading-relaxed">The fee is deducted from the accepted job price. Your 91% provider payout is released after the inspection is completed and the customer confirms completion.</p>
                             </div>
-                            <Link href={providerHref} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-white text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-colors">
-                                Apply as an inspection provider <ArrowRight size={15} />
-                            </Link>
+                            <Button asChild>
+                                <Link href={providerHref}>
+                                    Apply as an inspection provider <ArrowRight size={15} />
+                                </Link>
+                            </Button>
                         </div>
                         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
                             <div className="flex gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5"><BadgeCheck className="text-primary shrink-0" /><div><h3 className="font-bold text-sm mb-1">Capability-based approval</h3><p className="text-xs text-[var(--text-muted)]">Customers see providers who have been approved specifically for inspection work.</p></div></div>
