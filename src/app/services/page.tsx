@@ -95,7 +95,7 @@ export default function ServicesPage() {
                     </p>
                 }
                 actions={
-                    <Button asChild variant="outline" size="lg">
+                    <Button asChild size="lg">
                         <Link href="/auth/signup?role=dealer">
                             <Building2 size={17} /> Create Partner Account
                         </Link>
@@ -165,7 +165,7 @@ export default function ServicesPage() {
                                 <p className="mt-3 flex-1 text-sm leading-6 text-[var(--text-muted)]">{service.desc}</p>
                                 <div className="mt-6 border-t border-[var(--border-default)] pt-5">
                                     {service.link ? (
-                                        <Button asChild variant="outline" className="w-full justify-between">
+                                        <Button asChild className="w-full justify-between">
                                             <Link href={service.link}>
                                                 {service.cta} <ArrowRight size={15} />
                                             </Link>

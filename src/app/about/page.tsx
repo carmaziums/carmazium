@@ -123,21 +123,27 @@ export default function AboutPage() {
                             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><Car size={20} /></span>
                             <h3 className="mt-5 text-xl font-bold">For sellers</h3>
                             <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">Choose between the available auction and retail routes, create the vehicle listing and deal directly with the successful buyer.</p>
-                            <Link href="/sell" className="mt-5 inline-flex rounded-sm font-bold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Explore selling</Link>
+                            <Button asChild size="sm" className="mt-5">
+                                <Link href="/sell">Explore selling <ArrowRight size={14} /></Link>
+                            </Button>
                         </article>
 
                         <article className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-7 shadow-[var(--shadow-card)]">
                             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><SearchCheck size={20} /></span>
                             <h3 className="mt-5 text-xl font-bold">For buyers</h3>
                             <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">Browse live vehicles, compare listings and use the available listing information and checks before agreeing a purchase.</p>
-                            <Link href="/search" className="mt-5 inline-flex rounded-sm font-bold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Browse vehicles</Link>
+                            <Button asChild size="sm" className="mt-5">
+                                <Link href="/search">Browse vehicles <ArrowRight size={14} /></Link>
+                            </Button>
                         </article>
 
                         <article className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-7 shadow-[var(--shadow-card)]">
                             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><Building2 size={20} /></span>
                             <h3 className="mt-5 text-xl font-bold">For automotive businesses</h3>
                             <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">Use one Partner Account for the business and the relevant approved capabilities, including Vehicle Dealer and supported TradeXchange services.</p>
-                            <Link href="/services" className="mt-5 inline-flex rounded-sm font-bold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Explore TradeXchange</Link>
+                            <Button asChild size="sm" className="mt-5">
+                                <Link href="/services">Explore TradeXchange <ArrowRight size={14} /></Link>
+                            </Button>
                         </article>
                     </div>
                 </div>

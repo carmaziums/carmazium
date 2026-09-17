@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowRight, BookOpen, Calendar, Clock, Newspaper } from "lucide-react"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import type { BlogPost } from "@/lib/blogApi"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
@@ -75,7 +76,7 @@ function ArticleCard({ post }: { post: BlogPost }) {
                     {post.publishedAt && <span className="flex items-center gap-1.5"><Calendar size={12} /> {formatDate(post.publishedAt)}</span>}
                     <span className="flex items-center gap-1.5"><Clock size={12} /> {readTime(post.content)} min</span>
                 </div>
-                <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-black text-primary">Read guide <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" /></span>
+                <span className={buttonVariants({ size: "sm", className: "mt-5" })}>Read guide <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" /></span>
             </div>
         </Link>
     )
@@ -97,8 +98,8 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Pr
                         <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black font-heading tracking-tight leading-[1.05] text-[var(--text-primary)]">Make smarter decisions about buying and selling cars.</h1>
                         <p className="mt-5 max-w-2xl text-base md:text-lg leading-8 text-[var(--text-secondary)]">UK market comparisons, selling guides, auction advice and practical automotive research written to help you understand your options before you act.</p>
                         <div className="mt-7 flex flex-col sm:flex-row gap-3">
-                            <Link href="/sell" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-white hover:bg-primary/90 transition-colors">Sell My Car <ArrowRight size={15} /></Link>
-                            <a href="#latest-guides" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-5 py-2.5 text-sm font-bold text-[var(--text-primary)] hover:border-primary/40 transition-colors"><BookOpen size={15} /> Browse Guides</a>
+                            <Link href="/sell" className={buttonVariants()}>Sell My Car <ArrowRight size={15} /></Link>
+                            <a href="#latest-guides" className={buttonVariants({ variant: "outline" })}><BookOpen size={15} /> Browse Guides</a>
                         </div>
                     </div>
                 </section>
@@ -136,7 +137,7 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Pr
                                             {featured.publishedAt && <span className="flex items-center gap-1.5"><Calendar size={13} /> {formatDate(featured.publishedAt)}</span>}
                                             <span className="flex items-center gap-1.5"><Clock size={13} /> {readTime(featured.content)} min read</span>
                                         </div>
-                                        <span className="mt-7 inline-flex items-center gap-2 text-sm font-black text-primary">Read the full guide <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" /></span>
+                                        <span className={buttonVariants({ size: "sm", className: "mt-7 self-start" })}>Read the full guide <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" /></span>
                                     </div>
                                 </Link>
                             </section>
@@ -158,14 +159,14 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Pr
                                 <h2 className="mt-1 text-2xl font-black font-heading text-[var(--text-primary)]">Research the market, then sell your car your way.</h2>
                                 <p className="mt-2 text-sm text-[var(--text-muted)]">Auction listing £0 or retail advertising from £1.</p>
                             </div>
-                            <Link href="/sell" className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-sm font-black text-white hover:bg-primary/90 transition-colors">Start Selling <ArrowRight size={15} /></Link>
+                            <Link href="/sell" className={buttonVariants({ className: "shrink-0" })}>Start Selling <ArrowRight size={15} /></Link>
                         </section>
 
                         {totalPages > 1 && (
                             <nav aria-label="Blog pagination" className="flex flex-wrap justify-center items-center gap-3 mt-14">
-                                {page > 1 && <Link href={`/blog?page=${page - 1}`} className="min-h-11 inline-flex items-center px-4 py-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] text-sm font-bold hover:border-primary/40 transition-colors">Previous</Link>}
+                                {page > 1 && <Link href={`/blog?page=${page - 1}`} className={buttonVariants({ variant: "outline" })}>Previous</Link>}
                                 <span className="text-sm text-[var(--text-muted)] px-2">Page {page} of {totalPages}</span>
-                                {page < totalPages && <Link href={`/blog?page=${page + 1}`} className="min-h-11 inline-flex items-center px-4 py-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] text-sm font-bold hover:border-primary/40 transition-colors">Next</Link>}
+                                {page < totalPages && <Link href={`/blog?page=${page + 1}`} className={buttonVariants({ variant: "outline" })}>Next</Link>}
                             </nav>
                         )}
                     </>
