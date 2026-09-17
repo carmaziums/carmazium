@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/Input"
 import { BlogContent } from "@/components/blog/BlogContent"
 import { uploadImage } from "@/lib/supabase"
 import { createBlogPost, updateBlogPost, type BlogPost, type BlogPostStatus } from "@/lib/blogApi"
-import { validateBlogPost } from "@/lib/blogValidation"
+import { stripCarMaziumBrandSuffix, validateBlogPost } from "@/lib/blogValidation"
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com"
 const COVER_ASPECT = 16 / 9
@@ -92,6 +92,8 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
     const contentFileInputRef = React.useRef<HTMLInputElement>(null)
     const contentTextareaRef = React.useRef<HTMLTextAreaElement>(null)
 
+    const slugLocked = isEdit && (post?.status === "PUBLISHED" || status === "PUBLISHED")
+
     React.useEffect(() => {
         if (!slugTouched) setSlug(slugify(title))
     }, [title, slugTouched])
@@ -117,8 +119,12 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
         [title, slug, excerpt, content, coverImage, tags, metaTitle, metaDescription, noIndex],
     )
 
-    const effectiveMetaTitle = (metaTitle.trim() || title.trim() || "Your article title").trim()
+    const cleanMetaTitle = stripCarMaziumBrandSuffix(metaTitle)
+    const effectiveMetaTitle = (cleanMetaTitle || title.trim() || "Your article title").trim()
     const effectiveMetaDescription = (metaDescription.trim() || excerpt.trim() || "Add a useful meta description for this article.").trim()
+    const finalBrowserTitle = publishValidation.metrics.renderedMetaTitle
+    const finalBrowserTitleLength = publishValidation.metrics.renderedMetaTitleLength
+    const metaDescriptionLength = publishValidation.metrics.metaDescriptionLength
     const canonicalSlug = slug.trim() || slugify(title) || "your-post-slug"
     const canonicalUrl = `${SITE_URL}/blog/${canonicalSlug}`
     const words = countWords(content)
@@ -132,14 +138,14 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
 
     const seoChecks = [
         {
-            label: "Search title is concise",
-            ok: effectiveMetaTitle.length >= 30 && effectiveMetaTitle.length <= 60,
-            hint: `${effectiveMetaTitle.length} characters — aim roughly for 30–60.`,
+            label: "Final search title is concise",
+            ok: finalBrowserTitleLength >= 30 && finalBrowserTitleLength <= 65,
+            hint: `${finalBrowserTitleLength} characters including “| CarMazium” — aim for 65 or fewer.`,
         },
         {
             label: "Meta description is useful",
-            ok: effectiveMetaDescription.length >= 120 && effectiveMetaDescription.length <= 160,
-            hint: `${effectiveMetaDescription.length} characters — aim roughly for 120–160.`,
+            ok: metaDescriptionLength >= 120 && metaDescriptionLength <= 160,
+            hint: `${metaDescriptionLength} characters — aim roughly for 120–160.`,
         },
         { label: "16:9 cover artwork added", ok: Boolean(coverImage), hint: "Use a clear 1600×900 image with text kept away from the edges." },
         { label: "Article has useful depth", ok: words >= 600, hint: `${words.toLocaleString()} words · about ${minutes} min read.` },
@@ -339,12 +345,16 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                     <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="How Car Auctions Help You Get the Best Price" className="text-base" />
                 </div>
                 <div>
-                    <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] mb-1.5 block">URL slug</label>
+                    <div className="flex items-center justify-between gap-3 mb-1.5">
+                        <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">URL slug</label>
+                        {slugLocked && <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-400">Locked after publishing</span>}
+                    </div>
                     <div className="flex items-center gap-2 text-sm">
                         <span className="hidden sm:inline text-[var(--text-muted)] shrink-0">/blog/</span>
-                        <Input value={slug} onChange={(e) => { setSlug(slugify(e.target.value)); setSlugTouched(true) }} placeholder="how-car-auctions-help-you-get-the-best-price" className="text-sm" />
+                        <Input value={slug} disabled={slugLocked} onChange={(e) => { setSlug(slugify(e.target.value)); setSlugTouched(true) }} placeholder="how-car-auctions-help-you-get-the-best-price" className="text-sm disabled:cursor-not-allowed disabled:opacity-60" />
                     </div>
                     <p className="mt-1.5 text-[10px] text-[var(--text-faint)] break-all">Canonical: {canonicalUrl}</p>
+                    {slugLocked && <p className="mt-1.5 text-[10px] leading-4 text-[var(--text-muted)]">This live URL is locked to protect existing Google indexing, bookmarks and backlinks. A published slug should only change together with a permanent redirect from the old URL.</p>}
                 </div>
                 <div>
                     <div className="flex items-center justify-between gap-3 mb-1.5">
@@ -442,14 +452,15 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                 <div>
                     <div className="flex items-center justify-between gap-3 mb-1.5">
                         <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Meta title <span className="normal-case font-normal text-[var(--text-faint)]">— falls back to article title</span></label>
-                        <span className={`text-[10px] ${effectiveMetaTitle.length > 60 ? "text-amber-400" : "text-[var(--text-faint)]"}`}>{effectiveMetaTitle.length}/60 guide</span>
+                        <span className={`text-[10px] ${finalBrowserTitleLength > 65 ? "text-amber-400" : "text-[var(--text-faint)]"}`}>{finalBrowserTitleLength}/65 final</span>
                     </div>
                     <Input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} placeholder={title || "Meta title"} />
+                    <p className="mt-1.5 text-[10px] leading-4 text-[var(--text-faint)]">Do not type “| CarMazium”. The site adds the brand automatically. Final browser title: <span className="text-[var(--text-secondary)]">{finalBrowserTitle}</span></p>
                 </div>
                 <div>
                     <div className="flex items-center justify-between gap-3 mb-1.5">
                         <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Meta description <span className="normal-case font-normal text-[var(--text-faint)]">— falls back to excerpt</span></label>
-                        <span className={`text-[10px] ${effectiveMetaDescription.length < 120 ? "text-amber-400" : "text-[var(--text-faint)]"}`}>{effectiveMetaDescription.length}/160</span>
+                        <span className={`text-[10px] ${metaDescriptionLength < 120 || metaDescriptionLength > 160 ? "text-amber-400" : "text-[var(--text-faint)]"}`}>{metaDescriptionLength}/160</span>
                     </div>
                     <textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value.slice(0, 160))} rows={3} placeholder={excerpt || "Meta description"} className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2.5 text-sm leading-6 placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none resize-none" />
                 </div>
@@ -468,7 +479,7 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                     <div className="rounded-2xl border border-[var(--border-default)] bg-white p-4 text-slate-900 overflow-hidden">
                         <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500"><Search size={12} /> Google preview</p>
                         <p className="mt-3 text-xs text-emerald-700 truncate">carmazium.com › blog › {canonicalSlug}</p>
-                        <p className="mt-1 text-[18px] leading-6 text-[#1a0dab] line-clamp-2">{effectiveMetaTitle}</p>
+                        <p className="mt-1 text-[18px] leading-6 text-[#1a0dab] line-clamp-2">{finalBrowserTitle}</p>
                         <p className="mt-1 text-[12px] leading-5 text-slate-600 line-clamp-3">{effectiveMetaDescription}</p>
                     </div>
 
@@ -481,7 +492,7 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                         </div>
                         <div className="p-4">
                             <p className="text-[9px] uppercase tracking-wider text-[var(--text-muted)]">carmazium.com</p>
-                            <p className="mt-1 text-sm font-bold text-[var(--text-primary)] line-clamp-2">{effectiveMetaTitle}</p>
+                            <p className="mt-1 text-sm font-bold text-[var(--text-primary)] line-clamp-2">{finalBrowserTitle}</p>
                             <p className="mt-1 text-[11px] leading-4 text-[var(--text-muted)] line-clamp-2">{effectiveMetaDescription}</p>
                         </div>
                     </div>
