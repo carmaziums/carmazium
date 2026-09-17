@@ -444,7 +444,8 @@ export class ServicesService {
      * Return the existing payable Checkout session whenever possible. This
      * prevents repeated clicks or checkout re-entry from leaving multiple live
      * Stripe sessions that could each be paid for the same TradeXchange job.
-     * Expired sessions are replaced using a deterministic idempotency key.
+     * A replacement session is created only after Stripe positively confirms
+     * that the previous one is expired. If Stripe cannot verify it, fail closed.
      */
     private async freshCheckout(jobId: string, paymentId: string, grossPence: number, title: string, userId: string) {
         const stripe = await this.payments.getStripeClient();
@@ -455,12 +456,26 @@ export class ServicesService {
         });
         const existingSessionId = payment?.stripeCheckoutSessionId ?? null;
 
-        if (existingSessionId && typeof stripe.checkout.sessions.retrieve === 'function') {
-            try {
-                const existing = await stripe.checkout.sessions.retrieve(existingSessionId);
-                if (existing.status === 'open' && existing.url) return existing.url;
+        if (existingSessionId) {
+            if (typeof stripe.checkout.sessions.retrieve !== 'function') {
+                throw new BadRequestException('Unable to verify the existing checkout session. Please try again shortly.');
+            }
 
-                if (existing.status === 'complete' && existing.payment_status === 'paid') {
+            let existing: any;
+            try {
+                existing = await stripe.checkout.sessions.retrieve(existingSessionId);
+            } catch (e: any) {
+                this.logger.warn(`Could not verify Stripe Checkout session ${existingSessionId} for service job ${jobId}: ${e?.message}`);
+                throw new BadRequestException('Unable to verify the existing checkout session. Please try again shortly.');
+            }
+
+            if (existing.status === 'open') {
+                if (existing.url) return existing.url;
+                throw new BadRequestException('The existing checkout session is still open but Stripe returned no checkout URL.');
+            }
+
+            if (existing.status === 'complete') {
+                if (existing.payment_status === 'paid') {
                     await this.markPaid(
                         jobId,
                         paymentId,
@@ -468,8 +483,12 @@ export class ServicesService {
                     );
                     return `${base}/services/jobs/${jobId}?paid=1`;
                 }
-            } catch (e: any) {
-                this.logger.warn(`Could not reuse Stripe Checkout session ${existingSessionId} for service job ${jobId}: ${e?.message}`);
+                throw new BadRequestException('The existing checkout session completed without a confirmed payment. Please contact support.');
+            }
+
+            if (existing.status !== 'expired') {
+                this.logger.warn(`Unexpected Stripe Checkout status "${existing.status}" for service job ${jobId}; refusing replacement session.`);
+                throw new BadRequestException('Unable to confirm that the previous checkout is closed. Please try again shortly.');
             }
         }
 
