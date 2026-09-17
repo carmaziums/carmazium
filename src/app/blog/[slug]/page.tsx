@@ -14,7 +14,7 @@ const SITE_URL = "https://www.carmazium.com"
 
 async function getPostBySlug(slug: string): Promise<BlogPost | null> {
     try {
-        const res = await fetch(`${API_BASE}/blog/${slug}`, { next: { revalidate: 300 } })
+        const res = await fetch(`${API_BASE}/blog/${slug}`, { next: { revalidate: 60 } })
         if (!res.ok) return null
         const json = await res.json()
         return json.data ?? null
@@ -25,7 +25,7 @@ async function getPostBySlug(slug: string): Promise<BlogPost | null> {
 
 async function getRelatedPosts(slug: string): Promise<BlogPost[]> {
     try {
-        const res = await fetch(`${API_BASE}/blog/${slug}/related`, { next: { revalidate: 300 } })
+        const res = await fetch(`${API_BASE}/blog/${slug}/related`, { next: { revalidate: 60 } })
         if (!res.ok) return []
         const json = await res.json()
         return json.data ?? []
@@ -36,7 +36,7 @@ async function getRelatedPosts(slug: string): Promise<BlogPost[]> {
 
 async function getFeaturedListings(): Promise<Listing[]> {
     try {
-        const res = await fetch(`${API_BASE}/listings/featured`, { next: { revalidate: 300 } })
+        const res = await fetch(`${API_BASE}/listings/featured`, { next: { revalidate: 60 } })
         if (!res.ok) return []
         const json = await res.json()
         return (json.data ?? []).slice(0, 3)
@@ -84,13 +84,65 @@ function cleanHeading(value: string): string {
         .trim()
 }
 
+const LEGACY_TOC_SMALL_WORDS = new Set([
+    "a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "into", "nor", "of", "on", "or", "per", "the", "to", "vs", "with",
+])
+
+const LEGACY_TOC_EXACT = new Set([
+    "Final Thoughts",
+    "Frequently Asked Questions",
+    "Key Takeaways",
+    "The Bottom Line",
+])
+
+function looksLikeLegacyTocHeading(value: string): boolean {
+    const text = value.trim()
+    if (!text || text.includes("\n")) return false
+    if (LEGACY_TOC_EXACT.has(text)) return true
+    if (text.length < 8 || text.length > 110) return false
+    if (/[.!:;]$/.test(text)) return false
+    if (/[£=→\t|]/.test(text)) return false
+    if (/^(?:---|#{1,6}\s|\d+[.)]\s|[-*+]\s|https?:\/\/)/i.test(text)) return false
+    if (/^(?:Car [A-Z0-9]|Vehicle [A-Z0-9]|EV [A-Z0-9]|Cat [SN] Car [A-Z0-9])(?:$|\s)/.test(text)) return false
+
+    const words = text.split(/\s+/).filter(Boolean)
+    if (words.length < 3 || words.length > 15) return false
+
+    return words.every((word) => {
+        const cleaned = word
+            .replace(/^[“"'([]+/, "")
+            .replace(/[?,”"')\]]+$/, "")
+        if (!cleaned) return true
+        if (LEGACY_TOC_SMALL_WORDS.has(cleaned.toLowerCase())) return true
+        return /^[A-Z0-9]/.test(cleaned)
+    })
+}
+
 function extractHeadings(content: string): Array<{ level: 2 | 3; text: string; id: string }> {
-    return content.split("\n").flatMap((line) => {
-        const match = line.match(/^(#{2,3})\s+(.+)$/)
-        if (!match) return []
-        const text = cleanHeading(match[2])
-        if (!text) return []
-        return [{ level: match[1].length as 2 | 3, text, id: blogHeadingId(text) }]
+    const seenIds = new Set<string>()
+
+    return content.split(/\n\s*\n/).flatMap((block) => {
+        const line = block.trim()
+        if (!line || line.includes("\n")) return []
+
+        const markdownMatch = line.match(/^(#{1,3})\s+(.+)$/)
+        let level: 2 | 3
+        let text: string
+
+        if (markdownMatch) {
+            level = markdownMatch[1].length === 3 ? 3 : 2
+            text = cleanHeading(markdownMatch[2])
+        } else if (looksLikeLegacyTocHeading(line)) {
+            level = 2
+            text = cleanHeading(line)
+        } else {
+            return []
+        }
+
+        const id = blogHeadingId(text)
+        if (!text || !id || seenIds.has(id)) return []
+        seenIds.add(id)
+        return [{ level, text, id }]
     })
 }
 

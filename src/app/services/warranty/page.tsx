@@ -5,6 +5,7 @@ import Link from "next/link"
 import { ArrowLeft, ArrowRight, BadgeCheck, CheckCircle, FileText, LayoutDashboard, ShieldCheck, Users } from "lucide-react"
 import { warrantyServiceEnabled } from "@/lib/featureFlags"
 import { ServiceLeadForm } from "@/components/services/ServiceLeadForm"
+import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 
 export default function WarrantyServicePage() {
@@ -51,9 +52,11 @@ export default function WarrantyServicePage() {
                                 <p className="font-black mb-1">Warranty uses a matched-enquiry model — not the 9% job payout model.</p>
                                 <p className="text-sm text-[var(--text-muted)] leading-relaxed">CarMazium does not collect the warranty premium through the Delivery/Inspection service-job flow or deduct that 9% job fee from a warranty payout. The provider issues its own product terms and customer agreement.</p>
                             </div>
-                            <Link href={providerHref} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-white text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-colors">
-                                Apply as a warranty provider <ArrowRight size={15} />
-                            </Link>
+                            <Button asChild>
+                                <Link href={providerHref}>
+                                    Apply as a warranty provider <ArrowRight size={15} />
+                                </Link>
+                            </Button>
                         </div>
                         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
                             <div className="flex gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5"><BadgeCheck className="text-primary shrink-0" /><div><h3 className="font-bold text-sm mb-1">Capability-specific approval</h3><p className="text-xs text-[var(--text-muted)]">Only businesses approved for Warranty receive warranty enquiries.</p></div></div>

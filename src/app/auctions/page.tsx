@@ -19,6 +19,7 @@ import {
     Wrench,
     type LucideIcon,
 } from "lucide-react"
+import { Button, buttonVariants } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import {
     deliveryServiceEnabled,
@@ -120,7 +121,7 @@ function PillarCard({ pillar, index }: { pillar: Pillar; index: number }) {
                             </li>
                         ))}
                     </ul>
-                    <span className="mt-auto inline-flex items-center justify-between border-t border-[var(--border-default)] pt-4 text-sm font-black text-primary">
+                    <span className={buttonVariants({ className: "mt-auto w-full justify-between" })}>
                         {cta}
                         <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
                     </span>
@@ -254,18 +255,14 @@ export default function TradeXchangePage() {
                             transition={{ delay: 0.18 }}
                             className="mt-8 flex flex-col gap-3 sm:flex-row"
                         >
-                            <Link
-                                href={providerHref}
-                                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
-                            >
-                                Join as a service provider <ArrowRight size={16} />
-                            </Link>
-                            <a
-                                href="#tradexchange-areas"
-                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-6 py-3.5 text-sm font-black uppercase tracking-widest text-white backdrop-blur-sm transition-colors hover:bg-white/15"
-                            >
-                                Explore TradeXchange
-                            </a>
+                            <Button asChild size="lg">
+                                <Link href={providerHref}>
+                                    Join as a service provider <ArrowRight size={16} />
+                                </Link>
+                            </Button>
+                            <Button asChild variant="outline" size="lg" className="border-white/25 bg-white/10 text-white hover:border-white/40 hover:bg-white/15 hover:text-white">
+                                <a href="#tradexchange-areas">Explore TradeXchange</a>
+                            </Button>
                         </motion.div>
                     </div>
                 </div>
@@ -416,12 +413,11 @@ export default function TradeXchangePage() {
                                     Start with one capability or apply for several. Approval is handled per service, so your TradeXchange presence can grow with your business.
                                 </p>
                             </div>
-                            <Link
-                                href={providerHref}
-                                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-7 py-4 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
-                            >
-                                Create provider account <ArrowRight size={16} />
-                            </Link>
+                            <Button asChild size="lg" className="shrink-0">
+                                <Link href={providerHref}>
+                                    Create provider account <ArrowRight size={16} />
+                                </Link>
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -433,9 +429,11 @@ export default function TradeXchangePage() {
                     <p className="mx-auto mb-6 max-w-2xl text-sm md:text-base text-[var(--text-muted)]">
                         Open the card that matches what you need. Every TradeXchange page explains that service first, then gives you the relevant action — browse, post a job, send an enquiry or apply as a provider.
                     </p>
-                    <Link href="/services" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 sm:w-auto">
-                        View the TradeXchange Services hub <ArrowRight size={15} />
-                    </Link>
+                    <Button asChild>
+                        <Link href="/services">
+                            View the TradeXchange Services hub <ArrowRight size={15} />
+                        </Link>
+                    </Button>
                 </div>
             </section>
         </div>
