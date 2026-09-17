@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/Input"
 import { BlogContent } from "@/components/blog/BlogContent"
 import { uploadImage } from "@/lib/supabase"
 import { createBlogPost, updateBlogPost, type BlogPost, type BlogPostStatus } from "@/lib/blogApi"
+import { extractBlogContentInsights } from "@/lib/blogContentInsights"
 import { stripCarMaziumBrandSuffix, validateBlogPost } from "@/lib/blogValidation"
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com"
@@ -119,6 +120,8 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
         [title, slug, excerpt, content, coverImage, tags, metaTitle, metaDescription, noIndex],
     )
 
+    const contentInsights = React.useMemo(() => extractBlogContentInsights(content), [content])
+
     const cleanMetaTitle = stripCarMaziumBrandSuffix(metaTitle)
     const effectiveMetaTitle = (cleanMetaTitle || title.trim() || "Your article title").trim()
     const effectiveMetaDescription = (metaDescription.trim() || excerpt.trim() || "Add a useful meta description for this article.").trim()
@@ -129,8 +132,8 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
     const canonicalUrl = `${SITE_URL}/blog/${canonicalSlug}`
     const words = countWords(content)
     const minutes = Math.max(1, Math.ceil(words / 220))
-    const headingCount = (content.match(/^#{2,3}\s+.+$/gm) || []).length
-    const internalLinkCount = (content.match(/\]\((?:\/|https?:\/\/(?:www\.)?carmazium\.com\/)[^)]+\)/gi) || []).length
+    const headingCount = contentInsights.h2Count + contentInsights.h3Count
+    const internalLinkCount = contentInsights.internalLinkCount
     const primaryTopic = tags[0] || ""
     const topicMentioned = primaryTopic
         ? `${title} ${excerpt} ${content}`.toLowerCase().includes(primaryTopic.toLowerCase())
@@ -413,7 +416,7 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                         <h3 className="text-xs font-black uppercase tracking-[0.13em] text-[var(--text-primary)]">Content (Markdown)</h3>
-                        <p className="mt-1 text-[10px] text-[var(--text-faint)]">{words.toLocaleString()} words · {minutes} min read · {headingCount} sections · {internalLinkCount} internal links</p>
+                        <p className="mt-1 text-[10px] text-[var(--text-faint)]">{words.toLocaleString()} words · {minutes} min read · {headingCount} sections · {contentInsights.internalLinkCount} internal · {contentInsights.externalLinkCount} external links</p>
                     </div>
                     <div className="flex items-center gap-4">
                         {!showPreview && <button type="button" onClick={() => contentFileInputRef.current?.click()} disabled={contentUploading} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline disabled:opacity-50">{contentUploading ? <Loader2 size={12} className="animate-spin" /> : <ImagePlus size={12} />}{contentUploading ? "Uploading…" : "Insert Image"}</button>}
@@ -426,6 +429,46 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
                 ) : (
                     <textarea ref={contentTextareaRef} value={content} onChange={(e) => setContent(e.target.value)} rows={22} placeholder={"## A clear section heading\n\nWrite useful, original content in Markdown. Add internal links such as [Sell your car](/sell), cite sources where relevant, and break long articles into H2/H3 sections.\n\nUse ‘Insert Image’ above to upload an image at the cursor."} className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-3 text-sm font-mono leading-6 placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none resize-y" />
                 )}
+
+                <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3 pt-2">
+                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--text-muted)]">Structure</p>
+                        <p className="mt-2 text-sm font-bold text-[var(--text-primary)]">{contentInsights.h2Count} H2 · {contentInsights.h3Count} H3</p>
+                        <p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">Use H2 for main sections and H3 only for subsections. Never add another H1 inside the body.</p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--text-muted)]">Links</p>
+                        <p className="mt-2 text-sm font-bold text-[var(--text-primary)]">{contentInsights.internalLinkCount} internal · {contentInsights.externalLinkCount} external</p>
+                        <p className={`mt-1 text-[10px] leading-4 ${contentInsights.emptyLinkCount || contentInsights.unsafeLinkCount ? "text-amber-400" : "text-[var(--text-muted)]"}`}>{contentInsights.emptyLinkCount || contentInsights.unsafeLinkCount ? `${contentInsights.emptyLinkCount} empty and ${contentInsights.unsafeLinkCount} unsafe link target${contentInsights.emptyLinkCount + contentInsights.unsafeLinkCount === 1 ? "" : "s"} detected.` : "Link targets look structurally clean."}</p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--text-muted)]">Sources</p>
+                        <p className="mt-2 text-sm font-bold text-[var(--text-primary)]">{contentInsights.authoritySourceLinkCount} recognised authority source{contentInsights.authoritySourceLinkCount === 1 ? "" : "s"}</p>
+                        <p className={`mt-1 text-[10px] leading-4 ${contentInsights.unlinkedAuthorityMentions.length ? "text-amber-400" : "text-[var(--text-muted)]"}`}>{contentInsights.unlinkedAuthorityMentions.length ? `Mentioned without a matching source link: ${contentInsights.unlinkedAuthorityMentions.join(", ")}.` : contentInsights.hasSourceSection ? "A Sources / References section is present." : "Use authoritative inline links or add a Sources & further reading section when the article relies on external facts."}</p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--text-muted)]">Inline images</p>
+                        <p className="mt-2 text-sm font-bold text-[var(--text-primary)]">{contentInsights.imageCount} image{contentInsights.imageCount === 1 ? "" : "s"}</p>
+                        <p className={`mt-1 text-[10px] leading-4 ${contentInsights.imagesMissingAlt ? "text-amber-400" : "text-[var(--text-muted)]"}`}>{contentInsights.imagesMissingAlt ? `${contentInsights.imagesMissingAlt} image${contentInsights.imagesMissingAlt === 1 ? " needs" : "s need"} more descriptive alt text.` : contentInsights.imageCount ? "Inline image alt text looks useful." : "Images are optional; use them only when they help the reader."}</p>
+                    </div>
+                </div>
+
+                <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--text-muted)]">Article heading outline</p>
+                        <span className="text-[10px] text-[var(--text-faint)]">This is the structure readers and the table of contents will follow.</span>
+                    </div>
+                    {contentInsights.headings.length ? (
+                        <div className="mt-3 space-y-1.5">
+                            {contentInsights.headings.slice(0, 12).map((heading, index) => (
+                                <p key={`${heading.level}-${heading.text}-${index}`} className={`text-xs text-[var(--text-secondary)] ${heading.level === 3 ? "pl-5" : "font-bold"}`}>{heading.level === 2 ? "H2" : "H3"} · {heading.text}</p>
+                            ))}
+                            {contentInsights.headings.length > 12 && <p className="text-[10px] text-[var(--text-faint)]">+ {contentInsights.headings.length - 12} more headings</p>}
+                        </div>
+                    ) : (
+                        <p className="mt-2 text-[10px] leading-4 text-amber-400">No H2/H3 outline yet. Add ## section headings so the article is easy to scan and can build a useful “In this article” navigation.</p>
+                    )}
+                </div>
             </section>
 
             <section className="glass-card p-5 md:p-6 space-y-4">
