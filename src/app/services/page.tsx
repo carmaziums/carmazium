@@ -7,6 +7,7 @@ import {
     Briefcase,
     Building2,
     ClipboardList,
+    PlusCircle,
     Search,
     ShieldCheck,
     WalletCards,
@@ -22,6 +23,7 @@ import {
 } from "@/lib/featureFlags"
 
 export default function ServicesPage() {
+    const paidJobsEnabled = deliveryServiceEnabled || inspectionServiceEnabled
     const services = [
         {
             title: "Vehicle Dealer",
@@ -82,26 +84,73 @@ export default function ServicesPage() {
                     href="/auctions"
                     className="inline-flex items-center gap-1 rounded-sm text-sm font-semibold text-[var(--text-muted)] transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                    <ArrowLeft size={15} /> Back to TradeXchange home
+                    <ArrowLeft size={15} /> TradeXchange overview
                 </Link>
             </div>
 
             <PageHero
-                eyebrow="TradeXchange"
-                title="Vehicle Services Marketplace"
+                eyebrow="TradeXchange Services"
+                title="Post work or compete for it"
                 description={
                     <p>
-                        Use one CarMazium ecosystem for motor-trade capability, transport, inspections, finance enquiries and warranty enquiries — with the commercial model made clear for each service.
+                        Need delivery, recovery or an inspection? Any signed-in CarMazium user can post a paid service job. Approved Partner businesses see matching open jobs and compete by sending quotes.
                     </p>
                 }
                 actions={
-                    <Button asChild variant="outline" size="lg">
-                        <Link href="/auth/signup?role=dealer">
-                            <Building2 size={17} /> Create Partner Account
-                        </Link>
-                    </Button>
+                    paidJobsEnabled ? (
+                        <div className="flex flex-wrap justify-center gap-3">
+                            <Button asChild size="lg">
+                                <Link href="/services/jobs/new">
+                                    <PlusCircle size={17} /> Post a Job
+                                </Link>
+                            </Button>
+                            <Button asChild variant="outline" size="lg">
+                                <Link href="/services/jobs">
+                                    <ClipboardList size={17} /> My Posted Jobs
+                                </Link>
+                            </Button>
+                            <Button asChild variant="outline" size="lg">
+                                <Link href="/dashboard/service/jobs">
+                                    <Search size={17} /> Provider: Available Jobs
+                                </Link>
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button asChild variant="outline" size="lg">
+                            <Link href="/auth/signup?role=dealer">
+                                <Building2 size={17} /> Create Partner Account
+                            </Link>
+                        </Button>
+                    )
                 }
             />
+
+            {paidJobsEnabled && (
+                <section className="container mx-auto px-5 pt-10">
+                    <div className="mx-auto grid max-w-6xl gap-5 md:grid-cols-2">
+                        <div className="rounded-2xl border border-primary/25 bg-primary/[0.05] p-6 md:p-7">
+                            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><PlusCircle size={20} /></div>
+                            <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">For customers</p>
+                            <h2 className="mt-2 text-xl font-bold">Post one job and compare competing quotes</h2>
+                            <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">Choose Delivery, Collection, Recovery or Vehicle Inspection. Your job is shown only to businesses approved for that service type.</p>
+                            <div className="mt-5 flex flex-wrap gap-2">
+                                <Button asChild><Link href="/services/jobs/new">Post a Job</Link></Button>
+                                <Button asChild variant="outline"><Link href="/services/jobs">My Posted Jobs</Link></Button>
+                            </div>
+                        </div>
+                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 md:p-7">
+                            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500"><Search size={20} /></div>
+                            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-500">For providers</p>
+                            <h2 className="mt-2 text-xl font-bold">See matching jobs and compete with quotes</h2>
+                            <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">Approved Partner businesses see open work matching their Delivery or Inspection capabilities. Staff can act for the business where permission is granted.</p>
+                            <div className="mt-5 flex flex-wrap gap-2">
+                                <Button asChild><Link href="/dashboard/service/jobs">Available Jobs</Link></Button>
+                                <Button asChild variant="outline"><Link href="/dashboard/service/capabilities">Manage Service Areas</Link></Button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            )}
 
             <section className="container mx-auto px-5 py-16 md:py-20">
                 <div className="mx-auto max-w-6xl">
