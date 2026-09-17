@@ -2,18 +2,14 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Loader2, Briefcase, AlertCircle, Inbox } from "lucide-react"
+import { Loader2, Briefcase, AlertCircle, Inbox, ArrowLeft } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getJobFeed, getAssignedJobs, formatPence, type ServiceJob } from "@/lib/servicesApi"
 import { JobListCard } from "@/components/services/JobBits"
 
 /**
- * The contractor's marketplace: open jobs to quote on, and jobs they have won.
- *
- * This replaced the legacy ServiceRequest "My Jobs" page. That page could never
- * have shown anything — nothing ever created the ContractorProfile it queried
- * by — so nothing was lost.
+ * The provider marketplace: open jobs to quote on, and jobs the business has won.
  *
  * A 403 from the feed means "no approved capability yet"; that is a state, not
  * an error, and it gets a signpost to the capabilities page rather than a red
@@ -49,17 +45,26 @@ export default function ContractorJobsPage() {
                 <main className="flex-1 space-y-6">
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                         <div>
-                            <h1 className="text-3xl font-bold font-heading mb-1">Jobs</h1>
-                            <p className="text-sm text-[var(--text-muted)]">Open jobs in your approved service areas, and the ones you have won.</p>
+                            <p className="text-primary text-xs font-black uppercase tracking-[0.18em] mb-2">TradeXchange Provider Marketplace</p>
+                            <h1 className="text-3xl font-bold font-heading mb-1">Available Jobs</h1>
+                            <p className="text-sm text-[var(--text-muted)] max-w-2xl">These are customer-posted Delivery, Recovery and Inspection jobs your approved Partner business can compete for. Send a quote on suitable work; jobs you win stay under My Work.</p>
                         </div>
-                        <div className="flex items-center gap-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl p-1">
-                            {([["open", `Open${feed ? ` (${feed.length})` : ""}`], ["mine", `My jobs${mine ? ` (${mine.length})` : ""}`]] as const).map(([k, label]) => (
-                                <button key={k} type="button" onClick={() => setTab(k)}
-                                    className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${tab === k ? "bg-primary text-white" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
+                        <Link href="/services" className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-default)] px-4 py-2.5 text-xs font-black uppercase tracking-widest hover:border-primary/40 transition-colors">
+                            <ArrowLeft size={14} /> TradeXchange Services
+                        </Link>
+                    </div>
+
+                    <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 text-sm leading-6 text-[var(--text-muted)]">
+                        Looking for the customer side instead? Any signed-in CarMazium user can <Link href="/services/jobs/new" className="font-bold text-primary hover:underline">post a job here</Link> and approved providers will see matching work in this marketplace.
+                    </div>
+
+                    <div className="flex items-center gap-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl p-1 w-fit max-w-full">
+                        {([["open", `Available${feed ? ` (${feed.length})` : ""}`], ["mine", `My Work${mine ? ` (${mine.length})` : ""}`]] as const).map(([k, label]) => (
+                            <button key={k} type="button" onClick={() => setTab(k)}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${tab === k ? "bg-primary text-white" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
+                                {label}
+                            </button>
+                        ))}
                     </div>
 
                     {notApproved && (
@@ -67,7 +72,7 @@ export default function ContractorJobsPage() {
                             <AlertCircle size={22} className="text-amber-500 shrink-0" />
                             <div className="flex-1">
                                 <p className="font-bold text-sm">No approved service areas yet</p>
-                                <p className="text-xs text-[var(--text-muted)] mt-0.5">Apply for a service area and connect Stripe. Jobs appear here once CarMazium approves you.</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-0.5">Apply for Delivery & Recovery or Vehicle Inspection and connect Stripe. Matching jobs appear here once CarMazium approves that capability.</p>
                             </div>
                             <Link href="/dashboard/service/capabilities" className="text-xs font-black uppercase tracking-widest text-primary hover:underline shrink-0">Apply now →</Link>
                         </div>
@@ -78,7 +83,7 @@ export default function ContractorJobsPage() {
                     {list && list.length === 0 && !notApproved && (
                         <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-12 text-center">
                             {tab === "open" ? <Inbox size={30} className="mx-auto text-[var(--text-muted)] mb-3" /> : <Briefcase size={30} className="mx-auto text-[var(--text-muted)] mb-3" />}
-                            <p className="text-sm text-[var(--text-muted)]">{tab === "open" ? "No open jobs right now. New ones are posted daily — check back or watch your notifications." : "You have not won a job yet. Quote on open jobs to get started."}</p>
+                            <p className="text-sm text-[var(--text-muted)]">{tab === "open" ? "No matching customer jobs are open right now. New jobs appear here automatically when they match one of your approved service areas." : "Your business has not won a job yet. Quote on Available Jobs to get started."}</p>
                         </div>
                     )}
 
@@ -91,7 +96,7 @@ export default function ContractorJobsPage() {
                                         ? <span className="text-xs font-bold text-emerald-500">Your quote: {formatPence(myQuote.amountPence)}</span>
                                         : <span className="text-xs font-bold text-primary">{j._count?.quotes ?? 0} quote{(j._count?.quotes ?? 0) === 1 ? "" : "s"} so far</span>
                                     : j.agreedAmountPence != null
-                                        ? <span className="text-xs font-bold">{formatPence(j.contractorAmountPence ?? j.agreedAmountPence)} to you</span>
+                                        ? <span className="text-xs font-bold">{formatPence(j.contractorAmountPence ?? j.agreedAmountPence)} to your business</span>
                                         : undefined
                                 return <JobListCard key={j.id} job={j} href={`/dashboard/service/jobs/${j.id}`} trailing={trailing} />
                             })}

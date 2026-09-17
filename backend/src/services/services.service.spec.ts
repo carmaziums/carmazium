@@ -206,6 +206,7 @@ const db = new FakeDb();
 const notify = jest.fn().mockResolvedValue(null);
 const sendBrandedEmail = jest.fn().mockResolvedValue({ id: 'email' });
 const sessionsCreate = jest.fn();
+const sessionsRetrieve = jest.fn();
 const refundsCreate = jest.fn();
 const transfersCreate = jest.fn();
 
@@ -229,7 +230,7 @@ beforeAll(async () => {
                 provide: PaymentsService,
                 useValue: {
                     getStripeClient: async () => ({
-                        checkout: { sessions: { create: sessionsCreate } },
+                        checkout: { sessions: { create: sessionsCreate, retrieve: sessionsRetrieve } },
                         refunds: { create: refundsCreate },
                         transfers: { create: transfersCreate },
                     }),
@@ -407,7 +408,8 @@ describe('Delivery & Recovery — end to end', () => {
         await expect(svc.cancelJob(CUSTOMER.id, jobId, {} as any)).rejects.toThrow(/dispute/i);
     });
 
-    it('an abandoned checkout can be re-entered without re-accepting', async () => {
+    it('an abandoned checkout can be re-entered without re-accepting after Stripe confirms expiry', async () => {
+        sessionsRetrieve.mockResolvedValueOnce({ id: 'cs_1', status: 'expired', payment_status: 'unpaid', url: null });
         sessionsCreate.mockResolvedValueOnce({ id: 'cs_2', url: 'https://checkout.stripe.com/cs_2' });
         const { checkoutUrl } = await svc.acceptQuote(CUSTOMER.id, jobId, kentQuoteId);
         expect(checkoutUrl).toBe('https://checkout.stripe.com/cs_2');

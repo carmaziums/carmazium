@@ -1,7 +1,6 @@
 import {
     Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Req, HttpCode, HttpStatus,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { ApiTags, ApiOperation, ApiCookieAuth, ApiQuery } from '@nestjs/swagger';
 import { ServiceType } from '@prisma/client';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
@@ -14,6 +13,9 @@ import { ACCEPTED_PAYMENT_TIMEOUT_MINUTES } from './services-lifecycle.service';
 import {
     CreateJobDto, JobFromPurchaseDto, CancelJobDto, UpsertQuoteDto, ApplyCapabilityDto,
 } from './dto';
+
+/** The TradeXchange paid-job commercial split is fixed: 9% CarMazium / 91% provider business. */
+const SERVICE_PLATFORM_FEE_RATE = 0.09;
 
 /**
  * TradeXchange service marketplace.
@@ -30,7 +32,6 @@ export class ServicesController {
     constructor(
         private readonly services: ServicesService,
         private readonly tradeTeam: TradeTeamService,
-        private readonly config: ConfigService,
     ) { }
 
     // ── Shared marketplace settings ───────────────────────────────────────
@@ -38,13 +39,9 @@ export class ServicesController {
     @Get('settings')
     @ApiOperation({ summary: 'Current TradeXchange service fee and lifecycle settings' })
     async settings() {
-        const configured = Number(this.config.get<string>('SERVICE_PLATFORM_FEE_RATE') ?? '0.09');
-        const platformFeeRate = Number.isFinite(configured) && configured >= 0 && configured < 1
-            ? configured
-            : 0.09;
         return new StandardResponse({
-            platformFeeRate,
-            providerShareRate: 1 - platformFeeRate,
+            platformFeeRate: SERVICE_PLATFORM_FEE_RATE,
+            providerShareRate: 1 - SERVICE_PLATFORM_FEE_RATE,
             acceptedPaymentTimeoutMinutes: ACCEPTED_PAYMENT_TIMEOUT_MINUTES,
         });
     }

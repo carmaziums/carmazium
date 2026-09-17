@@ -139,6 +139,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
 
     const unifiedLinks: LinkObj[] = [
         { href: "/dashboard/user?tab=overview", label: "Home", icon: LayoutDashboard, section: "Dashboard" },
+        { href: "/services/jobs", label: "TradeXchange Jobs", icon: Briefcase, section: "Services" },
         { href: "/dashboard/user?tab=inventory", label: "My Listings", icon: Car, section: "Selling" },
         { href: "/dashboard/user?tab=offers", label: "Offers Received", icon: Tag, badge: pendingOffersCount, section: "Selling" },
         { href: "/dashboard/user?tab=earnings", label: "Sales & Earnings", icon: DollarSign, section: "Selling" },
@@ -152,8 +153,9 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     const sellerLinks: LinkObj[] = [
         unifiedLinks[0],
         unifiedLinks[1],
+        unifiedLinks[2],
         { href: "/dashboard/seller/auctions", label: "My Auctions", icon: Gavel, section: "Selling" },
-        ...unifiedLinks.slice(2),
+        ...unifiedLinks.slice(3),
     ]
 
     const links: Record<string, LinkObj[]> = {
@@ -162,7 +164,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         provider: [
             ...(isPartnerOwner ? [{ href: "/dashboard/partner", label: "Partner Home", icon: Building2, section: "Business" }] : []),
             { href: "/dashboard/service", label: "Service Overview", icon: LayoutDashboard, section: "Services" },
-            { href: "/dashboard/service/jobs", label: "Jobs", icon: Briefcase, section: "Services" },
+            { href: "/dashboard/service/jobs", label: "Available Jobs", icon: Briefcase, section: "Services" },
             { href: "/dashboard/service/capabilities", label: "Service Areas", icon: ShieldCheck, section: "Services" },
             { href: "/dashboard/service/messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account" },
             { href: "/dashboard/service/settings", label: "Settings", icon: Settings, section: "Account" },

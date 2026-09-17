@@ -33,9 +33,8 @@ const AUTO_CONFIRM_HOURS = 48;
 
 /**
  * What a job looks like to whoever is asking. The customer's identity and
- * street addresses are the "contact shared only with your pick" data — they go
- * to the customer, the accepted contractor and admins, and to nobody else.
- * Postcodes are NOT private: a contractor cannot quote a route without them.
+ * street addresses are private until the accepted job is paid. Postcodes are
+ * NOT private: an approved provider cannot quote a route without them.
  */
 type Viewer = { userId: string; role: UserRole; contractorProfileId?: string | null };
 
@@ -64,14 +63,9 @@ export class ServicesService {
 
     // ── Money ──────────────────────────────────────────────────────────────
 
-    /** Platform fee as a fraction. Env-overridable; 9% is the agreed default. */
+    /** TradeXchange paid jobs always use the agreed 9% CarMazium / 91% provider split. */
     private feeRate(): number {
-        const raw = Number(this.config.get<string>('SERVICE_PLATFORM_FEE_RATE') ?? '0.09');
-        if (!Number.isFinite(raw) || raw < 0 || raw >= 1) {
-            this.logger.warn(`SERVICE_PLATFORM_FEE_RATE "${raw}" is not a fraction in [0,1) — using 0.09`);
-            return 0.09;
-        }
-        return raw;
+        return 0.09;
     }
 
     /**
@@ -353,7 +347,7 @@ export class ServicesService {
         if (job.status !== ServiceJobStatus.OPEN) {
             throw new BadRequestException(
                 job.status === ServiceJobStatus.ACCEPTED
-                    ? 'A quote has been accepted. Raise a dispute if you need to cancel.'
+                    ? 'A quote has been accepted and checkout is pending. Complete payment or let the unpaid acceptance reopen; paid jobs can be disputed.'
                     : 'This job can no longer be cancelled.',
             );
         }
@@ -363,16 +357,19 @@ export class ServicesService {
             include: { contractor: { include: { user: { select: { id: true } } } } },
         });
 
-        await this.prisma.$transaction([
-            this.prisma.serviceJob.update({
-                where: { id: jobId },
+        await this.prisma.$transaction(async (tx) => {
+            const cancelled = await tx.serviceJob.updateMany({
+                where: { id: jobId, customerId, status: ServiceJobStatus.OPEN },
                 data: { status: ServiceJobStatus.CANCELLED, cancelledAt: new Date(), cancelReason: dto.reason?.trim() || null },
-            }),
-            this.prisma.serviceQuote.updateMany({
+            });
+            if (cancelled.count !== 1) {
+                throw new ConflictException('The job state changed before it could be cancelled.');
+            }
+            await tx.serviceQuote.updateMany({
                 where: { jobId, status: ServiceQuoteStatus.ACTIVE },
                 data: { status: ServiceQuoteStatus.EXPIRED },
-            }),
-        ]);
+            });
+        });
 
         for (const q of quotes) {
             await this.notify(q.contractor.user.id, 'SERVICE_JOB_CANCELLED', 'Job cancelled',
@@ -392,19 +389,29 @@ export class ServicesService {
             throw new BadRequestException('This job is no longer open for acceptance.');
         }
 
+        const now = new Date();
+        if (job.expiresAt <= now) {
+            throw new BadRequestException('This job has expired and can no longer accept a quote.');
+        }
+
         const quote = job.quotes.find((q) => q.id === quoteId);
         if (!quote || quote.status !== ServiceQuoteStatus.ACTIVE) {
             throw new BadRequestException('That quote is no longer available.');
         }
-        if (quote.validUntil && quote.validUntil < new Date()) {
+        if (quote.validUntil && quote.validUntil <= now) {
             throw new BadRequestException('That quote has expired. Ask the provider to re-quote.');
         }
 
         const { rate, platformFeePence, contractorPence } = this.split(quote.amountPence);
 
-        const [, , payment] = await this.prisma.$transaction([
-            this.prisma.serviceJob.update({
-                where: { id: jobId },
+        const payment = await this.prisma.$transaction(async (tx) => {
+            const claimedJob = await tx.serviceJob.updateMany({
+                where: {
+                    id: jobId,
+                    customerId,
+                    status: ServiceJobStatus.OPEN,
+                    expiresAt: { gt: now },
+                },
                 data: {
                     status: ServiceJobStatus.ACCEPTED,
                     acceptedQuoteId: quote.id,
@@ -413,11 +420,28 @@ export class ServicesService {
                     platformFeeRate: new Prisma.Decimal(rate),
                     platformFeePence,
                     contractorAmountPence: contractorPence,
-                    acceptedAt: new Date(),
+                    acceptedAt: now,
                 },
-            }),
-            this.prisma.serviceQuote.update({ where: { id: quote.id }, data: { status: ServiceQuoteStatus.ACCEPTED } }),
-            this.prisma.servicePayment.create({
+            });
+            if (claimedJob.count !== 1) {
+                throw new ConflictException('The job state changed before the quote could be accepted.');
+            }
+
+            const claimedQuote = await tx.serviceQuote.updateMany({
+                where: {
+                    id: quote.id,
+                    jobId,
+                    contractorId: quote.contractorId,
+                    status: ServiceQuoteStatus.ACTIVE,
+                    OR: [{ validUntil: null }, { validUntil: { gt: now } }],
+                },
+                data: { status: ServiceQuoteStatus.ACCEPTED },
+            });
+            if (claimedQuote.count !== 1) {
+                throw new ConflictException('The selected quote changed before it could be accepted.');
+            }
+
+            const createdPayment = await tx.servicePayment.create({
                 data: {
                     jobId,
                     customerId,
@@ -427,12 +451,14 @@ export class ServicesService {
                     platformFeePence,
                     contractorPence,
                 },
-            }),
-            this.prisma.serviceQuote.updateMany({
+            });
+
+            await tx.serviceQuote.updateMany({
                 where: { jobId, status: ServiceQuoteStatus.ACTIVE, id: { not: quote.id } },
                 data: { status: ServiceQuoteStatus.DECLINED },
-            }),
-        ]);
+            });
+            return createdPayment;
+        });
 
         const declined = job.quotes.filter((q) => q.id !== quote.id && q.status === ServiceQuoteStatus.ACTIVE);
         for (const q of declined) {
@@ -449,7 +475,8 @@ export class ServicesService {
      * Return the existing payable Checkout session whenever possible. This
      * prevents repeated clicks or checkout re-entry from leaving multiple live
      * Stripe sessions that could each be paid for the same TradeXchange job.
-     * Expired sessions are replaced using a deterministic idempotency key.
+     * A replacement session is created only after Stripe positively confirms
+     * that the previous one is expired. If Stripe cannot verify it, fail closed.
      */
     private async freshCheckout(jobId: string, paymentId: string, grossPence: number, title: string, userId: string) {
         const stripe = await this.payments.getStripeClient();
@@ -460,12 +487,26 @@ export class ServicesService {
         });
         const existingSessionId = payment?.stripeCheckoutSessionId ?? null;
 
-        if (existingSessionId && typeof stripe.checkout.sessions.retrieve === 'function') {
-            try {
-                const existing = await stripe.checkout.sessions.retrieve(existingSessionId);
-                if (existing.status === 'open' && existing.url) return existing.url;
+        if (existingSessionId) {
+            if (typeof stripe.checkout.sessions.retrieve !== 'function') {
+                throw new BadRequestException('Unable to verify the existing checkout session. Please try again shortly.');
+            }
 
-                if (existing.status === 'complete' && existing.payment_status === 'paid') {
+            let existing: any;
+            try {
+                existing = await stripe.checkout.sessions.retrieve(existingSessionId);
+            } catch (e: any) {
+                this.logger.warn(`Could not verify Stripe Checkout session ${existingSessionId} for service job ${jobId}: ${e?.message}`);
+                throw new BadRequestException('Unable to verify the existing checkout session. Please try again shortly.');
+            }
+
+            if (existing.status === 'open') {
+                if (existing.url) return existing.url;
+                throw new BadRequestException('The existing checkout session is still open but Stripe returned no checkout URL.');
+            }
+
+            if (existing.status === 'complete') {
+                if (existing.payment_status === 'paid') {
                     await this.markPaid(
                         jobId,
                         paymentId,
@@ -473,8 +514,12 @@ export class ServicesService {
                     );
                     return `${base}/services/jobs/${jobId}?paid=1`;
                 }
-            } catch (e: any) {
-                this.logger.warn(`Could not reuse Stripe Checkout session ${existingSessionId} for service job ${jobId}: ${e?.message}`);
+                throw new BadRequestException('The existing checkout session completed without a confirmed payment. Please contact support.');
+            }
+
+            if (existing.status !== 'expired') {
+                this.logger.warn(`Unexpected Stripe Checkout status "${existing.status}" for service job ${jobId}; refusing replacement session.`);
+                throw new BadRequestException('Unable to confirm that the previous checkout is closed. Please try again shortly.');
             }
         }
 
@@ -519,13 +564,28 @@ export class ServicesService {
             return;
         }
 
-        await this.prisma.$transaction([
-            this.prisma.servicePayment.update({
-                where: { id: paymentId },
+        const transitioned = await this.prisma.$transaction(async (tx) => {
+            const paid = await tx.servicePayment.updateMany({
+                where: {
+                    id: paymentId,
+                    jobId,
+                    status: ServicePaymentStatus.PENDING,
+                    job: { is: { status: ServiceJobStatus.ACCEPTED } },
+                },
                 data: { status: ServicePaymentStatus.PAID, stripePaymentIntentId: paymentIntentId, paidAt: new Date() },
-            }),
-            this.prisma.serviceJob.update({ where: { id: jobId }, data: { status: ServiceJobStatus.PAID } }),
-        ]);
+            });
+            if (paid.count !== 1) return false;
+
+            const jobPaid = await tx.serviceJob.updateMany({
+                where: { id: jobId, status: ServiceJobStatus.ACCEPTED },
+                data: { status: ServiceJobStatus.PAID },
+            });
+            if (jobPaid.count !== 1) {
+                throw new ConflictException('The service job state changed while payment was being recorded.');
+            }
+            return true;
+        });
+        if (!transitioned) return;
 
         const job = await this.prisma.serviceJob.findUnique({
             where: { id: jobId },
@@ -561,10 +621,25 @@ export class ServicesService {
         if (!disputable.includes(job.status)) {
             throw new BadRequestException('Only a paid job can be disputed.');
         }
-        await this.prisma.serviceJob.update({
-            where: { id: jobId },
+
+        // Claim the dispute only while the held payment has no settlement
+        // operation in progress. `stripeTransferId` temporarily carries a
+        // deterministic release/refund claim token during Stripe settlement;
+        // requiring it to be null makes dispute vs payout/refund races fail
+        // closed instead of allowing both external money operations to run.
+        const frozen = await this.prisma.serviceJob.updateMany({
+            where: {
+                id: jobId,
+                customerId,
+                status: { in: disputable },
+                payment: { is: { status: ServicePaymentStatus.PAID, stripeTransferId: null } },
+            },
             data: { status: ServiceJobStatus.DISPUTED, cancelReason: reason?.trim() || null },
         });
+        if (frozen.count !== 1) {
+            throw new ConflictException('This job is already being settled or is no longer disputable.');
+        }
+
         await this.notifyAdmins('SERVICE_JOB_DISPUTED', 'Service job disputed',
             `"${job.title}" was disputed by the customer.${reason ? ` Reason: ${reason}` : ''}`, `/dashboard/admin/services?tab=disputes`);
         return { success: true };
@@ -593,11 +668,12 @@ export class ServicesService {
     }
 
     async assigned(contractorProfileId: string) {
-        return this.prisma.serviceJob.findMany({
+        const jobs = await this.prisma.serviceJob.findMany({
             where: { contractorId: contractorProfileId },
             orderBy: { updatedAt: 'desc' },
             include: { vehicles: true, customer: { select: CUSTOMER_PRIVATE }, payment: true },
         });
+        return jobs.map((job) => this.redact(job, this.contactUnlocked(job.payment?.status)));
     }
 
     async upsertQuote(contractorProfileId: string, approved: ServiceType[], userId: string, jobId: string, dto: UpsertQuoteDto) {
@@ -611,6 +687,11 @@ export class ServicesService {
         }
         if (job.customerId === userId) throw new BadRequestException('You cannot quote on your own job.');
 
+        const validUntil = dto.validUntil ? new Date(dto.validUntil) : null;
+        if (validUntil && validUntil <= new Date()) {
+            throw new BadRequestException('Quote validity must be in the future.');
+        }
+
         const existing = await this.prisma.serviceQuote.findUnique({
             where: { jobId_contractorId: { jobId, contractorId: contractorProfileId } },
         });
@@ -621,11 +702,11 @@ export class ServicesService {
             create: {
                 jobId, contractorId: contractorProfileId, submittedById: userId,
                 amountPence: dto.amountPence, message: dto.message?.trim() || null,
-                validUntil: dto.validUntil ? new Date(dto.validUntil) : null,
+                validUntil,
             },
             update: {
                 amountPence: dto.amountPence, message: dto.message?.trim() || null,
-                validUntil: dto.validUntil ? new Date(dto.validUntil) : null,
+                validUntil,
                 status: ServiceQuoteStatus.ACTIVE, submittedById: userId,
             },
         });
@@ -655,7 +736,15 @@ export class ServicesService {
     async startJob(contractorProfileId: string, jobId: string) {
         const job = await this.assignedJob(contractorProfileId, jobId);
         if (job.status !== ServiceJobStatus.PAID) throw new BadRequestException('The job must be paid before it starts.');
-        await this.prisma.serviceJob.update({ where: { id: jobId }, data: { status: ServiceJobStatus.IN_PROGRESS, startedAt: new Date() } });
+
+        const started = await this.prisma.serviceJob.updateMany({
+            where: { id: jobId, contractorId: contractorProfileId, status: ServiceJobStatus.PAID },
+            data: { status: ServiceJobStatus.IN_PROGRESS, startedAt: new Date() },
+        });
+        if (started.count !== 1) {
+            throw new ConflictException('The job state changed before it could be started.');
+        }
+
         await this.notify(job.customerId, 'SERVICE_JOB_STARTED', 'Job started',
             `Your provider has started "${job.title}".`, `/services/jobs/${jobId}`);
         return { success: true };
@@ -663,10 +752,19 @@ export class ServicesService {
 
     async completeJob(contractorProfileId: string, jobId: string) {
         const job = await this.assignedJob(contractorProfileId, jobId);
-        if (job.status !== ServiceJobStatus.IN_PROGRESS && job.status !== ServiceJobStatus.PAID) {
+        const completable: ServiceJobStatus[] = [ServiceJobStatus.IN_PROGRESS, ServiceJobStatus.PAID];
+        if (!completable.includes(job.status)) {
             throw new BadRequestException('This job cannot be marked complete from its current state.');
         }
-        await this.prisma.serviceJob.update({ where: { id: jobId }, data: { status: ServiceJobStatus.COMPLETED, completedAt: new Date() } });
+
+        const completed = await this.prisma.serviceJob.updateMany({
+            where: { id: jobId, contractorId: contractorProfileId, status: { in: completable } },
+            data: { status: ServiceJobStatus.COMPLETED, completedAt: new Date() },
+        });
+        if (completed.count !== 1) {
+            throw new ConflictException('The job state changed before it could be marked complete.');
+        }
+
         await this.notify(job.customerId, 'SERVICE_JOB_COMPLETED', 'Please confirm completion',
             `Your provider marked "${job.title}" complete. Confirm to release their payment — or it releases automatically in ${AUTO_CONFIRM_HOURS} hours.`,
             `/services/jobs/${jobId}`);
@@ -719,12 +817,22 @@ export class ServicesService {
             throw new ForbiddenException('You do not have access to this job.');
         }
 
-        const full = isCustomer || isAdmin || isAccepted;
-        const quotes = full && !isAccepted
+        const contactsUnlocked = this.contactUnlocked(job.payment?.status);
+        const canSeeCustomerContact = isCustomer || isAdmin || (isAccepted && contactsUnlocked);
+        const canSeeContractorContact = isAdmin || isAccepted || (isCustomer && contactsUnlocked);
+        const quotes = (isCustomer || isAdmin)
             ? job.quotes
             : job.quotes.filter((q) => q.contractorId === viewer.contractorProfileId);
 
-        return { ...this.redact({ ...job, quotes }, full), viewerRole: isCustomer ? 'customer' : isAccepted ? 'contractor' : isAdmin ? 'admin' : 'bidder' };
+        let shaped = this.redact({ ...job, quotes }, canSeeCustomerContact) as any;
+        if (!canSeeContractorContact && shaped.contractor) {
+            shaped = { ...shaped, contractor: this.contractorPublicView(shaped.contractor) };
+        }
+
+        return {
+            ...shaped,
+            viewerRole: isCustomer ? 'customer' : isAccepted ? 'contractor' : isAdmin ? 'admin' : 'bidder',
+        };
     }
 
     async adminListJobs(status?: ServiceJobStatus) {
@@ -756,17 +864,68 @@ export class ServicesService {
             return this.release(jobId, `admin ${adminId} resolved dispute in favour of the provider`);
         }
 
-        const stripe = await this.payments.getStripeClient();
         if (!job.payment.stripePaymentIntentId) throw new BadRequestException('No payment intent on record to refund.');
-        const refund = await stripe.refunds.create(
-            { payment_intent: job.payment.stripePaymentIntentId },
-            { idempotencyKey: `service-job-refund-${job.payment.id}` },
-        );
 
-        await this.prisma.$transaction([
-            this.prisma.servicePayment.update({ where: { id: job.payment.id }, data: { status: ServicePaymentStatus.REFUNDED, refundedAt: new Date() } }),
-            this.prisma.serviceJob.update({ where: { id: jobId }, data: { status: ServiceJobStatus.CANCELLED, cancelledAt: new Date(), cancelReason: dto.note?.trim() || 'Refunded after dispute' } }),
-        ]);
+        // A deterministic token in the otherwise-null transfer field acts as
+        // an atomic settlement claim. It blocks a simultaneous RELEASE from
+        // starting while this REFUND is in flight and is recoverable after a
+        // process/DB failure because retries use the same token/idempotency key.
+        const claimToken = `claim:refund:${job.payment.id}`;
+        if (job.payment.stripeTransferId && job.payment.stripeTransferId !== claimToken) {
+            throw new ConflictException('This payment is already being released.');
+        }
+        if (!job.payment.stripeTransferId) {
+            const claimed = await this.prisma.servicePayment.updateMany({
+                where: {
+                    id: job.payment.id,
+                    status: ServicePaymentStatus.PAID,
+                    stripeTransferId: null,
+                    job: { is: { status: ServiceJobStatus.DISPUTED } },
+                },
+                data: { stripeTransferId: claimToken },
+            });
+            if (claimed.count !== 1) {
+                throw new ConflictException('This payment is already being settled.');
+            }
+        }
+
+        const stripe = await this.payments.getStripeClient();
+        let refund: { id: string };
+        try {
+            refund = await stripe.refunds.create(
+                { payment_intent: job.payment.stripePaymentIntentId },
+                { idempotencyKey: `service-job-refund-${job.payment.id}` },
+            );
+        } catch (e) {
+            // Stripe never accepted the refund, so release the DB claim and
+            // leave the held payment available for a clean retry/admin choice.
+            await this.prisma.servicePayment.updateMany({
+                where: { id: job.payment.id, status: ServicePaymentStatus.PAID, stripeTransferId: claimToken },
+                data: { stripeTransferId: null },
+            });
+            throw e;
+        }
+
+        // Do not clear the claim if this DB finalization fails after Stripe has
+        // refunded successfully. A retry will recover using Stripe idempotency
+        // instead of making the same funds eligible for a provider release.
+        await this.prisma.$transaction(async (tx) => {
+            const paymentFinalized = await tx.servicePayment.updateMany({
+                where: { id: job.payment!.id, status: ServicePaymentStatus.PAID, stripeTransferId: claimToken },
+                data: { status: ServicePaymentStatus.REFUNDED, refundedAt: new Date(), stripeTransferId: null },
+            });
+            if (paymentFinalized.count !== 1) {
+                throw new ConflictException('Refund finalization lost its payment claim.');
+            }
+
+            const jobFinalized = await tx.serviceJob.updateMany({
+                where: { id: jobId, status: ServiceJobStatus.DISPUTED },
+                data: { status: ServiceJobStatus.CANCELLED, cancelledAt: new Date(), cancelReason: dto.note?.trim() || 'Refunded after dispute' },
+            });
+            if (jobFinalized.count !== 1) {
+                throw new ConflictException('Refund finalization lost its job state.');
+            }
+        });
         this.logger.log(`Service job ${jobId} refunded (${refund.id}) by admin ${adminId}`);
 
         await this.notify(job.customerId, 'SERVICE_JOB_REFUNDED', 'Refund issued',
@@ -778,19 +937,31 @@ export class ServicesService {
     }
 
     async expireOpenJobs(): Promise<number> {
+        const now = new Date();
         const stale = await this.prisma.serviceJob.findMany({
-            where: { status: ServiceJobStatus.OPEN, expiresAt: { lt: new Date() } },
+            where: { status: ServiceJobStatus.OPEN, expiresAt: { lt: now } },
             select: { id: true, title: true, customerId: true },
         });
+        let expired = 0;
         for (const j of stale) {
-            await this.prisma.$transaction([
-                this.prisma.serviceJob.update({ where: { id: j.id }, data: { status: ServiceJobStatus.EXPIRED } }),
-                this.prisma.serviceQuote.updateMany({ where: { jobId: j.id, status: ServiceQuoteStatus.ACTIVE }, data: { status: ServiceQuoteStatus.EXPIRED } }),
-            ]);
+            const claimed = await this.prisma.$transaction(async (tx) => {
+                const jobExpired = await tx.serviceJob.updateMany({
+                    where: { id: j.id, status: ServiceJobStatus.OPEN, expiresAt: { lt: now } },
+                    data: { status: ServiceJobStatus.EXPIRED },
+                });
+                if (jobExpired.count !== 1) return false;
+                await tx.serviceQuote.updateMany({
+                    where: { jobId: j.id, status: ServiceQuoteStatus.ACTIVE },
+                    data: { status: ServiceQuoteStatus.EXPIRED },
+                });
+                return true;
+            });
+            if (!claimed) continue;
+            expired += 1;
             await this.notify(j.customerId, 'SERVICE_JOB_EXPIRED', 'Job expired',
                 `"${j.title}" closed after ${JOB_OPEN_DAYS} days without an accepted quote. You can post it again.`, `/services/jobs/${j.id}`);
         }
-        return stale.length;
+        return expired;
     }
 
     async autoConfirmCompleted(): Promise<number> {
@@ -799,11 +970,16 @@ export class ServicesService {
             where: { status: ServiceJobStatus.COMPLETED, completedAt: { lt: cutoff } },
             select: { id: true },
         });
+        let released = 0;
         for (const j of due) {
-            try { await this.release(j.id, `auto-confirmed after ${AUTO_CONFIRM_HOURS}h`); }
-            catch (e: any) { this.logger.error(`Auto-confirm failed for ${j.id}: ${e?.message}`); }
+            try {
+                await this.release(j.id, `auto-confirmed after ${AUTO_CONFIRM_HOURS}h`);
+                released += 1;
+            } catch (e: any) {
+                this.logger.error(`Auto-confirm failed for ${j.id}: ${e?.message}`);
+            }
         }
-        return due.length;
+        return released;
     }
 
     private async release(jobId: string, why: string) {
@@ -813,32 +989,80 @@ export class ServicesService {
         });
         if (!job?.payment || !job.contractor) throw new BadRequestException('Nothing to release.');
         if (job.payment.status !== ServicePaymentStatus.PAID) throw new BadRequestException('Payment is not in a releasable state.');
+        if (job.status !== ServiceJobStatus.COMPLETED && job.status !== ServiceJobStatus.DISPUTED) {
+            throw new BadRequestException('This job is not in a releasable state.');
+        }
 
         const account = job.contractor.user.stripeConnectAccountId;
         if (!account) throw new BadRequestException('Provider has no Stripe Connect account.');
 
+        // Staff never supply or select this destination. `job.contractor` is
+        // the business ContractorProfile resolved when the quote was accepted,
+        // so the Connect account below is always owned by that provider business.
+        const claimToken = `claim:release:${job.payment.id}`;
+        if (job.payment.stripeTransferId && job.payment.stripeTransferId !== claimToken) {
+            throw new ConflictException('This payment is already being refunded or released.');
+        }
+        if (!job.payment.stripeTransferId) {
+            const claimed = await this.prisma.servicePayment.updateMany({
+                where: {
+                    id: job.payment.id,
+                    status: ServicePaymentStatus.PAID,
+                    stripeTransferId: null,
+                    job: { is: { status: job.status } },
+                },
+                data: { stripeTransferId: claimToken },
+            });
+            if (claimed.count !== 1) {
+                throw new ConflictException('This payment is already being settled or the job state changed.');
+            }
+        }
+
         const stripe = await this.payments.getStripeClient();
-        const transfer = await stripe.transfers.create(
-            {
-                amount: job.payment.contractorPence,
-                currency: 'gbp',
-                destination: account,
-            },
-            { idempotencyKey: `service-job-release-${job.payment.id}` },
-        );
+        let transfer: { id: string };
+        try {
+            transfer = await stripe.transfers.create(
+                {
+                    amount: job.payment.contractorPence,
+                    currency: 'gbp',
+                    destination: account,
+                },
+                { idempotencyKey: `service-job-release-${job.payment.id}` },
+            );
+        } catch (e) {
+            // Stripe did not accept the transfer. Release the claim so the
+            // customer can dispute or the payout can be retried safely.
+            await this.prisma.servicePayment.updateMany({
+                where: { id: job.payment.id, status: ServicePaymentStatus.PAID, stripeTransferId: claimToken },
+                data: { stripeTransferId: null },
+            });
+            throw e;
+        }
+
         const transferId = transfer.id;
         this.logger.log(`Service job ${jobId}: transferred ${job.payment.contractorPence}p to ${account} (${transferId}) — ${why}`);
 
-        await this.prisma.$transaction([
-            this.prisma.servicePayment.update({
-                where: { id: job.payment.id },
+        // If this DB finalization fails after Stripe accepted the transfer, the
+        // claim token is intentionally retained. A retry calls Stripe with the
+        // same idempotency key and then completes this transaction; a refund or
+        // dispute cannot claim the same held payment in the meantime.
+        await this.prisma.$transaction(async (tx) => {
+            const paymentFinalized = await tx.servicePayment.updateMany({
+                where: { id: job.payment!.id, status: ServicePaymentStatus.PAID, stripeTransferId: claimToken },
                 data: { status: ServicePaymentStatus.RELEASED, stripeTransferId: transferId, releasedAt: new Date() },
-            }),
-            this.prisma.serviceJob.update({
-                where: { id: jobId },
+            });
+            if (paymentFinalized.count !== 1) {
+                throw new ConflictException('Payout finalization lost its payment claim.');
+            }
+
+            const jobFinalized = await tx.serviceJob.updateMany({
+                where: { id: jobId, status: job.status },
                 data: { status: ServiceJobStatus.RELEASED, confirmedAt: job.confirmedAt ?? new Date() },
-            }),
-        ]);
+            });
+            if (jobFinalized.count !== 1) {
+                throw new ConflictException('Payout finalization lost its job state.');
+            }
+        });
 
         const c = job.contractor.user;
         await this.notify(c.id, 'SERVICE_PAYOUT_RELEASED', 'Payment released',
@@ -863,6 +1087,24 @@ export class ServicesService {
         if (!job) throw new NotFoundException('Job not found');
         if (job.contractorId !== contractorProfileId) throw new ForbiddenException('This job is not assigned to you.');
         return job;
+    }
+
+    private contactUnlocked(status?: ServicePaymentStatus | null): boolean {
+        return status === ServicePaymentStatus.PAID
+            || status === ServicePaymentStatus.RELEASED
+            || status === ServicePaymentStatus.REFUNDED;
+    }
+
+    private contractorPublicView(contractor: any) {
+        if (!contractor) return contractor;
+        return {
+            id: contractor.id,
+            businessName: contractor.businessName,
+            rating: contractor.rating,
+            totalReviews: contractor.totalReviews,
+            serviceArea: contractor.serviceArea,
+            user: contractor.user ? { firstName: contractor.user.firstName } : null,
+        };
     }
 
     private redact<T extends Record<string, any>>(job: T, full: boolean): T {
