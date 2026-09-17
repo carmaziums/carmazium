@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBlogPostDto } from './dto/create-blog-post.dto';
 import { UpdateBlogPostDto } from './dto/update-blog-post.dto';
+import { assertBlogPublishable, sanitizeBlogWrite } from './blog-publication.validator';
 
 @Injectable()
 export class BlogService {
@@ -110,60 +111,90 @@ export class BlogService {
     }
 
     async create(dto: CreateBlogPostDto) {
-        const base = this.slugify(dto.slug || dto.title);
+        const sanitized = sanitizeBlogWrite(dto);
+        const base = this.slugify(sanitized.slug || sanitized.title);
         const slug = await this.uniqueSlug(base);
-        const status = dto.status ?? 'DRAFT';
+        const status = sanitized.status ?? 'DRAFT';
+
+        assertBlogPublishable({ ...sanitized, slug, status });
 
         return this.prisma.blogPost.create({
             data: {
-                title: dto.title,
+                title: sanitized.title,
                 slug,
-                excerpt: dto.excerpt,
-                content: dto.content,
-                coverImage: dto.coverImage,
-                authorName: dto.authorName || 'CarMazium Team',
-                tags: dto.tags ?? [],
+                excerpt: sanitized.excerpt,
+                content: sanitized.content,
+                coverImage: sanitized.coverImage,
+                authorName: sanitized.authorName || 'CarMazium Team',
+                tags: sanitized.tags ?? [],
                 status,
                 publishedAt: status === 'PUBLISHED' ? new Date() : null,
-                metaTitle: dto.metaTitle,
-                metaDescription: dto.metaDescription,
-                noIndex: dto.noIndex ?? false,
+                metaTitle: sanitized.metaTitle,
+                metaDescription: sanitized.metaDescription,
+                noIndex: sanitized.noIndex ?? false,
             },
         });
     }
 
     async update(id: string, dto: UpdateBlogPostDto) {
         const existing = await this.findOneAdmin(id);
+        const sanitized = sanitizeBlogWrite(dto);
 
         let slug = existing.slug;
-        if (dto.slug && dto.slug !== existing.slug) {
-            slug = await this.uniqueSlug(this.slugify(dto.slug), id);
+        if (sanitized.slug && sanitized.slug !== existing.slug) {
+            if (existing.status === 'PUBLISHED') {
+                throw new BadRequestException({
+                    code: 'BLOG_PUBLISHED_SLUG_LOCKED',
+                    message: 'A published blog URL cannot be changed without a permanent redirect strategy.',
+                    errors: [{
+                        code: 'published-slug-locked',
+                        field: 'slug',
+                        message: 'This article is already published. Keep its existing slug unless the old URL will permanently redirect to the new one.',
+                    }],
+                });
+            }
+            slug = await this.uniqueSlug(this.slugify(sanitized.slug), id);
         }
+
+        const nextStatus = sanitized.status ?? existing.status;
+        assertBlogPublishable({
+            title: sanitized.title ?? existing.title,
+            slug,
+            excerpt: sanitized.excerpt ?? existing.excerpt,
+            content: sanitized.content ?? existing.content,
+            coverImage: sanitized.coverImage ?? existing.coverImage,
+            authorName: sanitized.authorName ?? existing.authorName,
+            tags: sanitized.tags ?? existing.tags,
+            status: nextStatus,
+            metaTitle: sanitized.metaTitle ?? existing.metaTitle,
+            metaDescription: sanitized.metaDescription ?? existing.metaDescription,
+            noIndex: sanitized.noIndex ?? existing.noIndex,
+        });
 
         // Stamp publishedAt the first time a post transitions to PUBLISHED;
         // leave it untouched on subsequent edits so the original publish date sticks.
         let publishedAt = existing.publishedAt;
-        if (dto.status === 'PUBLISHED' && !existing.publishedAt) {
+        if (sanitized.status === 'PUBLISHED' && !existing.publishedAt) {
             publishedAt = new Date();
-        } else if (dto.status === 'DRAFT') {
+        } else if (sanitized.status === 'DRAFT') {
             publishedAt = null;
         }
 
         return this.prisma.blogPost.update({
             where: { id },
             data: {
-                ...(dto.title !== undefined && { title: dto.title }),
+                ...(sanitized.title !== undefined && { title: sanitized.title }),
                 slug,
-                ...(dto.excerpt !== undefined && { excerpt: dto.excerpt }),
-                ...(dto.content !== undefined && { content: dto.content }),
-                ...(dto.coverImage !== undefined && { coverImage: dto.coverImage }),
-                ...(dto.authorName !== undefined && { authorName: dto.authorName }),
-                ...(dto.tags !== undefined && { tags: dto.tags }),
-                ...(dto.status !== undefined && { status: dto.status }),
+                ...(sanitized.excerpt !== undefined && { excerpt: sanitized.excerpt }),
+                ...(sanitized.content !== undefined && { content: sanitized.content }),
+                ...(sanitized.coverImage !== undefined && { coverImage: sanitized.coverImage }),
+                ...(sanitized.authorName !== undefined && { authorName: sanitized.authorName }),
+                ...(sanitized.tags !== undefined && { tags: sanitized.tags }),
+                ...(sanitized.status !== undefined && { status: sanitized.status }),
                 publishedAt,
-                ...(dto.metaTitle !== undefined && { metaTitle: dto.metaTitle }),
-                ...(dto.metaDescription !== undefined && { metaDescription: dto.metaDescription }),
-                ...(dto.noIndex !== undefined && { noIndex: dto.noIndex }),
+                ...(sanitized.metaTitle !== undefined && { metaTitle: sanitized.metaTitle }),
+                ...(sanitized.metaDescription !== undefined && { metaDescription: sanitized.metaDescription }),
+                ...(sanitized.noIndex !== undefined && { noIndex: sanitized.noIndex }),
             },
         });
     }
