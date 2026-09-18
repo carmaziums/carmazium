@@ -145,8 +145,12 @@ export class ChatService {
         const blockableContext =
             room.context === ChatContext.RETAIL || room.context === ChatContext.AUCTION;
 
+        // Never expose the raw block records. They contain the blocker's
+        // private reason, which must not leak to the other participant.
+        const { blocks: _privateBlocks, ...safeRoom } = room as any;
+
         return {
-            ...room,
+            ...safeRoom,
             otherUser,
             chatBlocked: blocks.length > 0,
             blockedByMe: !!myBlock,
