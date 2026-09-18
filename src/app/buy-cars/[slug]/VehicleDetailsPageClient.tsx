@@ -30,6 +30,7 @@ import { useCompare } from '@/context/CompareContext'
 import { BlurredPhone } from '@/components/shared/BlurredPhone'
 import { trackMetaEvent } from '@/components/analytics/MetaPixel'
 import { SellerVerificationBadge } from "@/components/listing/SellerVerificationBadge"
+import { parseVehicleImagePresentation } from "@/lib/vehicleImagePresentation"
 
 // ─── Offer Status Chip ───────────────────────────────────────────────────────
 // viewerRole: 'buyer' = the person who made the offer
@@ -764,13 +765,19 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                     else setActiveImage((i) => Math.max(0, i - 1))
                                 }}
                             >
-                                <Image
-                                    src={vehicle.images[activeImage] || vehicle.images[0]}
-                                    alt={vehicle.title}
-                                    fill
-                                    sizes="(max-width: 1024px) 100vw, 66vw"
-                                    className={`object-cover transition-all duration-300 ${String(listing.status) === 'SOLD' ? 'opacity-50 grayscale' : ''}`}
-                                />
+                                {(() => {
+                                    const photo = parseVehicleImagePresentation(vehicle.images[activeImage] || vehicle.images[0])
+                                    return (
+                                        <Image
+                                            src={photo.src}
+                                            alt={vehicle.title}
+                                            fill
+                                            sizes="(max-width: 1024px) 100vw, 66vw"
+                                            className={`transition-all duration-300 ${String(listing.status) === 'SOLD' ? 'opacity-50 grayscale' : ''}`}
+                                            style={{ objectFit: photo.fit, objectPosition: `${photo.x}% ${photo.y}%`, transform: `scale(${photo.zoom})`, transformOrigin: `${photo.x}% ${photo.y}%` }}
+                                        />
+                                    )
+                                })()}
                                 <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-md text-sm font-medium flex items-center gap-2 pointer-events-none">
                                     <Camera size={16} /> {activeImage + 1}/{vehicle.images.length}
                                 </div>
@@ -834,7 +841,10 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                         onClick={() => setActiveImage(idx)}
                                         className={`relative w-24 h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all ${activeImage === idx ? 'border-primary ring-2 ring-primary/20' : 'border-transparent opacity-70 hover:opacity-100'}`}
                                     >
-                                        <Image src={img} alt={`Thumb ${idx}`} fill sizes="96px" className="object-cover" />
+                                        {(() => {
+                                            const photo = parseVehicleImagePresentation(img)
+                                            return <Image src={photo.src} alt={`Thumb ${idx}`} fill sizes="96px" className="object-cover" style={{ objectPosition: `${photo.x}% ${photo.y}%` }} />
+                                        })()}
                                     </button>
                                 ))}
                             </div>
