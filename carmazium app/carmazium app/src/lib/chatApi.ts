@@ -28,11 +28,13 @@ export interface ChatMessage {
   id: string;
   chatRoomId: string;
   senderId: string;
+  clientMessageId?: string | null;
   content: string;
   isRead: boolean;
   createdAt: string;
   updatedAt: string;
   sender: ChatUser;
+  deliveryStatus?: 'sending' | 'failed';
 }
 
 export interface ChatRoom {
@@ -55,6 +57,11 @@ export interface ChatRoomsResponse {
   data: ChatRoom[];
 }
 
+export interface ChatHistoryCursor {
+  createdAt: string;
+  id: string;
+}
+
 export interface ChatMessagesResponse {
   success: boolean;
   data: ChatMessage[];
@@ -63,6 +70,8 @@ export interface ChatMessagesResponse {
     page: number;
     limit: number;
     totalPages: number;
+    hasMore?: boolean;
+    nextCursor?: ChatHistoryCursor | null;
   };
 }
 
@@ -93,10 +102,20 @@ export async function createChatRoom(participantId: string, listingId?: string):
 export async function getChatMessages(
   roomId: string,
   page = 1,
-  limit = 50
+  limit = 50,
+  cursor?: ChatHistoryCursor | null
 ): Promise<ChatMessagesResponse> {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  if (cursor) {
+    params.set('before', cursor.createdAt);
+    params.set('beforeId', cursor.id);
+  }
+
   return apiClient<ChatMessagesResponse>(
-    `/chat/rooms/${roomId}/messages?page=${page}&limit=${limit}`,
+    `/chat/rooms/${roomId}/messages?${params.toString()}`,
     {
       method: 'GET',
     }
@@ -106,10 +125,14 @@ export async function getChatMessages(
 /**
  * Dispatches a chat message (REST fallback)
  */
-export async function sendChatMessage(roomId: string, content: string): Promise<ChatMessage> {
+export async function sendChatMessage(
+  roomId: string,
+  content: string,
+  clientMessageId?: string
+): Promise<ChatMessage> {
   const response = await apiClient<{ data: ChatMessage }>(`/chat/rooms/${roomId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, clientMessageId }),
   });
   return response.data;
 }
