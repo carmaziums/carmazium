@@ -547,13 +547,13 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             </div>
 
                             <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-4 py-3 text-center">
-                                <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold mb-1">Winning Bid</p>
+                                <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold mb-1">Offer You Are Accepting</p>
                                 <p className="text-2xl font-black text-emerald-300 font-mono">£{acceptingBid.amount.toLocaleString()}</p>
                                 <p className="text-[10px] text-[var(--text-muted)] mt-1">from {acceptingBid.initials}</p>
                             </div>
 
                             <p className="text-[var(--text-muted)] text-xs leading-relaxed text-center">
-                                Accepting this bid will end the auction right now — regardless of reserve price — and the bidder will be declared the winner.
+                                Accepting the current highest offer will end the auction immediately, even if it is below your reserve. The bidder becomes the winner and this cannot be undone.
                             </p>
 
                             {acceptError && (
@@ -1519,8 +1519,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         <motion.div
                                             initial={bid.isNew ? { opacity: 0, y: -8 } : false}
                                             animate={{ opacity: 1, y: 0 }}
-                                            className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${i === 0 ? "bg-primary/5 border border-primary/15" : "hover:bg-[var(--bg-card)]"} ${isSeller && isLive && bid.bidId ? "cursor-pointer" : ""}`}
-                                            onClick={isSeller && isLive && bid.bidId ? () => { setAcceptingBid(bid); setAcceptError(null) } : undefined}
+                                            className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${i === 0 ? "bg-primary/5 border border-primary/15" : "hover:bg-[var(--bg-card)]"} ${isSeller && isLive && i === 0 && bid.bidId ? "cursor-pointer" : ""}`}
+                                            onClick={isSeller && isLive && i === 0 && bid.bidId ? () => { setAcceptingBid(bid); setAcceptError(null) } : undefined}
                                         >
                                             <div className="w-6 h-6 rounded-full bg-[var(--bg-card)] flex items-center justify-center shrink-0">
                                                 <span className="text-[9px] font-black text-[var(--text-muted)]">{bid.initials}</span>
@@ -1529,7 +1529,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             <span className="font-mono font-black text-[var(--text-primary)] text-xs">£{bid.amount.toLocaleString()}</span>
                                             {i === 0 && <TrendingUp size={10} className="text-emerald-400 shrink-0" />}
                                             <span className="ml-auto text-[9px] text-[var(--text-muted)] shrink-0">{bid.time}</span>
-                                            {isSeller && isLive && bid.bidId && (
+                                            {isSeller && isLive && i === 0 && bid.bidId && (
                                                 <span className="hidden group-hover:flex items-center gap-1 absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[9px] font-black px-1.5 py-0.5 rounded-lg pointer-events-none">
                                                     <CheckCircle size={9} /> Accept
                                                 </span>
@@ -1615,7 +1615,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 <p className="text-[var(--text-muted)] text-xs leading-relaxed">You cannot bid on your own listing. Watchers and bids appear in real time.</p>
                                 {isLive && (
                                     <p className="text-emerald-400/70 text-[10px] leading-relaxed">
-                                        Tap any bid in the live feed to accept it and end the auction immediately.
+                                        You can accept the current highest offer and end the auction immediately, even before the reserve is met.
                                     </p>
                                 )}
                                 <Link href="/dashboard/seller/auctions">
@@ -1707,9 +1707,46 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         <p className="text-red-400 text-xs leading-relaxed">{bidError}</p>
                                     </div>
                                 )}
+
+                                {!reserveMet && bidCount > 0 && (
+                                    <div className="flex items-start gap-2 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                                        <Info size={13} className="text-amber-400 shrink-0 mt-0.5" />
+                                        <p className="text-amber-300 text-xs leading-relaxed">
+                                            The reserve has not been met. Your bid is still a genuine offer: the seller can accept the current highest offer at any time, or leave the auction running for more bids.
+                                        </p>
+                                    </div>
+                                )}
                             </>
                         )}
                     </div>
+
+                    {/* Highest below-reserve bid is a live offer the seller can accept */}
+                    {isSeller && isLive && !reserveMet && bidHistory[0]?.bidId && (
+                        <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 p-4 space-y-3">
+                            <div className="flex items-start gap-3">
+                                <div className="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                                    <Handshake size={16} className="text-emerald-400" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-black text-emerald-300">Highest offer received</p>
+                                    <p className="text-2xl font-black font-mono text-[var(--text-primary)] mt-0.5">£{bidHistory[0].amount.toLocaleString("en-GB")}</p>
+                                    <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                                        Reserve: £{Number(auction.reservePrice).toLocaleString("en-GB")} · You can accept now or keep the auction running.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => { setAcceptingBid(bidHistory[0]); setAcceptError(null) }}
+                                className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 py-2.5 text-sm font-black text-white transition-colors"
+                            >
+                                Accept £{bidHistory[0].amount.toLocaleString("en-GB")} & End Auction
+                            </button>
+                            <p className="text-[10px] text-emerald-300/70 text-center">
+                                If you wait, other verified dealers can continue increasing the bid normally.
+                            </p>
+                        </div>
+                    )}
 
                     {/* Buy It Now card */}
                     {showBin && (
