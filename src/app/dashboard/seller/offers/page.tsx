@@ -110,7 +110,7 @@ function MarkAsSoldModal({
                     )}
                     <div className="min-w-0">
                         <p className="font-bold text-sm truncate">{listing.title}</p>
-                        <p className="text-xs text-[var(--text-muted)]">Agreed offer: <span className="text-primary font-bold">{formatGBP(agreedPrice)}</span></p>
+                        <p className="text-xs text-[var(--text-muted)]">Agreed offer: <span className="text-primary font-bold">{formatGBP(soldPrice)}</span></p>
                     </div>
                 </div>
 
