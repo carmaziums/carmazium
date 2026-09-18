@@ -498,12 +498,45 @@ export class AdminService {
      * about it — the report has its own lifecycle.
      */
     async approveListing(id: string) {
-        const listing = await this.prisma.listing.findUnique({ where: { id } });
+        const listing = await this.prisma.listing.findUnique({
+            where: { id },
+            include: { auction: true },
+        });
         if (!listing) {
             throw new NotFoundException('Listing not found');
         }
         if (listing.status !== 'PENDING_REVIEW') {
             throw new BadRequestException('Only listings awaiting review can be approved');
+        }
+
+        // AUCTION listings are not valid without their Auction row. Keeping this
+        // check at approval is defense-in-depth for legacy/orphan records and any
+        // future client that fails halfway through auction setup.
+        if (listing.type === 'AUCTION') {
+            if (!listing.auction || listing.auction.deletedAt) {
+                throw new BadRequestException(
+                    'Auction setup is incomplete. This listing has no active auction schedule and cannot be approved.',
+                );
+            }
+            if (listing.auction.status !== 'SCHEDULED') {
+                throw new BadRequestException(
+                    `Auction must be scheduled before approval. Current auction status: ${listing.auction.status}.`,
+                );
+            }
+
+            // Review time must not shorten a seller's 24-hour auction. If the
+            // requested start has already passed, restart the full 24-hour clock
+            // from approval; future scheduled starts keep their original window.
+            const now = new Date();
+            if (listing.auction.startTime <= now) {
+                await this.prisma.auction.update({
+                    where: { id: listing.auction.id },
+                    data: {
+                        startTime: now,
+                        endTime: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+                    },
+                });
+            }
         }
 
         // Revenue guard: a customer retail listing must have a completed listing-fee
