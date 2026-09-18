@@ -894,17 +894,6 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 : `or £${Math.round(calcMonthlyPayment()).toLocaleString('en-GB')}/mo`}
             </Text>
           </View>
-          {showLatestOfferTeaser && latestOffer && (
-            <View style={styles.lastOfferTeaser}>
-              <Ionicons name="pricetag" size={11} color={Colors.warning} />
-              <Text style={styles.lastOfferTeaserText}>
-                Last offer: <Text style={styles.lastOfferTeaserAmount}>{formatPrice(latestOffer.amount)}</Text>
-                {'  ·  '}
-                {new Date(latestOffer.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </Text>
-            </View>
-          )}
-
           {/* Buyer's own offer status chip — copy mirrors web's OfferStatusChip
               (VehicleDetailPageClient.tsx L31-90). Hidden on the buyer's own
               listings and when there's no offer yet. */}
