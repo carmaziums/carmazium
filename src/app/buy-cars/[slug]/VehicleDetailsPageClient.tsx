@@ -11,7 +11,7 @@ const ThreeDVehicleViewer = dynamic(() => import("@/components/listing/ThreeDVeh
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
 import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info, Globe, Fuel, Gavel, Truck, Phone, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react"
 import { ImageLightbox } from "@/components/features/ImageLightbox"
-import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, getDamageRecords, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
+import { getListingBySlug, makeOffer, amendOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, getDamageRecords, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
 import { triggerBuyItNow } from "@/lib/auctionApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useAuth } from "@/context/AuthContext"
@@ -36,99 +36,74 @@ import { SellerVerificationBadge } from "@/components/listing/SellerVerification
 //              'seller' = the listing owner
 //              'public' = anyone else (logged in or not)
 
-function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole: 'buyer' | 'seller' | 'public' }) {
-    const amountDisplay = `£${Number(offer.amount).toLocaleString('en-GB')}`
+function OfferStatusChip({ offer }: { offer: LatestOffer }) {
+    const effectiveAmount = offer.finalAmount ?? offer.counterAmount ?? offer.amount
+    const amountDisplay = `£${Number(effectiveAmount).toLocaleString('en-GB')}`
 
-    // — Buyer view: personalised with status-specific wording —
-    if (viewerRole === 'buyer') {
-        if (offer.status === 'PENDING') return (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
-                <Clock size={14} className="shrink-0" />
-                <span>Your offer of <strong>{amountDisplay}</strong> is awaiting the seller&apos;s response.</span>
-            </div>
-        )
-        if (offer.status === 'REJECTED') return (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
-                <XCircle size={14} className="shrink-0" />
-                <span>Your offer of <strong>{amountDisplay}</strong> was declined. You may submit a new one.</span>
-            </div>
-        )
-        if (offer.status === 'ACCEPTED') return (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
-                <ThumbsUp size={14} className="shrink-0" />
-                <span>🎉 Your offer of <strong>{amountDisplay}</strong> was accepted! Contact the seller to proceed.</span>
-            </div>
-        )
-        if (offer.status === 'WITHDRAWN') return (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-gray-500/10 border border-gray-500/30 text-[var(--text-secondary)] text-sm">
-                <XCircle size={14} className="shrink-0" />
-                <span>Your previous offer of <strong>{amountDisplay}</strong> was withdrawn. You can make a new offer.</span>
-            </div>
-        )
-    }
-
-    // — Seller view: they can see the amount + status, but no action here —
-    if (viewerRole === 'seller') {
-        if (offer.status === 'PENDING') return (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
-                <Clock size={14} className="shrink-0" />
-                <span>An offer of <strong>{amountDisplay}</strong> is awaiting your response. Manage it in your <strong>Seller Dashboard</strong>.</span>
-            </div>
-        )
-        if (offer.status === 'ACCEPTED') return (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
-                <ThumbsUp size={14} className="shrink-0" />
-                <span>You accepted an offer of <strong>{amountDisplay}</strong> on this listing.</span>
-            </div>
-        )
-        if (offer.status === 'REJECTED') return (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
-                <XCircle size={14} className="shrink-0" />
-                <span>An offer of <strong>{amountDisplay}</strong> was declined.</span>
-            </div>
-        )
-    }
-
-    // — Public view: show amount + neutral status wording, no personal details —
-    const statusLabel =
-        offer.status === 'PENDING' ? 'pending review' :
-            offer.status === 'ACCEPTED' ? 'accepted' :
-                offer.status === 'REJECTED' ? 'declined' :
-                    offer.status === 'WITHDRAWN' ? 'withdrawn' : ''
-
-    return (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-[var(--bg-card)] border border-[var(--border-default)] text-[var(--text-muted)] text-sm">
-            <Tag size={14} className="shrink-0" />
-            <span>An offer of <strong className="text-[var(--text-primary)]">{amountDisplay}</strong> has been made on this listing{statusLabel ? ` — ${statusLabel}` : ''}.</span>
+    if (offer.status === 'PENDING') return (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
+            <Clock size={14} className="shrink-0" />
+            <span>Your private offer of <strong>{amountDisplay}</strong> is awaiting the seller&apos;s response.</span>
         </div>
     )
+    if (offer.status === 'COUNTERED') return (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300 text-sm">
+            <Clock size={14} className="shrink-0" />
+            <span>This negotiation has an active counter offer. Manage it from <strong>My Offers</strong>.</span>
+        </div>
+    )
+    if (offer.status === 'REJECTED') return (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
+            <XCircle size={14} className="shrink-0" />
+            <span>Your previous offer was declined or expired. You may submit a new one while the vehicle remains available.</span>
+        </div>
+    )
+    if (offer.status === 'ACCEPTED') return (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
+            <ThumbsUp size={14} className="shrink-0" />
+            <span>Your offer of <strong>{amountDisplay}</strong> was accepted. This vehicle is now <strong>Sale Pending</strong>.</span>
+        </div>
+    )
+    if (offer.status === 'WITHDRAWN') return (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-gray-500/10 border border-gray-500/30 text-[var(--text-secondary)] text-sm">
+            <XCircle size={14} className="shrink-0" />
+            <span>You withdrew your previous offer. You can make a new private offer while the vehicle is available.</span>
+        </div>
+    )
+    return null
 }
 
 // ─── Offer Modal ─────────────────────────────────────────────────────────────
 
 function OfferModal({
-    listing, onClose, onSuccess,
+    listing, existingOffer, onClose, onSuccess,
 }: {
     listing: Listing
+    existingOffer?: LatestOffer | null
     onClose: () => void
     onSuccess: (offer: LatestOffer) => void
 }) {
     const askingPrice = Number(listing.price)
     const minAllowedOffer = Math.floor(askingPrice * 0.7)
+    const isEditing = existingOffer?.status === 'PENDING'
 
-    const [offerAmountStr, setOfferAmountStr] = React.useState(String(Math.round(askingPrice * 0.9)))
+    const [offerAmountStr, setOfferAmountStr] = React.useState(
+        String(isEditing ? Number(existingOffer?.amount) : Math.round(askingPrice * 0.9))
+    )
     const offerAmount = Number(offerAmountStr)
-    const [message, setMessage] = React.useState("")
+    const [message, setMessage] = React.useState(isEditing ? existingOffer?.message ?? "" : "")
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
 
-    const isInvalid = !offerAmountStr || offerAmount < minAllowedOffer
+    const isInvalid = !offerAmountStr || offerAmount < minAllowedOffer || offerAmount > askingPrice
 
     const handleSubmit = async () => {
         if (isInvalid) return
         setLoading(true); setError(null)
         try {
-            const offer = await makeOffer(listing.id, offerAmount, message || undefined)
+            const offer = isEditing && existingOffer
+                ? await amendOffer(existingOffer.id, offerAmount, message || undefined)
+                : await makeOffer(listing.id, offerAmount, message || undefined)
             onSuccess(offer as unknown as LatestOffer)
         } catch (err: any) {
             setError(err.message || "Failed to submit offer.")
@@ -146,7 +121,7 @@ function OfferModal({
                 <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary"><Tag size={18} /></div>
                     <div>
-                        <h2 className="text-xl font-bold font-heading">Make an Offer</h2>
+                        <h2 className="text-xl font-bold font-heading">{isEditing ? 'Edit My Offer' : 'Make a Private Offer'}</h2>
                         <p className="text-xs text-[var(--text-muted)]">{listing.title}</p>
                     </div>
                 </div>
@@ -166,6 +141,7 @@ function OfferModal({
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">£</span>
                             <Input type="number" value={offerAmountStr} step={100}
                                 min={minAllowedOffer}
+                                max={askingPrice}
                                 onChange={(e) => setOfferAmountStr(e.target.value)}
                                 placeholder="0"
                                 className="bg-[var(--bg-input)] border-[var(--border-default)] pl-8 focus:border-primary" />
@@ -173,6 +149,11 @@ function OfferModal({
                         {offerAmountStr && offerAmount < minAllowedOffer && (
                             <p className="text-red-400 text-xs mt-2">
                                 Offer must be at least £{minAllowedOffer.toLocaleString('en-GB')} (70% of asking price).
+                            </p>
+                        )}
+                        {offerAmountStr && offerAmount > askingPrice && (
+                            <p className="text-red-400 text-xs mt-2">
+                                Offer cannot exceed the asking price of £{askingPrice.toLocaleString('en-GB')}.
                             </p>
                         )}
                     </div>
@@ -197,7 +178,7 @@ function OfferModal({
                 <div className="flex gap-3">
                     <Button variant="outline" className="flex-1 border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white" onClick={onClose}>Cancel</Button>
                     <Button className="flex-1 shadow-neon" disabled={loading || isInvalid} onClick={handleSubmit}>
-                        {loading ? <><Loader2 size={16} className="animate-spin mr-2" />Submitting...</> : `Submit Offer`}
+                        {loading ? <><Loader2 size={16} className="animate-spin mr-2" />Submitting...</> : isEditing ? 'Update Offer' : 'Submit Private Offer'}
                     </Button>
                 </div>
             </div>
@@ -260,8 +241,8 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     const [isDescExpanded, setIsDescExpanded] = React.useState(false)
     const [enquiring, setEnquiring] = React.useState(false)
     const [showOfferModal, setShowOfferModal] = React.useState(false)
-    const [latestOffer, setLatestOffer] = React.useState<LatestOffer | null>(null)
     const [myOffer, setMyOffer] = React.useState<LatestOffer | null>(null)
+    const [myOfferLoaded, setMyOfferLoaded] = React.useState(false)
     const [offerSuccess, setOfferSuccess] = React.useState(false)
     const [isWatchlisted, setIsWatchlisted] = React.useState(false)
     const [watchlistLoading, setWatchlistLoading] = React.useState(false)
@@ -277,11 +258,6 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
         if (!userLoc.lat || !userLoc.lng || !listing?.latitude || !listing?.longitude) return null
         return haversineDistanceMiles(userLoc.lat, userLoc.lng, listing.latitude, listing.longitude)
     }, [userLoc, listing])
-
-    // Auto-open offer modal if navigated with ?editOffer=true
-    React.useEffect(() => {
-        if (isEditMode) setShowOfferModal(true)
-    }, [isEditMode])
 
     // Returning from Stripe after paying to have the HPI report emailed —
     // verify the session actually completed, apply the fallback in case the
@@ -313,9 +289,6 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
         // it down as initialListing — skip the redundant client-side refetch
         // that used to fire on every mount regardless.
         if (hasInitialListing) {
-            if (initialListing!.offers && initialListing!.offers.length > 0) {
-                setLatestOffer(initialListing!.offers[0])
-            }
             return
         }
         async function fetchListing() {
@@ -323,9 +296,6 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                 setLoading(true)
                 const data = await getListingBySlug(slug)
                 setListing(data)
-                if (data.offers && data.offers.length > 0) {
-                    setLatestOffer(data.offers[0])
-                }
             } catch (err) {
                 console.error('Failed to fetch listing:', err)
                 setError('Failed to load vehicle details')
@@ -354,14 +324,34 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
             .catch(() => { })
     }, [user, authLoading, slug])
 
-    // Separately fetch the current user's own offer for this listing
-    // This runs after the listing is loaded so we have the listing ID
+    // Fetch only the authenticated viewer's own offer. Retail negotiations
+    // are private, so no other buyer's offer is loaded into this page.
     React.useEffect(() => {
-        if (!user || !listing) return
-        // Don't fetch for the seller — they can't make offers on their own listing
-        if (listing.sellerId === user.id) return
-        getMyOfferForListing(listing.id).then(setMyOffer).catch(() => { })
-    }, [user, listing])
+        if (!listing) return
+        if (!user || listing.sellerId === user.id) {
+            setMyOffer(null)
+            setMyOfferLoaded(true)
+            return
+        }
+        setMyOfferLoaded(false)
+        getMyOfferForListing(listing.id)
+            .then(setMyOffer)
+            .catch(() => setMyOffer(null))
+            .finally(() => setMyOfferLoaded(true))
+    }, [user, listing?.id, listing?.sellerId])
+
+    // Saved Cars can deep-link directly into Make/Edit Offer. Wait for the
+    // user's existing negotiation to load so a pending offer is amended in
+    // place rather than accidentally attempting to create a duplicate.
+    React.useEffect(() => {
+        if (!isEditMode || !listing || !myOfferLoaded) return
+        if (listing.status !== 'ACTIVE' || listing.sellerId === user?.id) return
+        if (myOffer?.status === 'COUNTERED') {
+            router.replace('/dashboard/buyer/offers')
+            return
+        }
+        setShowOfferModal(true)
+    }, [isEditMode, listing, myOfferLoaded, myOffer, user?.id, router])
 
     // Check if listing is in user's watchlist
     React.useEffect(() => {
@@ -383,15 +373,6 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
             .then(data => data && setDeliveryDistanceInfo(data))
             .catch(() => {})
     }, [listing?.id, userLoc?.postcode])
-
-    // Determine the current viewer's relationship to the offer
-    // Uses myOffer (not latestOffer) so third-party buyers aren't misidentified as 'public'
-    const offerViewerRole: 'buyer' | 'seller' | 'public' = React.useMemo(() => {
-        if (!user || !latestOffer) return 'public'
-        if (listing?.sellerId === user.id) return 'seller'
-        if (myOffer) return 'buyer'   // I have made an offer on this listing
-        return 'public'
-    }, [user, latestOffer, myOffer, listing])
 
     // Client-side document.title for SEO
     React.useEffect(() => {
@@ -559,10 +540,10 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
             {showOfferModal && listing && (
                 <OfferModal
                     listing={listing}
+                    existingOffer={myOffer}
                     onClose={() => setShowOfferModal(false)}
                     onSuccess={(offer) => {
-                        setMyOffer(offer)            // update buyer's own offer
-                        setLatestOffer(offer)         // also update the public display
+                        setMyOffer(offer)
                         setShowOfferModal(false)
                         setOfferSuccess(true)
                     }}
@@ -934,22 +915,32 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                         </div>
                                         <div>
                                             <div className="text-4xl font-bold mb-2">{formatPrice(listing.price)}</div>
-                                            <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2.5 py-1 rounded-full mb-4">
-                                                Offers Welcome
-                                            </span>
+                                            {String(listing.status) === 'ACTIVE' ? (
+                                                <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2.5 py-1 rounded-full mb-4">
+                                                    Offers Welcome
+                                                </span>
+                                            ) : String(listing.status) === 'OFFER_ACCEPTED' ? (
+                                                <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-full mb-4">
+                                                    Sale Pending
+                                                </span>
+                                            ) : null}
                                         </div>
                                     </div>
 
-                                    {(offerViewerRole === 'buyer' ? myOffer : latestOffer) && (
+                                    {myOffer && listing.sellerId !== user?.id && (
                                         <div className="mb-4">
-                                            <OfferStatusChip
-                                                offer={(offerViewerRole === 'buyer' ? myOffer : latestOffer)!}
-                                                viewerRole={offerViewerRole}
-                                            />
+                                            <OfferStatusChip offer={myOffer} />
                                         </div>
                                     )}
 
                                     <div className="space-y-3">
+                                        {String(listing.status) === 'OFFER_ACCEPTED' && (
+                                            <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-2xl p-5 text-center">
+                                                <Clock size={34} className="text-amber-400 mx-auto mb-2" />
+                                                <h3 className="text-lg font-black uppercase tracking-tight mb-1">Sale Pending</h3>
+                                                <p className="text-xs text-[var(--text-muted)]">An offer has been accepted. New offers are paused unless the seller relists the vehicle.</p>
+                                            </div>
+                                        )}
                                         {String(listing.status) === 'SOLD' ? (
                                             <div className="bg-[var(--bg-card)] border-2 border-red-500/30 rounded-2xl p-6 text-center">
                                                 <XCircle size={48} className="text-red-500 mx-auto mb-3 opacity-80" />
@@ -960,14 +951,24 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                             <>
                                                 <Button
                                                     className="w-full py-6 text-lg shadow-neon"
-                                                    onClick={() => setShowOfferModal(true)}
-                                                    disabled={offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'}
+                                                    onClick={() => {
+                                                        if (myOffer?.status === 'COUNTERED') {
+                                                            router.push('/dashboard/buyer/offers')
+                                                            return
+                                                        }
+                                                        setShowOfferModal(true)
+                                                    }}
+                                                    disabled={String(listing.status) !== 'ACTIVE' || myOffer?.status === 'ACCEPTED'}
                                                 >
-                                                    {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
-                                                        ? 'Edit My Offer'
-                                                        : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
-                                                            ? '✓ Offer Accepted'
-                                                            : 'Make an Offer'}
+                                                    {String(listing.status) === 'OFFER_ACCEPTED'
+                                                        ? 'Sale Pending'
+                                                        : myOffer?.status === 'PENDING'
+                                                            ? 'Edit My Offer'
+                                                            : myOffer?.status === 'COUNTERED'
+                                                                ? 'Manage Counter'
+                                                                : myOffer?.status === 'ACCEPTED'
+                                                                    ? 'Offer Accepted — Sale Pending'
+                                                                    : 'Make a Private Offer'}
                                                 </Button>
                                                 <Button variant="outline" className="w-full py-6 text-lg border-[var(--border-default)] hover:bg-primary/5 dark:hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
                                                     {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire</>}
@@ -1389,14 +1390,10 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                             </div>
                                         </div>
 
-                                        {/* Offer Status */}
-                                        {/* Buyer sees their own offer chip; seller/public see the listing's latest offer chip */}
-                                        {(offerViewerRole === 'buyer' ? myOffer : latestOffer) && (
+                                        {/* Private offer status: only the current buyer sees their negotiation. */}
+                                        {myOffer && listing.sellerId !== user?.id && (
                                             <div className="mb-4">
-                                                <OfferStatusChip
-                                                    offer={(offerViewerRole === 'buyer' ? myOffer : latestOffer)!}
-                                                    viewerRole={offerViewerRole}
-                                                />
+                                                <OfferStatusChip offer={myOffer} />
                                             </div>
                                         )}
                                         <div className="space-y-3">
@@ -1404,14 +1401,24 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                                 <>
                                                     <Button
                                                         className="w-full py-6 text-lg shadow-neon"
-                                                        onClick={() => setShowOfferModal(true)}
-                                                        disabled={offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'}
+                                                        onClick={() => {
+                                                            if (myOffer?.status === 'COUNTERED') {
+                                                                router.push('/dashboard/buyer/offers')
+                                                                return
+                                                            }
+                                                            setShowOfferModal(true)
+                                                        }}
+                                                        disabled={String(listing.status) !== 'ACTIVE' || myOffer?.status === 'ACCEPTED'}
                                                     >
-                                                        {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
-                                                            ? 'Edit My Offer'
-                                                            : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
-                                                                ? '✓ Offer Accepted'
-                                                                : 'Make an Offer'}
+                                                        {String(listing.status) === 'OFFER_ACCEPTED'
+                                                            ? 'Sale Pending'
+                                                            : myOffer?.status === 'PENDING'
+                                                                ? 'Edit My Offer'
+                                                                : myOffer?.status === 'COUNTERED'
+                                                                    ? 'Manage Counter'
+                                                                    : myOffer?.status === 'ACCEPTED'
+                                                                        ? 'Offer Accepted — Sale Pending'
+                                                                        : 'Make a Private Offer'}
                                                     </Button>
                                                     <Button variant="outline" className="w-full py-6 text-lg border-[var(--border-default)] hover:bg-primary/5 dark:hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
                                                         {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire</>}

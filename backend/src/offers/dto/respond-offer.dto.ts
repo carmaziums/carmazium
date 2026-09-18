@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsPositive } from 'class-validator';
 
 export enum OfferResponseStatus {
     ACCEPTED = 'ACCEPTED',
@@ -22,6 +22,7 @@ export class RespondOfferDto {
         example: 15000,
     })
     @IsOptional()
-    @IsNumber()
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
     counterAmount?: number;
 }

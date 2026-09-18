@@ -208,8 +208,8 @@ export interface Listing {
     isFeatured: boolean
     featuredUntil: string | null
     badgeTier: string | null
-    priceMin: string | number | null
-    priceMax: string | number | null
+    priceMin?: string | number | null
+    priceMax?: string | number | null
     createdAt: string
     updatedAt: string
     linkedListingId?: string | null
@@ -672,8 +672,6 @@ export interface WatchlistItem {
         slug: string
         images: string[]
         price: string | number
-        priceMin: string | number | null
-        priceMax: string | number | null
         status: string
         type: 'CLASSIFIED' | 'AUCTION'
         sellerId: string | null
@@ -979,8 +977,6 @@ export interface Offer extends LatestOffer {
         slug: string
         images: string[]
         price: string | number
-        priceMin: string | number | null
-        priceMax: string | number | null
         status: string
         make: string | null
         model: string | null

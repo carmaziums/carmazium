@@ -1185,8 +1185,6 @@ function SearchPageContent() {
                                         make={listing.make}
                                         model={listing.model}
                                         price={formatPrice(listing.price)}
-                                        priceMin={listing.priceMin}
-                                        priceMax={listing.priceMax}
                                         image={getListingImage(listing)}
                                         images={listing.images ?? []}
                                         href={`/buy-cars/${listing.slug}`}
@@ -1226,8 +1224,6 @@ function SearchPageContent() {
                                     make={listing.make}
                                     model={listing.model}
                                     price={formatPrice(listing.price)}
-                                    priceMin={listing.priceMin}
-                                    priceMax={listing.priceMax}
                                     image={getListingImage(listing)}
                                     images={listing.images ?? []}
                                     href={`/buy-cars/${listing.slug}`}
