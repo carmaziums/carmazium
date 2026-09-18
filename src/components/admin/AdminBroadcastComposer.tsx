@@ -6,7 +6,6 @@ import {
     CheckCircle2,
     FileImage,
     Loader2,
-    Search,
     Send,
     Upload,
     Users,
@@ -14,7 +13,6 @@ import {
     X,
 } from "lucide-react"
 import {
-    getAdminUsers,
     previewAdminMessageAudience,
     sendAdminAudienceMessage,
     type AdminAudiencePreview,
@@ -22,14 +20,6 @@ import {
     type AdminMessageMediaKind,
 } from "@/lib/adminApi"
 import { uploadImage } from "@/lib/supabase"
-
-type SelectedMember = {
-    id: string
-    email: string
-    firstName?: string | null
-    lastName?: string | null
-    role: string
-}
 
 type UploadedMedia = {
     url: string
@@ -41,7 +31,6 @@ type UploadedMedia = {
 
 const AUDIENCES: Array<{ value: AdminMessageAudience; label: string; description: string }> = [
     { value: "ALL", label: "Everyone", description: "Every active non-admin account" },
-    { value: "PERSON", label: "One person", description: "Search and choose a specific member" },
     { value: "ROLE", label: "Account role", description: "Everyone with one account role" },
     { value: "DEALERS", label: "Dealers", description: "All dealer accounts" },
     { value: "SERVICE_PROVIDERS", label: "Service providers", description: "All contractor/service-provider accounts" },
@@ -64,10 +53,6 @@ const ACCOUNT_ROLES = [
 export function AdminBroadcastComposer() {
     const [audience, setAudience] = React.useState<AdminMessageAudience>("ALL")
     const [role, setRole] = React.useState<string>("BUYER")
-    const [memberSearch, setMemberSearch] = React.useState("")
-    const [memberResults, setMemberResults] = React.useState<SelectedMember[]>([])
-    const [selectedMember, setSelectedMember] = React.useState<SelectedMember | null>(null)
-    const [searching, setSearching] = React.useState(false)
     const [message, setMessage] = React.useState("")
     const [media, setMedia] = React.useState<UploadedMedia | null>(null)
     const [uploading, setUploading] = React.useState(false)
@@ -82,19 +67,11 @@ export function AdminBroadcastComposer() {
     const selection = React.useMemo(() => ({
         audience,
         ...(audience === "ROLE" ? { role } : {}),
-        ...(audience === "PERSON" && selectedMember ? { userId: selectedMember.id } : {}),
-    }), [audience, role, selectedMember])
-
-    const selectionReady = audience !== "PERSON" || !!selectedMember
+    }), [audience, role])
 
     React.useEffect(() => {
         setConfirming(false)
         setResult(null)
-        if (!selectionReady) {
-            setPreview(null)
-            return
-        }
-
         let cancelled = false
         const timer = window.setTimeout(async () => {
             try {
@@ -116,41 +93,10 @@ export function AdminBroadcastComposer() {
             cancelled = true
             window.clearTimeout(timer)
         }
-    }, [selection, selectionReady])
-
-    React.useEffect(() => {
-        if (audience !== "PERSON" || memberSearch.trim().length < 2 || selectedMember) {
-            setMemberResults([])
-            return
-        }
-
-        let cancelled = false
-        const timer = window.setTimeout(async () => {
-            try {
-                setSearching(true)
-                const response = await getAdminUsers(1, 8, memberSearch.trim())
-                const rows = Array.isArray(response?.data) ? response.data : []
-                if (!cancelled) {
-                    setMemberResults(rows.filter((u: any) => u.role !== "ADMIN" && !u.deletedAt))
-                }
-            } catch {
-                if (!cancelled) setMemberResults([])
-            } finally {
-                if (!cancelled) setSearching(false)
-            }
-        }, 300)
-
-        return () => {
-            cancelled = true
-            window.clearTimeout(timer)
-        }
-    }, [audience, memberSearch, selectedMember])
+    }, [selection])
 
     const chooseAudience = (next: AdminMessageAudience) => {
         setAudience(next)
-        setSelectedMember(null)
-        setMemberSearch("")
-        setMemberResults([])
     }
 
     const handleFile = async (file?: File) => {
@@ -227,7 +173,7 @@ export function AdminBroadcastComposer() {
                         <Send size={14} /> Admin broadcast
                     </div>
                     <h3 className="text-2xl font-black text-[var(--text-primary)]">Send a CarMazium message</h3>
-                    <p className="text-sm text-[var(--text-muted)] mt-1">Send text, a picture or a video to one member or a selected audience.</p>
+                    <p className="text-sm text-[var(--text-muted)] mt-1">Send text, a picture or a video to a selected audience. Use New Conversation for one member.</p>
                 </div>
 
                 <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 sm:p-5 shadow-lg">
@@ -262,54 +208,6 @@ export function AdminBroadcastComposer() {
                             >
                                 {ACCOUNT_ROLES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                             </select>
-                        </div>
-                    )}
-
-                    {audience === "PERSON" && (
-                        <div className="mt-4 relative">
-                            {selectedMember ? (
-                                <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/10 p-3">
-                                    <div className="min-w-0">
-                                        <p className="font-bold text-sm truncate">
-                                            {[selectedMember.firstName, selectedMember.lastName].filter(Boolean).join(" ") || selectedMember.email}
-                                        </p>
-                                        <p className="text-xs text-[var(--text-muted)] truncate">{selectedMember.email} · {selectedMember.role}</p>
-                                    </div>
-                                    <button type="button" onClick={() => setSelectedMember(null)} className="p-2 rounded-lg hover:bg-black/5"><X size={16} /></button>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={17} />
-                                        <input
-                                            value={memberSearch}
-                                            onChange={(e) => setMemberSearch(e.target.value)}
-                                            placeholder="Search member by name or email..."
-                                            className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] pl-10 pr-10 py-3 text-sm"
-                                        />
-                                        {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-primary" size={17} />}
-                                    </div>
-                                    {memberResults.length > 0 && (
-                                        <div className="absolute left-0 right-0 z-20 mt-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-dropdown)] shadow-2xl overflow-hidden">
-                                            {memberResults.map((member) => (
-                                                <button
-                                                    type="button"
-                                                    key={member.id}
-                                                    onClick={() => {
-                                                        setSelectedMember(member)
-                                                        setMemberSearch("")
-                                                        setMemberResults([])
-                                                    }}
-                                                    className="w-full text-left px-4 py-3 border-b border-[var(--border-default)] last:border-0 hover:bg-primary/5"
-                                                >
-                                                    <p className="font-bold text-sm">{[member.firstName, member.lastName].filter(Boolean).join(" ") || member.email}</p>
-                                                    <p className="text-xs text-[var(--text-muted)]">{member.email} · {member.role}</p>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </>
-                            )}
                         </div>
                     )}
 
