@@ -17,11 +17,12 @@ export class CreateAuctionDto {
     @IsPositive()
     reservePrice: number;
 
-    @ApiProperty({ description: 'Minimum first bid amount', example: 5000 })
+    @ApiPropertyOptional({ description: 'Legacy client field. CarMazium calculates the opening bid server-side at 70% of the listing Estimated Market Value.', example: 7000 })
+    @IsOptional()
     @Type(() => Number)
     @IsNumber({ maxDecimalPlaces: 2 })
     @IsPositive()
-    startingBid: number;
+    startingBid?: number;
 
     @ApiPropertyOptional({ description: 'Minimum bid increment per step', example: 100, default: 100 })
     @Type(() => Number)
