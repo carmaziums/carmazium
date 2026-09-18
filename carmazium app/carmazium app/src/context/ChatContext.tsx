@@ -23,7 +23,7 @@ interface ChatContextType {
 
   refreshRooms: () => Promise<void>;
   refreshUnreadCount: () => Promise<void>;
-  sendMessage: (roomId: string, content: string) => void;
+  sendMessage: (roomId: string, content: string, clientMessageId: string) => Promise<ChatMessage>;
   startTyping: (roomId: string) => void;
   stopTyping: (roomId: string) => void;
   markAsRead: (roomId: string) => void;
@@ -32,6 +32,16 @@ interface ChatContextType {
   onTyping: (callback: (data: { roomId: string; userId: string; isTyping: boolean }) => void) => () => void;
   onMessagesRead: (callback: (data: { roomId: string; readBy: string }) => void) => () => void;
 }
+
+type ChatSendAck =
+  | { ok: true; message: ChatMessage; duplicate: boolean }
+  | { ok: false; error: { code: string; message: string } };
+
+const createSendError = (code: string, message: string): Error & { code: string } => {
+  const error = new Error(message) as Error & { code: string };
+  error.code = code;
+  return error;
+};
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
@@ -218,12 +228,45 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, isAuthenticated, authLoading, refreshRooms, refreshUnreadCount]);
 
   // Socket Actions
-  const sendMessage = useCallback((roomId: string, content: string) => {
-    if (socketRef.current?.connected) {
-      socketRef.current.emit('message:send', { roomId, content });
-    } else {
-      console.warn('Cannot send message, socket not connected');
-    }
+  const sendMessage = useCallback((
+    roomId: string,
+    content: string,
+    clientMessageId: string,
+  ): Promise<ChatMessage> => {
+    return new Promise((resolve, reject) => {
+      const socket = socketRef.current;
+      if (!socket?.connected) {
+        reject(createSendError(
+          'SOCKET_UNAVAILABLE',
+          'Live chat connection is unavailable.',
+        ));
+        return;
+      }
+
+      socket.timeout(8000).emit(
+        'message:send',
+        { roomId, content, clientMessageId },
+        (timeoutError: Error | null, response: ChatSendAck) => {
+          if (timeoutError) {
+            reject(createSendError(
+              'CHAT_ACK_TIMEOUT',
+              'Message confirmation timed out.',
+            ));
+            return;
+          }
+
+          if (!response?.ok) {
+            reject(createSendError(
+              response?.error?.code || 'SEND_FAILED',
+              response?.error?.message || 'Message could not be sent.',
+            ));
+            return;
+          }
+
+          resolve(response.message);
+        },
+      );
+    });
   }, []);
 
   const startTyping = useCallback((roomId: string) => {

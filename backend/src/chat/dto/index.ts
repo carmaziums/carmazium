@@ -25,6 +25,13 @@ export class SendMessageDto {
     @IsString()
     @MaxLength(2000)
     content: string;
+
+    @ApiPropertyOptional({
+        description: 'Client-generated UUID used to make retries idempotent',
+    })
+    @IsOptional()
+    @IsUUID()
+    clientMessageId?: string;
 }
 
 /**
@@ -39,6 +46,10 @@ export class WsMessageDto {
     @IsString()
     @MaxLength(2000)
     content: string;
+
+    @IsOptional()
+    @IsUUID()
+    clientMessageId?: string;
 }
 
 /**

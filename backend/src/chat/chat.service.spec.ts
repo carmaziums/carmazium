@@ -65,6 +65,7 @@ describe('ChatService — conversation context and authorization', () => {
             },
             message: {
                 create: jest.fn(),
+                findFirst: jest.fn(),
                 count: jest.fn(),
                 findMany: jest.fn(),
                 updateMany: jest.fn(),
@@ -197,6 +198,147 @@ describe('ChatService — conversation context and authorization', () => {
         ).rejects.toMatchObject({ message: expect.stringMatching(/paid the £125/i) });
 
         expect(prisma.message.create).not.toHaveBeenCalled();
+    });
+
+    it('reuses the same persisted message when a client retries with the same idempotency key', async () => {
+        const clientMessageId = '77777777-7777-4777-8777-777777777777';
+        const savedMessage = {
+            id: 'message-1',
+            chatRoomId: 'room-1',
+            senderId: buyerId,
+            clientMessageId,
+            content: 'Is collection tomorrow okay?',
+            deletedAt: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            isRead: false,
+            sender: { id: buyerId },
+        };
+
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'room-1',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.RETAIL,
+            deletedAt: null,
+        });
+        prisma.listing.findUnique.mockResolvedValue(retailListing());
+        prisma.message.findFirst.mockResolvedValue(savedMessage);
+
+        const result = await service.sendMessage('room-1', buyerId, {
+            content: savedMessage.content,
+            clientMessageId,
+        });
+
+        expect(result).toEqual({ message: savedMessage, created: false });
+        expect(prisma.message.create).not.toHaveBeenCalled();
+        expect(prisma.chatRoom.update).not.toHaveBeenCalled();
+        expect(notificationsService.create).not.toHaveBeenCalled();
+    });
+
+    it('creates and notifies only once across a first send and an immediate retry', async () => {
+        const clientMessageId = '88888888-8888-4888-8888-888888888888';
+        const savedMessage = {
+            id: 'message-2',
+            chatRoomId: 'room-1',
+            senderId: buyerId,
+            clientMessageId,
+            content: 'Please confirm the address.',
+            deletedAt: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            isRead: false,
+            sender: { id: buyerId },
+        };
+
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'room-1',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.RETAIL,
+            deletedAt: null,
+        });
+        prisma.listing.findUnique.mockResolvedValue(retailListing());
+        prisma.message.findFirst
+            .mockResolvedValueOnce(null)
+            .mockResolvedValueOnce(savedMessage);
+        prisma.message.create.mockResolvedValue(savedMessage);
+        prisma.chatRoom.update.mockResolvedValue({});
+        notificationsService.create.mockResolvedValue({ id: 'notification-1' });
+
+        const first = await service.sendMessage('room-1', buyerId, {
+            content: savedMessage.content,
+            clientMessageId,
+        });
+        const retry = await service.sendMessage('room-1', buyerId, {
+            content: savedMessage.content,
+            clientMessageId,
+        });
+
+        expect(first.created).toBe(true);
+        expect(retry.created).toBe(false);
+        expect(prisma.message.create).toHaveBeenCalledTimes(1);
+        expect(prisma.chatRoom.update).toHaveBeenCalledTimes(1);
+        expect(notificationsService.create).toHaveBeenCalledTimes(1);
+        expect(notificationsGateway.sendNotification).toHaveBeenCalledTimes(1);
+    });
+
+    it('loads older messages with a stable createdAt/id cursor', async () => {
+        const before = new Date('2026-09-18T12:00:00.000Z');
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'room-1',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.RETAIL,
+            deletedAt: null,
+            initiator: { id: buyerId },
+            participant: { id: sellerId },
+            listing: { id: listingId },
+        });
+
+        const rows = [
+            { id: 'm4', createdAt: new Date('2026-09-18T11:00:00.000Z') },
+            { id: 'm3', createdAt: new Date('2026-09-18T10:00:00.000Z') },
+            { id: 'm2', createdAt: new Date('2026-09-18T09:00:00.000Z') },
+        ];
+        prisma.message.findMany.mockResolvedValue(rows);
+        prisma.message.count.mockResolvedValue(5);
+
+        const result = await service.getRoomMessages(
+            'room-1',
+            buyerId,
+            1,
+            2,
+            before,
+            'cursor-message',
+        );
+
+        expect(prisma.message.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                take: 3,
+                skip: 0,
+                orderBy: [
+                    { createdAt: 'desc' },
+                    { id: 'desc' },
+                ],
+                where: expect.objectContaining({
+                    chatRoomId: 'room-1',
+                    OR: [
+                        { createdAt: { lt: before } },
+                        { createdAt: before, id: { lt: 'cursor-message' } },
+                    ],
+                }),
+            }),
+        );
+        expect(result.data.map((message: any) => message.id)).toEqual(['m3', 'm4']);
+        expect(result.hasMore).toBe(true);
+        expect(result.nextCursor).toEqual({
+            createdAt: '2026-09-18T10:00:00.000Z',
+            id: 'm3',
+        });
     });
 
     it('uses different conversation keys for different retail vehicles between the same users', async () => {

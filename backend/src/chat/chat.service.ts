@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRoomDto, SendMessageDto } from './dto';
-import { ChatContext, Message } from '@prisma/client';
+import { ChatContext, Message, Prisma } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 
@@ -535,60 +535,161 @@ export class ChatService {
         userId: string,
         page = 1,
         limit = 50,
-    ): Promise<{ data: Message[]; total: number }> {
-        // Verify user is member of room
+        before?: Date,
+        beforeId?: string,
+    ): Promise<{
+        data: Message[];
+        total: number;
+        hasMore: boolean;
+        nextCursor: { createdAt: string; id: string } | null;
+    }> {
+        // Historical transcripts remain readable to room members even when the
+        // room has become read-only.
         await this.getRoom(roomId, userId);
 
-        const skip = (page - 1) * limit;
+        const safeLimit = Math.min(Math.max(limit, 1), 100);
+        const safePage = Math.max(page, 1);
+        const usingCursor = !!before && !!beforeId;
 
-        const [messages, total] = await Promise.all([
+        const where: Prisma.MessageWhereInput = {
+            chatRoomId: roomId,
+            deletedAt: null,
+            ...(usingCursor ? {
+                OR: [
+                    { createdAt: { lt: before } },
+                    { createdAt: before, id: { lt: beforeId } },
+                ],
+            } : {}),
+        };
+
+        const [rows, total] = await Promise.all([
             this.prisma.message.findMany({
-                where: { chatRoomId: roomId, deletedAt: null },
+                where,
                 include: {
                     sender: {
                         select: { id: true, firstName: true, lastName: true, profileImage: true },
                     },
                 },
-                orderBy: { createdAt: 'desc' },
-                skip,
-                take: limit,
+                orderBy: [
+                    { createdAt: 'desc' },
+                    { id: 'desc' },
+                ],
+                skip: usingCursor ? 0 : (safePage - 1) * safeLimit,
+                take: usingCursor ? safeLimit + 1 : safeLimit,
             }),
             this.prisma.message.count({
                 where: { chatRoomId: roomId, deletedAt: null },
             }),
         ]);
 
-        return { data: messages.reverse(), total };
+        const hasMore = usingCursor
+            ? rows.length > safeLimit
+            : safePage * safeLimit < total;
+        const visibleRows = (usingCursor ? rows.slice(0, safeLimit) : rows).reverse();
+        const oldest = visibleRows[0];
+
+        return {
+            data: visibleRows,
+            total,
+            hasMore,
+            nextCursor: oldest
+                ? { createdAt: oldest.createdAt.toISOString(), id: oldest.id }
+                : null,
+        };
+    }
+
+    private readonly messageInclude = {
+        sender: {
+            select: { id: true, firstName: true, lastName: true, profileImage: true },
+        },
+    };
+
+    private async findMessageByClientId(senderId: string, clientMessageId: string) {
+        return this.prisma.message.findFirst({
+            where: { senderId, clientMessageId },
+            include: this.messageInclude,
+        });
+    }
+
+    private assertIdempotentMessageMatches(
+        existing: any,
+        roomId: string,
+        content: string,
+    ): void {
+        if (
+            existing.chatRoomId !== roomId ||
+            existing.content !== content ||
+            existing.deletedAt
+        ) {
+            throw new BadRequestException(
+                'This message retry key has already been used for a different message.',
+            );
+        }
     }
 
     /**
-     * Send a message to a room
+     * Persist a message exactly once. The client-generated message ID survives
+     * WebSocket timeouts and HTTP fallback retries, so a lost acknowledgement
+     * cannot create a duplicate message.
      */
-    async sendMessage(roomId: string, senderId: string, dto: SendMessageDto): Promise<Message> {
-        // Membership alone is not enough. Re-check the vehicle/deal policy on
-        // every send so an old room cannot bypass auction payment or retail
-        // lifecycle restrictions.
+    async sendMessage(
+        roomId: string,
+        senderId: string,
+        dto: SendMessageDto,
+    ): Promise<{ message: any; created: boolean }> {
         const room = await this.assertCanMessageRoom(roomId, senderId);
 
-        const message = await this.prisma.message.create({
-            data: {
-                chatRoomId: roomId,
+        if (dto.clientMessageId) {
+            const existing = await this.findMessageByClientId(
                 senderId,
-                content: dto.content,
-            },
-            include: {
-                sender: {
-                    select: { id: true, firstName: true, lastName: true, profileImage: true },
+                dto.clientMessageId,
+            );
+            if (existing) {
+                this.assertIdempotentMessageMatches(existing, roomId, dto.content);
+                return { message: existing, created: false };
+            }
+        }
+
+        let message: any;
+        try {
+            message = await this.prisma.message.create({
+                data: {
+                    chatRoomId: roomId,
+                    senderId,
+                    clientMessageId: dto.clientMessageId,
+                    content: dto.content,
                 },
-            },
-        });
+                include: this.messageInclude,
+            });
+        } catch (error) {
+            // Two retries can race. The unique sender/clientMessageId index is
+            // the final authority; if another request won, return that exact
+            // saved message rather than surfacing a false failure.
+            if (
+                dto.clientMessageId &&
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2002'
+            ) {
+                const existing = await this.findMessageByClientId(
+                    senderId,
+                    dto.clientMessageId,
+                );
+                if (existing) {
+                    this.assertIdempotentMessageMatches(existing, roomId, dto.content);
+                    return { message: existing, created: false };
+                }
+            }
+            throw error;
+        }
 
         await this.prisma.chatRoom.update({
             where: { id: roomId },
             data: { updatedAt: new Date() },
         });
 
-        const recipientId = room.initiatorId === senderId ? room.participantId : room.initiatorId;
+        const recipientId = room.initiatorId === senderId
+            ? room.participantId
+            : room.initiatorId;
 
         try {
             const notification = await this.notificationsService.create({
@@ -601,11 +702,10 @@ export class ChatService {
             });
             this.notificationsGateway.sendNotification(recipientId, notification);
         } catch (notifErr) {
-            // Non-fatal: message already saved and broadcast via chat gateway
             console.warn(`[ChatService] Failed to send message notification: ${notifErr?.message}`);
         }
 
-        return message;
+        return { message, created: true };
     }
 
     /**

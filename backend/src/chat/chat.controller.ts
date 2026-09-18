@@ -9,6 +9,7 @@ import {
     UseGuards,
     HttpCode,
     HttpStatus,
+    BadRequestException,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -109,22 +110,62 @@ export class ChatController {
     @ApiParam({ name: 'id', description: 'Chat room ID' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
+    @ApiQuery({
+        name: 'before',
+        required: false,
+        type: String,
+        description: 'ISO timestamp of the oldest loaded message',
+    })
+    @ApiQuery({
+        name: 'beforeId',
+        required: false,
+        type: String,
+        description: 'ID of the oldest loaded message',
+    })
     async getMessages(
         @CurrentUser() user: any,
         @Param('id') roomId: string,
         @Query('page') page?: string,
         @Query('limit') limit?: string,
+        @Query('before') before?: string,
+        @Query('beforeId') beforeId?: string,
     ) {
-        const pageNum = parseInt(page || '1');
-        const limitNum = parseInt(limit || '50');
+        const pageNum = Math.max(parseInt(page || '1') || 1, 1);
+        const limitNum = Math.min(Math.max(parseInt(limit || '50') || 50, 1), 100);
 
-        const { data, total } = await this.chatService.getRoomMessages(
-            roomId,
-            user.id,
+        if ((before && !beforeId) || (!before && beforeId)) {
+            throw new BadRequestException(
+                'Both before and beforeId are required for cursor pagination.',
+            );
+        }
+
+        let beforeDate: Date | undefined;
+        if (before) {
+            beforeDate = new Date(before);
+            if (Number.isNaN(beforeDate.getTime())) {
+                throw new BadRequestException('Invalid before timestamp.');
+            }
+        }
+
+        const { data, total, hasMore, nextCursor } =
+            await this.chatService.getRoomMessages(
+                roomId,
+                user.id,
+                pageNum,
+                limitNum,
+                beforeDate,
+                beforeId,
+            );
+
+        const response: any = new PaginatedResponse(
+            data,
+            total,
             pageNum,
             limitNum,
         );
-        return new PaginatedResponse(data, total, pageNum, limitNum);
+        response.pagination.hasMore = hasMore;
+        response.pagination.nextCursor = nextCursor;
+        return response;
     }
 
     /**
@@ -138,11 +179,19 @@ export class ChatController {
         @Param('id') roomId: string,
         @Body() sendMessageDto: SendMessageDto,
     ) {
-        const message = await this.chatService.sendMessage(
+        const { message, created } = await this.chatService.sendMessage(
             roomId,
             user.id,
             sendMessageDto,
         );
+
+        // HTTP is the fallback transport when the socket is unavailable or
+        // acknowledgement times out. New HTTP-saved messages still need the
+        // same realtime broadcast as WebSocket-saved messages.
+        if (created) {
+            this.chatGateway.broadcastMessage(roomId, message);
+        }
+
         return new StandardResponse(message);
     }
 

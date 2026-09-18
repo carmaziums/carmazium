@@ -1101,21 +1101,23 @@ model ChatRoom {
 }
 
 model Message {
-  id         String    @id @default(uuid())
-  chatRoomId String
-  senderId   String
-  content    String
-  isRead     Boolean   @default(false)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  deletedAt  DateTime?
+  id              String    @id @default(uuid())
+  chatRoomId      String
+  senderId        String
+  clientMessageId String?
+  content         String
+  isRead          Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
 
   chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
   sender   User     @relation(fields: [senderId], references: [id])
 
+  @@unique([senderId, clientMessageId])
   @@index([chatRoomId])
   @@index([senderId])
-  @@index([chatRoomId, createdAt(sort: Desc)])
+  @@index([chatRoomId, createdAt(sort: Desc), id(sort: Desc)])
   @@map("messages")
 }
 

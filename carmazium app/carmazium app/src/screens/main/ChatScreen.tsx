@@ -23,7 +23,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
 import { useChat } from '../../context/ChatContext';
 import { useAuthStore } from '../../store/authStore';
-import { getChatMessages, markMessagesAsRead, type ChatMessage, type ChatRoom, type ChatUser } from '../../lib/chatApi';
+import { getChatMessages, sendChatMessage, markMessagesAsRead, type ChatHistoryCursor, type ChatMessage, type ChatRoom, type ChatUser } from '../../lib/chatApi';
 import { getListingById } from '../../lib/listingsApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -37,6 +37,23 @@ type NavProp = NativeStackNavigationProp<MainStackParamList>;
 // Message bubbles cap their width off this instead of a percentage string —
 // see the note on the `bubble` style below for why.
 const MAX_BUBBLE_WIDTH = Dimensions.get('window').width * 0.82;
+
+const createClientMessageId = (): string => {
+  const bytes = new Uint8Array(16);
+  const cryptoApi = (globalThis as any).crypto;
+  if (cryptoApi?.getRandomValues) {
+    cryptoApi.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i += 1) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
+  }
+
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+};
 
 const parseSpecialMessage = (content: string) => {
   const counterMatch = content.match(/Counter-offer:\s*£([\d,]+)/i);
@@ -112,11 +129,36 @@ interface MessageBubbleProps {
   isOwn: boolean;
   isLastOwnMessage: boolean;
   initials: string;
+  onRetry: (message: ChatMessage) => void;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ msg, isOwn, isLastOwnMessage, initials }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
+  msg,
+  isOwn,
+  isLastOwnMessage,
+  initials,
+  onRetry,
+}) => {
   const parsedSpecial = parseSpecialMessage(msg.content);
-  const showSeenIndicator = isOwn && msg.isRead && isLastOwnMessage;
+  const showSeenIndicator = isOwn && !msg.deliveryStatus && msg.isRead && isLastOwnMessage;
+
+  const deliveryState = isOwn && msg.deliveryStatus ? (
+    <TouchableOpacity
+      disabled={msg.deliveryStatus !== 'failed'}
+      onPress={() => onRetry(msg)}
+      activeOpacity={0.7}
+      style={styles.deliveryStateRow}
+    >
+      <Text
+        style={[
+          styles.deliveryStateText,
+          msg.deliveryStatus === 'failed' && styles.deliveryStateFailed,
+        ]}
+      >
+        {msg.deliveryStatus === 'failed' ? 'Not sent · Tap to retry' : 'Sending…'}
+      </Text>
+    </TouchableOpacity>
+  ) : null;
 
   if (parsedSpecial?.type === 'offer') {
     return (
@@ -130,9 +172,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ msg, isOwn, is
           <Text style={styles.offerText}>{msg.content}</Text>
           <Text style={styles.timeTextRight}>
             {formatMessageTime(msg.createdAt)}
-            {isOwn && msg.isRead && ' ✓✓'}
+            {isOwn && !msg.deliveryStatus && msg.isRead && ' ✓✓'}
           </Text>
         </View>
+        {deliveryState}
       </View>
     );
   }
@@ -148,9 +191,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ msg, isOwn, is
           </View>
           <Text style={isOwn ? styles.timeTextRight : styles.timeTextLeft}>
             {formatMessageTime(msg.createdAt)}
-            {isOwn && msg.isRead && ' ✓✓'}
+            {isOwn && !msg.deliveryStatus && msg.isRead && ' ✓✓'}
           </Text>
         </View>
+        {deliveryState}
       </View>
     );
   }
@@ -158,13 +202,19 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ msg, isOwn, is
   return (
     <View style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
       <View style={isOwn ? styles.bubbleStackRight : styles.bubbleStackLeft}>
-        <View style={[styles.bubble, isOwn ? styles.bubbleUser : styles.bubbleDealer]}>
+        <View
+          style={[
+            styles.bubble,
+            isOwn ? styles.bubbleUser : styles.bubbleDealer,
+            msg.deliveryStatus === 'failed' && styles.bubbleFailed,
+          ]}
+        >
           <Text style={styles.bubbleText}>{msg.content}</Text>
           <View style={[styles.msgFooter, isOwn ? styles.msgFooterRight : styles.msgFooterLeft]}>
             <Text style={isOwn ? styles.timeTextRightInline : styles.timeTextLeftInline}>
               {formatMessageTime(msg.createdAt)}
             </Text>
-            {isOwn && (
+            {isOwn && !msg.deliveryStatus && (
               <Ionicons
                 name={msg.isRead ? 'checkmark-done' : 'checkmark'}
                 size={14}
@@ -175,7 +225,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ msg, isOwn, is
           </View>
         </View>
 
-        {/* Instagram-style "Seen" indicator beneath the last read bubble */}
+        {deliveryState}
+
         {showSeenIndicator && (
           <View style={styles.seenRow}>
             <View style={[styles.seenAvatar, { backgroundColor: getAvatarBg(initials) }]}>
@@ -217,6 +268,9 @@ export const ChatScreen: React.FC = () => {
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [historyCursor, setHistoryCursor] = useState<ChatHistoryCursor | null>(null);
   const [inputVal, setInputVal] = useState('');
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   // Must live here, not after the `if (!room) return` guard below — a hook
@@ -226,13 +280,24 @@ export const ChatScreen: React.FC = () => {
 
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch initial messages and mark as read
+  // Fetch newest messages first. Older history uses a stable cursor so new
+  // realtime messages cannot shift page offsets while the user is scrolling.
   useEffect(() => {
+    setHistoryCursor(null);
+    setHasMore(false);
+
     async function loadMessages() {
       try {
         setLoading(true);
         const res = await getChatMessages(threadId);
         setMessages(res.data);
+        setHasMore(Boolean(res.pagination.hasMore));
+        setHistoryCursor(
+          res.pagination.nextCursor ??
+          (res.data[0]
+            ? { createdAt: res.data[0].createdAt, id: res.data[0].id }
+            : null)
+        );
         await markMessagesAsRead(threadId);
         markAsRead(threadId);
       } catch (error) {
@@ -244,18 +309,26 @@ export const ChatScreen: React.FC = () => {
     loadMessages();
   }, [threadId]);
 
-  // Subscribe to real-time events
+  // Subscribe to real-time events. clientMessageId identifies the exact
+  // optimistic bubble and avoids content-based matching when two messages are equal.
   useEffect(() => {
     const unsubscribe = onNewMessage((message) => {
       if (message.chatRoomId === threadId) {
         setMessages((prev) => {
-          // Skip exact duplicate IDs
           if (prev.some((m) => m.id === message.id)) return prev;
-          // Remove optimistic placeholder for our own messages (matched by content+sender)
-          const withoutOptimistic = prev.filter(
-            (m) => !(m.id.startsWith('opt-') && m.senderId === message.senderId && m.content === message.content)
-          );
-          return [...withoutOptimistic, message];
+
+          if (message.clientMessageId) {
+            const optimisticIndex = prev.findIndex(
+              (m) => m.clientMessageId === message.clientMessageId
+            );
+            if (optimisticIndex !== -1) {
+              const next = [...prev];
+              next[optimisticIndex] = message;
+              return next;
+            }
+          }
+
+          return [...prev, message];
         });
         markAsRead(threadId);
         markMessagesAsRead(threadId).catch(() => {});
@@ -301,6 +374,139 @@ export const ChatScreen: React.FC = () => {
     };
   }, [threadId]);
 
+  const deliverMessage = useCallback(async (
+    content: string,
+    clientMessageId: string,
+  ): Promise<ChatMessage> => {
+    if (isConnected) {
+      try {
+        return await emitSendMessage(threadId, content, clientMessageId);
+      } catch (error) {
+        const code = (error as { code?: string })?.code;
+        if (code !== 'CHAT_ACK_TIMEOUT' && code !== 'SOCKET_UNAVAILABLE') {
+          throw error;
+        }
+      }
+    }
+
+    return sendChatMessage(threadId, content, clientMessageId);
+  }, [isConnected, emitSendMessage, threadId]);
+
+  const confirmLocalMessage = useCallback((
+    clientMessageId: string,
+    confirmed: ChatMessage,
+  ) => {
+    setMessages((prev) => {
+      const index = prev.findIndex(
+        (message) =>
+          message.id === confirmed.id ||
+          message.clientMessageId === clientMessageId
+      );
+      if (index === -1) return [...prev, confirmed];
+
+      const next = [...prev];
+      next[index] = confirmed;
+      return next;
+    });
+  }, []);
+
+  const queueMessage = useCallback(async (content: string): Promise<boolean> => {
+    const clientMessageId = createClientMessageId();
+    const now = new Date().toISOString();
+    const optimistic: ChatMessage = {
+      id: `opt-${clientMessageId}`,
+      chatRoomId: threadId,
+      senderId: user?.id ?? '',
+      clientMessageId,
+      content,
+      createdAt: now,
+      updatedAt: now,
+      isRead: false,
+      sender: {
+        id: user?.id ?? '',
+        firstName: user?.firstName ?? null,
+        lastName: user?.lastName ?? null,
+        profileImage: user?.profileImage ?? null,
+      },
+      deliveryStatus: 'sending',
+    };
+
+    setMessages((prev) => [...prev, optimistic]);
+
+    try {
+      const confirmed = await deliverMessage(content, clientMessageId);
+      confirmLocalMessage(clientMessageId, confirmed);
+      refreshRooms().catch(() => {});
+      return true;
+    } catch (error) {
+      console.error('Failed to send chat message:', error);
+      setMessages((prev) => prev.map((message) =>
+        message.clientMessageId === clientMessageId
+          ? { ...message, deliveryStatus: 'failed' }
+          : message
+      ));
+      return false;
+    }
+  }, [
+    threadId,
+    user?.id,
+    user?.firstName,
+    user?.lastName,
+    user?.profileImage,
+    deliverMessage,
+    confirmLocalMessage,
+    refreshRooms,
+  ]);
+
+  const handleRetry = useCallback(async (message: ChatMessage) => {
+    if (!message.clientMessageId || message.deliveryStatus !== 'failed') return;
+
+    const clientMessageId = message.clientMessageId;
+    setMessages((prev) => prev.map((item) =>
+      item.clientMessageId === clientMessageId
+        ? { ...item, deliveryStatus: 'sending' }
+        : item
+    ));
+
+    try {
+      const confirmed = await deliverMessage(message.content, clientMessageId);
+      confirmLocalMessage(clientMessageId, confirmed);
+      refreshRooms().catch(() => {});
+    } catch (error) {
+      console.error('Failed to retry chat message:', error);
+      setMessages((prev) => prev.map((item) =>
+        item.clientMessageId === clientMessageId
+          ? { ...item, deliveryStatus: 'failed' }
+          : item
+      ));
+    }
+  }, [deliverMessage, confirmLocalMessage, refreshRooms]);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!historyCursor || !hasMore || loadingOlder) return;
+
+    try {
+      setLoadingOlder(true);
+      const res = await getChatMessages(threadId, 1, 50, historyCursor);
+      setMessages((prev) => {
+        const existingIds = new Set(prev.map((message) => message.id));
+        const older = res.data.filter((message) => !existingIds.has(message.id));
+        return [...older, ...prev];
+      });
+      setHasMore(Boolean(res.pagination.hasMore));
+      setHistoryCursor(
+        res.pagination.nextCursor ??
+        (res.data[0]
+          ? { createdAt: res.data[0].createdAt, id: res.data[0].id }
+          : null)
+      );
+    } catch (error) {
+      console.error('Failed to load earlier chat messages:', error);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [threadId, historyCursor, hasMore, loadingOlder]);
+
   // Derived values used by the message list — computed before the early returns
   // below so these hooks always run in the same order (Rules of Hooks).
   const displayNameForBubbles = room?.otherUser.firstName
@@ -333,8 +539,9 @@ export const ChatScreen: React.FC = () => {
       isOwn={item.senderId === user?.id}
       isLastOwnMessage={item.id === lastOwnMessageId}
       initials={initialsForBubbles}
+      onRetry={handleRetry}
     />
-  ), [user?.id, lastOwnMessageId, initialsForBubbles]);
+  ), [user?.id, lastOwnMessageId, initialsForBubbles, handleRetry]);
 
   if (loading) {
     return (
@@ -398,27 +605,7 @@ export const ChatScreen: React.FC = () => {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     stopTyping(threadId);
 
-    // Optimistically show the sent message immediately so the user sees it
-    // without waiting for socket confirmation.
-    const optimisticId = `opt-${Date.now()}`;
-    const optimisticMsg = {
-      id: optimisticId,
-      chatRoomId: threadId,
-      senderId: user?.id ?? '',
-      content: textToSend,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isRead: false,
-      sender: { id: user?.id ?? '', firstName: user?.firstName ?? null, lastName: user?.lastName ?? null, profileImage: user?.profileImage ?? null },
-    } as ChatMessage;
-    setMessages((prev) => [...prev, optimisticMsg]);
-
-    // Send via socket; onNewMessage will replace the optimistic entry when
-    // the server echoes it back (matched by content + sender).
-    emitSendMessage(threadId, textToSend);
-
-    // Refresh rooms list so MessagesScreen shows the latest message preview.
-    refreshRooms().catch(() => {});
+    void queueMessage(textToSend);
   };
 
   const handleTextChange = (text: string) => {
@@ -434,16 +621,22 @@ export const ChatScreen: React.FC = () => {
     }, 2000);
   };
 
-  const handleAcceptOffer = () => {
+  const handleAcceptOffer = async () => {
     const text = "I accept the counter-offer. Let's finalize the paperwork.";
-    emitSendMessage(threadId, text);
-    showToast('Accepted!', 'success');
+    const sent = await queueMessage(text);
+    showToast(
+      sent ? 'Accepted!' : 'Message not sent. Tap it to retry.',
+      sent ? 'success' : 'info',
+    );
   };
 
-  const handleCounterOffer = () => {
+  const handleCounterOffer = async () => {
     const text = `Counter-offer: £${carPrice.toLocaleString('en-GB')}`;
-    emitSendMessage(threadId, text);
-    showToast('Counter-offer sent!', 'info');
+    const sent = await queueMessage(text);
+    showToast(
+      sent ? 'Counter-offer sent!' : 'Message not sent. Tap it to retry.',
+      'info',
+    );
   };
 
   const handlePayDeposit = () => {
@@ -559,6 +752,7 @@ export const ChatScreen: React.FC = () => {
           contentContainerStyle={styles.chatScroll}
           showsVerticalScrollIndicator={false}
           inverted
+          maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
           data={reversedMessages}
           keyExtractor={(item) => item.id}
           renderItem={renderMessageItem}
@@ -572,9 +766,25 @@ export const ChatScreen: React.FC = () => {
             ) : null
           }
           ListFooterComponent={
-            <Text style={styles.dateSeparator}>
-              {messages.length === 0 ? 'No messages yet' : 'LIVE CHAT LOGS'}
-            </Text>
+            <View>
+              {hasMore && (
+                <TouchableOpacity
+                  style={styles.loadEarlierButton}
+                  onPress={loadOlderMessages}
+                  disabled={loadingOlder}
+                  activeOpacity={0.75}
+                >
+                  {loadingOlder ? (
+                    <ActivityIndicator size="small" color={Colors.textSecondary} />
+                  ) : (
+                    <Text style={styles.loadEarlierText}>Load earlier messages</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+              <Text style={styles.dateSeparator}>
+                {messages.length === 0 ? 'No messages yet' : 'LIVE CHAT LOGS'}
+              </Text>
+            </View>
           }
         />
 
@@ -753,6 +963,25 @@ const styles = StyleSheet.create({
     padding: 18,
     paddingBottom: 26,
   },
+  loadEarlierButton: {
+    alignSelf: 'center',
+    minWidth: 170,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    backgroundColor: Colors.bgSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+    marginBottom: 4,
+    paddingHorizontal: 16,
+  },
+  loadEarlierText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+  },
   dateSeparator: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs - 2,
@@ -803,6 +1032,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 4,
+  },
+  bubbleFailed: {
+    borderWidth: 1,
+    borderColor: Colors.warning,
   },
   bubbleText: {
     fontFamily: FontFamily.regular,
@@ -862,6 +1095,19 @@ const styles = StyleSheet.create({
   },
   readTick: {
     marginLeft: 4,
+  },
+  deliveryStateRow: {
+    marginTop: 5,
+    paddingHorizontal: 2,
+  },
+  deliveryStateText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size10,
+    color: Colors.textMuted,
+  },
+  deliveryStateFailed: {
+    color: Colors.warning,
+    textDecorationLine: 'underline',
   },
   // "Seen" indicator (Instagram-style: tiny avatar + label under last read bubble)
   seenRow: {
