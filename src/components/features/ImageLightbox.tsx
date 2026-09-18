@@ -4,6 +4,7 @@ import * as React from "react"
 import { createPortal } from "react-dom"
 import Image from "next/image"
 import { X, ChevronLeft, ChevronRight } from "lucide-react"
+import { parseVehicleImagePresentation } from "@/lib/vehicleImagePresentation"
 
 const TRANSITION_MS = 200
 
@@ -252,7 +253,7 @@ export function ImageLightbox({ images, alt, startIndex = 0, open, onClose }: Pr
                 {images.map((src, i) => (
                     <div key={`${src}-${i}`} data-slide-index={i} className="relative w-full h-full flex-shrink-0 snap-start snap-always flex items-center justify-center p-4 md:p-16">
                         <Image
-                            src={src}
+                            src={parseVehicleImagePresentation(src).src}
                             alt={i === 0 ? alt : `${alt} — image ${i + 1}`}
                             fill
                             sizes="100vw"
@@ -303,7 +304,7 @@ export function ImageLightbox({ images, alt, startIndex = 0, open, onClose }: Pr
                             aria-current={i === index ? "true" : undefined}
                             className={`relative h-16 w-24 flex-shrink-0 rounded overflow-hidden border-2 transition-colors focus:outline-none focus:ring-2 focus:ring-white/70 ${i === index ? "border-white" : "border-transparent opacity-60 hover:opacity-100"}`}
                         >
-                            <Image src={src} alt="" fill sizes="96px" className="object-cover" draggable={false} />
+                            <Image src={parseVehicleImagePresentation(src).src} alt="" fill sizes="96px" className="object-cover" draggable={false} />
                         </button>
                     ))}
                 </div>
