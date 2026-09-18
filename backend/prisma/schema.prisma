@@ -1219,6 +1219,8 @@ model DisputeCase {
   @@index([listingId])
   @@index([buyerId])
   @@index([sellerId])
+  @@index([openedById])
+  @@index([resolvedById])
   @@map("dispute_cases")
 }
 
