@@ -1138,15 +1138,13 @@ export class ListingsService {
     ): Promise<Listing> {
         const listing = await this.findById(id);
 
-        // Authorization: Only the seller or authorized dealer staff can mark as sold
         if (listing.sellerId && listing.sellerId !== userId) {
-            // Check dealer staff permissions
             const staffMember = await this.prisma.dealerStaff.findFirst({
-                where: { 
-                    userId, 
+                where: {
+                    userId,
                     dealerProfile: { userId: listing.sellerId },
-                    isActive: true 
-                }
+                    isActive: true,
+                },
             });
             if (!staffMember) {
                 throw new ForbiddenException('You do not have permission to mark this listing as sold');
@@ -1159,11 +1157,61 @@ export class ListingsService {
 
         const effectiveSellerId = listing.sellerId || userId;
 
-        // Atomically set listing SOLD and upsert the Sale record
+        // When a retail offer has already been accepted, the accepted negotiation
+        // is authoritative for buyer + sold price. The seller must not be able to
+        // accidentally type a different buyer or amount while completing the sale.
+        const acceptedOffer = listing.status === 'OFFER_ACCEPTED'
+            ? await this.prisma.offer.findFirst({
+                where: { listingId: id, status: 'ACCEPTED' },
+                orderBy: { updatedAt: 'desc' },
+                include: {
+                    buyer: {
+                        select: {
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                        },
+                    },
+                },
+            })
+            : null;
+
+        if (listing.status === 'OFFER_ACCEPTED' && !acceptedOffer) {
+            throw new BadRequestException(
+                'This listing is marked Sale Pending but no accepted offer exists. Cancel/relist the pending deal before recording a sale.',
+            );
+        }
+
+        const agreedPrice = acceptedOffer
+            ? Number(acceptedOffer.finalAmount ?? acceptedOffer.counterAmount ?? acceptedOffer.amount)
+            : dto.soldPrice;
+        const agreedBuyerId = acceptedOffer?.buyerId ?? dto.buyerId ?? null;
+        const agreedBuyerName = acceptedOffer
+            ? [acceptedOffer.buyer?.firstName, acceptedOffer.buyer?.lastName].filter(Boolean).join(' ') || null
+            : dto.buyerName ?? null;
+        const agreedBuyerEmail = acceptedOffer?.buyer?.email ?? dto.buyerEmail ?? null;
+
+        if (!Number.isFinite(agreedPrice) || agreedPrice <= 0) {
+            throw new BadRequestException('A valid sold price is required');
+        }
+
         const updated = await this.prisma.$transaction(async (tx) => {
             const updatedListing = await tx.listing.update({
                 where: { id },
                 data: { status: 'SOLD' },
+            });
+
+            // Defensive close: once SOLD, no pending/countered negotiation may
+            // remain actionable, including manual/off-platform sales.
+            await tx.offer.updateMany({
+                where: {
+                    listingId: id,
+                    status: { in: ['PENDING', 'COUNTERED'] },
+                },
+                data: {
+                    status: 'REJECTED',
+                    counterExpiresAt: null,
+                },
             });
 
             await tx.sale.upsert({
@@ -1171,27 +1219,25 @@ export class ListingsService {
                 create: {
                     listingId: id,
                     sellerId: effectiveSellerId,
-                    buyerId: dto.buyerId ?? null,
-                    buyerName: dto.buyerName ?? null,
-                    buyerEmail: dto.buyerEmail ?? null,
+                    buyerId: agreedBuyerId,
+                    buyerName: agreedBuyerName,
+                    buyerEmail: agreedBuyerEmail,
                     buyerPostcode: dto.buyerPostcode ?? null,
-                    soldPrice: dto.soldPrice,
+                    soldPrice: agreedPrice,
                 },
                 update: {
                     sellerId: effectiveSellerId,
-                    buyerId: dto.buyerId ?? null,
-                    buyerName: dto.buyerName ?? null,
-                    buyerEmail: dto.buyerEmail ?? null,
+                    buyerId: agreedBuyerId,
+                    buyerName: agreedBuyerName,
+                    buyerEmail: agreedBuyerEmail,
                     buyerPostcode: dto.buyerPostcode ?? null,
-                    soldPrice: dto.soldPrice,
+                    soldPrice: agreedPrice,
                 },
             });
 
             return updatedListing;
         });
 
-        // Increment seller profile stats outside the transaction — a failure here
-        // should never roll back the sale that was just committed.
         if (effectiveSellerId) {
             this.sellersService.incrementSales(effectiveSellerId).catch((err) => {
                 console.error(`recordSale: incrementSales failed for ${effectiveSellerId}:`, err?.message);
