@@ -24,12 +24,24 @@ import { ExternalLink } from "lucide-react"
 // ─── Completeness helper ────────────────────────────────────────────────────
 
 const REQUIRED_FIELDS = [
-    { key: 'images',       label: 'Photos',       check: (l: any) => Array.isArray(l.images) && l.images.length >= 1 },
-    { key: 'transmission', label: 'Transmission',  check: (l: any) => !!l.transmission },
-    { key: 'bodyType',     label: 'Body Type',     check: (l: any) => !!l.bodyType },
-    { key: 'description',  label: 'Description',   check: (l: any) => !!l.description?.trim() },
-    { key: 'condition',    label: 'Condition',      check: (l: any) => !!l.condition },
-]
+    { key: 'images',       label: 'At least 10 photos', check: (l: any) => Array.isArray(l.images) && l.images.length >= 10 },
+    { key: 'make',         label: 'Make',               check: (l: any) => !!l.make },
+    { key: 'model',        label: 'Model',              check: (l: any) => !!l.model },
+    { key: 'fuelType',     label: 'Fuel Type',          check: (l: any) => !!l.fuelType },
+    { key: 'transmission', label: 'Transmission',       check: (l: any) => !!l.transmission },
+    { key: 'bodyType',     label: 'Body Type',          check: (l: any) => !!l.bodyType },
+    { key: 'location',     label: 'Location',           check: (l: any) => !!l.location?.trim() },
+    { key: 'owners',       label: 'Previous Keepers',   check: (l: any) => !!l.owners?.trim() },
+    { key: 'description',  label: 'Description',        check: (l: any) => !!l.description?.trim() },
+    { key: 'condition',    label: 'Condition',          check: (l: any) => !!l.condition },
+    { key: 'stolenRecovered', label: 'Stolen/Recovered Declaration', check: (l: any) => l.stolenRecovered !== null && l.stolenRecovered !== undefined },
+    { key: 'hasOutstandingFinance', label: 'Finance Declaration', check: (l: any) => l.hasOutstandingFinance !== null && l.hasOutstandingFinance !== undefined },
+    {
+        key: 'keeper',
+        label: 'Registered Keeper Declaration',
+        check: (l: any) => l.isLegalRegisteredKeeper === true || (l.isLegalRegisteredKeeper === false && !!l.notOwnerRelationship?.trim()),
+    },
+
 
 function getListingCompleteness(listing: any) {
     const missing = REQUIRED_FIELDS.filter(f => !f.check(listing)).map(f => f.label)
