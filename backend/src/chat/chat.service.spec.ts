@@ -8,6 +8,8 @@ describe('ChatService — conversation context and authorization', () => {
     const otherBuyerId = '33333333-3333-4333-8333-333333333333';
     const listingId = '44444444-4444-4444-8444-444444444444';
     const auctionId = '55555555-5555-4555-8555-555555555555';
+    const adminId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const secondAdminId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
     let prisma: any;
     let notificationsService: any;
@@ -54,6 +56,16 @@ describe('ChatService — conversation context and authorization', () => {
             user: {
                 findMany: jest.fn().mockResolvedValue(users()),
                 findFirst: jest.fn(),
+                findUnique: jest.fn().mockImplementation(({ where }: any) => {
+                    const id = where.id;
+                    if (id === adminId || id === secondAdminId) {
+                        return Promise.resolve({ id, role: 'ADMIN', deletedAt: null });
+                    }
+                    if (id === sellerId) {
+                        return Promise.resolve({ id, role: 'SELLER', deletedAt: null });
+                    }
+                    return Promise.resolve({ id, role: 'BUYER', deletedAt: null });
+                }),
             },
             listing: {
                 findUnique: jest.fn(),
@@ -479,6 +491,146 @@ describe('ChatService — conversation context and authorization', () => {
             expect.objectContaining({
                 link: '/dashboard/seller/messages?room=room-photo',
                 title: 'New Photo',
+            }),
+        );
+    });
+
+    it('uses one permanent support key per customer regardless of which admin opens it', async () => {
+        prisma.user.findMany
+            .mockResolvedValueOnce([
+                { id: buyerId, role: 'BUYER' },
+                { id: adminId, role: 'ADMIN' },
+            ])
+            .mockResolvedValueOnce([
+                { id: secondAdminId, role: 'ADMIN' },
+                { id: buyerId, role: 'BUYER' },
+            ]);
+        prisma.chatRoom.findUnique.mockResolvedValue(null);
+        prisma.chatRoom.upsert.mockImplementation(({ create }: any) => Promise.resolve({
+            id: 'support-room',
+            ...create,
+            deletedAt: null,
+            initiator: { id: create.initiatorId, role: create.initiatorId === buyerId ? 'BUYER' : 'ADMIN' },
+            participant: { id: create.participantId, role: create.participantId === buyerId ? 'BUYER' : 'ADMIN' },
+            listing: null,
+            supportAssignedAdmin: null,
+        }));
+
+        await service.findOrCreateRoom(buyerId, { participantId: adminId });
+        await service.findOrCreateRoom(secondAdminId, { participantId: buyerId });
+
+        const firstKey = prisma.chatRoom.upsert.mock.calls[0][0].where.conversationKey;
+        const secondKey = prisma.chatRoom.upsert.mock.calls[1][0].where.conversationKey;
+
+        expect(firstKey).toBe(`SUPPORT:CARMAZIUM:${buyerId}`);
+        expect(secondKey).toBe(firstKey);
+        expect(prisma.chatRoom.upsert.mock.calls[0][0].create.supportAssignedAdminId).toBe(adminId);
+    });
+
+    it('allows another admin into SUPPORT but not into a private retail room', async () => {
+        prisma.chatRoom.findUnique.mockResolvedValueOnce({
+            id: 'support-room',
+            initiatorId: buyerId,
+            participantId: adminId,
+            listingId: null,
+            context: ChatContext.SUPPORT,
+            supportAssignedAdminId: adminId,
+            supportClosedAt: null,
+            deletedAt: null,
+            initiator: { role: 'BUYER' },
+            participant: { role: 'ADMIN' },
+        });
+
+        await expect(
+            service.assertCanMessageRoom('support-room', secondAdminId),
+        ).resolves.toBeDefined();
+
+        prisma.chatRoom.findUnique.mockResolvedValueOnce({
+            id: 'retail-room',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.RETAIL,
+            supportAssignedAdminId: null,
+            supportClosedAt: null,
+            deletedAt: null,
+            initiator: { role: 'BUYER' },
+            participant: { role: 'SELLER' },
+        });
+
+        await expect(
+            service.assertCanMessageRoom('retail-room', secondAdminId),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('marks only customer-authored support messages read when another admin opens the thread', async () => {
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'support-room',
+            initiatorId: buyerId,
+            participantId: adminId,
+            listingId: null,
+            context: ChatContext.SUPPORT,
+            supportAssignedAdminId: adminId,
+            supportClosedAt: null,
+            deletedAt: null,
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: adminId, role: 'ADMIN' },
+            listing: null,
+            supportAssignedAdmin: { id: adminId },
+        });
+        prisma.message.updateMany.mockResolvedValue({ count: 2 });
+
+        const count = await service.markMessagesAsRead('support-room', secondAdminId);
+
+        expect(count).toBe(2);
+        expect(prisma.message.updateMany).toHaveBeenCalledWith({
+            where: {
+                chatRoomId: 'support-room',
+                senderId: buyerId,
+                isRead: false,
+            },
+            data: { isRead: true },
+        });
+    });
+
+    it('routes a customer support reply to the assigned admin', async () => {
+        const savedMessage = {
+            id: 'support-message',
+            chatRoomId: 'support-room',
+            senderId: buyerId,
+            content: 'I still need help',
+            deletedAt: null,
+            sender: { id: buyerId },
+        };
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'support-room',
+            initiatorId: buyerId,
+            participantId: adminId,
+            listingId: null,
+            context: ChatContext.SUPPORT,
+            supportAssignedAdminId: secondAdminId,
+            supportClosedAt: null,
+            deletedAt: null,
+            initiator: { role: 'BUYER' },
+            participant: { role: 'ADMIN' },
+        });
+        prisma.message.create.mockResolvedValue(savedMessage);
+        prisma.chatRoom.update.mockResolvedValue({});
+        notificationsService.create.mockResolvedValue({ id: 'support-notification' });
+
+        await service.sendMessage('support-room', buyerId, {
+            content: savedMessage.content,
+        });
+
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                userId: secondAdminId,
+                link: '/dashboard/admin/messages?room=support-room',
+            }),
+        );
+        expect(prisma.chatRoom.update).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.objectContaining({ supportClosedAt: null }),
             }),
         );
     });

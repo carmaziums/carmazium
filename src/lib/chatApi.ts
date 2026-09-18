@@ -42,8 +42,20 @@ export interface ChatMessage {
 
 export interface ChatRoom {
     id: string
+    context?: 'SUPPORT' | 'RETAIL' | 'AUCTION' | 'DISPUTE' | 'LEGACY'
     otherUser: ChatUser
     listing: ChatListing | null
+    supportAssignedAdminId?: string | null
+    supportAssignedAdmin?: {
+        id: string
+        firstName: string | null
+        lastName: string | null
+        email: string
+        profileImage?: string | null
+    } | null
+    supportTags?: string[]
+    supportClosedAt?: string | null
+    needsReply?: boolean
     lastMessage: {
         id: string
         content: string

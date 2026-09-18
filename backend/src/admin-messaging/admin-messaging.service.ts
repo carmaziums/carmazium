@@ -1,5 +1,14 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { CapabilityStatus, Prisma, ServiceType, UserRole } from '@prisma/client';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+    BroadcastCampaignStatus,
+    BroadcastDeliveryStatus,
+    CapabilityStatus,
+    ChatContext,
+    Prisma,
+    ServiceType,
+    UserRole,
+} from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChatService } from '../chat/chat.service';
 import { ChatGateway } from '../chat/chat.gateway';
@@ -66,6 +75,31 @@ export class AdminMessagingService {
         }
 
         const content = this.buildStoredContent(dto, text);
+        const campaign = await this.prisma.broadcastCampaign.create({
+            data: {
+                adminId,
+                audience: dto.audience,
+                role: dto.role,
+                text: text || null,
+                mediaUrl: dto.mediaUrl,
+                mediaKind: dto.mediaKind,
+                mediaName: dto.mediaName,
+                mediaMime: dto.mediaMime,
+                mediaSize: dto.mediaSize,
+                requested: recipients.length,
+                status: BroadcastCampaignStatus.SENDING,
+            },
+        });
+
+        await this.prisma.broadcastDelivery.createMany({
+            data: recipients.map((recipient) => ({
+                id: randomUUID(),
+                campaignId: campaign.id,
+                userId: recipient.id,
+                status: BroadcastDeliveryStatus.PENDING,
+            })),
+        });
+
         const failures: Array<{ userId: string; error: string }> = [];
         let sent = 0;
 
@@ -75,18 +109,54 @@ export class AdminMessagingService {
                 batch.map((recipient) => this.deliverOne(adminId, recipient, content, text, dto.mediaKind)),
             );
 
-            results.forEach((result, index) => {
+            for (let index = 0; index < results.length; index += 1) {
+                const result = results[index];
                 const recipient = batch[index];
                 if (result.status === 'fulfilled') {
                     sent += 1;
+                    await this.prisma.broadcastDelivery.update({
+                        where: {
+                            campaignId_userId: {
+                                campaignId: campaign.id,
+                                userId: recipient.id,
+                            },
+                        },
+                        data: {
+                            status: BroadcastDeliveryStatus.SENT,
+                            roomId: result.value.room.id,
+                            messageId: result.value.message.id,
+                            error: null,
+                        },
+                    });
                 } else {
-                    failures.push({
-                        userId: recipient.id,
-                        error: result.reason?.message || 'Delivery failed',
+                    const error = result.reason?.message || 'Delivery failed';
+                    failures.push({ userId: recipient.id, error });
+                    await this.prisma.broadcastDelivery.update({
+                        where: {
+                            campaignId_userId: {
+                                campaignId: campaign.id,
+                                userId: recipient.id,
+                            },
+                        },
+                        data: {
+                            status: BroadcastDeliveryStatus.FAILED,
+                            error: String(error).slice(0, 1000),
+                        },
                     });
                 }
-            });
+            }
         }
+
+        const status = this.broadcastStatus(sent, failures.length, recipients.length);
+        await this.prisma.broadcastCampaign.update({
+            where: { id: campaign.id },
+            data: {
+                sent,
+                failed: failures.length,
+                status,
+                finishedAt: new Date(),
+            },
+        });
 
         this.logger.log(
             `Admin ${adminId} sent audience message ${dto.audience} to ${sent}/${recipients.length} recipients`,
@@ -96,6 +166,7 @@ export class AdminMessagingService {
         }
 
         return {
+            campaignId: campaign.id,
             requested: recipients.length,
             sent,
             failed: failures.length,
@@ -157,7 +228,29 @@ export class AdminMessagingService {
             this.logger.warn(`Notification failed for ${recipient.id}: ${error?.message}`);
         }
 
-        return message;
+        return { message, room };
+    }
+
+    private broadcastStatus(sent: number, failed: number, requested: number): BroadcastCampaignStatus {
+        if (sent === requested && failed === 0) return BroadcastCampaignStatus.COMPLETED;
+        if (sent === 0) return BroadcastCampaignStatus.FAILED;
+        return BroadcastCampaignStatus.PARTIAL;
+    }
+
+    private buildCampaignContent(campaign: any): string {
+        const text = campaign.text || '';
+        if (!campaign.mediaUrl) return text;
+
+        return ADMIN_MEDIA_PREFIX + JSON.stringify({
+            text,
+            media: {
+                url: campaign.mediaUrl,
+                kind: campaign.mediaKind,
+                name: campaign.mediaName || (campaign.mediaKind === AdminMediaKind.VIDEO ? 'Video' : 'Photo'),
+                mime: campaign.mediaMime || null,
+                size: campaign.mediaSize || null,
+            },
+        });
     }
 
     private buildStoredContent(dto: AdminSendMessageDto, text: string): string {
@@ -222,6 +315,324 @@ export class AdminMessagingService {
                 );
             }
         }
+    }
+
+    private async requireSupportRoom(roomId: string) {
+        const room = await this.prisma.chatRoom.findFirst({
+            where: {
+                id: roomId,
+                context: ChatContext.SUPPORT,
+                deletedAt: null,
+            },
+            include: {
+                supportAssignedAdmin: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        profileImage: true,
+                    },
+                },
+            },
+        });
+        if (!room) {
+            throw new NotFoundException('Support conversation not found.');
+        }
+        return room;
+    }
+
+    async listSupportAgents() {
+        return this.prisma.user.findMany({
+            where: { role: UserRole.ADMIN, deletedAt: null },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                profileImage: true,
+            },
+            orderBy: [{ firstName: 'asc' }, { email: 'asc' }],
+        });
+    }
+
+    async assignSupportRoom(roomId: string, adminId: string | null) {
+        await this.requireSupportRoom(roomId);
+
+        if (adminId) {
+            const agent = await this.prisma.user.findFirst({
+                where: { id: adminId, role: UserRole.ADMIN, deletedAt: null },
+                select: { id: true },
+            });
+            if (!agent) {
+                throw new BadRequestException('Choose an active admin account.');
+            }
+        }
+
+        const room = await this.prisma.chatRoom.update({
+            where: { id: roomId },
+            data: { supportAssignedAdminId: adminId },
+            include: {
+                supportAssignedAdmin: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        profileImage: true,
+                    },
+                },
+            },
+        });
+
+        if (adminId) {
+            this.chatGateway.joinRoomForUser(adminId, roomId);
+        }
+
+        return {
+            supportAssignedAdminId: room.supportAssignedAdminId,
+            supportAssignedAdmin: room.supportAssignedAdmin,
+        };
+    }
+
+    async updateSupportTags(roomId: string, tags: string[]) {
+        await this.requireSupportRoom(roomId);
+
+        const cleaned = Array.from(new Set(
+            tags
+                .map((tag) => tag.trim().toLowerCase())
+                .filter(Boolean),
+        ));
+        if (cleaned.length > 10 || cleaned.some((tag) => tag.length > 32)) {
+            throw new BadRequestException('Use up to 10 tags, 32 characters each.');
+        }
+
+        const room = await this.prisma.chatRoom.update({
+            where: { id: roomId },
+            data: { supportTags: cleaned },
+            select: { supportTags: true },
+        });
+        return room.supportTags;
+    }
+
+    async updateSupportClosed(roomId: string, closed: boolean) {
+        await this.requireSupportRoom(roomId);
+        const room = await this.prisma.chatRoom.update({
+            where: { id: roomId },
+            data: { supportClosedAt: closed ? new Date() : null },
+            select: { supportClosedAt: true },
+        });
+        return { supportClosedAt: room.supportClosedAt };
+    }
+
+    async listSupportNotes(roomId: string) {
+        await this.requireSupportRoom(roomId);
+        return this.prisma.supportNote.findMany({
+            where: { chatRoomId: roomId },
+            include: {
+                author: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    async addSupportNote(roomId: string, authorId: string, body: string) {
+        await this.requireSupportRoom(roomId);
+        const cleanBody = body.trim();
+        if (!cleanBody) {
+            throw new BadRequestException('Enter an internal note.');
+        }
+        return this.prisma.supportNote.create({
+            data: {
+                chatRoomId: roomId,
+                authorId,
+                body: cleanBody,
+            },
+            include: {
+                author: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+    }
+
+    async deleteSupportNote(roomId: string, noteId: string) {
+        await this.requireSupportRoom(roomId);
+        const note = await this.prisma.supportNote.findFirst({
+            where: { id: noteId, chatRoomId: roomId },
+            select: { id: true },
+        });
+        if (!note) {
+            throw new NotFoundException('Internal note not found.');
+        }
+        await this.prisma.supportNote.delete({ where: { id: noteId } });
+        return { deleted: true };
+    }
+
+    async listBroadcastCampaigns(page = 1, limit = 20) {
+        const safePage = Math.max(page, 1);
+        const safeLimit = Math.min(Math.max(limit, 1), 100);
+        const [data, total] = await Promise.all([
+            this.prisma.broadcastCampaign.findMany({
+                include: {
+                    admin: {
+                        select: {
+                            id: true,
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                        },
+                    },
+                },
+                orderBy: { createdAt: 'desc' },
+                skip: (safePage - 1) * safeLimit,
+                take: safeLimit,
+            }),
+            this.prisma.broadcastCampaign.count(),
+        ]);
+
+        return {
+            data,
+            pagination: {
+                total,
+                page: safePage,
+                limit: safeLimit,
+                totalPages: Math.ceil(total / safeLimit),
+            },
+        };
+    }
+
+    async getBroadcastCampaign(campaignId: string) {
+        const campaign = await this.prisma.broadcastCampaign.findUnique({
+            where: { id: campaignId },
+            include: {
+                admin: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+                deliveries: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                email: true,
+                                firstName: true,
+                                lastName: true,
+                                role: true,
+                            },
+                        },
+                    },
+                    orderBy: [{ status: 'asc' }, { createdAt: 'asc' }],
+                },
+            },
+        });
+        if (!campaign) {
+            throw new NotFoundException('Broadcast campaign not found.');
+        }
+        return campaign;
+    }
+
+    async retryFailedBroadcast(campaignId: string, adminId: string) {
+        this.chatRateLimit.consumeAdminBroadcast(adminId);
+        const campaign = await this.prisma.broadcastCampaign.findUnique({
+            where: { id: campaignId },
+            include: {
+                deliveries: {
+                    where: { status: BroadcastDeliveryStatus.FAILED },
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                email: true,
+                                firstName: true,
+                                lastName: true,
+                                role: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (!campaign) {
+            throw new NotFoundException('Broadcast campaign not found.');
+        }
+        if (campaign.deliveries.length === 0) {
+            return this.getBroadcastCampaign(campaignId);
+        }
+
+        const content = this.buildCampaignContent(campaign);
+        for (let i = 0; i < campaign.deliveries.length; i += SEND_BATCH_SIZE) {
+            const batch = campaign.deliveries.slice(i, i + SEND_BATCH_SIZE);
+            const results = await Promise.allSettled(
+                batch.map((delivery) => this.deliverOne(
+                    adminId,
+                    delivery.user,
+                    content,
+                    campaign.text || '',
+                    campaign.mediaKind as AdminMediaKind | undefined,
+                )),
+            );
+
+            for (let index = 0; index < results.length; index += 1) {
+                const result = results[index];
+                const delivery = batch[index];
+                if (result.status === 'fulfilled') {
+                    await this.prisma.broadcastDelivery.update({
+                        where: { id: delivery.id },
+                        data: {
+                            status: BroadcastDeliveryStatus.SENT,
+                            roomId: result.value.room.id,
+                            messageId: result.value.message.id,
+                            error: null,
+                        },
+                    });
+                } else {
+                    await this.prisma.broadcastDelivery.update({
+                        where: { id: delivery.id },
+                        data: {
+                            error: String(result.reason?.message || 'Delivery failed').slice(0, 1000),
+                        },
+                    });
+                }
+            }
+        }
+
+        const [sent, failed] = await Promise.all([
+            this.prisma.broadcastDelivery.count({
+                where: { campaignId, status: BroadcastDeliveryStatus.SENT },
+            }),
+            this.prisma.broadcastDelivery.count({
+                where: { campaignId, status: BroadcastDeliveryStatus.FAILED },
+            }),
+        ]);
+
+        await this.prisma.broadcastCampaign.update({
+            where: { id: campaignId },
+            data: {
+                sent,
+                failed,
+                status: this.broadcastStatus(sent, failed, campaign.requested),
+                finishedAt: new Date(),
+            },
+        });
+
+        return this.getBroadcastCampaign(campaignId);
     }
 
     private async resolveRecipients(dto: AdminAudienceDto): Promise<Recipient[]> {
