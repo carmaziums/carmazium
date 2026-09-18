@@ -251,7 +251,7 @@ export function ImageUpload({
                         const candidates = combined.slice(0, 30)
                         const recommendation = await recommendVehicleCoverPhoto(candidates.map(img => parseVehicleImagePresentation(img.url).src))
                         const recommendedIndex = recommendation.recommendedIndex
-                        if (recommendedIndex !== null && recommendedIndex > 0 && recommendedIndex < candidates.length) {
+                        if (recommendation.confidence >= 0.6 && recommendedIndex !== null && recommendedIndex > 0 && recommendedIndex < candidates.length) {
                             const next = [...combined]
                             const [cover] = next.splice(recommendedIndex, 1)
                             next.unshift(cover)
@@ -261,7 +261,7 @@ export function ImageUpload({
                                     ? 'Front photo selected automatically as the cover.'
                                     : 'Best front-angle photo selected automatically as the cover.'
                             )
-                        } else if (recommendedIndex === 0) {
+                        } else if (recommendation.confidence >= 0.6 && recommendedIndex === 0) {
                             setCoverSelectionMessage('Your current first photo is already the best front cover.')
                         } else {
                             setCoverSelectionMessage('No clear front photo was found. You can choose the cover manually below.')
