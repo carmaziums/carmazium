@@ -65,7 +65,6 @@ function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob>
  */
 async function prepareImageForUpload(file: File): Promise<File> {
     const safeType = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)
-    const extension = file.name.split('.').pop()?.toLowerCase() || ''
     const alreadyOptimised = safeType && file.size <= TARGET_UPLOAD_SIZE
 
     const objectUrl = URL.createObjectURL(file)
@@ -458,7 +457,7 @@ export function ImageUpload({
                         <p className="text-[var(--text-muted)] text-sm mb-4">
                             Drag and drop or click to browse (Max {maxImages} photos)
                         </p>
-                        <div className="inline-flex gap-4 text-xs font-semibold text-[var(--text-muted)] bg-[var(--bg-card)] px-4 py-2 rounded-full border border-[var(--border-default)]">
+                        <div className="inline-flex flex-wrap justify-center gap-2 sm:gap-4 text-xs font-semibold text-[var(--text-muted)] bg-[var(--bg-card)] px-4 py-2 rounded-xl sm:rounded-full border border-[var(--border-default)]">
                             <span>Phone photos supported</span>
                             <span className="w-1 h-1 rounded-full bg-gray-600 self-center"></span>
                             <span>Auto-optimised to Full HD</span>
