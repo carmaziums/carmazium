@@ -1290,7 +1290,7 @@ export class ListingsService {
     async alsoAuction(
         listingId: string,
         userId: string,
-        dto: { startTime: string; reservePrice: number; startingBid: number; minIncrement?: number; buyItNowPrice?: number },
+        dto: { startTime: string; reservePrice: number; startingBid?: number; minIncrement?: number; buyItNowPrice?: number },
     ): Promise<{ linkedListingId: string; auctionId: string }> {
         const source = await this.findById(listingId);
         if (source.sellerId !== userId) throw new ForbiddenException('You do not own this listing');
@@ -1304,7 +1304,11 @@ export class ListingsService {
         // The linked auction uses the same platform-owned opening bid rule:
         // 70% of this listing's reference/retail value. Ignore any legacy
         // client-supplied startingBid so web/mobile cannot drift from the rule.
-        const platformStartingBid = calculatePlatformOpeningBid(Number(source.price));
+        const sourceValue = Number(source.price);
+        if (!Number.isFinite(sourceValue) || sourceValue <= 0) {
+            throw new BadRequestException('A valid vehicle price is required before creating the linked auction');
+        }
+        const platformStartingBid = calculatePlatformOpeningBid(sourceValue);
 
         const startTime = new Date(dto.startTime);
         if (isNaN(startTime.getTime()) || startTime.getTime() < Date.now() - 60_000) {
