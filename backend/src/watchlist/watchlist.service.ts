@@ -73,8 +73,6 @@ export class WatchlistService {
                             slug: true,
                             images: true,
                             price: true,
-                            priceMin: true,
-                            priceMax: true,
                             status: true,
                             type: true,
                             sellerId: true,
