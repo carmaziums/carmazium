@@ -274,6 +274,10 @@ describe('AuctionsService — create', () => {
                 create: jest.fn().mockResolvedValue({ id: 'auction-1' }),
                 update: jest.fn().mockResolvedValue({ id: 'auction-1' }),
             },
+            bid: {
+                updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+            },
+            $transaction: jest.fn(async (operations: any[]) => Promise.all(operations)),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -312,6 +316,40 @@ describe('AuctionsService — create', () => {
         await service.create(makeDto(), 'seller-1');
         expect(prisma.auction.create).toHaveBeenCalledWith(
             expect.objectContaining({ data: expect.objectContaining({ buyItNowPrice: null }) }),
+        );
+    });
+
+
+    it('archives bids from the completed auction before re-auctioning the same listing', async () => {
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1',
+            listingId: 'listing-1',
+            status: 'ENDED',
+            deletedAt: null,
+        });
+        prisma.bid.updateMany.mockResolvedValue({ count: 4 });
+        prisma.auction.update.mockResolvedValue({ id: 'auction-1', status: 'SCHEDULED' });
+
+        await service.create(makeDto(), 'seller-1');
+
+        expect(prisma.bid.updateMany).toHaveBeenCalledWith({
+            where: {
+                listingId: 'listing-1',
+                deletedAt: null,
+                archivedAt: null,
+            },
+            data: { archivedAt: expect.any(Date) },
+        });
+        expect(prisma.auction.update).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: { id: 'auction-1' },
+                data: expect.objectContaining({
+                    status: 'SCHEDULED',
+                    winnerId: null,
+                    winningBidAmount: null,
+                    wonAt: null,
+                }),
+            }),
         );
     });
 });
