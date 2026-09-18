@@ -11,6 +11,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { SellersService } from '../sellers/sellers.service';
 import { AuctionsService } from '../auctions/auctions.service';
 import { buildListingActivationData } from '../listings/listing-activation';
+import { getListingSubmissionMissingFields, listingRequiresHpi } from '../listings/listing-readiness';
 
 @Injectable()
 export class AdminService {
@@ -500,13 +501,31 @@ export class AdminService {
     async approveListing(id: string) {
         const listing = await this.prisma.listing.findUnique({
             where: { id },
-            include: { auction: true },
+            include: {
+                auction: true,
+                hpiReport: { select: { id: true } },
+            },
         });
         if (!listing) {
             throw new NotFoundException('Listing not found');
         }
         if (listing.status !== 'PENDING_REVIEW') {
             throw new BadRequestException('Only listings awaiting review can be approved');
+        }
+
+        const missingFields = getListingSubmissionMissingFields(listing);
+        if (missingFields.length > 0) {
+            throw new BadRequestException(
+                `Listing is incomplete and cannot be approved. Missing: ${missingFields.join(', ')}.`,
+            );
+        }
+
+        // New listings must have requested HPI before approval. The report may
+        // still be pending preparation; existence of the request is the gate.
+        if (listingRequiresHpi(listing.createdAt) && !listing.hpiReport) {
+            throw new BadRequestException(
+                'This listing requires a CarMazium vehicle history (HPI) report request before approval.',
+            );
         }
 
         // AUCTION listings are not valid without their Auction row. Keeping this

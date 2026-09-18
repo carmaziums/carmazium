@@ -34,6 +34,7 @@ import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { buildListingActivationData } from './listing-activation';
 import { brandAdminSeller, brandListingSeller } from './admin-seller-branding';
 import { calculatePlatformOpeningBid } from '../auctions/auction-pricing';
+import { getListingSubmissionMissingFields, listingRequiresHpi } from './listing-readiness';
 
 // ─── Enum mappers ─────────────────────────────────────────────────────────────
 
@@ -199,31 +200,6 @@ export class ListingsService {
         }
     }
 
-    private getSubmissionMissingFields(listing: any): string[] {
-        const missing: string[] = [];
-
-        if (!Array.isArray(listing.images) || listing.images.length < 10) missing.push('at least 10 photos');
-        if (!listing.vrm) missing.push('VRM');
-        if (!listing.make) missing.push('make');
-        if (!listing.model) missing.push('model');
-        if (!listing.year) missing.push('year');
-        if (listing.mileage === null || listing.mileage === undefined) missing.push('mileage');
-        if (!listing.fuelType) missing.push('fuel type');
-        if (!listing.transmission) missing.push('transmission');
-        if (!listing.bodyType) missing.push('body type');
-        if (!listing.title || listing.title.trim().length < 5) missing.push('title');
-        if (!listing.location?.trim()) missing.push('location');
-        if (!listing.owners?.trim()) missing.push('previous keepers');
-        if (!listing.description?.trim()) missing.push('description');
-        if (!listing.condition) missing.push('condition');
-        if (listing.stolenRecovered === null || listing.stolenRecovered === undefined) missing.push('stolen/recovered declaration');
-        if (listing.hasOutstandingFinance === null || listing.hasOutstandingFinance === undefined) missing.push('outstanding finance declaration');
-        if (listing.isLegalRegisteredKeeper === null || listing.isLegalRegisteredKeeper === undefined) missing.push('registered keeper declaration');
-        if (listing.isLegalRegisteredKeeper === false && !listing.notOwnerRelationship?.trim()) missing.push('relationship/authority to sell');
-        if (listing.isDepartedSale && !listing.departedRelationship?.trim()) missing.push('estate/departed-sale relationship');
-
-        return missing;
-    }
 
     /**
      * Re-hosts external images to Supabase Storage
@@ -1056,7 +1032,7 @@ export class ListingsService {
             throw new ForbiddenException('You do not have permission to publish this listing');
         }
 
-        const missingFields = this.getSubmissionMissingFields(listing);
+        const missingFields = getListingSubmissionMissingFields(listing);
         if (missingFields.length > 0) {
             throw new BadRequestException(
                 `Listing is not ready to submit. Missing: ${missingFields.join(', ')}.`,
@@ -1066,8 +1042,7 @@ export class ListingsService {
         // HPI is mandatory for listings created after the hardened upload
         // rollout. Older drafts are grandfathered so existing sellers are not
         // stranded by a new rule introduced after they began their listing.
-        const hpiRequiredFrom = new Date('2026-09-19T00:00:00.000Z');
-        if (listing.createdAt >= hpiRequiredFrom) {
+        if (listingRequiresHpi(listing.createdAt)) {
             const hpiReport = await this.prisma.hpiReport.findUnique({
                 where: { listingId: id },
                 select: { id: true },

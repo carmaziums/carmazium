@@ -7,6 +7,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { EmailService } from '../email/email.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
+import { getListingSubmissionMissingFields, listingRequiresHpi } from '../listings/listing-readiness';
 
 @Injectable()
 export class PaymentsService {
@@ -21,6 +22,77 @@ export class PaymentsService {
         private readonly emailService: EmailService,
         private readonly moduleRef: ModuleRef,
     ) {}
+
+    private async getListingFeeReadiness(listingId: string) {
+        const listing = await this.prisma.listing.findUnique({
+            where: { id: listingId },
+            include: { hpiReport: { select: { id: true } } },
+        });
+
+        if (!listing || listing.deletedAt) {
+            throw new NotFoundException('Listing not found');
+        }
+
+        const missingFields = getListingSubmissionMissingFields(listing);
+        const missingHpi = listingRequiresHpi(listing.createdAt) && !listing.hpiReport;
+
+        return {
+            listing,
+            ready: missingFields.length === 0 && !missingHpi,
+            missingFields,
+            missingHpi,
+        };
+    }
+
+    private assertListingFeeReady(
+        readiness: { missingFields: string[]; missingHpi: boolean },
+    ): void {
+        if (readiness.missingFields.length > 0) {
+            throw new BadRequestException(
+                `Listing is not ready for payment. Missing: ${readiness.missingFields.join(', ')}.`,
+            );
+        }
+        if (readiness.missingHpi) {
+            throw new BadRequestException(
+                'A CarMazium vehicle history (HPI) report must be requested before paying the listing fee.',
+            );
+        }
+    }
+
+    private async submitPaidListingIfReady(listingId: string, badgeTier?: string): Promise<boolean> {
+        const readiness = await this.getListingFeeReadiness(listingId);
+
+        if (!readiness.ready) {
+            // The payment is genuine and remains COMPLETED, but an old/in-flight
+            // checkout must not bypass the current submission gate. Keep the
+            // listing editable as a draft; publishListing() will recognise the
+            // completed fee later and submit it without charging again.
+            if (badgeTier) {
+                await this.prisma.listing.update({
+                    where: { id: listingId },
+                    data: { badgeTier },
+                });
+            }
+            this.logger.warn(
+                `Paid listing ${listingId} remains draft because submission requirements are incomplete: ${[
+                    ...readiness.missingFields,
+                    ...(readiness.missingHpi ? ['HPI report request'] : []),
+                ].join(', ')}`,
+            );
+            return false;
+        }
+
+        await this.prisma.listing.update({
+            where: { id: listingId },
+            data: {
+                status: 'PENDING_REVIEW',
+                ...(badgeTier ? { badgeTier } : {}),
+                rejectionReason: null,
+            },
+        });
+        this.notifyListingSubmittedForReview(listingId).catch(() => { });
+        return true;
+    }
 
     /**
      * Notify a seller in-app that their listing fee payment went through and the
@@ -432,6 +504,9 @@ export class PaymentsService {
             throw new BadRequestException('Auction listings do not require a retail listing fee');
         }
 
+        const readiness = await this.getListingFeeReadiness(listingId);
+        this.assertListingFeeReady(readiness);
+
         // Heal legacy FREE retail drafts and always charge using the server-side tier.
         const persistedTier =
             listing.badgeTier === 'FREE' ? 'BASIC' : listing.badgeTier;
@@ -541,6 +616,9 @@ export class PaymentsService {
                 if (listing.type !== 'CLASSIFIED') {
                     throw new BadRequestException('Auction listings do not require a retail listing fee');
                 }
+
+                const readiness = await this.getListingFeeReadiness(listingId);
+                this.assertListingFeeReady(readiness);
 
                 // Mobile Payment Sheet follows the same server-authoritative rule
                 // as hosted Checkout: the saved listing tier determines the charge.
@@ -794,22 +872,9 @@ export class PaymentsService {
                     });
                 }
 
-                if (type === 'LISTING_FEE') {
+                if (type === 'LISTING_FEE' && listingId) {
                     const badgeTier = session.metadata.badgeTier;
-
-                    // Payment doesn't publish the listing — it moves to PENDING_REVIEW
-                    // and only goes live once an admin approves it. isFeatured/
-                    // featuredUntil (for PREMIUM) are set at approval time instead, so
-                    // sellers don't lose boost days while sitting in the review queue.
-                    await this.prisma.listing.update({
-                        where: { id: listingId },
-                        data: {
-                            status: 'PENDING_REVIEW',
-                            badgeTier,
-                            rejectionReason: null,
-                        },
-                    });
-                    this.notifyListingSubmittedForReview(listingId).catch(() => { });
+                    await this.submitPaidListingIfReady(listingId, badgeTier);
                 }
 
                 if (type === 'HPI_REPORT') {
@@ -866,16 +931,7 @@ export class PaymentsService {
                 }
 
                 if (type === 'LISTING_FEE' && listingId) {
-                    // Same review gate as the web checkout.session.completed path above.
-                    await this.prisma.listing.update({
-                        where: { id: listingId },
-                        data: {
-                            status: 'PENDING_REVIEW',
-                            badgeTier,
-                            rejectionReason: null,
-                        },
-                    });
-                    this.notifyListingSubmittedForReview(listingId).catch(() => { });
+                    await this.submitPaidListingIfReady(listingId, badgeTier);
                 }
 
                 if (type === 'DEPOSIT' && listingId) {
