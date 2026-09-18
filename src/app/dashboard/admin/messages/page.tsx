@@ -9,6 +9,7 @@ import {
     MessageSquare,
     MessageSquarePlus,
     Radio,
+    Flag,
     ShieldAlert,
     UserCheck,
     UserMinus,
@@ -18,6 +19,7 @@ import { ChatRoomList } from "@/components/chat/ChatRoomList"
 import { AdminBroadcastComposer } from "@/components/admin/AdminBroadcastComposer"
 import { AdminBroadcastHistory } from "@/components/admin/AdminBroadcastHistory"
 import { AdminDisputeQueue } from "@/components/admin/AdminDisputeQueue"
+import { AdminChatModerationQueue } from "@/components/admin/AdminChatModerationQueue"
 import { AdminNewConversation } from "@/components/admin/AdminNewConversation"
 import { AdminSupportPanel } from "@/components/admin/AdminSupportPanel"
 import dynamic from "next/dynamic"
@@ -27,7 +29,7 @@ import { useChat } from "@/context/ChatContext"
 import { useSearchParams, useRouter } from "next/navigation"
 import type { ChatRoom } from "@/lib/chatApi"
 
-type AdminMessageMode = "inbox" | "disputes" | "new" | "broadcast" | "history"
+type AdminMessageMode = "inbox" | "disputes" | "moderation" | "new" | "broadcast" | "history"
 type SupportFilter = "all" | "needs" | "mine" | "unassigned" | "closed"
 
 function AdminMessagesContent() {
@@ -39,7 +41,11 @@ function AdminMessagesContent() {
     const targetMode = searchParams.get("mode")
     const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null)
     const [mode, setMode] = React.useState<AdminMessageMode>(
-        targetMode === "disputes" ? "disputes" : "inbox",
+        targetMode === "disputes"
+            ? "disputes"
+            : targetMode === "moderation"
+                ? "moderation"
+                : "inbox",
     )
     const [supportFilter, setSupportFilter] = React.useState<SupportFilter>("all")
     const autoSelectedRef = React.useRef(false)
@@ -180,6 +186,17 @@ function AdminMessagesContent() {
                                 <button
                                     type="button"
                                     onClick={() => {
+                                        setMode("moderation")
+                                        setSelectedRoom(null)
+                                    }}
+                                    className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold transition-all ${mode === "moderation" ? "bg-primary text-white shadow" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
+                                >
+                                    <Flag size={15} /> Moderation
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
                                         setMode("history")
                                         setSelectedRoom(null)
                                     }}
@@ -204,6 +221,8 @@ function AdminMessagesContent() {
                                         refreshRooms()
                                     }}
                                 />
+                            ) : mode === "moderation" ? (
+                                <AdminChatModerationQueue currentAdminId={user.id} />
                             ) : mode === "new" ? (
                                 <AdminNewConversation
                                     onCancel={() => setMode("inbox")}

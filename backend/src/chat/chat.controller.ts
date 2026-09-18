@@ -21,7 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
-import { CreateChatAttachmentUploadDto, CreateRoomDto, OpenDisputeDto, SendChatAttachmentDto, SendMessageDto } from './dto';
+import { BlockChatRoomDto, CreateChatAttachmentUploadDto, CreateRoomDto, OpenDisputeDto, ReportChatMessageDto, SendChatAttachmentDto, SendMessageDto } from './dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
@@ -117,6 +117,51 @@ export class ChatController {
         }
 
         return new StandardResponse(result);
+    }
+
+    @Post('rooms/:id/block')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Block messaging in a private vehicle conversation' })
+    @ApiParam({ name: 'id', description: 'Chat room ID' })
+    async blockRoom(
+        @CurrentUser() user: any,
+        @Param('id') roomId: string,
+        @Body() dto: BlockChatRoomDto,
+    ) {
+        this.chatRateLimit.consumeBlockChange(user.id);
+        const room = await this.chatService.blockRoom(roomId, user.id, dto);
+        return new StandardResponse(room);
+    }
+
+    @Post('rooms/:id/unblock')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Remove my block from a private vehicle conversation' })
+    @ApiParam({ name: 'id', description: 'Chat room ID' })
+    async unblockRoom(
+        @CurrentUser() user: any,
+        @Param('id') roomId: string,
+    ) {
+        this.chatRateLimit.consumeBlockChange(user.id);
+        const room = await this.chatService.unblockRoom(roomId, user.id);
+        return new StandardResponse(room);
+    }
+
+    @Post('messages/:id/report')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Report one member-to-member chat message to CarMazium' })
+    @ApiParam({ name: 'id', description: 'Message ID' })
+    async reportMessage(
+        @CurrentUser() user: any,
+        @Param('id') messageId: string,
+        @Body() dto: ReportChatMessageDto,
+    ) {
+        this.chatRateLimit.consumeReport(user.id);
+        const report = await this.chatService.reportMessage(
+            messageId,
+            user.id,
+            dto,
+        );
+        return new StandardResponse(report);
     }
 
     /**

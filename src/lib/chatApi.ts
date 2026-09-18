@@ -87,6 +87,11 @@ export interface ChatRoom {
     disputeCase?: ChatDisputeCase | null
     sourceDispute?: ChatSourceDispute | null
     canOpenDispute?: boolean
+    chatBlocked?: boolean
+    blockedByMe?: boolean
+    blockReason?: string | null
+    canBlockChat?: boolean
+    canUnblockChat?: boolean
     needsReply?: boolean
     lastMessage: {
         id: string
@@ -98,6 +103,25 @@ export interface ChatRoom {
     } | null
     unreadCount: number
     updatedAt: string
+}
+
+export type ChatReportReason =
+    | 'HARASSMENT'
+    | 'SCAM_FRAUD'
+    | 'SPAM'
+    | 'INAPPROPRIATE_CONTENT'
+    | 'OTHER'
+
+export interface ChatMessageReport {
+    id: string
+    chatRoomId: string
+    messageId: string
+    reporterId: string
+    reportedUserId: string
+    reason: ChatReportReason
+    details?: string | null
+    status: 'OPEN' | 'REVIEWING' | 'RESOLVED' | 'DISMISSED'
+    createdAt: string
 }
 
 export interface ChatAttachmentUploadTicket {
@@ -219,6 +243,42 @@ export async function openVehicleDispute(
         method: 'POST',
         body: JSON.stringify({ reason: reason?.trim() || undefined }),
     })
+    return data.data
+}
+
+export async function blockChatRoom(
+    roomId: string,
+    reason?: string
+): Promise<ChatRoom> {
+    const data = await apiClient<{ data: ChatRoom }>(`/chat/rooms/${roomId}/block`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: reason?.trim() || undefined }),
+    })
+    return data.data
+}
+
+export async function unblockChatRoom(roomId: string): Promise<ChatRoom> {
+    const data = await apiClient<{ data: ChatRoom }>(`/chat/rooms/${roomId}/unblock`, {
+        method: 'POST',
+    })
+    return data.data
+}
+
+export async function reportChatMessage(
+    messageId: string,
+    reason: ChatReportReason,
+    details?: string
+): Promise<{ report: ChatMessageReport; created: boolean }> {
+    const data = await apiClient<{ data: { report: ChatMessageReport; created: boolean } }>(
+        `/chat/messages/${messageId}/report`,
+        {
+            method: 'POST',
+            body: JSON.stringify({
+                reason,
+                details: details?.trim() || undefined,
+            }),
+        }
+    )
     return data.data
 }
 

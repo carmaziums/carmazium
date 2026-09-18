@@ -48,6 +48,23 @@ export class AdminMessagingService {
         private readonly chatRateLimit: ChatRateLimitService,
     ) {}
 
+    async listChatReports(
+        page = 1,
+        limit = 30,
+        status?: string,
+        search?: string,
+    ) {
+        return this.chatService.listChatReports(page, limit, status, search);
+    }
+
+    async updateChatReport(
+        reportId: string,
+        adminId: string,
+        dto: import('../chat/dto').UpdateChatReportDto,
+    ) {
+        return this.chatService.updateChatReport(reportId, adminId, dto);
+    }
+
     async listDisputes(
         page = 1,
         limit = 30,

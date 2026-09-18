@@ -52,6 +52,104 @@ export async function getAdminUsers(page = 1, limit = 20, search?: string) {
   return result;
 }
 
+// ─── Chat Moderation ──────────────────────────────────────────────────────────
+
+export type AdminChatReportStatus = 'OPEN' | 'REVIEWING' | 'RESOLVED' | 'DISMISSED';
+export type AdminChatReportReason =
+  | 'HARASSMENT'
+  | 'SCAM_FRAUD'
+  | 'SPAM'
+  | 'INAPPROPRIATE_CONTENT'
+  | 'OTHER';
+
+export interface AdminChatReport {
+  id: string;
+  chatRoomId: string;
+  messageId: string;
+  reporterId: string;
+  reportedUserId: string;
+  reason: AdminChatReportReason;
+  details?: string | null;
+  messageContent: string;
+  attachmentPath?: string | null;
+  attachmentName?: string | null;
+  attachmentMime?: string | null;
+  attachmentSize?: number | null;
+  attachmentUrl?: string | null;
+  roomContext: 'RETAIL' | 'AUCTION' | 'DISPUTE' | 'SUPPORT' | 'LEGACY';
+  listingId?: string | null;
+  listingTitle?: string | null;
+  status: AdminChatReportStatus;
+  reviewedById?: string | null;
+  reviewedAt?: string | null;
+  adminNote?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  reporter: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+    profileImage?: string | null;
+    role?: string;
+  };
+  reportedUser: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+    profileImage?: string | null;
+    role: string;
+  };
+  reviewedBy?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+  } | null;
+}
+
+export async function getAdminChatReports(
+  page = 1,
+  limit = 30,
+  status?: AdminChatReportStatus,
+  search?: string,
+): Promise<{
+  data: AdminChatReport[];
+  pagination: { total: number; page: number; limit: number; totalPages: number };
+}> {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  if (status) params.set('status', status);
+  if (search?.trim()) params.set('search', search.trim());
+
+  const result = await apiClient<{ data: {
+    data: AdminChatReport[];
+    pagination: { total: number; page: number; limit: number; totalPages: number };
+  } }>(`/admin/messaging/moderation/reports?${params.toString()}`);
+  return result.data;
+}
+
+export async function updateAdminChatReport(
+  id: string,
+  status: Exclude<AdminChatReportStatus, 'OPEN'>,
+  adminNote?: string,
+): Promise<AdminChatReport> {
+  const result = await apiClient<{ data: AdminChatReport }>(
+    `/admin/messaging/moderation/reports/${id}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status,
+        adminNote: adminNote?.trim() || undefined,
+      }),
+    },
+  );
+  return result.data;
+}
+
 // ─── Vehicle Disputes ─────────────────────────────────────────────────────────
 
 export type AdminDisputeStatus = 'OPEN' | 'RESOLVED';

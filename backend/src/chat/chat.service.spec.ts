@@ -89,8 +89,22 @@ describe('ChatService — conversation context and authorization', () => {
                 createMany: jest.fn(),
                 upsert: jest.fn(),
             },
+            chatBlock: {
+                findUnique: jest.fn(),
+                upsert: jest.fn(),
+                update: jest.fn(),
+            },
+            chatReport: {
+                findUnique: jest.fn(),
+                create: jest.fn(),
+                findMany: jest.fn(),
+                count: jest.fn(),
+                update: jest.fn(),
+                updateMany: jest.fn(),
+            },
             message: {
                 create: jest.fn(),
+                findUnique: jest.fn(),
                 findFirst: jest.fn(),
                 count: jest.fn(),
                 findMany: jest.fn(),
@@ -1017,6 +1031,420 @@ describe('ChatService — conversation context and authorization', () => {
         ).rejects.toMatchObject({ message: expect.stringMatching(/read-only/i) });
 
         expect(prisma.message.create).not.toHaveBeenCalled();
+    });
+
+    it('makes a blocked retail conversation read-only for both participants without hiding history', async () => {
+        const blockedRoom = {
+            id: 'blocked-room',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.RETAIL,
+            deletedAt: null,
+            blocks: [{
+                id: 'block-1',
+                blockerId: buyerId,
+                blockedUserId: sellerId,
+                reason: 'No more direct contact',
+                createdAt: new Date(),
+            }],
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+            listing: { id: listingId, status: 'SOLD' },
+        };
+        prisma.chatRoom.findUnique.mockResolvedValue(blockedRoom);
+
+        await expect(
+            service.sendMessage('blocked-room', buyerId, { content: 'buyer message' }),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/blocked/i) });
+
+        await expect(
+            service.sendMessage('blocked-room', sellerId, { content: 'seller message' }),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/blocked/i) });
+
+        const buyerView = await service.getRoom('blocked-room', buyerId);
+        const sellerView = await service.getRoom('blocked-room', sellerId);
+
+        expect(buyerView.chatBlocked).toBe(true);
+        expect(buyerView.blockedByMe).toBe(true);
+        expect(buyerView.blockReason).toBe('No more direct contact');
+        expect((buyerView as any).blocks).toBeUndefined();
+        expect(sellerView.chatBlocked).toBe(true);
+        expect(sellerView.blockedByMe).toBe(false);
+        expect(sellerView.blockReason).toBeNull();
+        expect((sellerView as any).blocks).toBeUndefined();
+        expect(prisma.message.create).not.toHaveBeenCalled();
+    });
+
+    it('records a member block against only the other participant and can later revoke it', async () => {
+        const openRoom = {
+            id: 'room-safety',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.RETAIL,
+            deletedAt: null,
+            blocks: [],
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+            listing: { id: listingId, status: 'ACTIVE' },
+        };
+        const blockedRoom = {
+            ...openRoom,
+            blocks: [{
+                id: 'block-1',
+                blockerId: buyerId,
+                blockedUserId: sellerId,
+                reason: 'Unwanted contact',
+                createdAt: new Date(),
+            }],
+        };
+
+        prisma.chatRoom.findUnique
+            .mockResolvedValueOnce(openRoom)
+            .mockResolvedValueOnce(blockedRoom)
+            .mockResolvedValueOnce(blockedRoom)
+            .mockResolvedValueOnce(openRoom);
+        prisma.chatBlock.upsert.mockResolvedValue({ id: 'block-1' });
+        prisma.chatBlock.findUnique.mockResolvedValue({
+            id: 'block-1',
+            chatRoomId: openRoom.id,
+            blockerId: buyerId,
+            blockedUserId: sellerId,
+            revokedAt: null,
+        });
+        prisma.chatBlock.update.mockResolvedValue({ id: 'block-1', revokedAt: new Date() });
+
+        const blocked = await service.blockRoom(
+            openRoom.id,
+            buyerId,
+            { reason: ' Unwanted contact ' },
+        );
+
+        expect(prisma.chatBlock.upsert).toHaveBeenCalledWith({
+            where: {
+                chatRoomId_blockerId_blockedUserId: {
+                    chatRoomId: openRoom.id,
+                    blockerId: buyerId,
+                    blockedUserId: sellerId,
+                },
+            },
+            update: {
+                revokedAt: null,
+                reason: 'Unwanted contact',
+            },
+            create: {
+                chatRoomId: openRoom.id,
+                blockerId: buyerId,
+                blockedUserId: sellerId,
+                reason: 'Unwanted contact',
+            },
+        });
+        expect(blocked.blockedByMe).toBe(true);
+
+        const unblocked = await service.unblockRoom(openRoom.id, buyerId);
+        expect(prisma.chatBlock.update).toHaveBeenCalledWith({
+            where: { id: 'block-1' },
+            data: { revokedAt: expect.any(Date) },
+        });
+        expect(unblocked.chatBlocked).toBe(false);
+    });
+
+    it('reports exactly one received message using an immutable evidence snapshot', async () => {
+        const message = {
+            id: 'message-report',
+            chatRoomId: 'room-report',
+            senderId: sellerId,
+            content: 'Send me money now.',
+            attachmentPath: 'room-report/seller/photo.jpg',
+            attachmentName: 'photo.jpg',
+            attachmentMime: 'image/jpeg',
+            attachmentSize: 1234,
+            deletedAt: null,
+            sender: {
+                id: sellerId,
+                firstName: 'Seller',
+                lastName: 'User',
+                email: 'seller@example.com',
+                profileImage: null,
+                role: 'SELLER',
+            },
+            chatRoom: {
+                id: 'room-report',
+                initiatorId: buyerId,
+                participantId: sellerId,
+                context: ChatContext.RETAIL,
+                listingId,
+                deletedAt: null,
+                listing: { id: listingId, title: 'Ford Fiesta' },
+            },
+        };
+        const room = {
+            id: 'room-report',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.RETAIL,
+            deletedAt: null,
+            blocks: [],
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+            listing: { id: listingId, title: 'Ford Fiesta' },
+        };
+        const report = {
+            id: 'report-1',
+            chatRoomId: room.id,
+            messageId: message.id,
+            reporterId: buyerId,
+            reportedUserId: sellerId,
+            reason: 'SCAM_FRAUD',
+            details: 'Asked for suspicious payment.',
+            messageContent: message.content,
+            attachmentPath: message.attachmentPath,
+            attachmentName: message.attachmentName,
+            attachmentMime: message.attachmentMime,
+            attachmentSize: message.attachmentSize,
+            roomContext: ChatContext.RETAIL,
+            listingId,
+            listingTitle: 'Ford Fiesta',
+            status: 'OPEN',
+            reporter: { id: buyerId, email: 'buyer@example.com' },
+            reportedUser: { id: sellerId, email: 'seller@example.com', role: 'SELLER' },
+            reviewedBy: null,
+        };
+
+        prisma.message.findUnique.mockResolvedValue(message);
+        prisma.chatRoom.findUnique.mockResolvedValue(room);
+        prisma.chatReport.findUnique.mockResolvedValue(null);
+        prisma.chatReport.create.mockResolvedValue(report);
+        prisma.user.findMany.mockResolvedValue([{ id: adminId }]);
+
+        const result = await service.reportMessage(
+            message.id,
+            buyerId,
+            {
+                reason: 'SCAM_FRAUD' as any,
+                details: ' Asked for suspicious payment. ',
+            },
+        );
+
+        expect(result.created).toBe(true);
+        expect(prisma.chatReport.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: {
+                    chatRoomId: room.id,
+                    messageId: message.id,
+                    reporterId: buyerId,
+                    reportedUserId: sellerId,
+                    reason: 'SCAM_FRAUD',
+                    details: 'Asked for suspicious payment.',
+                    messageContent: message.content,
+                    attachmentPath: message.attachmentPath,
+                    attachmentName: message.attachmentName,
+                    attachmentMime: message.attachmentMime,
+                    attachmentSize: message.attachmentSize,
+                    roomContext: ChatContext.RETAIL,
+                    listingId,
+                    listingTitle: 'Ford Fiesta',
+                },
+            }),
+        );
+        expect(prisma.message.findMany).not.toHaveBeenCalled();
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                userId: adminId,
+                link: '/dashboard/admin/messages?mode=moderation',
+            }),
+        );
+    });
+
+    it('returns an existing report instead of duplicating the same reporter/message evidence', async () => {
+        const message = {
+            id: 'message-report-existing',
+            chatRoomId: 'room-report',
+            senderId: sellerId,
+            content: 'Repeated message',
+            attachmentPath: null,
+            attachmentName: null,
+            attachmentMime: null,
+            attachmentSize: null,
+            deletedAt: null,
+            sender: {
+                id: sellerId,
+                email: 'seller@example.com',
+                role: 'SELLER',
+            },
+            chatRoom: {
+                id: 'room-report',
+                initiatorId: buyerId,
+                participantId: sellerId,
+                context: ChatContext.RETAIL,
+                listingId,
+                deletedAt: null,
+                listing: { id: listingId, title: 'Ford Fiesta' },
+            },
+        };
+        const room = {
+            id: 'room-report',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.RETAIL,
+            deletedAt: null,
+            blocks: [],
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+            listing: { id: listingId, title: 'Ford Fiesta' },
+        };
+        const existing = {
+            id: 'report-existing',
+            chatRoomId: room.id,
+            messageId: message.id,
+            reporterId: buyerId,
+            reportedUserId: sellerId,
+            reason: 'SPAM',
+            messageContent: message.content,
+            attachmentPath: null,
+            reporter: { id: buyerId, email: 'buyer@example.com' },
+            reportedUser: { id: sellerId, email: 'seller@example.com', role: 'SELLER' },
+            reviewedBy: null,
+        };
+
+        prisma.message.findUnique.mockResolvedValue(message);
+        prisma.chatRoom.findUnique.mockResolvedValue(room);
+        prisma.chatReport.findUnique.mockResolvedValue(existing);
+
+        const result = await service.reportMessage(
+            message.id,
+            buyerId,
+            { reason: 'SPAM' as any },
+        );
+
+        expect(result.created).toBe(false);
+        expect(result.report.id).toBe(existing.id);
+        expect(prisma.chatReport.create).not.toHaveBeenCalled();
+        expect(notificationsService.create).not.toHaveBeenCalled();
+    });
+
+    it('lists only report snapshots for moderators and does not read the private room transcript', async () => {
+        prisma.chatReport.findMany.mockResolvedValue([{
+            id: 'report-admin',
+            chatRoomId: 'private-room',
+            messageId: 'reported-message',
+            reporterId: buyerId,
+            reportedUserId: sellerId,
+            reason: 'HARASSMENT',
+            messageContent: 'Reported evidence only',
+            attachmentPath: null,
+            roomContext: ChatContext.RETAIL,
+            status: 'OPEN',
+            createdAt: new Date(),
+            reporter: { id: buyerId, email: 'buyer@example.com' },
+            reportedUser: { id: sellerId, email: 'seller@example.com', role: 'SELLER' },
+            reviewedBy: null,
+        }]);
+        prisma.chatReport.count.mockResolvedValue(1);
+
+        const result = await service.listChatReports(1, 30, 'OPEN');
+
+        expect(result.data).toHaveLength(1);
+        expect(result.data[0].messageContent).toBe('Reported evidence only');
+        expect(prisma.message.findMany).not.toHaveBeenCalled();
+        expect(prisma.chatRoom.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('claims an open moderation report atomically for exactly one admin', async () => {
+        const openReport = {
+            id: 'report-claim',
+            chatRoomId: 'private-room',
+            reporterId: buyerId,
+            reportedUserId: sellerId,
+            status: 'OPEN',
+            reviewedById: null,
+        };
+        const reviewingReport = {
+            ...openReport,
+            status: 'REVIEWING',
+            reviewedById: adminId,
+            reporter: { id: buyerId, email: 'buyer@example.com', role: 'BUYER' },
+            reportedUser: { id: sellerId, email: 'seller@example.com', role: 'SELLER' },
+            reviewedBy: { id: adminId, email: 'admin@example.com' },
+        };
+
+        prisma.chatReport.findUnique
+            .mockResolvedValueOnce(openReport)
+            .mockResolvedValueOnce(reviewingReport);
+        prisma.chatReport.updateMany.mockResolvedValue({ count: 1 });
+
+        const result = await service.updateChatReport(
+            openReport.id,
+            adminId,
+            { status: 'REVIEWING' as any },
+        );
+
+        expect(result.status).toBe('REVIEWING');
+        expect(prisma.chatReport.updateMany).toHaveBeenCalledWith({
+            where: {
+                id: openReport.id,
+                status: 'OPEN',
+                reviewedById: null,
+            },
+            data: expect.objectContaining({
+                status: 'REVIEWING',
+                reviewedById: adminId,
+                reviewedAt: expect.any(Date),
+            }),
+        });
+    });
+
+    it('rejects a losing moderation claim when another admin wins the race', async () => {
+        const openReport = {
+            id: 'report-race',
+            chatRoomId: 'private-room',
+            reporterId: buyerId,
+            reportedUserId: sellerId,
+            status: 'OPEN',
+            reviewedById: null,
+        };
+
+        prisma.chatReport.findUnique
+            .mockResolvedValueOnce(openReport)
+            .mockResolvedValueOnce({
+                status: 'REVIEWING',
+                reviewedById: secondAdminId,
+            });
+        prisma.chatReport.updateMany.mockResolvedValue({ count: 0 });
+
+        await expect(
+            service.updateChatReport(
+                openReport.id,
+                adminId,
+                { status: 'REVIEWING' as any },
+            ),
+        ).rejects.toMatchObject({
+            message: expect.stringMatching(/claimed by another admin/i),
+        });
+    });
+
+    it('keeps closed moderation reports immutable', async () => {
+        prisma.chatReport.findUnique.mockResolvedValue({
+            id: 'report-closed',
+            status: 'RESOLVED',
+            reviewedById: adminId,
+        });
+
+        await expect(
+            service.updateChatReport(
+                'report-closed',
+                secondAdminId,
+                { status: 'RESOLVED' as any },
+            ),
+        ).rejects.toMatchObject({
+            message: expect.stringMatching(/already been closed/i),
+        });
+
+        expect(prisma.chatReport.updateMany).not.toHaveBeenCalled();
+        expect(prisma.chatReport.update).not.toHaveBeenCalled();
     });
 
     it('uses different conversation keys for different retail vehicles between the same users', async () => {
