@@ -698,6 +698,58 @@ export class ChatService {
         });
     }
 
+    private async resolveMessageRecipient(room: any, senderId: string) {
+        const senderRole = await this.actorRole(senderId);
+        if (!senderRole) {
+            throw new ForbiddenException('Chat sender is not available.');
+        }
+
+        if (room.context === ChatContext.SUPPORT) {
+            const customerId = this.supportCustomerId(room);
+            const canonicalAdminId = this.supportCanonicalAdminId(room);
+            if (!customerId || !canonicalAdminId) {
+                throw new ForbiddenException('Support conversation participants are invalid.');
+            }
+
+            if (senderRole === UserRole.ADMIN) {
+                const customerRole = room.initiatorId === customerId
+                    ? room.initiator.role
+                    : room.participant.role;
+                return {
+                    senderRole,
+                    recipientId: customerId,
+                    recipientRole: customerRole as UserRole,
+                    roomUpdate: {
+                        supportClosedAt: null,
+                        ...(room.supportAssignedAdminId
+                            ? {}
+                            : { supportAssignedAdminId: senderId }),
+                    },
+                };
+            }
+
+            return {
+                senderRole,
+                recipientId: room.supportAssignedAdminId || canonicalAdminId,
+                recipientRole: UserRole.ADMIN,
+                roomUpdate: { supportClosedAt: null },
+            };
+        }
+
+        return {
+            senderRole,
+            recipientId: room.initiatorId === senderId
+                ? room.participantId
+                : room.initiatorId,
+            recipientRole: (
+                room.initiatorId === senderId
+                    ? room.participant.role
+                    : room.initiator.role
+            ) as UserRole,
+            roomUpdate: {},
+        };
+    }
+
     private assertIdempotentMessageMatches(
         existing: any,
         roomId: string,
@@ -770,19 +822,16 @@ export class ChatService {
             throw error;
         }
 
+        const routing = await this.resolveMessageRecipient(room, senderId);
         await this.prisma.chatRoom.update({
             where: { id: roomId },
-            data: { updatedAt: new Date() },
+            data: {
+                updatedAt: new Date(),
+                ...routing.roomUpdate,
+            },
         });
 
-        const recipientId = room.initiatorId === senderId
-            ? room.participantId
-            : room.initiatorId;
-        const recipientRole = (
-            room.initiatorId === senderId
-                ? room.participant.role
-                : room.initiator.role
-        ) as UserRole;
+        const { recipientId, recipientRole } = routing;
 
         try {
             const notification = await this.notificationsService.create({
@@ -889,19 +938,16 @@ export class ChatService {
             throw error;
         }
 
+        const routing = await this.resolveMessageRecipient(room, senderId);
         await this.prisma.chatRoom.update({
             where: { id: roomId },
-            data: { updatedAt: new Date() },
+            data: {
+                updatedAt: new Date(),
+                ...routing.roomUpdate,
+            },
         });
 
-        const recipientId = room.initiatorId === senderId
-            ? room.participantId
-            : room.initiatorId;
-        const recipientRole = (
-            room.initiatorId === senderId
-                ? room.participant.role
-                : room.initiator.role
-        ) as UserRole;
+        const { recipientId, recipientRole } = routing;
 
         const preview = content
             ? `Photo: ${content.slice(0, 60)}${content.length > 60 ? '…' : ''}`
@@ -931,14 +977,23 @@ export class ChatService {
      * Mark messages as read
      */
     async markMessagesAsRead(roomId: string, userId: string): Promise<number> {
-        // Verify user is member of room
-        await this.getRoom(roomId, userId);
+        const room: any = await this.getRoom(roomId, userId);
+        const role = await this.actorRole(userId);
+        const customerId = this.supportCustomerId(room);
 
-        // Mark all messages from other user as read
+        // In a multi-agent SUPPORT room, an admin opening the thread must only
+        // mark customer-authored messages as read. Otherwise an agent could
+        // accidentally mark a CarMazium reply as "read" on the customer's behalf.
+        const senderFilter = room.context === ChatContext.SUPPORT
+            && role === UserRole.ADMIN
+            && customerId
+            ? customerId
+            : { not: userId };
+
         const result = await this.prisma.message.updateMany({
             where: {
                 chatRoomId: roomId,
-                senderId: { not: userId },
+                senderId: senderFilter as any,
                 isRead: false,
             },
             data: { isRead: true },
@@ -951,28 +1006,8 @@ export class ChatService {
      * Get total unread message count for a user
      */
     async getUnreadCount(userId: string): Promise<number> {
-        // Get all rooms where user is a member
-        const rooms = await this.prisma.chatRoom.findMany({
-            where: {
-                OR: [
-                    { initiatorId: userId },
-                    { participantId: userId },
-                ],
-                deletedAt: null,
-            },
-            select: { id: true },
-        });
-
-        const roomIds = rooms.map((r) => r.id);
-
-        return this.prisma.message.count({
-            where: {
-                chatRoomId: { in: roomIds },
-                senderId: { not: userId },
-                isRead: false,
-                deletedAt: null,
-            },
-        });
+        const rooms = await this.getUserRooms(userId);
+        return rooms.reduce((total, room) => total + Number(room.unreadCount || 0), 0);
     }
 
     /**
