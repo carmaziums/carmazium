@@ -44,6 +44,7 @@ interface ChatContextType {
     onNewMessage: (callback: (message: ChatMessage) => void) => () => void
     onTyping: (callback: (data: { roomId: string; userId: string; isTyping: boolean }) => void) => () => void
     onMessagesRead: (callback: (data: { roomId: string; readBy: string }) => void) => () => void
+    onRoomUpdated: (callback: (room: ChatRoom) => void) => () => void
 }
 
 type ChatSendAck =
@@ -77,6 +78,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const messageCallbacks = useRef<Set<(message: ChatMessage) => void>>(new Set())
     const typingCallbacks = useRef<Set<(data: any) => void>>(new Set())
     const readCallbacks = useRef<Set<(data: any) => void>>(new Set())
+    const roomUpdateCallbacks = useRef<Set<(room: ChatRoom) => void>>(new Set())
     const activeRoomIdRef = useRef<string | null>(null)
     const hasInitiallyLoaded = useRef(false)
 
@@ -197,6 +199,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
             socket.on('messages:read', (data: any) => {
                 readCallbacks.current.forEach(cb => cb(data))
+            })
+
+            socket.on('room:updated', (room: ChatRoom) => {
+                setRooms(current => {
+                    const index = current.findIndex(item => item.id === room.id)
+                    if (index === -1) return [room, ...current]
+                    const next = [...current]
+                    next[index] = { ...next[index], ...room }
+                    return next
+                })
+                roomUpdateCallbacks.current.forEach(cb => cb(room))
             })
 
             socket.on('error', (error: any) => {
@@ -374,6 +387,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }
     }, [])
 
+    const onRoomUpdated = useCallback((callback: (room: ChatRoom) => void) => {
+        roomUpdateCallbacks.current.add(callback)
+        return () => {
+            roomUpdateCallbacks.current.delete(callback)
+        }
+    }, [])
+
     const value: ChatContextType = {
         rooms,
         unreadCount,
@@ -394,6 +414,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         onNewMessage,
         onTyping,
         onMessagesRead,
+        onRoomUpdated,
     }
 
     return (

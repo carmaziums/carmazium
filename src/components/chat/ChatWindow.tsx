@@ -31,7 +31,7 @@ const ADMIN_QUICK_REPLIES = [
  * Displays messages and handles sending new messages
  */
 export function ChatWindow({ room, onBack }: ChatWindowProps) {
-    const { sendMessage, onNewMessage, onTyping, onMessagesRead, markAsRead, setActiveRoom, startTyping, stopTyping, refreshRooms, isConnected, onlineUserIds } = useChat()
+    const { sendMessage, onNewMessage, onTyping, onMessagesRead, onRoomUpdated, markAsRead, setActiveRoom, startTyping, stopTyping, refreshRooms, isConnected, onlineUserIds } = useChat()
     const { profile, user } = useAuth()
     const isAdminViewer = profile?.role === 'ADMIN'
     const otherUserOnline = room.otherUser ? onlineUserIds.has(room.otherUser.id) : false
@@ -80,6 +80,19 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         setActiveRoom(room.id)
         return () => setActiveRoom(null)
     }, [room.id, setActiveRoom])
+
+    React.useEffect(() => {
+        const unsubscribe = onRoomUpdated((updated) => {
+            if (updated.id !== room.id) return
+            setChatBlocked(Boolean(updated.chatBlocked))
+            setBlockedByMe(Boolean(updated.blockedByMe))
+            setBlockReasonDraft(updated.blockReason || "")
+            if (updated.chatBlocked) {
+                setShowBlockPanel(false)
+            }
+        })
+        return unsubscribe
+    }, [room.id, onRoomUpdated])
 
     React.useEffect(() => {
         setShowDisputeForm(false)

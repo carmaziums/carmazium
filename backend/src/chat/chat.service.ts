@@ -2480,6 +2480,7 @@ export class ChatService {
                         { participantId: userId },
                     ],
                 deletedAt: null,
+                blocks: { none: { revokedAt: null } },
             },
             select: {
                 initiatorId: true,
@@ -2538,6 +2539,7 @@ export class ChatService {
                         { participantId: userId },
                     ],
                 deletedAt: null,
+                blocks: { none: { revokedAt: null } },
             },
             select: { id: true },
         });

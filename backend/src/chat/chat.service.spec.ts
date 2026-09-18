@@ -688,6 +688,20 @@ describe('ChatService — conversation context and authorization', () => {
         );
     });
 
+    it('excludes actively blocked rooms from realtime room membership', async () => {
+        prisma.chatRoom.findMany.mockResolvedValue([]);
+
+        await service.getUserRoomIds(buyerId);
+
+        expect(prisma.chatRoom.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: expect.objectContaining({
+                    blocks: { none: { revokedAt: null } },
+                }),
+            }),
+        );
+    });
+
     it('batches unread counts for non-dispute rooms instead of counting once per room', async () => {
         prisma.chatRoom.findMany.mockResolvedValue([
             {

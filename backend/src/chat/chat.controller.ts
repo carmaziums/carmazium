@@ -174,7 +174,19 @@ export class ChatController {
         @Body() dto: BlockChatRoomDto,
     ) {
         this.chatRateLimit.consumeBlockChange(user.id);
-        const room = await this.chatService.blockRoom(roomId, user.id, dto);
+        const room: any = await this.chatService.blockRoom(roomId, user.id, dto);
+        const otherUserId = room.initiatorId === user.id
+            ? room.participantId
+            : room.initiatorId;
+        const otherRoom = await this.chatService.getRoom(roomId, otherUserId);
+
+        // A block pauses all private realtime activity, not only message sends.
+        // Existing history remains available through the authenticated REST API.
+        this.chatGateway.leaveRoomForUser(user.id, roomId);
+        this.chatGateway.leaveRoomForUser(otherUserId, roomId);
+        this.chatGateway.emitRoomUpdatedToUser(user.id, room);
+        this.chatGateway.emitRoomUpdatedToUser(otherUserId, otherRoom);
+
         return new StandardResponse(room);
     }
 
@@ -187,7 +199,19 @@ export class ChatController {
         @Param('id') roomId: string,
     ) {
         this.chatRateLimit.consumeBlockChange(user.id);
-        const room = await this.chatService.unblockRoom(roomId, user.id);
+        const room: any = await this.chatService.unblockRoom(roomId, user.id);
+        const otherUserId = room.initiatorId === user.id
+            ? room.participantId
+            : room.initiatorId;
+        const otherRoom = await this.chatService.getRoom(roomId, otherUserId);
+
+        if (!room.chatBlocked) {
+            this.chatGateway.joinRoomForUser(user.id, roomId);
+            this.chatGateway.joinRoomForUser(otherUserId, roomId);
+        }
+        this.chatGateway.emitRoomUpdatedToUser(user.id, room);
+        this.chatGateway.emitRoomUpdatedToUser(otherUserId, otherRoom);
+
         return new StandardResponse(room);
     }
 

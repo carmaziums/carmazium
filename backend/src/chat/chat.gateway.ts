@@ -364,6 +364,22 @@ export class ChatGateway
         }
     }
 
+    leaveRoomForUser(userId: string, roomId: string): void {
+        const socketIds = this.connectedUsers.get(userId);
+        if (!socketIds) return;
+        for (const socketId of socketIds) {
+            this.server?.sockets?.sockets?.get(socketId)?.leave(`room:${roomId}`);
+        }
+    }
+
+    emitRoomUpdatedToUser(userId: string, room: any): void {
+        const socketIds = this.connectedUsers.get(userId);
+        if (!socketIds) return;
+        for (const socketId of socketIds) {
+            this.server?.sockets?.sockets?.get(socketId)?.emit('room:updated', room);
+        }
+    }
+
     /**
      * Check if a user is online.
      */
