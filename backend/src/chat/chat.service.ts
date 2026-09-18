@@ -1426,31 +1426,97 @@ export class ChatService {
         }
 
         if (
-            (existing.status === ChatReportStatus.RESOLVED ||
-                existing.status === ChatReportStatus.DISMISSED) &&
-            existing.status !== dto.status
+            existing.status === ChatReportStatus.RESOLVED ||
+            existing.status === ChatReportStatus.DISMISSED
         ) {
             throw new BadRequestException('This chat report has already been closed.');
         }
 
-        if (
-            existing.status === ChatReportStatus.REVIEWING &&
-            existing.reviewedById &&
-            existing.reviewedById !== adminId
-        ) {
-            throw new ForbiddenException('This report is being reviewed by another admin.');
+        const noteData = dto.adminNote !== undefined
+            ? { adminNote: dto.adminNote.trim() || null }
+            : {};
+
+        if (dto.status === ChatReportStatus.REVIEWING) {
+            if (
+                existing.status === ChatReportStatus.REVIEWING &&
+                existing.reviewedById !== adminId
+            ) {
+                throw new ForbiddenException('This report is being reviewed by another admin.');
+            }
+
+            if (existing.status === ChatReportStatus.OPEN) {
+                const claim = await this.prisma.chatReport.updateMany({
+                    where: {
+                        id: reportId,
+                        status: ChatReportStatus.OPEN,
+                        reviewedById: null,
+                    },
+                    data: {
+                        status: ChatReportStatus.REVIEWING,
+                        reviewedById: adminId,
+                        reviewedAt: new Date(),
+                        ...noteData,
+                    },
+                });
+
+                if (claim.count !== 1) {
+                    const refreshed = await this.prisma.chatReport.findUnique({
+                        where: { id: reportId },
+                        select: {
+                            status: true,
+                            reviewedById: true,
+                        },
+                    });
+                    if (
+                        refreshed?.status === ChatReportStatus.REVIEWING &&
+                        refreshed.reviewedById !== adminId
+                    ) {
+                        throw new ForbiddenException(
+                            'This report was claimed by another admin.',
+                        );
+                    }
+                    throw new BadRequestException(
+                        'This report changed before it could be claimed. Refresh and try again.',
+                    );
+                }
+            } else {
+                await this.prisma.chatReport.update({
+                    where: { id: reportId },
+                    data: noteData,
+                });
+            }
+        } else {
+            if (
+                existing.status !== ChatReportStatus.REVIEWING ||
+                existing.reviewedById !== adminId
+            ) {
+                throw new ForbiddenException(
+                    'Start reviewing this report before resolving or dismissing it.',
+                );
+            }
+
+            const close = await this.prisma.chatReport.updateMany({
+                where: {
+                    id: reportId,
+                    status: ChatReportStatus.REVIEWING,
+                    reviewedById: adminId,
+                },
+                data: {
+                    status: dto.status,
+                    reviewedAt: new Date(),
+                    ...noteData,
+                },
+            });
+
+            if (close.count !== 1) {
+                throw new BadRequestException(
+                    'This report changed before it could be closed. Refresh and try again.',
+                );
+            }
         }
 
-        const updated = await this.prisma.chatReport.update({
+        const updated = await this.prisma.chatReport.findUnique({
             where: { id: reportId },
-            data: {
-                status: dto.status,
-                reviewedById: adminId,
-                reviewedAt: new Date(),
-                ...(dto.adminNote !== undefined
-                    ? { adminNote: dto.adminNote.trim() || null }
-                    : {}),
-            },
             include: {
                 reporter: {
                     select: {
@@ -1477,6 +1543,10 @@ export class ChatService {
                 },
             },
         });
+
+        if (!updated) {
+            throw new NotFoundException('Chat report not found.');
+        }
 
         if (
             dto.status === ChatReportStatus.RESOLVED ||
