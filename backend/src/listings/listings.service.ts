@@ -985,10 +985,10 @@ export class ListingsService {
             throw new ForbiddenException('You do not have permission to publish this listing');
         }
 
-        // Photo minimum guard — listings require at least 10 images before publishing
-        if (listing.images.length < 10) {
+        const missingFields = this.getSubmissionMissingFields(listing);
+        if (missingFields.length > 0) {
             throw new BadRequestException(
-                `Listings require at least 10 photos before publishing. You have ${listing.images.length}.`,
+                `Listing is not ready to submit. Missing: ${missingFields.join(', ')}.`,
             );
         }
 
