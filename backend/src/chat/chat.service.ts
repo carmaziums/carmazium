@@ -1802,7 +1802,7 @@ export class ChatService {
                 where,
                 include: {
                     sender: {
-                        select: { id: true, firstName: true, lastName: true, profileImage: true },
+                        select: { id: true, firstName: true, lastName: true, profileImage: true, role: true },
                     },
                 },
                 orderBy: [
@@ -1837,7 +1837,7 @@ export class ChatService {
 
     private readonly messageInclude = {
         sender: {
-            select: { id: true, firstName: true, lastName: true, profileImage: true },
+            select: { id: true, firstName: true, lastName: true, profileImage: true, role: true },
         },
     };
 
