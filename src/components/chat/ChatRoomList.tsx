@@ -10,14 +10,22 @@ import { chatMessagePreview } from "@/lib/chatMessageContent"
 interface ChatRoomListProps {
     onSelectRoom: (room: ChatRoom) => void
     selectedRoomId?: string
+    roomsOverride?: ChatRoom[]
+    showSupportOps?: boolean
 }
 
 /**
  * Chat room list component
  * Displays all conversations with last message preview
  */
-export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps) {
+export function ChatRoomList({
+    onSelectRoom,
+    selectedRoomId,
+    roomsOverride,
+    showSupportOps = false,
+}: ChatRoomListProps) {
     const { rooms, isLoading, refreshRooms, onNewMessage } = useChat()
+    const sourceRooms = roomsOverride ?? rooms
     const [searchTerm, setSearchTerm] = React.useState("")
 
     // Refresh rooms when a new message arrives
@@ -29,14 +37,14 @@ export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps
     }, [onNewMessage, refreshRooms])
 
     const filteredRooms = React.useMemo(() => {
-        if (!searchTerm) return rooms
+        if (!searchTerm) return sourceRooms
         const term = searchTerm.toLowerCase()
-        return rooms.filter(room => {
+        return sourceRooms.filter(room => {
             const name = getChatDisplayName(room.otherUser).toLowerCase()
             const listing = room.listing?.title?.toLowerCase() || ''
             return name.includes(term) || listing.includes(term)
         })
-    }, [rooms, searchTerm])
+    }, [sourceRooms, searchTerm])
 
     const formatTime = (date: string) => {
         const d = new Date(date)
@@ -148,6 +156,31 @@ export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps
                                             <p className="text-xs text-primary/90 truncate mb-1 font-medium">
                                                 {room.listing.title}
                                             </p>
+                                        )}
+
+                                        {showSupportOps && room.context === 'SUPPORT' && (
+                                            <div className="mb-1.5 flex flex-wrap gap-1">
+                                                {room.needsReply && !room.supportClosedAt && (
+                                                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-black uppercase text-amber-400">
+                                                        Needs reply
+                                                    </span>
+                                                )}
+                                                {room.supportClosedAt && (
+                                                    <span className="rounded-full border border-[var(--border-default)] px-1.5 py-0.5 text-[9px] font-black uppercase text-[var(--text-muted)]">
+                                                        Closed
+                                                    </span>
+                                                )}
+                                                {room.supportAssignedAdmin && (
+                                                    <span className="max-w-[130px] truncate rounded-full border border-blue-500/25 bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-black text-blue-400">
+                                                        {(`${room.supportAssignedAdmin.firstName ?? ''} ${room.supportAssignedAdmin.lastName ?? ''}`).trim() || room.supportAssignedAdmin.email}
+                                                    </span>
+                                                )}
+                                                {(room.supportTags || []).slice(0, 2).map(tag => (
+                                                    <span key={tag} className="rounded-full border border-primary/20 bg-primary/5 px-1.5 py-0.5 text-[9px] font-bold text-primary">
+                                                        {tag}
+                                                    </span>
+                                                ))}
+                                            </div>
                                         )}
 
                                         <div className="flex items-center justify-between gap-2">
