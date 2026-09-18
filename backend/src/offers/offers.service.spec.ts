@@ -6,20 +6,22 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { EmailService } from '../email/email.service';
 import { OfferResponseStatus } from './dto/respond-offer.dto';
+import { AuctionsService } from '../auctions/auctions.service';
 
 /**
- * Unit tests for the offer/bid validation rules.
- * The most important guarantee: a new offer from buyer B must be strictly higher
- * than the current highest active offer (PENDING / COUNTERED / ACCEPTED) from any
- * other buyer A. Equal or lower amounts must be rejected.
+ * Retail offers are private negotiations. One buyer's amount must never create
+ * a public price ladder for another buyer, while the server-owned 70% floor,
+ * asking-price ceiling, and one-open-negotiation-per-buyer rules remain strict.
  */
-describe('OffersService — incremental bidding', () => {
+describe('OffersService — private retail negotiations', () => {
     let service: OffersService;
     let prisma: any;
+    let auctionsService: any;
 
     const baseListing = {
         id: 'listing-1',
         sellerId: 'seller-1',
+        type: 'CLASSIFIED',
         status: 'ACTIVE',
         deletedAt: null,
         title: 'Test',
@@ -28,7 +30,13 @@ describe('OffersService — incremental bidding', () => {
 
     beforeEach(async () => {
         prisma = {
-            listing: { findFirst: jest.fn() },
+            listing: {
+                findFirst: jest.fn(),
+                findMany: jest.fn(),
+                findUnique: jest.fn(),
+                updateMany: jest.fn(),
+                update: jest.fn(),
+            },
             offer: {
                 findFirst: jest.fn(),
                 create: jest.fn(),
@@ -38,103 +46,119 @@ describe('OffersService — incremental bidding', () => {
                 count: jest.fn(),
                 findMany: jest.fn(),
             },
+            dealerProfile: { findUnique: jest.fn() },
             dealerStaff: { findFirst: jest.fn() },
+            user: { findUnique: jest.fn() },
             $transaction: jest.fn((fn: any) => fn(prisma)),
+        };
+        auctionsService = {
+            cancelLinkedAuctionForRetailDeal: jest.fn().mockResolvedValue(null),
+            publishRetailDealAuctionCancellation: jest.fn().mockResolvedValue(undefined),
         };
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 OffersService,
                 { provide: PrismaService, useValue: prisma },
-                { provide: NotificationsService, useValue: { create: jest.fn().mockResolvedValue({}) } },
+                {
+                    provide: NotificationsService,
+                    useValue: {
+                        create: jest.fn().mockResolvedValue({}),
+                        shouldSendEmail: jest.fn().mockResolvedValue(false),
+                    },
+                },
                 { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
-                { provide: EmailService, useValue: { sendOfferReceivedEmail: jest.fn(), sendOfferAcceptedEmail: jest.fn(), sendOfferRejectedEmail: jest.fn(), sendOfferCounteredEmail: jest.fn(), sendCounterAcceptedEmail: jest.fn() } },
+                {
+                    provide: EmailService,
+                    useValue: {
+                        sendOfferReceivedEmail: jest.fn(),
+                        sendOfferAcceptedEmail: jest.fn(),
+                        sendOfferRejectedEmail: jest.fn(),
+                        sendOfferCounteredEmail: jest.fn(),
+                        sendCounterAcceptedEmail: jest.fn(),
+                    },
+                },
+                { provide: AuctionsService, useValue: auctionsService },
             ],
         }).compile();
 
         service = module.get<OffersService>(OffersService);
     });
 
-    it('rejects a bid from buyer B that equals the current highest bid from buyer A', async () => {
+    it('allows a buyer to submit a lower private offer than another buyer', async () => {
         prisma.listing.findFirst.mockResolvedValue(baseListing);
-        // Current highest active offer is £8,000 from another buyer
-        prisma.offer.findFirst.mockResolvedValueOnce({
-            id: 'offer-A',
-            amount: 8000,
-            counterAmount: null,
-            buyerId: 'buyer-A',
+        prisma.offer.findFirst
+            .mockResolvedValueOnce(null) // no active offer from this buyer
+            .mockResolvedValueOnce(null); // no exhausted negotiation
+        prisma.offer.create.mockResolvedValue({
+            id: 'offer-B',
+            listingId: 'listing-1',
+            buyerId: 'buyer-B',
+            amount: 7500,
             status: 'PENDING',
         });
-
-        await expect(
-            service.makeOffer('buyer-B', { listingId: 'listing-1', amount: 8000 } as any),
-        ).rejects.toBeInstanceOf(BadRequestException);
-    });
-
-    it('rejects a bid from buyer B that is lower than the current highest bid from buyer A', async () => {
-        prisma.listing.findFirst.mockResolvedValue(baseListing);
-        prisma.offer.findFirst.mockResolvedValueOnce({
-            id: 'offer-A',
-            amount: 9000,
-            counterAmount: null,
-            buyerId: 'buyer-A',
-            status: 'PENDING',
-        });
-
-        await expect(
-            service.makeOffer('buyer-B', { listingId: 'listing-1', amount: 8500 } as any),
-        ).rejects.toMatchObject({ message: expect.stringMatching(/higher than the current highest bid/i) });
-    });
-
-    it('accepts a bid from buyer B that is strictly higher than buyer A', async () => {
-        prisma.listing.findFirst.mockResolvedValue(baseListing);
-        prisma.offer.findFirst.mockResolvedValueOnce({
-            id: 'offer-A',
-            amount: 8000,
-            counterAmount: null,
-            buyerId: 'buyer-A',
-            status: 'PENDING',
-        });
-        prisma.offer.updateMany.mockResolvedValue({ count: 0 });
-        prisma.offer.create.mockResolvedValue({ id: 'offer-B', amount: 8500 });
+        prisma.user.findUnique.mockResolvedValue(null);
 
         const result = await service.makeOffer('buyer-B', {
             listingId: 'listing-1',
-            amount: 8500,
+            amount: 7500,
         } as any);
 
-        expect(prisma.offer.create).toHaveBeenCalled();
-        expect(result.id).toBe('offer-B');
+        expect(result.amount).toBe(7500);
+        expect(prisma.offer.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                amount: 7500,
+                amountMin: 7500,
+                amountMax: 7500,
+            }),
+        });
     });
 
-    it('uses counterAmount when comparing against a COUNTERED competing offer', async () => {
+    it('validates the actual offer amount against the 70% floor even if amountMax is higher', async () => {
         prisma.listing.findFirst.mockResolvedValue(baseListing);
-        // Competing offer was countered to £9,500 — new bid must be > 9,500, not just > 8,000.
+
+        await expect(
+            service.makeOffer('buyer-A', {
+                listingId: 'listing-1',
+                amount: 6000,
+                amountMax: 9000,
+            } as any),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/70%/i) });
+
+        expect(prisma.offer.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a retail offer above the asking price', async () => {
+        prisma.listing.findFirst.mockResolvedValue(baseListing);
+
+        await expect(
+            service.makeOffer('buyer-A', {
+                listingId: 'listing-1',
+                amount: 10500,
+            } as any),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/asking price/i) });
+    });
+
+    it('blocks a second open negotiation from the same buyer instead of creating duplicates', async () => {
+        prisma.listing.findFirst.mockResolvedValue(baseListing);
         prisma.offer.findFirst.mockResolvedValueOnce({
-            id: 'offer-A',
-            amount: 8000,
-            counterAmount: 9500,
-            buyerId: 'buyer-A',
-            status: 'COUNTERED',
+            id: 'existing',
+            status: 'PENDING',
+            updatedAt: new Date(),
+            counterExpiresAt: null,
         });
 
         await expect(
-            service.makeOffer('buyer-B', { listingId: 'listing-1', amount: 9500 } as any),
-        ).rejects.toBeInstanceOf(BadRequestException);
+            service.makeOffer('buyer-A', {
+                listingId: 'listing-1',
+                amount: 8000,
+            } as any),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/already have a pending offer/i) });
+
+        expect(prisma.offer.create).not.toHaveBeenCalled();
     });
 
-    it('still enforces the 70%-of-asking-price floor when no competing offers exist', async () => {
-        prisma.listing.findFirst.mockResolvedValue({ ...baseListing, price: 10000 });
-        prisma.offer.findFirst.mockResolvedValueOnce(null);
-
-        // 70% of 10,000 = 7,000. An offer of 5,000 must be rejected.
-        await expect(
-            service.makeOffer('buyer-A', { listingId: 'listing-1', amount: 5000 } as any),
-        ).rejects.toMatchObject({ message: expect.stringMatching(/70%/i) });
-    });
-
-
-    it('amends the same pending offer row instead of creating a replacement offer', async () => {
+    it('amends the same pending offer row without comparing another buyer offer', async () => {
         prisma.offer.findUnique.mockResolvedValue({
             id: 'offer-B',
             listingId: 'listing-1',
@@ -142,6 +166,7 @@ describe('OffersService — incremental bidding', () => {
             amount: 8000,
             message: 'Old message',
             status: 'PENDING',
+            updatedAt: new Date(),
             listing: {
                 id: 'listing-1',
                 title: 'Test',
@@ -151,63 +176,121 @@ describe('OffersService — incremental bidding', () => {
                 price: 10000,
             },
         });
-        prisma.offer.findFirst.mockResolvedValue(null);
         prisma.offer.update.mockResolvedValue({
             id: 'offer-B',
             listingId: 'listing-1',
             buyerId: 'buyer-B',
-            amount: 8500,
+            amount: 7800,
             status: 'PENDING',
         });
 
         const result = await service.amendOffer('offer-B', 'buyer-B', {
-            amount: 8500,
+            amount: 7800,
             message: 'Can collect tomorrow',
         } as any);
 
         expect(prisma.offer.update).toHaveBeenCalledWith({
             where: { id: 'offer-B' },
             data: expect.objectContaining({
-                amount: 8500,
-                amountMin: 8500,
-                amountMax: 8500,
+                amount: 7800,
+                amountMin: 7800,
+                amountMax: 7800,
                 message: 'Can collect tomorrow',
             }),
         });
-        expect(prisma.offer.create).not.toHaveBeenCalled();
-        expect(result.amount).toBe(8500);
+        expect(result.amount).toBe(7800);
     });
 
-    it('rejects an amendment that is not above another buyer\'s active offer', async () => {
-        prisma.offer.findUnique.mockResolvedValue({
-            id: 'offer-B',
+    it('accepting one offer atomically closes every other pending/countered negotiation', async () => {
+        const offer = {
+            id: 'offer-win',
             listingId: 'listing-1',
-            buyerId: 'buyer-B',
-            amount: 8500,
-            message: null,
+            buyerId: 'buyer-1',
+            amount: 8200,
+            counterAmount: null,
             status: 'PENDING',
+            updatedAt: new Date(),
+            counterAttemptsSeller: 0,
+            listing: {
+                id: 'listing-1',
+                title: 'Test',
+                sellerId: 'seller-1',
+                slug: 'test',
+                status: 'ACTIVE',
+                price: 10000,
+            },
+        };
+        prisma.offer.findUnique.mockResolvedValue(offer);
+        prisma.listing.updateMany.mockResolvedValue({ count: 1 });
+        prisma.offer.update.mockResolvedValue({ ...offer, status: 'ACCEPTED', finalAmount: 8200 });
+        prisma.offer.updateMany.mockResolvedValue({ count: 2 });
+        prisma.listing.findUnique.mockResolvedValue({ linkedListingId: null });
+        prisma.user.findUnique.mockResolvedValue(null);
+
+        const result = await service.respondToOffer(
+            'offer-win',
+            'seller-1',
+            OfferResponseStatus.ACCEPTED,
+        );
+
+        expect(result.status).toBe('ACCEPTED');
+        expect(prisma.listing.updateMany).toHaveBeenCalledWith({
+            where: { id: 'listing-1', status: 'ACTIVE', deletedAt: null },
+            data: { status: 'OFFER_ACCEPTED' },
+        });
+        expect(prisma.offer.updateMany).toHaveBeenCalledWith({
+            where: {
+                listingId: 'listing-1',
+                id: { not: 'offer-win' },
+                status: { in: ['PENDING', 'COUNTERED'] },
+            },
+            data: { status: 'REJECTED', counterExpiresAt: null },
+        });
+    });
+
+    it('buyer acceptance of a seller counter uses the same exclusive deal close', async () => {
+        const offer = {
+            id: 'offer-1',
+            listingId: 'listing-1',
+            buyerId: 'buyer-1',
+            amount: 8000,
+            counterAmount: 8500,
+            status: 'COUNTERED',
+            lastCounteredBy: 'SELLER',
+            counterExpiresAt: new Date(Date.now() + 60_000),
+            counterAttemptsBuyer: 0,
             listing: {
                 id: 'listing-1',
                 title: 'Test',
                 sellerId: 'seller-1',
                 status: 'ACTIVE',
-                deletedAt: null,
                 price: 10000,
             },
-        });
-        prisma.offer.findFirst.mockResolvedValue({
-            id: 'offer-A',
-            buyerId: 'buyer-A',
-            amount: 9000,
-            counterAmount: null,
-            status: 'PENDING',
+        };
+        prisma.offer.findUnique.mockResolvedValue(offer);
+        prisma.listing.updateMany.mockResolvedValue({ count: 1 });
+        prisma.offer.update.mockResolvedValue({ ...offer, status: 'ACCEPTED', finalAmount: 8500 });
+        prisma.offer.updateMany.mockResolvedValue({ count: 1 });
+        prisma.listing.findUnique.mockResolvedValue({ linkedListingId: 'auction-listing-1' });
+        auctionsService.cancelLinkedAuctionForRetailDeal.mockResolvedValue({
+            auctionId: 'auction-1',
+            bidderIds: ['bidder-2'],
+            listingTitle: 'Test',
         });
 
-        await expect(
-            service.amendOffer('offer-B', 'buyer-B', { amount: 9000 } as any),
-        ).rejects.toMatchObject({ message: expect.stringMatching(/higher than the current highest bid/i) });
+        const result = await service.respondToCounterOffer(
+            'offer-1',
+            'buyer-1',
+            OfferResponseStatus.ACCEPTED,
+        );
 
-        expect(prisma.offer.update).not.toHaveBeenCalled();
+        expect(result.status).toBe('ACCEPTED');
+        expect(auctionsService.cancelLinkedAuctionForRetailDeal).toHaveBeenCalledWith(
+            'auction-listing-1',
+            'listing-1',
+            prisma,
+        );
+        expect(auctionsService.publishRetailDealAuctionCancellation).toHaveBeenCalled();
     });
 
     it('allows a buyer to cancel a COUNTERED negotiation that is still active', async () => {
@@ -230,10 +313,6 @@ describe('OffersService — incremental bidding', () => {
 
         const result = await service.withdrawOffer('offer-B', 'buyer-B');
 
-        expect(prisma.offer.update).toHaveBeenCalledWith({
-            where: { id: 'offer-B' },
-            data: { status: 'WITHDRAWN' },
-        });
         expect(result.status).toBe('WITHDRAWN');
     });
 });
@@ -267,9 +346,10 @@ describe('OffersService — accepted offer remains visible after sale', () => {
             providers: [
                 OffersService,
                 { provide: PrismaService, useValue: prisma },
-                { provide: NotificationsService, useValue: { create: jest.fn().mockResolvedValue({}) } },
+                { provide: NotificationsService, useValue: { create: jest.fn().mockResolvedValue({}), shouldSendEmail: jest.fn().mockResolvedValue(false) } },
                 { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
                 { provide: EmailService, useValue: { sendOfferReceivedEmail: jest.fn(), sendOfferAcceptedEmail: jest.fn(), sendOfferRejectedEmail: jest.fn(), sendOfferCounteredEmail: jest.fn(), sendCounterAcceptedEmail: jest.fn() } },
+                { provide: AuctionsService, useValue: { cancelLinkedAuctionForRetailDeal: jest.fn().mockResolvedValue(null), publishRetailDealAuctionCancellation: jest.fn().mockResolvedValue(undefined) } },
             ],
         }).compile();
 
