@@ -968,11 +968,32 @@ export class ListingsService {
         if (listing.type === 'AUCTION') {
             const auction = await this.prisma.auction.findUnique({
                 where: { listingId: id },
-                select: { id: true, deletedAt: true },
+                select: { id: true, deletedAt: true, status: true, startTime: true, endTime: true },
             });
             if (!auction || auction.deletedAt) {
                 throw new BadRequestException(
                     'Auction setup is incomplete. Add the auction schedule, reserve and bidding settings before submitting for review.',
+                );
+            }
+
+            // Admin rejection cancels the pending auction so it can never start
+            // accidentally. When the seller fixes and resubmits that rejected
+            // listing, re-arm the same Auction row instead of forcing duplicate
+            // listing/auction creation. A past schedule restarts from now.
+            if (auction.status === 'CANCELLED' && listing.status === 'REJECTED') {
+                const now = new Date();
+                const startTime = auction.startTime > now ? auction.startTime : now;
+                await this.prisma.auction.update({
+                    where: { id: auction.id },
+                    data: {
+                        status: 'SCHEDULED',
+                        startTime,
+                        endTime: new Date(startTime.getTime() + 24 * 60 * 60 * 1000),
+                    },
+                });
+            } else if (auction.status !== 'SCHEDULED' && listing.status !== 'ACTIVE' && listing.status !== 'PENDING_REVIEW') {
+                throw new BadRequestException(
+                    `Auction cannot be submitted while its auction status is ${auction.status}. Create or restart the auction schedule first.`,
                 );
             }
         }
