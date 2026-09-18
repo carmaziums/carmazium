@@ -82,6 +82,24 @@ export class ChatRateLimitService {
         );
     }
 
+    consumeReport(userId: string): void {
+        this.consume(
+            `report:${userId}`,
+            10,
+            60 * 60_000,
+            'Too many chat reports were submitted. Please try again later.',
+        );
+    }
+
+    consumeBlockChange(userId: string): void {
+        this.consume(
+            `block:${userId}`,
+            20,
+            60 * 60_000,
+            'Too many chat block changes were made. Please try again later.',
+        );
+    }
+
     consumeAdminBroadcast(userId: string): void {
         this.consume(
             `broadcast:${userId}`,
