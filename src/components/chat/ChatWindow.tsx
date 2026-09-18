@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button"
 import Image from "next/image"
 import { useChat } from "@/context/ChatContext"
 import { useAuth } from "@/context/AuthContext"
-import { getChatMessages, sendChatMessage, markMessagesAsRead, getChatDisplayName, isSupportUser, type ChatMessage, type ChatRoom } from "@/lib/chatApi"
+import { getChatMessages, sendChatMessage, markMessagesAsRead, getChatDisplayName, isSupportUser, type ChatHistoryCursor, type ChatMessage, type ChatRoom } from "@/lib/chatApi"
 import { parseChatMessageContent } from "@/lib/chatMessageContent"
 
 interface ChatWindowProps {
@@ -36,6 +36,9 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const [messages, setMessages] = React.useState<ChatMessage[]>([])
     const [newMessage, setNewMessage] = React.useState("")
     const [loading, setLoading] = React.useState(true)
+    const [loadingOlder, setLoadingOlder] = React.useState(false)
+    const [hasMore, setHasMore] = React.useState(false)
+    const [historyCursor, setHistoryCursor] = React.useState<ChatHistoryCursor | null>(null)
     const [sending, setSending] = React.useState(false)
     const [isTyping, setIsTyping] = React.useState(false)
     const messagesEndRef = React.useRef<HTMLDivElement>(null)
@@ -43,8 +46,6 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const inputRef = React.useRef<HTMLInputElement>(null)
     const typingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
     const isInitialLoad = React.useRef(true)
-    // Track the optimistic temp message ID so we can replace it when the server confirms
-    const optimisticTempId = React.useRef<string | null>(null)
 
     /** Returns true if the user is within 150px of the bottom of the chat */
     const isNearBottom = () => {
@@ -53,14 +54,25 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         return container.scrollHeight - container.scrollTop - container.clientHeight < 150
     }
 
-    // Fetch initial messages
+    // Fetch the newest page first. Older history is loaded with a stable
+    // message cursor so incoming realtime messages cannot shift page offsets.
     React.useEffect(() => {
         isInitialLoad.current = true
+        setHistoryCursor(null)
+        setHasMore(false)
+
         async function fetchMessages() {
             try {
                 setLoading(true)
                 const response = await getChatMessages(room.id)
                 setMessages(response.data)
+                setHasMore(Boolean(response.pagination.hasMore))
+                setHistoryCursor(
+                    response.pagination.nextCursor ??
+                    (response.data[0]
+                        ? { createdAt: response.data[0].createdAt, id: response.data[0].id }
+                        : null)
+                )
                 // Mark as read via REST (persists to DB) and via context (clears badge immediately)
                 await markMessagesAsRead(room.id)
                 markAsRead(room.id)
@@ -94,28 +106,27 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         // If the user has scrolled up to read older messages, don't interrupt them
     }, [messages, loading])
 
-    // Subscribe to new messages (with deduplication and optimistic replacement)
+    // Subscribe to new messages. Server IDs dedupe normal broadcasts while
+    // clientMessageId replaces the exact optimistic/retrying bubble.
     React.useEffect(() => {
         const unsubscribe = onNewMessage((message) => {
             if (message.chatRoomId === room.id) {
                 setMessages(prev => {
-                    // Deduplicate: skip if message with same ID already exists
                     if (prev.some(m => m.id === message.id)) return prev
-                    // If this is the server-confirmed version of our optimistic message,
-                    // replace the temp entry instead of appending a duplicate
-                    const tempId = optimisticTempId.current
-                    if (tempId && message.senderId !== room.otherUser?.id) {
-                        const idx = prev.findIndex(m => m.id === tempId)
-                        if (idx !== -1) {
-                            optimisticTempId.current = null
+
+                    if (message.clientMessageId) {
+                        const optimisticIndex = prev.findIndex(
+                            m => m.clientMessageId === message.clientMessageId
+                        )
+                        if (optimisticIndex !== -1) {
                             const next = [...prev]
-                            next[idx] = message
+                            next[optimisticIndex] = message
                             return next
                         }
                     }
+
                     return [...prev, message]
                 })
-                // Mark as read immediately
                 markAsRead(room.id)
             }
         })
@@ -132,53 +143,155 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         return unsubscribe
     }, [room.id, room.otherUser?.id, onTyping])
 
+    const loadOlderMessages = async () => {
+        if (!historyCursor || !hasMore || loadingOlder) return
+
+        const container = messagesContainerRef.current
+        const previousScrollHeight = container?.scrollHeight ?? 0
+        const previousScrollTop = container?.scrollTop ?? 0
+
+        try {
+            setLoadingOlder(true)
+            const response = await getChatMessages(room.id, 1, 50, historyCursor)
+            setMessages(prev => {
+                const existingIds = new Set(prev.map(message => message.id))
+                const older = response.data.filter(message => !existingIds.has(message.id))
+                return [...older, ...prev]
+            })
+            setHasMore(Boolean(response.pagination.hasMore))
+            setHistoryCursor(
+                response.pagination.nextCursor ??
+                (response.data[0]
+                    ? { createdAt: response.data[0].createdAt, id: response.data[0].id }
+                    : null)
+            )
+
+            // Prepending history must not make the viewport jump away from the
+            // message the user was reading.
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    if (!container) return
+                    container.scrollTop =
+                        container.scrollHeight - previousScrollHeight + previousScrollTop
+                })
+            })
+        } catch (error) {
+            console.error("Failed to load earlier messages:", error)
+        } finally {
+            setLoadingOlder(false)
+        }
+    }
+
     const insertQuickReply = (text: string) => {
         setNewMessage(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))
         inputRef.current?.focus()
     }
 
+    const deliverMessage = async (
+        content: string,
+        clientMessageId: string,
+    ): Promise<ChatMessage> => {
+        if (isConnected) {
+            try {
+                return await sendMessage(room.id, content, clientMessageId)
+            } catch (error) {
+                const code = (error as { code?: string })?.code
+                if (code !== 'CHAT_ACK_TIMEOUT' && code !== 'SOCKET_UNAVAILABLE') {
+                    throw error
+                }
+                // The server may have persisted the message even if the ack was
+                // lost. HTTP retries with the same clientMessageId are safe.
+            }
+        }
+
+        return sendChatMessage(room.id, content, clientMessageId)
+    }
+
+    const confirmLocalMessage = (
+        clientMessageId: string,
+        confirmed: ChatMessage,
+    ) => {
+        setMessages(prev => {
+            const index = prev.findIndex(
+                message =>
+                    message.id === confirmed.id ||
+                    message.clientMessageId === clientMessageId
+            )
+            if (index === -1) {
+                return [...prev, confirmed]
+            }
+
+            const next = [...prev]
+            next[index] = confirmed
+            return next
+        })
+    }
+
     const handleSend = async () => {
-        if (!newMessage.trim()) return
+        if (!newMessage.trim() || sending) return
 
         const content = newMessage.trim()
+        const clientMessageId = crypto.randomUUID()
+        const tempId = `temp-${clientMessageId}`
+        const now = new Date().toISOString()
+
+        const tempMsg: ChatMessage = {
+            id: tempId,
+            chatRoomId: room.id,
+            senderId: 'optimistic',
+            clientMessageId,
+            content,
+            isRead: false,
+            createdAt: now,
+            updatedAt: now,
+            sender: {
+                id: 'optimistic',
+                firstName: 'Me',
+                lastName: '',
+                profileImage: null,
+            },
+            deliveryStatus: 'sending',
+        }
+
         setNewMessage("")
         setSending(true)
+        setMessages(prev => [...prev, tempMsg])
 
         try {
-            if (isConnected) {
-                // Optimistically add message to UI before sending
-                const tempId = `temp-${Date.now()}`
-                optimisticTempId.current = tempId
-                const tempMsg: ChatMessage = {
-                    id: tempId,
-                    chatRoomId: room.id,
-                    senderId: 'optimistic',
-                    content,
-                    isRead: false,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                    sender: { id: 'optimistic', firstName: 'Me', lastName: '', profileImage: null }
-                }
-                setMessages(prev => [...prev, tempMsg])
-                // Use WebSocket for real-time — server will echo back via message:new
-                // which the subscription handler above will use to replace the temp entry
-                sendMessage(room.id, content)
-            } else {
-                // Fallback to HTTP
-                const message = await sendChatMessage(room.id, content)
-                setMessages(prev => [...prev, message])
-            }
+            const confirmed = await deliverMessage(content, clientMessageId)
+            confirmLocalMessage(clientMessageId, confirmed)
         } catch (error) {
             console.error("Failed to send message:", error)
-            // Remove the optimistic message and restore input on error
-            const tempId = optimisticTempId.current
-            if (tempId) {
-                setMessages(prev => prev.filter(m => m.id !== tempId))
-                optimisticTempId.current = null
-            }
-            setNewMessage(content)
+            setMessages(prev => prev.map(message =>
+                message.clientMessageId === clientMessageId
+                    ? { ...message, deliveryStatus: 'failed' }
+                    : message
+            ))
         } finally {
             setSending(false)
+        }
+    }
+
+    const handleRetry = async (message: ChatMessage) => {
+        if (!message.clientMessageId || message.deliveryStatus !== 'failed') return
+
+        const clientMessageId = message.clientMessageId
+        setMessages(prev => prev.map(item =>
+            item.clientMessageId === clientMessageId
+                ? { ...item, deliveryStatus: 'sending' }
+                : item
+        ))
+
+        try {
+            const confirmed = await deliverMessage(message.content, clientMessageId)
+            confirmLocalMessage(clientMessageId, confirmed)
+        } catch (error) {
+            console.error("Failed to retry message:", error)
+            setMessages(prev => prev.map(item =>
+                item.clientMessageId === clientMessageId
+                    ? { ...item, deliveryStatus: 'failed' }
+                    : item
+            ))
         }
     }
 
@@ -289,7 +402,20 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         </p>
                     </div>
                 ) : (
-                    groupedMessages.map((group, gi) => (
+                    <>
+                        {hasMore && (
+                            <div className="flex justify-center pb-2">
+                                <button
+                                    type="button"
+                                    onClick={loadOlderMessages}
+                                    disabled={loadingOlder}
+                                    className="rounded-full border border-[var(--border-default)] bg-[var(--bg-card)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)] disabled:opacity-60"
+                                >
+                                    {loadingOlder ? 'Loading earlier messages…' : 'Load earlier messages'}
+                                </button>
+                            </div>
+                        )}
+                        {groupedMessages.map((group, gi) => (
                         <div key={gi}>
                             <div className="flex justify-center my-4">
                                 <span className="text-xs text-[var(--text-muted)] bg-[var(--bg-card)] px-3 py-1 rounded-full">
@@ -314,7 +440,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                     >
                                         <div
                                             className={`max-w-[82%] sm:max-w-[75%] px-3 py-2 rounded-2xl shadow-sm ${isOwn
-                                                ? 'bg-primary text-white rounded-br-sm'
+                                                ? `bg-primary text-white rounded-br-sm ${msg.deliveryStatus === 'failed' ? 'ring-2 ring-red-400/70' : ''}`
                                                 : 'bg-[var(--bg-card)] text-[var(--text-primary)] rounded-bl-sm'
                                                 }`}
                                         >
@@ -342,21 +468,34 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                             {parsed.text && (
                                                 <p className="text-sm whitespace-pre-wrap break-words px-1">{parsed.text}</p>
                                             )}
-                                            <p className={`flex items-center gap-1 text-[10px] mt-1 px-1 ${isOwn ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
-                                                {formatTime(msg.createdAt)}
-                                                {isOwn && (
+                                            <div className={`flex items-center gap-1.5 text-[10px] mt-1 px-1 ${isOwn ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
+                                                <span>{formatTime(msg.createdAt)}</span>
+                                                {isOwn && msg.deliveryStatus === 'sending' && (
+                                                    <span>Sending…</span>
+                                                )}
+                                                {isOwn && msg.deliveryStatus === 'failed' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRetry(msg)}
+                                                        className="font-semibold text-white underline underline-offset-2"
+                                                    >
+                                                        Not sent · Retry
+                                                    </button>
+                                                )}
+                                                {isOwn && !msg.deliveryStatus && (
                                                     <svg width="13" height="9" viewBox="0 0 16 11" fill="none" className={msg.isRead ? 'text-white' : 'text-white/50'}>
                                                         <path d="M1 5.5L4.5 9L11 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                                                         <path d="M5.5 5.5L9 9L15.5 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                                                     </svg>
                                                 )}
-                                            </p>
+                                            </div>
                                         </div>
                                     </div>
                                 )
                             })}
                         </div>
-                    ))
+                        ))}
+                    </>
                 )}
 
                 {isTyping && (
