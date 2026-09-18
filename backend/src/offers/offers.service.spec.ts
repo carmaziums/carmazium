@@ -220,10 +220,13 @@ describe('OffersService — private retail negotiations', () => {
                 price: 10000,
             },
         };
-        prisma.offer.findUnique.mockResolvedValue(offer);
+        prisma.offer.findUnique
+            .mockResolvedValueOnce(offer)
+            .mockResolvedValueOnce({ ...offer, status: 'ACCEPTED', finalAmount: 8200 });
         prisma.listing.updateMany.mockResolvedValue({ count: 1 });
-        prisma.offer.update.mockResolvedValue({ ...offer, status: 'ACCEPTED', finalAmount: 8200 });
-        prisma.offer.updateMany.mockResolvedValue({ count: 2 });
+        prisma.offer.updateMany
+            .mockResolvedValueOnce({ count: 1 })
+            .mockResolvedValueOnce({ count: 2 });
         prisma.listing.findUnique.mockResolvedValue({ linkedListingId: null });
         prisma.user.findUnique.mockResolvedValue(null);
 
@@ -267,10 +270,13 @@ describe('OffersService — private retail negotiations', () => {
                 price: 10000,
             },
         };
-        prisma.offer.findUnique.mockResolvedValue(offer);
+        prisma.offer.findUnique
+            .mockResolvedValueOnce(offer)
+            .mockResolvedValueOnce({ ...offer, status: 'ACCEPTED', finalAmount: 8500 });
         prisma.listing.updateMany.mockResolvedValue({ count: 1 });
-        prisma.offer.update.mockResolvedValue({ ...offer, status: 'ACCEPTED', finalAmount: 8500 });
-        prisma.offer.updateMany.mockResolvedValue({ count: 1 });
+        prisma.offer.updateMany
+            .mockResolvedValueOnce({ count: 1 })
+            .mockResolvedValueOnce({ count: 1 });
         prisma.listing.findUnique.mockResolvedValue({ linkedListingId: 'auction-listing-1' });
         auctionsService.cancelLinkedAuctionForRetailDeal.mockResolvedValue({
             auctionId: 'auction-1',
