@@ -374,6 +374,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
 // ─────────────────────────────────────────────────────────────────────────────
 
 function WatchlistTab() {
+    const { user } = useAuth()
     const [items, setItems] = React.useState<WatchlistItem[]>([])
     const [loading, setLoading] = React.useState(true)
     const [removing, setRemoving] = React.useState<string | null>(null)
@@ -410,7 +411,7 @@ function WatchlistTab() {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Watchlist</h2>
+                <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Saved Cars</h2>
             </div>
 
             {loading ? (
@@ -424,7 +425,7 @@ function WatchlistTab() {
                     <div className="w-20 h-20 bg-pink-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-pink-500/20">
                         <Heart size={40} className="text-pink-400/50" />
                     </div>
-                    <h3 className="text-xl font-black text-[var(--text-primary)] uppercase mb-2">Your Watchlist is Empty</h3>
+                    <h3 className="text-xl font-black text-[var(--text-primary)] uppercase mb-2">No Saved Cars Yet</h3>
                     <p className="text-[var(--text-muted)] text-sm max-w-md mx-auto mb-8">
                         Save the vehicles you're interested in by clicking the heart icon on any listing.
                     </p>
@@ -454,7 +455,7 @@ function WatchlistTab() {
                                         onClick={() => handleRemove(item.listingId)}
                                         disabled={removing === item.listingId}
                                         className="absolute top-2 right-2 w-11 h-11 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center text-pink-400 hover:bg-red-500/80 hover:text-white transition-all"
-                                        title="Remove from watchlist"
+                                        title="Remove from Saved Cars"
                                     >
                                         {removing === item.listingId
                                             ? <Loader2 size={16} className="animate-spin" />
@@ -469,11 +470,20 @@ function WatchlistTab() {
                                         {[item.listing.year, item.listing.mileage ? `${item.listing.mileage.toLocaleString()} mi` : null].filter(Boolean).join(' · ')}
                                     </p>
                                     <p className="text-primary font-black text-xl mt-2">{formatPrice(Number(item.listing.price))}</p>
-                                    <Link href={`/buy-cars/${item.listing.slug}`} className="block mt-2">
-                                        <Button variant="outline" className="w-full min-h-[44px] gap-1.5">
-                                            View listing <ChevronRight size={14} />
-                                        </Button>
-                                    </Link>
+                                    <div className="grid grid-cols-1 gap-2 mt-3">
+                                        {item.listing.status === 'ACTIVE' && item.listing.type === 'CLASSIFIED' && item.listing.sellerId !== user?.id && (
+                                            <Link href={`/buy-cars/${item.listing.slug}?makeOffer=true`} className="block">
+                                                <Button className="w-full min-h-[44px] gap-1.5">
+                                                    <Gavel size={14} /> Make Offer
+                                                </Button>
+                                            </Link>
+                                        )}
+                                        <Link href={`/buy-cars/${item.listing.slug}`} className="block">
+                                            <Button variant="outline" className="w-full min-h-[44px] gap-1.5">
+                                                View listing <ChevronRight size={14} />
+                                            </Button>
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
                         ))}
