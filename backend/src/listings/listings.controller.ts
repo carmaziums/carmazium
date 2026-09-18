@@ -88,6 +88,22 @@ export class ListingsController {
     }
 
     /**
+     * Recommend the strongest front-facing photo as the listing cover.
+     * Authenticated because this operates on newly uploaded customer media.
+     */
+    @Post('photo-cover-recommendation')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Recommend a professional front-facing vehicle cover photo' })
+    async recommendVehicleCoverPhoto(
+        @Body('imageUrls') imageUrls: string[],
+    ): Promise<StandardResponse<any>> {
+        const recommendation = await this.listingsService.recommendVehicleCoverPhoto(imageUrls);
+        return new StandardResponse(recommendation);
+    }
+
+    /**
      * Create a new listing
      * Requires authentication
      */
