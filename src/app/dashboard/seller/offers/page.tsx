@@ -75,12 +75,9 @@ function MarkAsSoldModal({
     onClose: () => void
     confirming: boolean
 }) {
-    const agreedPrice = Number(offer.finalAmount ?? offer.counterAmount ?? offer.amount)
-    const [soldPrice, setSoldPrice] = React.useState(agreedPrice)
-    const [buyerName, setBuyerName] = React.useState(
-        [offer.buyer?.firstName, offer.buyer?.lastName].filter(Boolean).join(' ')
-    )
-    const [buyerEmail, setBuyerEmail] = React.useState(offer.buyer?.email ?? '')
+    const soldPrice = Number(offer.finalAmount ?? offer.counterAmount ?? offer.amount)
+    const buyerName = [offer.buyer?.firstName, offer.buyer?.lastName].filter(Boolean).join(' ')
+    const buyerEmail = offer.buyer?.email ?? ''
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
@@ -89,7 +86,7 @@ function MarkAsSoldModal({
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h2 className="text-xl font-black font-heading uppercase tracking-tight">Confirm Sale</h2>
-                        <p className="text-xs text-[var(--text-muted)] mt-0.5">This will mark the listing as sold and record it in your earnings.</p>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">The accepted buyer and agreed price are locked to this deal.</p>
                     </div>
                     <button
                         onClick={onClose}
@@ -128,9 +125,10 @@ function MarkAsSoldModal({
                             <input
                                 type="number"
                                 min={0}
-                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors"
+                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl pl-9 pr-4 py-2.5 text-sm opacity-80 cursor-not-allowed"
                                 value={soldPrice}
-                                onChange={e => setSoldPrice(Number(e.target.value))}
+                                readOnly
+                                aria-readonly="true"
                             />
                         </div>
                     </div>
@@ -143,10 +141,11 @@ function MarkAsSoldModal({
                             <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                             <input
                                 type="text"
-                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors placeholder:text-[var(--text-secondary)]"
+                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl pl-9 pr-4 py-2.5 text-sm opacity-80 cursor-not-allowed placeholder:text-[var(--text-secondary)]"
                                 placeholder="Buyer's full name"
                                 value={buyerName}
-                                onChange={e => setBuyerName(e.target.value)}
+                                readOnly
+                                aria-readonly="true"
                             />
                         </div>
                     </div>
@@ -159,10 +158,11 @@ function MarkAsSoldModal({
                             <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                             <input
                                 type="email"
-                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors placeholder:text-[var(--text-secondary)]"
+                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl pl-9 pr-4 py-2.5 text-sm opacity-80 cursor-not-allowed placeholder:text-[var(--text-secondary)]"
                                 placeholder="buyer@example.com"
                                 value={buyerEmail}
-                                onChange={e => setBuyerEmail(e.target.value)}
+                                readOnly
+                                aria-readonly="true"
                             />
                         </div>
                     </div>
