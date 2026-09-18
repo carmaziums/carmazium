@@ -74,14 +74,30 @@ export class OffersService {
                 );
             }
 
-            const accepted = await tx.offer.update({
-                where: { id: offer.id },
+            const acceptedTransition = await tx.offer.updateMany({
+                where: {
+                    id: offer.id,
+                    status: offer.status,
+                },
                 data: {
                     status: 'ACCEPTED',
                     finalAmount,
                     counterExpiresAt: null,
                 },
             });
+
+            if (acceptedTransition.count !== 1) {
+                throw new BadRequestException(
+                    'This offer changed while you were responding. Refresh and try again.',
+                );
+            }
+
+            const accepted = await tx.offer.findUnique({
+                where: { id: offer.id },
+            });
+            if (!accepted) {
+                throw new NotFoundException('Offer not found after acceptance.');
+            }
 
             await tx.offer.updateMany({
                 where: {
