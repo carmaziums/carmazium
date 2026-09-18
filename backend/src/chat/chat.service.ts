@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateRoomDto, SendChatAttachmentDto, SendMessageDto } from './dto';
-import { ChatContext, Message, Prisma, UserRole } from '@prisma/client';
+import { CreateRoomDto, OpenDisputeDto, SendChatAttachmentDto, SendMessageDto } from './dto';
+import { ChatContext, DisputeStatus, Message, Prisma, UserRole } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { messageInboxLink } from './chat-routing';
@@ -10,6 +10,8 @@ import { ChatAttachmentService } from './chat-attachment.service';
 /**
  * Chat service handling all chat room and message operations
  */
+const DISPUTE_EVENT_PREFIX = '__CARMAZIUM_DISPUTE_EVENT_V1__:';
+
 @Injectable()
 export class ChatService {
     constructor(
@@ -34,6 +36,41 @@ export class ChatService {
         },
         supportAssignedAdmin: {
             select: { id: true, firstName: true, lastName: true, email: true, profileImage: true },
+        },
+        disputeCase: {
+            select: {
+                id: true,
+                sourceRoomId: true,
+                chatRoomId: true,
+                listingId: true,
+                buyerId: true,
+                sellerId: true,
+                openedById: true,
+                joinedAdminId: true,
+                resolvedById: true,
+                status: true,
+                reason: true,
+                adminJoinedAt: true,
+                resolvedAt: true,
+                createdAt: true,
+                updatedAt: true,
+                buyer: {
+                    select: { id: true, firstName: true, lastName: true, email: true, profileImage: true, role: true },
+                },
+                seller: {
+                    select: { id: true, firstName: true, lastName: true, email: true, profileImage: true, role: true },
+                },
+                joinedAdmin: {
+                    select: { id: true, firstName: true, lastName: true, email: true, profileImage: true, role: true },
+                },
+            },
+        },
+        disputeAsSource: {
+            select: {
+                id: true,
+                chatRoomId: true,
+                status: true,
+            },
         },
         listing: {
             select: {
