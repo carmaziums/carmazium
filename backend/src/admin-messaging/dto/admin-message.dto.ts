@@ -2,6 +2,7 @@ import { UserRole } from '@prisma/client';
 import {
     IsEnum,
     IsInt,
+    IsISO8601,
     IsOptional,
     IsString,
     IsUrl,
@@ -82,4 +83,10 @@ export class AdminSendMessageDto extends AdminAudienceDto {
     @Min(1)
     @Max(100000)
     expectedRecipientCount: number;
+}
+
+
+export class AdminScheduleMessageDto extends AdminSendMessageDto {
+    @IsISO8601({ strict: true })
+    scheduledAt: string;
 }

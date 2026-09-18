@@ -98,7 +98,16 @@ export interface AdminMessageSendResult {
   requested: number;
   sent: number;
   failed: number;
+  pending?: number;
+  status?: BroadcastCampaignStatus;
   failures: Array<{ userId: string; error: string }>;
+}
+
+export interface AdminMessageScheduleResult {
+  campaignId: string;
+  requested: number;
+  scheduledAt: string;
+  status: BroadcastCampaignStatus;
 }
 
 export async function previewAdminMessageAudience(selection: AdminAudienceSelection): Promise<AdminAudiencePreview> {
@@ -113,6 +122,17 @@ export async function sendAdminAudienceMessage(payload: AdminMessagePayload): Pr
   const result = await apiClient<{ data: AdminMessageSendResult }>('/admin/messaging/send', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+  return result.data;
+}
+
+export async function scheduleAdminAudienceMessage(
+  payload: AdminMessagePayload,
+  scheduledAt: string,
+): Promise<AdminMessageScheduleResult> {
+  const result = await apiClient<{ data: AdminMessageScheduleResult }>('/admin/messaging/schedule', {
+    method: 'POST',
+    body: JSON.stringify({ ...payload, scheduledAt }),
   });
   return result.data;
 }
@@ -213,7 +233,13 @@ export async function deleteAdminSupportNote(roomId: string, noteId: string): Pr
 
 // ─── Admin Broadcast History ──────────────────────────────────────────────────
 
-export type BroadcastCampaignStatus = 'SENDING' | 'COMPLETED' | 'PARTIAL' | 'FAILED';
+export type BroadcastCampaignStatus =
+  | 'SCHEDULED'
+  | 'SENDING'
+  | 'COMPLETED'
+  | 'PARTIAL'
+  | 'FAILED'
+  | 'CANCELLED';
 export type BroadcastDeliveryStatus = 'PENDING' | 'SENT' | 'FAILED';
 
 export interface AdminBroadcastCampaign {
@@ -231,6 +257,9 @@ export interface AdminBroadcastCampaign {
   sent: number;
   failed: number;
   status: BroadcastCampaignStatus;
+  scheduledAt?: string | null;
+  startedAt?: string | null;
+  cancelledAt?: string | null;
   createdAt: string;
   finishedAt?: string | null;
   admin: {
@@ -264,14 +293,63 @@ export interface AdminBroadcastCampaignDetail extends AdminBroadcastCampaign {
   deliveries: AdminBroadcastDelivery[];
 }
 
-export async function getAdminBroadcastCampaigns(page = 1, limit = 20): Promise<{
+export interface AdminBroadcastHistoryFilters {
+  search?: string;
+  status?: BroadcastCampaignStatus;
+  audience?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface AdminBroadcastAnalytics {
+  totalCampaigns: number;
+  scheduledCampaigns: number;
+  completedCampaigns: number;
+  partialCampaigns: number;
+  failedCampaigns: number;
+  cancelledCampaigns: number;
+  sendingCampaigns: number;
+  requestedRecipients: number;
+  sentRecipients: number;
+  failedRecipients: number;
+  pendingRecipients: number;
+  attemptedRecipients: number;
+  deliverySuccessRate: number | null;
+}
+
+export async function getAdminBroadcastCampaigns(
+  page = 1,
+  limit = 20,
+  filters: AdminBroadcastHistoryFilters = {},
+): Promise<{
   data: AdminBroadcastCampaign[];
   pagination: { total: number; page: number; limit: number; totalPages: number };
 }> {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (filters.search) params.set('search', filters.search);
+  if (filters.status) params.set('status', filters.status);
+  if (filters.audience) params.set('audience', filters.audience);
+  if (filters.from) params.set('from', filters.from);
+  if (filters.to) params.set('to', filters.to);
+
   const result = await apiClient<{ data: {
     data: AdminBroadcastCampaign[];
     pagination: { total: number; page: number; limit: number; totalPages: number };
-  } }>(`/admin/messaging/broadcasts?page=${page}&limit=${limit}`);
+  } }>(`/admin/messaging/broadcasts?${params.toString()}`);
+  return result.data;
+}
+
+export async function getAdminBroadcastAnalytics(
+  from?: string,
+  to?: string,
+): Promise<AdminBroadcastAnalytics> {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  const result = await apiClient<{ data: AdminBroadcastAnalytics }>(
+    `/admin/messaging/broadcasts-analytics${suffix}`,
+  );
   return result.data;
 }
 
@@ -285,6 +363,22 @@ export async function getAdminBroadcastCampaign(id: string): Promise<AdminBroadc
 export async function retryAdminBroadcastFailures(id: string): Promise<AdminBroadcastCampaignDetail> {
   const result = await apiClient<{ data: AdminBroadcastCampaignDetail }>(
     `/admin/messaging/broadcasts/${id}/retry-failed`,
+    { method: 'POST' },
+  );
+  return result.data;
+}
+
+export async function cancelAdminScheduledBroadcast(id: string): Promise<AdminBroadcastCampaignDetail> {
+  const result = await apiClient<{ data: AdminBroadcastCampaignDetail }>(
+    `/admin/messaging/broadcasts/${id}/cancel`,
+    { method: 'POST' },
+  );
+  return result.data;
+}
+
+export async function sendAdminScheduledBroadcastNow(id: string): Promise<AdminBroadcastCampaignDetail> {
+  const result = await apiClient<{ data: AdminBroadcastCampaignDetail }>(
+    `/admin/messaging/broadcasts/${id}/send-now`,
     { method: 'POST' },
   );
   return result.data;

@@ -3,6 +3,7 @@
 import * as React from "react"
 import {
     AlertTriangle,
+    CalendarClock,
     CheckCircle2,
     FileImage,
     Loader2,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react"
 import {
     previewAdminMessageAudience,
+    scheduleAdminAudienceMessage,
     sendAdminAudienceMessage,
     type AdminAudiencePreview,
     type AdminMessageAudience,
@@ -60,6 +62,8 @@ export function AdminBroadcastComposer() {
     const [previewing, setPreviewing] = React.useState(false)
     const [previewError, setPreviewError] = React.useState<string | null>(null)
     const [confirming, setConfirming] = React.useState(false)
+    const [deliveryMode, setDeliveryMode] = React.useState<"now" | "schedule">("now")
+    const [scheduledLocal, setScheduledLocal] = React.useState("")
     const [sending, setSending] = React.useState(false)
     const [result, setResult] = React.useState<string | null>(null)
     const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -133,37 +137,74 @@ export function AdminBroadcastComposer() {
         }
     }
 
+    const messagePayload = React.useMemo(() => ({
+        ...selection,
+        text: message.trim() || undefined,
+        mediaUrl: media?.url,
+        mediaKind: media?.kind,
+        mediaName: media?.name,
+        mediaMime: media?.mime,
+        mediaSize: media?.size,
+        expectedRecipientCount: preview?.count || 0,
+    }), [selection, message, media, preview?.count])
+
+    const scheduledDate = scheduledLocal ? new Date(scheduledLocal) : null
+    const scheduleIsValid = deliveryMode === "now" || (
+        !!scheduledDate &&
+        !Number.isNaN(scheduledDate.getTime()) &&
+        scheduledDate.getTime() >= Date.now() + 60_000
+    )
+
     const executeSend = async () => {
         if (!preview?.count) return
         try {
             setSending(true)
             setResult(null)
-            const sent = await sendAdminAudienceMessage({
-                ...selection,
-                text: message.trim() || undefined,
-                mediaUrl: media?.url,
-                mediaKind: media?.kind,
-                mediaName: media?.name,
-                mediaMime: media?.mime,
-                mediaSize: media?.size,
-                expectedRecipientCount: preview.count,
-            })
-            setResult(
-                sent.failed > 0
-                    ? `Sent to ${sent.sent} of ${sent.requested} recipients. ${sent.failed} delivery failed.`
-                    : `Message sent successfully to ${sent.sent} recipient${sent.sent === 1 ? "" : "s"}.`,
-            )
+
+            if (deliveryMode === "schedule") {
+                if (!scheduledDate || Number.isNaN(scheduledDate.getTime())) {
+                    setResult("Choose a valid date and time.")
+                    return
+                }
+
+                const scheduled = await scheduleAdminAudienceMessage(
+                    messagePayload,
+                    scheduledDate.toISOString(),
+                )
+                setResult(
+                    `Broadcast scheduled for ${new Date(scheduled.scheduledAt).toLocaleString()} with ${scheduled.requested.toLocaleString()} locked recipient${scheduled.requested === 1 ? "" : "s"}.`,
+                )
+            } else {
+                const sent = await sendAdminAudienceMessage(messagePayload)
+                setResult(
+                    sent.failed > 0
+                        ? `Sent to ${sent.sent} of ${sent.requested} recipients. ${sent.failed} delivery failed.`
+                        : `Message sent successfully to ${sent.sent} recipient${sent.sent === 1 ? "" : "s"}.`,
+                )
+            }
+
             setMessage("")
             setMedia(null)
+            setScheduledLocal("")
+            setDeliveryMode("now")
             setConfirming(false)
         } catch (error: any) {
-            if (error?.message !== "AUTH_REDIRECT") setResult(error?.message || "Message could not be sent")
+            if (error?.message !== "AUTH_REDIRECT") {
+                setResult(error?.message || (deliveryMode === "schedule"
+                    ? "Broadcast could not be scheduled"
+                    : "Message could not be sent"))
+            }
         } finally {
             setSending(false)
         }
     }
 
-    const canSend = !!preview?.count && (!!message.trim() || !!media) && !uploading && !sending
+    const canSend =
+        !!preview?.count &&
+        (!!message.trim() || !!media) &&
+        !uploading &&
+        !sending &&
+        scheduleIsValid
 
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.08),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.08),transparent_35%)]">
@@ -276,6 +317,67 @@ export function AdminBroadcastComposer() {
                     <p className="text-xs text-[var(--text-muted)] mt-2">Pictures up to 10 MB · videos up to 25 MB.</p>
                 </section>
 
+                <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 sm:p-5 shadow-lg">
+                    <div className="mb-3 flex items-center gap-2">
+                        <CalendarClock size={18} className="text-primary" />
+                        <h4 className="font-black">3. Choose delivery time</h4>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 rounded-xl bg-[var(--bg-input)] p-1">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setDeliveryMode("now")
+                                setConfirming(false)
+                            }}
+                            className={`rounded-lg px-3 py-2.5 text-sm font-black transition-colors ${deliveryMode === "now"
+                                ? "bg-primary text-white shadow"
+                                : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                            }`}
+                        >
+                            Send now
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setDeliveryMode("schedule")
+                                setConfirming(false)
+                            }}
+                            className={`rounded-lg px-3 py-2.5 text-sm font-black transition-colors ${deliveryMode === "schedule"
+                                ? "bg-primary text-white shadow"
+                                : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                            }`}
+                        >
+                            Schedule
+                        </button>
+                    </div>
+
+                    {deliveryMode === "schedule" && (
+                        <div className="mt-4">
+                            <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                Send date and time
+                            </label>
+                            <input
+                                type="datetime-local"
+                                value={scheduledLocal}
+                                onChange={(event) => {
+                                    setScheduledLocal(event.target.value)
+                                    setConfirming(false)
+                                }}
+                                className="mt-2 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-sm"
+                            />
+                            <p className="mt-2 text-xs text-[var(--text-muted)]">
+                                Uses your device&apos;s local time. The recipient list is locked when you confirm the schedule, so the audience cannot silently change before delivery.
+                            </p>
+                            {scheduledLocal && !scheduleIsValid && (
+                                <p className="mt-2 text-xs font-bold text-amber-500">
+                                    Choose a time at least 1 minute in the future.
+                                </p>
+                            )}
+                        </div>
+                    )}
+                </section>
+
                 {result && (
                     <div className={`rounded-xl border px-4 py-3 text-sm ${result.toLowerCase().includes("successfully") || result.startsWith("Sent to")
                         ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
@@ -292,7 +394,10 @@ export function AdminBroadcastComposer() {
                         onClick={() => setConfirming(true)}
                         className="w-full rounded-xl bg-primary text-white px-5 py-3.5 font-black inline-flex items-center justify-center gap-2 shadow-[0_10px_30px_rgba(239,68,68,0.22)] hover:bg-primary/90 disabled:opacity-40 disabled:shadow-none"
                     >
-                        <Send size={18} /> Review send to {preview?.count?.toLocaleString() || 0}
+                        {deliveryMode === "schedule" ? <CalendarClock size={18} /> : <Send size={18} />}
+                        {deliveryMode === "schedule"
+                            ? `Review schedule for ${preview?.count?.toLocaleString() || 0}`
+                            : `Review send to ${preview?.count?.toLocaleString() || 0}`}
                     </button>
                 ) : (
                     <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 sm:p-5">
@@ -301,13 +406,25 @@ export function AdminBroadcastComposer() {
                             <div className="flex-1">
                                 <p className="font-black text-[var(--text-primary)]">Confirm broadcast</p>
                                 <p className="text-sm text-[var(--text-muted)] mt-1">
-                                    This will create a CarMazium support message for <strong>{preview?.count.toLocaleString()}</strong> recipient{preview?.count === 1 ? "" : "s"}. This action cannot be unsent from their inboxes.
+                                    {deliveryMode === "schedule" ? (
+                                        <>
+                                            This will lock <strong>{preview?.count.toLocaleString()}</strong> recipient{preview?.count === 1 ? "" : "s"} and schedule delivery for <strong>{scheduledDate?.toLocaleString()}</strong>. You can cancel it from Broadcast History until dispatch starts.
+                                        </>
+                                    ) : (
+                                        <>
+                                            This will create a CarMazium support message for <strong>{preview?.count.toLocaleString()}</strong> recipient{preview?.count === 1 ? "" : "s"}. This action cannot be unsent from their inboxes.
+                                        </>
+                                    )}
                                 </p>
                                 <div className="flex flex-col sm:flex-row gap-2 mt-4">
                                     <button type="button" onClick={() => setConfirming(false)} disabled={sending} className="rounded-xl border border-[var(--border-default)] px-4 py-2.5 font-bold text-sm">Cancel</button>
                                     <button type="button" onClick={executeSend} disabled={sending} className="rounded-xl bg-primary text-white px-5 py-2.5 font-black text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50">
                                         {sending ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />}
-                                        {sending ? "Sending…" : `Confirm send to ${preview?.count.toLocaleString()}`}
+                                        {sending
+                                            ? (deliveryMode === "schedule" ? "Scheduling…" : "Sending…")
+                                            : (deliveryMode === "schedule"
+                                                ? `Confirm schedule for ${preview?.count.toLocaleString()}`
+                                                : `Confirm send to ${preview?.count.toLocaleString()}`)}
                                     </button>
                                 </div>
                             </div>

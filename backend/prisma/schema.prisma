@@ -1083,10 +1083,12 @@ enum ChatContext {
 }
 
 enum BroadcastCampaignStatus {
+  SCHEDULED
   SENDING
   COMPLETED
   PARTIAL
   FAILED
+  CANCELLED
 
   @@map("broadcast_campaign_status")
 }
@@ -1170,28 +1172,32 @@ model SupportNote {
 }
 
 model BroadcastCampaign {
-  id         String                  @id @default(uuid())
-  adminId    String
-  audience   String
-  role       UserRole?
-  text       String?
-  mediaUrl   String?
-  mediaKind  String?
-  mediaName  String?
-  mediaMime  String?
-  mediaSize  Int?
-  requested  Int
-  sent       Int                     @default(0)
-  failed     Int                     @default(0)
-  status     BroadcastCampaignStatus @default(SENDING)
-  createdAt  DateTime                @default(now())
-  finishedAt DateTime?
+  id          String                  @id @default(uuid())
+  adminId     String
+  audience    String
+  role        UserRole?
+  text        String?
+  mediaUrl    String?
+  mediaKind   String?
+  mediaName   String?
+  mediaMime   String?
+  mediaSize   Int?
+  requested   Int
+  sent        Int                     @default(0)
+  failed      Int                     @default(0)
+  status      BroadcastCampaignStatus @default(SENDING)
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime                @default(now())
+  finishedAt  DateTime?
 
   admin      User                @relation(fields: [adminId], references: [id])
   deliveries BroadcastDelivery[]
 
   @@index([createdAt(sort: Desc)])
   @@index([adminId])
+  @@index([status, scheduledAt])
   @@map("broadcast_campaigns")
 }
 

@@ -17,7 +17,11 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
 import { AdminMessagingService } from './admin-messaging.service';
-import { AdminAudienceDto, AdminSendMessageDto } from './dto/admin-message.dto';
+import {
+    AdminAudienceDto,
+    AdminScheduleMessageDto,
+    AdminSendMessageDto,
+} from './dto/admin-message.dto';
 import {
     AssignSupportRoomDto,
     CreateSupportNoteDto,
@@ -102,16 +106,33 @@ export class AdminMessagingController {
     }
 
     @Get('broadcasts')
-    @ApiOperation({ summary: 'List admin broadcast campaign history' })
+    @ApiOperation({ summary: 'List and search admin broadcast campaign history' })
     async broadcasts(
         @Query('page') page?: string,
         @Query('limit') limit?: string,
+        @Query('search') search?: string,
+        @Query('status') status?: string,
+        @Query('audience') audience?: string,
+        @Query('from') from?: string,
+        @Query('to') to?: string,
     ) {
         return new StandardResponse(
             await this.messaging.listBroadcastCampaigns(
                 Number(page || 1),
                 Number(limit || 20),
+                { search, status, audience, from, to },
             ),
+        );
+    }
+
+    @Get('broadcasts-analytics')
+    @ApiOperation({ summary: 'Get aggregate admin broadcast delivery analytics' })
+    async broadcastAnalytics(
+        @Query('from') from?: string,
+        @Query('to') to?: string,
+    ) {
+        return new StandardResponse(
+            await this.messaging.getBroadcastAnalytics(from, to),
         );
     }
 
@@ -120,6 +141,22 @@ export class AdminMessagingController {
     async broadcast(@Param('id') campaignId: string) {
         return new StandardResponse(
             await this.messaging.getBroadcastCampaign(campaignId),
+        );
+    }
+
+    @Post('broadcasts/:id/cancel')
+    @ApiOperation({ summary: 'Cancel a scheduled broadcast before it starts' })
+    async cancelScheduledBroadcast(@Param('id') campaignId: string) {
+        return new StandardResponse(
+            await this.messaging.cancelScheduledBroadcast(campaignId),
+        );
+    }
+
+    @Post('broadcasts/:id/send-now')
+    @ApiOperation({ summary: 'Dispatch a scheduled broadcast immediately' })
+    async sendScheduledBroadcastNow(@Param('id') campaignId: string) {
+        return new StandardResponse(
+            await this.messaging.sendScheduledBroadcastNow(campaignId),
         );
     }
 
@@ -144,5 +181,17 @@ export class AdminMessagingController {
     @ApiOperation({ summary: 'Send a text, picture or video message to an admin-selected audience' })
     async send(@CurrentUser() admin: any, @Body() dto: AdminSendMessageDto) {
         return new StandardResponse(await this.messaging.send(admin.id, dto));
+    }
+
+    @Post('schedule')
+    @ApiOperation({ summary: 'Schedule a broadcast using a locked recipient snapshot' })
+    async schedule(
+        @CurrentUser() admin: any,
+        @Body() dto: AdminScheduleMessageDto,
+    ) {
+        const { scheduledAt, ...message } = dto;
+        return new StandardResponse(
+            await this.messaging.schedule(admin.id, message, scheduledAt),
+        );
     }
 }
