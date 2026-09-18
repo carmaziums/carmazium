@@ -684,6 +684,13 @@ export class AuctionsService {
         }
 
         const winningAmount = Number(bid.amount);
+        const reservePrice = Number(auction.reservePrice);
+        if (winningAmount >= reservePrice) {
+            throw new BadRequestException(
+                'The reserve has been met. The auction must continue normally until it ends.',
+            );
+        }
+
         const winnerId = bid.bidderId;
         const linkedListingId = (auction.listing as any).linkedListingId as string | null;
 
