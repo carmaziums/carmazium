@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { useParams, useRouter, useSearchParams, notFound } from "next/navigation"
 import {
-    Loader2, ArrowLeft, Star, CheckCircle, AlertCircle, ShieldCheck, Phone, Mail, XCircle, Clock, Banknote,
+    Loader2, ArrowLeft, Star, CheckCircle, AlertCircle, ShieldCheck, Phone, Mail, XCircle, Clock, Banknote, MessageSquare,
 } from "lucide-react"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { deliveryServiceEnabled, inspectionServiceEnabled } from "@/lib/featureFlags"
@@ -14,6 +14,7 @@ import {
     type ServiceJob, type ServiceQuote,
 } from "@/lib/servicesApi"
 import { JobStatusBadge, RecoveryBadge, JobRoute, JobTiming, JobVehicles } from "@/components/services/JobBits"
+import { getOrCreateServiceJobRoom } from "@/lib/chatApi"
 
 /**
  * The customer's view of one TradeXchange service job. Quotes can be compared
@@ -57,6 +58,19 @@ function JobDetail() {
         return () => { clearInterval(t); clearTimeout(stop) }
     }, [params, job?.status, load])
 
+    const openJobChat = async () => {
+        setBusy("chat")
+        setError(null)
+        try {
+            const result = await getOrCreateServiceJobRoom(id)
+            router.push(result.inboxUrl)
+        } catch (e: any) {
+            setError(e?.message || "Could not open the job conversation")
+        } finally {
+            setBusy(null)
+        }
+    }
+
     const run = async (key: string, fn: () => Promise<void>, after?: string) => {
         setBusy(key); setError(null)
         try { await fn(); if (after) setFlash(after); load() }
@@ -73,6 +87,7 @@ function JobDetail() {
     const isInspection = job.serviceType === "INSPECTION"
     const providerLabel = isInspection ? "inspector" : "transporter"
     const completionLabel = isInspection ? "inspection" : "delivery"
+    const canMessageProvider = !!job.contractor && ["PAID", "IN_PROGRESS", "COMPLETED", "RELEASED", "DISPUTED"].includes(job.status)
 
     return (
         <div className="container mx-auto px-5 py-10 max-w-5xl">
@@ -159,6 +174,19 @@ function JobDetail() {
                                 </div>
                             ) : (
                                 <p className="mt-3 text-xs text-[var(--text-muted)]">Contact details unlock once you have paid.</p>
+                            )}
+                            {canMessageProvider && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="mt-4 w-full"
+                                    disabled={busy === "chat"}
+                                    onClick={() => void openJobChat()}
+                                >
+                                    {busy === "chat"
+                                        ? <Loader2 className="animate-spin" size={16} />
+                                        : <><MessageSquare size={16} className="mr-2" /> Message {providerLabel}</>}
+                                </Button>
                             )}
                         </div>
                     )}

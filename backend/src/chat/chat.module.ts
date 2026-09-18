@@ -7,6 +7,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { AuthModule } from '../auth/auth.module';
 import { ChatRateLimitService } from './chat-rate-limit.service';
 import { ChatAttachmentService } from './chat-attachment.service';
+import { ServicesModule } from '../services/services.module';
 
 /**
  * Chat module providing real-time messaging functionality.
@@ -14,7 +15,7 @@ import { ChatAttachmentService } from './chat-attachment.service';
  * Authentication is handled via express-session cookies.
  */
 @Module({
-    imports: [PrismaModule, NotificationsModule, AuthModule],
+    imports: [PrismaModule, NotificationsModule, AuthModule, ServicesModule],
     controllers: [ChatController],
     providers: [ChatService, ChatGateway, ChatRateLimitService, ChatAttachmentService],
     exports: [ChatService, ChatGateway, ChatRateLimitService, ChatAttachmentService],

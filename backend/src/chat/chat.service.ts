@@ -1,11 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BlockChatRoomDto, CreateRoomDto, OpenDisputeDto, ReportChatMessageDto, SendChatAttachmentDto, SendMessageDto, UpdateChatReportDto } from './dto';
-import { ChatContext, ChatReportStatus, DisputeStatus, Message, Prisma, UserRole } from '@prisma/client';
+import { ChatContext, ChatReportStatus, DisputeStatus, Message, Prisma, ServicePaymentStatus, UserRole } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { messageInboxLink } from './chat-routing';
 import { ChatAttachmentService } from './chat-attachment.service';
+import { TradeTeamService } from '../services/trade-team.service';
 
 /**
  * Chat service handling all chat room and message operations
@@ -19,6 +20,7 @@ export class ChatService {
         private readonly notificationsService: NotificationsService,
         private readonly notificationsGateway: NotificationsGateway,
         private readonly chatAttachmentService: ChatAttachmentService,
+        private readonly tradeTeamService: TradeTeamService,
     ) { }
 
     /**
@@ -104,6 +106,26 @@ export class ChatService {
                 },
             },
         },
+        serviceJob: {
+            select: {
+                id: true,
+                title: true,
+                status: true,
+                serviceType: true,
+                customerId: true,
+                contractorId: true,
+                contractor: {
+                    select: {
+                        id: true,
+                        businessName: true,
+                        userId: true,
+                    },
+                },
+                payment: {
+                    select: { status: true },
+                },
+            },
+        },
     };
 
     /** Adds the computed `otherUser` field the frontend actually reads. */
@@ -132,6 +154,10 @@ export class ChatService {
             // Joined admins see the buyer as the primary counterpart in the
             // generic two-party shell; disputeCase exposes both buyer + seller.
             otherUser = room.disputeCase?.buyer || room.initiator;
+        } else if (room.context === ChatContext.SERVICE_JOB) {
+            // Authorised provider staff are not canonical room participants.
+            // Their counterpart is always the customer who posted the job.
+            otherUser = room.initiator;
         } else {
             otherUser = room.initiator;
         }
@@ -219,6 +245,37 @@ export class ChatService {
         if (room.initiator?.role === UserRole.ADMIN) return room.initiatorId;
         if (room.participant?.role === UserRole.ADMIN) return room.participantId;
         return null;
+    }
+
+    private async canAccessServiceJob(job: any, userId: string): Promise<boolean> {
+        if (!job?.customerId || !job?.contractorId) return false;
+        if (job.customerId === userId || job.contractor?.userId === userId) return true;
+
+        const actor = await this.tradeTeamService.tryResolveActor(userId);
+        return !!actor &&
+            actor.contractorProfileId === job.contractorId &&
+            actor.allowedServiceTypes.includes(job.serviceType);
+    }
+
+    private assertServiceJobPaid(job: any): void {
+        if (
+            !job?.contractorId ||
+            !job?.contractor?.userId ||
+            !job?.payment ||
+            ![ServicePaymentStatus.PAID, ServicePaymentStatus.RELEASED].includes(job.payment.status)
+        ) {
+            throw new ForbiddenException(
+                'Service job chat opens after CarMazium has confirmed payment.',
+            );
+        }
+    }
+
+    private async serviceActorForRooms(userId: string) {
+        try {
+            return await this.tradeTeamService.tryResolveActor(userId);
+        } catch {
+            return null;
+        }
     }
 
     private async actorRole(userId: string): Promise<UserRole | null> {
@@ -565,6 +622,55 @@ export class ChatService {
         }
 
         return this.findOrCreateRoom(userId, { participantId: supportAccount.id });
+    }
+
+    /**
+     * Get or create the private customer/provider conversation for a paid
+     * TradeXchange service job. The room belongs to the job, not merely the
+     * two users, so every delivery/inspection engagement keeps its own history.
+     */
+    async findOrCreateServiceJobRoom(jobId: string, userId: string) {
+        const job = await this.prisma.serviceJob.findUnique({
+            where: { id: jobId },
+            select: {
+                id: true,
+                title: true,
+                status: true,
+                serviceType: true,
+                customerId: true,
+                contractorId: true,
+                contractor: {
+                    select: {
+                        id: true,
+                        userId: true,
+                        businessName: true,
+                    },
+                },
+                payment: { select: { status: true } },
+            },
+        });
+
+        if (!job) throw new NotFoundException('Service job not found.');
+        if (!(await this.canAccessServiceJob(job, userId))) {
+            throw new ForbiddenException('You do not have access to this service job conversation.');
+        }
+        this.assertServiceJobPaid(job);
+
+        const conversationKey = `SERVICE_JOB:${job.id}`;
+        const room = await this.prisma.chatRoom.upsert({
+            where: { conversationKey },
+            update: { deletedAt: null },
+            create: {
+                initiatorId: job.customerId,
+                participantId: job.contractor!.userId,
+                serviceJobId: job.id,
+                context: ChatContext.SERVICE_JOB,
+                conversationKey,
+            },
+            include: this.roomInclude,
+        });
+
+        return this.withOtherUser(room, userId);
     }
 
     private disputeEventContent(
@@ -1693,6 +1799,17 @@ export class ChatService {
                         joinedAdminId: true,
                     },
                 },
+                serviceJob: {
+                    select: {
+                        id: true,
+                        status: true,
+                        serviceType: true,
+                        customerId: true,
+                        contractorId: true,
+                        contractor: { select: { userId: true } },
+                        payment: { select: { status: true } },
+                    },
+                },
                 blocks: {
                     where: { revokedAt: null },
                     select: { id: true, blockerId: true, blockedUserId: true },
@@ -1713,8 +1830,11 @@ export class ChatService {
                 room.context === ChatContext.DISPUTE &&
                 role === UserRole.ADMIN &&
                 room.disputeCase?.joinedAdminId === userId;
+            const authorisedServiceActor =
+                room.context === ChatContext.SERVICE_JOB &&
+                await this.canAccessServiceJob(room.serviceJob, userId);
 
-            if (!authorisedSupportAdmin && !authorisedDisputeAdmin) {
+            if (!authorisedSupportAdmin && !authorisedDisputeAdmin && !authorisedServiceActor) {
                 throw new ForbiddenException('You are not a member of this chat room');
             }
         }
@@ -1729,6 +1849,13 @@ export class ChatService {
             if (room.disputeCase.status !== DisputeStatus.OPEN) {
                 throw new ForbiddenException('This dispute has been resolved. The conversation is read-only.');
             }
+            return room;
+        }
+        if (room.context === ChatContext.SERVICE_JOB) {
+            if (!room.serviceJob || !(await this.canAccessServiceJob(room.serviceJob, userId))) {
+                throw new ForbiddenException('You do not have access to this service job conversation.');
+            }
+            this.assertServiceJobPaid(room.serviceJob);
             return room;
         }
         if (room.context === ChatContext.LEGACY) {
@@ -1767,7 +1894,10 @@ export class ChatService {
         options: { limit?: number; before?: Date; beforeId?: string } = {},
     ): Promise<any[]> {
         const role = await this.actorRole(userId);
-        const membership = role === UserRole.ADMIN
+        const serviceActor = role === UserRole.ADMIN
+            ? null
+            : await this.serviceActorForRooms(userId);
+        const membership: Prisma.ChatRoomWhereInput[] = role === UserRole.ADMIN
             ? [
                 { context: ChatContext.SUPPORT },
                 {
@@ -1781,6 +1911,17 @@ export class ChatService {
                 { initiatorId: userId },
                 { participantId: userId },
             ];
+        if (serviceActor) {
+            membership.push({
+                context: ChatContext.SERVICE_JOB,
+                serviceJob: {
+                    is: {
+                        contractorId: serviceActor.contractorProfileId,
+                        serviceType: { in: serviceActor.allowedServiceTypes },
+                    },
+                },
+            });
+        }
         const usingCursor = !!options.before && !!options.beforeId;
         const rooms = await this.prisma.chatRoom.findMany({
             where: {
@@ -1877,6 +2018,13 @@ export class ChatService {
                     const bySender = unreadByRoom.get(room.id) ?? new Map<string, number>();
                     if (room.context === ChatContext.SUPPORT && role === UserRole.ADMIN && customerId) {
                         unreadCount = bySender.get(customerId) ?? 0;
+                    } else if (room.context === ChatContext.SERVICE_JOB && room.serviceJob?.customerId) {
+                        const serviceCustomerId = room.serviceJob.customerId;
+                        unreadCount = serviceCustomerId === userId
+                            ? Array.from(bySender.entries())
+                                .filter(([senderId]) => senderId !== serviceCustomerId)
+                                .reduce((total, [, count]) => total + count, 0)
+                            : (bySender.get(serviceCustomerId) ?? 0);
                     } else {
                         unreadCount = Array.from(bySender.entries())
                             .filter(([senderId]) => senderId !== userId)
@@ -1898,6 +2046,7 @@ export class ChatService {
                     conversationKey: room.conversationKey,
                     otherUser,
                     listing: room.listing,
+                    serviceJob: room.serviceJob,
                     listingUnavailable: !!room.listing && (
                         !!room.listing.deletedAt ||
                         !['ACTIVE', 'OFFER_ACCEPTED', 'SOLD'].includes(room.listing.status)
@@ -1957,8 +2106,11 @@ export class ChatService {
                 room.context === ChatContext.DISPUTE &&
                 role === UserRole.ADMIN &&
                 room.disputeCase?.joinedAdminId === userId;
+            const authorisedServiceActor =
+                room.context === ChatContext.SERVICE_JOB &&
+                await this.canAccessServiceJob(room.serviceJob, userId);
 
-            if (!authorisedSupportAdmin && !authorisedDisputeAdmin) {
+            if (!authorisedSupportAdmin && !authorisedDisputeAdmin && !authorisedServiceActor) {
                 throw new ForbiddenException('You are not a member of this chat room');
             }
         }
@@ -2435,7 +2587,11 @@ export class ChatService {
             && role === UserRole.ADMIN
             && customerId
             ? customerId
-            : { not: userId };
+            : room.context === ChatContext.SERVICE_JOB && room.serviceJob?.customerId
+                ? (room.serviceJob.customerId === userId
+                    ? { not: userId }
+                    : room.serviceJob.customerId)
+                : { not: userId };
 
         const result = await this.prisma.message.updateMany({
             where: {
@@ -2463,10 +2619,11 @@ export class ChatService {
      */
     async getUserPresencePartnerIds(userId: string): Promise<string[]> {
         const role = await this.actorRole(userId);
-        const rooms = await this.prisma.chatRoom.findMany({
-            where: {
-                OR: role === UserRole.ADMIN
-                    ? [
+        const serviceActor = role === UserRole.ADMIN
+            ? null
+            : await this.serviceActorForRooms(userId);
+        const membership: Prisma.ChatRoomWhereInput[] = role === UserRole.ADMIN
+            ? [
                         { context: ChatContext.SUPPORT },
                         {
                             context: ChatContext.DISPUTE,
@@ -2478,7 +2635,21 @@ export class ChatService {
                     : [
                         { initiatorId: userId },
                         { participantId: userId },
-                    ],
+                    ];
+        if (serviceActor) {
+            membership.push({
+                context: ChatContext.SERVICE_JOB,
+                serviceJob: {
+                    is: {
+                        contractorId: serviceActor.contractorProfileId,
+                        serviceType: { in: serviceActor.allowedServiceTypes },
+                    },
+                },
+            });
+        }
+        const rooms = await this.prisma.chatRoom.findMany({
+            where: {
+                OR: membership,
                 deletedAt: null,
                 blocks: { none: { revokedAt: null } },
             },
@@ -2493,6 +2664,9 @@ export class ChatService {
                         buyerId: true,
                         joinedAdminId: true,
                     },
+                },
+                serviceJob: {
+                    select: { customerId: true },
                 },
             },
         });
@@ -2512,6 +2686,9 @@ export class ChatService {
                 ) {
                     return room.disputeCase.buyerId;
                 }
+                if (room.context === ChatContext.SERVICE_JOB) {
+                    return room.serviceJob?.customerId ?? room.initiatorId;
+                }
                 return null;
             })
             .filter((id): id is string => !!id)));
@@ -2522,10 +2699,11 @@ export class ChatService {
      */
     async getUserRoomIds(userId: string): Promise<string[]> {
         const role = await this.actorRole(userId);
-        const rooms = await this.prisma.chatRoom.findMany({
-            where: {
-                OR: role === UserRole.ADMIN
-                    ? [
+        const serviceActor = role === UserRole.ADMIN
+            ? null
+            : await this.serviceActorForRooms(userId);
+        const membership: Prisma.ChatRoomWhereInput[] = role === UserRole.ADMIN
+            ? [
                         { context: ChatContext.SUPPORT },
                         {
                             context: ChatContext.DISPUTE,
@@ -2537,7 +2715,21 @@ export class ChatService {
                     : [
                         { initiatorId: userId },
                         { participantId: userId },
-                    ],
+                    ];
+        if (serviceActor) {
+            membership.push({
+                context: ChatContext.SERVICE_JOB,
+                serviceJob: {
+                    is: {
+                        contractorId: serviceActor.contractorProfileId,
+                        serviceType: { in: serviceActor.allowedServiceTypes },
+                    },
+                },
+            });
+        }
+        const rooms = await this.prisma.chatRoom.findMany({
+            where: {
+                OR: membership,
                 deletedAt: null,
                 blocks: { none: { revokedAt: null } },
             },

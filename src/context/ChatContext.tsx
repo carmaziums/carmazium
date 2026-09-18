@@ -36,6 +36,7 @@ interface ChatContextType {
     sendMessage: (roomId: string, content: string, clientMessageId: string) => Promise<ChatMessage>
     startTyping: (roomId: string) => void
     stopTyping: (roomId: string) => void
+    joinRoom: (roomId: string) => void
     markAsRead: (roomId: string, notifyServer?: boolean) => void
     setActiveRoom: (roomId: string | null) => void
     upsertRoom: (room: ChatRoom) => void
@@ -332,6 +333,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         socketRef.current?.emit('typing:stop', { roomId })
     }, [])
 
+    const joinRoom = useCallback((roomId: string) => {
+        socketRef.current?.emit('room:join', { roomId })
+    }, [])
+
     const setActiveRoom = useCallback((roomId: string | null) => {
         activeRoomIdRef.current = roomId
     }, [])
@@ -408,6 +413,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         sendMessage,
         startTyping,
         stopTyping,
+        joinRoom,
         markAsRead,
         setActiveRoom,
         upsertRoom,
