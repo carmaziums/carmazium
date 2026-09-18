@@ -534,12 +534,31 @@ export class PaymentsService {
             case 'FULL_PAYMENT':
                 amount = Number(listing.price);
                 break;
-            case 'LISTING_FEE':
-                if (!badgeTier || !(badgeTier in this.LISTING_FEES)) {
-                    throw new BadRequestException('badgeTier is required and must be BASIC, STANDARD, or PREMIUM for a LISTING_FEE payment.');
+            case 'LISTING_FEE': {
+                if (listing.sellerId !== userId) {
+                    throw new ForbiddenException('You do not have permission to pay for this listing');
+                }
+                if (listing.type !== 'CLASSIFIED') {
+                    throw new BadRequestException('Auction listings do not require a retail listing fee');
+                }
+
+                // Mobile Payment Sheet follows the same server-authoritative rule
+                // as hosted Checkout: the saved listing tier determines the charge.
+                // Heal any legacy FREE retail draft to BASIC (£1).
+                const persistedTier = listing.badgeTier === 'FREE' ? 'BASIC' : listing.badgeTier;
+                if (!(persistedTier in this.LISTING_FEES)) {
+                    throw new BadRequestException('Retail listing tier must be BASIC, STANDARD, or PREMIUM');
+                }
+                badgeTier = persistedTier as 'BASIC' | 'STANDARD' | 'PREMIUM';
+                if (listing.badgeTier !== badgeTier) {
+                    await this.prisma.listing.update({
+                        where: { id: listingId },
+                        data: { badgeTier },
+                    });
                 }
                 amount = this.LISTING_FEES[badgeTier];
                 break;
+            }
             case 'COMMISSION':
                 amount = this.AUCTION_BUYER_FEE;
                 break;
