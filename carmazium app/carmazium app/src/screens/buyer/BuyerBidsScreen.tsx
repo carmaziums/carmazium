@@ -44,6 +44,8 @@ interface RawBid {
   listingId: string;
   amount: number | string;
   isWinning: boolean;
+  isArchived?: boolean;
+  archivedAt?: string | null;
   createdAt: string;
   listing: {
     id: string;
@@ -66,6 +68,7 @@ interface Bid {
   auctionStatus: AuctionStatus;
   auctionId?: string | null;
   isWinning?: boolean;
+  isArchived?: boolean;
   isWinner?: boolean;
   winningBidAmount?: number | null;
   paymentDeadline?: string | null;
@@ -88,7 +91,9 @@ const BID_CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
 // backend's PATCH /bids/:id/cancel (24h window, no "must be highest
 // bidder" restriction) was reachable only from the live auction screen.
 const isCancelable = (bid: Bid) =>
-  bid.auctionStatus === 'ACTIVE' && (Date.now() - new Date(bid.createdAt).getTime()) < BID_CANCEL_WINDOW_MS;
+  !bid.isArchived &&
+  bid.auctionStatus === 'ACTIVE' &&
+  (Date.now() - new Date(bid.createdAt).getTime()) < BID_CANCEL_WINDOW_MS;
 
 function formatCancelWindowRemaining(ms: number): string {
   if (ms <= 0) return '0m';
@@ -110,7 +115,8 @@ const mapRawBid = (b: RawBid, currentUserId?: string): Bid => {
     auctionStatus: auction?.status ?? 'ENDED',
     auctionId: auction?.id ?? null,
     isWinning: b.isWinning,
-    isWinner: !!auction?.winnerId && auction.winnerId === currentUserId,
+    isArchived: Boolean(b.isArchived),
+    isWinner: !b.isArchived && !!auction?.winnerId && auction.winnerId === currentUserId,
     winningBidAmount: auction?.winningBidAmount != null ? Number(auction.winningBidAmount) : null,
     // 72h, matching the backend's BUYER_FEE_GRACE_MS — this was 24h (AUC-022).
     // The backend measures from `wonAt`, but `GET /bids/my` does not select it
@@ -370,9 +376,9 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
 
   const renderBidCard = useCallback(({ item: bid }: { item: Bid }) => {
     const cfg = STATUS_CFG[bid.auctionStatus] ?? STATUS_CFG.ENDED;
-    const isNavigable = bid.auctionStatus === 'ACTIVE' || bid.auctionStatus === 'SCHEDULED';
+    const isNavigable = !bid.isArchived && (bid.auctionStatus === 'ACTIVE' || bid.auctionStatus === 'SCHEDULED');
     const isNavigating = tappingId === bid.id;
-    const isWon = bid.auctionStatus === 'ENDED' && bid.isWinner;
+    const isWon = !bid.isArchived && bid.auctionStatus === 'ENDED' && bid.isWinner;
 
     const handlePayFee = () => {
       haptics.success();
@@ -415,7 +421,11 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
           {/* Right section */}
           <View style={styles.bidRight}>
             {/* Status chip — or WON chip */}
-            {isWon ? (
+            {bid.isArchived ? (
+              <View style={[styles.statusChip, { backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: Colors.whiteAlpha10 }]}>
+                <Text style={[styles.statusChipText, { color: Colors.textMuted }]}>PREVIOUS</Text>
+              </View>
+            ) : isWon ? (
               <View style={[styles.statusChip, { backgroundColor: Colors.accentGreenAlpha15, borderWidth: 1, borderColor: 'rgba(16,185,129,0.4)' }]}>
                 <Text style={[styles.statusChipText, { color: Colors.accentGreen }]}>WON</Text>
               </View>
