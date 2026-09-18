@@ -40,6 +40,7 @@ describe('ListingsService', () => {
             dealerStaff: { findFirst: jest.fn() },
             user: { findUnique: jest.fn() },
             transaction: { findMany: jest.fn() },
+            hpiReport: { findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }) },
             auction: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
             $transaction: jest.fn(async (arg: any) => Array.isArray(arg) ? Promise.all(arg) : arg(prisma)),
         };
