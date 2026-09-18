@@ -972,11 +972,16 @@ model Bid {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
   cancelledAt DateTime?
+  // Set when this bid belongs to a completed/cancelled auction run and the
+  // seller starts a fresh auction on the same listing. Archived bids remain
+  // available as history but must never participate in the new auction.
+  archivedAt  DateTime?
 
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   bidder  User    @relation(fields: [bidderId], references: [id])
 
   @@index([listingId, amount(sort: Desc)])
+  @@index([listingId, archivedAt])
   @@index([bidderId])
   @@index([bidderId, createdAt(sort: Desc)])
   @@map("bids")
