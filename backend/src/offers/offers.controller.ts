@@ -19,6 +19,7 @@ import {
 import { OffersService } from './offers.service';
 import { CreateOfferDto } from './dto/create-offer.dto';
 import { RespondOfferDto } from './dto/respond-offer.dto';
+import { AmendOfferDto } from './dto/amend-offer.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
@@ -133,6 +134,24 @@ export class OffersController {
     ): Promise<StandardResponse<{ count: number }>> {
         const count = await this.offersService.getBuyerActionCount(user.id);
         return new StandardResponse({ count });
+    }
+
+    /**
+     * Buyer: Amend a pending offer before the seller responds
+     */
+    @Patch(':id/amend')
+    @ApiOperation({ summary: 'Amend a pending offer', description: 'Update the amount/message of a PENDING offer. Buyer only.' })
+    @ApiParam({ name: 'id', description: 'UUID of the offer' })
+    @ApiResponse({ status: 200, description: 'Offer amended' })
+    @ApiResponse({ status: 400, description: 'Offer is no longer pending or the new amount is invalid' })
+    @ApiResponse({ status: 403, description: 'Not the offer owner' })
+    async amendOffer(
+        @Param('id') id: string,
+        @Body() dto: AmendOfferDto,
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<any>> {
+        const offer = await this.offersService.amendOffer(id, user.id, dto);
+        return new StandardResponse(offer);
     }
 
     /**
