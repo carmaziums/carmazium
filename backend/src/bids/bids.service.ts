@@ -181,6 +181,119 @@ export class BidsService {
         this.auctionGateway.broadcastBidCancelled(listing.auction.id, bidId);
     }
 
+    async findMyActiveAuctionPositions(bidderId: string): Promise<any[]> {
+        const myBids = await this.prisma.bid.findMany({
+            where: {
+                bidderId,
+                deletedAt: null,
+                cancelledAt: null,
+                listing: {
+                    auction: { status: 'ACTIVE' },
+                },
+            },
+            include: {
+                listing: {
+                    select: {
+                        id: true,
+                        title: true,
+                        slug: true,
+                        images: true,
+                        make: true,
+                        model: true,
+                        year: true,
+                        mileage: true,
+                        sellerId: true,
+                        auction: {
+                            select: {
+                                id: true,
+                                status: true,
+                                endTime: true,
+                                minIncrement: true,
+                                startingBid: true,
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        if (myBids.length === 0) return [];
+
+        // A trader can bid several times on the same vehicle. The dashboard
+        // needs one position per auction, so keep the trader's highest active
+        // bid for each listing rather than rendering duplicate bid-history rows.
+        const myHighestByListing = new Map<string, any>();
+        for (const bid of myBids) {
+            const existing = myHighestByListing.get(bid.listingId);
+            if (!existing || Number(bid.amount) > Number(existing.amount)) {
+                myHighestByListing.set(bid.listingId, bid);
+            }
+        }
+
+        const listingIds = [...myHighestByListing.keys()];
+        const allLiveBids = await this.prisma.bid.findMany({
+            where: {
+                listingId: { in: listingIds },
+                deletedAt: null,
+                cancelledAt: null,
+            },
+            select: {
+                id: true,
+                listingId: true,
+                bidderId: true,
+                amount: true,
+                createdAt: true,
+            },
+            orderBy: { amount: 'desc' },
+        });
+
+        const highestByListing = new Map<string, any>();
+        const bidCountByListing = new Map<string, number>();
+        for (const bid of allLiveBids) {
+            bidCountByListing.set(
+                bid.listingId,
+                (bidCountByListing.get(bid.listingId) ?? 0) + 1,
+            );
+            if (!highestByListing.has(bid.listingId)) {
+                highestByListing.set(bid.listingId, bid);
+            }
+        }
+
+        return [...myHighestByListing.values()]
+            .map((myBid) => {
+                const auction = myBid.listing.auction;
+                const highest = highestByListing.get(myBid.listingId);
+                const currentHighestBid = highest ? Number(highest.amount) : Number(myBid.amount);
+                const minIncrement = Number(auction?.minIncrement ?? 0);
+                const createdAt = myBid.createdAt instanceof Date
+                    ? myBid.createdAt
+                    : new Date(myBid.createdAt);
+                const cancelDeadline = new Date(createdAt.getTime() + BID_CANCEL_WINDOW_MS);
+
+                return {
+                    listingId: myBid.listingId,
+                    auctionId: auction?.id,
+                    listing: myBid.listing,
+                    myHighestBid: Number(myBid.amount),
+                    myBidId: myBid.id,
+                    myBidCreatedAt: createdAt,
+                    currentHighestBid,
+                    isLeading: highest?.bidderId === bidderId,
+                    nextMinimumBid: currentHighestBid + minIncrement,
+                    bidCount: bidCountByListing.get(myBid.listingId) ?? 0,
+                    canCancelCurrentBid: Date.now() < cancelDeadline.getTime(),
+                    cancelDeadline,
+                    endTime: auction?.endTime,
+                };
+            })
+            .sort((a, b) => {
+                const aEnd = a.endTime ? new Date(a.endTime).getTime() : Number.MAX_SAFE_INTEGER;
+                const bEnd = b.endTime ? new Date(b.endTime).getTime() : Number.MAX_SAFE_INTEGER;
+                return aEnd - bEnd;
+            });
+    }
+
     async findMyBids(bidderId: string, page = 1, limit = 20): Promise<{ data: any[]; total: number }> {
         const skip = (page - 1) * limit;
 

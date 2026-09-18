@@ -87,7 +87,15 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         href: "/dashboard/dealer/my-offers",
         label: "My Offers",
         title: "My Offers",
-        subHeader: "Outgoing bids placed on other dealers' inventory",
+        subHeader: "Retail offers you've made on marketplace vehicles",
+        icon: Gavel,
+        section: "Buying"
+    },
+    {
+        href: "/dashboard/dealer/bids",
+        label: "My Auction Bids",
+        title: "My Auction Bids",
+        subHeader: "Live auctions you're currently bidding on",
         icon: Gavel,
         section: "Buying"
     },
