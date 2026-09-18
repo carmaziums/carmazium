@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRoomDto, SendMessageDto } from './dto';
-import { Message } from '@prisma/client';
+import { ChatContext, Message } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 
@@ -36,6 +36,9 @@ export class ChatService {
                 slug: true,
                 images: true,
                 type: true,
+                status: true,
+                sellerId: true,
+                deletedAt: true,
                 price: true,
                 auction: {
                     select: {
@@ -61,68 +64,316 @@ export class ChatService {
         };
     }
 
+    private canonicalPair(userA: string, userB: string): [string, string] {
+        return userA < userB ? [userA, userB] : [userB, userA];
+    }
+
+    private conversationKey(
+        context: ChatContext,
+        scopeId: string,
+        userA: string,
+        userB: string,
+    ): string {
+        const [firstUserId, secondUserId] = this.canonicalPair(userA, userB);
+        return `${context}:${scopeId}:${firstUserId}:${secondUserId}`;
+    }
+
+    private async loadUsers(userId: string, participantId: string) {
+        const users = await this.prisma.user.findMany({
+            where: { id: { in: [userId, participantId] }, deletedAt: null },
+            select: { id: true, role: true },
+        });
+        if (users.length !== 2) {
+            throw new NotFoundException('Chat participant not found');
+        }
+        return users;
+    }
+
+    private async loadListingPolicy(listingId: string) {
+        const listing = await this.prisma.listing.findUnique({
+            where: { id: listingId },
+            select: {
+                id: true,
+                sellerId: true,
+                type: true,
+                status: true,
+                deletedAt: true,
+                auction: {
+                    select: {
+                        id: true,
+                        status: true,
+                        winnerId: true,
+                        buyerFeePaid: true,
+                    },
+                },
+                offers: {
+                    where: { status: 'ACCEPTED' },
+                    orderBy: { updatedAt: 'desc' },
+                    take: 1,
+                    select: { buyerId: true },
+                },
+                sale: {
+                    select: { buyerId: true },
+                },
+            },
+        });
+
+        if (!listing) {
+            throw new NotFoundException('Listing not found');
+        }
+        return listing;
+    }
+
+    private pairMatches(
+        initiatorId: string,
+        participantId: string,
+        userA: string,
+        userB: string,
+    ): boolean {
+        const [roomA, roomB] = this.canonicalPair(initiatorId, participantId);
+        const [expectedA, expectedB] = this.canonicalPair(userA, userB);
+        return roomA === expectedA && roomB === expectedB;
+    }
+
+    private async resolveConversationRequest(
+        userId: string,
+        participantId: string,
+        listingId?: string,
+    ): Promise<{
+        context: ChatContext;
+        conversationKey: string;
+        listingId: string | null;
+        listing: any | null;
+        users: Array<{ id: string; role: string }>;
+    }> {
+        if (userId === participantId) {
+            throw new BadRequestException('You cannot create a chat with yourself');
+        }
+
+        const users = await this.loadUsers(userId, participantId);
+
+        if (listingId) {
+            const listing = await this.loadListingPolicy(listingId);
+            const context = listing.type === 'AUCTION' ? ChatContext.AUCTION : ChatContext.RETAIL;
+            const scopeId = context === ChatContext.AUCTION
+                ? listing.auction?.id ?? listing.id
+                : listing.id;
+
+            return {
+                context,
+                conversationKey: this.conversationKey(context, scopeId, userId, participantId),
+                listingId,
+                listing,
+                users,
+            };
+        }
+
+        const hasAdmin = users.some((user) => user.role === 'ADMIN');
+        if (!hasAdmin) {
+            throw new ForbiddenException(
+                'Direct chat requires a vehicle conversation or CarMazium support.',
+            );
+        }
+
+        return {
+            context: ChatContext.SUPPORT,
+            conversationKey: this.conversationKey(ChatContext.SUPPORT, 'CARMAZIUM', userId, participantId),
+            listingId: null,
+            listing: null,
+            users,
+        };
+    }
+
+    private assertAuctionPolicy(
+        listing: any,
+        initiatorId: string,
+        participantId: string,
+    ): void {
+        if (
+            listing.deletedAt ||
+            !listing.sellerId ||
+            !listing.auction ||
+            listing.auction.status !== 'ENDED' ||
+            !listing.auction.winnerId ||
+            !listing.auction.buyerFeePaid
+        ) {
+            throw new ForbiddenException(
+                'Auction chat opens only after the auction has ended and the winner has paid the £125 CarMazium fee.',
+            );
+        }
+
+        if (!this.pairMatches(
+            initiatorId,
+            participantId,
+            listing.sellerId,
+            listing.auction.winnerId,
+        )) {
+            throw new ForbiddenException(
+                'Only the auction winner and seller can use this conversation.',
+            );
+        }
+    }
+
+    private acceptedRetailBuyerId(listing: any): string | null {
+        return listing.offers?.[0]?.buyerId ?? listing.sale?.buyerId ?? null;
+    }
+
+    private assertRetailPair(listing: any, initiatorId: string, participantId: string): string {
+        if (!listing.sellerId) {
+            throw new ForbiddenException('This listing does not have a seller available for chat.');
+        }
+
+        if (initiatorId !== listing.sellerId && participantId !== listing.sellerId) {
+            throw new ForbiddenException('Vehicle chat must be with the listing seller.');
+        }
+
+        return initiatorId === listing.sellerId ? participantId : initiatorId;
+    }
+
+    private assertCanCreateRetailConversation(
+        listing: any,
+        userId: string,
+        participantId: string,
+    ): void {
+        if (listing.deletedAt) {
+            throw new ForbiddenException('This listing is no longer active.');
+        }
+
+        const buyerId = this.assertRetailPair(listing, userId, participantId);
+
+        if (listing.status === 'ACTIVE') {
+            if (userId === listing.sellerId) {
+                throw new ForbiddenException(
+                    'A new retail enquiry must be started by the buyer.',
+                );
+            }
+            return;
+        }
+
+        if (listing.status === 'OFFER_ACCEPTED') {
+            const acceptedBuyerId = this.acceptedRetailBuyerId(listing);
+            if (!acceptedBuyerId || acceptedBuyerId !== buyerId) {
+                throw new ForbiddenException(
+                    'This vehicle is sale pending. Only the accepted buyer and seller can start this conversation.',
+                );
+            }
+            return;
+        }
+
+        if (listing.status === 'SOLD') {
+            throw new ForbiddenException(
+                'New conversations cannot be started after a vehicle is sold.',
+            );
+        }
+
+        throw new ForbiddenException('This listing is not available for new conversations.');
+    }
+
+    private assertCanMessageRetailConversation(
+        listing: any,
+        initiatorId: string,
+        participantId: string,
+    ): void {
+        if (listing.deletedAt) {
+            throw new ForbiddenException('This listing is no longer active. The conversation is read-only.');
+        }
+
+        const buyerId = this.assertRetailPair(listing, initiatorId, participantId);
+
+        if (listing.status === 'ACTIVE') {
+            return;
+        }
+
+        if (listing.status === 'OFFER_ACCEPTED') {
+            const acceptedBuyerId = this.acceptedRetailBuyerId(listing);
+            if (acceptedBuyerId === buyerId) {
+                return;
+            }
+            throw new ForbiddenException(
+                'This vehicle is sale pending. Only the accepted buyer and seller can continue messaging.',
+            );
+        }
+
+        if (listing.status === 'SOLD') {
+            const completedBuyerId = listing.sale?.buyerId ?? this.acceptedRetailBuyerId(listing);
+            if (completedBuyerId && completedBuyerId === buyerId) {
+                return;
+            }
+            throw new ForbiddenException(
+                'This vehicle has been sold. Only the completed buyer and seller can continue this conversation.',
+            );
+        }
+
+        throw new ForbiddenException(
+            'This listing is no longer active. The conversation is read-only.',
+        );
+    }
+
+    private async assertConversationCanBeCreated(
+        resolved: Awaited<ReturnType<ChatService['resolveConversationRequest']>>,
+        userId: string,
+        participantId: string,
+    ): Promise<void> {
+        if (resolved.context === ChatContext.SUPPORT) {
+            return;
+        }
+        if (!resolved.listing) {
+            throw new ForbiddenException('Conversation context is incomplete.');
+        }
+        if (resolved.context === ChatContext.AUCTION) {
+            this.assertAuctionPolicy(resolved.listing, userId, participantId);
+            return;
+        }
+        if (resolved.context === ChatContext.RETAIL) {
+            this.assertCanCreateRetailConversation(resolved.listing, userId, participantId);
+            return;
+        }
+        throw new ForbiddenException('This conversation type cannot be created directly.');
+    }
+
     /**
-     * Find or create a chat room between two users
+     * Find or create a context-specific conversation.
+     * A buyer/seller pair may have separate rooms for separate vehicles, while
+     * the database-level conversationKey prevents duplicate rooms for the same
+     * context under concurrent requests.
      */
     async findOrCreateRoom(userId: string, dto: CreateRoomDto) {
         const { participantId, listingId } = dto;
+        const resolved = await this.resolveConversationRequest(userId, participantId, listingId);
 
-        // Check if room already exists (either direction)
-        const existingRoom = await this.prisma.chatRoom.findFirst({
-            where: {
-                OR: [
-                    { initiatorId: userId, participantId },
-                    { initiatorId: participantId, participantId: userId },
-                ],
-                deletedAt: null,
-            },
+        const existingRoom = await this.prisma.chatRoom.findUnique({
+            where: { conversationKey: resolved.conversationKey },
+            include: this.roomInclude,
         });
 
-        // ChatRoom is unique per (initiatorId, participantId) pair — the same
-        // two users always get the same room, even across unrelated deals on
-        // different vehicles. `listingId` used to be frozen at whatever it
-        // was on the room's very first creation and silently ignored on every
-        // later findOrCreateRoom call, so a buyer/seller pair who transacted
-        // on a second vehicle would still see the first vehicle's title/image
-        // and (worse) have the auction-winner fee gate evaluated against the
-        // wrong, possibly already-settled auction. Re-point the room at the
-        // newly-referenced listing instead of leaving it stuck on the first one.
-        if (listingId) {
-            await this.assertCanReferenceListing(userId, listingId);
+        if (existingRoom && !existingRoom.deletedAt) {
+            await this.assertCanMessageRoom(existingRoom.id, userId);
+            return this.withOtherUser(existingRoom, userId);
         }
 
-        if (existingRoom) {
-            const room = (listingId && listingId !== existingRoom.listingId)
-                ? await this.prisma.chatRoom.update({
-                    where: { id: existingRoom.id },
-                    data: { listingId },
-                    include: this.roomInclude,
-                })
-                : await this.prisma.chatRoom.findUniqueOrThrow({
-                    where: { id: existingRoom.id },
-                    include: this.roomInclude,
-                });
-            return this.withOtherUser(room, userId);
-        }
+        await this.assertConversationCanBeCreated(resolved, userId, participantId);
 
-        // Create new room
-        const room = await this.prisma.chatRoom.create({
-            data: {
+        const room = await this.prisma.chatRoom.upsert({
+            where: { conversationKey: resolved.conversationKey },
+            update: {
+                deletedAt: null,
+            },
+            create: {
                 initiatorId: userId,
                 participantId,
-                listingId,
+                listingId: resolved.listingId,
+                context: resolved.context,
+                conversationKey: resolved.conversationKey,
             },
             include: this.roomInclude,
         });
+
         return this.withOtherUser(room, userId);
     }
 
     /**
      * Get or create the current user's conversation with the official
-     * CarMazium support account — the single ADMIN-role user. Reuses
-     * findOrCreateRoom (no listingId) so it's the same unique per-pair room
-     * a direct admin-initiated chat would land on, just resolved without the
-     * caller needing to know the admin's user ID.
+     * CarMazium support account.
      */
     async findOrCreateSupportRoom(userId: string) {
         const supportAccount = await this.prisma.user.findFirst({
@@ -142,29 +393,51 @@ export class ChatService {
     }
 
     /**
-     * Gate auction rooms: the winner must have paid the £125 fee before
-     * chatting about that specific auction. Runs whenever a listingId is
-     * about to be attached to a room — both on first creation and when an
-     * existing room is being re-pointed at a new listing.
+     * Enforces the current business rule whenever somebody attempts to send
+     * or emit an interactive room event. Historical transcripts remain readable
+     * even when the vehicle is no longer available.
      */
-    private async assertCanReferenceListing(userId: string, listingId: string): Promise<void> {
-        const listing = await this.prisma.listing.findUnique({
-            where: { id: listingId },
+    async assertCanMessageRoom(roomId: string, userId: string) {
+        const room = await this.prisma.chatRoom.findUnique({
+            where: { id: roomId },
             select: {
-                sellerId: true,
-                type: true,
-                auction: { select: { winnerId: true, buyerFeePaid: true } },
+                id: true,
+                initiatorId: true,
+                participantId: true,
+                listingId: true,
+                context: true,
+                deletedAt: true,
             },
         });
 
-        if (listing?.type === 'AUCTION' && listing.auction?.winnerId) {
-            const isWinner = listing.auction.winnerId === userId;
-            if (isWinner && !listing.auction.buyerFeePaid) {
-                throw new ForbiddenException(
-                    'You must pay the £125 completion fee before messaging the seller.',
-                );
-            }
+        if (!room || room.deletedAt) {
+            throw new NotFoundException('Chat room not found');
         }
+        if (room.initiatorId !== userId && room.participantId !== userId) {
+            throw new ForbiddenException('You are not a member of this chat room');
+        }
+
+        if (room.context === ChatContext.SUPPORT || room.context === ChatContext.DISPUTE) {
+            return room;
+        }
+        if (room.context === ChatContext.LEGACY) {
+            throw new ForbiddenException('This historical conversation is read-only.');
+        }
+        if (!room.listingId) {
+            throw new ForbiddenException('This conversation is missing its vehicle context.');
+        }
+
+        const listing = await this.loadListingPolicy(room.listingId);
+        if (room.context === ChatContext.AUCTION) {
+            this.assertAuctionPolicy(listing, room.initiatorId, room.participantId);
+            return room;
+        }
+        if (room.context === ChatContext.RETAIL) {
+            this.assertCanMessageRetailConversation(listing, room.initiatorId, room.participantId);
+            return room;
+        }
+
+        throw new ForbiddenException('This conversation is not available for messaging.');
     }
 
     /**
