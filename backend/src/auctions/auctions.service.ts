@@ -105,31 +105,47 @@ export class AuctionsService {
             this.notifyAuctionSubmittedForReview(listing.id, listing.title, listing.sellerId).catch(() => { });
         }
 
-        // Re-use the existing row (listingId is @unique — can't insert a second row)
+        // Re-use the existing Auction row because listingId is @unique, but
+        // treat this as a brand-new auction run. Bids from the completed run
+        // stay in the database as history and are archived so they cannot
+        // become the opening/highest bid of the re-listed auction.
         if (existing) {
-            return this.prisma.auction.update({
-                where: { id: existing.id },
-                data: {
-                    startTime,
-                    endTime,
-                    reservePrice: createAuctionDto.reservePrice,
-                    startingBid: createAuctionDto.startingBid,
-                    minIncrement: createAuctionDto.minIncrement,
-                    buyItNowPrice: createAuctionDto.buyItNowPrice ?? null,
-                    status: 'SCHEDULED',
-                    deletedAt: null,
-                    winnerId: null,
-                    winningBidAmount: null,
-                    buyerFeePaid: false,
-                    buyerFeeTransactionId: null,
-                    handoverProofUrl: null,
-                    handoverSubmittedAt: null,
-                    sellerBonusReleased: false,
-                    sellerBonusReleasedAt: null,
-                    buyItNowPendingBuyerId: null,
-                    buyItNowPendingAt: null,
-                },
-            });
+            const archivedAt = new Date();
+            const [, restartedAuction] = await this.prisma.$transaction([
+                this.prisma.bid.updateMany({
+                    where: {
+                        listingId: createAuctionDto.listingId,
+                        deletedAt: null,
+                        archivedAt: null,
+                    },
+                    data: { archivedAt },
+                }),
+                this.prisma.auction.update({
+                    where: { id: existing.id },
+                    data: {
+                        startTime,
+                        endTime,
+                        reservePrice: createAuctionDto.reservePrice,
+                        startingBid: createAuctionDto.startingBid,
+                        minIncrement: createAuctionDto.minIncrement,
+                        buyItNowPrice: createAuctionDto.buyItNowPrice ?? null,
+                        status: 'SCHEDULED',
+                        deletedAt: null,
+                        winnerId: null,
+                        winningBidAmount: null,
+                        wonAt: null,
+                        buyerFeePaid: false,
+                        buyerFeeTransactionId: null,
+                        handoverProofUrl: null,
+                        handoverSubmittedAt: null,
+                        sellerBonusReleased: false,
+                        sellerBonusReleasedAt: null,
+                        buyItNowPendingBuyerId: null,
+                        buyItNowPendingAt: null,
+                    },
+                }),
+            ]);
+            return restartedAuction;
         }
 
         return this.prisma.auction.create({
@@ -181,12 +197,12 @@ export class AuctionsService {
                             },
                         },
                         bids: {
-                            where: { deletedAt: null, cancelledAt: null },
+                            where: { deletedAt: null, cancelledAt: null, archivedAt: null },
                             orderBy: { amount: 'desc' },
                             take: 1,
                             select: { amount: true },
                         },
-                        _count: { select: { bids: true } },
+                        _count: { select: { bids: { where: { deletedAt: null, cancelledAt: null, archivedAt: null } } } },
                     },
                 },
             },
@@ -215,7 +231,7 @@ export class AuctionsService {
                                     sellerProfile: { select: { reliabilityScore: true } },
                                 },
                             },
-                            _count: { select: { bids: true } },
+                            _count: { select: { bids: { where: { deletedAt: null, cancelledAt: null, archivedAt: null } } } },
                         },
                     },
                 },
@@ -254,7 +270,7 @@ export class AuctionsService {
                             },
                         },
                         bids: {
-                            where: { deletedAt: null, cancelledAt: null },
+                            where: { deletedAt: null, cancelledAt: null, archivedAt: null },
                             orderBy: { amount: 'desc' },
                             take: 50,
                             include: {
@@ -296,12 +312,12 @@ export class AuctionsService {
                     listing: {
                         include: {
                             bids: {
-                                where: { deletedAt: null, cancelledAt: null },
+                                where: { deletedAt: null, cancelledAt: null, archivedAt: null },
                                 orderBy: { amount: 'desc' },
                                 take: 1,
                                 select: { amount: true },
                             },
-                            _count: { select: { bids: true } },
+                            _count: { select: { bids: { where: { deletedAt: null, cancelledAt: null, archivedAt: null } } } },
                             linkedListing: { select: { id: true, status: true, badgeTier: true } },
                         },
                     },
@@ -373,12 +389,12 @@ export class AuctionsService {
                     listing: {
                         include: {
                             bids: {
-                                where: { deletedAt: null, cancelledAt: null },
+                                where: { deletedAt: null, cancelledAt: null, archivedAt: null },
                                 orderBy: { amount: 'desc' },
                                 take: 1,
                                 select: { amount: true },
                             },
-                            _count: { select: { bids: true } },
+                            _count: { select: { bids: { where: { deletedAt: null, cancelledAt: null, archivedAt: null } } } },
                             // Winner-only query (where: winnerId = the requesting user), so unlike
                             // findOne/findAllActive it's safe to include direct contact details here
                             // — matches the same phone/email exposure already used for completed
@@ -530,7 +546,7 @@ export class AuctionsService {
         }
 
         const bid = await this.prisma.bid.findUnique({ where: { id: bidId } });
-        if (!bid || bid.listingId !== auction.listingId || bid.deletedAt || bid.cancelledAt) {
+        if (!bid || bid.listingId !== auction.listingId || bid.deletedAt || bid.cancelledAt || bid.archivedAt) {
             throw new NotFoundException('Bid not found in this auction');
         }
 
@@ -776,7 +792,7 @@ export class AuctionsService {
                 listing: {
                     include: {
                         bids: {
-                            where: { deletedAt: null, cancelledAt: null },
+                            where: { deletedAt: null, cancelledAt: null, archivedAt: null },
                             orderBy: { amount: 'desc' },
                             take: 1,
                             include: { bidder: { select: { id: true, firstName: true } } },
@@ -1041,7 +1057,7 @@ export class AuctionsService {
 
         // Check reserve not already met by existing top bid
         const topBid = await this.prisma.bid.findFirst({
-            where: { listingId: auction.listingId, deletedAt: null, cancelledAt: null },
+            where: { listingId: auction.listingId, deletedAt: null, cancelledAt: null, archivedAt: null },
             orderBy: { amount: 'desc' },
         });
         if (topBid && Number(topBid.amount) >= Number(auction.reservePrice)) {
