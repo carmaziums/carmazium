@@ -145,12 +145,59 @@ export class ChatService {
         const blockableContext =
             room.context === ChatContext.RETAIL || room.context === ChatContext.AUCTION;
 
-        // Never expose the raw block records. They contain the blocker's
-        // private reason, which must not leak to the other participant.
-        const { blocks: _privateBlocks, ...safeRoom } = room as any;
+        const viewerRole =
+            room.initiatorId === userId
+                ? room.initiator?.role
+                : room.participantId === userId
+                    ? room.participant?.role
+                    : room.context === ChatContext.DISPUTE &&
+                        (room as any).disputeCase?.joinedAdminId === userId
+                        ? UserRole.ADMIN
+                        : null;
+        const viewerIsAdmin = viewerRole === UserRole.ADMIN;
+
+        // Never expose raw block records or internal support operations to
+        // ordinary members. The admin support workspace fetches these fields
+        // through the same room service, but member payloads must not reveal
+        // assignment, tags, staff identity/email or closed-state metadata.
+        const {
+            blocks: _privateBlocks,
+            supportAssignedAdmin,
+            supportAssignedAdminId,
+            supportTags,
+            supportClosedAt,
+            disputeCase,
+            ...safeRoom
+        } = room as any;
+
+        // Dispute members need participant identity in the three-party UI, but
+        // they do not need private contact addresses. Joined admins retain the
+        // richer case payload because their access is explicit and audited.
+        const stripEmail = (value: any) => {
+            if (!value) return value;
+            const { email: _email, ...rest } = value;
+            return rest;
+        };
+        const safeDisputeCase = disputeCase && !viewerIsAdmin
+            ? {
+                ...disputeCase,
+                buyer: stripEmail(disputeCase.buyer),
+                seller: stripEmail(disputeCase.seller),
+                joinedAdmin: stripEmail(disputeCase.joinedAdmin),
+            }
+            : disputeCase;
 
         return {
             ...safeRoom,
+            ...(viewerIsAdmin
+                ? {
+                    supportAssignedAdmin,
+                    supportAssignedAdminId,
+                    supportTags,
+                    supportClosedAt,
+                }
+                : {}),
+            disputeCase: safeDisputeCase,
             otherUser,
             chatBlocked: blocks.length > 0,
             blockedByMe: !!myBlock,
@@ -1812,11 +1859,15 @@ export class ChatService {
                         !!room.listing.deletedAt ||
                         !['ACTIVE', 'OFFER_ACCEPTED', 'SOLD'].includes(room.listing.status)
                     ),
-                    supportAssignedAdmin: room.supportAssignedAdmin,
-                    supportAssignedAdminId: room.supportAssignedAdminId,
-                    supportTags: room.supportTags,
-                    supportClosedAt: room.supportClosedAt,
-                    disputeCase: room.disputeCase,
+                    ...(role === UserRole.ADMIN
+                        ? {
+                            supportAssignedAdmin: room.supportAssignedAdmin,
+                            supportAssignedAdminId: room.supportAssignedAdminId,
+                            supportTags: room.supportTags,
+                            supportClosedAt: room.supportClosedAt,
+                        }
+                        : {}),
+                    disputeCase: roomView.disputeCase,
                     sourceDispute: room.disputeAsSource,
                     chatBlocked: roomView.chatBlocked,
                     blockedByMe: roomView.blockedByMe,
@@ -1833,7 +1884,7 @@ export class ChatService {
                                 ['OFFER_ACCEPTED', 'SOLD'].includes(room.listing.status)
                             )
                         ),
-                    needsReply,
+                    ...(role === UserRole.ADMIN ? { needsReply } : {}),
                     lastMessage,
                     unreadCount,
                     updatedAt: room.updatedAt,

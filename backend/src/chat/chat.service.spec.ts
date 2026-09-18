@@ -555,6 +555,68 @@ describe('ChatService — conversation context and authorization', () => {
         expect(prisma.chatRoom.upsert.mock.calls[0][0].create.supportAssignedAdminId).toBe(adminId);
     });
 
+    it('does not expose internal support assignment or tags to the member room payload', async () => {
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'support-room',
+            initiatorId: buyerId,
+            participantId: adminId,
+            listingId: null,
+            context: ChatContext.SUPPORT,
+            conversationKey: `SUPPORT:CARMAZIUM:${buyerId}`,
+            supportAssignedAdminId: secondAdminId,
+            supportAssignedAdmin: {
+                id: secondAdminId,
+                firstName: 'Support',
+                lastName: 'Agent',
+                email: 'private@carmazium.test',
+            },
+            supportTags: ['refund', 'urgent'],
+            supportClosedAt: new Date(),
+            deletedAt: null,
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: adminId, role: 'ADMIN' },
+            disputeCase: null,
+            blocks: [],
+            listing: null,
+        });
+
+        const room = await service.getRoom('support-room', buyerId);
+
+        expect(room).not.toHaveProperty('supportAssignedAdmin');
+        expect(room).not.toHaveProperty('supportAssignedAdminId');
+        expect(room).not.toHaveProperty('supportTags');
+        expect(room).not.toHaveProperty('supportClosedAt');
+    });
+
+    it('removes dispute participant and joined-admin emails from member room payloads', async () => {
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'dispute-room',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.DISPUTE,
+            conversationKey: 'DISPUTE:source-room',
+            deletedAt: null,
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+            blocks: [],
+            listing: null,
+            disputeCase: {
+                id: 'dispute-1',
+                joinedAdminId: adminId,
+                buyer: { id: buyerId, firstName: 'Buyer', email: 'buyer@example.test' },
+                seller: { id: sellerId, firstName: 'Seller', email: 'seller@example.test' },
+                joinedAdmin: { id: adminId, firstName: 'Admin', email: 'admin@carmazium.test' },
+            },
+        });
+
+        const room = await service.getRoom('dispute-room', buyerId);
+
+        expect(room.disputeCase.buyer).not.toHaveProperty('email');
+        expect(room.disputeCase.seller).not.toHaveProperty('email');
+        expect(room.disputeCase.joinedAdmin).not.toHaveProperty('email');
+    });
+
     it('allows another admin into SUPPORT but not into a private retail room', async () => {
         prisma.chatRoom.findUnique.mockResolvedValueOnce({
             id: 'support-room',
