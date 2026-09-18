@@ -650,12 +650,16 @@ export class AdminService {
                         },
                     },
                     bids: {
-                        where: { deletedAt: null },
+                        where: { deletedAt: null, cancelledAt: null, archivedAt: null },
                         orderBy: { amount: 'desc' as const },
                         take: 1,
                         select: { amount: true },
                     },
-                    _count: { select: { bids: true } },
+                    _count: {
+                        select: {
+                            bids: { where: { deletedAt: null, cancelledAt: null, archivedAt: null } },
+                        },
+                    },
                 },
             },
             winner: {
