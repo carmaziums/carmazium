@@ -11,7 +11,7 @@ const ThreeDVehicleViewer = dynamic(() => import("@/components/listing/ThreeDVeh
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
 import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info, Globe, Fuel, Gavel, Truck, Phone, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react"
 import { ImageLightbox } from "@/components/features/ImageLightbox"
-import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, getDamageRecords, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
+import { getListingBySlug, makeOffer, amendOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, getDamageRecords, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
 import { triggerBuyItNow } from "@/lib/auctionApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useAuth } from "@/context/AuthContext"
@@ -36,99 +36,74 @@ import { SellerVerificationBadge } from "@/components/listing/SellerVerification
 //              'seller' = the listing owner
 //              'public' = anyone else (logged in or not)
 
-function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole: 'buyer' | 'seller' | 'public' }) {
-    const amountDisplay = `£${Number(offer.amount).toLocaleString('en-GB')}`
+function OfferStatusChip({ offer }: { offer: LatestOffer }) {
+    const effectiveAmount = offer.finalAmount ?? offer.counterAmount ?? offer.amount
+    const amountDisplay = `£${Number(effectiveAmount).toLocaleString('en-GB')}`
 
-    // — Buyer view: personalised with status-specific wording —
-    if (viewerRole === 'buyer') {
-        if (offer.status === 'PENDING') return (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
-                <Clock size={14} className="shrink-0" />
-                <span>Your offer of <strong>{amountDisplay}</strong> is awaiting the seller&apos;s response.</span>
-            </div>
-        )
-        if (offer.status === 'REJECTED') return (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
-                <XCircle size={14} className="shrink-0" />
-                <span>Your offer of <strong>{amountDisplay}</strong> was declined. You may submit a new one.</span>
-            </div>
-        )
-        if (offer.status === 'ACCEPTED') return (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
-                <ThumbsUp size={14} className="shrink-0" />
-                <span>🎉 Your offer of <strong>{amountDisplay}</strong> was accepted! Contact the seller to proceed.</span>
-            </div>
-        )
-        if (offer.status === 'WITHDRAWN') return (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-gray-500/10 border border-gray-500/30 text-[var(--text-secondary)] text-sm">
-                <XCircle size={14} className="shrink-0" />
-                <span>Your previous offer of <strong>{amountDisplay}</strong> was withdrawn. You can make a new offer.</span>
-            </div>
-        )
-    }
-
-    // — Seller view: they can see the amount + status, but no action here —
-    if (viewerRole === 'seller') {
-        if (offer.status === 'PENDING') return (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
-                <Clock size={14} className="shrink-0" />
-                <span>An offer of <strong>{amountDisplay}</strong> is awaiting your response. Manage it in your <strong>Seller Dashboard</strong>.</span>
-            </div>
-        )
-        if (offer.status === 'ACCEPTED') return (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
-                <ThumbsUp size={14} className="shrink-0" />
-                <span>You accepted an offer of <strong>{amountDisplay}</strong> on this listing.</span>
-            </div>
-        )
-        if (offer.status === 'REJECTED') return (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
-                <XCircle size={14} className="shrink-0" />
-                <span>An offer of <strong>{amountDisplay}</strong> was declined.</span>
-            </div>
-        )
-    }
-
-    // — Public view: show amount + neutral status wording, no personal details —
-    const statusLabel =
-        offer.status === 'PENDING' ? 'pending review' :
-            offer.status === 'ACCEPTED' ? 'accepted' :
-                offer.status === 'REJECTED' ? 'declined' :
-                    offer.status === 'WITHDRAWN' ? 'withdrawn' : ''
-
-    return (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-[var(--bg-card)] border border-[var(--border-default)] text-[var(--text-muted)] text-sm">
-            <Tag size={14} className="shrink-0" />
-            <span>An offer of <strong className="text-[var(--text-primary)]">{amountDisplay}</strong> has been made on this listing{statusLabel ? ` — ${statusLabel}` : ''}.</span>
+    if (offer.status === 'PENDING') return (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
+            <Clock size={14} className="shrink-0" />
+            <span>Your private offer of <strong>{amountDisplay}</strong> is awaiting the seller&apos;s response.</span>
         </div>
     )
+    if (offer.status === 'COUNTERED') return (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300 text-sm">
+            <Clock size={14} className="shrink-0" />
+            <span>This negotiation has an active counter offer. Manage it from <strong>My Offers</strong>.</span>
+        </div>
+    )
+    if (offer.status === 'REJECTED') return (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
+            <XCircle size={14} className="shrink-0" />
+            <span>Your previous offer was declined or expired. You may submit a new one while the vehicle remains available.</span>
+        </div>
+    )
+    if (offer.status === 'ACCEPTED') return (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
+            <ThumbsUp size={14} className="shrink-0" />
+            <span>Your offer of <strong>{amountDisplay}</strong> was accepted. This vehicle is now <strong>Sale Pending</strong>.</span>
+        </div>
+    )
+    if (offer.status === 'WITHDRAWN') return (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-gray-500/10 border border-gray-500/30 text-[var(--text-secondary)] text-sm">
+            <XCircle size={14} className="shrink-0" />
+            <span>You withdrew your previous offer. You can make a new private offer while the vehicle is available.</span>
+        </div>
+    )
+    return null
 }
 
 // ─── Offer Modal ─────────────────────────────────────────────────────────────
 
 function OfferModal({
-    listing, onClose, onSuccess,
+    listing, existingOffer, onClose, onSuccess,
 }: {
     listing: Listing
+    existingOffer?: LatestOffer | null
     onClose: () => void
     onSuccess: (offer: LatestOffer) => void
 }) {
     const askingPrice = Number(listing.price)
     const minAllowedOffer = Math.floor(askingPrice * 0.7)
+    const isEditing = existingOffer?.status === 'PENDING'
 
-    const [offerAmountStr, setOfferAmountStr] = React.useState(String(Math.round(askingPrice * 0.9)))
+    const [offerAmountStr, setOfferAmountStr] = React.useState(
+        String(isEditing ? Number(existingOffer?.amount) : Math.round(askingPrice * 0.9))
+    )
     const offerAmount = Number(offerAmountStr)
-    const [message, setMessage] = React.useState("")
+    const [message, setMessage] = React.useState(isEditing ? existingOffer?.message ?? "" : "")
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
 
-    const isInvalid = !offerAmountStr || offerAmount < minAllowedOffer
+    const isInvalid = !offerAmountStr || offerAmount < minAllowedOffer || offerAmount > askingPrice
 
     const handleSubmit = async () => {
         if (isInvalid) return
         setLoading(true); setError(null)
         try {
-            const offer = await makeOffer(listing.id, offerAmount, message || undefined)
+            const offer = isEditing && existingOffer
+                ? await amendOffer(existingOffer.id, offerAmount, message || undefined)
+                : await makeOffer(listing.id, offerAmount, message || undefined)
             onSuccess(offer as unknown as LatestOffer)
         } catch (err: any) {
             setError(err.message || "Failed to submit offer.")
@@ -146,7 +121,7 @@ function OfferModal({
                 <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary"><Tag size={18} /></div>
                     <div>
-                        <h2 className="text-xl font-bold font-heading">Make an Offer</h2>
+                        <h2 className="text-xl font-bold font-heading">{isEditing ? 'Edit My Offer' : 'Make a Private Offer'}</h2>
                         <p className="text-xs text-[var(--text-muted)]">{listing.title}</p>
                     </div>
                 </div>
@@ -166,6 +141,7 @@ function OfferModal({
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">£</span>
                             <Input type="number" value={offerAmountStr} step={100}
                                 min={minAllowedOffer}
+                                max={askingPrice}
                                 onChange={(e) => setOfferAmountStr(e.target.value)}
                                 placeholder="0"
                                 className="bg-[var(--bg-input)] border-[var(--border-default)] pl-8 focus:border-primary" />
@@ -173,6 +149,11 @@ function OfferModal({
                         {offerAmountStr && offerAmount < minAllowedOffer && (
                             <p className="text-red-400 text-xs mt-2">
                                 Offer must be at least £{minAllowedOffer.toLocaleString('en-GB')} (70% of asking price).
+                            </p>
+                        )}
+                        {offerAmountStr && offerAmount > askingPrice && (
+                            <p className="text-red-400 text-xs mt-2">
+                                Offer cannot exceed the asking price of £{askingPrice.toLocaleString('en-GB')}.
                             </p>
                         )}
                     </div>
