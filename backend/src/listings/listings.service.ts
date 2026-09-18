@@ -32,6 +32,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { buildListingActivationData } from './listing-activation';
 import { brandAdminSeller, brandListingSeller } from './admin-seller-branding';
+import { calculatePlatformOpeningBid } from '../auctions/auction-pricing';
 
 // ─── Enum mappers ─────────────────────────────────────────────────────────────
 
@@ -1289,7 +1290,7 @@ export class ListingsService {
     async alsoAuction(
         listingId: string,
         userId: string,
-        dto: { startTime: string; reservePrice: number; startingBid: number; minIncrement?: number; buyItNowPrice?: number },
+        dto: { startTime: string; reservePrice: number; startingBid?: number; minIncrement?: number; buyItNowPrice?: number },
     ): Promise<{ linkedListingId: string; auctionId: string }> {
         const source = await this.findById(listingId);
         if (source.sellerId !== userId) throw new ForbiddenException('You do not own this listing');
@@ -1300,12 +1301,14 @@ export class ListingsService {
                 `Reserve price (£${dto.reservePrice.toLocaleString('en-GB')}) cannot exceed the retail listing price (£${Number(source.price).toLocaleString('en-GB')}). Lower the reserve or raise the retail price first.`,
             );
         }
-        const maxStartingBid = Number(source.price) * 0.7;
-        if (dto.startingBid > maxStartingBid) {
-            throw new BadRequestException(
-                `Starting bid must be at least 30% below the retail listing price of £${Number(source.price).toLocaleString('en-GB')} (max £${maxStartingBid.toLocaleString('en-GB', { maximumFractionDigits: 2 })})`,
-            );
+        // The linked auction uses the same platform-owned opening bid rule:
+        // 70% of this listing's reference/retail value. Ignore any legacy
+        // client-supplied startingBid so web/mobile cannot drift from the rule.
+        const sourceValue = Number(source.price);
+        if (!Number.isFinite(sourceValue) || sourceValue <= 0) {
+            throw new BadRequestException('A valid vehicle price is required before creating the linked auction');
         }
+        const platformStartingBid = calculatePlatformOpeningBid(sourceValue);
 
         const startTime = new Date(dto.startTime);
         if (isNaN(startTime.getTime()) || startTime.getTime() < Date.now() - 60_000) {
@@ -1364,7 +1367,7 @@ export class ListingsService {
                 startTime,
                 endTime,
                 reservePrice: dto.reservePrice,
-                startingBid: dto.startingBid,
+                startingBid: platformStartingBid,
                 minIncrement: dto.minIncrement ?? 100,
                 status: 'SCHEDULED',
                 ...(dto.buyItNowPrice ? { buyItNowPrice: dto.buyItNowPrice } : {}),

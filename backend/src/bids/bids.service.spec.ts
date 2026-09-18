@@ -9,6 +9,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 describe('BidsService — incremental bidding', () => {
     let service: BidsService;
     let prisma: any;
+    let notificationsService: any;
 
     const auctionListing = {
         id: 'listing-1',
@@ -21,6 +22,7 @@ describe('BidsService — incremental bidding', () => {
             status: 'ACTIVE',
             startingBid: 5000,
             minIncrement: 100,
+            reservePrice: 9000,
         },
     };
 
@@ -38,6 +40,7 @@ describe('BidsService — incremental bidding', () => {
             user: { findUnique: jest.fn().mockResolvedValue({ firstName: 'Test', lastName: 'User' }) },
             $queryRaw: jest.fn(),
         };
+        notificationsService = { create: jest.fn().mockResolvedValue(null) };
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -53,7 +56,7 @@ describe('BidsService — incremental bidding', () => {
                 },
                 {
                     provide: NotificationsService,
-                    useValue: { create: jest.fn().mockResolvedValue(null) },
+                    useValue: notificationsService,
                 },
             ],
         }).compile();
@@ -109,6 +112,66 @@ describe('BidsService — incremental bidding', () => {
         await expect(
             service.create('bidder-A', { listingId: 'listing-1', amount: 4500 } as any),
         ).rejects.toMatchObject({ message: expect.stringMatching(/starting bid/i) });
+    });
+
+    it('enforces the 70% market-value floor even on a legacy auction with a lower stored starting bid', async () => {
+        prisma.listing.findUnique.mockResolvedValue(auctionListing);
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
+        prisma.bid.findFirst.mockResolvedValue(null);
+
+        await expect(
+            service.create('bidder-A', { listingId: 'listing-1', amount: 6900 } as any),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/starting bid/i) });
+    });
+
+    it('notifies the seller when the new highest bid is below reserve and can be accepted', async () => {
+        prisma.listing.findUnique.mockResolvedValue(auctionListing);
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.bid.create.mockResolvedValue({
+            id: 'bid-offer',
+            amount: 7000,
+            timestamp: new Date(),
+            listingId: 'listing-1',
+            bidderId: 'bidder-A',
+        });
+
+        await service.create('bidder-A', { listingId: 'listing-1', amount: 7000 } as any);
+
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                userId: 'seller-1',
+                type: 'AUCTION_OFFER_RECEIVED',
+                entityType: 'AUCTION',
+                entityId: 'auction-1',
+                actionType: 'ACCEPT_OR_WAIT',
+                data: expect.objectContaining({
+                    bidId: 'bid-offer',
+                    amount: 7000,
+                    reservePrice: 9000,
+                    belowReserve: true,
+                }),
+            }),
+        );
+    });
+
+    it('does not send a below-reserve offer notification once the reserve is met', async () => {
+        prisma.listing.findUnique.mockResolvedValue(auctionListing);
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.bid.create.mockResolvedValue({
+            id: 'bid-reserve',
+            amount: 9000,
+            timestamp: new Date(),
+            listingId: 'listing-1',
+            bidderId: 'bidder-A',
+        });
+
+        await service.create('bidder-A', { listingId: 'listing-1', amount: 9000 } as any);
+
+        expect(notificationsService.create).not.toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'AUCTION_OFFER_RECEIVED' }),
+        );
     });
 
     it('rejects bids on non-auction listings', async () => {

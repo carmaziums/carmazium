@@ -35,6 +35,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import { alsoListRetail } from '../../lib/listingsApi';
 import { createPaymentSheet } from '../../lib/paymentsApi';
 import { submitHandoverProof } from '../../lib/auctionApi';
+import { getAuctionOpeningBid, getAuctionReserveGuide } from '../../lib/auctionPricing';
 import { useStripe } from '@stripe/stripe-react-native';
 
 import { IconButton } from '../../components/IconButton';
@@ -218,6 +219,15 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const [newBuyItNowPrice, setNewBuyItNowPrice] = useState('');
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  const selectedMarketValue = Number(selectedListing?.price ?? 0);
+  const platformOpeningBid = getAuctionOpeningBid(selectedMarketValue);
+  const reserveGuide = getAuctionReserveGuide(selectedMarketValue);
+
+  useEffect(() => {
+    if (platformOpeningBid <= 0) return;
+    setNewStartingBid(String(platformOpeningBid));
+  }, [platformOpeningBid]);
 
   // ── Fetch auctions from the auction endpoint (gives us auction-level statuses) ──
   const fetchAuctions = useCallback(async (isRefresh = false) => {
@@ -583,15 +593,15 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   async function saveAuctionEdit(item: AuctionItem) {
     const reserve = parseFloat(editReserve.replace(/[^0-9.]/g, ''));
-    const starting = parseFloat(editStartingBid.replace(/[^0-9.]/g, ''));
+    const platformStarting = getAuctionOpeningBid(Number(item.listing.price ?? 0));
     const increment = parseFloat(editMinIncrement.replace(/[^0-9.]/g, ''));
 
     if (isNaN(reserve) || reserve <= 0) {
       setEditError('Enter a valid reserve price.');
       return;
     }
-    if (isNaN(starting) || starting <= 0) {
-      setEditError('Enter a valid starting bid.');
+    if (platformStarting <= 0) {
+      setEditError('This vehicle needs a valid Estimated Market Value before it can be auctioned.');
       return;
     }
     if (isNaN(increment) || increment <= 0) {
@@ -604,14 +614,14 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     try {
       await apiClient(`/auctions/${item.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ reservePrice: reserve, startingBid: starting, minIncrement: increment }),
+        body: JSON.stringify({ reservePrice: reserve, minIncrement: increment }),
       });
       haptics.success();
       // Update local state
       setAuctions(prev =>
         prev.map(a =>
           a.id === item.id
-            ? { ...a, reservePrice: reserve, startingBid: starting, minIncrement: increment }
+            ? { ...a, reservePrice: reserve, startingBid: platformStarting, minIncrement: increment }
             : a,
         ),
       );
@@ -776,20 +786,12 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     }
 
     const reserve = parseFloat(newReservePrice.replace(/[^0-9.]/g, ''));
-    const starting = parseFloat(newStartingBid.replace(/[^0-9.]/g, ''));
+    const starting = platformOpeningBid;
     const increment = parseFloat(newMinIncrement.replace(/[^0-9.]/g, '')) || 100;
     const bin = newBuyItNowPrice.trim() ? parseFloat(newBuyItNowPrice.replace(/[^0-9.]/g, '')) : undefined;
 
     if (isNaN(reserve) || reserve <= 0) { setCreateError('Enter a valid reserve price.'); return; }
-    if (isNaN(starting) || starting <= 0) { setCreateError('Enter a valid starting bid.'); return; }
-    if (starting > reserve) { setCreateError('Starting bid must be ≤ reserve price.'); return; }
-    // Backend rejects startingBid > 70% of the listing's asking price on
-    // POST /auctions — check here so the user sees this before submit.
-    const askingPrice = selectedListing.price ? Number(selectedListing.price) : 0;
-    if (askingPrice > 0 && starting > askingPrice * 0.7) {
-      setCreateError(`Starting bid must be at least 30% below the asking price of £${askingPrice.toLocaleString()} (max £${(askingPrice * 0.7).toLocaleString(undefined, { maximumFractionDigits: 0 })}).`);
-      return;
-    }
+    if (starting <= 0) { setCreateError('This vehicle needs a valid Estimated Market Value before it can be auctioned.'); return; }
 
     setCreateSubmitting(true);
     setCreateError(null);
@@ -931,15 +933,15 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               />
             </View>
 
-            {/* Starting bid */}
-            <Text style={styles.editLabel}>STARTING BID</Text>
-            <View style={styles.editInputRow}>
+            {/* Platform opening bid */}
+            <Text style={styles.editLabel}>OPENING BID — 70% OF MARKET VALUE</Text>
+            <View style={[styles.editInputRow, { opacity: 0.85 }]}>
               <Text style={styles.editCurrency}>£</Text>
               <TextInput
                 style={styles.editInput}
-                value={editStartingBid}
-                onChangeText={v => { setEditStartingBid(v); setEditError(null); }}
-                keyboardType="number-pad"
+                value={String(getAuctionOpeningBid(Number(item.listing.price ?? 0)) || item.startingBid)}
+                editable={false}
+                selectTextOnFocus={false}
                 placeholder="0"
                 placeholderTextColor={Colors.textMuted}
               />
@@ -1647,23 +1649,36 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                     placeholderTextColor={Colors.textMuted}
                   />
                 </View>
+                {selectedMarketValue > 0 ? (
+                  <>
+                    <Text style={[styles.formHint, { color: Colors.success, marginTop: 4 }]}>
+                      Suggested reserve: £{reserveGuide.low.toLocaleString('en-GB')}–£{reserveGuide.high.toLocaleString('en-GB')}
+                    </Text>
+                    {newReservePrice && Number(newReservePrice) > reserveGuide.high ? (
+                      <Text style={[styles.formHint, { color: Number(newReservePrice) >= selectedMarketValue ? Colors.error : Colors.warning, marginTop: 2 }]}>
+                        {Number(newReservePrice) >= selectedMarketValue
+                          ? 'Reserve is at or above market value. Dealer bidding may be very limited.'
+                          : 'Reserve is above the suggested range and may reduce bidding.'}
+                      </Text>
+                    ) : null}
+                  </>
+                ) : null}
               </View>
 
-              {/* STARTING BID */}
+              {/* PLATFORM OPENING BID */}
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>STARTING BID (£) *</Text>
+                <Text style={styles.formLabel}>OPENING BID (£)</Text>
                 <Text style={styles.formHint}>
-                  First bid must be at least this amount · Must be ≤ reserve
-                  {selectedListing?.price ? ` · Max £${(Number(selectedListing.price) * 0.7).toLocaleString(undefined, { maximumFractionDigits: 0 })} (30% below £${Number(selectedListing.price).toLocaleString()} asking)` : ''}
+                  CarMazium sets this automatically at 70% of the Estimated Market Value so verified dealers can enter up to 30% below market value.
                 </Text>
-                <View style={styles.formInputRow}>
+                <View style={[styles.formInputRow, { opacity: 0.85 }]}>
                   <Text style={styles.formCurrency}>£</Text>
                   <TextInput
                     style={styles.formInput}
-                    value={newStartingBid}
-                    onChangeText={v => { setNewStartingBid(v); setCreateError(null); }}
-                    keyboardType="number-pad"
-                    placeholder="0"
+                    value={platformOpeningBid > 0 ? String(platformOpeningBid) : ''}
+                    editable={false}
+                    selectTextOnFocus={false}
+                    placeholder="Set market value first"
                     placeholderTextColor={Colors.textMuted}
                   />
                 </View>

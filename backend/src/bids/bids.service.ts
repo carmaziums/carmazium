@@ -12,6 +12,7 @@ import { AuctionGateway } from '../auctions/auction.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { Bid } from '@prisma/client';
+import { calculatePlatformOpeningBid } from '../auctions/auction-pricing';
 
 const BID_CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -64,7 +65,14 @@ export class BidsService {
         }
 
         const minIncrement = Number(auction.minIncrement);
-        const startingBid = Number(auction.startingBid);
+        // Enforce the 70% market-value floor server-side as well. This protects
+        // legacy auctions whose stored startingBid may pre-date the new rule.
+        const marketValue = Number(listing.price);
+        if (!Number.isFinite(marketValue) || marketValue <= 0) {
+            throw new BadRequestException('This auction does not have a valid Estimated Market Value');
+        }
+        const marketValueFloor = calculatePlatformOpeningBid(marketValue);
+        const startingBid = Math.max(Number(auction.startingBid), marketValueFloor);
 
         const highestBid = await this.prisma.bid.findFirst({
             where: { listingId: createBidDto.listingId, deletedAt: null, cancelledAt: null, archivedAt: null },
@@ -113,6 +121,32 @@ export class BidsService {
                 entityType: 'AUCTION',
                 entityId: auction.id,
                 link: `/auctions/live/${auction.id}`,
+            }).catch(() => { /* notification failure must not fail the bid */ });
+        }
+
+        // Every new highest bid below reserve is a real provisional offer.
+        // Notify the seller immediately so they can accept the current highest
+        // offer or simply leave the auction running for more competition.
+        const bidAmount = Number(bid.amount);
+        const reservePrice = Number(auction.reservePrice);
+        if (listing.sellerId && bidAmount < reservePrice) {
+            const vehicle = [listing.year, listing.make, listing.model].filter(Boolean).join(' ') || listing.title;
+            this.notificationsService.create({
+                userId: listing.sellerId,
+                type: 'AUCTION_OFFER_RECEIVED',
+                title: 'New auction offer received',
+                message: `Highest offer: £${bidAmount.toLocaleString('en-GB')} on ${vehicle}. Your reserve is £${reservePrice.toLocaleString('en-GB')}. Accept it now or keep the auction running.`,
+                entityType: 'AUCTION',
+                entityId: auction.id,
+                actionType: 'ACCEPT_OR_WAIT',
+                link: `/auctions/live/${auction.id}?sellerOffer=${bid.id}`,
+                data: {
+                    listingId: listing.id,
+                    bidId: bid.id,
+                    amount: bidAmount,
+                    reservePrice,
+                    belowReserve: true,
+                },
             }).catch(() => { /* notification failure must not fail the bid */ });
         }
 

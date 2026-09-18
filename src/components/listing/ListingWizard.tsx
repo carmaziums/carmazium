@@ -31,6 +31,7 @@ import { SELLER_FUNNEL, listingTypeLabel } from "@/lib/gtm"
 import { VehicleDamageMapper, type DamageRecord } from "./VehicleDamageMapper"
 import { useRouter, useSearchParams } from "next/navigation"
 import { apiClient } from "@/lib/apiClient"
+import { getAuctionOpeningBid, getAuctionReserveGuide } from "@/lib/auctionPricing"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -509,6 +510,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         setFormData(prev => ({ ...prev, [key]: val }))
 
     const isAuction = formData.listingType === 'AUCTION'
+    const auctionMarketValue = isAuction ? (parseFloat(formData.priceAsking) || 0) : 0
+    const platformOpeningBid = getAuctionOpeningBid(auctionMarketValue)
+    const reserveGuide = getAuctionReserveGuide(auctionMarketValue)
+
+    React.useEffect(() => {
+        if (!isAuction || platformOpeningBid <= 0) return
+        const nextStartingBid = String(platformOpeningBid)
+        setAuctionSchedule(prev =>
+            prev.startingBid === nextStartingBid
+                ? prev
+                : { ...prev, startingBid: nextStartingBid }
+        )
+    }, [isAuction, platformOpeningBid])
+
     const totalSteps = isAuction ? 5 : 4
     // "Method" is a cosmetic-only leading step representing the Retail/Auction choice
     // already made on the landing screen — it doesn't participate in currentStep/
@@ -626,8 +641,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 if (!auctionSchedule.reservePrice || parseFloat(auctionSchedule.reservePrice) <= 0) return false
                 if (!auctionSchedule.startingBid || parseFloat(auctionSchedule.startingBid) <= 0) return false
                 if (!auctionSchedule.minIncrement || parseFloat(auctionSchedule.minIncrement) <= 0) return false
-                const askingPrice = parseFloat(formData.priceAsking)
-                if (askingPrice > 0 && parseFloat(auctionSchedule.startingBid) > askingPrice * 0.7) return false
                 return true
             }
             default: return true
@@ -2575,7 +2588,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {isAuction ? (
                                     <>
                                         <p className="text-xs text-primary font-semibold mb-1">📊 Estimated Market Value</p>
-                                        <p className="text-xs text-[var(--text-muted)]">This isn&apos;t shown to bidders — it&apos;s only used to cap your <strong className="text-[var(--text-primary)]">Starting Bid</strong> at a sensible level (max 70% of this value). Set the auction&apos;s actual starting bid, reserve, and Buy It Now price on the next step.</p>
+                                        <p className="text-xs text-[var(--text-muted)]">This isn&apos;t shown to bidders. CarMazium uses it to set the <strong className="text-[var(--text-primary)]">Opening Bid</strong> automatically at 70% of this value, while you still control the reserve and optional Buy It Now price.</p>
                                     </>
                                 ) : (
                                     <>
@@ -2608,7 +2621,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <label className="text-sm font-bold uppercase text-primary flex items-center gap-1">
                                         {isAuction ? "Estimated Market Value *" : "Asking Price *"}
                                         <InfoTooltip text={isAuction
-                                            ? "Your best estimate of the car's market value. Used only to cap the starting bid — never shown to bidders."
+                                            ? "Your best estimate of the car's market value. CarMazium uses it to calculate the auction opening bid at 70% — never shown to bidders."
                                             : "This is the price displayed on your listing. Buyers will see this as the advertised price."} />
                                     </label>
                                     <div className="relative">
@@ -2876,28 +2889,40 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         />
                                     </div>
                                     <p className="text-[10px] text-[var(--text-secondary)]">Hidden from buyers — minimum you'll accept</p>
+                                    {auctionMarketValue > 0 && (
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] text-emerald-400">
+                                                CarMazium suggested reserve: {formatPrice(reserveGuide.low)}–{formatPrice(reserveGuide.high)}
+                                            </p>
+                                            {auctionSchedule.reservePrice && parseFloat(auctionSchedule.reservePrice) > reserveGuide.high && (
+                                                <p className={`text-[10px] flex items-start gap-1 ${parseFloat(auctionSchedule.reservePrice) >= auctionMarketValue ? 'text-red-400' : 'text-amber-400'}`}>
+                                                    <AlertTriangle size={11} className="shrink-0 mt-0.5" />
+                                                    {parseFloat(auctionSchedule.reservePrice) >= auctionMarketValue
+                                                        ? "Your reserve is at or above the estimated market value. Dealer bidding may be very limited."
+                                                        : "This reserve is above the suggested range and may reduce dealer interest."}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1">
-                                        Starting Bid *
-                                        <InfoTooltip text="The opening bid price shown to buyers. Must be at least 30% below the asking price so the auction has room to run." />
+                                        Opening Bid
+                                        <InfoTooltip text="CarMazium automatically starts bidding at 70% of your Estimated Market Value. This lets dealers make a genuine offer up to 30% below market value while keeping the auction competitive." />
                                     </label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
-                                        <Input type="number" placeholder="e.g. 10000"
-                                            value={auctionSchedule.startingBid}
-                                            onChange={e => setAuctionSchedule(prev => ({ ...prev, startingBid: e.target.value }))}
-                                            className={`${inputCls} pl-8 h-14 ${(hasAttemptedNext && !auctionSchedule.startingBid) || (auctionSchedule.startingBid && parseFloat(formData.priceAsking) > 0 && parseFloat(auctionSchedule.startingBid) > parseFloat(formData.priceAsking) * 0.7) ? 'border-red-500' : ''}`}
+                                        <Input
+                                            type="number"
+                                            value={platformOpeningBid > 0 ? platformOpeningBid : ''}
+                                            readOnly
+                                            className={`${inputCls} pl-8 h-14 bg-[var(--bg-card)] cursor-not-allowed opacity-90`}
                                         />
                                     </div>
-                                    {parseFloat(formData.priceAsking) > 0 && (
-                                        auctionSchedule.startingBid && parseFloat(auctionSchedule.startingBid) > parseFloat(formData.priceAsking) * 0.7 ? (
-                                            <p className="text-[10px] text-red-500">Must be at least 30% below the £{parseFloat(formData.priceAsking).toLocaleString()} asking price (max £{(parseFloat(formData.priceAsking) * 0.7).toLocaleString(undefined, { maximumFractionDigits: 0 })})</p>
-                                        ) : (
-                                            <p className="text-[10px] text-[var(--text-secondary)]">Opening bid shown publicly — max £{(parseFloat(formData.priceAsking) * 0.7).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                                        )
-                                    )}
+                                    <p className="text-[10px] text-emerald-400">
+                                        Automatically set to 70% of the {formatPrice(auctionMarketValue)} Estimated Market Value.
+                                    </p>
                                 </div>
 
                                 <div className="space-y-2">
@@ -3174,7 +3199,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         <SummaryField label="End Time" value={addHours(auctionSchedule.startTime, 24)} />
                                         <SummaryField label="Duration" value="24 hours" />
                                         <SummaryField label="Reserve Price" value={formatPrice(parseFloat(auctionSchedule.reservePrice)) as string} />
-                                        <SummaryField label="Opening Bid" value={formatPrice(parseFloat(auctionSchedule.startingBid)) as string} />
+                                        <SummaryField label="Opening Bid (70%)" value={formatPrice(platformOpeningBid) as string} />
                                         <SummaryField label="Min. Increment" value={formatPrice(parseFloat(auctionSchedule.minIncrement || '0')) as string} />
                                     </div>
                                 </SummarySection>
