@@ -15,6 +15,8 @@ import {
   Dimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -23,13 +25,14 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
 import { useChat } from '../../context/ChatContext';
 import { useAuthStore } from '../../store/authStore';
-import { getChatMessages, sendChatMessage, markMessagesAsRead, type ChatHistoryCursor, type ChatMessage, type ChatRoom, type ChatUser } from '../../lib/chatApi';
+import { createChatAttachmentUpload, getChatMessages, sendChatAttachment, sendChatMessage, markMessagesAsRead, type ChatHistoryCursor, type ChatMessage, type ChatRoom, type ChatUser } from '../../lib/chatApi';
 import { getListingById } from '../../lib/listingsApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
+import { convertAndCompress, uploadToSignedStorage } from '../../lib/storageHelper';
 
 import { IconButton } from '../../components/IconButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -160,6 +163,61 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
     </TouchableOpacity>
   ) : null;
 
+  if (msg.attachmentPath) {
+    return (
+      <View style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
+        <View style={isOwn ? styles.bubbleStackRight : styles.bubbleStackLeft}>
+          <View
+            style={[
+              styles.photoMessageBubble,
+              isOwn ? styles.bubbleUser : styles.bubbleDealer,
+              msg.deliveryStatus === 'failed' && styles.bubbleFailed,
+            ]}
+          >
+            {msg.attachmentUrl ? (
+              <Image
+                source={{ uri: msg.attachmentUrl }}
+                style={styles.chatPhoto}
+                contentFit="cover"
+                transition={150}
+              />
+            ) : (
+              <View style={styles.chatPhotoUnavailable}>
+                <Ionicons name="image-outline" size={28} color={Colors.textMuted} />
+                <Text style={styles.chatPhotoUnavailableText}>
+                  Private photo unavailable. Reopen the conversation to refresh access.
+                </Text>
+              </View>
+            )}
+            {!!msg.content && <Text style={[styles.bubbleText, styles.photoCaption]}>{msg.content}</Text>}
+            <View style={[styles.msgFooter, isOwn ? styles.msgFooterRight : styles.msgFooterLeft]}>
+              <Text style={isOwn ? styles.timeTextRightInline : styles.timeTextLeftInline}>
+                {formatMessageTime(msg.createdAt)}
+              </Text>
+              {isOwn && !msg.deliveryStatus && (
+                <Ionicons
+                  name={msg.isRead ? 'checkmark-done' : 'checkmark'}
+                  size={14}
+                  color={msg.isRead ? Colors.lightBlue_4fa8ff : 'rgba(255,255,255,0.45)'}
+                  style={styles.readTick}
+                />
+              )}
+            </View>
+          </View>
+          {deliveryState}
+          {showSeenIndicator && (
+            <View style={styles.seenRow}>
+              <View style={[styles.seenAvatar, { backgroundColor: getAvatarBg(initials) }]}>
+                <Text style={styles.seenAvatarText}>{initials.slice(0, 1)}</Text>
+              </View>
+              <Text style={styles.seenText}>Seen {formatMessageTime(msg.updatedAt)}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  }
+
   if (parsedSpecial?.type === 'offer') {
     return (
       <View style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
@@ -272,6 +330,7 @@ export const ChatScreen: React.FC = () => {
   const [hasMore, setHasMore] = useState(false);
   const [historyCursor, setHistoryCursor] = useState<ChatHistoryCursor | null>(null);
   const [inputVal, setInputVal] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   // Must live here, not after the `if (!room) return` guard below — a hook
   // called only on some renders (e.g. once `loading`/`room` resolve) violates
@@ -597,6 +656,77 @@ export const ChatScreen: React.FC = () => {
     }
   };
 
+  const handlePickPhoto = async () => {
+    if (uploadingPhoto) return;
+
+    try {
+      setUploadingPhoto(true);
+
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        showToast('Photo access is required to send a picture.', 'info');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        allowsMultipleSelection: false,
+        quality: 1,
+      });
+
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const asset = result.assets[0];
+      const compressedUri = await convertAndCompress(asset.uri);
+      const info = await FileSystem.getInfoAsync(compressedUri);
+      const size = Number((info as any).size ?? 0);
+      if (!size || size > 10 * 1024 * 1024) {
+        throw new Error('Photo must be 10 MB or smaller.');
+      }
+
+      const name = `chat-photo-${Date.now()}.jpg`;
+      const mime = 'image/jpeg';
+      const clientMessageId = createClientMessageId();
+      const caption = inputVal.trim();
+
+      const ticket = await createChatAttachmentUpload(threadId, {
+        name,
+        type: mime,
+        size,
+      });
+
+      await uploadToSignedStorage(
+        compressedUri,
+        ticket.bucket,
+        ticket.path,
+        ticket.token,
+        mime,
+      );
+
+      const confirmed = await sendChatAttachment(threadId, {
+        path: ticket.path,
+        name,
+        mime,
+        size,
+        caption: caption || undefined,
+        clientMessageId,
+      });
+
+      if (caption) setInputVal('');
+      confirmLocalMessage(clientMessageId, confirmed);
+      refreshRooms().catch(() => {});
+    } catch (error) {
+      console.error('Failed to send private chat photo:', error);
+      showToast(
+        error instanceof Error ? error.message : 'Photo could not be sent.',
+        'info',
+      );
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const handleSend = () => {
     if (!inputVal.trim()) return;
     const textToSend = inputVal.trim();
@@ -855,9 +985,17 @@ export const ChatScreen: React.FC = () => {
       {/* Bottom Text bar (hide if blocked) */}
       {!shouldBlockChat && (
         <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-          {/* Chat has no file-attachment support in the DTO/socket protocol
-              (ChatMessage is content-only) — removed the dead attach button
-              rather than faking it (mobile-ui-ux-audit.md §C13 precedent). */}
+          <IconButton
+            style={styles.attachBtn}
+            icon={
+              uploadingPhoto
+                ? <ActivityIndicator size="small" color={Colors.white} />
+                : <Ionicons name="image-outline" size={18} color={Colors.white} />
+            }
+            onPress={handlePickPhoto}
+            disabled={uploadingPhoto}
+            accessibilityLabel="Send photo"
+          />
           <TextInput
             style={styles.textInput}
             value={inputVal}
@@ -867,7 +1005,7 @@ export const ChatScreen: React.FC = () => {
             multiline
           />
 
-          <IconButton style={[styles.sendBtn, !inputVal.trim() && styles.sendBtnDisabled]} icon={<Ionicons name="send" size={15} color={Colors.white} />} onPress={handleSend} disabled={!inputVal.trim()} accessibilityLabel="Send message" />
+          <IconButton style={[styles.sendBtn, (!inputVal.trim() || uploadingPhoto) && styles.sendBtnDisabled]} icon={<Ionicons name="send" size={15} color={Colors.white} />} onPress={handleSend} disabled={!inputVal.trim() || uploadingPhoto} accessibilityLabel="Send message" />
         </View>
       )}
     </ScreenWrapper>
@@ -1257,6 +1395,39 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.white,
   },
+  photoMessageBubble: {
+    padding: 8,
+    borderRadius: 16,
+    maxWidth: MAX_BUBBLE_WIDTH,
+    overflow: 'hidden',
+  },
+  chatPhoto: {
+    width: Math.min(MAX_BUBBLE_WIDTH - 16, 300),
+    height: 220,
+    borderRadius: 12,
+    backgroundColor: Colors.deepBlue_16161c,
+  },
+  chatPhotoUnavailable: {
+    width: Math.min(MAX_BUBBLE_WIDTH - 16, 300),
+    minHeight: 150,
+    borderRadius: 12,
+    backgroundColor: Colors.deepBlue_16161c,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 18,
+  },
+  chatPhotoUnavailableText: {
+    marginTop: 8,
+    textAlign: 'center',
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size10,
+    color: Colors.textMuted,
+    lineHeight: 15,
+  },
+  photoCaption: {
+    marginTop: 8,
+    paddingHorizontal: 4,
+  },
   // Input row
   inputBar: {
     flexDirection: 'row',
@@ -1290,6 +1461,17 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: Colors.white,
     maxHeight: 80,
+  },
+  attachBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.deepBlue_1e1e24,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
   },
   sendBtn: {
     width: 36,
