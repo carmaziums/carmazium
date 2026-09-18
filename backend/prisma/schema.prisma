@@ -1096,7 +1096,6 @@ model ChatRoom {
 
   @@index([initiatorId])
   @@index([participantId])
-  @@index([listingId])
   @@index([context])
   @@map("chat_rooms")
 }
