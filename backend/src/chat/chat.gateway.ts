@@ -270,12 +270,8 @@ export class ChatGateway
                 userId,
             );
 
-            // Notify other user that messages were read
-            this.server.to(`room:${data.roomId}`).emit('messages:read', {
-                roomId: data.roomId,
-                readBy: userId,
-                count,
-            });
+            // Notify the other room members that messages were read.
+            this.broadcastReadReceipt(data.roomId, userId, count);
         } catch (error) {
             client.emit('error', { message: error.message });
         }
@@ -337,6 +333,19 @@ export class ChatGateway
      */
     broadcastMessage(roomId: string, message: any): void {
         this.server?.to(`room:${roomId}`).emit('message:new', message);
+    }
+
+    /**
+     * Broadcast an authoritative read receipt. REST and Socket.IO read paths
+     * both call this so sender-side ticks cannot depend on which transport the
+     * recipient happened to use.
+     */
+    broadcastReadReceipt(roomId: string, readBy: string, count: number): void {
+        this.server?.to(`room:${roomId}`).emit('messages:read', {
+            roomId,
+            readBy,
+            count,
+        });
     }
 
     /**

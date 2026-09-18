@@ -32,7 +32,8 @@ interface ChatContextType {
     sendMessage: (roomId: string, content: string, clientMessageId: string) => Promise<ChatMessage>
     startTyping: (roomId: string) => void
     stopTyping: (roomId: string) => void
-    markAsRead: (roomId: string) => void
+    markAsRead: (roomId: string, notifyServer?: boolean) => void
+    setActiveRoom: (roomId: string | null) => void
     upsertRoom: (room: ChatRoom) => void
 
     // Event subscriptions
@@ -69,6 +70,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const messageCallbacks = useRef<Set<(message: ChatMessage) => void>>(new Set())
     const typingCallbacks = useRef<Set<(data: any) => void>>(new Set())
     const readCallbacks = useRef<Set<(data: any) => void>>(new Set())
+    const activeRoomIdRef = useRef<string | null>(null)
     const hasInitiallyLoaded = useRef(false)
 
     // Initialize socket connection — only after profile is loaded (backend session confirmed)
@@ -78,6 +80,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             socketRef.current = null
             setIsConnected(false)
             setOnlineUserIds(new Set())
+            activeRoomIdRef.current = null
             hasInitiallyLoaded.current = false
             return
         }
@@ -104,15 +107,31 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                 setIsConnected(true)
             })
 
-            socket.on('disconnect', () => {
+            socket.on('disconnect', async (reason) => {
                 console.log('Chat disconnected')
                 setIsConnected(false)
+
+                // A server-side authentication rejection uses "io server disconnect",
+                // which Socket.IO does not automatically reconnect. Refresh the
+                // Supabase token before explicitly reconnecting so a long-lived tab
+                // can recover after its original JWT expires.
+                if (reason === 'io server disconnect') {
+                    const freshToken = await getAccessToken().catch(() => null)
+                    if (freshToken && socket) {
+                        socket.auth = { token: freshToken }
+                        socket.connect()
+                    }
+                }
             })
 
             socket.on('message:new', (message: ChatMessage) => {
                 messageCallbacks.current.forEach(cb => cb(message))
-                // Update unread count + room list preview for messages from others
-                if (message.senderId !== user.id) {
+                const incomingFromOther = message.senderId !== user.id
+                const roomIsActive = activeRoomIdRef.current === message.chatRoomId
+
+                // Messages already visible in the open conversation must not create
+                // a transient/stuck unread badge.
+                if (incomingFromOther && !roomIsActive) {
                     setUnreadCount(prev => prev + 1)
                 }
                 // Optimistically move the affected room to the top with updated last-message preview
@@ -135,7 +154,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                             isRead: false,
                             createdAt: message.createdAt,
                         },
-                        unreadCount: message.senderId !== user.id
+                        unreadCount: incomingFromOther && !roomIsActive
                             ? prev[idx].unreadCount + 1
                             : prev[idx].unreadCount,
                         updatedAt: message.createdAt,
@@ -266,6 +285,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         socketRef.current?.emit('typing:stop', { roomId })
     }, [])
 
+    const setActiveRoom = useCallback((roomId: string | null) => {
+        activeRoomIdRef.current = roomId
+    }, [])
+
     const upsertRoom = useCallback((room: ChatRoom) => {
         setRooms(prev => {
             const idx = prev.findIndex(r => r.id === room.id)
@@ -278,8 +301,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         })
     }, [])
 
-    const markAsRead = useCallback((roomId: string) => {
-        socketRef.current?.emit('message:read', { roomId })
+    const markAsRead = useCallback((roomId: string, notifyServer = true) => {
+        if (notifyServer) {
+            socketRef.current?.emit('message:read', { roomId })
+        }
         // Zero out this room's badge and subtract its exact count from the global total
         setRooms(prev => {
             const idx = prev.findIndex(r => r.id === roomId)
@@ -327,6 +352,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         startTyping,
         stopTyping,
         markAsRead,
+        setActiveRoom,
         upsertRoom,
         onNewMessage,
         onTyping,

@@ -31,7 +31,7 @@ const ADMIN_QUICK_REPLIES = [
  * Displays messages and handles sending new messages
  */
 export function ChatWindow({ room, onBack }: ChatWindowProps) {
-    const { sendMessage, onNewMessage, onTyping, markAsRead, refreshRooms, isConnected, onlineUserIds } = useChat()
+    const { sendMessage, onNewMessage, onTyping, onMessagesRead, markAsRead, setActiveRoom, startTyping, stopTyping, refreshRooms, isConnected, onlineUserIds } = useChat()
     const { profile, user } = useAuth()
     const isAdminViewer = profile?.role === 'ADMIN'
     const otherUserOnline = room.otherUser ? onlineUserIds.has(room.otherUser.id) : false
@@ -69,11 +69,17 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const inputRef = React.useRef<HTMLInputElement>(null)
     const attachmentInputRef = React.useRef<HTMLInputElement>(null)
     const typingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+    const typingActiveRef = React.useRef(false)
     const isInitialLoad = React.useRef(true)
 
     const isDispute = room.context === 'DISPUTE'
     const disputeResolved = resolvedLocally || room.disputeCase?.status === 'RESOLVED'
     const disputeAdminJoined = !!room.disputeCase?.joinedAdminId
+
+    React.useEffect(() => {
+        setActiveRoom(room.id)
+        return () => setActiveRoom(null)
+    }, [room.id, setActiveRoom])
 
     React.useEffect(() => {
         setShowDisputeForm(false)
@@ -236,9 +242,11 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         ? { createdAt: response.data[0].createdAt, id: response.data[0].id }
                         : null)
                 )
-                // Mark as read via REST (persists to DB) and via context (clears badge immediately)
+                // REST is authoritative on initial load and now broadcasts the
+                // read receipt server-side. Clear the local badge without sending
+                // a duplicate Socket.IO read event.
                 await markMessagesAsRead(room.id)
-                markAsRead(room.id)
+                markAsRead(room.id, false)
             } catch (error) {
                 console.error("Failed to fetch messages:", error)
             } finally {
@@ -290,11 +298,31 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
 
                     return [...prev, message]
                 })
-                markAsRead(room.id)
+                if (message.senderId !== user?.id) {
+                    markAsRead(room.id)
+                }
             }
         })
         return unsubscribe
-    }, [room.id, onNewMessage, markAsRead])
+    }, [room.id, user?.id, onNewMessage, markAsRead])
+
+    // Keep sender-side delivery ticks current when the other member reads.
+    React.useEffect(() => {
+        const unsubscribe = onMessagesRead((data) => {
+            if (
+                isDispute ||
+                data.roomId !== room.id ||
+                data.readBy === user?.id
+            ) return
+
+            setMessages(prev => prev.map(message =>
+                message.senderId === user?.id && !message.isRead
+                    ? { ...message, isRead: true }
+                    : message
+            ))
+        })
+        return unsubscribe
+    }, [room.id, user?.id, isDispute, onMessagesRead])
 
     // Subscribe to typing indicators
     React.useEffect(() => {
@@ -393,10 +421,51 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         })
     }
 
+    const stopLocalTyping = () => {
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current)
+            typingTimeoutRef.current = null
+        }
+        if (typingActiveRef.current) {
+            stopTyping(room.id)
+            typingActiveRef.current = false
+        }
+    }
+
+    const handleMessageInput = (value: string) => {
+        setNewMessage(value)
+
+        if (!isConnected || !value.trim()) {
+            if (!value.trim()) stopLocalTyping()
+            return
+        }
+
+        if (!typingActiveRef.current) {
+            startTyping(room.id)
+            typingActiveRef.current = true
+        }
+
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+        typingTimeoutRef.current = setTimeout(() => {
+            stopTyping(room.id)
+            typingActiveRef.current = false
+            typingTimeoutRef.current = null
+        }, 1500)
+    }
+
+    React.useEffect(() => {
+        return () => {
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+            if (typingActiveRef.current) stopTyping(room.id)
+            typingActiveRef.current = false
+        }
+    }, [room.id, stopTyping])
+
     const handleSend = async () => {
         if (!newMessage.trim() || sending) return
 
         const content = newMessage.trim()
+        stopLocalTyping()
         const clientMessageId = crypto.randomUUID()
         const tempId = `temp-${clientMessageId}`
         const now = new Date().toISOString()
@@ -1000,7 +1069,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         ref={inputRef}
                         type="text"
                         value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
+                        onChange={(e) => handleMessageInput(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message..."
                         className="flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/50"

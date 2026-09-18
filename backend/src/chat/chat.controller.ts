@@ -332,6 +332,7 @@ export class ChatController {
         @Param('id') roomId: string,
     ) {
         const count = await this.chatService.markMessagesAsRead(roomId, user.id);
+        this.chatGateway.broadcastReadReceipt(roomId, user.id, count);
         return new StandardResponse({ markedCount: count });
     }
 
