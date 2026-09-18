@@ -118,6 +118,10 @@ export class ChatService {
             otherUser = room.initiator?.role === UserRole.ADMIN
                 ? room.participant
                 : room.initiator;
+        } else if (room.context === ChatContext.DISPUTE) {
+            // Joined admins see the buyer as the primary counterpart in the
+            // generic two-party shell; disputeCase exposes both buyer + seller.
+            otherUser = room.disputeCase?.buyer || room.initiator;
         } else {
             otherUser = room.initiator;
         }
@@ -505,6 +509,13 @@ export class ChatService {
                 supportAssignedAdminId: true,
                 supportClosedAt: true,
                 deletedAt: true,
+                disputeCase: {
+                    select: {
+                        id: true,
+                        status: true,
+                        joinedAdminId: true,
+                    },
+                },
                 initiator: { select: { role: true } },
                 participant: { select: { role: true } },
             },
@@ -515,12 +526,28 @@ export class ChatService {
         }
         if (room.initiatorId !== userId && room.participantId !== userId) {
             const role = await this.actorRole(userId);
-            if (!(room.context === ChatContext.SUPPORT && role === UserRole.ADMIN)) {
+            const authorisedSupportAdmin =
+                room.context === ChatContext.SUPPORT && role === UserRole.ADMIN;
+            const authorisedDisputeAdmin =
+                room.context === ChatContext.DISPUTE &&
+                role === UserRole.ADMIN &&
+                room.disputeCase?.joinedAdminId === userId;
+
+            if (!authorisedSupportAdmin && !authorisedDisputeAdmin) {
                 throw new ForbiddenException('You are not a member of this chat room');
             }
         }
 
-        if (room.context === ChatContext.SUPPORT || room.context === ChatContext.DISPUTE) {
+        if (room.context === ChatContext.SUPPORT) {
+            return room;
+        }
+        if (room.context === ChatContext.DISPUTE) {
+            if (!room.disputeCase) {
+                throw new ForbiddenException('This dispute conversation is missing its case record.');
+            }
+            if (room.disputeCase.status !== DisputeStatus.OPEN) {
+                throw new ForbiddenException('This dispute has been resolved. The conversation is read-only.');
+            }
             return room;
         }
         if (room.context === ChatContext.LEGACY) {
@@ -553,6 +580,10 @@ export class ChatService {
                 OR: role === UserRole.ADMIN
                     ? [
                         { context: ChatContext.SUPPORT },
+                        {
+                            context: ChatContext.DISPUTE,
+                            disputeCase: { is: { joinedAdminId: userId } },
+                        },
                         { initiatorId: userId },
                         { participantId: userId },
                     ]
@@ -617,6 +648,18 @@ export class ChatService {
                     supportAssignedAdminId: room.supportAssignedAdminId,
                     supportTags: room.supportTags,
                     supportClosedAt: room.supportClosedAt,
+                    disputeCase: room.disputeCase,
+                    sourceDispute: room.disputeAsSource,
+                    canOpenDispute:
+                        !room.disputeAsSource &&
+                        (
+                            room.context === ChatContext.AUCTION ||
+                            (
+                                room.context === ChatContext.RETAIL &&
+                                !!room.listing &&
+                                ['OFFER_ACCEPTED', 'SOLD'].includes(room.listing.status)
+                            )
+                        ),
                     needsReply,
                     lastMessage,
                     unreadCount,
@@ -641,7 +684,14 @@ export class ChatService {
 
         if (room.initiatorId !== userId && room.participantId !== userId) {
             const role = await this.actorRole(userId);
-            if (!(room.context === ChatContext.SUPPORT && role === UserRole.ADMIN)) {
+            const authorisedSupportAdmin =
+                room.context === ChatContext.SUPPORT && role === UserRole.ADMIN;
+            const authorisedDisputeAdmin =
+                room.context === ChatContext.DISPUTE &&
+                role === UserRole.ADMIN &&
+                room.disputeCase?.joinedAdminId === userId;
+
+            if (!authorisedSupportAdmin && !authorisedDisputeAdmin) {
                 throw new ForbiddenException('You are not a member of this chat room');
             }
         }
@@ -1057,6 +1107,10 @@ export class ChatService {
                 OR: role === UserRole.ADMIN
                     ? [
                         { context: ChatContext.SUPPORT },
+                        {
+                            context: ChatContext.DISPUTE,
+                            disputeCase: { is: { joinedAdminId: userId } },
+                        },
                         { initiatorId: userId },
                         { participantId: userId },
                     ]
