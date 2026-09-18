@@ -50,6 +50,20 @@ export class BidsController {
     }
 
     /**
+     * Get one live auction position per vehicle the current user has bid on.
+     * This is intentionally different from /bids/my, which is the bid history
+     * and can contain several rows for the same auction.
+     */
+    @Get('my/active')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Get my current auction bid positions' })
+    async findMyActiveAuctionPositions(@CurrentUser() user: any) {
+        const positions = await this.bidsService.findMyActiveAuctionPositions(user.id);
+        return new StandardResponse(positions);
+    }
+
+    /**
      * Get current user's bids.
      */
     @Get('my')
