@@ -1453,7 +1453,7 @@ export class ListingsService {
 
     /**
      * Create a linked AUCTION listing alongside an existing CLASSIFIED retail listing.
-     * Copies all vehicle data; the auction listing is FREE and goes live immediately.
+     * Copies all vehicle data; the FREE auction listing is created PENDING_REVIEW and goes live only after admin approval.
      * Returns the new auction listing ID and the Auction record ID.
      */
     async alsoAuction(
