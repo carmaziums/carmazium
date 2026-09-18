@@ -1106,6 +1106,10 @@ model Message {
   senderId        String
   clientMessageId String?
   content         String
+  attachmentPath String?
+  attachmentName String?
+  attachmentMime String?
+  attachmentSize Int?
   isRead          Boolean   @default(false)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
