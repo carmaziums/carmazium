@@ -153,7 +153,11 @@ export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps
                                         <div className="flex items-center justify-between gap-2">
                                             <p className={`text-sm truncate ${room.unreadCount > 0 ? 'text-[var(--text-secondary)] font-semibold' : 'text-[var(--text-muted)]'}`}>
                                                 {room.lastMessage
-                                                    ? truncateMessage(chatMessagePreview(room.lastMessage.content))
+                                                    ? room.lastMessage.attachmentPath
+                                                        ? (room.lastMessage.content
+                                                            ? `Photo · ${truncateMessage(chatMessagePreview(room.lastMessage.content), 30)}`
+                                                            : 'Photo')
+                                                        : truncateMessage(chatMessagePreview(room.lastMessage.content))
                                                     : 'No messages yet'}
                                             </p>
                                             {room.unreadCount > 0 && (
