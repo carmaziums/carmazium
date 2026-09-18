@@ -1061,6 +1061,22 @@ export class ListingsService {
             );
         }
 
+        // HPI is mandatory for listings created after the hardened upload
+        // rollout. Older drafts are grandfathered so existing sellers are not
+        // stranded by a new rule introduced after they began their listing.
+        const hpiRequiredFrom = new Date('2026-09-19T00:00:00.000Z');
+        if (listing.createdAt >= hpiRequiredFrom) {
+            const hpiReport = await this.prisma.hpiReport.findUnique({
+                where: { listingId: id },
+                select: { id: true },
+            });
+            if (!hpiReport) {
+                throw new BadRequestException(
+                    'A CarMazium vehicle history (HPI) report must be requested before this listing can be submitted.',
+                );
+            }
+        }
+
         // An AUCTION listing is only a vehicle shell until its Auction row exists.
         // Never let an orphan listing enter review or become active: this prevents
         // incomplete quick-list/two-request flows from producing invisible auctions.
