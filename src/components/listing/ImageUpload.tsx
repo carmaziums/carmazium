@@ -1,9 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { Camera, X, Upload, Loader2, GripVertical, Star, Info, CheckCircle2, AlertCircle } from "lucide-react"
+import { Camera, X, Upload, Loader2, GripVertical, Star, Info, CheckCircle2, AlertCircle, Sparkles } from "lucide-react"
 import Image from "next/image"
 import { uploadImage, deleteImage } from "@/lib/supabase"
+import { recommendVehicleCoverPhoto } from "@/lib/listingApi"
+import { parseVehicleImagePresentation } from "@/lib/vehicleImagePresentation"
 
 export type ImageCategory = 'EXTERIOR' | 'INTERIOR' | 'DAMAGE' | 'UNASSIGNED'
 
@@ -145,6 +147,7 @@ export function ImageUpload({
 
     // Reorder drag state
     const [uploadError, setUploadError] = React.useState<string | null>(null)
+    const [coverSelectionMessage, setCoverSelectionMessage] = React.useState<string | null>(null)
     const [reorderDragIdx, setReorderDragIdx] = React.useState<number | null>(null)
     const [reorderOverIdx, setReorderOverIdx] = React.useState<number | null>(null)
 
@@ -165,12 +168,9 @@ export function ImageUpload({
     }, [images])
 
     React.useEffect(() => {
-        // Emit a nicely sorted flat array to the parent
-        const orderConfig: Record<ImageCategory, number> = { 'EXTERIOR': 1, 'INTERIOR': 2, 'DAMAGE': 3, 'UNASSIGNED': 4 }
-        const sortedUrls = [...images]
-            .sort((a, b) => orderConfig[a.category] - orderConfig[b.category])
-            .map(img => img.url)
-        onImagesChange(sortedUrls)
+        // Preserve the exact visible order. Photo 1 is the cover, so category
+        // sorting here would silently undo AI/manual cover selection.
+        onImagesChange(images.map(img => img.url))
 
         if (onDamageImageCountChange) {
             onDamageImageCountChange(images.filter(img => img.category === 'DAMAGE').length)
@@ -239,7 +239,40 @@ export function ImageUpload({
             }
 
             if (newImages.length > 0) {
-                setImages(prev => [...prev, ...newImages])
+                let combined = [...images, ...newImages]
+
+                // Exterior uploads get an automatic professional-cover pass. This
+                // is advisory only: if vision cannot identify a clear front view,
+                // the existing order is preserved and the user can still drag or
+                // use "Make cover" manually.
+                if (activeTab === 'EXTERIOR' && combined.length > 1) {
+                    try {
+                        setCoverSelectionMessage('Checking for the best front photo...')
+                        const candidates = combined.slice(0, 30)
+                        const recommendation = await recommendVehicleCoverPhoto(candidates.map(img => parseVehicleImagePresentation(img.url).src))
+                        const recommendedIndex = recommendation.recommendedIndex
+                        if (recommendedIndex !== null && recommendedIndex > 0 && recommendedIndex < candidates.length) {
+                            const next = [...combined]
+                            const [cover] = next.splice(recommendedIndex, 1)
+                            next.unshift(cover)
+                            combined = next
+                            setCoverSelectionMessage(
+                                recommendation.view === 'front'
+                                    ? 'Front photo selected automatically as the cover.'
+                                    : 'Best front-angle photo selected automatically as the cover.'
+                            )
+                        } else if (recommendedIndex === 0) {
+                            setCoverSelectionMessage('Your current first photo is already the best front cover.')
+                        } else {
+                            setCoverSelectionMessage('No clear front photo was found. You can choose the cover manually below.')
+                        }
+                    } catch (error) {
+                        console.warn('Automatic cover selection unavailable:', error)
+                        setCoverSelectionMessage('Photos uploaded. You can choose the cover manually below.')
+                    }
+                }
+
+                setImages(combined)
             }
 
             if (failedCount > 0) {
@@ -286,7 +319,7 @@ export function ImageUpload({
         if (!confirm('Are you sure you want to delete this image?')) return
 
         try {
-            await deleteImage(imageUrl, 'listings')
+            await deleteImage(parseVehicleImagePresentation(imageUrl).src, 'listings')
             setImages(prev => prev.filter((_, i) => i !== index))
         } catch (error) {
             console.error('Delete failed:', error)
@@ -336,6 +369,18 @@ export function ImageUpload({
         setReorderDragIdx(null)
         setReorderOverIdx(null)
     }
+
+    const makeCover = (index: number) => {
+        if (index <= 0) return
+        setImages(prev => {
+            const next = [...prev]
+            const [cover] = next.splice(index, 1)
+            next.unshift(cover)
+            return next
+        })
+        setCoverSelectionMessage('Cover photo changed manually.')
+    }
+
 
     // Tracker logic
     const RECOMMENDED_TOTAL = 20
@@ -482,6 +527,19 @@ export function ImageUpload({
                 </div>
             )}
 
+            {coverSelectionMessage && (
+                <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-primary/25 bg-primary/10 text-sm">
+                    <Sparkles size={16} className="shrink-0 mt-0.5 text-primary" />
+                    <div className="flex-1 min-w-0">
+                        <p className="font-bold text-xs uppercase tracking-wide mb-0.5">Smart cover</p>
+                        <p className="text-xs text-[var(--text-muted)]">{coverSelectionMessage}</p>
+                    </div>
+                    <button type="button" onClick={() => setCoverSelectionMessage(null)} className="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                        <X size={14} />
+                    </button>
+                </div>
+            )}
+
             {/* IMAGE PREVIEW GRID */}
             {images.length > 0 && (
                 <div>
@@ -513,7 +571,7 @@ export function ImageUpload({
                                     `}
                                 >
                                     <Image
-                                        src={imgObj.url}
+                                        src={parseVehicleImagePresentation(imgObj.url).src}
                                         alt={`Upload ${index + 1}`}
                                         fill
                                         className="object-cover pointer-events-none"
@@ -532,14 +590,27 @@ export function ImageUpload({
                                         </div>
                                     )}
 
-                                    {/* Delete Button */}
+                                    {/* Cover / delete controls */}
+                                    {index !== 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                makeCover(index)
+                                            }}
+                                            className="absolute bottom-2 left-2 bg-black/70 hover:bg-amber-500 text-white rounded-lg px-2 py-1 text-[10px] font-bold flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all shadow-lg backdrop-blur-md"
+                                            title="Make this the cover photo"
+                                        >
+                                            <Star size={11} /> Make cover
+                                        </button>
+                                    )}
                                     <button
                                         type="button"
                                         onClick={(e) => {
                                             e.stopPropagation()
                                             handleDelete(imgObj.url, index)
                                         }}
-                                        className="absolute top-2 right-2 bg-red-500/90 hover:bg-red-500 text-white rounded-lg p-1.5 opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-lg backdrop-blur-md"
+                                        className="absolute top-2 right-2 bg-red-500/90 hover:bg-red-500 text-white rounded-lg p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:scale-110 shadow-lg backdrop-blur-md"
                                         title="Delete image"
                                     >
                                         <X size={14} strokeWidth={3} />
