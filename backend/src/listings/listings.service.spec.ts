@@ -260,17 +260,23 @@ describe('ListingsService', () => {
             videoUrls: [],
         };
 
-        it('rejects a starting bid above 70% of the retail listing price', async () => {
+        it('normalises a legacy client starting bid to 70% of the retail/reference price', async () => {
             prisma.listing.findUnique.mockResolvedValue(baseSource);
+            prisma.listing.create = jest.fn().mockResolvedValue({ id: 'auction-listing-1' });
+            prisma.auction.create.mockResolvedValue({ id: 'auction-1' });
+            prisma.listing.update.mockResolvedValue({});
 
-            await expect(
-                service.alsoAuction('listing-1', 'seller-1', {
-                    startTime: new Date(Date.now() + 60_000).toISOString(),
-                    reservePrice: 9000,
-                    startingBid: 7001,
+            await service.alsoAuction('listing-1', 'seller-1', {
+                startTime: new Date(Date.now() + 60_000).toISOString(),
+                reservePrice: 9000,
+                startingBid: 9500,
+            });
+
+            expect(prisma.auction.create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.objectContaining({ startingBid: 7000 }),
                 }),
-            ).rejects.toThrow('Starting bid must be at least 30% below');
-            expect(prisma.auction.create).not.toHaveBeenCalled();
+            );
         });
 
         it('accepts a starting bid at exactly 70% of the retail listing price', async () => {
