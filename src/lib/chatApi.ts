@@ -47,6 +47,7 @@ export interface ChatRoom {
     lastMessage: {
         id: string
         content: string
+        attachmentPath?: string | null
         senderId: string
         isRead: boolean
         createdAt: string
