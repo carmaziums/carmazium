@@ -521,7 +521,11 @@ export interface Bid {
         slug: string
         images: string[]
         price: string | number
+        priceMin: string | number | null
+        priceMax: string | number | null
         status: string
+        type: 'CLASSIFIED' | 'AUCTION'
+        sellerId: string | null
         make: string | null
         model: string | null
         year: number | null
@@ -978,6 +982,25 @@ export async function getMyOffers(): Promise<Offer[]> {
     const data = await apiClient<OffersResponse>('/offers/my', {
         method: 'GET',
         cache: 'no-store',
+    })
+    return data.data
+}
+
+
+/**
+ * Buyer: Amend an offer while it is still pending.
+ * Keeps the same offer/negotiation record rather than creating a replacement.
+ */
+export async function amendOffer(
+    offerId: string,
+    amount: number,
+    message?: string,
+    amountMin?: number,
+    amountMax?: number,
+): Promise<Offer> {
+    const data = await apiClient<{ data: Offer }>(`/offers/${offerId}/amend`, {
+        method: 'PATCH',
+        body: JSON.stringify({ amount, amountMin, amountMax, message }),
     })
     return data.data
 }
