@@ -379,6 +379,7 @@ model User {
   disputesOpened             DisputeCase[]            @relation("DisputeOpenedBy")
   disputesJoined             DisputeCase[]            @relation("DisputeJoinedAdmin")
   disputesResolved           DisputeCase[]            @relation("DisputeResolvedBy")
+  disputeReadStates          DisputeReadState[]
   messages                 Message[]
   notifications            Notification[]
   watchlistItems           WatchlistItem[]
@@ -1211,6 +1212,7 @@ model DisputeCase {
   openedBy    User     @relation("DisputeOpenedBy", fields: [openedById], references: [id], onDelete: Restrict)
   joinedAdmin User?    @relation("DisputeJoinedAdmin", fields: [joinedAdminId], references: [id], onDelete: SetNull)
   resolvedBy  User?    @relation("DisputeResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  readStates  DisputeReadState[]
 
   @@index([status, createdAt(sort: Desc)])
   @@index([joinedAdminId, status])
@@ -1218,6 +1220,22 @@ model DisputeCase {
   @@index([buyerId])
   @@index([sellerId])
   @@map("dispute_cases")
+}
+
+model DisputeReadState {
+  id         String    @id @default(uuid())
+  disputeId  String
+  userId     String
+  lastReadAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  dispute DisputeCase @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([disputeId, userId])
+  @@index([userId, lastReadAt])
+  @@map("dispute_read_states")
 }
 
 model BroadcastCampaign {
