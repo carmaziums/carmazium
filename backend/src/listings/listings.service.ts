@@ -577,8 +577,7 @@ export class ListingsService {
                     select: { isClear: true }
                 },
             },
-        }) as Promise<Listing[]>;
-    };
+        });
         return listings.map((row: any) => {
             const { priceMin: _priceMin, priceMax: _priceMax, ...safe } = row;
             return safe as Listing;
