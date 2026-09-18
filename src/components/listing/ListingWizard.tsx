@@ -267,16 +267,18 @@ function HpiBaitSection({ isUnlocked, required, onUnlock }: { isUnlocked: boolea
                     </div>
                     
                     <p className="text-[var(--text-secondary)] mb-6 leading-relaxed">
-                        ${required ? 'A CarMazium vehicle history report is required before this listing can be submitted.' : 'Add a CarMazium vehicle history report to strengthen buyer confidence in this listing.'}
+                        {required
+                            ? 'A CarMazium vehicle history report is required before this listing can be submitted.'
+                            : 'Add a CarMazium vehicle history report to strengthen buyer confidence in this listing.'}
                     </p>
                     
                     <div className="flex flex-col items-center md:items-start gap-3 mt-auto">
                         <Button type="button" onClick={onUnlock} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-8 py-6 text-base shadow-neon shrink-0 w-full sm:w-auto border-0">
-                            ${required ? 'Request Required HPI Report' : 'Request HPI Report'}
+                            {required ? 'Request Required HPI Report' : 'Request HPI Report'}
                         </Button>
                         <p className="text-xs text-[var(--text-muted)] italic flex items-center gap-1.5">
                             <BadgeCheck size={14} className="text-emerald-400" />
-                            ${required ? 'Required for new CarMazium listings' : 'Optional for this legacy draft'}
+                            {required ? 'Required for new CarMazium listings' : 'Optional for this legacy draft'}
                         </p>
                     </div>
                 </div>
@@ -422,6 +424,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 const createdAt = l.createdAt ? new Date(l.createdAt).getTime() : rollout
                 setHpiRequired(createdAt >= rollout)
                 setIsHpiUnlocked(!!l.hpiReport)
+                setDvlaSuccess(true)
                 setExistingAuctionStatus(l.auction?.status ?? null)
                 if (l.type === 'AUCTION') {
                     const now = Date.now()
