@@ -38,6 +38,7 @@ describe('ListingsService', () => {
             },
             dealerStaff: { findFirst: jest.fn() },
             user: { findUnique: jest.fn() },
+            transaction: { findMany: jest.fn() },
             auction: { create: jest.fn() },
             $transaction: jest.fn(async (cb: any) => cb(prisma)),
         };
@@ -188,6 +189,61 @@ describe('ListingsService', () => {
                 where: { sellerId: 'owner-1' },
                 _sum: { soldPrice: true },
             });
+        });
+    });
+
+    describe('publishListing retail payment gate', () => {
+        const tenImages = Array.from({ length: 10 }, (_, i) => `image-${i}`);
+
+        it('heals a legacy FREE retail draft to BASIC and still requires payment', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                type: 'CLASSIFIED',
+                badgeTier: 'FREE',
+                status: 'DRAFT',
+                images: tenImages,
+                deletedAt: null,
+            });
+            prisma.user.findUnique.mockResolvedValue({ role: 'USER' });
+            prisma.transaction.findMany.mockResolvedValue([]);
+
+            const result = await service.publishListing('listing-1', 'seller-1');
+
+            expect(prisma.listing.update).toHaveBeenCalledWith({
+                where: { id: 'listing-1' },
+                data: { badgeTier: 'BASIC' },
+            });
+            expect(result).toEqual({ activated: false, requiresPayment: true });
+            expect(prisma.listing.update).not.toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.objectContaining({ status: 'PENDING_REVIEW' }),
+                }),
+            );
+        });
+
+        it('keeps FREE auction listings free and submits them for review', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-2',
+                sellerId: 'seller-1',
+                type: 'AUCTION',
+                badgeTier: 'FREE',
+                status: 'DRAFT',
+                title: 'Auction car',
+                images: tenImages,
+                deletedAt: null,
+            });
+            prisma.user.findUnique.mockResolvedValue({ role: 'USER' });
+            prisma.listing.update.mockResolvedValue({});
+
+            const result = await service.publishListing('listing-2', 'seller-1');
+
+            expect(result).toEqual({ activated: false, pendingReview: true });
+            expect(prisma.listing.update).toHaveBeenCalledWith({
+                where: { id: 'listing-2' },
+                data: { status: 'PENDING_REVIEW', rejectionReason: null },
+            });
+            expect(prisma.transaction.findMany).not.toHaveBeenCalled();
         });
     });
 
