@@ -289,6 +289,28 @@ export class ListingsService {
 
         const listingType: ListingType = createListingDto.listingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED';
 
+        // Prevent double-submit/retry races from creating multiple unsold
+        // records for the same seller and VRM. Retail+auction dual-channel
+        // listings use the explicit linked-listing endpoints instead.
+        if (userId && normalizedVrm) {
+            const existingForSeller = await this.prisma.listing.findMany({
+                where: {
+                    sellerId: userId,
+                    deletedAt: null,
+                    status: { not: 'SOLD' },
+                },
+                select: { id: true, vrm: true, type: true, status: true },
+            });
+            const duplicate = existingForSeller.find(
+                candidate => this.normalizeVrm(candidate.vrm) === normalizedVrm,
+            );
+            if (duplicate) {
+                throw new BadRequestException(
+                    `This vehicle already has an existing ${duplicate.type.toLowerCase()} listing (${duplicate.status.toLowerCase()}). Open that listing instead of creating a duplicate.`,
+                );
+            }
+        }
+
         // Auctions are free to list; all classified listings require at minimum BASIC (£1)
         const rawBadgeTier = createListingDto.badgeTier ?? 'BASIC';
         const badgeTier = (rawBadgeTier === 'FREE' && listingType !== 'AUCTION') ? 'BASIC' : rawBadgeTier;
