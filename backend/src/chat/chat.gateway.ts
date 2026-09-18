@@ -254,19 +254,23 @@ export class ChatGateway
      */
     @SubscribeMessage('typing:start')
     @UsePipes(new ValidationPipe({ transform: true }))
-    handleTypingStart(
+    async handleTypingStart(
         @ConnectedSocket() client: Socket,
         @MessageBody() data: WsTypingDto,
-    ): void {
+    ): Promise<void> {
         const userId = client.data.userId;
         if (!userId) return;
 
-        // Broadcast to room except sender
-        client.to(`room:${data.roomId}`).emit('user:typing', {
-            roomId: data.roomId,
-            userId,
-            isTyping: true,
-        });
+        try {
+            await this.chatService.assertCanMessageRoom(data.roomId, userId);
+            client.to(`room:${data.roomId}`).emit('user:typing', {
+                roomId: data.roomId,
+                userId,
+                isTyping: true,
+            });
+        } catch (error) {
+            client.emit('error', { message: error.message });
+        }
     }
 
     /**
@@ -274,18 +278,23 @@ export class ChatGateway
      */
     @SubscribeMessage('typing:stop')
     @UsePipes(new ValidationPipe({ transform: true }))
-    handleTypingStop(
+    async handleTypingStop(
         @ConnectedSocket() client: Socket,
         @MessageBody() data: WsTypingDto,
-    ): void {
+    ): Promise<void> {
         const userId = client.data.userId;
         if (!userId) return;
 
-        client.to(`room:${data.roomId}`).emit('user:typing', {
-            roomId: data.roomId,
-            userId,
-            isTyping: false,
-        });
+        try {
+            await this.chatService.assertCanMessageRoom(data.roomId, userId);
+            client.to(`room:${data.roomId}`).emit('user:typing', {
+                roomId: data.roomId,
+                userId,
+                isTyping: false,
+            });
+        } catch (error) {
+            client.emit('error', { message: error.message });
+        }
     }
 
     /**
