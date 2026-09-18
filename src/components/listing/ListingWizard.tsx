@@ -815,11 +815,21 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     : null,
             }
 
+            // Generic listing PATCHes may only change seller-editable vehicle
+            // fields. Lifecycle/commercial fields are handled by dedicated
+            // publish/payment/auction endpoints and are deliberately stripped.
+            const {
+                status: _status,
+                listingType: _listingType,
+                badgeTier: _badgeTier,
+                ...editablePayload
+            } = payload;
+
             if (editId) {
                 // Update existing listing
                 await apiClient<{ data: any }>(`/listings/${editId}`, {
                     method: 'PATCH',
-                    body: JSON.stringify(payload),
+                    body: JSON.stringify(editablePayload),
                 })
 
                 // Save damage records (overwrites previous damage for this listing)
@@ -870,7 +880,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 // User returned from HPI payment — update the existing draft listing instead of creating a new one
                 const response = await apiClient<{ data: any }>(`/listings/${draftListingId}`, {
                     method: 'PATCH',
-                    body: JSON.stringify(payload),
+                    body: JSON.stringify(editablePayload),
                 })
                 const finalListingId = response.data.id
                 const finalSlug = response.data.slug
