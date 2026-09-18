@@ -915,9 +915,15 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                         </div>
                                         <div>
                                             <div className="text-4xl font-bold mb-2">{formatPrice(listing.price)}</div>
-                                            <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2.5 py-1 rounded-full mb-4">
-                                                Offers Welcome
-                                            </span>
+                                            {String(listing.status) === 'ACTIVE' ? (
+                                                <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2.5 py-1 rounded-full mb-4">
+                                                    Offers Welcome
+                                                </span>
+                                            ) : String(listing.status) === 'OFFER_ACCEPTED' ? (
+                                                <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-full mb-4">
+                                                    Sale Pending
+                                                </span>
+                                            ) : null}
                                         </div>
                                     </div>
 
@@ -928,6 +934,13 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                     )}
 
                                     <div className="space-y-3">
+                                        {String(listing.status) === 'OFFER_ACCEPTED' && (
+                                            <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-2xl p-5 text-center">
+                                                <Clock size={34} className="text-amber-400 mx-auto mb-2" />
+                                                <h3 className="text-lg font-black uppercase tracking-tight mb-1">Sale Pending</h3>
+                                                <p className="text-xs text-[var(--text-muted)]">An offer has been accepted. New offers are paused unless the seller relists the vehicle.</p>
+                                            </div>
+                                        )}
                                         {String(listing.status) === 'SOLD' ? (
                                             <div className="bg-[var(--bg-card)] border-2 border-red-500/30 rounded-2xl p-6 text-center">
                                                 <XCircle size={48} className="text-red-500 mx-auto mb-3 opacity-80" />
@@ -938,14 +951,24 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                             <>
                                                 <Button
                                                     className="w-full py-6 text-lg shadow-neon"
-                                                    onClick={() => setShowOfferModal(true)}
-                                                    disabled={offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'}
+                                                    onClick={() => {
+                                                        if (myOffer?.status === 'COUNTERED') {
+                                                            router.push('/dashboard/buyer/offers')
+                                                            return
+                                                        }
+                                                        setShowOfferModal(true)
+                                                    }}
+                                                    disabled={String(listing.status) !== 'ACTIVE' || myOffer?.status === 'ACCEPTED'}
                                                 >
-                                                    {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
-                                                        ? 'Edit My Offer'
-                                                        : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
-                                                            ? '✓ Offer Accepted'
-                                                            : 'Make an Offer'}
+                                                    {String(listing.status) === 'OFFER_ACCEPTED'
+                                                        ? 'Sale Pending'
+                                                        : myOffer?.status === 'PENDING'
+                                                            ? 'Edit My Offer'
+                                                            : myOffer?.status === 'COUNTERED'
+                                                                ? 'Manage Counter'
+                                                                : myOffer?.status === 'ACCEPTED'
+                                                                    ? 'Offer Accepted — Sale Pending'
+                                                                    : 'Make a Private Offer'}
                                                 </Button>
                                                 <Button variant="outline" className="w-full py-6 text-lg border-[var(--border-default)] hover:bg-primary/5 dark:hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
                                                     {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire</>}
@@ -1378,14 +1401,24 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                                 <>
                                                     <Button
                                                         className="w-full py-6 text-lg shadow-neon"
-                                                        onClick={() => setShowOfferModal(true)}
-                                                        disabled={offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'}
+                                                        onClick={() => {
+                                                            if (myOffer?.status === 'COUNTERED') {
+                                                                router.push('/dashboard/buyer/offers')
+                                                                return
+                                                            }
+                                                            setShowOfferModal(true)
+                                                        }}
+                                                        disabled={String(listing.status) !== 'ACTIVE' || myOffer?.status === 'ACCEPTED'}
                                                     >
-                                                        {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
-                                                            ? 'Edit My Offer'
-                                                            : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
-                                                                ? '✓ Offer Accepted'
-                                                                : 'Make an Offer'}
+                                                        {String(listing.status) === 'OFFER_ACCEPTED'
+                                                            ? 'Sale Pending'
+                                                            : myOffer?.status === 'PENDING'
+                                                                ? 'Edit My Offer'
+                                                                : myOffer?.status === 'COUNTERED'
+                                                                    ? 'Manage Counter'
+                                                                    : myOffer?.status === 'ACCEPTED'
+                                                                        ? 'Offer Accepted — Sale Pending'
+                                                                        : 'Make a Private Offer'}
                                                     </Button>
                                                     <Button variant="outline" className="w-full py-6 text-lg border-[var(--border-default)] hover:bg-primary/5 dark:hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
                                                         {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire</>}
