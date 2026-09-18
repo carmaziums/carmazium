@@ -374,6 +374,139 @@ export const ChatScreen: React.FC = () => {
     };
   }, [threadId]);
 
+  const deliverMessage = useCallback(async (
+    content: string,
+    clientMessageId: string,
+  ): Promise<ChatMessage> => {
+    if (isConnected) {
+      try {
+        return await emitSendMessage(threadId, content, clientMessageId);
+      } catch (error) {
+        const code = (error as { code?: string })?.code;
+        if (code !== 'CHAT_ACK_TIMEOUT' && code !== 'SOCKET_UNAVAILABLE') {
+          throw error;
+        }
+      }
+    }
+
+    return sendChatMessage(threadId, content, clientMessageId);
+  }, [isConnected, emitSendMessage, threadId]);
+
+  const confirmLocalMessage = useCallback((
+    clientMessageId: string,
+    confirmed: ChatMessage,
+  ) => {
+    setMessages((prev) => {
+      const index = prev.findIndex(
+        (message) =>
+          message.id === confirmed.id ||
+          message.clientMessageId === clientMessageId
+      );
+      if (index === -1) return [...prev, confirmed];
+
+      const next = [...prev];
+      next[index] = confirmed;
+      return next;
+    });
+  }, []);
+
+  const queueMessage = useCallback(async (content: string): Promise<boolean> => {
+    const clientMessageId = createClientMessageId();
+    const now = new Date().toISOString();
+    const optimistic: ChatMessage = {
+      id: `opt-${clientMessageId}`,
+      chatRoomId: threadId,
+      senderId: user?.id ?? '',
+      clientMessageId,
+      content,
+      createdAt: now,
+      updatedAt: now,
+      isRead: false,
+      sender: {
+        id: user?.id ?? '',
+        firstName: user?.firstName ?? null,
+        lastName: user?.lastName ?? null,
+        profileImage: user?.profileImage ?? null,
+      },
+      deliveryStatus: 'sending',
+    };
+
+    setMessages((prev) => [...prev, optimistic]);
+
+    try {
+      const confirmed = await deliverMessage(content, clientMessageId);
+      confirmLocalMessage(clientMessageId, confirmed);
+      refreshRooms().catch(() => {});
+      return true;
+    } catch (error) {
+      console.error('Failed to send chat message:', error);
+      setMessages((prev) => prev.map((message) =>
+        message.clientMessageId === clientMessageId
+          ? { ...message, deliveryStatus: 'failed' }
+          : message
+      ));
+      return false;
+    }
+  }, [
+    threadId,
+    user?.id,
+    user?.firstName,
+    user?.lastName,
+    user?.profileImage,
+    deliverMessage,
+    confirmLocalMessage,
+    refreshRooms,
+  ]);
+
+  const handleRetry = useCallback(async (message: ChatMessage) => {
+    if (!message.clientMessageId || message.deliveryStatus !== 'failed') return;
+
+    const clientMessageId = message.clientMessageId;
+    setMessages((prev) => prev.map((item) =>
+      item.clientMessageId === clientMessageId
+        ? { ...item, deliveryStatus: 'sending' }
+        : item
+    ));
+
+    try {
+      const confirmed = await deliverMessage(message.content, clientMessageId);
+      confirmLocalMessage(clientMessageId, confirmed);
+      refreshRooms().catch(() => {});
+    } catch (error) {
+      console.error('Failed to retry chat message:', error);
+      setMessages((prev) => prev.map((item) =>
+        item.clientMessageId === clientMessageId
+          ? { ...item, deliveryStatus: 'failed' }
+          : item
+      ));
+    }
+  }, [deliverMessage, confirmLocalMessage, refreshRooms]);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!historyCursor || !hasMore || loadingOlder) return;
+
+    try {
+      setLoadingOlder(true);
+      const res = await getChatMessages(threadId, 1, 50, historyCursor);
+      setMessages((prev) => {
+        const existingIds = new Set(prev.map((message) => message.id));
+        const older = res.data.filter((message) => !existingIds.has(message.id));
+        return [...older, ...prev];
+      });
+      setHasMore(Boolean(res.pagination.hasMore));
+      setHistoryCursor(
+        res.pagination.nextCursor ??
+        (res.data[0]
+          ? { createdAt: res.data[0].createdAt, id: res.data[0].id }
+          : null)
+      );
+    } catch (error) {
+      console.error('Failed to load earlier chat messages:', error);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [threadId, historyCursor, hasMore, loadingOlder]);
+
   // Derived values used by the message list — computed before the early returns
   // below so these hooks always run in the same order (Rules of Hooks).
   const displayNameForBubbles = room?.otherUser.firstName
@@ -406,8 +539,9 @@ export const ChatScreen: React.FC = () => {
       isOwn={item.senderId === user?.id}
       isLastOwnMessage={item.id === lastOwnMessageId}
       initials={initialsForBubbles}
+      onRetry={handleRetry}
     />
-  ), [user?.id, lastOwnMessageId, initialsForBubbles]);
+  ), [user?.id, lastOwnMessageId, initialsForBubbles, handleRetry]);
 
   if (loading) {
     return (
@@ -471,27 +605,7 @@ export const ChatScreen: React.FC = () => {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     stopTyping(threadId);
 
-    // Optimistically show the sent message immediately so the user sees it
-    // without waiting for socket confirmation.
-    const optimisticId = `opt-${Date.now()}`;
-    const optimisticMsg = {
-      id: optimisticId,
-      chatRoomId: threadId,
-      senderId: user?.id ?? '',
-      content: textToSend,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isRead: false,
-      sender: { id: user?.id ?? '', firstName: user?.firstName ?? null, lastName: user?.lastName ?? null, profileImage: user?.profileImage ?? null },
-    } as ChatMessage;
-    setMessages((prev) => [...prev, optimisticMsg]);
-
-    // Send via socket; onNewMessage will replace the optimistic entry when
-    // the server echoes it back (matched by content + sender).
-    emitSendMessage(threadId, textToSend);
-
-    // Refresh rooms list so MessagesScreen shows the latest message preview.
-    refreshRooms().catch(() => {});
+    void queueMessage(textToSend);
   };
 
   const handleTextChange = (text: string) => {
@@ -507,16 +621,22 @@ export const ChatScreen: React.FC = () => {
     }, 2000);
   };
 
-  const handleAcceptOffer = () => {
+  const handleAcceptOffer = async () => {
     const text = "I accept the counter-offer. Let's finalize the paperwork.";
-    emitSendMessage(threadId, text);
-    showToast('Accepted!', 'success');
+    const sent = await queueMessage(text);
+    showToast(
+      sent ? 'Accepted!' : 'Message not sent. Tap it to retry.',
+      sent ? 'success' : 'info',
+    );
   };
 
-  const handleCounterOffer = () => {
+  const handleCounterOffer = async () => {
     const text = `Counter-offer: £${carPrice.toLocaleString('en-GB')}`;
-    emitSendMessage(threadId, text);
-    showToast('Counter-offer sent!', 'info');
+    const sent = await queueMessage(text);
+    showToast(
+      sent ? 'Counter-offer sent!' : 'Message not sent. Tap it to retry.',
+      'info',
+    );
   };
 
   const handlePayDeposit = () => {
@@ -632,6 +752,7 @@ export const ChatScreen: React.FC = () => {
           contentContainerStyle={styles.chatScroll}
           showsVerticalScrollIndicator={false}
           inverted
+          maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
           data={reversedMessages}
           keyExtractor={(item) => item.id}
           renderItem={renderMessageItem}
@@ -645,9 +766,25 @@ export const ChatScreen: React.FC = () => {
             ) : null
           }
           ListFooterComponent={
-            <Text style={styles.dateSeparator}>
-              {messages.length === 0 ? 'No messages yet' : 'LIVE CHAT LOGS'}
-            </Text>
+            <View>
+              {hasMore && (
+                <TouchableOpacity
+                  style={styles.loadEarlierButton}
+                  onPress={loadOlderMessages}
+                  disabled={loadingOlder}
+                  activeOpacity={0.75}
+                >
+                  {loadingOlder ? (
+                    <ActivityIndicator size="small" color={Colors.textSecondary} />
+                  ) : (
+                    <Text style={styles.loadEarlierText}>Load earlier messages</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+              <Text style={styles.dateSeparator}>
+                {messages.length === 0 ? 'No messages yet' : 'LIVE CHAT LOGS'}
+              </Text>
+            </View>
           }
         />
 
