@@ -547,6 +547,47 @@ export interface BidsResponse {
     }
 }
 
+export interface ActiveAuctionBidPosition {
+    listingId: string
+    auctionId: string
+    listing: {
+        id: string
+        title: string
+        slug: string
+        images: string[]
+        make: string | null
+        model: string | null
+        year: number | null
+        mileage: number | null
+        sellerId: string | null
+        auction: {
+            id: string
+            status: 'ACTIVE'
+            endTime: string
+            minIncrement: string | number
+            startingBid: string | number
+        } | null
+    }
+    myHighestBid: number
+    myBidId: string
+    myBidCreatedAt: string
+    currentHighestBid: number
+    isLeading: boolean
+    nextMinimumBid: number
+    bidCount: number
+    canCancelCurrentBid: boolean
+    cancelDeadline: string
+    endTime: string
+}
+
+export async function getMyActiveAuctionBids(): Promise<ActiveAuctionBidPosition[]> {
+    const data = await apiClient<{ data: ActiveAuctionBidPosition[] }>('/bids/my/active', {
+        method: 'GET',
+        cache: 'no-store',
+    })
+    return data.data || []
+}
+
 export interface BuyerStats {
     activeBids: number
     wonAuctions: number
