@@ -492,6 +492,542 @@ export class ChatService {
         return this.findOrCreateRoom(userId, { participantId: supportAccount.id });
     }
 
+    private disputeEventContent(
+        type: 'OPENED' | 'ADMIN_JOINED' | 'RESOLVED',
+        payload: Record<string, unknown> = {},
+    ) {
+        return DISPUTE_EVENT_PREFIX + JSON.stringify({ type, ...payload });
+    }
+
+    private async notifyDisputeParticipant(
+        userId: string,
+        role: UserRole,
+        roomId: string,
+        type: string,
+        title: string,
+        message: string,
+        disputeId: string,
+    ) {
+        try {
+            const notification = await this.notificationsService.create({
+                userId,
+                type,
+                title,
+                message,
+                link: messageInboxLink(role, roomId),
+                data: { roomId, disputeId },
+            });
+            this.notificationsGateway.sendNotification(userId, notification);
+        } catch (error: any) {
+            console.warn(
+                `[ChatService] Failed to notify dispute participant ${userId}: ${error?.message}`,
+            );
+        }
+    }
+
+    /**
+     * Open one dispute case from an existing vehicle conversation. The original
+     * RETAIL/AUCTION thread stays private; the dispute gets its own room.
+     */
+    async openDispute(
+        sourceRoomId: string,
+        userId: string,
+        dto: OpenDisputeDto,
+    ) {
+        const sourceRoom: any = await this.getRoom(sourceRoomId, userId);
+        if (
+            sourceRoom.context !== ChatContext.RETAIL &&
+            sourceRoom.context !== ChatContext.AUCTION
+        ) {
+            throw new BadRequestException(
+                'A dispute can only be opened from a vehicle transaction conversation.',
+            );
+        }
+        if (
+            sourceRoom.initiatorId !== userId &&
+            sourceRoom.participantId !== userId
+        ) {
+            throw new ForbiddenException('Only the buyer or seller can open this dispute.');
+        }
+        if (!sourceRoom.listingId || !sourceRoom.listing?.sellerId) {
+            throw new BadRequestException('This conversation does not have a valid vehicle seller.');
+        }
+        if (
+            sourceRoom.context === ChatContext.RETAIL &&
+            !['OFFER_ACCEPTED', 'SOLD'].includes(sourceRoom.listing.status)
+        ) {
+            throw new BadRequestException(
+                'Retail disputes are available after an offer has been accepted or the vehicle has been sold.',
+            );
+        }
+
+        const sellerId = sourceRoom.listing.sellerId;
+        if (
+            sourceRoom.initiatorId !== sellerId &&
+            sourceRoom.participantId !== sellerId
+        ) {
+            throw new BadRequestException(
+                'The source conversation no longer matches the vehicle seller.',
+            );
+        }
+        const buyerId = sourceRoom.initiatorId === sellerId
+            ? sourceRoom.participantId
+            : sourceRoom.initiatorId;
+
+        const existingCase = await this.prisma.disputeCase.findUnique({
+            where: { sourceRoomId },
+        });
+        if (existingCase) {
+            return {
+                room: await this.getRoom(existingCase.chatRoomId, userId),
+                dispute: existingCase,
+                eventMessage: null,
+                created: false,
+            };
+        }
+
+        const reason = dto.reason?.trim() || null;
+
+        try {
+            const created = await this.prisma.$transaction(async (tx) => {
+                const disputeRoom = await tx.chatRoom.create({
+                    data: {
+                        initiatorId: buyerId,
+                        participantId: sellerId,
+                        listingId: sourceRoom.listingId,
+                        context: ChatContext.DISPUTE,
+                        conversationKey: `DISPUTE:${sourceRoomId}`,
+                    },
+                });
+
+                const dispute = await tx.disputeCase.create({
+                    data: {
+                        sourceRoomId,
+                        chatRoomId: disputeRoom.id,
+                        listingId: sourceRoom.listingId,
+                        buyerId,
+                        sellerId,
+                        openedById: userId,
+                        reason,
+                    },
+                });
+
+                const eventMessage = await tx.message.create({
+                    data: {
+                        chatRoomId: disputeRoom.id,
+                        senderId: userId,
+                        content: this.disputeEventContent('OPENED', {
+                            disputeId: dispute.id,
+                            reason,
+                        }),
+                    },
+                    include: this.messageInclude,
+                });
+
+                await tx.chatRoom.update({
+                    where: { id: disputeRoom.id },
+                    data: { updatedAt: new Date() },
+                });
+
+                const hydratedRoom = await tx.chatRoom.findUnique({
+                    where: { id: disputeRoom.id },
+                    include: this.roomInclude,
+                });
+
+                return { dispute, eventMessage, hydratedRoom };
+            });
+
+            if (!created.hydratedRoom) {
+                throw new NotFoundException('Dispute conversation could not be created.');
+            }
+
+            const otherId = userId === buyerId ? sellerId : buyerId;
+            const otherRole = sourceRoom.initiatorId === otherId
+                ? sourceRoom.initiator.role
+                : sourceRoom.participant.role;
+            await this.notifyDisputeParticipant(
+                otherId,
+                otherRole as UserRole,
+                created.dispute.chatRoomId,
+                'DISPUTE_OPENED',
+                'Vehicle dispute opened',
+                'A dispute has been opened for your CarMazium vehicle transaction.',
+                created.dispute.id,
+            );
+
+            const admins = await this.prisma.user.findMany({
+                where: { role: UserRole.ADMIN, deletedAt: null },
+                select: { id: true },
+            });
+            for (const admin of admins) {
+                try {
+                    const notification = await this.notificationsService.create({
+                        userId: admin.id,
+                        type: 'DISPUTE_OPENED',
+                        title: 'New vehicle dispute',
+                        message: sourceRoom.listing?.title
+                            ? `A dispute was opened for ${sourceRoom.listing.title}.`
+                            : 'A new vehicle dispute requires review.',
+                        link: `/dashboard/admin/messages?mode=disputes&dispute=${created.dispute.id}`,
+                        data: {
+                            disputeId: created.dispute.id,
+                            roomId: created.dispute.chatRoomId,
+                            sourceRoomId,
+                        },
+                    });
+                    this.notificationsGateway.sendNotification(admin.id, notification);
+                } catch (error: any) {
+                    console.warn(
+                        `[ChatService] Failed to notify admin ${admin.id} of dispute: ${error?.message}`,
+                    );
+                }
+            }
+
+            return {
+                room: this.withOtherUser(created.hydratedRoom, userId),
+                dispute: created.dispute,
+                eventMessage: created.eventMessage,
+                created: true,
+            };
+        } catch (error) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2002'
+            ) {
+                const concurrent = await this.prisma.disputeCase.findUnique({
+                    where: { sourceRoomId },
+                });
+                if (concurrent) {
+                    return {
+                        room: await this.getRoom(concurrent.chatRoomId, userId),
+                        dispute: concurrent,
+                        eventMessage: null,
+                        created: false,
+                    };
+                }
+            }
+            throw error;
+        }
+    }
+
+    async listDisputes(
+        page = 1,
+        limit = 30,
+        status?: string,
+        search?: string,
+    ) {
+        const safePage = Math.max(page, 1);
+        const safeLimit = Math.min(Math.max(limit, 1), 100);
+        const where: Prisma.DisputeCaseWhereInput = {};
+
+        if (status) {
+            if (!Object.values(DisputeStatus).includes(status as DisputeStatus)) {
+                throw new BadRequestException('Unknown dispute status.');
+            }
+            where.status = status as DisputeStatus;
+        }
+
+        const cleanSearch = search?.trim();
+        if (cleanSearch) {
+            where.OR = [
+                { listing: { title: { contains: cleanSearch, mode: 'insensitive' } } },
+                { buyer: { email: { contains: cleanSearch, mode: 'insensitive' } } },
+                { seller: { email: { contains: cleanSearch, mode: 'insensitive' } } },
+                { reason: { contains: cleanSearch, mode: 'insensitive' } },
+            ];
+        }
+
+        const include = {
+            listing: {
+                select: {
+                    id: true,
+                    title: true,
+                    slug: true,
+                    images: true,
+                    type: true,
+                    status: true,
+                },
+            },
+            buyer: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    profileImage: true,
+                    role: true,
+                },
+            },
+            seller: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    profileImage: true,
+                    role: true,
+                },
+            },
+            openedBy: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    role: true,
+                },
+            },
+            joinedAdmin: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    profileImage: true,
+                },
+            },
+            resolvedBy: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                },
+            },
+            chatRoom: {
+                select: {
+                    id: true,
+                    updatedAt: true,
+                    messages: {
+                        orderBy: { createdAt: 'desc' as const },
+                        take: 1,
+                        select: {
+                            id: true,
+                            content: true,
+                            senderId: true,
+                            createdAt: true,
+                        },
+                    },
+                },
+            },
+        };
+
+        const [data, total] = await Promise.all([
+            this.prisma.disputeCase.findMany({
+                where,
+                include,
+                orderBy: { createdAt: 'desc' },
+                skip: (safePage - 1) * safeLimit,
+                take: safeLimit,
+            }),
+            this.prisma.disputeCase.count({ where }),
+        ]);
+
+        return {
+            data,
+            pagination: {
+                total,
+                page: safePage,
+                limit: safeLimit,
+                totalPages: Math.ceil(total / safeLimit),
+            },
+        };
+    }
+
+    async joinDispute(disputeId: string, adminId: string) {
+        const role = await this.actorRole(adminId);
+        if (role !== UserRole.ADMIN) {
+            throw new ForbiddenException('Only an active CarMazium admin can join a dispute.');
+        }
+
+        const existing = await this.prisma.disputeCase.findUnique({
+            where: { id: disputeId },
+        });
+        if (!existing) {
+            throw new NotFoundException('Dispute not found.');
+        }
+        if (existing.status !== DisputeStatus.OPEN) {
+            throw new BadRequestException('Only an open dispute can be joined.');
+        }
+        if (existing.joinedAdminId === adminId) {
+            return {
+                room: await this.getRoom(existing.chatRoomId, adminId),
+                eventMessage: null,
+                joined: false,
+            };
+        }
+        if (existing.joinedAdminId) {
+            throw new BadRequestException('This dispute is already assigned to another admin.');
+        }
+
+        const result = await this.prisma.$transaction(async (tx) => {
+            const claim = await tx.disputeCase.updateMany({
+                where: {
+                    id: disputeId,
+                    status: DisputeStatus.OPEN,
+                    joinedAdminId: null,
+                },
+                data: {
+                    joinedAdminId: adminId,
+                    adminJoinedAt: new Date(),
+                },
+            });
+            if (claim.count !== 1) {
+                throw new BadRequestException('This dispute was claimed by another admin.');
+            }
+
+            const dispute = await tx.disputeCase.findUnique({
+                where: { id: disputeId },
+            });
+            if (!dispute) {
+                throw new NotFoundException('Dispute not found.');
+            }
+
+            const eventMessage = await tx.message.create({
+                data: {
+                    chatRoomId: dispute.chatRoomId,
+                    senderId: adminId,
+                    content: this.disputeEventContent('ADMIN_JOINED', {
+                        disputeId,
+                    }),
+                },
+                include: this.messageInclude,
+            });
+            await tx.chatRoom.update({
+                where: { id: dispute.chatRoomId },
+                data: { updatedAt: new Date() },
+            });
+
+            const room = await tx.chatRoom.findUnique({
+                where: { id: dispute.chatRoomId },
+                include: this.roomInclude,
+            });
+            return { dispute, eventMessage, room };
+        });
+
+        if (!result.room) {
+            throw new NotFoundException('Dispute conversation not found.');
+        }
+
+        for (const participant of [
+            { id: result.dispute.buyerId, role: result.room.initiatorId === result.dispute.buyerId ? result.room.initiator.role : result.room.participant.role },
+            { id: result.dispute.sellerId, role: result.room.initiatorId === result.dispute.sellerId ? result.room.initiator.role : result.room.participant.role },
+        ]) {
+            await this.notifyDisputeParticipant(
+                participant.id,
+                participant.role as UserRole,
+                result.dispute.chatRoomId,
+                'DISPUTE_ADMIN_JOINED',
+                'CarMazium joined your dispute',
+                'A CarMazium support agent has joined the dispute conversation.',
+                result.dispute.id,
+            );
+        }
+
+        return {
+            room: this.withOtherUser(result.room, adminId),
+            eventMessage: result.eventMessage,
+            joined: true,
+        };
+    }
+
+    async resolveDispute(disputeId: string, adminId: string) {
+        const role = await this.actorRole(adminId);
+        if (role !== UserRole.ADMIN) {
+            throw new ForbiddenException('Only an active CarMazium admin can resolve a dispute.');
+        }
+
+        const current = await this.prisma.disputeCase.findUnique({
+            where: { id: disputeId },
+        });
+        if (!current) {
+            throw new NotFoundException('Dispute not found.');
+        }
+        if (current.status === DisputeStatus.RESOLVED) {
+            return {
+                room: await this.getRoom(current.chatRoomId, adminId),
+                eventMessage: null,
+                resolved: false,
+            };
+        }
+        if (current.joinedAdminId !== adminId) {
+            throw new ForbiddenException(
+                'Only the admin who joined this dispute can resolve it.',
+            );
+        }
+
+        const result = await this.prisma.$transaction(async (tx) => {
+            const resolution = await tx.disputeCase.updateMany({
+                where: {
+                    id: disputeId,
+                    status: DisputeStatus.OPEN,
+                    joinedAdminId: adminId,
+                },
+                data: {
+                    status: DisputeStatus.RESOLVED,
+                    resolvedById: adminId,
+                    resolvedAt: new Date(),
+                },
+            });
+            if (resolution.count !== 1) {
+                throw new BadRequestException('This dispute changed before it could be resolved.');
+            }
+
+            const dispute = await tx.disputeCase.findUnique({
+                where: { id: disputeId },
+            });
+            if (!dispute) {
+                throw new NotFoundException('Dispute not found.');
+            }
+
+            const eventMessage = await tx.message.create({
+                data: {
+                    chatRoomId: dispute.chatRoomId,
+                    senderId: adminId,
+                    content: this.disputeEventContent('RESOLVED', {
+                        disputeId,
+                    }),
+                },
+                include: this.messageInclude,
+            });
+            await tx.chatRoom.update({
+                where: { id: dispute.chatRoomId },
+                data: { updatedAt: new Date() },
+            });
+
+            const room = await tx.chatRoom.findUnique({
+                where: { id: dispute.chatRoomId },
+                include: this.roomInclude,
+            });
+            return { dispute, eventMessage, room };
+        });
+
+        if (!result.room) {
+            throw new NotFoundException('Dispute conversation not found.');
+        }
+
+        for (const participant of [
+            { id: result.dispute.buyerId, role: result.room.initiatorId === result.dispute.buyerId ? result.room.initiator.role : result.room.participant.role },
+            { id: result.dispute.sellerId, role: result.room.initiatorId === result.dispute.sellerId ? result.room.initiator.role : result.room.participant.role },
+        ]) {
+            await this.notifyDisputeParticipant(
+                participant.id,
+                participant.role as UserRole,
+                result.dispute.chatRoomId,
+                'DISPUTE_RESOLVED',
+                'Vehicle dispute resolved',
+                'CarMazium has marked this dispute as resolved. The transcript remains available.',
+                result.dispute.id,
+            );
+        }
+
+        return {
+            room: this.withOtherUser(result.room, adminId),
+            eventMessage: result.eventMessage,
+            resolved: true,
+        };
+    }
+
     /**
      * Enforces the current business rule whenever somebody attempts to send
      * or emit an interactive room event. Historical transcripts remain readable
