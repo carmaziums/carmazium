@@ -15,6 +15,7 @@ import { AmendOfferModal } from "@/components/offers/AmendOfferModal"
 import { useAuth } from "@/context/AuthContext"
 import {
     getMyOffers,
+    getMyActiveAuctionBids,
     withdrawOffer,
     respondToCounterOffer,
     formatPrice,
@@ -37,12 +38,17 @@ export default function DealerMyOffersPage() {
     const [searchTerm, setSearchTerm] = React.useState("")
     const [viewMode, setViewMode] = React.useState<'current' | 'history' | 'all'>('current')
     const [amendingOffer, setAmendingOffer] = React.useState<Offer | null>(null)
+    const [activeAuctionBidCount, setActiveAuctionBidCount] = React.useState(0)
 
     const fetchOffers = React.useCallback(async () => {
         setLoading(true)
         try {
-            const data = await getMyOffers()
+            const [data, auctionPositions] = await Promise.all([
+                getMyOffers(),
+                getMyActiveAuctionBids().catch(() => []),
+            ])
             setOffers(data || [])
+            setActiveAuctionBidCount(auctionPositions.length)
         } catch (err) {
             console.error("Failed to fetch outgoing offers:", err)
             setOffers([])
@@ -104,10 +110,10 @@ export default function DealerMyOffersPage() {
     })
 
     const listHeading = viewMode === 'current'
-        ? 'Current Bids'
+        ? 'Current Offers'
         : viewMode === 'history'
             ? 'Offer History'
-            : 'All Outgoing Bids'
+            : 'All Outgoing Offers'
 
     return (
         <div className="min-h-screen pt-20 pb-12">
@@ -117,7 +123,7 @@ export default function DealerMyOffersPage() {
                 <main className="flex-1 space-y-6 min-w-0">
                     <PageHeader
                         title="My Offers"
-                        subHeader="Track outgoing bids you've placed on other dealers' inventory"
+                        subHeader="Manage retail offers separately from your live auction bids"
                     />
 
                     {amendingOffer && (
@@ -129,9 +135,9 @@ export default function DealerMyOffersPage() {
                     )}
 
                     {/* Summary metrics */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
                         <MetricCard
-                            label="Current Bids"
+                            label="Current Offers"
                             value={currentCount}
                             icon={Gavel}
                             color="text-violet-400"
@@ -139,6 +145,17 @@ export default function DealerMyOffersPage() {
                             border="border-violet-500/20"
                             statusLabel="Active"
                             loading={loading}
+                        />
+                        <MetricCard
+                            label="Auction Bids"
+                            value={activeAuctionBidCount}
+                            icon={Gavel}
+                            color="text-fuchsia-400"
+                            bg="bg-fuchsia-500/10"
+                            border="border-fuchsia-500/20"
+                            statusLabel="Live"
+                            loading={loading}
+                            href="/dashboard/dealer/bids"
                         />
                         <MetricCard
                             label="Awaiting Response"
@@ -225,14 +242,14 @@ export default function DealerMyOffersPage() {
                                     {searchTerm
                                         ? "No offers match your search."
                                         : viewMode === 'current'
-                                            ? "No current bids"
+                                            ? "No current offers"
                                             : viewMode === 'history'
                                                 ? "No closed offer history yet"
                                                 : "No outgoing offers yet"}
                                 </p>
                                 <p className="text-gray-600 text-sm mt-1">
                                     {viewMode === 'current'
-                                        ? "Live offers you can still manage will appear here."
+                                        ? "Retail offers you can still manage will appear here."
                                         : "Offers you place on marketplace vehicles will appear here."}
                                 </p>
                                 {!searchTerm && (
