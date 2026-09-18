@@ -776,25 +776,9 @@ export class ListingsService {
         if (updateListingDto.vrm) updateData.vrm = updateListingDto.vrm;
         if (updateListingDto.fuelType) updateData.fuelType = mapFuelType(updateListingDto.fuelType);
         if (updateListingDto.transmission) updateData.transmission = mapTransmission(updateListingDto.transmission);
-        if (updateListingDto.status) {
-            updateData.status = updateListingDto.status === 'ACTIVE' ? 'ACTIVE' :
-                updateListingDto.status === 'SOLD' ? 'SOLD' : 'DRAFT';
-        }
-        if (updateListingDto.listingType) {
-            updateData.type = updateListingDto.listingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED';
-        }
-
-        // FREE is reserved for Auction listings. If an older/stale client sends
-        // FREE for a retail listing (or converts a FREE auction draft to retail),
-        // normalise it to BASIC so the £1 payment gate cannot be bypassed.
-        const targetListingType = updateData.type ?? listing.type;
-        if (updateListingDto.badgeTier !== undefined || (targetListingType === 'CLASSIFIED' && listing.badgeTier === 'FREE')) {
-            const requestedBadgeTier = updateListingDto.badgeTier ?? listing.badgeTier;
-            updateData.badgeTier =
-                targetListingType === 'CLASSIFIED' && requestedBadgeTier === 'FREE'
-                    ? 'BASIC'
-                    : requestedBadgeTier;
-        }
+        // status, listing type and badge tier are intentionally not editable here.
+        // Those fields drive payment, review and auction lifecycle rules and must
+        // go through their dedicated server-side endpoints.
         // DVLA extended fields
         if (updateListingDto.motStatus !== undefined) updateData.motStatus = updateListingDto.motStatus;
         if (updateListingDto.taxStatus !== undefined) updateData.taxStatus = updateListingDto.taxStatus;
@@ -808,11 +792,9 @@ export class ListingsService {
         if (updateListingDto.hasOutstandingFinance !== undefined) updateData.hasOutstandingFinance = updateListingDto.hasOutstandingFinance;
         if (updateListingDto.isLegalRegisteredKeeper !== undefined) updateData.isLegalRegisteredKeeper = updateListingDto.isLegalRegisteredKeeper;
         if (updateListingDto.writeOffCategory !== undefined) {
-            // Enforce the auction-only rule on update too
-            const targetType = updateListingDto.listingType
-                ? (updateListingDto.listingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED')
-                : listing.type;
-            if ((updateListingDto.writeOffCategory === 'CAT_A' || updateListingDto.writeOffCategory === 'CAT_B') && targetType === 'CLASSIFIED') {
+            // Listing type is immutable through the generic seller edit route.
+            // Enforce the auction-only rule against the persisted listing type.
+            if ((updateListingDto.writeOffCategory === 'CAT_A' || updateListingDto.writeOffCategory === 'CAT_B') && listing.type === 'CLASSIFIED') {
                 throw new BadRequestException(
                     'Cat A and Cat B write-offs cannot be listed for retail sale. Switch to an Auction listing to proceed.',
                 );
