@@ -180,21 +180,50 @@ export class ChatGateway
     async handleMessage(
         @ConnectedSocket() client: Socket,
         @MessageBody() data: WsMessageDto,
-    ): Promise<void> {
+    ): Promise<
+        | { ok: true; message: any; duplicate: boolean }
+        | { ok: false; error: { code: string; message: string } }
+    > {
         const userId = client.data.userId;
-        if (!userId) return;
+        if (!userId) {
+            return {
+                ok: false,
+                error: {
+                    code: 'AUTH_REQUIRED',
+                    message: 'Please log in before sending messages.',
+                },
+            };
+        }
 
         try {
-            const message = await this.chatService.sendMessage(
+            const { message, created } = await this.chatService.sendMessage(
                 data.roomId,
                 userId,
-                { content: data.content },
+                {
+                    content: data.content,
+                    clientMessageId: data.clientMessageId,
+                },
             );
 
-            // Broadcast to all members in the room
-            this.server.to(`room:${data.roomId}`).emit('message:new', message);
+            if (created) {
+                this.broadcastMessage(data.roomId, message);
+            }
+
+            // Returning a value from a Socket.IO gateway handler is delivered
+            // to the client's acknowledgement callback.
+            return {
+                ok: true,
+                message,
+                duplicate: !created,
+            };
         } catch (error) {
-            client.emit('error', { message: error.message });
+            return {
+                ok: false,
+                error: {
+                    code: error?.code || error?.name || 'SEND_FAILED',
+                    message: error?.message || 'Message could not be sent.',
+                },
+            };
         }
     }
 
@@ -295,6 +324,14 @@ export class ChatGateway
         } catch (error) {
             client.emit('error', { message: error.message });
         }
+    }
+
+    /**
+     * Broadcast a newly persisted message to every live socket in the room.
+     * Used by both WebSocket sends and the REST fallback path.
+     */
+    broadcastMessage(roomId: string, message: any): void {
+        this.server?.to(`room:${roomId}`).emit('message:new', message);
     }
 
     /**
