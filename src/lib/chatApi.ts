@@ -21,6 +21,35 @@ export interface ChatListing {
     images: string[]
 }
 
+export type ChatDisputeStatus = 'OPEN' | 'RESOLVED'
+
+export interface ChatDisputeCase {
+    id: string
+    sourceRoomId: string
+    chatRoomId: string
+    listingId: string
+    buyerId: string
+    sellerId: string
+    openedById: string
+    joinedAdminId?: string | null
+    resolvedById?: string | null
+    status: ChatDisputeStatus
+    reason?: string | null
+    adminJoinedAt?: string | null
+    resolvedAt?: string | null
+    createdAt: string
+    updatedAt: string
+    buyer?: ChatUser
+    seller?: ChatUser
+    joinedAdmin?: ChatUser | null
+}
+
+export interface ChatSourceDispute {
+    id: string
+    chatRoomId: string
+    status: ChatDisputeStatus
+}
+
 export interface ChatMessage {
     id: string
     chatRoomId: string
@@ -55,6 +84,9 @@ export interface ChatRoom {
     } | null
     supportTags?: string[]
     supportClosedAt?: string | null
+    disputeCase?: ChatDisputeCase | null
+    sourceDispute?: ChatSourceDispute | null
+    canOpenDispute?: boolean
     needsReply?: boolean
     lastMessage: {
         id: string
@@ -165,6 +197,27 @@ export async function createChatRoom(participantId: string, listingId?: string):
 export async function getOrCreateSupportRoom(): Promise<ChatRoom> {
     const data = await apiClient<{ data: ChatRoom }>('/chat/support', {
         method: 'POST',
+    })
+    return data.data
+}
+
+export async function openVehicleDispute(
+    sourceRoomId: string,
+    reason?: string
+): Promise<{
+    room: ChatRoom
+    dispute: ChatDisputeCase
+    eventMessage: ChatMessage | null
+    created: boolean
+}> {
+    const data = await apiClient<{ data: {
+        room: ChatRoom
+        dispute: ChatDisputeCase
+        eventMessage: ChatMessage | null
+        created: boolean
+    } }>(`/chat/rooms/${sourceRoomId}/dispute`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: reason?.trim() || undefined }),
     })
     return data.data
 }
