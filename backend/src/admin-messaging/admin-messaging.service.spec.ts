@@ -14,7 +14,10 @@ describe('AdminMessagingService', () => {
 
     const makeService = (users = [recipient]) => {
         const prisma = {
-            user: { findMany: jest.fn().mockResolvedValue(users) },
+            user: {
+                findMany: jest.fn().mockResolvedValue(users),
+                findFirst: jest.fn(),
+            },
             message: {
                 create: jest.fn().mockResolvedValue({
                     id: 'message-1',
@@ -24,7 +27,31 @@ describe('AdminMessagingService', () => {
                     sender: { id: 'admin-1', firstName: 'Admin', lastName: null, profileImage: null },
                 }),
             },
-            chatRoom: { update: jest.fn().mockResolvedValue({}) },
+            chatRoom: {
+                update: jest.fn().mockResolvedValue({}),
+                findFirst: jest.fn(),
+            },
+            supportNote: {
+                findMany: jest.fn(),
+                create: jest.fn(),
+                findFirst: jest.fn(),
+                delete: jest.fn(),
+            },
+            broadcastCampaign: {
+                create: jest.fn().mockResolvedValue({
+                    id: 'campaign-1',
+                    requested: users.length,
+                }),
+                update: jest.fn().mockResolvedValue({}),
+                findMany: jest.fn(),
+                findUnique: jest.fn(),
+                count: jest.fn(),
+            },
+            broadcastDelivery: {
+                createMany: jest.fn().mockResolvedValue({ count: users.length }),
+                update: jest.fn().mockResolvedValue({}),
+                count: jest.fn(),
+            },
         } as any;
         const chatService = {
             findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room-1' }),
@@ -84,6 +111,134 @@ describe('AdminMessagingService', () => {
         })).rejects.toBeInstanceOf(BadRequestException);
 
         expect(chatService.findOrCreateRoom).not.toHaveBeenCalled();
+    });
+
+    it('persists broadcast campaign and per-recipient delivery success', async () => {
+        const { service, prisma } = makeService();
+
+        const result = await service.send('admin-1', {
+            audience: AdminMessageAudience.ALL,
+            text: 'Platform update',
+            expectedRecipientCount: 1,
+        });
+
+        expect(result).toEqual(expect.objectContaining({
+            campaignId: 'campaign-1',
+            requested: 1,
+            sent: 1,
+            failed: 0,
+        }));
+        expect(prisma.broadcastCampaign.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.objectContaining({
+                    adminId: 'admin-1',
+                    audience: AdminMessageAudience.ALL,
+                    requested: 1,
+                }),
+            }),
+        );
+        expect(prisma.broadcastDelivery.createMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.arrayContaining([
+                    expect.objectContaining({
+                        campaignId: 'campaign-1',
+                        userId: recipient.id,
+                    }),
+                ]),
+            }),
+        );
+        expect(prisma.broadcastDelivery.update).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.objectContaining({
+                    status: 'SENT',
+                    roomId: 'room-1',
+                    messageId: 'message-1',
+                }),
+            }),
+        );
+        expect(prisma.broadcastCampaign.update).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.objectContaining({
+                    sent: 1,
+                    failed: 0,
+                    status: 'COMPLETED',
+                }),
+            }),
+        );
+    });
+
+    it('assigns only an active admin to a support conversation', async () => {
+        const { service, prisma, chatGateway } = makeService();
+        prisma.chatRoom.findFirst.mockResolvedValue({
+            id: 'support-room',
+            context: 'SUPPORT',
+            deletedAt: null,
+        });
+        prisma.user.findFirst.mockResolvedValue({ id: 'admin-2' });
+        prisma.chatRoom.update.mockResolvedValue({
+            id: 'support-room',
+            supportAssignedAdminId: 'admin-2',
+            supportAssignedAdmin: {
+                id: 'admin-2',
+                firstName: 'Agent',
+                lastName: 'Two',
+                email: 'agent2@example.com',
+                profileImage: null,
+            },
+        });
+
+        const result = await service.assignSupportRoom('support-room', 'admin-2');
+
+        expect(prisma.user.findFirst).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: expect.objectContaining({
+                    id: 'admin-2',
+                    role: UserRole.ADMIN,
+                    deletedAt: null,
+                }),
+            }),
+        );
+        expect(result.supportAssignedAdminId).toBe('admin-2');
+        expect(chatGateway.joinRoomForUser).toHaveBeenCalledWith('admin-2', 'support-room');
+    });
+
+    it('stores internal support notes separately from customer messages', async () => {
+        const { service, prisma } = makeService();
+        prisma.chatRoom.findFirst.mockResolvedValue({
+            id: 'support-room',
+            context: 'SUPPORT',
+            deletedAt: null,
+        });
+        prisma.supportNote.create.mockResolvedValue({
+            id: 'note-1',
+            chatRoomId: 'support-room',
+            authorId: 'admin-1',
+            body: 'Customer called about collection.',
+            author: {
+                id: 'admin-1',
+                firstName: 'Admin',
+                lastName: null,
+                email: 'admin@example.com',
+            },
+        });
+
+        const note = await service.addSupportNote(
+            'support-room',
+            'admin-1',
+            ' Customer called about collection. ',
+        );
+
+        expect(note.body).toBe('Customer called about collection.');
+        expect(prisma.message.create).not.toHaveBeenCalled();
+        expect(prisma.supportNote.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: {
+                    chatRoomId: 'support-room',
+                    authorId: 'admin-1',
+                    body: 'Customer called about collection.',
+                },
+            }),
+        );
     });
 
     it('rejects media URLs that are not from the configured CarMazium storage path', async () => {
