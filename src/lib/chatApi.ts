@@ -1,3 +1,4 @@
+// Production rollout marker: chat moderation safety (PR #86).
 // Re-export getAccessToken for use in ChatContext
 export { getAccessToken } from './supabase'
 
