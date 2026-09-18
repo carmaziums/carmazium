@@ -1082,6 +1082,436 @@ export class ChatService {
         };
     }
 
+    async blockRoom(
+        roomId: string,
+        userId: string,
+        dto: BlockChatRoomDto,
+    ) {
+        const room: any = await this.getRoom(roomId, userId);
+        if (
+            room.context !== ChatContext.RETAIL &&
+            room.context !== ChatContext.AUCTION
+        ) {
+            throw new BadRequestException(
+                'Only private vehicle conversations can be blocked.',
+            );
+        }
+        if (room.initiatorId !== userId && room.participantId !== userId) {
+            throw new ForbiddenException('Only a participant can block this conversation.');
+        }
+
+        const blockedUserId = room.initiatorId === userId
+            ? room.participantId
+            : room.initiatorId;
+        const reason = dto.reason?.trim() || null;
+
+        await this.prisma.chatBlock.upsert({
+            where: {
+                chatRoomId_blockerId_blockedUserId: {
+                    chatRoomId: roomId,
+                    blockerId: userId,
+                    blockedUserId,
+                },
+            },
+            update: {
+                revokedAt: null,
+                reason,
+            },
+            create: {
+                chatRoomId: roomId,
+                blockerId: userId,
+                blockedUserId,
+                reason,
+            },
+        });
+
+        return this.getRoom(roomId, userId);
+    }
+
+    async unblockRoom(roomId: string, userId: string) {
+        const room: any = await this.getRoom(roomId, userId);
+        if (
+            room.context !== ChatContext.RETAIL &&
+            room.context !== ChatContext.AUCTION
+        ) {
+            throw new BadRequestException(
+                'Only private vehicle conversations can be unblocked.',
+            );
+        }
+        if (room.initiatorId !== userId && room.participantId !== userId) {
+            throw new ForbiddenException('Only a participant can unblock this conversation.');
+        }
+
+        const blockedUserId = room.initiatorId === userId
+            ? room.participantId
+            : room.initiatorId;
+        const existing = await this.prisma.chatBlock.findUnique({
+            where: {
+                chatRoomId_blockerId_blockedUserId: {
+                    chatRoomId: roomId,
+                    blockerId: userId,
+                    blockedUserId,
+                },
+            },
+        });
+
+        if (existing && !existing.revokedAt) {
+            await this.prisma.chatBlock.update({
+                where: { id: existing.id },
+                data: { revokedAt: new Date() },
+            });
+        }
+
+        return this.getRoom(roomId, userId);
+    }
+
+    private async hydrateChatReport(report: any) {
+        return this.chatAttachmentService.hydrateMessage(report);
+    }
+
+    async reportMessage(
+        messageId: string,
+        reporterId: string,
+        dto: ReportChatMessageDto,
+    ) {
+        const reporterRole = await this.actorRole(reporterId);
+        if (!reporterRole || reporterRole === UserRole.ADMIN) {
+            throw new ForbiddenException('Only CarMazium members can report chat messages.');
+        }
+
+        const message = await this.prisma.message.findUnique({
+            where: { id: messageId },
+            include: {
+                sender: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        profileImage: true,
+                        role: true,
+                    },
+                },
+                chatRoom: {
+                    select: {
+                        id: true,
+                        initiatorId: true,
+                        participantId: true,
+                        context: true,
+                        listingId: true,
+                        deletedAt: true,
+                        listing: {
+                            select: { id: true, title: true },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!message || message.deletedAt || message.chatRoom.deletedAt) {
+            throw new NotFoundException('Message not found.');
+        }
+
+        await this.getRoom(message.chatRoomId, reporterId);
+
+        if (message.senderId === reporterId) {
+            throw new BadRequestException('You cannot report your own message.');
+        }
+        if (message.sender.role === UserRole.ADMIN) {
+            throw new BadRequestException(
+                'This moderation channel is for member-to-member messages.',
+            );
+        }
+        if (message.chatRoom.context === ChatContext.SUPPORT) {
+            throw new BadRequestException(
+                'Support conversations are handled directly by CarMazium support.',
+            );
+        }
+        if (message.content.startsWith(DISPUTE_EVENT_PREFIX)) {
+            throw new BadRequestException('System dispute events cannot be reported.');
+        }
+
+        const existing = await this.prisma.chatReport.findUnique({
+            where: {
+                messageId_reporterId: {
+                    messageId,
+                    reporterId,
+                },
+            },
+            include: {
+                reporter: {
+                    select: { id: true, firstName: true, lastName: true, email: true },
+                },
+                reportedUser: {
+                    select: { id: true, firstName: true, lastName: true, email: true, role: true },
+                },
+                reviewedBy: {
+                    select: { id: true, firstName: true, lastName: true, email: true },
+                },
+            },
+        });
+        if (existing) {
+            return {
+                report: await this.hydrateChatReport(existing),
+                created: false,
+            };
+        }
+
+        const report = await this.prisma.chatReport.create({
+            data: {
+                chatRoomId: message.chatRoomId,
+                messageId: message.id,
+                reporterId,
+                reportedUserId: message.senderId,
+                reason: dto.reason,
+                details: dto.details?.trim() || null,
+                messageContent: message.content,
+                attachmentPath: message.attachmentPath,
+                attachmentName: message.attachmentName,
+                attachmentMime: message.attachmentMime,
+                attachmentSize: message.attachmentSize,
+                roomContext: message.chatRoom.context,
+                listingId: message.chatRoom.listingId,
+                listingTitle: message.chatRoom.listing?.title ?? null,
+            },
+            include: {
+                reporter: {
+                    select: { id: true, firstName: true, lastName: true, email: true },
+                },
+                reportedUser: {
+                    select: { id: true, firstName: true, lastName: true, email: true, role: true },
+                },
+                reviewedBy: {
+                    select: { id: true, firstName: true, lastName: true, email: true },
+                },
+            },
+        });
+
+        const admins = await this.prisma.user.findMany({
+            where: { role: UserRole.ADMIN, deletedAt: null },
+            select: { id: true },
+        });
+
+        for (const admin of admins) {
+            try {
+                const notification = await this.notificationsService.create({
+                    userId: admin.id,
+                    type: 'CHAT_REPORT_OPENED',
+                    title: 'Chat message reported',
+                    message: report.listingTitle
+                        ? `A member reported a message about ${report.listingTitle}.`
+                        : 'A member reported a chat message.',
+                    link: '/dashboard/admin/messages?mode=moderation',
+                    data: {
+                        reportId: report.id,
+                        chatRoomId: report.chatRoomId,
+                        messageId: report.messageId,
+                    },
+                });
+                this.notificationsGateway.sendNotification(admin.id, notification);
+            } catch (error: any) {
+                console.warn(
+                    `[ChatService] Failed to notify admin ${admin.id} of chat report: ${error?.message}`,
+                );
+            }
+        }
+
+        return {
+            report: await this.hydrateChatReport(report),
+            created: true,
+        };
+    }
+
+    async listChatReports(
+        page = 1,
+        limit = 30,
+        status?: string,
+        search?: string,
+    ) {
+        const safePage = Math.max(page, 1);
+        const safeLimit = Math.min(Math.max(limit, 1), 100);
+        const where: Prisma.ChatReportWhereInput = {};
+
+        if (status) {
+            if (!Object.values(ChatReportStatus).includes(status as ChatReportStatus)) {
+                throw new BadRequestException('Unknown chat report status.');
+            }
+            where.status = status as ChatReportStatus;
+        }
+
+        const cleanSearch = search?.trim();
+        if (cleanSearch) {
+            where.OR = [
+                { messageContent: { contains: cleanSearch, mode: 'insensitive' } },
+                { details: { contains: cleanSearch, mode: 'insensitive' } },
+                { listingTitle: { contains: cleanSearch, mode: 'insensitive' } },
+                { reporter: { email: { contains: cleanSearch, mode: 'insensitive' } } },
+                { reportedUser: { email: { contains: cleanSearch, mode: 'insensitive' } } },
+            ];
+        }
+
+        const include = {
+            reporter: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    profileImage: true,
+                    role: true,
+                },
+            },
+            reportedUser: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    profileImage: true,
+                    role: true,
+                },
+            },
+            reviewedBy: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                },
+            },
+        };
+
+        const [rows, total] = await Promise.all([
+            this.prisma.chatReport.findMany({
+                where,
+                include,
+                orderBy: { createdAt: 'desc' },
+                skip: (safePage - 1) * safeLimit,
+                take: safeLimit,
+            }),
+            this.prisma.chatReport.count({ where }),
+        ]);
+
+        return {
+            data: await Promise.all(rows.map((row) => this.hydrateChatReport(row))),
+            pagination: {
+                total,
+                page: safePage,
+                limit: safeLimit,
+                totalPages: Math.ceil(total / safeLimit),
+            },
+        };
+    }
+
+    async updateChatReport(
+        reportId: string,
+        adminId: string,
+        dto: UpdateChatReportDto,
+    ) {
+        const role = await this.actorRole(adminId);
+        if (role !== UserRole.ADMIN) {
+            throw new ForbiddenException('Only an active CarMazium admin can review chat reports.');
+        }
+        if (dto.status === ChatReportStatus.OPEN) {
+            throw new BadRequestException(
+                'Use Reviewing, Resolved or Dismissed when handling a report.',
+            );
+        }
+
+        const existing = await this.prisma.chatReport.findUnique({
+            where: { id: reportId },
+        });
+        if (!existing) {
+            throw new NotFoundException('Chat report not found.');
+        }
+
+        if (
+            (existing.status === ChatReportStatus.RESOLVED ||
+                existing.status === ChatReportStatus.DISMISSED) &&
+            existing.status !== dto.status
+        ) {
+            throw new BadRequestException('This chat report has already been closed.');
+        }
+
+        if (
+            existing.status === ChatReportStatus.REVIEWING &&
+            existing.reviewedById &&
+            existing.reviewedById !== adminId
+        ) {
+            throw new ForbiddenException('This report is being reviewed by another admin.');
+        }
+
+        const updated = await this.prisma.chatReport.update({
+            where: { id: reportId },
+            data: {
+                status: dto.status,
+                reviewedById: adminId,
+                reviewedAt: new Date(),
+                ...(dto.adminNote !== undefined
+                    ? { adminNote: dto.adminNote.trim() || null }
+                    : {}),
+            },
+            include: {
+                reporter: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        profileImage: true,
+                        role: true,
+                    },
+                },
+                reportedUser: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        profileImage: true,
+                        role: true,
+                    },
+                },
+                reviewedBy: {
+                    select: { id: true, firstName: true, lastName: true, email: true },
+                },
+            },
+        });
+
+        if (
+            dto.status === ChatReportStatus.RESOLVED ||
+            dto.status === ChatReportStatus.DISMISSED
+        ) {
+            try {
+                const notification = await this.notificationsService.create({
+                    userId: updated.reporterId,
+                    type: 'CHAT_REPORT_REVIEWED',
+                    title: 'Chat report reviewed',
+                    message: 'CarMazium has reviewed the chat message you reported.',
+                    link: messageInboxLink(
+                        updated.reporter.role as UserRole,
+                        updated.chatRoomId,
+                    ),
+                    data: {
+                        reportId: updated.id,
+                        chatRoomId: updated.chatRoomId,
+                        status: updated.status,
+                    },
+                });
+                this.notificationsGateway.sendNotification(
+                    updated.reporterId,
+                    notification,
+                );
+            } catch (error: any) {
+                console.warn(
+                    `[ChatService] Failed to notify reporter ${updated.reporterId}: ${error?.message}`,
+                );
+            }
+        }
+
+        return this.hydrateChatReport(updated);
+    }
+
     /**
      * Enforces the current business rule whenever somebody attempts to send
      * or emit an interactive room event. Historical transcripts remain readable
