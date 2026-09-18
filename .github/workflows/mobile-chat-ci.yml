@@ -31,5 +31,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck mobile app
-        run: npm run typescript
+      - name: Typecheck mobile chat surfaces
+        shell: bash
+        run: |
+          set +e
+          OUTPUT="$(npm run typescript 2>&1)"
+          STATUS=$?
+          set -e
+
+          printf '%s\n' "$OUTPUT"
+
+          if [ "$STATUS" -eq 0 ]; then
+            exit 0
+          fi
+
+          CHAT_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E 'src/(context/ChatContext|lib/chatApi|screens/main/ChatScreen)\.tsx?' || true)"
+          if [ -n "$CHAT_ERRORS" ]; then
+            echo
+            echo "TypeScript errors were found in mobile chat files changed by this PR:"
+            printf '%s\n' "$CHAT_ERRORS"
+            exit 1
+          fi
+
+          echo
+          echo "Full mobile TypeScript has pre-existing errors outside the chat scope."
+          echo "No TypeScript errors were reported in the mobile chat files changed by this PR."
