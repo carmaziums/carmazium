@@ -361,10 +361,25 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     if (!listing.id) return;
     setIsSubmittingOffer(true);
     try {
-      await apiClient('/offers', {
-        method: 'POST',
-        body: JSON.stringify({ listingId: listing.id, amount: offerAmount }),
-      });
+      const isEditing = myOffer?.status === 'PENDING' && !!myOffer.id;
+      const response = isEditing
+        ? await apiClient<{ data: any }>(`/offers/${myOffer.id}/amend`, {
+            method: 'PATCH',
+            body: JSON.stringify({ amount: offerAmount }),
+          })
+        : await apiClient<{ data: any }>('/offers', {
+            method: 'POST',
+            body: JSON.stringify({ listingId: listing.id, amount: offerAmount }),
+          });
+      if (response?.data) {
+        setMyOffer({
+          id: response.data.id,
+          amount: Number(response.data.amount),
+          status: response.data.status,
+          message: response.data.message ?? null,
+        });
+        setOfferStatus(response.data.status);
+      }
       setOfferSubmitted(true);
     } catch (err: any) {
       Alert.alert('Offer Failed', err.message || 'Could not submit offer. Please try again.');
@@ -477,34 +492,26 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // Full offer object — kept alongside offerStatus so we can render the
   // OfferStatusChip on this screen with the amount, matching web
   // VehicleDetailPageClient.tsx L31-90 wording.
-  const [myOffer, setMyOffer] = useState<{ amount: number; status: string } | null>(null);
+  const [myOffer, setMyOffer] = useState<{ id: string; amount: number; status: string; message?: string | null } | null>(null);
   useEffect(() => {
     if (!listing.id || !currentUser) return;
-    apiClient<{ data: { status: string; amount: number } | null }>(`/offers/my/${listing.id}`)
+    apiClient<{ data: { id: string; status: string; amount: number; message?: string | null } | null }>(`/offers/my/${listing.id}`)
       .then(res => {
         if (res?.data?.status) {
           setOfferStatus(res.data.status);
-          setMyOffer({ amount: res.data.amount, status: res.data.status });
+          setMyOffer({
+            id: res.data.id,
+            amount: Number(res.data.amount),
+            status: res.data.status,
+            message: res.data.message ?? null,
+          });
+        } else {
+          setMyOffer(null);
+          setOfferStatus(null);
         }
       })
       .catch(() => {});
   }, [listing.id, currentUser]);
-
-  // "Last offer" teaser — public / seller-facing signal that negotiation is
-  // active on this listing (matches web VehicleDetailPageClient.tsx L650-657).
-  // Hidden from the buyer themselves since they see their own offer chip.
-  const [latestOffer, setLatestOffer] = useState<{ amount: number; createdAt: string; buyerId: string } | null>(null);
-  useEffect(() => {
-    if (!listing.id) return;
-    apiClient<{ data: { items?: Array<{ amount: number; createdAt: string; buyerId: string }> } }>(`/offers/listing/${listing.id}?limit=1`)
-      .then(res => {
-        const first = res?.data?.items?.[0];
-        if (first) setLatestOffer(first);
-      })
-      .catch(() => {});
-  }, [listing.id]);
-  const showLatestOfferTeaser =
-    !!latestOffer && (!currentUser || latestOffer.buyerId !== currentUser.id);
 
   const handleDeliveryRequest = async () => {
     if (!deliveryStreet.trim() || !deliveryCity.trim() || !deliveryPostcode.trim()) {
@@ -1804,6 +1811,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           const isActive = s === 'ACTIVE';
           const disabledLabel =
             s === 'SOLD' ? 'SOLD' :
+            s === 'OFFER_ACCEPTED' ? 'SALE PENDING' :
             s === 'DRAFT' ? 'PREVIEW ONLY (DRAFT)' :
             s === 'PENDING_REVIEW' ? 'UNDER ADMIN REVIEW' :
             s === 'REJECTED' ? 'REJECTED — NOT LISTED' :
@@ -1812,9 +1820,26 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <TouchableOpacity
               style={styles.makeOfferButton}
               activeOpacity={0.8}
-              onPress={() => setOfferModalVisible(true)}
+              onPress={() => {
+                if (myOffer?.status === 'COUNTERED') {
+                  navigation.navigate('BuyerOffers');
+                  return;
+                }
+                if (myOffer?.status === 'PENDING') {
+                  const value = Number(myOffer.amount);
+                  setOfferAmount(value);
+                  setOfferAmountDraft(String(value));
+                }
+                setOfferModalVisible(true);
+              }}
             >
-              <Text style={styles.makeOfferText}>MAKE AN OFFER</Text>
+              <Text style={styles.makeOfferText}>
+                {myOffer?.status === 'PENDING'
+                  ? 'EDIT MY OFFER'
+                  : myOffer?.status === 'COUNTERED'
+                    ? 'MANAGE COUNTER'
+                    : 'MAKE A PRIVATE OFFER'}
+              </Text>
               <Ionicons name="arrow-forward" size={18} color={Colors.white} style={styles.offerArrow} />
             </TouchableOpacity>
           ) : (
@@ -1829,7 +1854,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       <BottomSheet
         visible={offerModalVisible}
         onClose={closeOfferFlow}
-        title="Make an Offer"
+        title={myOffer?.status === 'PENDING' ? 'Edit My Offer' : 'Make a Private Offer'}
         avoidKeyboard
       >
         {!offerSubmitted ? (
@@ -1901,7 +1926,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {isSubmittingOffer ? (
                 <ActivityIndicator size="small" color={Colors.white} />
               ) : (
-                <Text style={styles.submitOfferText}>Submit Offer</Text>
+                <Text style={styles.submitOfferText}>{myOffer?.status === 'PENDING' ? 'Update Offer' : 'Submit Private Offer'}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -1910,7 +1935,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <View style={styles.successIconWrapper}>
               <Ionicons name="checkmark" size={32} color={Colors.white} />
             </View>
-            <Text style={styles.successTitle}>Offer Sent!</Text>
+            <Text style={styles.successTitle}>{myOffer?.status === 'PENDING' ? 'Offer Updated!' : 'Offer Sent!'}</Text>
             <Text style={styles.successSubtitle}>
               We have forwarded your offer of <Text style={styles.boldText}>{formatPrice(offerAmount)}</Text> to {listing.dealer}. They will review and respond to you shortly.
             </Text>
