@@ -7,6 +7,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { EmailService } from '../email/email.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
+import { getListingSubmissionMissingFields, listingRequiresHpi } from '../listings/listing-readiness';
 
 @Injectable()
 export class PaymentsService {
@@ -21,6 +22,77 @@ export class PaymentsService {
         private readonly emailService: EmailService,
         private readonly moduleRef: ModuleRef,
     ) {}
+
+    private async getListingFeeReadiness(listingId: string) {
+        const listing = await this.prisma.listing.findUnique({
+            where: { id: listingId },
+            include: { hpiReport: { select: { id: true } } },
+        });
+
+        if (!listing || listing.deletedAt) {
+            throw new NotFoundException('Listing not found');
+        }
+
+        const missingFields = getListingSubmissionMissingFields(listing);
+        const missingHpi = listingRequiresHpi(listing.createdAt) && !listing.hpiReport;
+
+        return {
+            listing,
+            ready: missingFields.length === 0 && !missingHpi,
+            missingFields,
+            missingHpi,
+        };
+    }
+
+    private assertListingFeeReady(
+        readiness: { missingFields: string[]; missingHpi: boolean },
+    ): void {
+        if (readiness.missingFields.length > 0) {
+            throw new BadRequestException(
+                `Listing is not ready for payment. Missing: ${readiness.missingFields.join(', ')}.`,
+            );
+        }
+        if (readiness.missingHpi) {
+            throw new BadRequestException(
+                'A CarMazium vehicle history (HPI) report must be requested before paying the listing fee.',
+            );
+        }
+    }
+
+    private async submitPaidListingIfReady(listingId: string, badgeTier?: string): Promise<boolean> {
+        const readiness = await this.getListingFeeReadiness(listingId);
+
+        if (!readiness.ready) {
+            // The payment is genuine and remains COMPLETED, but an old/in-flight
+            // checkout must not bypass the current submission gate. Keep the
+            // listing editable as a draft; publishListing() will recognise the
+            // completed fee later and submit it without charging again.
+            if (badgeTier) {
+                await this.prisma.listing.update({
+                    where: { id: listingId },
+                    data: { badgeTier },
+                });
+            }
+            this.logger.warn(
+                `Paid listing ${listingId} remains draft because submission requirements are incomplete: ${[
+                    ...readiness.missingFields,
+                    ...(readiness.missingHpi ? ['HPI report request'] : []),
+                ].join(', ')}`,
+            );
+            return false;
+        }
+
+        await this.prisma.listing.update({
+            where: { id: listingId },
+            data: {
+                status: 'PENDING_REVIEW',
+                ...(badgeTier ? { badgeTier } : {}),
+                rejectionReason: null,
+            },
+        });
+        this.notifyListingSubmittedForReview(listingId).catch(() => { });
+        return true;
+    }
 
     /**
      * Notify a seller in-app that their listing fee payment went through and the
