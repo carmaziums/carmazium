@@ -41,7 +41,7 @@ const REQUIRED_FIELDS = [
         label: 'Registered Keeper Declaration',
         check: (l: any) => l.isLegalRegisteredKeeper === true || (l.isLegalRegisteredKeeper === false && !!l.notOwnerRelationship?.trim()),
     },
-
+]
 
 function getListingCompleteness(listing: any) {
     const missing = REQUIRED_FIELDS.filter(f => !f.check(listing)).map(f => f.label)
