@@ -150,6 +150,14 @@ export function ImageUpload({
     const [coverSelectionMessage, setCoverSelectionMessage] = React.useState<string | null>(null)
     const [reorderDragIdx, setReorderDragIdx] = React.useState<number | null>(null)
     const [reorderOverIdx, setReorderOverIdx] = React.useState<number | null>(null)
+    const reorderPointerRef = React.useRef<{ pointerId: number; index: number } | null>(null)
+    const originalImageSourcesRef = React.useRef(new Set(existingImages.map(url => parseVehicleImagePresentation(url).src)))
+
+    React.useEffect(() => {
+        for (const url of existingImages) {
+            originalImageSourcesRef.current.add(parseVehicleImagePresentation(url).src)
+        }
+    }, [existingImages])
 
     // Validation constants
     // Source photos may be much larger than the final upload. They are resized/compressed
@@ -316,15 +324,69 @@ export function ImageUpload({
     }
 
     const handleDelete = async (imageUrl: string, index: number) => {
-        if (!confirm('Are you sure you want to delete this image?')) return
+        if (!confirm('Are you sure you want to remove this image?')) return
+
+        const source = parseVehicleImagePresentation(imageUrl).src
+        const existedWhenEditorOpened = originalImageSourcesRef.current.has(source)
 
         try {
-            await deleteImage(parseVehicleImagePresentation(imageUrl).src, 'listings')
+            // Existing listing photos are only removed from the pending form.
+            // The listing record is still pointing at them until Save succeeds,
+            // so deleting the physical object here could leave a broken listing
+            // if the user cancels or the later save fails. Newly uploaded,
+            // unsaved photos are safe to delete immediately.
+            if (!existedWhenEditorOpened) {
+                await deleteImage(source, 'listings')
+            }
             setImages(prev => prev.filter((_, i) => i !== index))
         } catch (error) {
             console.error('Delete failed:', error)
             alert(`Failed to delete image: ${error instanceof Error ? error.message : 'Unknown error'}`)
         }
+    }
+
+    const moveImageTo = (from: number, target: number) => {
+        if (from === target || from < 0 || target < 0 || from >= images.length || target >= images.length) return
+        setImages(prev => {
+            const next = [...prev]
+            const [moved] = next.splice(from, 1)
+            next.splice(target, 0, moved)
+            return next
+        })
+    }
+
+    const beginPointerReorder = (index: number, event: React.PointerEvent<HTMLButtonElement>) => {
+        if (event.pointerType === 'mouse' && event.button !== 0) return
+        event.preventDefault()
+        event.stopPropagation()
+        event.currentTarget.setPointerCapture(event.pointerId)
+        reorderPointerRef.current = { pointerId: event.pointerId, index }
+        setReorderDragIdx(index)
+    }
+
+    const handlePointerReorder = (event: React.PointerEvent<HTMLButtonElement>) => {
+        const drag = reorderPointerRef.current
+        if (!drag || drag.pointerId !== event.pointerId) return
+
+        event.preventDefault()
+        const targetCard = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-photo-index]')
+        const target = targetCard ? Number(targetCard.dataset.photoIndex) : NaN
+        if (!Number.isInteger(target) || target < 0 || target >= images.length || target === drag.index) return
+
+        moveImageTo(drag.index, target)
+        drag.index = target
+        setReorderDragIdx(target)
+    }
+
+    const endPointerReorder = (event: React.PointerEvent<HTMLButtonElement>) => {
+        const drag = reorderPointerRef.current
+        if (!drag || drag.pointerId !== event.pointerId) return
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId)
+        }
+        reorderPointerRef.current = null
+        setReorderDragIdx(null)
+        setReorderOverIdx(null)
     }
 
     // Reorder drag handlers
@@ -355,12 +417,7 @@ export function ImageUpload({
             return
         }
 
-        setImages(prev => {
-            const next = [...prev]
-            const [moved] = next.splice(reorderDragIdx, 1)
-            next.splice(dropIdx, 0, moved)
-            return next
-        })
+        moveImageTo(reorderDragIdx, dropIdx)
         setReorderDragIdx(null)
         setReorderOverIdx(null)
     }
@@ -548,7 +605,7 @@ export function ImageUpload({
                             All Uploaded Photos
                         </h3>
                         {images.length > 1 && (
-                            <p className="text-xs text-primary font-bold hidden sm:block">Drag thumbnails to reorder</p>
+                            <p className="text-xs text-primary font-bold hidden sm:block">Drag photos to reorder</p>
                         )}
                     </div>
 
@@ -560,6 +617,7 @@ export function ImageUpload({
                             return (
                                 <div
                                     key={imgObj.url}
+                                    data-photo-index={index}
                                     draggable
                                     onDragStart={(e) => onReorderDragStart(e, index)}
                                     onDragOver={(e) => onReorderDragOver(e, index)}
@@ -589,6 +647,21 @@ export function ImageUpload({
                                             <Star size={12} fill="currentColor" /> Cover
                                         </div>
                                     )}
+
+                                    <button
+                                        type="button"
+                                        aria-label={`Drag photo ${index + 1} to reorder`}
+                                        title="Drag to reorder"
+                                        onPointerDown={(event) => beginPointerReorder(index, event)}
+                                        onPointerMove={handlePointerReorder}
+                                        onPointerUp={endPointerReorder}
+                                        onPointerCancel={endPointerReorder}
+                                        onClick={(event) => event.stopPropagation()}
+                                        className="absolute bottom-2 right-2 z-10 inline-flex touch-none items-center gap-1 rounded-lg bg-black/70 px-2 py-1 text-[10px] font-bold text-white shadow-lg active:cursor-grabbing"
+                                        style={{ touchAction: 'none' }}
+                                    >
+                                        <GripVertical size={11} /> Drag
+                                    </button>
 
                                     {/* Cover / delete controls */}
                                     {index !== 0 && (
