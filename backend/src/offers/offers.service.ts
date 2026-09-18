@@ -930,7 +930,13 @@ export class OffersService {
             where: { id: offerId },
             include: {
                 listing: {
-                    select: { id: true, title: true, sellerId: true },
+                    select: {
+                        id: true,
+                        title: true,
+                        sellerId: true,
+                        status: true,
+                        price: true,
+                    },
                 },
             },
         });
@@ -938,52 +944,70 @@ export class OffersService {
         if (!offer) {
             throw new NotFoundException('Offer not found.');
         }
-
         if (offer.buyerId !== buyerId) {
             throw new ForbiddenException('You do not own this offer.');
         }
-
         if (offer.status !== 'COUNTERED') {
-            throw new BadRequestException('This offer has not been countered or is already closed.');
+            throw new BadRequestException(
+                'This offer has not been countered or is already closed.',
+            );
         }
         if (offer.lastCounteredBy === 'BUYER') {
-            throw new BadRequestException('Awaiting the seller\'s response to your previous counter.');
+            throw new BadRequestException(
+                'Awaiting the seller\'s response to your previous counter.',
+            );
+        }
+        if (offer.listing.status !== 'ACTIVE') {
+            throw new BadRequestException(
+                'This vehicle is no longer available for negotiation.',
+            );
+        }
+        if (offer.counterExpiresAt && offer.counterExpiresAt < new Date()) {
+            await this.prisma.offer.updateMany({
+                where: { id: offerId, status: 'COUNTERED' },
+                data: { status: 'REJECTED', counterExpiresAt: null },
+            });
+            throw new BadRequestException(
+                'This offer has expired after the 48-hour counter window.',
+            );
         }
 
-        // Expiry check: if the 48-hour counter window has passed, auto-reject
-        if (
-            offer.counterExpiresAt &&
-            offer.counterExpiresAt < new Date() &&
-            offer.status === 'COUNTERED'
-        ) {
-            await this.prisma.offer.update({ where: { id: offerId }, data: { status: 'REJECTED' } });
-            throw new BadRequestException('This offer has expired after the 48-hour counter window.');
-        }
-
-        // Buyer re-counter path
         if (status === OfferResponseStatus.COUNTERED) {
-            if (!counterAmount || counterAmount <= 0) {
-                throw new BadRequestException('Counter amount is required when issuing a counter-offer.');
+            if (!counterAmount || !Number.isFinite(counterAmount) || counterAmount <= 0) {
+                throw new BadRequestException(
+                    'A valid counter amount is required when issuing a counter-offer.',
+                );
             }
             if (offer.counterAttemptsBuyer >= 5) {
-                throw new BadRequestException('Counter-offer limit reached — awaiting seller final decision.');
+                throw new BadRequestException(
+                    'Counter-offer limit reached — awaiting seller final decision.',
+                );
             }
 
-            const updatedOffer = await this.prisma.$transaction(async (tx) => {
-                return tx.offer.update({
-                    where: { id: offerId },
-                    data: {
-                        status: 'COUNTERED',
-                        buyerCounterAmount: counterAmount,
-                        counterAmount: counterAmount,
-                        counterAttemptsBuyer: { increment: 1 },
-                        lastCounteredBy: 'BUYER',
-                        counterExpiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
-                    },
-                });
+            const askingPrice = Number(offer.listing.price);
+            this.validateBuyerOfferAmount(counterAmount, askingPrice);
+
+            const sellerCounter = Number(offer.counterAmount);
+            if (counterAmount >= sellerCounter) {
+                throw new BadRequestException(
+                    'Your counter must be below the seller\'s current counter. Accept the seller counter instead if you agree with that amount.',
+                );
+            }
+
+            const updatedOffer = await this.prisma.offer.update({
+                where: { id: offerId },
+                data: {
+                    status: 'COUNTERED',
+                    buyerCounterAmount: counterAmount,
+                    counterAmount,
+                    counterAttemptsBuyer: { increment: 1 },
+                    lastCounteredBy: 'BUYER',
+                    counterExpiresAt: new Date(
+                        Date.now() + COUNTER_OFFER_LIFETIME_MS,
+                    ),
+                },
             });
 
-            // Send limit-reached notifications if buyer just hit the 5th counter
             if (offer.counterAttemptsBuyer + 1 === 5) {
                 try {
                     const buyerNotif = await this.notificationsService.create({
@@ -997,7 +1021,10 @@ export class OffersService {
                         actionType: 'COUNTER_LIMIT_REACHED',
                         data: { listingId: offer.listingId, offerId: offer.id },
                     });
-                    this.notificationsGateway.sendNotification(offer.buyerId, buyerNotif);
+                    this.notificationsGateway.sendNotification(
+                        offer.buyerId,
+                        buyerNotif,
+                    );
 
                     if (offer.listing.sellerId) {
                         const sellerNotif = await this.notificationsService.create({
@@ -1009,16 +1036,24 @@ export class OffersService {
                             entityType: 'OFFER',
                             entityId: offer.id,
                             actionType: 'COUNTER_LIMIT_REACHED',
-                            data: { listingId: offer.listingId, offerId: offer.id },
+                            data: {
+                                listingId: offer.listingId,
+                                offerId: offer.id,
+                            },
                         });
-                        this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotif);
+                        this.notificationsGateway.sendNotification(
+                            offer.listing.sellerId,
+                            sellerNotif,
+                        );
                     }
                 } catch (error) {
-                    console.error('[OffersService] Failed to send counter limit notifications (buyer):', error);
+                    console.error(
+                        '[OffersService] Failed to send counter limit notifications (buyer):',
+                        error,
+                    );
                 }
             }
 
-            // Notify the seller that the buyer re-countered
             if (offer.listing.sellerId) {
                 try {
                     const sellerNotif = await this.notificationsService.create({
@@ -1032,9 +1067,15 @@ export class OffersService {
                         actionType: 'COUNTERED',
                         data: { listingId: offer.listingId, offerId: offer.id },
                     });
-                    this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotif);
+                    this.notificationsGateway.sendNotification(
+                        offer.listing.sellerId,
+                        sellerNotif,
+                    );
                 } catch (error) {
-                    console.error('[OffersService] Failed to notify seller of buyer re-counter:', error);
+                    console.error(
+                        '[OffersService] Failed to notify seller of buyer re-counter:',
+                        error,
+                    );
                 }
             }
 
@@ -1042,41 +1083,38 @@ export class OffersService {
         }
 
         const prismaStatus: OfferStatus = status as unknown as OfferStatus;
-
-        const updated = await this.prisma.offer.update({
-            where: { id: offerId },
-            data: {
-                status: prismaStatus,
-                finalAmount: prismaStatus === 'ACCEPTED' ? offer.counterAmount : undefined
-            },
-        });
+        let updated: Offer;
 
         if (prismaStatus === 'ACCEPTED') {
-            await this.prisma.offer.updateMany({
-                where: {
-                    listingId: offer.listingId,
-                    id: { not: offerId },
-                    status: 'PENDING',
+            const finalAmount = Number(offer.counterAmount);
+            updated = await this.closeRetailDeal(offer, finalAmount);
+        } else {
+            updated = await this.prisma.offer.update({
+                where: { id: offerId },
+                data: {
+                    status: prismaStatus,
+                    counterExpiresAt: null,
                 },
-                data: { status: 'REJECTED' },
-            });
-            await this.prisma.listing.update({
-                where: { id: offer.listingId },
-                data: { status: 'OFFER_ACCEPTED' }
             });
         }
 
-        // Notify the seller (non-fatal — deal is already recorded)
         if (offer.listing.sellerId) {
             try {
-                const notifTitle = prismaStatus === 'ACCEPTED' ? '💰 Counter Offer Accepted!' : 'Counter Offer Declined';
-                const notifMessage = prismaStatus === 'ACCEPTED'
-                    ? `The buyer accepted your counter offer of £${Number(offer.counterAmount).toLocaleString('en-GB')} for "${offer.listing.title}"! Contact them to finalize, then mark the listing as Sold from your dashboard.`
-                    : `The buyer declined your counter offer for "${offer.listing.title}".`;
+                const notifTitle =
+                    prismaStatus === 'ACCEPTED'
+                        ? 'Counter Offer Accepted'
+                        : 'Counter Offer Declined';
+                const notifMessage =
+                    prismaStatus === 'ACCEPTED'
+                        ? `The buyer accepted your counter offer of £${Number(offer.counterAmount).toLocaleString('en-GB')} for "${offer.listing.title}". The vehicle is now Sale Pending until you complete or cancel the deal.`
+                        : `The buyer declined your counter offer for "${offer.listing.title}".`;
 
                 const sellerNotification = await this.notificationsService.create({
                     userId: offer.listing.sellerId,
-                    type: prismaStatus === 'ACCEPTED' ? 'OFFER_ACCEPTED' : 'OFFER_REJECTED',
+                    type:
+                        prismaStatus === 'ACCEPTED'
+                            ? 'OFFER_ACCEPTED'
+                            : 'OFFER_REJECTED',
                     title: notifTitle,
                     message: notifMessage,
                     link: '/dashboard/seller/offers',
@@ -1085,12 +1123,23 @@ export class OffersService {
                     actionType: prismaStatus,
                     data: { listingId: offer.listingId, offerId: offer.id },
                 });
-                this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
+                this.notificationsGateway.sendNotification(
+                    offer.listing.sellerId,
+                    sellerNotification,
+                );
 
-                // Email the seller when buyer accepts counter — same "Offer
-                // accepted" toggle as the buyer-side acceptance email above.
-                if (prismaStatus === 'ACCEPTED' && offer.counterAmount && await this.notificationsService.shouldSendEmail(offer.listing.sellerId, 'OFFER_ACCEPTED')) {
-                    const seller = await this.prisma.user.findUnique({ where: { id: offer.listing.sellerId }, select: { email: true, firstName: true } });
+                if (
+                    prismaStatus === 'ACCEPTED' &&
+                    offer.counterAmount &&
+                    await this.notificationsService.shouldSendEmail(
+                        offer.listing.sellerId,
+                        'OFFER_ACCEPTED',
+                    )
+                ) {
+                    const seller = await this.prisma.user.findUnique({
+                        where: { id: offer.listing.sellerId },
+                        select: { email: true, firstName: true },
+                    });
                     if (seller?.email) {
                         this.emailService.sendCounterAcceptedEmail(
                             seller.email,
@@ -1101,12 +1150,16 @@ export class OffersService {
                     }
                 }
             } catch (notifErr) {
-                console.error('[OffersService] Failed to notify seller after counter acceptance:', notifErr?.message);
+                console.error(
+                    '[OffersService] Failed to notify seller after counter acceptance:',
+                    notifErr?.message,
+                );
             }
         }
 
         return updated;
     }
+
     /**
      * Seller/Dealer: Get all offers received across all their listings
      */
