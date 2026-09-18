@@ -610,7 +610,22 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const validateStep = (): boolean => {
         switch (currentStep) {
             case 1: {
-                const baseValid = !!(formData.vrm && formData.make && formData.model && formData.year && formData.mileage && formData.fuelType && formData.transmission && formData.title && formData.title.length >= 5 && formData.location && formData.owners)
+                const baseValid = !!(
+                    formData.vrm &&
+                    formData.make &&
+                    formData.model &&
+                    formData.year &&
+                    formData.mileage &&
+                    formData.fuelType &&
+                    formData.transmission &&
+                    formData.bodyType &&
+                    formData.title &&
+                    formData.title.length >= 5 &&
+                    formData.location &&
+                    formData.owners &&
+                    formData.description.trim() &&
+                    formData.condition
+                )
                 const isKeeperOrExplained = formData.isLegalRegisteredKeeper === true
                     || (formData.isLegalRegisteredKeeper === false && (formData.notOwnerRelationship ?? '').trim() !== '')
                 const declarationsValid = formData.writeOffCategory !== '' && formData.stolenRecovered !== null && formData.hasOutstandingFinance !== null && isKeeperOrExplained && formData.declarationAcknowledged
@@ -623,7 +638,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 }
                 return baseValid && declarationsValid
             }
-            case 2: return editId ? formData.images.length > 0 : formData.images.length >= 10
+            case 2: return formData.images.length >= 10
             case 3: {
                 const pMin = parseFloat(formData.priceMin)
                 const pAsk = parseFloat(formData.priceAsking)
