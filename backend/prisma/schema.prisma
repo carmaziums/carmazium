@@ -380,6 +380,11 @@ model User {
   disputesJoined             DisputeCase[]            @relation("DisputeJoinedAdmin")
   disputesResolved           DisputeCase[]            @relation("DisputeResolvedBy")
   disputeReadStates          DisputeReadState[]
+  chatReportsFiled           ChatReport[]             @relation("ChatReportReporter")
+  chatReportsAgainst         ChatReport[]             @relation("ChatReportReportedUser")
+  chatReportsReviewed        ChatReport[]             @relation("ChatReportReviewer")
+  chatBlocksCreated          ChatBlock[]              @relation("ChatBlockBlocker")
+  chatBlocksReceived         ChatBlock[]              @relation("ChatBlockBlockedUser")
   messages                 Message[]
   notifications            Notification[]
   watchlistItems           WatchlistItem[]
@@ -1096,6 +1101,25 @@ enum DisputeStatus {
   @@map("dispute_status")
 }
 
+enum ChatReportReason {
+  HARASSMENT
+  SCAM_FRAUD
+  SPAM
+  INAPPROPRIATE_CONTENT
+  OTHER
+
+  @@map("chat_report_reason")
+}
+
+enum ChatReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+
+  @@map("chat_report_status")
+}
+
 enum BroadcastCampaignStatus {
   SCHEDULED
   SENDING
@@ -1136,6 +1160,8 @@ model ChatRoom {
   supportNotes         SupportNote[]
   disputeAsSource      DisputeCase?  @relation("DisputeSourceRoom")
   disputeCase          DisputeCase?  @relation("DisputeChatRoom")
+  reports              ChatReport[]
+  blocks               ChatBlock[]
   messages             Message[]
 
   @@index([initiatorId])
@@ -1161,14 +1187,74 @@ model Message {
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
 
-  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
-  sender   User     @relation(fields: [senderId], references: [id])
+  chatRoom ChatRoom      @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  sender   User          @relation(fields: [senderId], references: [id])
+  reports  ChatReport[]
 
   @@unique([senderId, clientMessageId])
   @@index([chatRoomId])
   @@index([senderId])
   @@index([chatRoomId, createdAt(sort: Desc), id(sort: Desc)])
   @@map("messages")
+}
+
+model ChatReport {
+  id                String           @id @default(uuid())
+  chatRoomId        String
+  messageId         String
+  reporterId        String
+  reportedUserId    String
+  reason            ChatReportReason
+  details           String?
+  messageContent    String
+  attachmentPath    String?
+  attachmentName    String?
+  attachmentMime    String?
+  attachmentSize    Int?
+  roomContext       ChatContext
+  listingId         String?
+  listingTitle      String?
+  status            ChatReportStatus @default(OPEN)
+  reviewedById      String?
+  reviewedAt        DateTime?
+  adminNote         String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  chatRoom     ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Restrict)
+  message      Message  @relation(fields: [messageId], references: [id], onDelete: Restrict)
+  reporter     User     @relation("ChatReportReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  reportedUser User     @relation("ChatReportReportedUser", fields: [reportedUserId], references: [id], onDelete: Restrict)
+  reviewedBy   User?    @relation("ChatReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([messageId, reporterId])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([chatRoomId])
+  @@index([reporterId])
+  @@index([reportedUserId])
+  @@index([reviewedById])
+  @@map("chat_reports")
+}
+
+model ChatBlock {
+  id            String    @id @default(uuid())
+  chatRoomId    String
+  blockerId     String
+  blockedUserId String
+  reason        String?
+  revokedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  chatRoom    ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  blocker     User     @relation("ChatBlockBlocker", fields: [blockerId], references: [id], onDelete: Restrict)
+  blockedUser User     @relation("ChatBlockBlockedUser", fields: [blockedUserId], references: [id], onDelete: Restrict)
+
+  @@unique([chatRoomId, blockerId, blockedUserId])
+  @@index([chatRoomId, revokedAt])
+  @@index([blockerId])
+  @@index([blockedUserId])
+  @@map("chat_blocks")
 }
 
 model SupportNote {
