@@ -22,7 +22,15 @@ export class DashboardService {
             offers,
             history,
         ] = await Promise.all([
-            this.prisma.bid.count({ where: { bidderId: userId, createdAt: dateFilter, cancelledAt: null } }),
+            this.prisma.bid.count({
+                where: {
+                    bidderId: userId,
+                    createdAt: dateFilter,
+                    cancelledAt: null,
+                    archivedAt: null,
+                    listing: { auction: { status: 'ACTIVE' } },
+                },
+            }),
             this.prisma.offer.count({ where: { buyerId: userId, status: { in: ['PENDING', 'COUNTERED'] }, createdAt: dateFilter } }),
             this.prisma.watchlistItem.count({ where: { userId, createdAt: dateFilter } }),
             this.prisma.auction.count({ where: { winnerId: userId, createdAt: dateFilter } }),
@@ -34,6 +42,7 @@ export class DashboardService {
                     id: true,
                     amount: true,
                     createdAt: true,
+                    archivedAt: true,
                     listingId: true,
                     listing: {
                         select: {
@@ -90,13 +99,14 @@ export class DashboardService {
             bids: (bids as any[]).map(b => ({
                 id: b.id,
                 amount: Number(b.amount),
-                auctionStatus: b.listing?.auction?.status ?? 'ENDED',
+                auctionStatus: b.archivedAt ? 'ENDED' : (b.listing?.auction?.status ?? 'ENDED'),
                 auctionId: b.listing?.auction?.id ?? null,
-                isWinner: b.listing?.auction?.winnerId === userId,
+                isArchived: Boolean(b.archivedAt),
+                isWinner: !b.archivedAt && b.listing?.auction?.winnerId === userId,
                 winningBidAmount: b.listing?.auction?.winningBidAmount
                     ? Number(b.listing.auction.winningBidAmount)
                     : null,
-                paymentDeadline: b.listing?.auction?.endTime
+                paymentDeadline: !b.archivedAt && b.listing?.auction?.endTime
                     ? new Date(new Date(b.listing.auction.endTime).getTime() + 24 * 60 * 60 * 1000).toISOString()
                     : null,
                 bidCount: null,
