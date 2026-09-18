@@ -34,9 +34,19 @@ export class ChatGateway
     server: Server;
 
     private readonly logger = new Logger(ChatGateway.name);
-    /** userId -> ordered list of socket ids (oldest first). Max MAX_SOCKETS_PER_USER per user. */
+    /** Local cache retained only for diagnostic helpers; authoritative realtime
+     * membership/presence is represented by Socket.IO user rooms so the Redis
+     * adapter can coordinate it across backend instances. */
     private connectedUsers: Map<string, string[]> = new Map();
     private static readonly MAX_SOCKETS_PER_USER = 5;
+
+    private userRoom(userId: string): string {
+        return `user:${userId}`;
+    }
+
+    private async userSockets(userId: string): Promise<any[]> {
+        return this.server?.in(this.userRoom(userId)).fetchSockets() ?? [];
+    }
 
     constructor(
         private readonly chatService: ChatService,
@@ -81,25 +91,36 @@ export class ChatGateway
                 return;
             }
 
-            // Store user data on socket for later use
+            // Store user data on socket for later use. A per-user Socket.IO
+            // room is the cross-instance presence primitive used by the Redis
+            // adapter.
             client.data.userId = userId;
+            client.data.connectedAt = Date.now();
 
-            // Enforce per-user socket limit (disconnect oldest when over limit)
-            let socketIds = this.connectedUsers.get(userId);
-            if (!socketIds) {
-                socketIds = [];
-                this.connectedUsers.set(userId, socketIds);
+            const existingSockets = await this.userSockets(userId);
+            const wasOffline = existingSockets.length === 0;
+
+            // Enforce the socket limit across all backend instances, not just
+            // the process that accepted this connection.
+            const oldestFirst = [...existingSockets].sort(
+                (a: any, b: any) =>
+                    Number(a.data?.connectedAt || 0) - Number(b.data?.connectedAt || 0),
+            );
+            while (oldestFirst.length >= ChatGateway.MAX_SOCKETS_PER_USER) {
+                const oldest = oldestFirst.shift();
+                oldest?.emit('error', {
+                    code: 'CONNECTION_LIMIT',
+                    message: 'Too many connections; reconnecting.',
+                });
+                oldest?.disconnect(true);
             }
-            while (socketIds.length >= ChatGateway.MAX_SOCKETS_PER_USER && socketIds.length > 0) {
-                const oldestId = socketIds.shift();
-                const oldestSocket = this.server?.sockets?.sockets?.get(oldestId!);
-                if (oldestSocket) {
-                    oldestSocket.emit('error', { code: 'CONNECTION_LIMIT', message: 'Too many connections; reconnecting.' });
-                    oldestSocket.disconnect(true);
-                }
-            }
-            const wasOffline = socketIds.length === 0;
+
+            await client.join(this.userRoom(userId));
+
+            // Keep a small local cache for diagnostic helpers only.
+            const socketIds = this.connectedUsers.get(userId) ?? [];
             socketIds.push(client.id);
+            this.connectedUsers.set(userId, socketIds);
 
             // Auto-join user's existing chat rooms
             const roomIds = await this.chatService.getUserRoomIds(userId);
@@ -120,8 +141,15 @@ export class ChatGateway
             // every conversation partner reads as offline until their next
             // connect/disconnect.
             const partnerIds = await this.chatService.getUserPresencePartnerIds(userId);
-            const onlineUserIds = partnerIds
-                .filter((id) => this.connectedUsers.has(id));
+            const onlineChecks = await Promise.all(
+                partnerIds.map(async (partnerId) => ({
+                    partnerId,
+                    online: (await this.userSockets(partnerId)).length > 0,
+                })),
+            );
+            const onlineUserIds = onlineChecks
+                .filter((entry) => entry.online)
+                .map((entry) => entry.partnerId);
             client.emit('presence:snapshot', { onlineUserIds });
 
             this.logger.log(
@@ -147,15 +175,18 @@ export class ChatGateway
         const userId = client.data.userId;
         if (userId) {
             const socketIds = this.connectedUsers.get(userId);
-            let wentOffline = false;
             if (socketIds) {
                 const idx = socketIds.indexOf(client.id);
                 if (idx !== -1) socketIds.splice(idx, 1);
                 if (socketIds.length === 0) {
                     this.connectedUsers.delete(userId);
-                    wentOffline = true;
                 }
             }
+
+            // Socket.IO removes the disconnecting client from its rooms before
+            // this lifecycle hook completes. Query the distributed user room so
+            // another socket on another Fly instance keeps presence online.
+            const wentOffline = (await this.userSockets(userId)).length === 0;
 
             // Last socket for this user gone — tell their conversation
             // partners so the "Online" indicator doesn't lie after they've
@@ -197,7 +228,7 @@ export class ChatGateway
         }
 
         try {
-            this.chatRateLimit.consumeMessage(userId);
+            await this.chatRateLimit.consumeMessage(userId);
             const { message, created } = await this.chatService.sendMessage(
                 data.roomId,
                 userId,
@@ -289,7 +320,7 @@ export class ChatGateway
         if (!userId) return;
 
         try {
-            this.chatRateLimit.consumeTyping(userId);
+            await this.chatRateLimit.consumeTyping(userId);
             await this.chatService.assertCanMessageRoom(data.roomId, userId);
             client.to(`room:${data.roomId}`).emit('user:typing', {
                 roomId: data.roomId,
@@ -314,7 +345,7 @@ export class ChatGateway
         if (!userId) return;
 
         try {
-            this.chatRateLimit.consumeTyping(userId);
+            await this.chatRateLimit.consumeTyping(userId);
             await this.chatService.assertCanMessageRoom(data.roomId, userId);
             client.to(`room:${data.roomId}`).emit('user:typing', {
                 roomId: data.roomId,
@@ -357,27 +388,21 @@ export class ChatGateway
      * works immediately for both participants, not just after a refresh.
      */
     joinRoomForUser(userId: string, roomId: string): void {
-        const socketIds = this.connectedUsers.get(userId);
-        if (!socketIds) return;
-        for (const socketId of socketIds) {
-            this.server?.sockets?.sockets?.get(socketId)?.join(`room:${roomId}`);
-        }
+        this.server
+            ?.in(this.userRoom(userId))
+            .socketsJoin(`room:${roomId}`);
     }
 
     leaveRoomForUser(userId: string, roomId: string): void {
-        const socketIds = this.connectedUsers.get(userId);
-        if (!socketIds) return;
-        for (const socketId of socketIds) {
-            this.server?.sockets?.sockets?.get(socketId)?.leave(`room:${roomId}`);
-        }
+        this.server
+            ?.in(this.userRoom(userId))
+            .socketsLeave(`room:${roomId}`);
     }
 
     emitRoomUpdatedToUser(userId: string, room: any): void {
-        const socketIds = this.connectedUsers.get(userId);
-        if (!socketIds) return;
-        for (const socketId of socketIds) {
-            this.server?.sockets?.sockets?.get(socketId)?.emit('room:updated', room);
-        }
+        this.server
+            ?.to(this.userRoom(userId))
+            .emit('room:updated', room);
     }
 
     /**

@@ -112,7 +112,7 @@ export class ChatController {
         @CurrentUser() user: any,
         @Body() createRoomDto: CreateRoomDto,
     ) {
-        this.chatRateLimit.consumeRoomCreate(user.id);
+        await this.chatRateLimit.consumeRoomCreate(user.id);
         const room = await this.chatService.findOrCreateRoom(
             user.id,
             createRoomDto,
@@ -133,7 +133,7 @@ export class ChatController {
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Get or create my support conversation with CarMazium' })
     async getSupportRoom(@CurrentUser() user: any) {
-        this.chatRateLimit.consumeRoomCreate(user.id);
+        await this.chatRateLimit.consumeRoomCreate(user.id);
         const room = await this.chatService.findOrCreateSupportRoom(user.id);
         this.chatGateway.joinRoomForUser(user.id, room.id);
         this.chatGateway.joinRoomForUser((room as any).otherUser.id, room.id);
@@ -148,7 +148,7 @@ export class ChatController {
         @CurrentUser() user: any,
         @Param('jobId') jobId: string,
     ) {
-        this.chatRateLimit.consumeRoomCreate(user.id);
+        await this.chatRateLimit.consumeRoomCreate(user.id);
         const room: any = await this.chatService.findOrCreateServiceJobRoom(jobId, user.id);
 
         // The customer and provider owner are the canonical room pair. A team
@@ -172,7 +172,7 @@ export class ChatController {
         @Param('id') sourceRoomId: string,
         @Body() dto: OpenDisputeDto,
     ) {
-        this.chatRateLimit.consumeRoomCreate(user.id);
+        await this.chatRateLimit.consumeRoomCreate(user.id);
         const result = await this.chatService.openDispute(
             sourceRoomId,
             user.id,
@@ -197,7 +197,7 @@ export class ChatController {
         @Param('id') roomId: string,
         @Body() dto: BlockChatRoomDto,
     ) {
-        this.chatRateLimit.consumeBlockChange(user.id);
+        await this.chatRateLimit.consumeBlockChange(user.id);
         const room: any = await this.chatService.blockRoom(roomId, user.id, dto);
         const otherUserId = room.initiatorId === user.id
             ? room.participantId
@@ -222,7 +222,7 @@ export class ChatController {
         @CurrentUser() user: any,
         @Param('id') roomId: string,
     ) {
-        this.chatRateLimit.consumeBlockChange(user.id);
+        await this.chatRateLimit.consumeBlockChange(user.id);
         const room: any = await this.chatService.unblockRoom(roomId, user.id);
         const otherUserId = room.initiatorId === user.id
             ? room.participantId
@@ -248,7 +248,7 @@ export class ChatController {
         @Param('id') messageId: string,
         @Body() dto: ReportChatMessageDto,
     ) {
-        this.chatRateLimit.consumeReport(user.id);
+        await this.chatRateLimit.consumeReport(user.id);
         const report = await this.chatService.reportMessage(
             messageId,
             user.id,
@@ -348,7 +348,7 @@ export class ChatController {
         @Param('id') roomId: string,
         @Body() sendMessageDto: SendMessageDto,
     ) {
-        this.chatRateLimit.consumeMessage(user.id);
+        await this.chatRateLimit.consumeMessage(user.id);
         const { message, created } = await this.chatService.sendMessage(
             roomId,
             user.id,
@@ -377,7 +377,7 @@ export class ChatController {
         @Param('id') roomId: string,
         @Body() dto: CreateChatAttachmentUploadDto,
     ) {
-        this.chatRateLimit.consumeAttachmentTicket(user.id);
+        await this.chatRateLimit.consumeAttachmentTicket(user.id);
         await this.chatService.assertCanMessageRoom(roomId, user.id);
         const ticket = await this.chatAttachmentService.createUploadTicket(
             roomId,
@@ -400,7 +400,7 @@ export class ChatController {
         @Param('id') roomId: string,
         @Body() dto: SendChatAttachmentDto,
     ) {
-        this.chatRateLimit.consumeMessage(user.id);
+        await this.chatRateLimit.consumeMessage(user.id);
         const { message, created } = await this.chatService.sendAttachmentMessage(
             roomId,
             user.id,

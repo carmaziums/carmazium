@@ -15,8 +15,8 @@ describe('ChatGateway — message acknowledgements', () => {
         };
         authService = {};
         chatRateLimit = {
-            consumeMessage: jest.fn(),
-            consumeTyping: jest.fn(),
+            consumeMessage: jest.fn().mockResolvedValue(undefined),
+            consumeTyping: jest.fn().mockResolvedValue(undefined),
         };
         gateway = new ChatGateway(chatService, authService, chatRateLimit);
 
@@ -84,6 +84,35 @@ describe('ChatGateway — message acknowledgements', () => {
         });
         expect(to).not.toHaveBeenCalled();
         expect(emit).not.toHaveBeenCalled();
+    });
+
+    it('uses distributed user rooms for cross-instance room membership updates', () => {
+        const socketsJoin = jest.fn();
+        const socketsLeave = jest.fn();
+        const inMock = jest.fn().mockReturnValue({ socketsJoin, socketsLeave });
+        (gateway as any).server = {
+            in: inMock,
+            to,
+        };
+
+        gateway.joinRoomForUser('user-2', 'room-2');
+        gateway.leaveRoomForUser('user-2', 'room-2');
+
+        expect(inMock).toHaveBeenCalledWith('user:user-2');
+        expect(socketsJoin).toHaveBeenCalledWith('room:room-2');
+        expect(socketsLeave).toHaveBeenCalledWith('room:room-2');
+    });
+
+    it('emits personalised room updates through the distributed user room', () => {
+        const userEmit = jest.fn();
+        const toMock = jest.fn().mockReturnValue({ emit: userEmit });
+        (gateway as any).server = { to: toMock };
+
+        const room = { id: 'room-3', chatBlocked: true };
+        gateway.emitRoomUpdatedToUser('user-3', room);
+
+        expect(toMock).toHaveBeenCalledWith('user:user-3');
+        expect(userEmit).toHaveBeenCalledWith('room:updated', room);
     });
 
     it('returns a structured negative acknowledgement on send failure', async () => {
