@@ -593,15 +593,15 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   async function saveAuctionEdit(item: AuctionItem) {
     const reserve = parseFloat(editReserve.replace(/[^0-9.]/g, ''));
-    const starting = parseFloat(editStartingBid.replace(/[^0-9.]/g, ''));
+    const platformStarting = getAuctionOpeningBid(Number(item.listing.price ?? 0));
     const increment = parseFloat(editMinIncrement.replace(/[^0-9.]/g, ''));
 
     if (isNaN(reserve) || reserve <= 0) {
       setEditError('Enter a valid reserve price.');
       return;
     }
-    if (isNaN(starting) || starting <= 0) {
-      setEditError('Enter a valid starting bid.');
+    if (platformStarting <= 0) {
+      setEditError('This vehicle needs a valid Estimated Market Value before it can be auctioned.');
       return;
     }
     if (isNaN(increment) || increment <= 0) {
@@ -614,14 +614,14 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     try {
       await apiClient(`/auctions/${item.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ reservePrice: reserve, startingBid: starting, minIncrement: increment }),
+        body: JSON.stringify({ reservePrice: reserve, minIncrement: increment }),
       });
       haptics.success();
       // Update local state
       setAuctions(prev =>
         prev.map(a =>
           a.id === item.id
-            ? { ...a, reservePrice: reserve, startingBid: starting, minIncrement: increment }
+            ? { ...a, reservePrice: reserve, startingBid: platformStarting, minIncrement: increment }
             : a,
         ),
       );
@@ -933,15 +933,15 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               />
             </View>
 
-            {/* Starting bid */}
-            <Text style={styles.editLabel}>STARTING BID</Text>
-            <View style={styles.editInputRow}>
+            {/* Platform opening bid */}
+            <Text style={styles.editLabel}>OPENING BID — 70% OF MARKET VALUE</Text>
+            <View style={[styles.editInputRow, { opacity: 0.85 }]}>
               <Text style={styles.editCurrency}>£</Text>
               <TextInput
                 style={styles.editInput}
-                value={editStartingBid}
-                onChangeText={v => { setEditStartingBid(v); setEditError(null); }}
-                keyboardType="number-pad"
+                value={String(getAuctionOpeningBid(Number(item.listing.price ?? 0)) || item.startingBid)}
+                editable={false}
+                selectTextOnFocus={false}
                 placeholder="0"
                 placeholderTextColor={Colors.textMuted}
               />
