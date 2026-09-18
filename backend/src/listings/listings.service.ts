@@ -282,6 +282,10 @@ export class ListingsService {
      */
     async create(createListingDto: CreateListingDto, userId?: string): Promise<Listing> {
         const slug = this.generateSlug(createListingDto.title);
+        const normalizedVrm = this.normalizeVrm(createListingDto.vrm);
+        const originalImages = createListingDto.images ?? [];
+
+        this.assertListingImageUrls(originalImages, userId);
 
         const listingType: ListingType = createListingDto.listingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED';
 
@@ -310,10 +314,7 @@ export class ListingsService {
             );
         }
 
-        // Create listing immediately with original image URLs so the endpoint returns fast.
-        // Image re-hosting (Supabase upload) runs in the background and updates the record.
-        const originalImages = createListingDto.images ?? [];
-
+        // Create the listing with validated CarMazium storage URLs.
         const listing = await this.prisma.listing.create({
             data: {
                 title: createListingDto.title,
@@ -331,7 +332,7 @@ export class ListingsService {
                 model: createListingDto.model ?? null,
                 year: createListingDto.year,
                 mileage: createListingDto.mileage,
-                vrm: createListingDto.vrm ?? null,
+                vrm: normalizedVrm || null,
                 vin: createListingDto.vin ?? null,
                 // Technical specs
                 fuelType: mapFuelType(createListingDto.fuelType),
