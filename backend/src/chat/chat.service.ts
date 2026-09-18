@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateRoomDto, OpenDisputeDto, SendChatAttachmentDto, SendMessageDto } from './dto';
-import { ChatContext, DisputeStatus, Message, Prisma, UserRole } from '@prisma/client';
+import { BlockChatRoomDto, CreateRoomDto, OpenDisputeDto, ReportChatMessageDto, SendChatAttachmentDto, SendMessageDto, UpdateChatReportDto } from './dto';
+import { ChatContext, ChatReportStatus, DisputeStatus, Message, Prisma, UserRole } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { messageInboxLink } from './chat-routing';
@@ -72,6 +72,16 @@ export class ChatService {
                 status: true,
             },
         },
+        blocks: {
+            where: { revokedAt: null },
+            select: {
+                id: true,
+                blockerId: true,
+                blockedUserId: true,
+                reason: true,
+                createdAt: true,
+            },
+        },
         listing: {
             select: {
                 id: true,
@@ -126,9 +136,23 @@ export class ChatService {
             otherUser = room.initiator;
         }
 
+        const blocks = Array.isArray((room as any).blocks)
+            ? (room as any).blocks
+            : [];
+        const myBlock = blocks.find((block: any) => block.blockerId === userId);
+        const canonicalMember =
+            room.initiatorId === userId || room.participantId === userId;
+        const blockableContext =
+            room.context === ChatContext.RETAIL || room.context === ChatContext.AUCTION;
+
         return {
             ...room,
             otherUser,
+            chatBlocked: blocks.length > 0,
+            blockedByMe: !!myBlock,
+            blockReason: myBlock?.reason ?? null,
+            canBlockChat: canonicalMember && blockableContext && blocks.length === 0,
+            canUnblockChat: canonicalMember && blockableContext && !!myBlock,
         };
     }
 
@@ -1082,6 +1106,10 @@ export class ChatService {
                         joinedAdminId: true,
                     },
                 },
+                blocks: {
+                    where: { revokedAt: null },
+                    select: { id: true, blockerId: true, blockedUserId: true },
+                },
                 initiator: { select: { role: true } },
                 participant: { select: { role: true } },
             },
@@ -1118,6 +1146,14 @@ export class ChatService {
         }
         if (room.context === ChatContext.LEGACY) {
             throw new ForbiddenException('This historical conversation is read-only.');
+        }
+        if (
+            (room.context === ChatContext.RETAIL || room.context === ChatContext.AUCTION) &&
+            room.blocks.length > 0
+        ) {
+            throw new ForbiddenException(
+                'Messaging is paused because this conversation has been blocked. The transcript remains available.',
+            );
         }
         if (!room.listingId) {
             throw new ForbiddenException('This conversation is missing its vehicle context.');
@@ -1218,7 +1254,8 @@ export class ChatService {
                     });
                 }
 
-                const { otherUser } = this.withOtherUser(room, userId);
+                const roomView = this.withOtherUser(room, userId);
+                const { otherUser } = roomView;
                 const lastMessage = room.messages[0] || null;
                 const needsReply = room.context === ChatContext.SUPPORT
                     && !!lastMessage
@@ -1241,6 +1278,11 @@ export class ChatService {
                     supportClosedAt: room.supportClosedAt,
                     disputeCase: room.disputeCase,
                     sourceDispute: room.disputeAsSource,
+                    chatBlocked: roomView.chatBlocked,
+                    blockedByMe: roomView.blockedByMe,
+                    blockReason: roomView.blockReason,
+                    canBlockChat: roomView.canBlockChat,
+                    canUnblockChat: roomView.canUnblockChat,
                     canOpenDispute:
                         !room.disputeAsSource &&
                         (
