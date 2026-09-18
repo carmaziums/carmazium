@@ -14,6 +14,7 @@ import { ChatService } from './chat.service';
 import { AuthService } from '../auth/auth.service';
 import { WsMessageDto, WsTypingDto, WsRoomIdDto } from './dto';
 import { WS_CORS } from '../core/allowed-origins';
+import { ChatRateLimitService } from './chat-rate-limit.service';
 
 /**
  * WebSocket Gateway for real-time chat functionality.
@@ -40,6 +41,7 @@ export class ChatGateway
     constructor(
         private readonly chatService: ChatService,
         private readonly authService: AuthService,
+        private readonly chatRateLimit: ChatRateLimitService,
     ) { }
 
     afterInit(server: Server): void {
@@ -196,6 +198,7 @@ export class ChatGateway
         }
 
         try {
+            this.chatRateLimit.consumeMessage(userId);
             const { message, created } = await this.chatService.sendMessage(
                 data.roomId,
                 userId,
@@ -291,6 +294,7 @@ export class ChatGateway
         if (!userId) return;
 
         try {
+            this.chatRateLimit.consumeTyping(userId);
             await this.chatService.assertCanMessageRoom(data.roomId, userId);
             client.to(`room:${data.roomId}`).emit('user:typing', {
                 roomId: data.roomId,
@@ -315,6 +319,7 @@ export class ChatGateway
         if (!userId) return;
 
         try {
+            this.chatRateLimit.consumeTyping(userId);
             await this.chatService.assertCanMessageRoom(data.roomId, userId);
             client.to(`room:${data.roomId}`).emit('user:typing', {
                 roomId: data.roomId,
