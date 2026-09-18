@@ -249,7 +249,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
 
     beforeEach(async () => {
         prisma = {
-            auction: { findUnique: jest.fn() },
+            auction: { findUnique: jest.fn(), update: jest.fn() },
             bid: { findUnique: jest.fn(), findFirst: jest.fn() },
             listing: { update: jest.fn() },
             sale: { create: jest.fn() },
@@ -308,6 +308,45 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
         ).rejects.toMatchObject({ message: expect.stringMatching(/current highest bid/i) });
 
         expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('allows the seller to accept the current highest offer even when it is below reserve', async () => {
+        const auction = {
+            id: 'auction-1',
+            listingId: 'listing-1',
+            status: 'ACTIVE',
+            reservePrice: 10000,
+            listing: {
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                price: 10000,
+                linkedListingId: null,
+                year: 2020,
+                make: 'Test',
+                model: 'Car',
+                bids: [],
+            },
+        };
+        const bid = {
+            id: 'bid-current',
+            listingId: 'listing-1',
+            bidderId: 'dealer-1',
+            amount: 8200,
+            deletedAt: null,
+            cancelledAt: null,
+            archivedAt: null,
+        };
+
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.bid.findUnique.mockResolvedValue(bid);
+        prisma.bid.findFirst.mockResolvedValue(bid);
+        prisma.$transaction.mockResolvedValue([]);
+
+        await expect(
+            service.acceptBid('auction-1', 'bid-current', 'seller-1'),
+        ).resolves.toBeUndefined();
+
+        expect(prisma.$transaction).toHaveBeenCalled();
     });
 });
 
