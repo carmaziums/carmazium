@@ -155,6 +155,25 @@ describe('BidsService — incremental bidding', () => {
         );
     });
 
+    it('does not send a below-reserve offer notification once the reserve is met', async () => {
+        prisma.listing.findUnique.mockResolvedValue(auctionListing);
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.bid.create.mockResolvedValue({
+            id: 'bid-reserve',
+            amount: 9000,
+            timestamp: new Date(),
+            listingId: 'listing-1',
+            bidderId: 'bidder-A',
+        });
+
+        await service.create('bidder-A', { listingId: 'listing-1', amount: 9000 } as any);
+
+        expect(notificationsService.create).not.toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'AUCTION_OFFER_RECEIVED' }),
+        );
+    });
+
     it('rejects bids on non-auction listings', async () => {
         prisma.listing.findUnique.mockResolvedValue({ ...auctionListing, type: 'CLASSIFIED' });
 
