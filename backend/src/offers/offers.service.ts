@@ -194,62 +194,59 @@ export class OffersService {
         if (!listing) {
             throw new NotFoundException('Listing not found.');
         }
-
+        if (listing.type !== 'CLASSIFIED') {
+            throw new BadRequestException('Retail offers are only available on retail listings. Use auction bidding for auction vehicles.');
+        }
         if (listing.status === 'SOLD') {
             throw new BadRequestException('This listing has already been sold. You cannot make an offer.');
         }
-
+        if (listing.status === 'OFFER_ACCEPTED') {
+            throw new BadRequestException('This vehicle is sale pending and is not accepting new offers.');
+        }
         if (listing.status !== 'ACTIVE') {
             throw new BadRequestException('This listing is not currently active.');
         }
-
-        // Prevent the seller from making an offer on their own listing
         if (listing.sellerId === buyerId) {
             throw new ForbiddenException('You cannot make an offer on your own listing.');
         }
 
-        // Remove strict priceMin/priceMax validation to prevent leaking seller's hidden bounds
-        // Instead, the only restriction is that the offer must be at least 70% of the asking price
         const askingPrice = Number(listing.price);
-        const minAllowedOffer = Math.floor(askingPrice * 0.7);
+        this.validateBuyerOfferAmount(dto.amount, askingPrice);
 
-        const buyerMax = dto.amountMax ?? dto.amount;
-        
-        if (buyerMax < minAllowedOffer) {
-            throw new BadRequestException(
-                `Offer must be at least £${minAllowedOffer.toLocaleString('en-GB')} (70% of the asking price).`,
-            );
-        }
-
-        // Incremental bidding: enforce that the new bid is strictly higher than the highest active offer
-        // from any OTHER buyer. Active = PENDING / COUNTERED / ACCEPTED.
-        // We exclude WITHDRAWN and REJECTED, and we exclude the current buyer's own prior offers
-        // (those are auto-superseded just below).
-        const highestOtherOffer = await this.prisma.offer.findFirst({
+        // Retail is a private negotiation, not a public price ladder. Other
+        // buyers' offers never affect what this buyer is allowed to submit.
+        const existingOpen = await this.prisma.offer.findFirst({
             where: {
                 listingId: dto.listingId,
-                buyerId: { not: buyerId },
-                status: { in: ['PENDING', 'COUNTERED', 'ACCEPTED'] },
+                buyerId,
+                status: { in: ['PENDING', 'COUNTERED'] },
             },
-            orderBy: [
-                { counterAmount: 'desc' },
-                { amount: 'desc' },
-            ],
+            orderBy: { updatedAt: 'desc' },
         });
 
-        if (highestOtherOffer) {
-            const competingAmount = Math.max(
-                Number(highestOtherOffer.amount),
-                Number(highestOtherOffer.counterAmount ?? 0),
-            );
-            if (dto.amount <= competingAmount) {
+        if (existingOpen) {
+            const counterExpired =
+                existingOpen.status === 'COUNTERED' &&
+                existingOpen.counterExpiresAt &&
+                existingOpen.counterExpiresAt < new Date();
+            const pendingExpired =
+                existingOpen.status === 'PENDING' &&
+                this.isPendingOfferExpired(existingOpen.updatedAt);
+
+            if (counterExpired || pendingExpired) {
+                await this.prisma.offer.updateMany({
+                    where: { id: existingOpen.id, status: existingOpen.status },
+                    data: { status: 'REJECTED', counterExpiresAt: null },
+                });
+            } else {
                 throw new BadRequestException(
-                    `Your bid must be higher than the current highest bid of £${competingAmount.toLocaleString('en-GB')}.`,
+                    existingOpen.status === 'PENDING'
+                        ? 'You already have a pending offer on this vehicle. Amend or withdraw it instead of creating another.'
+                        : 'You already have an active negotiation on this vehicle. Use the counter-offer controls or cancel it first.',
                 );
             }
         }
 
-        // Block new offer if buyer's prior negotiation was exhausted and seller has decided
         const exhaustedOffer = await this.prisma.offer.findFirst({
             where: {
                 listingId: dto.listingId,
@@ -264,12 +261,6 @@ export class OffersService {
             );
         }
 
-        // Cancel any existing PENDING offer from this buyer on this listing
-        await this.prisma.offer.updateMany({
-            where: { listingId: dto.listingId, buyerId, status: 'PENDING' },
-            data: { status: 'WITHDRAWN' },
-        });
-
         const offer = await this.prisma.offer.create({
             data: {
                 listingId: dto.listingId,
@@ -277,20 +268,22 @@ export class OffersService {
                 sellerId: listing.sellerId,
                 amount: dto.amount,
                 initialAmount: dto.amount,
-                amountMin: dto.amountMin ?? dto.amount,
-                amountMax: dto.amountMax ?? dto.amount,
+                // Legacy range fields are retained in the schema for backwards
+                // compatibility, but retail negotiation now has one explicit
+                // private offer amount.
+                amountMin: dto.amount,
+                amountMax: dto.amount,
                 message: dto.message ?? null,
             },
         });
 
-        // Notify the seller
         if (listing.sellerId) {
             try {
                 const notification = await this.notificationsService.create({
                     userId: listing.sellerId,
                     type: 'OFFER_RECEIVED',
                     title: 'New Offer Received',
-                    message: `You received an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${listing.title}".`,
+                    message: `You received a private offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${listing.title}".`,
                     link: '/dashboard/seller/offers',
                     entityType: 'OFFER',
                     entityId: offer.id,
@@ -299,8 +292,10 @@ export class OffersService {
                 });
                 this.notificationsGateway.sendNotification(listing.sellerId, notification);
 
-                // Email the seller
-                const seller = await this.prisma.user.findUnique({ where: { id: listing.sellerId }, select: { email: true, firstName: true } });
+                const seller = await this.prisma.user.findUnique({
+                    where: { id: listing.sellerId },
+                    select: { email: true, firstName: true },
+                });
                 if (seller?.email) {
                     this.emailService.sendOfferReceivedEmail(
                         seller.email,
