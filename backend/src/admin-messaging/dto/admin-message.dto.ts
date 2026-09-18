@@ -14,7 +14,6 @@ import {
 export enum AdminMessageAudience {
     ALL = 'ALL',
     ROLE = 'ROLE',
-    PERSON = 'PERSON',
     DEALERS = 'DEALERS',
     SERVICE_PROVIDERS = 'SERVICE_PROVIDERS',
     DELIVERY_PROVIDERS = 'DELIVERY_PROVIDERS',
