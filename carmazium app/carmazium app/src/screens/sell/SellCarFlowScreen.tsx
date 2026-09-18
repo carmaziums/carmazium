@@ -2848,9 +2848,26 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             error={fieldError('reservePrice') ?? undefined}
           />
           {askNum > 0 && reservePrice && Number(reservePrice) > reserveGuide.high ? (
-            <View style={[s.banner, Number(reservePrice) >= askNum ? s.bannerRed : s.bannerAmber, { marginTop: -8, marginBottom: 12 }]}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: 7,
+              marginTop: -8,
+              marginBottom: 12,
+              padding: 10,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: Number(reservePrice) >= askNum ? 'rgba(239,68,68,0.30)' : 'rgba(245,158,11,0.30)',
+              backgroundColor: Number(reservePrice) >= askNum ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',
+            }}>
               <Ionicons name="warning-outline" size={12} color={Number(reservePrice) >= askNum ? Colors.accent : Colors.warning} />
-              <Text style={[s.bannerText, { color: Number(reservePrice) >= askNum ? Colors.paleRed_fca5a5 : Colors.lightYellow }]}>
+              <Text style={{
+                flex: 1,
+                fontFamily: FontFamily.regular,
+                fontSize: FontSize.size10,
+                color: Number(reservePrice) >= askNum ? Colors.paleRed_fca5a5 : Colors.lightYellow,
+                lineHeight: 15,
+              }}>
                 {Number(reservePrice) >= askNum
                   ? 'Your reserve is at or above the Estimated Market Value. Dealer bidding may be very limited.'
                   : 'Your reserve is above CarMazium’s suggested range and may reduce bidding.'}
