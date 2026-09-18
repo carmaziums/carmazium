@@ -391,7 +391,14 @@ export class OffersService {
             where: { id: offerId },
             include: {
                 listing: {
-                    select: { id: true, title: true, sellerId: true, slug: true },
+                    select: {
+                        id: true,
+                        title: true,
+                        sellerId: true,
+                        slug: true,
+                        status: true,
+                        price: true,
+                    },
                 },
             },
         });
@@ -400,18 +407,20 @@ export class OffersService {
             throw new NotFoundException('Offer not found.');
         }
 
-        // Authorization check: User must be listing owner OR staff of the dealership owner
         const listingOwnerId = offer.listing.sellerId;
         let isAuthorized = listingOwnerId === sellerId;
 
         if (!isAuthorized && listingOwnerId) {
-            // Check if listing owner is a dealer and responder is their staff
             const ownerDealerProfile = await this.prisma.dealerProfile.findUnique({
-                where: { userId: listingOwnerId }
+                where: { userId: listingOwnerId },
             });
             if (ownerDealerProfile) {
                 const staffMember = await this.prisma.dealerStaff.findFirst({
-                    where: { userId: sellerId, dealerProfileId: ownerDealerProfile.id, isActive: true }
+                    where: {
+                        userId: sellerId,
+                        dealerProfileId: ownerDealerProfile.id,
+                        isActive: true,
+                    },
                 });
                 if (staffMember) isAuthorized = true;
             }
@@ -421,53 +430,123 @@ export class OffersService {
             throw new ForbiddenException('You do not have permission to respond to this offer.');
         }
 
-        // Expiry check: if a COUNTERED offer has passed its 48-hour window, auto-reject it
+        const now = new Date();
+        const counterExpired =
+            offer.status === 'COUNTERED' &&
+            !!offer.counterExpiresAt &&
+            offer.counterExpiresAt < now;
+        const pendingExpired =
+            offer.status === 'PENDING' &&
+            this.isPendingOfferExpired(offer.updatedAt);
+
+        if (counterExpired || pendingExpired) {
+            await this.prisma.offer.updateMany({
+                where: { id: offerId, status: offer.status },
+                data: { status: 'REJECTED', counterExpiresAt: null },
+            });
+            throw new BadRequestException(
+                counterExpired
+                    ? 'This offer has expired after the 48-hour counter window.'
+                    : 'This offer has expired after 72 hours without a response.',
+            );
+        }
+
+        const cancellingAcceptedDeal =
+            offer.status === 'ACCEPTED' &&
+            status === OfferResponseStatus.REJECTED;
+        const isSellerTurn =
+            offer.status === 'COUNTERED' &&
+            offer.lastCounteredBy === 'BUYER';
+
         if (
-            offer.counterExpiresAt &&
-            offer.counterExpiresAt < new Date() &&
-            offer.status === 'COUNTERED'
+            offer.status !== 'PENDING' &&
+            !isSellerTurn &&
+            !cancellingAcceptedDeal
         ) {
-            await this.prisma.offer.update({ where: { id: offerId }, data: { status: 'REJECTED' } });
-            throw new BadRequestException('This offer has expired after the 48-hour counter window.');
+            throw new BadRequestException(
+                `This offer is already ${offer.status.toLowerCase()}.`,
+            );
         }
 
-        // Allow seller to respond when offer is PENDING, or when it's COUNTERED and the buyer last countered (seller's turn)
-        const isSellerTurn = offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER';
-        if (offer.status !== 'PENDING' && !isSellerTurn && !(offer.status === 'ACCEPTED' && status === OfferResponseStatus.REJECTED)) {
-            throw new BadRequestException(`This offer is already ${offer.status.toLowerCase()}.`);
+        if (!cancellingAcceptedDeal && offer.listing.status !== 'ACTIVE') {
+            throw new BadRequestException('This vehicle is no longer available for negotiation.');
         }
 
-        if (status === OfferResponseStatus.COUNTERED && !counterAmount) {
-            throw new BadRequestException('A counter amount is required when countering an offer.');
-        }
-
-        // Counter attempt limit check for seller
-        if (status === OfferResponseStatus.COUNTERED && offer.counterAttemptsSeller >= 5) {
-            throw new BadRequestException('Counter-offer limit reached. You must Accept or Decline.');
+        if (status === OfferResponseStatus.COUNTERED) {
+            if (!counterAmount || !Number.isFinite(counterAmount) || counterAmount <= 0) {
+                throw new BadRequestException('A valid counter amount is required when countering an offer.');
+            }
+            const askingPrice = Number(offer.listing.price);
+            if (counterAmount > askingPrice) {
+                throw new BadRequestException(
+                    `Counter offer cannot exceed the asking price of £${askingPrice.toLocaleString('en-GB')}.`,
+                );
+            }
+            const buyerPosition = Number(
+                offer.status === 'COUNTERED'
+                    ? offer.counterAmount ?? offer.amount
+                    : offer.amount,
+            );
+            if (counterAmount <= buyerPosition) {
+                throw new BadRequestException(
+                    'The seller counter must be above the buyer\'s current offer. Accept the buyer offer instead if you agree with that amount.',
+                );
+            }
+            if (offer.counterAttemptsSeller >= 5) {
+                throw new BadRequestException('Counter-offer limit reached. You must Accept or Decline.');
+            }
         }
 
         const prismaStatus: OfferStatus = status as unknown as OfferStatus;
+        const agreedAmt = Number(
+            offer.status === 'COUNTERED'
+                ? offer.counterAmount ?? offer.amount
+                : offer.amount,
+        );
 
-        const updateData: any = {
-            status: prismaStatus,
-            sellerCounterAmount: status === OfferResponseStatus.COUNTERED ? counterAmount : undefined,
-            finalAmount: prismaStatus === 'ACCEPTED' ? (offer.counterAmount ?? offer.amount) : undefined,
-            counterAmount: status === OfferResponseStatus.COUNTERED ? counterAmount : null,
-        };
+        let updated: Offer;
 
-        if (status === OfferResponseStatus.COUNTERED) {
-            updateData.counterAttemptsSeller = { increment: 1 };
-            updateData.lastCounteredBy = 'SELLER';
-            updateData.counterExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+        if (prismaStatus === 'ACCEPTED') {
+            updated = await this.closeRetailDeal(offer, agreedAmt);
+        } else {
+            const updateData: any = {
+                status: prismaStatus,
+                sellerCounterAmount:
+                    status === OfferResponseStatus.COUNTERED
+                        ? counterAmount
+                        : undefined,
+                counterAmount:
+                    status === OfferResponseStatus.COUNTERED
+                        ? counterAmount
+                        : null,
+                counterExpiresAt:
+                    status === OfferResponseStatus.COUNTERED
+                        ? new Date(Date.now() + COUNTER_OFFER_LIFETIME_MS)
+                        : null,
+            };
+
+            if (status === OfferResponseStatus.COUNTERED) {
+                updateData.counterAttemptsSeller = { increment: 1 };
+                updateData.lastCounteredBy = 'SELLER';
+            }
+
+            updated = await this.prisma.offer.update({
+                where: { id: offerId },
+                data: updateData,
+            });
+
+            if (cancellingAcceptedDeal) {
+                await this.prisma.listing.updateMany({
+                    where: { id: offer.listingId, status: 'OFFER_ACCEPTED' },
+                    data: { status: 'ACTIVE' },
+                });
+            }
         }
 
-        const updated = await this.prisma.offer.update({
-            where: { id: offerId },
-            data: updateData,
-        });
-
-        // Send limit-reached notifications if seller just hit the 5th counter
-        if (status === OfferResponseStatus.COUNTERED && offer.counterAttemptsSeller + 1 === 5) {
+        if (
+            status === OfferResponseStatus.COUNTERED &&
+            offer.counterAttemptsSeller + 1 === 5
+        ) {
             try {
                 const buyerNotif = await this.notificationsService.create({
                     userId: offer.buyerId,
@@ -494,82 +573,35 @@ export class OffersService {
                         actionType: 'COUNTER_LIMIT_REACHED',
                         data: { listingId: offer.listingId, offerId: offer.id },
                     });
-                    this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotif);
+                    this.notificationsGateway.sendNotification(
+                        offer.listing.sellerId,
+                        sellerNotif,
+                    );
                 }
             } catch (error) {
-                console.error('[OffersService] Failed to send counter limit notifications:', error);
+                console.error(
+                    '[OffersService] Failed to send counter limit notifications:',
+                    error,
+                );
             }
         }
 
-        // If accepted, reject all other pending offers for the same listing
-        if (prismaStatus === 'ACCEPTED') {
-            await this.prisma.offer.updateMany({
-                where: {
-                    listingId: offer.listingId,
-                    id: { not: offerId },
-                    status: 'PENDING',
-                },
-                data: { status: 'REJECTED' },
-            });
-            // Update listing status to OFFER_ACCEPTED
-            await this.prisma.listing.update({
-                where: { id: offer.listingId },
-                data: { status: 'OFFER_ACCEPTED' }
-            });
-
-            // Auto-cancel any linked auction so the vehicle isn't still bidding
-            const listing = await this.prisma.listing.findUnique({
-                where: { id: offer.listingId },
-                select: { linkedListingId: true } as any,
-            });
-            const linkedId = (listing as any)?.linkedListingId as string | null;
-            if (linkedId) {
-                const linkedAuction = await this.prisma.auction.findFirst({
-                    where: { listingId: linkedId, status: { in: ['ACTIVE', 'SCHEDULED'] } },
-                });
-                if (linkedAuction) {
-                    await this.prisma.auction.update({
-                        where: { id: linkedAuction.id },
-                        data: { status: 'CANCELLED' },
-                    });
-                    await this.prisma.listing.update({
-                        where: { id: linkedId },
-                        data: { status: 'DRAFT' } as any,
-                    });
-                }
-                // Clear the link on both sides
-                await this.prisma.listing.updateMany({
-                    where: { id: { in: [offer.listingId, linkedId] } },
-                    data: { linkedListingId: null } as any,
-                });
-            }
-        }
-
-        // If rejecting a previously-accepted offer (seller "Cancel & Relist"),
-        // revert the listing back to ACTIVE so buyers can make new offers.
-        if (prismaStatus === 'REJECTED' && offer.status === 'ACCEPTED') {
-            await this.prisma.listing.update({
-                where: { id: offer.listingId },
-                data: { status: 'ACTIVE' }
-            });
-        }
-
-        // Notify the buyer
         let notifMessage = '';
         let notifTitle = '';
         let notifType = '';
 
-        const agreedAmt = Number(offer.counterAmount ?? offer.amount);
         if (prismaStatus === 'ACCEPTED') {
-            notifTitle = '🎉 Offer Accepted!';
-            notifMessage = `Your offer of £${agreedAmt.toLocaleString('en-GB')} on "${offer.listing.title}" was accepted! Contact the seller to proceed.`;
+            notifTitle = 'Offer Accepted';
+            notifMessage = `Your offer of £${agreedAmt.toLocaleString('en-GB')} on "${offer.listing.title}" was accepted. The vehicle is now sale pending while you and the seller complete the deal.`;
             notifType = 'OFFER_ACCEPTED';
         } else if (prismaStatus === 'REJECTED') {
-            notifTitle = 'Offer Declined';
-            notifMessage = `Your offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}" was declined.`;
+            notifTitle = cancellingAcceptedDeal ? 'Deal Cancelled' : 'Offer Declined';
+            notifMessage = cancellingAcceptedDeal
+                ? `The previously accepted deal on "${offer.listing.title}" was cancelled by the seller and the vehicle is available again.`
+                : `Your offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}" was declined.`;
             notifType = 'OFFER_REJECTED';
         } else if (prismaStatus === 'COUNTERED') {
-            notifTitle = '🔄 Counter Offer Received';
+            notifTitle = 'Counter Offer Received';
             notifMessage = `The seller countered your offer on "${offer.listing.title}" with £${Number(counterAmount).toLocaleString('en-GB')}.`;
             notifType = 'OFFER_COUNTERED';
         }
@@ -586,46 +618,79 @@ export class OffersService {
                 actionType: prismaStatus,
                 data: { listingId: offer.listingId, offerId: offer.id },
             });
-            this.notificationsGateway.sendNotification(offer.buyerId, buyerNotification);
+            this.notificationsGateway.sendNotification(
+                offer.buyerId,
+                buyerNotification,
+            );
 
-            // Email the buyer — respects the buyer's per-event + "Email" delivery
-            // toggle in NotificationSettingsScreen.tsx (mobile-production-
-            // readiness-plan.md F23 follow-up); notifType is the exact same
-            // string used for the notification row above, so this stays in sync
-            // with whatever toggle actually governs that event.
-            const buyer = await this.prisma.user.findUnique({ where: { id: offer.buyerId }, select: { email: true, firstName: true } });
-            if (buyer?.email && await this.notificationsService.shouldSendEmail(offer.buyerId, notifType)) {
+            const buyer = await this.prisma.user.findUnique({
+                where: { id: offer.buyerId },
+                select: { email: true, firstName: true },
+            });
+            if (
+                buyer?.email &&
+                await this.notificationsService.shouldSendEmail(
+                    offer.buyerId,
+                    notifType,
+                )
+            ) {
                 const slug = offer.listing.slug;
-                const amt = agreedAmt;
                 if (prismaStatus === 'ACCEPTED') {
-                    this.emailService.sendOfferAcceptedEmail(buyer.email, buyer.firstName || 'there', offer.listing.title, amt, slug).catch(console.error);
+                    this.emailService.sendOfferAcceptedEmail(
+                        buyer.email,
+                        buyer.firstName || 'there',
+                        offer.listing.title,
+                        agreedAmt,
+                        slug,
+                    ).catch(console.error);
                 } else if (prismaStatus === 'REJECTED') {
-                    this.emailService.sendOfferRejectedEmail(buyer.email, buyer.firstName || 'there', offer.listing.title, amt, slug).catch(console.error);
-                } else if (prismaStatus === 'COUNTERED' && counterAmount) {
-                    this.emailService.sendOfferCounteredEmail(buyer.email, buyer.firstName || 'there', offer.listing.title, amt, counterAmount, slug).catch(console.error);
+                    this.emailService.sendOfferRejectedEmail(
+                        buyer.email,
+                        buyer.firstName || 'there',
+                        offer.listing.title,
+                        agreedAmt,
+                        slug,
+                    ).catch(console.error);
+                } else if (
+                    prismaStatus === 'COUNTERED' &&
+                    counterAmount
+                ) {
+                    this.emailService.sendOfferCounteredEmail(
+                        buyer.email,
+                        buyer.firstName || 'there',
+                        offer.listing.title,
+                        agreedAmt,
+                        counterAmount,
+                        slug,
+                    ).catch(console.error);
                 }
             }
         } catch (error) {
             console.error('Failed to notify buyer after offer response:', error);
         }
 
-        // If accepted, also notify the seller that an offer was accepted (listing stays active)
         if (prismaStatus === 'ACCEPTED' && offer.listing.sellerId) {
             try {
                 const sellerNotification = await this.notificationsService.create({
                     userId: offer.listing.sellerId,
                     type: 'DEAL_CLOSED',
-                    title: '✅ Offer Accepted',
-                    message: `You accepted an offer of £${agreedAmt.toLocaleString('en-GB')} on "${offer.listing.title}". The listing remains active — mark it as Sold from your inventory when the deal is complete.`,
+                    title: 'Offer Accepted — Sale Pending',
+                    message: `You accepted £${agreedAmt.toLocaleString('en-GB')} on "${offer.listing.title}". The vehicle is reserved as Sale Pending. Mark it Sold when payment/handover is complete, or cancel the deal to relist.`,
                     link: '/dashboard/seller/offers',
                     entityType: 'OFFER',
                     entityId: offer.id,
                     actionType: 'ACCEPTED',
                     data: { listingId: offer.listingId, offerId: offer.id },
                 });
-                this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
+                this.notificationsGateway.sendNotification(
+                    offer.listing.sellerId,
+                    sellerNotification,
+                );
             } catch (error) {
-                console.error('Failed to notify seller after offer acceptance:', error);
+                console.error(
+                    'Failed to notify seller after offer acceptance:',
+                    error,
+                );
             }
         }
 
