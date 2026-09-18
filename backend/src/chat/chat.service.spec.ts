@@ -274,6 +274,8 @@ describe('ChatService — conversation context and authorization', () => {
             listingId,
             context: ChatContext.RETAIL,
             deletedAt: null,
+            initiator: { role: 'BUYER' },
+            participant: { role: 'SELLER' },
         });
         prisma.listing.findUnique.mockResolvedValue(retailListing());
         prisma.message.findFirst
