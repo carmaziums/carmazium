@@ -1257,35 +1257,71 @@ export class ChatService {
             };
         }
 
-        const report = await this.prisma.chatReport.create({
-            data: {
-                chatRoomId: message.chatRoomId,
-                messageId: message.id,
-                reporterId,
-                reportedUserId: message.senderId,
-                reason: dto.reason,
-                details: dto.details?.trim() || null,
-                messageContent: message.content,
-                attachmentPath: message.attachmentPath,
-                attachmentName: message.attachmentName,
-                attachmentMime: message.attachmentMime,
-                attachmentSize: message.attachmentSize,
-                roomContext: message.chatRoom.context,
-                listingId: message.chatRoom.listingId,
-                listingTitle: message.chatRoom.listing?.title ?? null,
-            },
-            include: {
-                reporter: {
-                    select: { id: true, firstName: true, lastName: true, email: true },
+        let report: any;
+        try {
+            report = await this.prisma.chatReport.create({
+                data: {
+                    chatRoomId: message.chatRoomId,
+                    messageId: message.id,
+                    reporterId,
+                    reportedUserId: message.senderId,
+                    reason: dto.reason,
+                    details: dto.details?.trim() || null,
+                    messageContent: message.content,
+                    attachmentPath: message.attachmentPath,
+                    attachmentName: message.attachmentName,
+                    attachmentMime: message.attachmentMime,
+                    attachmentSize: message.attachmentSize,
+                    roomContext: message.chatRoom.context,
+                    listingId: message.chatRoom.listingId,
+                    listingTitle: message.chatRoom.listing?.title ?? null,
                 },
-                reportedUser: {
-                    select: { id: true, firstName: true, lastName: true, email: true, role: true },
+                include: {
+                    reporter: {
+                        select: { id: true, firstName: true, lastName: true, email: true },
+                    },
+                    reportedUser: {
+                        select: { id: true, firstName: true, lastName: true, email: true, role: true },
+                    },
+                    reviewedBy: {
+                        select: { id: true, firstName: true, lastName: true, email: true },
+                    },
                 },
-                reviewedBy: {
-                    select: { id: true, firstName: true, lastName: true, email: true },
-                },
-            },
-        });
+            });
+        } catch (error) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2002'
+            ) {
+                const concurrent = await this.prisma.chatReport.findUnique({
+                    where: {
+                        messageId_reporterId: {
+                            messageId,
+                            reporterId,
+                        },
+                    },
+                    include: {
+                        reporter: {
+                            select: { id: true, firstName: true, lastName: true, email: true },
+                        },
+                        reportedUser: {
+                            select: { id: true, firstName: true, lastName: true, email: true, role: true },
+                        },
+                        reviewedBy: {
+                            select: { id: true, firstName: true, lastName: true, email: true },
+                        },
+                    },
+                });
+
+                if (concurrent) {
+                    return {
+                        report: await this.hydrateChatReport(concurrent),
+                        created: false,
+                    };
+                }
+            }
+            throw error;
+        }
 
         const admins = await this.prisma.user.findMany({
             where: { role: UserRole.ADMIN, deletedAt: null },
