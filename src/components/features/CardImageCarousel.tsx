@@ -5,6 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { ImageLightbox } from "./ImageLightbox"
+import { parseVehicleImagePresentation } from "@/lib/vehicleImagePresentation"
 
 interface Props {
     images: string[]
@@ -49,7 +50,7 @@ export function CardImageCarousel({
     imageClassName = "object-cover",
     lightboxOnTap = false,
 }: Props) {
-    const bounded = React.useMemo(() => images.filter(Boolean).slice(0, maxImages), [images, maxImages])
+    const bounded = React.useMemo(() => images.filter(Boolean).slice(0, maxImages).map(value => ({ raw: value, ...parseVehicleImagePresentation(value) })), [images, maxImages])
     const [index, setIndex] = React.useState(0)
     const [lightboxOpen, setLightboxOpen] = React.useState(false)
     const trackRef = React.useRef<HTMLDivElement>(null)
@@ -101,8 +102,8 @@ export function CardImageCarousel({
                 className="absolute inset-0 flex overflow-x-auto snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 style={{ overscrollBehaviorX: "contain" }}
             >
-                {bounded.length > 0 ? bounded.map((src, i) => (
-                    <div key={`${src}-${i}`} className="relative w-full h-full flex-shrink-0 snap-start snap-always">
+                {bounded.length > 0 ? bounded.map((photo, i) => (
+                    <div key={`${photo.raw}-${i}`} className="relative w-full h-full flex-shrink-0 snap-start snap-always overflow-hidden">
                         {/* Image first, then interactive overlay ON TOP of it.
                             Next's <Image fill> renders as position:absolute — if the
                             <button>/<Link> came first in DOM it would be visually
@@ -110,11 +111,12 @@ export function CardImageCarousel({
                             (which has no handler). z-10 on the overlay guarantees
                             hit-testing reaches it. */}
                         <Image
-                            src={src}
+                            src={photo.src}
                             alt={i === 0 ? alt : `${alt} — image ${i + 1}`}
                             fill
                             sizes={sizes}
                             className={imageClassName}
+                            style={{ objectFit: photo.fit, objectPosition: `${photo.x}% ${photo.y}%`, transform: `scale(${photo.zoom})`, transformOrigin: `${photo.x}% ${photo.y}%` }}
                             loading={i === 0 ? "eager" : "lazy"}
                             draggable={false}
                         />
@@ -191,7 +193,7 @@ export function CardImageCarousel({
 
             {lightboxOnTap && (
                 <ImageLightbox
-                    images={bounded}
+                    images={bounded.map(photo => photo.src)}
                     alt={alt}
                     startIndex={index}
                     open={lightboxOpen}
