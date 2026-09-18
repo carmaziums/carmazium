@@ -537,7 +537,13 @@ export class ListingsService {
 
         // Admin-created listings are presented as CarMazium's own rather than
         // under the staff member's personal name — see admin-seller-branding.ts.
-        return { data: data.map((l: any) => brandListingSeller(l)) as Listing[], total };
+        // priceMin/priceMax are seller-private negotiation controls and must
+        // never be exposed by public marketplace search responses.
+        const publicData = data.map((row: any) => {
+            const { priceMin: _priceMin, priceMax: _priceMax, ...safe } = row;
+            return brandListingSeller(safe);
+        });
+        return { data: publicData as Listing[], total };
     }
 
     /**
@@ -545,7 +551,7 @@ export class ListingsService {
      * Used for homepage carousel and "Featured" sections
      */
     async getFeaturedListings(limit = 8): Promise<Listing[]> {
-        return this.prisma.listing.findMany({
+        const listings = await this.prisma.listing.findMany({
             where: {
                 deletedAt: null,
                 status: 'ACTIVE',
@@ -572,6 +578,11 @@ export class ListingsService {
                 },
             },
         }) as Promise<Listing[]>;
+    };
+        return listings.map((row: any) => {
+            const { priceMin: _priceMin, priceMax: _priceMax, ...safe } = row;
+            return safe as Listing;
+        });
     }
 
     /**
@@ -627,19 +638,6 @@ export class ListingsService {
                             }
                         }
                     }
-                },
-                // Include the most recent offer so the buyer can see their offer status
-                offers: {
-                    orderBy: { createdAt: 'desc' },
-                    take: 1,
-                    select: {
-                        id: true,
-                        amount: true,
-                        status: true,
-                        message: true,
-                        buyerId: true,
-                        createdAt: true,
-                    },
                 },
                 hpiReport: {
                     // `status` lets the buyer-facing page only show the "View
@@ -716,7 +714,15 @@ export class ListingsService {
             };
         }
 
-        const listingWithCount = { ...listing, seller: brandAdminSeller(sellerWithCount as any) }
+        const listingWithCount: any = {
+            ...listing,
+            seller: brandAdminSeller(sellerWithCount as any),
+        };
+
+        if (!viewerId || viewerId !== listing.sellerId) {
+            delete listingWithCount.priceMin;
+            delete listingWithCount.priceMax;
+        }
 
         return listingWithCount as any;
     }
