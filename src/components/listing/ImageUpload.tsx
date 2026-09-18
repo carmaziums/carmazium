@@ -39,6 +39,94 @@ const CATEGORIES: { id: ImageCategory; label: string; tip: string; minReq?: numb
     },
 ]
 
+const MAX_SOURCE_FILE_SIZE = 50 * 1024 * 1024 // Accept large modern phone photos up to 50MB before optimisation
+const MAX_IMAGE_EDGE = 1920 // Full HD-class output while preserving the original aspect ratio
+const TARGET_UPLOAD_SIZE = 4 * 1024 * 1024 // Keep standard Supabase uploads fast and reliable
+const INITIAL_JPEG_QUALITY = 0.9
+const MIN_JPEG_QUALITY = 0.68
+const PHONE_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']
+
+function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob(
+            (blob) => blob ? resolve(blob) : reject(new Error('Could not prepare this photo for upload.')),
+            'image/jpeg',
+            quality,
+        )
+    })
+}
+
+/**
+ * Normalise customer photos before uploading:
+ * - accepts high-resolution phone photos (up to 50MB source files)
+ * - preserves aspect ratio
+ * - downsizes the longest edge to 1920px (Full HD-class)
+ * - converts to JPEG and targets <= 4MB for reliable mobile uploads
+ */
+async function prepareImageForUpload(file: File): Promise<File> {
+    const safeType = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)
+    const alreadyOptimised = safeType && file.size <= TARGET_UPLOAD_SIZE
+
+    const objectUrl = URL.createObjectURL(file)
+
+    try {
+        const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const element = document.createElement('img')
+            element.onload = () => resolve(element)
+            element.onerror = () => reject(new Error(
+                `${file.name}: This photo format could not be read by your browser. Please use JPEG, PNG or WebP.`
+            ))
+            element.src = objectUrl
+        })
+
+        const width = image.naturalWidth
+        const height = image.naturalHeight
+
+        if (!width || !height) {
+            throw new Error(`${file.name}: Could not read the photo dimensions.`)
+        }
+
+        // Smaller, already-efficient images do not need recompressing.
+        if (alreadyOptimised && Math.max(width, height) <= MAX_IMAGE_EDGE) {
+            return file
+        }
+
+        const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(width, height))
+        const targetWidth = Math.max(1, Math.round(width * scale))
+        const targetHeight = Math.max(1, Math.round(height * scale))
+
+        const canvas = document.createElement('canvas')
+        canvas.width = targetWidth
+        canvas.height = targetHeight
+
+        const context = canvas.getContext('2d')
+        if (!context) {
+            throw new Error(`${file.name}: Your browser could not prepare this photo for upload.`)
+        }
+
+        // White background avoids black transparency when PNG/WebP images are converted to JPEG.
+        context.fillStyle = '#ffffff'
+        context.fillRect(0, 0, targetWidth, targetHeight)
+        context.drawImage(image, 0, 0, targetWidth, targetHeight)
+
+        let quality = INITIAL_JPEG_QUALITY
+        let blob = await canvasToBlob(canvas, quality)
+
+        while (blob.size > TARGET_UPLOAD_SIZE && quality > MIN_JPEG_QUALITY) {
+            quality = Math.max(MIN_JPEG_QUALITY, quality - 0.08)
+            blob = await canvasToBlob(canvas, quality)
+        }
+
+        const baseName = file.name.replace(/\.[^.]+$/, '') || 'vehicle-photo'
+        return new File([blob], `${baseName}.jpg`, {
+            type: 'image/jpeg',
+            lastModified: file.lastModified,
+        })
+    } finally {
+        URL.revokeObjectURL(objectUrl)
+    }
+}
+
 export function ImageUpload({
     onImagesChange,
     onDamageImageCountChange,
@@ -61,8 +149,8 @@ export function ImageUpload({
     const [reorderOverIdx, setReorderOverIdx] = React.useState<number | null>(null)
 
     // Validation constants
-    const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
-    const ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+    // Source photos may be much larger than the final upload. They are resized/compressed
+    // to Full HD-class JPEGs in the browser before being sent to storage.
 
     // Sort order: Cover photo is always index 0, then by category order
     const getSortedImages = React.useCallback(() => {
@@ -91,11 +179,14 @@ export function ImageUpload({
     }, [images])
 
     const validateFile = (file: File): string | null => {
-        if (!file.type.startsWith('image/') && !ACCEPTED_TYPES.includes(file.type)) {
+        const extension = file.name.split('.').pop()?.toLowerCase() || ''
+        const looksLikeImage = file.type.startsWith('image/') || PHONE_IMAGE_EXTENSIONS.includes(extension)
+
+        if (!looksLikeImage) {
             return `${file.name}: Only image files are allowed`
         }
-        if (file.size > MAX_FILE_SIZE) {
-            return `${file.name}: File size must be less than 20MB`
+        if (file.size > MAX_SOURCE_FILE_SIZE) {
+            return `${file.name}: Original photo must be 50MB or smaller`
         }
         return null
     }
@@ -135,7 +226,8 @@ export function ImageUpload({
                 setUploadProgress(Math.round((i / fileArray.length) * 100))
 
                 try {
-                    const publicUrl = await uploadImage(file, 'listings')
+                    const preparedFile = await prepareImageForUpload(file)
+                    const publicUrl = await uploadImage(preparedFile, 'listings')
                     newImages.push({ url: publicUrl, category: activeTab })
                 } catch (error) {
                     failedCount++
@@ -333,7 +425,7 @@ export function ImageUpload({
                     type="file"
                     className="hidden"
                     multiple
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    accept="image/*,.heic,.heif"
                     onChange={handleChange}
                     disabled={uploading || images.length >= maxImages}
                 />
@@ -365,10 +457,12 @@ export function ImageUpload({
                         <p className="text-[var(--text-muted)] text-sm mb-4">
                             Drag and drop or click to browse (Max {maxImages} photos)
                         </p>
-                        <div className="inline-flex gap-4 text-xs font-semibold text-[var(--text-muted)] bg-[var(--bg-card)] px-4 py-2 rounded-full border border-[var(--border-default)]">
-                            <span>JPEG, PNG, WebP</span>
+                        <div className="inline-flex flex-wrap justify-center gap-2 sm:gap-4 text-xs font-semibold text-[var(--text-muted)] bg-[var(--bg-card)] px-4 py-2 rounded-xl sm:rounded-full border border-[var(--border-default)]">
+                            <span>Phone photos supported</span>
                             <span className="w-1 h-1 rounded-full bg-gray-600 self-center"></span>
-                            <span>Max 5MB per file</span>
+                            <span>Auto-optimised to Full HD</span>
+                            <span className="w-1 h-1 rounded-full bg-gray-600 self-center"></span>
+                            <span>Up to 50MB original</span>
                         </div>
                     </>
                 )}

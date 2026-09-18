@@ -120,7 +120,7 @@ async function directUploadToSupabase(
     // AbortSignal.timeout() was added in Chrome 103 / Safari 16 / Firefox 100.
     // Use a manual AbortController as a polyfill for older browsers.
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(new Error('Upload timed out after 15 s')), 15000);
+    const timer = setTimeout(() => controller.abort(new Error('Upload timed out after 60 s')), 60000);
 
     let response: Response;
     try {
