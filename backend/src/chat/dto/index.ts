@@ -96,6 +96,13 @@ export class CreateChatAttachmentUploadDto {
     size: number;
 }
 
+export class OpenDisputeDto {
+    @IsOptional()
+    @IsString()
+    @MaxLength(1000)
+    reason?: string;
+}
+
 export class SendChatAttachmentDto extends CreateChatAttachmentUploadDto {
     @IsString()
     @IsNotEmpty()
