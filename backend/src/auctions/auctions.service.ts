@@ -15,6 +15,7 @@ import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
 import { Auction } from '@prisma/client';
+import { calculatePlatformOpeningBid } from './auction-pricing';
 
 const AUCTION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 const ANTI_SNIPE_MINUTES = 3;
@@ -62,15 +63,12 @@ export class AuctionsService {
             throw new BadRequestException('This listing has already been sold');
         }
 
-        // The opening/starting bid must be meaningfully below the asking price
-        // (at least 30% lower) so the auction has room to actually run — otherwise
-        // the very first bid could already meet or exceed retail.
-        const maxStartingBid = Number(listing.price) * 0.7;
-        if (createAuctionDto.startingBid > maxStartingBid) {
-            throw new BadRequestException(
-                `Starting bid must be at least 30% below the asking price of £${Number(listing.price).toLocaleString()} (max £${maxStartingBid.toLocaleString(undefined, { maximumFractionDigits: 2 })})`,
-            );
-        }
+        // For auction listings, Listing.price is the seller's Estimated Market Value.
+        // CarMazium owns the opening bid rule: every fresh auction opens at 70%
+        // of that value. The browser/app may still send startingBid for backward
+        // compatibility, but it is never authoritative.
+        const marketValue = Number(listing.price);
+        const platformStartingBid = calculatePlatformOpeningBid(marketValue);
 
         const existing = await this.prisma.auction.findUnique({
             where: { listingId: createAuctionDto.listingId },
@@ -126,7 +124,7 @@ export class AuctionsService {
                         startTime,
                         endTime,
                         reservePrice: createAuctionDto.reservePrice,
-                        startingBid: createAuctionDto.startingBid,
+                        startingBid: platformStartingBid,
                         minIncrement: createAuctionDto.minIncrement,
                         buyItNowPrice: createAuctionDto.buyItNowPrice ?? null,
                         status: 'SCHEDULED',
@@ -154,7 +152,7 @@ export class AuctionsService {
                 startTime,
                 endTime,
                 reservePrice: createAuctionDto.reservePrice,
-                startingBid: createAuctionDto.startingBid,
+                startingBid: platformStartingBid,
                 minIncrement: createAuctionDto.minIncrement,
                 buyItNowPrice: createAuctionDto.buyItNowPrice ?? null,
                 status: 'SCHEDULED',
@@ -456,6 +454,7 @@ export class AuctionsService {
             : auction.startTime;
 
         const endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
+        const platformStartingBid = calculatePlatformOpeningBid(Number(auction.listing.price));
 
         return this.prisma.auction.update({
             where: { id },
@@ -463,7 +462,9 @@ export class AuctionsService {
                 startTime,
                 endTime,
                 ...(updateAuctionDto.reservePrice !== undefined && { reservePrice: updateAuctionDto.reservePrice }),
-                ...(updateAuctionDto.startingBid !== undefined && { startingBid: updateAuctionDto.startingBid }),
+                // Keep scheduled auctions aligned with the same server-owned
+                // 70%-of-market-value opening rule as newly created auctions.
+                startingBid: platformStartingBid,
                 ...(updateAuctionDto.minIncrement !== undefined && { minIncrement: updateAuctionDto.minIncrement }),
             },
         });
@@ -545,9 +546,25 @@ export class AuctionsService {
             throw new BadRequestException('Only ACTIVE auctions can have a bid accepted');
         }
 
-        const bid = await this.prisma.bid.findUnique({ where: { id: bidId } });
+        const [bid, highestBid] = await Promise.all([
+            this.prisma.bid.findUnique({ where: { id: bidId } }),
+            this.prisma.bid.findFirst({
+                where: {
+                    listingId: auction.listingId,
+                    deletedAt: null,
+                    cancelledAt: null,
+                    archivedAt: null,
+                },
+                orderBy: { amount: 'desc' },
+            }),
+        ]);
         if (!bid || bid.listingId !== auction.listingId || bid.deletedAt || bid.cancelledAt || bid.archivedAt) {
             throw new NotFoundException('Bid not found in this auction');
+        }
+        if (!highestBid || highestBid.id !== bid.id) {
+            throw new BadRequestException(
+                'Only the current highest bid can be accepted. Refresh the auction and accept the latest offer.',
+            );
         }
 
         const winningAmount = Number(bid.amount);
