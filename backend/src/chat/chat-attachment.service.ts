@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
-import { ChatService } from './chat.service';
 
 export const CHAT_ATTACHMENT_BUCKET = 'chat-attachments';
 export const CHAT_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
@@ -23,7 +22,7 @@ export class ChatAttachmentService {
     private readonly logger = new Logger(ChatAttachmentService.name);
     private readonly supabase: SupabaseClient | null;
 
-    constructor(private readonly chatService: ChatService) {
+    constructor() {
         const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
         const serviceKey = process.env.SUPABASE_SERVICE_KEY;
 
@@ -84,7 +83,6 @@ export class ChatAttachmentService {
         mime: string,
         size: number,
     ) {
-        await this.chatService.assertCanMessageRoom(roomId, userId);
         const allowedMime = this.validateMetadata(name, mime, size);
         const extension = this.extensionForMime(allowedMime);
         const path = `${roomId}/${userId}/${randomUUID()}.${extension}`;
