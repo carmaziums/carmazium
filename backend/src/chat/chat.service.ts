@@ -1515,6 +1515,9 @@ export class ChatService {
         dto: SendMessageDto,
     ): Promise<{ message: any; created: boolean }> {
         const room = await this.assertCanMessageRoom(roomId, senderId);
+        if (dto.content.startsWith(DISPUTE_EVENT_PREFIX)) {
+            throw new BadRequestException('This message format is reserved for CarMazium dispute events.');
+        }
 
         if (dto.clientMessageId) {
             const existing = await this.findMessageByClientId(
@@ -1614,6 +1617,9 @@ export class ChatService {
         this.chatAttachmentService.assertPathOwnership(dto.path, roomId, senderId);
 
         const content = dto.caption?.trim() || '';
+        if (content.startsWith(DISPUTE_EVENT_PREFIX)) {
+            throw new BadRequestException('This message format is reserved for CarMazium dispute events.');
+        }
 
         if (dto.clientMessageId) {
             const existing = await this.findMessageByClientId(
