@@ -485,8 +485,14 @@ export class ChatService {
 
                 return {
                     id: room.id,
+                    context: room.context,
+                    conversationKey: room.conversationKey,
                     otherUser,
                     listing: room.listing,
+                    listingUnavailable: !!room.listing && (
+                        !!room.listing.deletedAt ||
+                        !['ACTIVE', 'OFFER_ACCEPTED', 'SOLD'].includes(room.listing.status)
+                    ),
                     lastMessage: room.messages[0] || null,
                     unreadCount,
                     updatedAt: room.updatedAt,
@@ -553,10 +559,11 @@ export class ChatService {
      * Send a message to a room
      */
     async sendMessage(roomId: string, senderId: string, dto: SendMessageDto): Promise<Message> {
-        // Verify user is member of room
-        await this.getRoom(roomId, senderId);
+        // Membership alone is not enough. Re-check the vehicle/deal policy on
+        // every send so an old room cannot bypass auction payment or retail
+        // lifecycle restrictions.
+        const room = await this.assertCanMessageRoom(roomId, senderId);
 
-        // Create message
         const message = await this.prisma.message.create({
             data: {
                 chatRoomId: roomId,
@@ -570,36 +577,26 @@ export class ChatService {
             },
         });
 
-        // Update room's updatedAt timestamp
         await this.prisma.chatRoom.update({
             where: { id: roomId },
             data: { updatedAt: new Date() },
         });
 
-        // NOTIFICATION LOGIC
-        // Determine recipient
-        const room = await this.prisma.chatRoom.findUnique({
-            where: { id: roomId },
-            select: { initiatorId: true, participantId: true },
-        });
+        const recipientId = room.initiatorId === senderId ? room.participantId : room.initiatorId;
 
-        if (room) {
-            const recipientId = room.initiatorId === senderId ? room.participantId : room.initiatorId;
-
-            try {
-                const notification = await this.notificationsService.create({
-                    userId: recipientId,
-                    type: 'MESSAGE_RECEIVED',
-                    title: 'New Message',
-                    message: dto.content.substring(0, 50) + (dto.content.length > 50 ? '...' : ''),
-                    link: `/dashboard/user?tab=messages&room=${roomId}`,
-                    data: { roomId, messageId: message.id },
-                });
-                this.notificationsGateway.sendNotification(recipientId, notification);
-            } catch (notifErr) {
-                // Non-fatal: message already saved and broadcast via chat gateway
-                console.warn(`[ChatService] Failed to send message notification: ${notifErr?.message}`);
-            }
+        try {
+            const notification = await this.notificationsService.create({
+                userId: recipientId,
+                type: 'MESSAGE_RECEIVED',
+                title: 'New Message',
+                message: dto.content.substring(0, 50) + (dto.content.length > 50 ? '...' : ''),
+                link: `/dashboard/user?tab=messages&room=${roomId}`,
+                data: { roomId, messageId: message.id },
+            });
+            this.notificationsGateway.sendNotification(recipientId, notification);
+        } catch (notifErr) {
+            // Non-fatal: message already saved and broadcast via chat gateway
+            console.warn(`[ChatService] Failed to send message notification: ${notifErr?.message}`);
         }
 
         return message;
