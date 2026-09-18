@@ -1068,9 +1068,11 @@ describe('ChatService — conversation context and authorization', () => {
         expect(buyerView.chatBlocked).toBe(true);
         expect(buyerView.blockedByMe).toBe(true);
         expect(buyerView.blockReason).toBe('No more direct contact');
+        expect((buyerView as any).blocks).toBeUndefined();
         expect(sellerView.chatBlocked).toBe(true);
         expect(sellerView.blockedByMe).toBe(false);
         expect(sellerView.blockReason).toBeNull();
+        expect((sellerView as any).blocks).toBeUndefined();
         expect(prisma.message.create).not.toHaveBeenCalled();
     });
 
