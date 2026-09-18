@@ -1,0 +1,67 @@
+name: Web Chat CI
+
+on:
+  pull_request:
+    paths:
+      - "src/context/ChatContext.tsx"
+      - "src/lib/chatApi.ts"
+      - "src/lib/chatMessageContent.ts"
+      - "src/components/chat/**"
+      - "src/components/admin/AdminChatModerationQueue.tsx"
+      - "src/app/dashboard/admin/messages/**"
+      - "src/app/dashboard/buyer/messages/**"
+      - "src/app/dashboard/seller/messages/**"
+      - "src/app/dashboard/dealer/messages/**"
+      - "src/app/dashboard/finance/messages/**"
+      - "src/app/dashboard/insurance/messages/**"
+      - "src/app/dashboard/service/messages/**"
+      - "src/app/services/jobs/[id]/page.tsx"
+      - "src/app/dashboard/service/jobs/[id]/page.tsx"
+      - ".github/workflows/web-chat-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck web chat surfaces
+        shell: bash
+        run: |
+          set +e
+          OUTPUT="$(npx tsc --noEmit --pretty false 2>&1)"
+          STATUS=$?
+          set -e
+
+          printf '%s\n' "$OUTPUT"
+
+          if [ "$STATUS" -eq 0 ]; then
+            exit 0
+          fi
+
+          CHAT_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(context/ChatContext|lib/(chatApi|chatMessageContent)|components/chat/|components/admin/AdminChatModerationQueue|app/dashboard/(admin|buyer|seller|dealer|finance|insurance|service)/messages/|app/services/jobs/\[id\]/page|app/dashboard/service/jobs/\[id\]/page)' || true)"
+
+          if [ -n "$CHAT_ERRORS" ]; then
+            echo
+            echo "TypeScript errors were found in web chat surfaces:"
+            printf '%s\n' "$CHAT_ERRORS"
+            exit 1
+          fi
+
+          echo
+          echo "The full web TypeScript project has pre-existing errors outside the chat scope."
+          echo "No TypeScript errors were reported in web chat files covered by this workflow."
