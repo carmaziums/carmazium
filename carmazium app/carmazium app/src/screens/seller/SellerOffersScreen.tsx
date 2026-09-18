@@ -330,8 +330,9 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
   };
 
   const openSaleModal = (offer: Offer) => {
+    const agreedPrice = Number(offer.finalAmount ?? offer.counterAmount ?? offer.amount);
     setSaleModalOffer(offer);
-    setSaleSoldPrice(String(offer.amount));
+    setSaleSoldPrice(String(agreedPrice));
     setSaleError(null);
   };
 
@@ -750,18 +751,25 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
         <View style={{ gap: 14 }}>
           {saleModalOffer && (
             <Text style={styles.modalSubtitle}>
-              Confirm the price {getBuyerName(saleModalOffer.buyer)} paid for{' '}
+              The accepted buyer and agreed price are locked to this deal for{' '}
               {saleModalOffer.listing?.title ?? 'this listing'}.
             </Text>
           )}
 
-          <Text style={styles.inputLabel}>Sale price (£)</Text>
+          <Text style={styles.inputLabel}>Accepted buyer</Text>
+          <View style={[styles.counterInput, { justifyContent: 'center', opacity: 0.85 }]}>
+            <Text style={{ color: Colors.textPrimary, fontFamily: FontFamily.medium }}>
+              {saleModalOffer ? getBuyerName(saleModalOffer.buyer) : 'Buyer'}
+            </Text>
+          </View>
+
+          <Text style={styles.inputLabel}>Agreed sale price (£)</Text>
           <TextInput
-            style={styles.counterInput}
+            style={[styles.counterInput, { opacity: 0.85 }]}
             value={saleSoldPrice}
-            onChangeText={v => { setSaleSoldPrice(v); setSaleError(null); }}
+            editable={false}
             keyboardType="numeric"
-            placeholder="Enter sale price"
+            placeholder="Agreed price"
             placeholderTextColor={Colors.textMuted}
             selectionColor={Colors.accent}
           />
