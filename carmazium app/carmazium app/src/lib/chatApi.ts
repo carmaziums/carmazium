@@ -30,6 +30,11 @@ export interface ChatMessage {
   senderId: string;
   clientMessageId?: string | null;
   content: string;
+  attachmentPath?: string | null;
+  attachmentName?: string | null;
+  attachmentMime?: string | null;
+  attachmentSize?: number | null;
+  attachmentUrl?: string | null;
   isRead: boolean;
   createdAt: string;
   updatedAt: string;
@@ -50,6 +55,22 @@ export interface ChatRoom {
   } | null;
   unreadCount: number;
   updatedAt: string;
+}
+
+export interface ChatAttachmentUploadTicket {
+  bucket: string;
+  path: string;
+  token: string;
+  expiresInSeconds: number;
+}
+
+export interface SendChatAttachmentPayload {
+  path: string;
+  name: string;
+  mime: string;
+  size: number;
+  caption?: string;
+  clientMessageId?: string;
 }
 
 export interface ChatRoomsResponse {
@@ -137,9 +158,42 @@ export async function sendChatMessage(
   return response.data;
 }
 
+export async function createChatAttachmentUpload(
+  roomId: string,
+  file: { name: string; type: string; size: number }
+): Promise<ChatAttachmentUploadTicket> {
+  const response = await apiClient<{ data: ChatAttachmentUploadTicket }>(
+    `/chat/rooms/${roomId}/attachments/upload-url`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        name: file.name,
+        mime: file.type,
+        size: file.size,
+      }),
+    }
+  );
+  return response.data;
+}
+
+export async function sendChatAttachment(
+  roomId: string,
+  payload: SendChatAttachmentPayload
+): Promise<ChatMessage> {
+  const response = await apiClient<{ data: ChatMessage }>(
+    `/chat/rooms/${roomId}/attachments`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  );
+  return response.data;
+}
+
 /**
  * Marks all messages in a specific chat room as read
  */
+
 export async function markMessagesAsRead(roomId: string): Promise<number> {
   const response = await apiClient<{ data: { markedCount: number } }>(`/chat/rooms/${roomId}/read`, {
     method: 'PATCH',
