@@ -48,6 +48,32 @@ export class AdminMessagingService {
         private readonly chatRateLimit: ChatRateLimitService,
     ) {}
 
+    async listDisputes(
+        page = 1,
+        limit = 30,
+        status?: string,
+        search?: string,
+    ) {
+        return this.chatService.listDisputes(page, limit, status, search);
+    }
+
+    async joinDispute(disputeId: string, adminId: string) {
+        const result = await this.chatService.joinDispute(disputeId, adminId);
+        this.chatGateway.joinRoomForUser(adminId, result.room.id);
+        if (result.eventMessage) {
+            this.chatGateway.broadcastMessage(result.room.id, result.eventMessage);
+        }
+        return result;
+    }
+
+    async resolveDispute(disputeId: string, adminId: string) {
+        const result = await this.chatService.resolveDispute(disputeId, adminId);
+        if (result.eventMessage) {
+            this.chatGateway.broadcastMessage(result.room.id, result.eventMessage);
+        }
+        return result;
+    }
+
     async previewAudience(dto: AdminAudienceDto) {
         const recipients = await this.resolveRecipients(dto);
         return {

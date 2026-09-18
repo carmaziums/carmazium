@@ -1,3 +1,4 @@
+import type { ChatMessage, ChatRoom } from './chatApi';
 import { apiClient } from './apiClient';
 
 export interface AdminStats {
@@ -49,6 +50,135 @@ export async function getAdminUsers(page = 1, limit = 20, search?: string) {
   if (search) params.set('search', search);
   const result = await apiClient<any>(`/admin/users?${params.toString()}`);
   return result;
+}
+
+// ─── Vehicle Disputes ─────────────────────────────────────────────────────────
+
+export type AdminDisputeStatus = 'OPEN' | 'RESOLVED';
+
+export interface AdminDisputeCase {
+  id: string;
+  sourceRoomId: string;
+  chatRoomId: string;
+  listingId: string;
+  buyerId: string;
+  sellerId: string;
+  openedById: string;
+  joinedAdminId?: string | null;
+  resolvedById?: string | null;
+  status: AdminDisputeStatus;
+  reason?: string | null;
+  adminJoinedAt?: string | null;
+  resolvedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  listing: {
+    id: string;
+    title: string;
+    slug: string;
+    images: string[];
+    type: string;
+    status: string;
+  };
+  buyer: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+    profileImage?: string | null;
+    role: string;
+  };
+  seller: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+    profileImage?: string | null;
+    role: string;
+  };
+  openedBy: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+    role: string;
+  };
+  joinedAdmin?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+    profileImage?: string | null;
+  } | null;
+  resolvedBy?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+  } | null;
+  chatRoom: {
+    id: string;
+    updatedAt: string;
+    messages: Array<{
+      id: string;
+      content: string;
+      senderId: string;
+      createdAt: string;
+    }>;
+  };
+}
+
+export async function getAdminDisputes(
+  page = 1,
+  limit = 30,
+  status?: AdminDisputeStatus,
+  search?: string,
+): Promise<{
+  data: AdminDisputeCase[];
+  pagination: { total: number; page: number; limit: number; totalPages: number };
+}> {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  if (status) params.set('status', status);
+  if (search?.trim()) params.set('search', search.trim());
+
+  const result = await apiClient<{ data: {
+    data: AdminDisputeCase[];
+    pagination: { total: number; page: number; limit: number; totalPages: number };
+  } }>(`/admin/messaging/disputes?${params.toString()}`);
+  return result.data;
+}
+
+export async function joinAdminDispute(id: string): Promise<{
+  room: ChatRoom;
+  eventMessage: ChatMessage | null;
+  joined: boolean;
+}> {
+  const result = await apiClient<{ data: {
+    room: ChatRoom;
+    eventMessage: ChatMessage | null;
+    joined: boolean;
+  } }>(`/admin/messaging/disputes/${id}/join`, {
+    method: 'POST',
+  });
+  return result.data;
+}
+
+export async function resolveAdminDispute(id: string): Promise<{
+  room: ChatRoom;
+  eventMessage: ChatMessage | null;
+  resolved: boolean;
+}> {
+  const result = await apiClient<{ data: {
+    room: ChatRoom;
+    eventMessage: ChatMessage | null;
+    resolved: boolean;
+  } }>(`/admin/messaging/disputes/${id}/resolve`, {
+    method: 'POST',
+  });
+  return result.data;
 }
 
 // ─── Admin Broadcast Messaging ────────────────────────────────────────────────

@@ -1,13 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { MessageSquare, Send, Loader2, ArrowLeft, User, Check, Zap, Paperclip } from "lucide-react"
+import { MessageSquare, Send, Loader2, ArrowLeft, User, Check, Zap, Paperclip, ShieldAlert, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import Image from "next/image"
 import { useChat } from "@/context/ChatContext"
 import { useAuth } from "@/context/AuthContext"
-import { createChatAttachmentUpload, getChatMessages, sendChatAttachment, sendChatMessage, markMessagesAsRead, getChatDisplayName, isSupportUser, type ChatHistoryCursor, type ChatMessage, type ChatRoom } from "@/lib/chatApi"
-import { parseChatMessageContent } from "@/lib/chatMessageContent"
+import { createChatAttachmentUpload, getChatMessages, sendChatAttachment, sendChatMessage, markMessagesAsRead, getChatDisplayName, isSupportUser, openVehicleDispute, type ChatHistoryCursor, type ChatMessage, type ChatRoom } from "@/lib/chatApi"
+import { disputeEventLabel, parseChatMessageContent, parseDisputeEventContent } from "@/lib/chatMessageContent"
+import { resolveAdminDispute } from "@/lib/adminApi"
 import { supabase } from "@/lib/supabase"
 
 interface ChatWindowProps {
@@ -30,8 +31,8 @@ const ADMIN_QUICK_REPLIES = [
  * Displays messages and handles sending new messages
  */
 export function ChatWindow({ room, onBack }: ChatWindowProps) {
-    const { sendMessage, onNewMessage, onTyping, markAsRead, isConnected, onlineUserIds } = useChat()
-    const { profile } = useAuth()
+    const { sendMessage, onNewMessage, onTyping, markAsRead, refreshRooms, isConnected, onlineUserIds } = useChat()
+    const { profile, user } = useAuth()
     const isAdminViewer = profile?.role === 'ADMIN'
     const otherUserOnline = room.otherUser ? onlineUserIds.has(room.otherUser.id) : false
     const [messages, setMessages] = React.useState<ChatMessage[]>([])
@@ -44,12 +45,72 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const [uploadingAttachment, setUploadingAttachment] = React.useState(false)
     const [attachmentError, setAttachmentError] = React.useState<string | null>(null)
     const [isTyping, setIsTyping] = React.useState(false)
+    const [showDisputeForm, setShowDisputeForm] = React.useState(false)
+    const [disputeReason, setDisputeReason] = React.useState("")
+    const [disputeActionError, setDisputeActionError] = React.useState<string | null>(null)
+    const [openingDispute, setOpeningDispute] = React.useState(false)
+    const [disputeOpened, setDisputeOpened] = React.useState(false)
+    const [resolvingDispute, setResolvingDispute] = React.useState(false)
+    const [resolvedLocally, setResolvedLocally] = React.useState(false)
     const messagesEndRef = React.useRef<HTMLDivElement>(null)
     const messagesContainerRef = React.useRef<HTMLDivElement>(null)
     const inputRef = React.useRef<HTMLInputElement>(null)
     const attachmentInputRef = React.useRef<HTMLInputElement>(null)
     const typingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
     const isInitialLoad = React.useRef(true)
+
+    const isDispute = room.context === 'DISPUTE'
+    const disputeResolved = resolvedLocally || room.disputeCase?.status === 'RESOLVED'
+    const disputeAdminJoined = !!room.disputeCase?.joinedAdminId
+
+    React.useEffect(() => {
+        setShowDisputeForm(false)
+        setDisputeReason("")
+        setDisputeActionError(null)
+        setDisputeOpened(false)
+        setResolvedLocally(room.disputeCase?.status === 'RESOLVED')
+    }, [room.id, room.disputeCase?.status])
+
+    const openDispute = async () => {
+        if (!room.canOpenDispute || openingDispute) return
+
+        try {
+            setOpeningDispute(true)
+            setDisputeActionError(null)
+            const result = await openVehicleDispute(room.id, disputeReason)
+            setDisputeOpened(true)
+            setShowDisputeForm(false)
+            setDisputeReason("")
+            await refreshRooms()
+            if (!result.created) {
+                setDisputeActionError("A dispute already exists for this transaction. Select the Dispute conversation from your message list.")
+            }
+        } catch (error: any) {
+            if (error?.message !== "AUTH_REDIRECT") {
+                setDisputeActionError(error?.message || "Could not open dispute")
+            }
+        } finally {
+            setOpeningDispute(false)
+        }
+    }
+
+    const resolveDispute = async () => {
+        if (!room.disputeCase?.id || resolvingDispute || !isAdminViewer) return
+
+        try {
+            setResolvingDispute(true)
+            setDisputeActionError(null)
+            await resolveAdminDispute(room.disputeCase.id)
+            setResolvedLocally(true)
+            await refreshRooms()
+        } catch (error: any) {
+            if (error?.message !== "AUTH_REDIRECT") {
+                setDisputeActionError(error?.message || "Could not resolve dispute")
+            }
+        } finally {
+            setResolvingDispute(false)
+        }
+    }
 
     /** Returns true if the user is within 150px of the bottom of the chat */
     const isNearBottom = () => {
@@ -140,12 +201,15 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     // Subscribe to typing indicators
     React.useEffect(() => {
         const unsubscribe = onTyping((data) => {
-            if (data.roomId === room.id && data.userId === room.otherUser?.id) {
+            const fromOtherParticipant = isDispute
+                ? data.userId !== user?.id
+                : data.userId === room.otherUser?.id
+            if (data.roomId === room.id && fromOtherParticipant) {
                 setIsTyping(data.isTyping)
             }
         })
         return unsubscribe
-    }, [room.id, room.otherUser?.id, onTyping])
+    }, [room.id, room.otherUser?.id, isDispute, user?.id, onTyping])
 
     const loadOlderMessages = async () => {
         if (!historyCursor || !hasMore || loadingOlder) return
@@ -438,6 +502,123 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 )}
             </div>
 
+            {(isDispute || room.canOpenDispute || room.sourceDispute || disputeOpened) && (
+                <div className="border-b border-[var(--border-default)] bg-[var(--bg-card)] px-4 py-3">
+                    {isDispute ? (
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-black uppercase ${disputeResolved
+                                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                                        : "border-amber-500/30 bg-amber-500/10 text-amber-400"
+                                    }`}>
+                                        <ShieldAlert size={11} />
+                                        {disputeResolved ? "Resolved dispute" : "Open dispute"}
+                                    </span>
+                                    <span className="text-xs text-[var(--text-muted)]">
+                                        {disputeAdminJoined ? "CarMazium has joined this case" : "Awaiting CarMazium review"}
+                                    </span>
+                                </div>
+                                {isAdminViewer && room.disputeCase?.buyer && room.disputeCase?.seller && (
+                                    <p className="mt-2 text-xs text-[var(--text-muted)]">
+                                        Buyer: {getChatDisplayName(room.disputeCase.buyer)} · Seller: {getChatDisplayName(room.disputeCase.seller)}
+                                    </p>
+                                )}
+                                {room.disputeCase?.reason && (
+                                    <p className="mt-2 line-clamp-2 text-xs text-[var(--text-secondary)]">
+                                        Reason: {room.disputeCase.reason}
+                                    </p>
+                                )}
+                            </div>
+
+                            {isAdminViewer &&
+                                !disputeResolved &&
+                                room.disputeCase?.joinedAdminId === user?.id && (
+                                    <button
+                                        type="button"
+                                        onClick={resolveDispute}
+                                        disabled={resolvingDispute}
+                                        className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-400 disabled:opacity-50"
+                                    >
+                                        {resolvingDispute ? (
+                                            <Loader2 size={14} className="animate-spin" />
+                                        ) : (
+                                            <CheckCircle2 size={14} />
+                                        )}
+                                        Resolve dispute
+                                    </button>
+                                )}
+                        </div>
+                    ) : room.sourceDispute || disputeOpened ? (
+                        <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                            <ShieldAlert size={16} className="shrink-0 text-amber-400" />
+                            A separate dispute conversation exists for this transaction. Select the Dispute conversation from your message list.
+                        </div>
+                    ) : room.canOpenDispute ? (
+                        <div>
+                            {!showDisputeForm ? (
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p className="text-sm font-bold text-[var(--text-primary)]">Need CarMazium to review this transaction?</p>
+                                        <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                                            Opening a dispute creates a separate buyer, seller and CarMazium case. Your private vehicle chat remains private.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowDisputeForm(true)}
+                                        className="inline-flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-black text-amber-400"
+                                    >
+                                        <ShieldAlert size={14} />
+                                        Open dispute
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <textarea
+                                        value={disputeReason}
+                                        onChange={(event) => setDisputeReason(event.target.value)}
+                                        maxLength={1000}
+                                        rows={3}
+                                        placeholder="Briefly explain what CarMazium needs to review (optional)"
+                                        className="w-full resize-y rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    />
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <span className="text-[11px] text-[var(--text-muted)]">{disputeReason.length}/1000</span>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setShowDisputeForm(false)
+                                                    setDisputeReason("")
+                                                }}
+                                                disabled={openingDispute}
+                                                className="rounded-xl border border-[var(--border-default)] px-3 py-2 text-xs font-bold"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={openDispute}
+                                                disabled={openingDispute}
+                                                className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-black text-white disabled:opacity-50"
+                                            >
+                                                {openingDispute ? <Loader2 size={14} className="animate-spin" /> : <ShieldAlert size={14} />}
+                                                {openingDispute ? "Opening…" : "Create dispute case"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : null}
+
+                    {disputeActionError && (
+                        <p className="mt-2 text-xs text-red-400">{disputeActionError}</p>
+                    )}
+                </div>
+            )}
+
             {/* Messages */}
             <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                 {loading ? (
@@ -476,7 +657,25 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                 </span>
                             </div>
                             {group.messages.map((msg) => {
-                                const isOwn = msg.senderId !== room.otherUser?.id
+                                const disputeEvent = isDispute
+                                    ? parseDisputeEventContent(msg.content)
+                                    : null
+
+                                if (disputeEvent) {
+                                    return (
+                                        <div key={msg.id} className="my-3 flex justify-center">
+                                            <div className="max-w-[90%] rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-center">
+                                                <p className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400">
+                                                    <ShieldAlert size={13} />
+                                                    {disputeEventLabel(disputeEvent)}
+                                                </p>
+                                                <p className="mt-1 text-[10px] text-[var(--text-muted)]">{formatTime(msg.createdAt)}</p>
+                                            </div>
+                                        </div>
+                                    )
+                                }
+
+                                const isOwn = !!msg.deliveryStatus || msg.senderId === user?.id
                                 // The media envelope is an internal admin format. A normal
                                 // member typing the same prefix must never make arbitrary
                                 // text render as trusted CarMazium media.
@@ -552,7 +751,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                                         Not sent · Retry
                                                     </button>
                                                 )}
-                                                {isOwn && !msg.deliveryStatus && (
+                                                {isOwn && !isDispute && !msg.deliveryStatus && (
                                                     <svg width="13" height="9" viewBox="0 0 16 11" fill="none" className={msg.isRead ? 'text-white' : 'text-white/50'}>
                                                         <path d="M1 5.5L4.5 9L11 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                                                         <path d="M5.5 5.5L9 9L15.5 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -585,6 +784,13 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
 
             {/* Input */}
             <div className="border-t border-[var(--border-default)]">
+                {isDispute && disputeResolved ? (
+                    <div className="flex items-center justify-center gap-2 px-4 py-4 text-sm text-[var(--text-muted)]">
+                        <CheckCircle2 size={16} className="text-emerald-400" />
+                        This dispute is resolved. The transcript is read-only.
+                    </div>
+                ) : (
+                <>
                 {isAdminViewer && (
                     <div className="flex items-center gap-1.5 px-4 pt-3 overflow-x-auto scrollbar-hide">
                         <Zap size={12} className="text-[var(--text-muted)] shrink-0" />
@@ -651,6 +857,8 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         )}
                     </Button>
                 </div>
+                </>
+                )}
             </div>
         </div>
     )

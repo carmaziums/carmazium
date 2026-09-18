@@ -21,7 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
-import { CreateChatAttachmentUploadDto, CreateRoomDto, SendChatAttachmentDto, SendMessageDto } from './dto';
+import { CreateChatAttachmentUploadDto, CreateRoomDto, OpenDisputeDto, SendChatAttachmentDto, SendMessageDto } from './dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
@@ -92,6 +92,31 @@ export class ChatController {
         this.chatGateway.joinRoomForUser(user.id, room.id);
         this.chatGateway.joinRoomForUser((room as any).otherUser.id, room.id);
         return new StandardResponse(room);
+    }
+
+    @Post('rooms/:id/dispute')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Open or return the dispute for a vehicle conversation' })
+    @ApiParam({ name: 'id', description: 'Source retail/auction chat room ID' })
+    async openDispute(
+        @CurrentUser() user: any,
+        @Param('id') sourceRoomId: string,
+        @Body() dto: OpenDisputeDto,
+    ) {
+        this.chatRateLimit.consumeRoomCreate(user.id);
+        const result = await this.chatService.openDispute(
+            sourceRoomId,
+            user.id,
+            dto,
+        );
+
+        this.chatGateway.joinRoomForUser(result.room.initiatorId, result.room.id);
+        this.chatGateway.joinRoomForUser(result.room.participantId, result.room.id);
+        if (result.created && result.eventMessage) {
+            this.chatGateway.broadcastMessage(result.room.id, result.eventMessage);
+        }
+
+        return new StandardResponse(result);
     }
 
     /**
