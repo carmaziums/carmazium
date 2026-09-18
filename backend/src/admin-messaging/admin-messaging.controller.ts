@@ -37,6 +37,46 @@ import {
 export class AdminMessagingController {
     constructor(private readonly messaging: AdminMessagingService) {}
 
+    @Get('disputes')
+    @ApiOperation({ summary: 'List vehicle dispute cases without exposing private source chat' })
+    async disputes(
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+        @Query('status') status?: string,
+        @Query('search') search?: string,
+    ) {
+        return new StandardResponse(
+            await this.messaging.listDisputes(
+                Number(page || 1),
+                Number(limit || 30),
+                status,
+                search,
+            ),
+        );
+    }
+
+    @Post('disputes/:id/join')
+    @ApiOperation({ summary: 'Explicitly join and gain access to a dispute conversation' })
+    async joinDispute(
+        @CurrentUser() admin: any,
+        @Param('id') disputeId: string,
+    ) {
+        return new StandardResponse(
+            await this.messaging.joinDispute(disputeId, admin.id),
+        );
+    }
+
+    @Post('disputes/:id/resolve')
+    @ApiOperation({ summary: 'Resolve a dispute joined by the current admin' })
+    async resolveDispute(
+        @CurrentUser() admin: any,
+        @Param('id') disputeId: string,
+    ) {
+        return new StandardResponse(
+            await this.messaging.resolveDispute(disputeId, admin.id),
+        );
+    }
+
     @Get('support/agents')
     @ApiOperation({ summary: 'List active admin support agents' })
     async supportAgents() {
