@@ -1762,25 +1762,40 @@ export class ChatService {
     /**
      * Get all chat rooms for a user with last message preview
      */
-    async getUserRooms(userId: string): Promise<any[]> {
+    async getUserRooms(
+        userId: string,
+        options: { limit?: number; before?: Date; beforeId?: string } = {},
+    ): Promise<any[]> {
         const role = await this.actorRole(userId);
+        const membership = role === UserRole.ADMIN
+            ? [
+                { context: ChatContext.SUPPORT },
+                {
+                    context: ChatContext.DISPUTE,
+                    disputeCase: { is: { joinedAdminId: userId } },
+                },
+                { initiatorId: userId },
+                { participantId: userId },
+            ]
+            : [
+                { initiatorId: userId },
+                { participantId: userId },
+            ];
+        const usingCursor = !!options.before && !!options.beforeId;
         const rooms = await this.prisma.chatRoom.findMany({
             where: {
-                OR: role === UserRole.ADMIN
-                    ? [
-                        { context: ChatContext.SUPPORT },
-                        {
-                            context: ChatContext.DISPUTE,
-                            disputeCase: { is: { joinedAdminId: userId } },
-                        },
-                        { initiatorId: userId },
-                        { participantId: userId },
-                    ]
-                    : [
-                        { initiatorId: userId },
-                        { participantId: userId },
-                    ],
                 deletedAt: null,
+                AND: [
+                    { OR: membership },
+                    ...(usingCursor
+                        ? [{
+                            OR: [
+                                { updatedAt: { lt: options.before } },
+                                { updatedAt: options.before, id: { lt: options.beforeId } },
+                            ],
+                        }]
+                        : []),
+                ],
             },
             include: {
                 ...this.roomInclude,
@@ -1798,7 +1813,13 @@ export class ChatService {
                     },
                 },
             },
-            orderBy: { updatedAt: 'desc' },
+            orderBy: [
+                { updatedAt: 'desc' },
+                { id: 'desc' },
+            ],
+            ...(options.limit
+                ? { take: Math.min(Math.max(options.limit, 1), 101) }
+                : {}),
         });
 
         // Aggregate unread two-party/support messages in one query instead
@@ -2434,6 +2455,65 @@ export class ChatService {
     async getUnreadCount(userId: string): Promise<number> {
         const rooms = await this.getUserRooms(userId);
         return rooms.reduce((total, room) => total + Number(room.unreadCount || 0), 0);
+    }
+
+    /**
+     * Lightweight counterpart lookup for the initial presence snapshot. Do not
+     * hydrate message previews or unread counts during every socket connect.
+     */
+    async getUserPresencePartnerIds(userId: string): Promise<string[]> {
+        const role = await this.actorRole(userId);
+        const rooms = await this.prisma.chatRoom.findMany({
+            where: {
+                OR: role === UserRole.ADMIN
+                    ? [
+                        { context: ChatContext.SUPPORT },
+                        {
+                            context: ChatContext.DISPUTE,
+                            disputeCase: { is: { joinedAdminId: userId } },
+                        },
+                        { initiatorId: userId },
+                        { participantId: userId },
+                    ]
+                    : [
+                        { initiatorId: userId },
+                        { participantId: userId },
+                    ],
+                deletedAt: null,
+            },
+            select: {
+                initiatorId: true,
+                participantId: true,
+                context: true,
+                initiator: { select: { role: true } },
+                participant: { select: { role: true } },
+                disputeCase: {
+                    select: {
+                        buyerId: true,
+                        joinedAdminId: true,
+                    },
+                },
+            },
+        });
+
+        return Array.from(new Set(rooms
+            .map((room) => {
+                if (room.initiatorId === userId) return room.participantId;
+                if (room.participantId === userId) return room.initiatorId;
+                if (room.context === ChatContext.SUPPORT) {
+                    return room.initiator.role === UserRole.ADMIN
+                        ? room.participantId
+                        : room.initiatorId;
+                }
+                if (
+                    room.context === ChatContext.DISPUTE &&
+                    room.disputeCase?.joinedAdminId === userId
+                ) {
+                    return room.disputeCase.buyerId;
+                }
+                return null;
+            })
+            .filter((id): id is string => !!id)));
     }
 
     /**

@@ -119,10 +119,9 @@ export class ChatGateway
             // also needs to know who's already online right now, otherwise
             // every conversation partner reads as offline until their next
             // connect/disconnect.
-            const rooms = await this.chatService.getUserRooms(userId);
-            const onlineUserIds = rooms
-                .map((r: any) => r.otherUser?.id as string | undefined)
-                .filter((id): id is string => !!id && this.connectedUsers.has(id));
+            const partnerIds = await this.chatService.getUserPresencePartnerIds(userId);
+            const onlineUserIds = partnerIds
+                .filter((id) => this.connectedUsers.has(id));
             client.emit('presence:snapshot', { onlineUserIds });
 
             this.logger.log(

@@ -654,6 +654,40 @@ describe('ChatService — conversation context and authorization', () => {
         ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
+    it('applies a stable updatedAt/id cursor when a room page is requested', async () => {
+        const before = new Date('2026-09-18T12:00:00.000Z');
+        prisma.chatRoom.findMany.mockResolvedValue([]);
+
+        await service.getUserRooms(buyerId, {
+            limit: 51,
+            before,
+            beforeId: 'aaaaaaaa-0000-4000-8000-000000000000',
+        });
+
+        expect(prisma.chatRoom.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                take: 51,
+                orderBy: [
+                    { updatedAt: 'desc' },
+                    { id: 'desc' },
+                ],
+                where: expect.objectContaining({
+                    AND: expect.arrayContaining([
+                        expect.objectContaining({
+                            OR: expect.arrayContaining([
+                                { updatedAt: { lt: before } },
+                                {
+                                    updatedAt: before,
+                                    id: { lt: 'aaaaaaaa-0000-4000-8000-000000000000' },
+                                },
+                            ]),
+                        }),
+                    ]),
+                }),
+            }),
+        );
+    });
+
     it('batches unread counts for non-dispute rooms instead of counting once per room', async () => {
         prisma.chatRoom.findMany.mockResolvedValue([
             {
