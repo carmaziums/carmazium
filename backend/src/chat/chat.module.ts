@@ -5,6 +5,7 @@ import { ChatGateway } from './chat.gateway';
 import { PrismaModule } from '../prisma/prisma.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AuthModule } from '../auth/auth.module';
+import { ChatRateLimitService } from './chat-rate-limit.service';
 
 /**
  * Chat module providing real-time messaging functionality.
@@ -14,7 +15,7 @@ import { AuthModule } from '../auth/auth.module';
 @Module({
     imports: [PrismaModule, NotificationsModule, AuthModule],
     controllers: [ChatController],
-    providers: [ChatService, ChatGateway],
-    exports: [ChatService, ChatGateway],
+    providers: [ChatService, ChatGateway, ChatRateLimitService],
+    exports: [ChatService, ChatGateway, ChatRateLimitService],
 })
 export class ChatModule { }
