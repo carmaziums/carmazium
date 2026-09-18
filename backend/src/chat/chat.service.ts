@@ -785,7 +785,7 @@ export class ChatService {
         });
     }
 
-    private async resolveMessageRecipient(room: any, senderId: string) {
+    private async resolveMessageRouting(room: any, senderId: string) {
         const senderRole = await this.actorRole(senderId);
         if (!senderRole) {
             throw new ForbiddenException('Chat sender is not available.');
@@ -804,8 +804,10 @@ export class ChatService {
                     : room.participant.role;
                 return {
                     senderRole,
-                    recipientId: customerId,
-                    recipientRole: customerRole as UserRole,
+                    recipients: [{
+                        id: customerId,
+                        role: customerRole as UserRole,
+                    }],
                     roomUpdate: {
                         supportClosedAt: null,
                         ...(room.supportAssignedAdminId
@@ -817,24 +819,81 @@ export class ChatService {
 
             return {
                 senderRole,
-                recipientId: room.supportAssignedAdminId || canonicalAdminId,
-                recipientRole: UserRole.ADMIN,
+                recipients: [{
+                    id: room.supportAssignedAdminId || canonicalAdminId,
+                    role: UserRole.ADMIN,
+                }],
                 roomUpdate: { supportClosedAt: null },
+            };
+        }
+
+        if (room.context === ChatContext.DISPUTE) {
+            if (!room.disputeCase || room.disputeCase.status !== DisputeStatus.OPEN) {
+                throw new ForbiddenException('This dispute is not open for messaging.');
+            }
+
+            const recipients = [
+                room.initiatorId !== senderId
+                    ? { id: room.initiatorId, role: room.initiator.role as UserRole }
+                    : null,
+                room.participantId !== senderId
+                    ? { id: room.participantId, role: room.participant.role as UserRole }
+                    : null,
+                room.disputeCase.joinedAdminId && room.disputeCase.joinedAdminId !== senderId
+                    ? { id: room.disputeCase.joinedAdminId, role: UserRole.ADMIN }
+                    : null,
+            ].filter(Boolean) as Array<{ id: string; role: UserRole }>;
+
+            return {
+                senderRole,
+                recipients: Array.from(
+                    new Map(recipients.map((recipient) => [recipient.id, recipient])).values(),
+                ),
+                roomUpdate: {},
             };
         }
 
         return {
             senderRole,
-            recipientId: room.initiatorId === senderId
-                ? room.participantId
-                : room.initiatorId,
-            recipientRole: (
-                room.initiatorId === senderId
-                    ? room.participant.role
-                    : room.initiator.role
-            ) as UserRole,
+            recipients: [{
+                id: room.initiatorId === senderId
+                    ? room.participantId
+                    : room.initiatorId,
+                role: (
+                    room.initiatorId === senderId
+                        ? room.participant.role
+                        : room.initiator.role
+                ) as UserRole,
+            }],
             roomUpdate: {},
         };
+    }
+
+    private async notifyMessageRecipients(
+        recipients: Array<{ id: string; role: UserRole }>,
+        roomId: string,
+        messageId: string,
+        title: string,
+        preview: string,
+        data: Record<string, unknown> = {},
+    ) {
+        for (const recipient of recipients) {
+            try {
+                const notification = await this.notificationsService.create({
+                    userId: recipient.id,
+                    type: 'MESSAGE_RECEIVED',
+                    title,
+                    message: preview,
+                    link: messageInboxLink(recipient.role, roomId),
+                    data: { roomId, messageId, ...data },
+                });
+                this.notificationsGateway.sendNotification(recipient.id, notification);
+            } catch (notifErr: any) {
+                console.warn(
+                    `[ChatService] Failed to send chat notification to ${recipient.id}: ${notifErr?.message}`,
+                );
+            }
+        }
     }
 
     private assertIdempotentMessageMatches(
@@ -909,7 +968,7 @@ export class ChatService {
             throw error;
         }
 
-        const routing = await this.resolveMessageRecipient(room, senderId);
+        const routing = await this.resolveMessageRouting(room, senderId);
         await this.prisma.chatRoom.update({
             where: { id: roomId },
             data: {
@@ -918,21 +977,13 @@ export class ChatService {
             },
         });
 
-        const { recipientId, recipientRole } = routing;
-
-        try {
-            const notification = await this.notificationsService.create({
-                userId: recipientId,
-                type: 'MESSAGE_RECEIVED',
-                title: 'New Message',
-                message: dto.content.substring(0, 50) + (dto.content.length > 50 ? '...' : ''),
-                link: messageInboxLink(recipientRole, roomId),
-                data: { roomId, messageId: message.id },
-            });
-            this.notificationsGateway.sendNotification(recipientId, notification);
-        } catch (notifErr) {
-            console.warn(`[ChatService] Failed to send message notification: ${notifErr?.message}`);
-        }
+        await this.notifyMessageRecipients(
+            routing.recipients,
+            roomId,
+            message.id,
+            'New Message',
+            dto.content.substring(0, 50) + (dto.content.length > 50 ? '...' : ''),
+        );
 
         return { message, created: true };
     }
@@ -1025,7 +1076,7 @@ export class ChatService {
             throw error;
         }
 
-        const routing = await this.resolveMessageRecipient(room, senderId);
+        const routing = await this.resolveMessageRouting(room, senderId);
         await this.prisma.chatRoom.update({
             where: { id: roomId },
             data: {
@@ -1034,25 +1085,18 @@ export class ChatService {
             },
         });
 
-        const { recipientId, recipientRole } = routing;
-
         const preview = content
             ? `Photo: ${content.slice(0, 60)}${content.length > 60 ? '…' : ''}`
             : 'You received a photo.';
 
-        try {
-            const notification = await this.notificationsService.create({
-                userId: recipientId,
-                type: 'MESSAGE_RECEIVED',
-                title: 'New Photo',
-                message: preview,
-                link: messageInboxLink(recipientRole, roomId),
-                data: { roomId, messageId: message.id, hasAttachment: true },
-            });
-            this.notificationsGateway.sendNotification(recipientId, notification);
-        } catch (notifErr) {
-            console.warn(`[ChatService] Failed to send photo notification: ${notifErr?.message}`);
-        }
+        await this.notifyMessageRecipients(
+            routing.recipients,
+            roomId,
+            message.id,
+            'New Photo',
+            preview,
+            { hasAttachment: true },
+        );
 
         return {
             message: await this.chatAttachmentService.hydrateMessage(message),
