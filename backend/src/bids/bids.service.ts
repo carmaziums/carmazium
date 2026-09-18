@@ -67,7 +67,7 @@ export class BidsService {
         const startingBid = Number(auction.startingBid);
 
         const highestBid = await this.prisma.bid.findFirst({
-            where: { listingId: createBidDto.listingId, deletedAt: null, cancelledAt: null },
+            where: { listingId: createBidDto.listingId, deletedAt: null, cancelledAt: null, archivedAt: null },
             orderBy: { amount: 'desc' },
         });
 
@@ -156,6 +156,10 @@ export class BidsService {
             throw new ForbiddenException('Not your bid');
         }
 
+        if (bid.archivedAt) {
+            throw new BadRequestException('This bid belongs to a previous auction and can no longer be cancelled');
+        }
+
         if (bid.cancelledAt || bid.deletedAt) {
             throw new BadRequestException('Bid already cancelled');
         }
@@ -187,6 +191,7 @@ export class BidsService {
                 bidderId,
                 deletedAt: null,
                 cancelledAt: null,
+                archivedAt: null,
                 listing: {
                     auction: { status: 'ACTIVE' },
                 },
@@ -237,6 +242,7 @@ export class BidsService {
                 listingId: { in: listingIds },
                 deletedAt: null,
                 cancelledAt: null,
+                archivedAt: null,
             },
             select: {
                 id: true,
@@ -334,7 +340,7 @@ export class BidsService {
 
         const listingIds = [...new Set(bids.map(b => b.listingId))];
         const topBids = await this.prisma.bid.findMany({
-            where: { listingId: { in: listingIds }, deletedAt: null, cancelledAt: null },
+            where: { listingId: { in: listingIds }, deletedAt: null, cancelledAt: null, archivedAt: null },
             orderBy: { amount: 'desc' },
             distinct: ['listingId'],
             select: { id: true, listingId: true },
@@ -342,7 +348,8 @@ export class BidsService {
         const winningMap = new Map(topBids.map(b => [b.listingId, b.id]));
         const enrichedBids = bids.map(bid => ({
             ...bid,
-            isWinning: winningMap.get(bid.listingId) === bid.id,
+            isArchived: Boolean(bid.archivedAt),
+            isWinning: !bid.archivedAt && winningMap.get(bid.listingId) === bid.id,
         }));
 
         return { data: enrichedBids, total };
@@ -350,7 +357,7 @@ export class BidsService {
 
     async findByListing(listingId: string): Promise<Bid[]> {
         return this.prisma.bid.findMany({
-            where: { listingId, deletedAt: null, cancelledAt: null },
+            where: { listingId, deletedAt: null, cancelledAt: null, archivedAt: null },
             include: {
                 bidder: {
                     select: { id: true, firstName: true, lastName: true },
@@ -373,6 +380,7 @@ export class BidsService {
                     bidderId: userId,
                     deletedAt: null,
                     cancelledAt: null,
+                    archivedAt: null,
                     listing: { auction: { status: 'ACTIVE' } },
                 },
             }),

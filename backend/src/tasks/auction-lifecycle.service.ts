@@ -70,7 +70,7 @@ export class AuctionLifecycleService {
                         bids: {
                             select: { bidderId: true },
                             distinct: ['bidderId'],
-                            where: { deletedAt: null },
+                            where: { deletedAt: null, cancelledAt: null, archivedAt: null },
                         },
                     },
                 },

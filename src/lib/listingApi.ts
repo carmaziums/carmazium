@@ -514,6 +514,8 @@ export interface Bid {
     listingId: string
     amount: string | number
     isWinning: boolean
+    isArchived?: boolean
+    archivedAt?: string | null
     createdAt: string
     listing: {
         id: string

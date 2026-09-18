@@ -44,14 +44,16 @@ export default function MyBidsPage() {
     function getBidRowMeta(bid: Bid): {
         isAuction: boolean
         auctionActive: boolean
+        previousAuction: boolean
         userWon: boolean
         auctionEnded: boolean
     } {
         const auction = bid.listing.auction
         return {
             isAuction: !!auction,
-            auctionActive: auction?.status === "ACTIVE",
-            userWon: auction?.status === "ENDED" && auction?.winnerId === user?.id && bid.isWinning,
+            auctionActive: auction?.status === "ACTIVE" && !bid.isArchived,
+            previousAuction: Boolean(bid.isArchived),
+            userWon: !bid.isArchived && auction?.status === "ENDED" && auction?.winnerId === user?.id && bid.isWinning,
             auctionEnded: auction?.status === "ENDED" || auction?.status === "CANCELLED",
         }
     }
@@ -121,7 +123,7 @@ export default function MyBidsPage() {
                                         </tr>
                                     ) : (
                                         bids.map((bid) => {
-                                            const { isAuction, auctionActive, userWon, auctionEnded } = getBidRowMeta(bid)
+                                            const { isAuction, auctionActive, previousAuction, userWon, auctionEnded } = getBidRowMeta(bid)
                                             const auction = bid.listing.auction
 
                                             return (
@@ -162,7 +164,11 @@ export default function MyBidsPage() {
 
                                                     {/* Status */}
                                                     <td className="px-6 py-4">
-                                                        {userWon ? (
+                                                        {previousAuction ? (
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-slate-500/10 text-[var(--text-muted)] border-slate-500/20">
+                                                                Previous Auction
+                                                            </span>
+                                                        ) : userWon ? (
                                                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-400/10 text-amber-400 border-amber-400/20">
                                                                 <Trophy size={10} /> Won
                                                             </span>
@@ -198,7 +204,9 @@ export default function MyBidsPage() {
 
                                                     {/* Action */}
                                                     <td className="px-6 py-4 text-right">
-                                                        {userWon ? (
+                                                        {previousAuction ? (
+                                                            <span className="text-xs text-[var(--text-muted)] font-medium">Historical bid</span>
+                                                        ) : userWon ? (
                                                             <div className="flex flex-col items-end gap-1.5">
                                                                 <span className="text-xs text-amber-400 font-bold">You won!</span>
                                                                 <button
