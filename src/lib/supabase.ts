@@ -142,7 +142,7 @@ async function directUploadToSupabase(
                 'Authorization': authHeader,
                 'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
                 'Content-Type': file.type || 'application/octet-stream',
-                'x-upsert': 'true',
+                'x-upsert': 'false',
                 'Cache-Control': 'max-age=3600',
             },
             body: file,
