@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Image from "next/image"
-import { MessageSquare, Search, User, Loader2, Check, ShieldAlert } from "lucide-react"
+import { MessageSquare, Search, User, Loader2, Check, ShieldAlert, Ban } from "lucide-react"
 import { useChat } from "@/context/ChatContext"
 import { getChatDisplayName, isSupportUser, type ChatRoom } from "@/lib/chatApi"
 import { chatMessagePreview } from "@/lib/chatMessageContent"
@@ -172,6 +172,15 @@ export function ChatRoomList({
                                                         CarMazium joined
                                                     </span>
                                                 )}
+                                            </div>
+                                        )}
+
+                                        {room.chatBlocked && room.context !== 'DISPUTE' && (
+                                            <div className="mb-1.5">
+                                                <span className="inline-flex items-center gap-1 rounded-full border border-red-500/25 bg-red-500/10 px-1.5 py-0.5 text-[9px] font-black uppercase text-red-400">
+                                                    <Ban size={9} />
+                                                    {room.blockedByMe ? 'Blocked by you' : 'Messaging blocked'}
+                                                </span>
                                             </div>
                                         )}
 
