@@ -9,9 +9,9 @@ import { useAuth } from "@/context/AuthContext"
 import { getWatchlist, removeFromWatchlist, formatPrice, type WatchlistItem } from "@/lib/listingApi"
 import { Loader2, Heart, Gavel, ChevronRight } from "lucide-react"
 
-export default function DealerSaved CarsPage() {
+export default function DealerSavedCarsPage() {
     const { user, loading: authLoading } = useAuth()
-    const [items, setItems] = React.useState<Saved CarsItem[]>([])
+    const [items, setItems] = React.useState<WatchlistItem[]>([])
     const [loading, setLoading] = React.useState(true)
     const [removing, setRemoving] = React.useState<string | null>(null)
     const [page, setPage] = React.useState(1)
@@ -67,7 +67,7 @@ export default function DealerSaved CarsPage() {
                         </div>
                     ) : items.length === 0 ? (
                         <div className="glass-card p-12 text-center text-[var(--text-muted)]">
-                            Your saved cars is empty. <Link href="/search" className="text-primary hover:underline">Browse cars to add some!</Link>
+                            Your Saved Cars list is empty. <Link href="/search" className="text-primary hover:underline">Browse cars to add some!</Link>
                         </div>
                     ) : (
                         <>
