@@ -94,6 +94,7 @@ export interface AdminMessagePayload extends AdminAudienceSelection {
 }
 
 export interface AdminMessageSendResult {
+  campaignId: string;
   requested: number;
   sent: number;
   failed: number;
@@ -113,6 +114,179 @@ export async function sendAdminAudienceMessage(payload: AdminMessagePayload): Pr
     method: 'POST',
     body: JSON.stringify(payload),
   });
+  return result.data;
+}
+
+// ─── Admin Support Operations ─────────────────────────────────────────────────
+
+export interface AdminSupportAgent {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  profileImage?: string | null;
+}
+
+export interface AdminSupportNote {
+  id: string;
+  chatRoomId: string;
+  authorId: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+  author: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+  };
+}
+
+export async function getAdminSupportAgents(): Promise<AdminSupportAgent[]> {
+  const result = await apiClient<{ data: AdminSupportAgent[] }>('/admin/messaging/support/agents');
+  return result.data;
+}
+
+export async function assignAdminSupportRoom(
+  roomId: string,
+  adminId: string | null,
+): Promise<{ supportAssignedAdminId: string | null; supportAssignedAdmin: AdminSupportAgent | null }> {
+  const result = await apiClient<{ data: { supportAssignedAdminId: string | null; supportAssignedAdmin: AdminSupportAgent | null } }>(
+    `/admin/messaging/support/rooms/${roomId}/assignment`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ adminId }),
+    },
+  );
+  return result.data;
+}
+
+export async function updateAdminSupportTags(roomId: string, tags: string[]): Promise<string[]> {
+  const result = await apiClient<{ data: string[] }>(
+    `/admin/messaging/support/rooms/${roomId}/tags`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ tags }),
+    },
+  );
+  return result.data;
+}
+
+export async function updateAdminSupportClosed(
+  roomId: string,
+  closed: boolean,
+): Promise<{ supportClosedAt: string | null }> {
+  const result = await apiClient<{ data: { supportClosedAt: string | null } }>(
+    `/admin/messaging/support/rooms/${roomId}/closed`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ closed }),
+    },
+  );
+  return result.data;
+}
+
+export async function getAdminSupportNotes(roomId: string): Promise<AdminSupportNote[]> {
+  const result = await apiClient<{ data: AdminSupportNote[] }>(
+    `/admin/messaging/support/rooms/${roomId}/notes`,
+  );
+  return result.data;
+}
+
+export async function addAdminSupportNote(roomId: string, body: string): Promise<AdminSupportNote> {
+  const result = await apiClient<{ data: AdminSupportNote }>(
+    `/admin/messaging/support/rooms/${roomId}/notes`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    },
+  );
+  return result.data;
+}
+
+export async function deleteAdminSupportNote(roomId: string, noteId: string): Promise<void> {
+  await apiClient(
+    `/admin/messaging/support/rooms/${roomId}/notes/${noteId}`,
+    { method: 'DELETE' },
+  );
+}
+
+// ─── Admin Broadcast History ──────────────────────────────────────────────────
+
+export type BroadcastCampaignStatus = 'SENDING' | 'COMPLETED' | 'PARTIAL' | 'FAILED';
+export type BroadcastDeliveryStatus = 'PENDING' | 'SENT' | 'FAILED';
+
+export interface AdminBroadcastCampaign {
+  id: string;
+  adminId: string;
+  audience: string;
+  role?: string | null;
+  text?: string | null;
+  mediaUrl?: string | null;
+  mediaKind?: string | null;
+  mediaName?: string | null;
+  mediaMime?: string | null;
+  mediaSize?: number | null;
+  requested: number;
+  sent: number;
+  failed: number;
+  status: BroadcastCampaignStatus;
+  createdAt: string;
+  finishedAt?: string | null;
+  admin: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+  };
+}
+
+export interface AdminBroadcastDelivery {
+  id: string;
+  campaignId: string;
+  userId: string;
+  roomId?: string | null;
+  messageId?: string | null;
+  status: BroadcastDeliveryStatus;
+  error?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    role: string;
+  };
+}
+
+export interface AdminBroadcastCampaignDetail extends AdminBroadcastCampaign {
+  deliveries: AdminBroadcastDelivery[];
+}
+
+export async function getAdminBroadcastCampaigns(page = 1, limit = 20): Promise<{
+  data: AdminBroadcastCampaign[];
+  pagination: { total: number; page: number; limit: number; totalPages: number };
+}> {
+  const result = await apiClient<{ data: {
+    data: AdminBroadcastCampaign[];
+    pagination: { total: number; page: number; limit: number; totalPages: number };
+  } }>(`/admin/messaging/broadcasts?page=${page}&limit=${limit}`);
+  return result.data;
+}
+
+export async function getAdminBroadcastCampaign(id: string): Promise<AdminBroadcastCampaignDetail> {
+  const result = await apiClient<{ data: AdminBroadcastCampaignDetail }>(
+    `/admin/messaging/broadcasts/${id}`,
+  );
+  return result.data;
+}
+
+export async function retryAdminBroadcastFailures(id: string): Promise<AdminBroadcastCampaignDetail> {
+  const result = await apiClient<{ data: AdminBroadcastCampaignDetail }>(
+    `/admin/messaging/broadcasts/${id}/retry-failed`,
+    { method: 'POST' },
+  );
   return result.data;
 }
 
