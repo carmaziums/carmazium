@@ -1,4 +1,5 @@
-import { IsIn, IsInt, IsNotEmpty, IsString, IsUUID, IsOptional, Max, MaxLength, Min } from 'class-validator';
+import { ChatReportReason, ChatReportStatus } from '@prisma/client';
+import { IsEnum, IsIn, IsInt, IsNotEmpty, IsString, IsUUID, IsOptional, Max, MaxLength, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
@@ -94,6 +95,33 @@ export class CreateChatAttachmentUploadDto {
     @Min(1)
     @Max(10 * 1024 * 1024)
     size: number;
+}
+
+export class ReportChatMessageDto {
+    @IsEnum(ChatReportReason)
+    reason: ChatReportReason;
+
+    @IsOptional()
+    @IsString()
+    @MaxLength(1000)
+    details?: string;
+}
+
+export class BlockChatRoomDto {
+    @IsOptional()
+    @IsString()
+    @MaxLength(500)
+    reason?: string;
+}
+
+export class UpdateChatReportDto {
+    @IsEnum(ChatReportStatus)
+    status: ChatReportStatus;
+
+    @IsOptional()
+    @IsString()
+    @MaxLength(2000)
+    adminNote?: string;
 }
 
 export class OpenDisputeDto {
