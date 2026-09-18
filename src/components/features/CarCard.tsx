@@ -16,8 +16,6 @@ interface CarCardProps {
     make?: string | null
     model?: string | null
     price: string
-    priceMin?: string | number | null
-    priceMax?: string | number | null
     image: string
     /** Full image list — enables the carousel when >1. Falls back to `image` when empty/missing. */
     images?: string[]
@@ -67,7 +65,7 @@ const BANNER_COLORS: Record<string, string> = {
 const DEFAULT_BANNER_COLOR = 'bg-primary'
 
 export function CarCard({
-    title, listingId, make, model, price, priceMin, priceMax, image, images, href = "#",
+    title, listingId, make, model, price, image, images, href = "#",
     year, mileage, fuelType, bodyType, location, distanceMi,
     sellerId, sellerScore, isFeatured = false, badgeTier, status, bannerLabel, hasLinkedAuction,
     isDepartedSale, deliveryAvailable, exteriorGrade, writeOffCategory
@@ -166,7 +164,14 @@ export function CarCard({
                     </div>
                 )}
 
-                {/* SOLD Stamp Overlay */}
+                {/* Sale Pending / SOLD overlays */}
+                {status === 'OFFER_ACCEPTED' && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                        <span className="block text-2xl font-black uppercase tracking-widest text-amber-400 bg-black/65 border border-amber-400/50 px-4 py-2 rounded-xl rotate-[-8deg] select-none">
+                            SALE PENDING
+                        </span>
+                    </div>
+                )}
                 {status === 'SOLD' && (
                     <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
                         <div className="relative">
@@ -209,9 +214,14 @@ export function CarCard({
                     <p className="text-2xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-gray-400">
                         {price}
                     </p>
-                    {priceMin && priceMax && status !== 'SOLD' && (
+                    {status === 'ACTIVE' && (
                         <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2 py-0.5 rounded-full">
                             Offers Welcome
+                        </span>
+                    )}
+                    {status === 'OFFER_ACCEPTED' && (
+                        <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wide bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                            Sale Pending
                         </span>
                     )}
                 </div>
@@ -304,7 +314,7 @@ export function CarCard({
                         shape="default"
                     >
                         <Link href={href} className="block w-full text-center">
-                            {status === 'SOLD' ? 'View Sold Vehicle' : 'View Details'}
+                            {status === 'SOLD' ? 'View Sold Vehicle' : status === 'OFFER_ACCEPTED' ? 'View Sale Pending' : 'View Details'}
                         </Link>
                     </Button>
                 </div>
