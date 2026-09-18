@@ -633,7 +633,11 @@ export interface WatchlistItem {
         slug: string
         images: string[]
         price: string | number
+        priceMin: string | number | null
+        priceMax: string | number | null
         status: string
+        type: 'CLASSIFIED' | 'AUCTION'
+        sellerId: string | null
         make: string | null
         model: string | null
         year: number | null
