@@ -270,12 +270,9 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
       }
 
       const ext = mimeType === 'application/pdf' ? 'pdf' : 'jpg';
-      const path = `kyc/${userId}/${fieldName}-${Date.now()}.${ext}`;
-      // Bucket is 'listings' (the only bucket this exists in) with a 'kyc/'
-      // path prefix, matching web's KycOverlayForm.tsx
-      // (uploadImage(file, "listings", "kyc")) — 'kyc-documents' was never
-      // a real bucket, same class of bug as the handover-proof upload
-      // (mobile-production-readiness-plan.md F32).
+      const path = `${userId}/kyc/${fieldName}-${Date.now()}.${ext}`;
+      // Keep the authenticated user ID as the first path segment so Storage
+      // RLS can enforce owner-scoped writes, matching the web upload helper.
       const url = await uploadToStorage(localUri, 'listings', path, mimeType);
       setDocUrls((prev) => ({ ...prev, [fieldName]: url }));
       haptics.medium();

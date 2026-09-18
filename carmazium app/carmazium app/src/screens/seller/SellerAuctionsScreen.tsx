@@ -332,11 +332,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     setHandoverError(prev => ({ ...prev, [auctionId]: null }));
     try {
       const jpegUri = await convertAndCompress(result.assets[0].uri);
-      // Bucket is 'listings' (the only bucket this exists in) with a
-      // 'handover/' path prefix — 'handover' is not itself a bucket name.
-      // Matches web's src/app/dashboard/seller/auctions/page.tsx.
+      // Owner-first path matches the hardened Storage RLS used by web and
+      // vehicle-photo uploads. 'handover' remains a folder inside listings.
       const proofUrl = await uploadToStorage(
-        jpegUri, 'listings', `handover/${userId}/${auctionId}-${Date.now()}.jpg`, 'image/jpeg',
+        jpegUri, 'listings', `${userId}/handover/${auctionId}-${Date.now()}.jpg`, 'image/jpeg',
       );
       await submitHandoverProof(auctionId, proofUrl);
       haptics.success();
