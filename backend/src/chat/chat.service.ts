@@ -471,6 +471,7 @@ export class ChatService {
                     select: {
                         id: true,
                         content: true,
+                        attachmentPath: true,
                         senderId: true,
                         isRead: true,
                         createdAt: true,
