@@ -962,6 +962,21 @@ export class ListingsService {
             );
         }
 
+        // An AUCTION listing is only a vehicle shell until its Auction row exists.
+        // Never let an orphan listing enter review or become active: this prevents
+        // incomplete quick-list/two-request flows from producing invisible auctions.
+        if (listing.type === 'AUCTION') {
+            const auction = await this.prisma.auction.findUnique({
+                where: { listingId: id },
+                select: { id: true, deletedAt: true },
+            });
+            if (!auction || auction.deletedAt) {
+                throw new BadRequestException(
+                    'Auction setup is incomplete. Add the auction schedule, reserve and bidding settings before submitting for review.',
+                );
+            }
+        }
+
         // FREE is only valid for auctions. Heal legacy/stale retail drafts before
         // any status/payment decision so retail can never inherit the auction tier.
         const effectiveBadgeTier =
