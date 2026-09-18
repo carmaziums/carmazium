@@ -686,12 +686,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const handleAcceptBid = useCallback((bid: BidEntry) => {
     if (!auction) return;
     Alert.alert(
-      'Accept this bid?',
-      `This will end the auction immediately with ${fmt(bid.amount)} as the winning bid.`,
+      'Accept current highest offer?',
+      `Accepting ${fmt(bid.amount)} will end the auction immediately, even if it is below your reserve. The bidder becomes the winner and this cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Accept Bid',
+          text: 'Accept & End Auction',
           onPress: async () => {
             setAcceptingBidId(bid.id);
             try {
@@ -918,6 +918,34 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               : <Text style={s.sellerCloseBtnText}>Close Auction Now</Text>
             }
           </TouchableOpacity>
+        </View>
+      )}
+      {isSeller && isActive && !reserveMet && bidHistory[0]?.id && (
+        <View style={[s.binSellerPanel, { borderColor: Colors.accentGreenAlpha30, backgroundColor: Colors.accentGreenAlpha08 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="cash-outline" size={16} color={Colors.accentGreen} />
+            <View style={{ flex: 1 }}>
+              <Text style={[s.binSellerTitle, { color: Colors.accentGreen }]}>Highest offer received</Text>
+              <Text style={[s.currentBidVal, { fontFamily: FontFamily.mono, marginTop: 2 }]}>{fmt(bidHistory[0].amount)}</Text>
+              <Text style={[s.muted, { marginTop: 2 }]}>
+                Your reserve is {fmt(reservePrice)}. Accept this offer now or keep the auction running for more bids.
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={[s.binSellerConfirmBtn, { marginTop: 10 }, acceptingBidId === bidHistory[0].id && { opacity: 0.6 }]}
+            onPress={() => handleAcceptBid(bidHistory[0])}
+            disabled={!!acceptingBidId}
+            activeOpacity={0.8}
+          >
+            {acceptingBidId === bidHistory[0].id
+              ? <ActivityIndicator size="small" color={Colors.white} />
+              : <Text style={s.binSellerConfirmText}>Accept {fmt(bidHistory[0].amount)} & End Auction</Text>
+            }
+          </TouchableOpacity>
+          <Text style={[s.muted, { textAlign: 'center', marginTop: 6, fontSize: FontSize.size10 }]}>
+            If you wait, verified dealers can continue increasing the bid normally.
+          </Text>
         </View>
       )}
       {isScheduled && !isSeller && startTime && (
@@ -1409,7 +1437,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                         <Text style={[s.bidAmt, { fontFamily: FontFamily.mono }]}>{fmt(bid.amount)}</Text>
                         <Text style={s.bidTime}>{bid.time}</Text>
                         {/* Seller-only "Accept" button — ends the auction at this bid */}
-                        {isSeller && isActive && (
+                        {isSeller && isActive && i === 0 && (
                           <TouchableOpacity
                             style={[s.acceptBidBtn, acceptingBidId === bid.id && { opacity: 0.6 }]}
                             onPress={() => handleAcceptBid(bid)}
@@ -1775,6 +1803,15 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Ionicons name="checkmark-circle" size={12} color={Colors.accentGreen} />
                 <Text style={[s.bannerText, { color: Colors.accentGreen }]} numberOfLines={1}>
                   Bid accepted — {fmt(bidJustAccepted)}
+                </Text>
+              </View>
+            )}
+
+            {!reserveMet && bidHistory.length > 0 && (
+              <View style={[s.banner, s.bannerAmber, { marginTop: -4 }]}>
+                <Ionicons name="information-circle-outline" size={12} color={Colors.warning} />
+                <Text style={[s.bannerText, { color: Colors.lightYellow }]} numberOfLines={3}>
+                  The current highest bid is also an offer to the seller. They can accept it now, or keep the auction open while dealers continue bidding.
                 </Text>
               </View>
             )}
