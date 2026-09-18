@@ -805,6 +805,15 @@ export class OffersService {
                 'Only a pending offer can be amended. If the seller has countered, use the counter-offer controls instead.',
             );
         }
+        if (this.isPendingOfferExpired(offer.updatedAt)) {
+            await this.prisma.offer.updateMany({
+                where: { id: offerId, status: 'PENDING' },
+                data: { status: 'REJECTED' },
+            });
+            throw new BadRequestException(
+                'This offer expired after 72 hours. Submit a new offer if the vehicle is still available.',
+            );
+        }
         if (offer.listing.deletedAt || offer.listing.status !== 'ACTIVE') {
             throw new BadRequestException('This listing is no longer active.');
         }
@@ -813,53 +822,18 @@ export class OffersService {
         }
 
         const askingPrice = Number(offer.listing.price);
-        const minAllowedOffer = Math.floor(askingPrice * 0.7);
-        const buyerMin = dto.amountMin ?? dto.amount;
-        const buyerMax = dto.amountMax ?? dto.amount;
-
-        if (buyerMin > buyerMax) {
-            throw new BadRequestException('Minimum offer amount cannot be higher than maximum offer amount.');
-        }
-        if (dto.amount < buyerMin || dto.amount > buyerMax) {
-            throw new BadRequestException('Offer amount must be within your minimum and maximum offer range.');
-        }
-        if (buyerMax < minAllowedOffer) {
-            throw new BadRequestException(
-                `Offer must be at least £${minAllowedOffer.toLocaleString('en-GB')} (70% of the asking price).`,
-            );
-        }
-
-        const highestOtherOffer = await this.prisma.offer.findFirst({
-            where: {
-                listingId: offer.listingId,
-                buyerId: { not: buyerId },
-                status: { in: ['PENDING', 'COUNTERED', 'ACCEPTED'] },
-            },
-            orderBy: [
-                { counterAmount: 'desc' },
-                { amount: 'desc' },
-            ],
-        });
-
-        if (highestOtherOffer) {
-            const competingAmount = Math.max(
-                Number(highestOtherOffer.amount),
-                Number(highestOtherOffer.counterAmount ?? 0),
-            );
-            if (dto.amount <= competingAmount) {
-                throw new BadRequestException(
-                    `Your bid must be higher than the current highest bid of £${competingAmount.toLocaleString('en-GB')}.`,
-                );
-            }
-        }
+        this.validateBuyerOfferAmount(dto.amount, askingPrice);
 
         const updated = await this.prisma.offer.update({
             where: { id: offerId },
             data: {
                 amount: dto.amount,
-                amountMin: buyerMin,
-                amountMax: buyerMax,
-                message: dto.message !== undefined ? (dto.message || null) : offer.message,
+                amountMin: dto.amount,
+                amountMax: dto.amount,
+                message:
+                    dto.message !== undefined
+                        ? (dto.message || null)
+                        : offer.message,
             },
         });
 
@@ -869,16 +843,22 @@ export class OffersService {
                     userId: offer.listing.sellerId,
                     type: 'OFFER_AMENDED',
                     title: 'Offer Updated',
-                    message: `A buyer updated their offer on "${offer.listing.title}" to £${Number(dto.amount).toLocaleString('en-GB')}.`,
+                    message: `A buyer updated their private offer on "${offer.listing.title}" to £${Number(dto.amount).toLocaleString('en-GB')}.`,
                     link: '/dashboard/seller/offers',
                     entityType: 'OFFER',
                     entityId: offer.id,
                     actionType: 'AMENDED',
                     data: { listingId: offer.listingId, offerId: offer.id },
                 });
-                this.notificationsGateway.sendNotification(offer.listing.sellerId, notification);
+                this.notificationsGateway.sendNotification(
+                    offer.listing.sellerId,
+                    notification,
+                );
             } catch (error) {
-                console.error('[OffersService] Failed to notify seller of amended offer:', error);
+                console.error(
+                    '[OffersService] Failed to notify seller of amended offer:',
+                    error,
+                );
             }
         }
 
