@@ -1871,6 +1871,7 @@ export class ListingsService {
             const response = await client.responses.create({
                 model: this.config.get<string>('OPENAI_VISION_MODEL') || 'gpt-5.6-luna',
                 input: [{ role: 'user', content }],
+                reasoning: { effort: 'none' },
                 max_output_tokens: 300,
                 text: {
                     format: {
