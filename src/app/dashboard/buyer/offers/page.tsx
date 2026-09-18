@@ -2,11 +2,12 @@
 
 import * as React from "react"
 import { getMyOffers, withdrawOffer, respondToCounterOffer, type Offer } from "@/lib/listingApi"
+import { AmendOfferModal } from "@/components/offers/AmendOfferModal"
 import { getMyDeliveryRequests, createDeliveryRequest, cancelDeliveryRequest, completeDeliveryRequest, type DeliveryRequest, type DeliveryStatus } from "@/lib/deliveryApi"
 import { ArrangeDelivery } from "@/components/services/ArrangeDelivery"
 import { createChatRoom } from "@/lib/chatApi"
 import { useRouter } from "next/navigation"
-import { Loader2, AlertTriangle, Tag, Clock, CheckCircle, XCircle, Eye, Truck } from "lucide-react"
+import { Loader2, AlertTriangle, Tag, Clock, CheckCircle, XCircle, Eye, Truck, Pencil, Gavel } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -273,6 +274,8 @@ export default function BuyerOffersPage() {
     const [withdrawing, setWithdrawing] = React.useState<string | null>(null)
     const [accepting, setAccepting] = React.useState<string | null>(null)
     const [declining, setDeclining] = React.useState<string | null>(null)
+    const [viewMode, setViewMode] = React.useState<'current' | 'history' | 'all'>('current')
+    const [amendingOffer, setAmendingOffer] = React.useState<Offer | null>(null)
     const router = useRouter()
 
     const refreshDeliveryRequests = React.useCallback(() => {
@@ -386,11 +389,24 @@ export default function BuyerOffersPage() {
 
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
 
+    const currentOffers = offers.filter(offer => offer.status === 'PENDING' || offer.status === 'COUNTERED')
+    const historyOffers = offers.filter(offer => !['PENDING', 'COUNTERED'].includes(offer.status))
+    const displayedOffers = viewMode === 'current' ? currentOffers : viewMode === 'history' ? historyOffers : offers
+
     return (
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="buyer" userName={userName} userType={profile?.role ? `${profile.role} Account` : "Buyer Account"} />
                 <main className="flex-1 space-y-6">
+                    {amendingOffer && (
+                        <AmendOfferModal
+                            offer={amendingOffer}
+                            onClose={() => setAmendingOffer(null)}
+                            onSaved={async (updated) => {
+                                setOffers(prev => prev.map(item => item.id === updated.id ? { ...item, ...updated } : item))
+                            }}
+                        />
+                    )}
 
                     {/* ── Header ─────────────────────────────────── */}
                     <div className="flex justify-between items-center mb-6">
@@ -400,6 +416,24 @@ export default function BuyerOffersPage() {
                         <Link href="/search" className="bg-primary text-white font-bold py-2.5 px-6 rounded-lg shadow-neon hover:scale-105 transition-all flex items-center gap-2">
                             Browse Cars
                         </Link>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <button type="button" onClick={() => setViewMode('current')} className={`text-left rounded-2xl border p-4 transition-colors ${viewMode === 'current' ? 'border-primary bg-primary/10' : 'border-[var(--border-default)] bg-[var(--bg-card)]'}`}>
+                            <div className="flex items-center justify-between"><Gavel size={18} className="text-violet-400" /><span className="text-xs uppercase font-black tracking-widest text-[var(--text-muted)]">Active</span></div>
+                            <p className="text-3xl font-black mt-3">{currentOffers.length}</p>
+                            <p className="text-xs uppercase font-black tracking-widest text-[var(--text-muted)] mt-1">Current Bids</p>
+                        </button>
+                        <button type="button" onClick={() => setViewMode('history')} className={`text-left rounded-2xl border p-4 transition-colors ${viewMode === 'history' ? 'border-primary bg-primary/10' : 'border-[var(--border-default)] bg-[var(--bg-card)]'}`}>
+                            <div className="flex items-center justify-between"><Clock size={18} className="text-blue-400" /><span className="text-xs uppercase font-black tracking-widest text-[var(--text-muted)]">Closed</span></div>
+                            <p className="text-3xl font-black mt-3">{historyOffers.length}</p>
+                            <p className="text-xs uppercase font-black tracking-widest text-[var(--text-muted)] mt-1">Offer History</p>
+                        </button>
+                        <button type="button" onClick={() => setViewMode('all')} className={`text-left rounded-2xl border p-4 transition-colors ${viewMode === 'all' ? 'border-primary bg-primary/10' : 'border-[var(--border-default)] bg-[var(--bg-card)]'}`}>
+                            <div className="flex items-center justify-between"><Tag size={18} className="text-amber-400" /><span className="text-xs uppercase font-black tracking-widest text-[var(--text-muted)]">All</span></div>
+                            <p className="text-3xl font-black mt-3">{offers.length}</p>
+                            <p className="text-xs uppercase font-black tracking-widest text-[var(--text-muted)] mt-1">All Offers</p>
+                        </button>
                     </div>
 
                     {/* ── Error banner ─────────────────────────────── */}
@@ -435,7 +469,7 @@ export default function BuyerOffersPage() {
                                         <tr>
                                             <td colSpan={5} className="px-6 py-16 text-center">
                                                 <Tag className="w-12 h-12 text-[var(--text-secondary)] mx-auto mb-4" />
-                                                <h2 className="text-xl font-bold mb-2">No Offers Yet</h2>
+                                                <h2 className="text-xl font-bold mb-2">{viewMode === 'current' ? 'No Current Bids' : viewMode === 'history' ? 'No Offer History Yet' : 'No Offers Yet'}</h2>
                                                 <p className="text-[var(--text-muted)] mb-6 text-sm">Browse listings with offer ranges and make your first offer.</p>
                                                 <Link href="/search">
                                                     <button className="bg-[var(--bg-card)] border border-[var(--border-default)] font-bold px-6 py-2.5 rounded-lg hover:bg-[var(--bg-card-hover)] transition-colors">
@@ -445,7 +479,7 @@ export default function BuyerOffersPage() {
                                             </td>
                                         </tr>
                                     ) : (
-                                        offers.map((offer) => {
+                                        displayedOffers.map((offer) => {
                                             const listing = offer.listing
                                             const image = listing?.images?.[0] ?? "/assets/images/featured-sports.png"
                                             const slug = listing?.slug ?? ""
@@ -518,7 +552,7 @@ export default function BuyerOffersPage() {
                                                         {/* Actions */}
                                                         <td className="px-6 py-5 text-right">
                                                             <div className="flex items-center justify-end gap-2">
-                                                                {offer.status === 'COUNTERED' && (
+                                                                {offer.status === 'COUNTERED' && offer.lastCounteredBy === 'SELLER' && (
                                                                     <div className="flex items-center gap-1">
                                                                         <button
                                                                             onClick={() => handleAcceptCounter(offer.id)}
@@ -541,6 +575,13 @@ export default function BuyerOffersPage() {
                                                                 {offer.status === 'PENDING' && (
                                                                     <div className="flex items-center gap-2">
                                                                         <button
+                                                                            className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-blue-400 hover:bg-blue-500/10 rounded-xl transition-all gap-1.5"
+                                                                            title="Amend Offer"
+                                                                            onClick={() => setAmendingOffer(offer)}
+                                                                        >
+                                                                            <Pencil size={14} /> Amend
+                                                                        </button>
+                                                                        <button
                                                                             disabled={withdrawing === offer.id}
                                                                             className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-all hover:scale-105 disabled:opacity-50"
                                                                             title="Cancel Offer"
@@ -549,6 +590,16 @@ export default function BuyerOffersPage() {
                                                                             {withdrawing === offer.id ? <Loader2 size={16} className="animate-spin" /> : "Cancel"}
                                                                         </button>
                                                                     </div>
+                                                                )}
+                                                                {offer.status === 'COUNTERED' && (
+                                                                    <button
+                                                                        disabled={withdrawing === offer.id}
+                                                                        className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-red-400 hover:bg-red-500/10 rounded-xl transition-all disabled:opacity-50"
+                                                                        title="Cancel Current Bid"
+                                                                        onClick={() => handleWithdraw(offer.id)}
+                                                                    >
+                                                                        {withdrawing === offer.id ? <Loader2 size={16} className="animate-spin" /> : "Cancel Bid"}
+                                                                    </button>
                                                                 )}
                                                                 <button
                                                                     onClick={() => handleMessageSeller(offer.listing?.sellerId, offer.listing?.id || "")}
