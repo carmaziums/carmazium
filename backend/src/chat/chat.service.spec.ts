@@ -356,6 +356,131 @@ describe('ChatService — conversation context and authorization', () => {
         });
     });
 
+    it('routes normal message notifications to the recipient account inbox', async () => {
+        const savedMessage = {
+            id: 'message-route',
+            chatRoomId: 'room-route',
+            senderId: buyerId,
+            clientMessageId: null,
+            content: 'Hello seller',
+            attachmentPath: null,
+            deletedAt: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            isRead: false,
+            sender: { id: buyerId },
+        };
+
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'room-route',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.RETAIL,
+            deletedAt: null,
+            initiator: { role: 'BUYER' },
+            participant: { role: 'SELLER' },
+        });
+        prisma.listing.findUnique.mockResolvedValue(retailListing());
+        prisma.message.create.mockResolvedValue(savedMessage);
+        prisma.chatRoom.update.mockResolvedValue({});
+        notificationsService.create.mockResolvedValue({ id: 'notification-route' });
+
+        await service.sendMessage('room-route', buyerId, {
+            content: savedMessage.content,
+        });
+
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                userId: sellerId,
+                link: '/dashboard/seller/messages?room=room-route',
+            }),
+        );
+    });
+
+    it('persists a private photo only after room authorization and upload verification', async () => {
+        const clientMessageId = '99999999-9999-4999-8999-999999999999';
+        const dto = {
+            path: `room-photo/${buyerId}/photo.jpg`,
+            name: 'damage.jpg',
+            mime: 'image/jpeg',
+            size: 123456,
+            caption: 'Rear bumper damage',
+            clientMessageId,
+        };
+        const stored = {
+            id: 'message-photo',
+            chatRoomId: 'room-photo',
+            senderId: buyerId,
+            clientMessageId,
+            content: dto.caption,
+            attachmentPath: dto.path,
+            attachmentName: dto.name,
+            attachmentMime: dto.mime,
+            attachmentSize: dto.size,
+            deletedAt: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            isRead: false,
+            sender: { id: buyerId },
+        };
+
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'room-photo',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.RETAIL,
+            deletedAt: null,
+            initiator: { role: 'BUYER' },
+            participant: { role: 'SELLER' },
+        });
+        prisma.listing.findUnique.mockResolvedValue(retailListing());
+        prisma.message.findFirst.mockResolvedValue(null);
+        prisma.message.create.mockResolvedValue(stored);
+        prisma.chatRoom.update.mockResolvedValue({});
+        notificationsService.create.mockResolvedValue({ id: 'notification-photo' });
+        chatAttachmentService.hydrateMessage.mockImplementation(
+            async (message: any) => ({ ...message, attachmentUrl: 'https://signed.example/photo' }),
+        );
+
+        const result = await service.sendAttachmentMessage(
+            'room-photo',
+            buyerId,
+            dto,
+        );
+
+        expect(chatAttachmentService.validateMetadata).toHaveBeenCalledWith(
+            dto.name,
+            dto.mime,
+            dto.size,
+        );
+        expect(chatAttachmentService.assertPathOwnership).toHaveBeenCalledWith(
+            dto.path,
+            'room-photo',
+            buyerId,
+        );
+        expect(chatAttachmentService.assertUploaded).toHaveBeenCalledWith(dto.path);
+        expect(prisma.message.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.objectContaining({
+                    attachmentPath: dto.path,
+                    attachmentName: dto.name,
+                    attachmentMime: dto.mime,
+                    attachmentSize: dto.size,
+                }),
+            }),
+        );
+        expect(result.created).toBe(true);
+        expect(result.message.attachmentUrl).toBe('https://signed.example/photo');
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                link: '/dashboard/seller/messages?room=room-photo',
+                title: 'New Photo',
+            }),
+        );
+    });
+
     it('uses different conversation keys for different retail vehicles between the same users', async () => {
         const secondListingId = '66666666-6666-4666-8666-666666666666';
         prisma.listing.findUnique
