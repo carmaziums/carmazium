@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ModuleRef } from '@nestjs/core';
 import { PrismaService } from '../prisma/prisma.service';
@@ -398,24 +398,63 @@ export class PaymentsService {
      * Create a Stripe Checkout Session for a Listing Badge Fee.
      */
     async createListingSession(badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM', userId: string, listingId: string) {
-        // Admins never pay a listing fee (see ListingsService.publishListing).
-        // In the normal flow they never reach here, because publishListing
-        // returns pendingReview and the wizard skips checkout — but refusing
-        // here too means a stale client, a direct API call, or a future caller
-        // can't accidentally charge an admin.
-        const actor = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { role: true },
-        });
+        // Never trust the browser to decide whether a retail listing is free or
+        // which paid tier should be charged. The persisted listing is authoritative.
+        const [actor, listing] = await Promise.all([
+            this.prisma.user.findUnique({
+                where: { id: userId },
+                select: { role: true },
+            }),
+            this.prisma.listing.findUnique({
+                where: { id: listingId },
+                select: {
+                    id: true,
+                    sellerId: true,
+                    type: true,
+                    badgeTier: true,
+                    deletedAt: true,
+                },
+            }),
+        ]);
+
         if (actor?.role === 'ADMIN') {
             throw new BadRequestException(
                 'Admin listings are free — no listing fee is charged. Submit the listing directly.',
             );
         }
+        if (!listing || listing.deletedAt) {
+            throw new NotFoundException('Listing not found');
+        }
+        if (listing.sellerId !== userId) {
+            throw new ForbiddenException('You do not have permission to pay for this listing');
+        }
+        if (listing.type !== 'CLASSIFIED') {
+            throw new BadRequestException('Auction listings do not require a retail listing fee');
+        }
+
+        // Heal legacy FREE retail drafts and always charge using the server-side tier.
+        const persistedTier =
+            listing.badgeTier === 'FREE' ? 'BASIC' : listing.badgeTier;
+        if (!(persistedTier in this.LISTING_FEES)) {
+            throw new BadRequestException('Retail listing tier must be BASIC, STANDARD, or PREMIUM');
+        }
+        const chargeTier = persistedTier as 'BASIC' | 'STANDARD' | 'PREMIUM';
+
+        if (listing.badgeTier !== chargeTier) {
+            await this.prisma.listing.update({
+                where: { id: listingId },
+                data: { badgeTier: chargeTier },
+            });
+        }
+        if (badgeTier !== chargeTier) {
+            this.logger.warn(
+                `Listing checkout tier mismatch for ${listingId}: client=${badgeTier}, persisted=${chargeTier}; charging persisted tier.`,
+            );
+        }
 
         const stripe = await this.getStripe();
         const baseUrl = resolveFrontendUrl(this.config.get<string>('FRONTEND_URL'));
-        const amount = this.LISTING_FEES[badgeTier];
+        const amount = this.LISTING_FEES[chargeTier];
 
         // Create a pending transaction record
         const transaction = await this.prisma.transaction.create({
@@ -425,19 +464,18 @@ export class PaymentsService {
                 amount,
                 type: 'LISTING_FEE' as any,
                 status: 'PENDING',
-                description: `${badgeTier} Listing Fee`,
+                description: `${chargeTier} Listing Fee`,
             },
         });
 
         const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
             mode: 'payment',
             line_items: [
                 {
                     price_data: {
                         currency: 'gbp',
                         product_data: {
-                            name: `CarMazium ${badgeTier} Listing`,
+                            name: `CarMazium ${chargeTier} Listing`,
                             description: `Professional listing fee for your vehicle`,
                         },
                         unit_amount: Math.round(amount * 100),
@@ -449,7 +487,7 @@ export class PaymentsService {
                 transactionId: transaction.id,
                 userId,
                 listingId,
-                badgeTier,
+                badgeTier: chargeTier,
                 type: 'LISTING_FEE',
             },
             success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -496,12 +534,31 @@ export class PaymentsService {
             case 'FULL_PAYMENT':
                 amount = Number(listing.price);
                 break;
-            case 'LISTING_FEE':
-                if (!badgeTier || !(badgeTier in this.LISTING_FEES)) {
-                    throw new BadRequestException('badgeTier is required and must be BASIC, STANDARD, or PREMIUM for a LISTING_FEE payment.');
+            case 'LISTING_FEE': {
+                if (listing.sellerId !== userId) {
+                    throw new ForbiddenException('You do not have permission to pay for this listing');
+                }
+                if (listing.type !== 'CLASSIFIED') {
+                    throw new BadRequestException('Auction listings do not require a retail listing fee');
+                }
+
+                // Mobile Payment Sheet follows the same server-authoritative rule
+                // as hosted Checkout: the saved listing tier determines the charge.
+                // Heal any legacy FREE retail draft to BASIC (£1).
+                const persistedTier = listing.badgeTier === 'FREE' ? 'BASIC' : listing.badgeTier;
+                if (!(persistedTier in this.LISTING_FEES)) {
+                    throw new BadRequestException('Retail listing tier must be BASIC, STANDARD, or PREMIUM');
+                }
+                badgeTier = persistedTier as 'BASIC' | 'STANDARD' | 'PREMIUM';
+                if (listing.badgeTier !== badgeTier) {
+                    await this.prisma.listing.update({
+                        where: { id: listingId },
+                        data: { badgeTier },
+                    });
                 }
                 amount = this.LISTING_FEES[badgeTier];
                 break;
+            }
             case 'COMMISSION':
                 amount = this.AUCTION_BUYER_FEE;
                 break;

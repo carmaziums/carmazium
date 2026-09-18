@@ -506,6 +506,33 @@ export class AdminService {
             throw new BadRequestException('Only listings awaiting review can be approved');
         }
 
+        // Revenue guard: a customer retail listing must have a completed listing-fee
+        // transaction before admin approval can make it live. Admin-granted free
+        // listings are represented by a completed £0 LISTING_FEE transaction, so
+        // legitimate waivers continue to work. Admin-owned listings are exempt.
+        if (listing.type === 'CLASSIFIED' && listing.sellerId) {
+            const [sellerAccount, completedFee] = await Promise.all([
+                this.prisma.user.findUnique({
+                    where: { id: listing.sellerId },
+                    select: { role: true },
+                }),
+                this.prisma.transaction.findFirst({
+                    where: {
+                        listingId: id,
+                        type: 'LISTING_FEE',
+                        status: 'COMPLETED',
+                    },
+                    select: { id: true },
+                }),
+            ]);
+
+            if (sellerAccount?.role !== 'ADMIN' && !completedFee) {
+                throw new BadRequestException(
+                    'Retail listing fee has not been paid. The listing cannot be approved yet.',
+                );
+            }
+        }
+
         const updated = await this.prisma.listing.update({
             where: { id },
             data: buildListingActivationData(listing.badgeTier),

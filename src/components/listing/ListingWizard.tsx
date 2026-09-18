@@ -672,6 +672,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             return
         }
         set("listingType", "CLASSIFIED")
+        // Retail listings always start on the £1 BASIC tier. This must explicitly
+        // overwrite FREE because users can switch back from the free Auction flow
+        // and stale localStorage/HPI drafts may still carry the auction tier.
+        set("badgeTier", "BASIC")
         setSellingMethod("list")
         trackEvent(SELLER_FUNNEL.LISTING_STARTED, {
             listing_type: 'retail',
@@ -763,7 +767,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 monthOfFirstRegistration: formData.monthOfFirstRegistration || undefined,
                 wheelplan: formData.wheelplan || undefined,
                 typeApproval: formData.typeApproval || undefined,
-                badgeTier: formData.badgeTier,
+                badgeTier: (formData.listingType === 'CLASSIFIED' && formData.badgeTier === 'FREE') ? 'BASIC' : formData.badgeTier,
                 status: formData.status,
                 vehicleType: formData.vehicleType as VehicleTypeValue,
                 isImported: formData.isImported,
@@ -1141,7 +1145,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                          make: formData.make || undefined,
                                          model: formData.model || undefined,
                                          status: 'DRAFT',
-                                         badgeTier: formData.badgeTier,
+                                         badgeTier: (formData.listingType === 'CLASSIFIED' && formData.badgeTier === 'FREE') ? 'BASIC' : formData.badgeTier,
                                          vehicleType: formData.vehicleType,
                                      })
                                      listingId = draft.data.id
