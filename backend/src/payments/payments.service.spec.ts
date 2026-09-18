@@ -73,6 +73,88 @@ function buildModule(prisma: any) {
     }).compile();
 }
 
+describe('PaymentsService — createListingSession retail payment gate', () => {
+    let service: PaymentsService;
+    let prisma: any;
+
+    beforeEach(async () => {
+        mockCheckoutSessionsCreate.mockReset();
+        prisma = buildPrismaMock();
+        const module: TestingModule = await buildModule(prisma);
+        service = module.get<PaymentsService>(PaymentsService);
+
+        prisma.user.findUnique.mockResolvedValue({ id: 'user-1', role: 'USER' });
+        mockCheckoutSessionsCreate.mockResolvedValue({ id: 'cs_mock', url: 'https://checkout.stripe.test/session' });
+    });
+
+    it('charges the persisted BASIC tier even if the browser asks for PREMIUM', async () => {
+        prisma.listing.findUnique.mockResolvedValue({
+            id: 'listing-1',
+            sellerId: 'user-1',
+            type: 'CLASSIFIED',
+            badgeTier: 'BASIC',
+            deletedAt: null,
+        });
+
+        await service.createListingSession('PREMIUM', 'user-1', 'listing-1');
+
+        expect(prisma.transaction.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                listingId: 'listing-1',
+                amount: 1,
+                description: 'BASIC Listing Fee',
+            }),
+        });
+        expect(mockCheckoutSessionsCreate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                metadata: expect.objectContaining({ badgeTier: 'BASIC' }),
+                line_items: [
+                    expect.objectContaining({
+                        price_data: expect.objectContaining({ unit_amount: 100 }),
+                    }),
+                ],
+            }),
+        );
+    });
+
+    it('heals a legacy FREE retail listing to BASIC before checkout', async () => {
+        prisma.listing.findUnique.mockResolvedValue({
+            id: 'listing-1',
+            sellerId: 'user-1',
+            type: 'CLASSIFIED',
+            badgeTier: 'FREE',
+            deletedAt: null,
+        });
+
+        await service.createListingSession('BASIC', 'user-1', 'listing-1');
+
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'listing-1' },
+            data: { badgeTier: 'BASIC' },
+        });
+        expect(prisma.transaction.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({ amount: 1 }),
+        });
+    });
+
+    it('does not create retail checkout for an auction listing', async () => {
+        prisma.listing.findUnique.mockResolvedValue({
+            id: 'listing-1',
+            sellerId: 'user-1',
+            type: 'AUCTION',
+            badgeTier: 'FREE',
+            deletedAt: null,
+        });
+
+        await expect(
+            service.createListingSession('BASIC', 'user-1', 'listing-1'),
+        ).rejects.toThrow('Auction listings do not require a retail listing fee');
+
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
+        expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
+    });
+});
+
 describe('PaymentsService — createPaymentSheet (LISTING_FEE)', () => {
     let service: PaymentsService;
     let prisma: any;
