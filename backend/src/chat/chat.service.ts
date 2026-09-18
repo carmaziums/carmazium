@@ -2311,7 +2311,7 @@ export class ChatService {
             }
         }
 
-        await this.chatAttachmentService.assertUploaded(dto.path);
+        await this.chatAttachmentService.assertUploaded(dto.path, dto.mime, dto.size);
 
         let message: any;
         try {

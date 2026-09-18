@@ -503,7 +503,7 @@ describe('ChatService — conversation context and authorization', () => {
             'room-photo',
             buyerId,
         );
-        expect(chatAttachmentService.assertUploaded).toHaveBeenCalledWith(dto.path);
+        expect(chatAttachmentService.assertUploaded).toHaveBeenCalledWith(dto.path, dto.mime, dto.size);
         expect(prisma.message.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 data: expect.objectContaining({
