@@ -364,8 +364,6 @@ export class OffersService {
                         slug: true,
                         images: true,
                         price: true,
-                        priceMin: true,
-                        priceMax: true,
                         status: true,
                         make: true,
                         model: true,
