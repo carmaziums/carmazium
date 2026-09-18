@@ -232,6 +232,26 @@ describe('BidsService — cancelBid', () => {
         });
     });
 
+    it('rejects cancelling a bid archived from a previous auction run', async () => {
+        prisma.bid.findUnique.mockResolvedValue({
+            id: 'bid-old',
+            bidderId: 'owner-user',
+            listingId: 'listing-1',
+            amount: 7000,
+            cancelledAt: null,
+            deletedAt: null,
+            archivedAt: new Date(),
+            createdAt: new Date(),
+        });
+
+        await expect(
+            service.cancelBid('bid-old', 'owner-user'),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/previous auction/i) });
+
+        expect(prisma.listing.findUnique).not.toHaveBeenCalled();
+        expect(prisma.bid.update).not.toHaveBeenCalled();
+    });
+
     it('throws BadRequestException when auction status is not ACTIVE', async () => {
         const mockBid = {
             id: 'bid-1',
@@ -323,6 +343,23 @@ describe('BidsService — current auction positions', () => {
 
         const result = await service.findMyActiveAuctionPositions('dealer-1');
 
+        expect(prisma.bid.findMany).toHaveBeenNthCalledWith(
+            1,
+            expect.objectContaining({
+                where: expect.objectContaining({
+                    bidderId: 'dealer-1',
+                    archivedAt: null,
+                }),
+            }),
+        );
+        expect(prisma.bid.findMany).toHaveBeenNthCalledWith(
+            2,
+            expect.objectContaining({
+                where: expect.objectContaining({
+                    archivedAt: null,
+                }),
+            }),
+        );
         expect(result).toHaveLength(1);
         expect(result[0]).toMatchObject({
             listingId: 'listing-1',
