@@ -5,12 +5,14 @@ import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { WriteOffCategoryBadge } from "@/components/ui/WriteOffCategoryBadge"
 import { CardImageCarousel } from "@/components/features/CardImageCarousel"
+import { SaveCarButton } from "@/components/features/SaveCarButton"
 import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS } from "@/lib/vehicleLabels"
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
 interface CarCardProps {
     title: string
+    listingId?: string
     make?: string | null
     model?: string | null
     price: string
@@ -65,7 +67,7 @@ const BANNER_COLORS: Record<string, string> = {
 const DEFAULT_BANNER_COLOR = 'bg-primary'
 
 export function CarCard({
-    title, make, model, price, priceMin, priceMax, image, images, href = "#",
+    title, listingId, make, model, price, priceMin, priceMax, image, images, href = "#",
     year, mileage, fuelType, bodyType, location, distanceMi,
     sellerId, sellerScore, isFeatured = false, badgeTier, status, bannerLabel, hasLinkedAuction,
     isDepartedSale, deliveryAvailable, exteriorGrade, writeOffCategory
@@ -113,9 +115,16 @@ export function CarCard({
                     </div>
                 )}
 
+                {/* Save / like action — available directly from marketplace cards */}
+                {listingId && status !== 'SOLD' && (
+                    <div className="absolute top-3 right-3 z-40">
+                        <SaveCarButton listingId={listingId} redirectHref={href} />
+                    </div>
+                )}
+
                 {/* Trust Badges Corner */}
                 {(badgeTier === 'STANDARD' || badgeTier === 'PREMIUM' || writeOffCategory) && (
-                    <div className="absolute top-3 right-3 z-30 flex flex-col gap-1.5 items-end drop-shadow-md">
+                    <div className={`absolute right-3 z-30 flex flex-col gap-1.5 items-end drop-shadow-md ${listingId && status !== 'SOLD' ? 'top-16' : 'top-3'}`}>
                         <WriteOffCategoryBadge category={writeOffCategory} />
                         {(badgeTier === 'STANDARD' || badgeTier === 'PREMIUM') && (
                             <>
