@@ -101,6 +101,26 @@ export async function createListing(data: CreateListingRequest): Promise<CreateL
     })
 }
 
+export interface VehicleCoverRecommendation {
+    recommendedIndex: number | null
+    confidence: number
+    view: 'front' | 'front_three_quarter' | 'side' | 'rear' | 'interior' | 'detail' | 'damage' | 'other' | 'unknown'
+    reason: string
+}
+
+/**
+ * Ask the backend vision service to choose the strongest front-facing vehicle
+ * photo for the listing cover. Failure is intentionally non-destructive: the
+ * uploader keeps the customer's existing photo order.
+ */
+export async function recommendVehicleCoverPhoto(imageUrls: string[]): Promise<VehicleCoverRecommendation> {
+    const result = await apiClient<{ data: VehicleCoverRecommendation }>('/listings/photo-cover-recommendation', {
+        method: 'POST',
+        body: JSON.stringify({ imageUrls }),
+    })
+    return result.data
+}
+
 // ─── DVLA Lookup ────────────────────────────────────────────────────────────
 
 export interface DvlaLookupResult {
