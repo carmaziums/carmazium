@@ -25,6 +25,7 @@ import {
 import { apiClient } from "@/lib/apiClient"
 import { uploadImage } from "@/lib/supabase"
 import { getStripeConnectStatus, alsoListRetail, createListingCheckout, type StripeConnectStatus, type Listing } from "@/lib/listingApi"
+import { getAuctionOpeningBid, getAuctionReserveGuide } from "@/lib/auctionPricing"
 
 const STATUS_STYLES: Record<string, string> = {
     SCHEDULED: "bg-blue-500/10 text-blue-400 border-blue-500/20",
@@ -132,6 +133,20 @@ function SellerAuctionsPage() {
     const [submitting, setSubmitting] = React.useState(false)
     const [formError, setFormError] = React.useState<string | null>(null)
     const [successMsg, setSuccessMsg] = React.useState<string | null>(null)
+
+    const selectedAuctionListing = React.useMemo(
+        () => eligibleListings.find(listing => listing.id === formListingId) ?? null,
+        [eligibleListings, formListingId],
+    )
+    const selectedMarketValue = Number(selectedAuctionListing?.price ?? 0)
+    const platformOpeningBid = getAuctionOpeningBid(selectedMarketValue)
+    const reserveGuide = getAuctionReserveGuide(selectedMarketValue)
+
+    React.useEffect(() => {
+        if (platformOpeningBid <= 0) return
+        const next = String(platformOpeningBid)
+        setFormStartingBid(current => current === next ? current : next)
+    }, [platformOpeningBid])
     const [resultsAuction, setResultsAuction] = React.useState<Auction | null>(null)
     const [connectingChat, setConnectingChat] = React.useState(false)
     const [payoutStatus, setPayoutStatus] = React.useState<StripeConnectStatus | null>(null)
@@ -225,6 +240,7 @@ function SellerAuctionsPage() {
         e.preventDefault()
         setFormError(null)
         if (!formListingId) { setFormError("Please select a listing."); return }
+        if (platformOpeningBid <= 0) { setFormError("This vehicle needs a valid Estimated Market Value before it can be auctioned."); return }
         if (!formStartImmediately && !formStartTime) { setFormError("Please set a start date/time or choose 'Start immediately'."); return }
 
         const resolvedStartTime = formStartImmediately ? new Date().toISOString() : new Date(formStartTime).toISOString()
@@ -481,7 +497,7 @@ function SellerAuctionsPage() {
                                             </label>
                                             <select
                                                 value={formListingId}
-                                                onChange={e => setFormListingId(e.target.value)}
+                                                onChange={e => { setFormListingId(e.target.value); setFormError(null) }}
                                                 className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg h-11 px-3 text-sm focus:ring-1 focus:ring-primary/50 focus:outline-none"
                                             >
                                                 <option value="">— Choose an AUCTION-type listing —</option>
@@ -559,22 +575,37 @@ function SellerAuctionsPage() {
                                                 onChange={e => setFormReservePrice(e.target.value)}
                                                 className="bg-[var(--bg-input)] border-[var(--border-default)] h-11 rounded-lg"
                                             />
+                                            {selectedMarketValue > 0 && (
+                                                <div className="mt-1.5 space-y-1">
+                                                    <p className="text-[10px] text-emerald-400">
+                                                        Suggested reserve: £{reserveGuide.low.toLocaleString("en-GB")}–£{reserveGuide.high.toLocaleString("en-GB")}
+                                                    </p>
+                                                    {formReservePrice && Number(formReservePrice) > reserveGuide.high && (
+                                                        <p className={`text-[10px] flex items-start gap-1 ${Number(formReservePrice) >= selectedMarketValue ? "text-red-400" : "text-amber-400"}`}>
+                                                            <AlertCircle size={11} className="shrink-0 mt-0.5" />
+                                                            {Number(formReservePrice) >= selectedMarketValue
+                                                                ? "Reserve is at or above market value. Dealer bidding may be very limited."
+                                                                : "Reserve is above CarMazium's suggested range and may reduce bidding."}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
 
-                                        {/* Starting bid */}
+                                        {/* Platform opening bid */}
                                         <div>
                                             <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1.5">
-                                                Starting Bid (£)
+                                                Opening Bid (£)
                                             </label>
                                             <Input
                                                 type="number"
-                                                min={0}
-                                                step={1}
-                                                placeholder="e.g. 10000"
-                                                value={formStartingBid}
-                                                onChange={e => setFormStartingBid(e.target.value)}
-                                                className="bg-[var(--bg-input)] border-[var(--border-default)] h-11 rounded-lg"
+                                                value={platformOpeningBid > 0 ? platformOpeningBid : ""}
+                                                readOnly
+                                                className="bg-[var(--bg-card)] border-[var(--border-default)] h-11 rounded-lg cursor-not-allowed opacity-90"
                                             />
+                                            <p className="text-[10px] text-emerald-400 mt-1">
+                                                CarMazium sets this automatically at 70% of the vehicle's Estimated Market Value.
+                                            </p>
                                         </div>
 
                                         {/* Min increment */}
