@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ChatContext } from '@prisma/client';
 import { ChatService } from './chat.service';
 
@@ -72,9 +72,22 @@ describe('ChatService — conversation context and authorization', () => {
             },
             chatRoom: {
                 findUnique: jest.fn().mockResolvedValue(null),
+                create: jest.fn(),
                 upsert: jest.fn(),
                 update: jest.fn(),
                 findMany: jest.fn(),
+            },
+            disputeCase: {
+                findUnique: jest.fn(),
+                create: jest.fn(),
+                updateMany: jest.fn(),
+                findMany: jest.fn(),
+                count: jest.fn(),
+            },
+            disputeReadState: {
+                findUnique: jest.fn(),
+                createMany: jest.fn(),
+                upsert: jest.fn(),
             },
             message: {
                 create: jest.fn(),
@@ -84,7 +97,8 @@ describe('ChatService — conversation context and authorization', () => {
                 updateMany: jest.fn(),
             },
         };
-        notificationsService = { create: jest.fn() };
+        prisma.$transaction = jest.fn(async (callback: any) => callback(prisma));
+        notificationsService = { create: jest.fn().mockResolvedValue({ id: 'notification' }) };
         notificationsGateway = { sendNotification: jest.fn() };
         chatAttachmentService = {
             hydrateMessages: jest.fn(async (messages: any[]) => messages),
@@ -633,6 +647,376 @@ describe('ChatService — conversation context and authorization', () => {
                 data: expect.objectContaining({ supportClosedAt: null }),
             }),
         );
+    });
+
+    it('opens a separate dispute room only after a retail transaction reaches sale pending or sold', async () => {
+        const sourceRoom = {
+            id: 'retail-source',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.RETAIL,
+            deletedAt: null,
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+            listing: {
+                id: listingId,
+                title: 'Ford Fiesta',
+                sellerId,
+                status: 'SOLD',
+            },
+        };
+        const disputeRoom = {
+            id: 'dispute-room',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.DISPUTE,
+            conversationKey: 'DISPUTE:retail-source',
+            deletedAt: null,
+        };
+        const dispute = {
+            id: 'dispute-1',
+            sourceRoomId: sourceRoom.id,
+            chatRoomId: disputeRoom.id,
+            listingId,
+            buyerId,
+            sellerId,
+            openedById: buyerId,
+            joinedAdminId: null,
+            status: 'OPEN',
+        };
+        const hydratedRoom = {
+            ...disputeRoom,
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+            listing: sourceRoom.listing,
+            disputeCase: {
+                ...dispute,
+                buyer: { id: buyerId, role: 'BUYER' },
+                seller: { id: sellerId, role: 'SELLER' },
+                joinedAdmin: null,
+            },
+            disputeAsSource: null,
+        };
+        const eventMessage = {
+            id: 'event-opened',
+            chatRoomId: disputeRoom.id,
+            senderId: buyerId,
+            content: '__CARMAZIUM_DISPUTE_EVENT_V1__:{"type":"OPENED","disputeId":"dispute-1","reason":"Vehicle fault"}',
+            sender: { id: buyerId },
+        };
+
+        prisma.chatRoom.findUnique
+            .mockResolvedValueOnce(sourceRoom)
+            .mockResolvedValueOnce(hydratedRoom);
+        prisma.disputeCase.findUnique.mockResolvedValue(null);
+        prisma.chatRoom.create.mockResolvedValue(disputeRoom);
+        prisma.disputeCase.create.mockResolvedValue(dispute);
+        prisma.disputeReadState.createMany.mockResolvedValue({ count: 2 });
+        prisma.message.create.mockResolvedValue(eventMessage);
+        prisma.chatRoom.update.mockResolvedValue({});
+        prisma.user.findMany.mockResolvedValue([{ id: adminId }]);
+
+        const result = await service.openDispute(
+            sourceRoom.id,
+            buyerId,
+            { reason: ' Vehicle fault ' },
+        );
+
+        expect(result.created).toBe(true);
+        expect(result.room.id).toBe(disputeRoom.id);
+        expect(prisma.chatRoom.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                initiatorId: buyerId,
+                participantId: sellerId,
+                listingId,
+                context: ChatContext.DISPUTE,
+                conversationKey: `DISPUTE:${sourceRoom.id}`,
+            }),
+        });
+        expect(prisma.disputeCase.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                sourceRoomId: sourceRoom.id,
+                chatRoomId: disputeRoom.id,
+                buyerId,
+                sellerId,
+                openedById: buyerId,
+                reason: 'Vehicle fault',
+            }),
+        });
+        expect(prisma.disputeReadState.createMany).toHaveBeenCalledWith({
+            data: expect.arrayContaining([
+                expect.objectContaining({ disputeId: dispute.id, userId: buyerId }),
+                expect.objectContaining({ disputeId: dispute.id, userId: sellerId }),
+            ]),
+        });
+        expect(eventMessage.content).toContain('"type":"OPENED"');
+    });
+
+    it('blocks a dispute while a retail listing is still only active', async () => {
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'retail-source',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.RETAIL,
+            deletedAt: null,
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+            listing: {
+                id: listingId,
+                title: 'Ford Fiesta',
+                sellerId,
+                status: 'ACTIVE',
+            },
+        });
+
+        await expect(
+            service.openDispute('retail-source', buyerId, { reason: 'Too early' }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+
+        expect(prisma.chatRoom.create).not.toHaveBeenCalled();
+        expect(prisma.disputeCase.create).not.toHaveBeenCalled();
+    });
+
+    it('does not let an unjoined admin read a dispute room', async () => {
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'dispute-room',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.DISPUTE,
+            deletedAt: null,
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+            disputeCase: {
+                id: 'dispute-1',
+                status: 'OPEN',
+                joinedAdminId: adminId,
+            },
+        });
+
+        await expect(
+            service.getRoom('dispute-room', secondAdminId),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+
+        await expect(
+            service.getRoom('dispute-room', adminId),
+        ).resolves.toBeDefined();
+    });
+
+    it('allows only one admin to explicitly claim a dispute', async () => {
+        prisma.disputeCase.findUnique.mockResolvedValue({
+            id: 'dispute-1',
+            chatRoomId: 'dispute-room',
+            status: 'OPEN',
+            joinedAdminId: adminId,
+        });
+
+        await expect(
+            service.joinDispute('dispute-1', secondAdminId),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/already assigned/i) });
+
+        expect(prisma.disputeCase.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('writes a visible audit event when an admin joins an unassigned dispute', async () => {
+        const claimed = {
+            id: 'dispute-1',
+            chatRoomId: 'dispute-room',
+            buyerId,
+            sellerId,
+            status: 'OPEN',
+            joinedAdminId: adminId,
+        };
+        const room = {
+            id: 'dispute-room',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.DISPUTE,
+            deletedAt: null,
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+            disputeCase: {
+                ...claimed,
+                buyer: { id: buyerId, role: 'BUYER' },
+                seller: { id: sellerId, role: 'SELLER' },
+                joinedAdmin: { id: adminId, role: 'ADMIN' },
+            },
+        };
+        prisma.disputeCase.findUnique
+            .mockResolvedValueOnce({
+                ...claimed,
+                joinedAdminId: null,
+            })
+            .mockResolvedValueOnce(claimed);
+        prisma.disputeCase.updateMany.mockResolvedValue({ count: 1 });
+        prisma.disputeReadState.upsert.mockResolvedValue({});
+        prisma.message.create.mockResolvedValue({
+            id: 'join-event',
+            chatRoomId: 'dispute-room',
+            senderId: adminId,
+            content: '__CARMAZIUM_DISPUTE_EVENT_V1__:{"type":"ADMIN_JOINED","disputeId":"dispute-1"}',
+        });
+        prisma.chatRoom.update.mockResolvedValue({});
+        prisma.chatRoom.findUnique.mockResolvedValue(room);
+
+        const result = await service.joinDispute('dispute-1', adminId);
+
+        expect(result.joined).toBe(true);
+        expect(prisma.disputeCase.updateMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: expect.objectContaining({
+                    joinedAdminId: null,
+                    status: 'OPEN',
+                }),
+                data: expect.objectContaining({
+                    joinedAdminId: adminId,
+                    adminJoinedAt: expect.any(Date),
+                }),
+            }),
+        );
+        expect(prisma.message.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.objectContaining({
+                    senderId: adminId,
+                    content: expect.stringContaining('"type":"ADMIN_JOINED"'),
+                }),
+            }),
+        );
+    });
+
+    it('routes a dispute message to both the other party and the joined admin', async () => {
+        const room = {
+            id: 'dispute-room',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.DISPUTE,
+            deletedAt: null,
+            disputeCase: {
+                id: 'dispute-1',
+                status: 'OPEN',
+                joinedAdminId: adminId,
+            },
+            initiator: { role: 'BUYER' },
+            participant: { role: 'SELLER' },
+        };
+        const saved = {
+            id: 'dispute-message',
+            chatRoomId: room.id,
+            senderId: buyerId,
+            content: 'The fault is still present.',
+            deletedAt: null,
+            sender: { id: buyerId },
+        };
+        prisma.chatRoom.findUnique.mockResolvedValue(room);
+        prisma.message.create.mockResolvedValue(saved);
+        prisma.chatRoom.update.mockResolvedValue({});
+
+        await service.sendMessage(room.id, buyerId, { content: saved.content });
+
+        expect(notificationsService.create).toHaveBeenCalledTimes(2);
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({ userId: sellerId }),
+        );
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                userId: adminId,
+                link: `/dashboard/admin/messages?room=${room.id}`,
+            }),
+        );
+    });
+
+    it('rejects client attempts to forge dispute audit events', async () => {
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'dispute-room',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.DISPUTE,
+            deletedAt: null,
+            disputeCase: {
+                id: 'dispute-1',
+                status: 'OPEN',
+                joinedAdminId: adminId,
+            },
+            initiator: { role: 'BUYER' },
+            participant: { role: 'SELLER' },
+        });
+
+        await expect(
+            service.sendMessage('dispute-room', buyerId, {
+                content: '__CARMAZIUM_DISPUTE_EVENT_V1__:{"type":"RESOLVED"}',
+            }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+
+        expect(prisma.message.create).not.toHaveBeenCalled();
+    });
+
+    it('uses a per-user read cursor for disputes instead of the two-party isRead flag', async () => {
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'dispute-room',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.DISPUTE,
+            deletedAt: null,
+            disputeCase: {
+                id: 'dispute-1',
+                status: 'OPEN',
+                joinedAdminId: adminId,
+            },
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+        });
+        prisma.disputeReadState.findUnique.mockResolvedValue({
+            lastReadAt: new Date('2026-09-18T10:00:00.000Z'),
+        });
+        prisma.message.count.mockResolvedValue(3);
+        prisma.disputeReadState.upsert.mockResolvedValue({});
+
+        const marked = await service.markMessagesAsRead('dispute-room', buyerId);
+
+        expect(marked).toBe(3);
+        expect(prisma.disputeReadState.upsert).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: {
+                    disputeId_userId: {
+                        disputeId: 'dispute-1',
+                        userId: buyerId,
+                    },
+                },
+                update: { lastReadAt: expect.any(Date) },
+            }),
+        );
+        expect(prisma.message.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('makes a resolved dispute read-only', async () => {
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'dispute-room',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.DISPUTE,
+            deletedAt: null,
+            disputeCase: {
+                id: 'dispute-1',
+                status: 'RESOLVED',
+                joinedAdminId: adminId,
+            },
+            initiator: { role: 'BUYER' },
+            participant: { role: 'SELLER' },
+        });
+
+        await expect(
+            service.sendMessage('dispute-room', buyerId, { content: 'One more message' }),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/read-only/i) });
+
+        expect(prisma.message.create).not.toHaveBeenCalled();
     });
 
     it('uses different conversation keys for different retail vehicles between the same users', async () => {
