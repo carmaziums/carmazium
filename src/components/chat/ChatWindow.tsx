@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button"
 import Image from "next/image"
 import { useChat } from "@/context/ChatContext"
 import { useAuth } from "@/context/AuthContext"
-import { blockChatRoom, createChatAttachmentUpload, getChatMessages, sendChatAttachment, sendChatMessage, markMessagesAsRead, getChatDisplayName, isSupportUser, openVehicleDispute, reportChatMessage, unblockChatRoom, type ChatHistoryCursor, type ChatMessage, type ChatReportReason, type ChatRoom } from "@/lib/chatApi"
+import { blockChatRoom, createChatAttachmentUpload, getChatMessages, sendChatAttachment, sendChatMessage, markMessagesAsRead, getChatDisplayName, getChatRoomDisplayName, isSupportUser, openVehicleDispute, reportChatMessage, unblockChatRoom, type ChatHistoryCursor, type ChatMessage, type ChatReportReason, type ChatRoom } from "@/lib/chatApi"
 import { disputeEventLabel, parseChatMessageContent, parseDisputeEventContent } from "@/lib/chatMessageContent"
 import { resolveAdminDispute } from "@/lib/adminApi"
 import { supabase } from "@/lib/supabase"
@@ -31,7 +31,7 @@ const ADMIN_QUICK_REPLIES = [
  * Displays messages and handles sending new messages
  */
 export function ChatWindow({ room, onBack }: ChatWindowProps) {
-    const { sendMessage, onNewMessage, onTyping, onMessagesRead, onRoomUpdated, markAsRead, setActiveRoom, startTyping, stopTyping, refreshRooms, isConnected, onlineUserIds } = useChat()
+    const { sendMessage, onNewMessage, onTyping, onMessagesRead, onRoomUpdated, markAsRead, setActiveRoom, joinRoom, startTyping, stopTyping, refreshRooms, isConnected, onlineUserIds } = useChat()
     const { profile, user } = useAuth()
     const isAdminViewer = profile?.role === 'ADMIN'
     const otherUserOnline = room.otherUser ? onlineUserIds.has(room.otherUser.id) : false
@@ -78,8 +78,9 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
 
     React.useEffect(() => {
         setActiveRoom(room.id)
+        joinRoom(room.id)
         return () => setActiveRoom(null)
-    }, [room.id, setActiveRoom])
+    }, [room.id, setActiveRoom, joinRoom])
 
     React.useEffect(() => {
         const unsubscribe = onRoomUpdated((updated) => {
@@ -658,11 +659,15 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                     <h3 className="font-bold truncate">
-                        {getChatDisplayName(room.otherUser)}
+                        {getChatRoomDisplayName(room)}
                     </h3>
                     {room.listing ? (
                         <p className="text-xs text-[var(--text-muted)] truncate">
                             Re: {room.listing.title}
+                        </p>
+                    ) : room.context === 'SERVICE_JOB' && room.serviceJob ? (
+                        <p className="text-xs text-[var(--text-muted)] truncate">
+                            Job: {room.serviceJob.title}
                         </p>
                     ) : (
                         <div className="flex items-center gap-1.5">

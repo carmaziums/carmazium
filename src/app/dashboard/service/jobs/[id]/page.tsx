@@ -2,8 +2,8 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
-import { Loader2, ArrowLeft, AlertCircle, CheckCircle, Phone, Mail, MapPin, Play, Flag, Trash2, PoundSterling } from "lucide-react"
+import { useParams, useRouter } from "next/navigation"
+import { Loader2, ArrowLeft, AlertCircle, CheckCircle, Phone, Mail, MapPin, Play, Flag, Trash2, PoundSterling, MessageSquare } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
@@ -12,6 +12,7 @@ import {
     type ServiceJob, type ServiceMarketplaceSettings,
 } from "@/lib/servicesApi"
 import { JobStatusBadge, RecoveryBadge, JobRoute, JobTiming, JobVehicles } from "@/components/services/JobBits"
+import { getOrCreateServiceJobRoom } from "@/lib/chatApi"
 
 /**
  * The contractor's view of one job. Before acceptance: quote or update the
@@ -23,6 +24,7 @@ const inputCls = "w-full rounded-xl border px-4 py-3 text-sm outline-none focus:
 
 export default function ContractorJobPage() {
     const { id } = useParams<{ id: string }>()
+    const router = useRouter()
     const { user, profile } = useAuth()
     const [job, setJob] = React.useState<ServiceJob | null>(null)
     const [settings, setSettings] = React.useState<ServiceMarketplaceSettings | null>(null)
@@ -42,6 +44,19 @@ export default function ContractorJobPage() {
     React.useEffect(() => { load() }, [load])
     React.useEffect(() => { getServiceSettings().then(setSettings).catch(() => setSettings(null)) }, [])
 
+    const openJobChat = async () => {
+        setBusy("chat")
+        setError(null)
+        try {
+            const result = await getOrCreateServiceJobRoom(id)
+            router.push(result.inboxUrl)
+        } catch (e: any) {
+            setError(e?.message || "Could not open the job conversation")
+        } finally {
+            setBusy(null)
+        }
+    }
+
     const run = async (key: string, fn: () => Promise<unknown>, after?: string) => {
         setBusy(key); setError(null); setFlash(null)
         try { await fn(); if (after) setFlash(after); load() }
@@ -56,6 +71,7 @@ export default function ContractorJobPage() {
     const canQuote = job?.status === "OPEN"
     const platformFeePence = settings ? Math.round(amountPence * settings.platformFeeRate) : null
     const providerPence = platformFeePence == null ? null : amountPence - platformFeePence
+    const canMessageCustomer = isMine && ["PAID", "IN_PROGRESS", "COMPLETED", "RELEASED", "DISPUTED"].includes(job?.status || "")
 
     return (
         <div className="min-h-screen pt-20 pb-12">
@@ -136,7 +152,7 @@ export default function ContractorJobPage() {
                                     </div>
                                 )}
 
-                                {isMine && job.customer && (job.status === "PAID" || job.status === "IN_PROGRESS" || job.status === "COMPLETED" || job.status === "RELEASED") && (
+                                {isMine && job.customer && (job.status === "PAID" || job.status === "IN_PROGRESS" || job.status === "COMPLETED" || job.status === "RELEASED" || job.status === "DISPUTED") && (
                                     <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">Customer</p>
                                         <p className="font-heading font-bold">{job.customer.firstName} {job.customer.lastName}</p>
@@ -144,6 +160,19 @@ export default function ContractorJobPage() {
                                             {job.customer.phone && <a href={`tel:${job.customer.phone}`} className="flex items-center gap-2 text-primary hover:underline"><Phone size={14} /> {job.customer.phone}</a>}
                                             {job.customer.email && <a href={`mailto:${job.customer.email}`} className="flex items-center gap-2 text-primary hover:underline"><Mail size={14} /> {job.customer.email}</a>}
                                         </div>
+                                        {canMessageCustomer && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                className="mt-4 w-full"
+                                                disabled={busy === "chat"}
+                                                onClick={() => void openJobChat()}
+                                            >
+                                                {busy === "chat"
+                                                    ? <Loader2 className="animate-spin" size={16} />
+                                                    : <><MessageSquare size={16} className="mr-2" /> Message customer</>}
+                                            </Button>
+                                        )}
                                     </div>
                                 )}
 

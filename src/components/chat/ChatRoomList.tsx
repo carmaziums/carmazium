@@ -4,7 +4,7 @@ import * as React from "react"
 import Image from "next/image"
 import { MessageSquare, Search, User, Loader2, Check, ShieldAlert, Ban } from "lucide-react"
 import { useChat } from "@/context/ChatContext"
-import { getChatDisplayName, isSupportUser, type ChatRoom } from "@/lib/chatApi"
+import { getChatRoomDisplayName, isSupportUser, type ChatRoom } from "@/lib/chatApi"
 import { chatMessagePreview } from "@/lib/chatMessageContent"
 
 interface ChatRoomListProps {
@@ -32,9 +32,10 @@ export function ChatRoomList({
         if (!searchTerm) return sourceRooms
         const term = searchTerm.toLowerCase()
         return sourceRooms.filter(room => {
-            const name = getChatDisplayName(room.otherUser).toLowerCase()
+            const name = getChatRoomDisplayName(room).toLowerCase()
             const listing = room.listing?.title?.toLowerCase() || ''
-            return name.includes(term) || listing.includes(term)
+            const serviceJob = room.serviceJob?.title?.toLowerCase() || ''
+            return name.includes(term) || listing.includes(term) || serviceJob.includes(term)
         })
     }, [sourceRooms, searchTerm])
 
@@ -136,7 +137,7 @@ export function ChatRoomList({
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between gap-2 mb-0.5">
                                             <h4 className="font-bold text-[var(--text-primary)] truncate text-[15px]">
-                                                {getChatDisplayName(room.otherUser)}
+                                                {getChatRoomDisplayName(room)}
                                             </h4>
                                             {room.lastMessage && (
                                                 <span className="text-[11px] text-[var(--text-muted)] shrink-0 tabular-nums">
@@ -148,6 +149,12 @@ export function ChatRoomList({
                                         {room.listing && (
                                             <p className="text-xs text-primary/90 truncate mb-1 font-medium">
                                                 {room.listing.title}
+                                            </p>
+                                        )}
+
+                                        {room.context === 'SERVICE_JOB' && room.serviceJob && (
+                                            <p className="text-xs text-primary/90 truncate mb-1 font-medium">
+                                                {room.serviceJob.title}
                                             </p>
                                         )}
 

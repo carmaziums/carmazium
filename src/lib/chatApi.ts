@@ -22,6 +22,21 @@ export interface ChatListing {
     images: string[]
 }
 
+export interface ChatServiceJob {
+    id: string
+    title: string
+    status: string
+    serviceType: string
+    customerId: string
+    contractorId: string | null
+    contractor?: {
+        id: string
+        businessName: string | null
+        userId: string
+    } | null
+    payment?: { status: string } | null
+}
+
 export type ChatDisputeStatus = 'OPEN' | 'RESOLVED'
 
 export interface ChatDisputeCase {
@@ -72,9 +87,10 @@ export interface ChatMessage {
 
 export interface ChatRoom {
     id: string
-    context?: 'SUPPORT' | 'RETAIL' | 'AUCTION' | 'DISPUTE' | 'LEGACY'
+    context?: 'SUPPORT' | 'RETAIL' | 'AUCTION' | 'DISPUTE' | 'SERVICE_JOB' | 'LEGACY'
     otherUser: ChatUser
     listing: ChatListing | null
+    serviceJob?: ChatServiceJob | null
     supportAssignedAdminId?: string | null
     supportAssignedAdmin?: {
         id: string
@@ -200,6 +216,17 @@ export function getChatDisplayName(user: ChatUser | null | undefined): string {
     return `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Chat'
 }
 
+export function getChatRoomDisplayName(room: ChatRoom): string {
+    if (
+        room.context === 'SERVICE_JOB' &&
+        room.serviceJob?.contractor?.businessName &&
+        room.otherUser?.id !== room.serviceJob.customerId
+    ) {
+        return room.serviceJob.contractor.businessName
+    }
+    return getChatDisplayName(room.otherUser)
+}
+
 // ============================================================================
 // CHAT REST API FUNCTIONS
 // ============================================================================
@@ -260,6 +287,17 @@ export async function getOrCreateSupportRoom(): Promise<ChatRoom> {
     const data = await apiClient<{ data: ChatRoom }>('/chat/support', {
         method: 'POST',
     })
+    return data.data
+}
+
+export async function getOrCreateServiceJobRoom(jobId: string): Promise<{
+    room: ChatRoom
+    inboxUrl: string
+}> {
+    const data = await apiClient<{ data: { room: ChatRoom; inboxUrl: string } }>(
+        `/chat/service-jobs/${jobId}`,
+        { method: 'POST' },
+    )
     return data.data
 }
 
