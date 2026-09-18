@@ -105,7 +105,7 @@ export class AdminMessagingService {
         status: BroadcastCampaignStatus,
         scheduledAt?: Date,
     ) {
-        this.chatRateLimit.consumeAdminBroadcast(adminId);
+        await this.chatRateLimit.consumeAdminBroadcast(adminId);
         const text = dto.text?.trim() || '';
         if (!text && !dto.mediaUrl) {
             throw new BadRequestException('Enter a message or attach a picture/video.');
@@ -992,7 +992,7 @@ export class AdminMessagingService {
     }
 
     async retryFailedBroadcast(campaignId: string, adminId: string) {
-        this.chatRateLimit.consumeAdminBroadcast(adminId);
+        await this.chatRateLimit.consumeAdminBroadcast(adminId);
         const campaign = await this.prisma.broadcastCampaign.findUnique({
             where: { id: campaignId },
             select: {

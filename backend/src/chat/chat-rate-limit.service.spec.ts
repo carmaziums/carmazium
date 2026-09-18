@@ -2,26 +2,58 @@ import { HttpException } from '@nestjs/common';
 import { ChatRateLimitService } from './chat-rate-limit.service';
 
 describe('ChatRateLimitService', () => {
-    it('allows the normal message allowance and rejects the next message', () => {
+    const originalRedisUrl = process.env.REDIS_URL;
+
+    beforeEach(() => {
+        delete process.env.REDIS_URL;
+    });
+
+    afterAll(() => {
+        if (originalRedisUrl) process.env.REDIS_URL = originalRedisUrl;
+        else delete process.env.REDIS_URL;
+    });
+
+    it('allows the normal message allowance and rejects the next message', async () => {
         const limiter = new ChatRateLimitService();
 
         for (let i = 0; i < 30; i += 1) {
-            expect(() => limiter.consumeMessage('user-1')).not.toThrow();
+            await expect(limiter.consumeMessage('user-1')).resolves.toBeUndefined();
         }
 
-        expect(() => limiter.consumeMessage('user-1')).toThrow(HttpException);
+        await expect(limiter.consumeMessage('user-1')).rejects.toBeInstanceOf(HttpException);
         try {
-            limiter.consumeMessage('user-1');
+            await limiter.consumeMessage('user-1');
         } catch (error: any) {
             expect(error.getStatus()).toBe(429);
             expect(error.code).toBe('RATE_LIMITED');
         }
     });
 
-    it('keeps message limits isolated between users', () => {
+    it('keeps message limits isolated between users', async () => {
         const limiter = new ChatRateLimitService();
-        for (let i = 0; i < 30; i += 1) limiter.consumeMessage('user-1');
+        for (let i = 0; i < 30; i += 1) {
+            await limiter.consumeMessage('user-1');
+        }
 
-        expect(() => limiter.consumeMessage('user-2')).not.toThrow();
+        await expect(limiter.consumeMessage('user-2')).resolves.toBeUndefined();
+    });
+
+    it('uses a shared Redis counter when Redis is available', async () => {
+        const limiter = new ChatRateLimitService();
+        const evalMock = jest.fn()
+            .mockResolvedValueOnce(30)
+            .mockResolvedValueOnce(31);
+        (limiter as any).redis = { eval: evalMock };
+
+        await expect(limiter.consumeMessage('shared-user')).resolves.toBeUndefined();
+        await expect(limiter.consumeMessage('shared-user')).rejects.toBeInstanceOf(HttpException);
+
+        expect(evalMock).toHaveBeenNthCalledWith(
+            1,
+            expect.stringContaining("redis.call('INCR'"),
+            1,
+            'carmazium:chat:rate:message:shared-user',
+            '60000',
+        );
     });
 });
