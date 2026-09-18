@@ -12,6 +12,11 @@ import { CreateOfferDto } from './dto/create-offer.dto';
 import { AmendOfferDto } from './dto/amend-offer.dto';
 import { OfferResponseStatus } from './dto/respond-offer.dto';
 import { Offer, OfferStatus } from '@prisma/client';
+import { Cron } from '@nestjs/schedule';
+import { AuctionsService, RetailDealAuctionCancellation } from '../auctions/auctions.service';
+
+const PENDING_OFFER_LIFETIME_MS = 72 * 60 * 60 * 1000;
+const COUNTER_OFFER_LIFETIME_MS = 48 * 60 * 60 * 1000;
 
 @Injectable()
 export class OffersService {
@@ -20,7 +25,159 @@ export class OffersService {
         private readonly notificationsService: NotificationsService,
         private readonly notificationsGateway: NotificationsGateway,
         private readonly emailService: EmailService,
+        private readonly auctionsService: AuctionsService,
     ) { }
+
+    private isPendingOfferExpired(updatedAt: Date): boolean {
+        return updatedAt.getTime() < Date.now() - PENDING_OFFER_LIFETIME_MS;
+    }
+
+    private validateBuyerOfferAmount(amount: number, askingPrice: number): void {
+        const minAllowedOffer = Math.floor(askingPrice * 0.7);
+        if (!Number.isFinite(amount) || amount <= 0) {
+            throw new BadRequestException('A valid offer amount is required.');
+        }
+        if (amount < minAllowedOffer) {
+            throw new BadRequestException(
+                `Offer must be at least £${minAllowedOffer.toLocaleString('en-GB')} (70% of the asking price).`,
+            );
+        }
+        if (amount > askingPrice) {
+            throw new BadRequestException(
+                `Offer cannot exceed the asking price of £${askingPrice.toLocaleString('en-GB')}.`,
+            );
+        }
+    }
+
+    /**
+     * Atomically reserve a retail listing for one accepted offer, close every
+     * other open negotiation, and cancel any linked auction through the auction
+     * lifecycle service. Only one concurrent acceptance can win the ACTIVE ->
+     * OFFER_ACCEPTED state transition.
+     */
+    private async closeRetailDeal(offer: any, finalAmount: number): Promise<Offer> {
+        let auctionCancellation: RetailDealAuctionCancellation | null = null;
+
+        const updatedOffer = await this.prisma.$transaction(async (tx) => {
+            const reserved = await tx.listing.updateMany({
+                where: {
+                    id: offer.listingId,
+                    status: 'ACTIVE',
+                    deletedAt: null,
+                },
+                data: { status: 'OFFER_ACCEPTED' },
+            });
+
+            if (reserved.count !== 1) {
+                throw new BadRequestException(
+                    'This vehicle is no longer available for a new accepted offer.',
+                );
+            }
+
+            const accepted = await tx.offer.update({
+                where: { id: offer.id },
+                data: {
+                    status: 'ACCEPTED',
+                    finalAmount,
+                    counterExpiresAt: null,
+                },
+            });
+
+            await tx.offer.updateMany({
+                where: {
+                    listingId: offer.listingId,
+                    id: { not: offer.id },
+                    status: { in: ['PENDING', 'COUNTERED'] },
+                },
+                data: {
+                    status: 'REJECTED',
+                    counterExpiresAt: null,
+                },
+            });
+
+            const listing = await tx.listing.findUnique({
+                where: { id: offer.listingId },
+                select: { linkedListingId: true },
+            });
+
+            if (listing?.linkedListingId) {
+                auctionCancellation = await this.auctionsService.cancelLinkedAuctionForRetailDeal(
+                    listing.linkedListingId,
+                    offer.listingId,
+                    tx,
+                );
+            }
+
+            return accepted;
+        });
+
+        await this.auctionsService.publishRetailDealAuctionCancellation(auctionCancellation);
+        return updatedOffer as Offer;
+    }
+
+    /**
+     * Expire untouched retail offers after 72 hours and counter-offers after
+     * their 48-hour response window. We keep the existing OfferStatus enum and
+     * close expired rows as REJECTED so older clients remain compatible.
+     */
+    @Cron('*/10 * * * *')
+    async expireStaleOffers(): Promise<void> {
+        const now = new Date();
+        const pendingCutoff = new Date(now.getTime() - PENDING_OFFER_LIFETIME_MS);
+        const stale = await this.prisma.offer.findMany({
+            where: {
+                OR: [
+                    { status: 'PENDING', updatedAt: { lt: pendingCutoff } },
+                    { status: 'COUNTERED', counterExpiresAt: { lt: now } },
+                ],
+            },
+            include: {
+                listing: {
+                    select: { id: true, title: true, sellerId: true },
+                },
+            },
+        });
+
+        for (const offer of stale) {
+            const closed = await this.prisma.offer.updateMany({
+                where: { id: offer.id, status: offer.status },
+                data: { status: 'REJECTED', counterExpiresAt: null },
+            });
+            if (closed.count !== 1) continue;
+
+            try {
+                const buyerNotification = await this.notificationsService.create({
+                    userId: offer.buyerId,
+                    type: 'OFFER_EXPIRED',
+                    title: 'Offer Expired',
+                    message: `Your offer negotiation on "${offer.listing.title}" expired. If the vehicle is still available, you can submit a new offer.`,
+                    link: '/dashboard/buyer/offers',
+                    entityType: 'OFFER',
+                    entityId: offer.id,
+                    actionType: 'EXPIRED',
+                    data: { listingId: offer.listingId, offerId: offer.id },
+                });
+                this.notificationsGateway.sendNotification(offer.buyerId, buyerNotification);
+
+                if (offer.listing.sellerId) {
+                    const sellerNotification = await this.notificationsService.create({
+                        userId: offer.listing.sellerId,
+                        type: 'OFFER_EXPIRED',
+                        title: 'Offer Expired',
+                        message: `An offer negotiation on "${offer.listing.title}" expired without agreement.`,
+                        link: '/dashboard/seller/offers',
+                        entityType: 'OFFER',
+                        entityId: offer.id,
+                        actionType: 'EXPIRED',
+                        data: { listingId: offer.listingId, offerId: offer.id },
+                    });
+                    this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
+                }
+            } catch (error) {
+                console.error('[OffersService] Failed to notify parties of expired offer:', error);
+            }
+        }
+    }
 
     // ─── Buyer: Make an offer ────────────────────────────────────────────────
 
