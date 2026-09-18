@@ -3,6 +3,8 @@ import { CapabilityStatus, Prisma, ServiceType, UserRole } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service';
 import { ChatService } from '../chat/chat.service';
 import { ChatGateway } from '../chat/chat.gateway';
+import { ChatRateLimitService } from '../chat/chat-rate-limit.service';
+import { messageInboxLink } from '../chat/chat-routing';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import {
@@ -34,6 +36,7 @@ export class AdminMessagingService {
         private readonly chatGateway: ChatGateway,
         private readonly notificationsService: NotificationsService,
         private readonly notificationsGateway: NotificationsGateway,
+        private readonly chatRateLimit: ChatRateLimitService,
     ) {}
 
     async previewAudience(dto: AdminAudienceDto) {
@@ -45,6 +48,7 @@ export class AdminMessagingService {
     }
 
     async send(adminId: string, dto: AdminSendMessageDto) {
+        this.chatRateLimit.consumeAdminBroadcast(adminId);
         const text = dto.text?.trim() || '';
         if (!text && !dto.mediaUrl) {
             throw new BadRequestException('Enter a message or attach a picture/video.');
@@ -143,7 +147,7 @@ export class AdminMessagingService {
                 type: 'MESSAGE_RECEIVED',
                 title: 'Message from CarMazium',
                 message: preview,
-                link: this.inboxLink(recipient.role, room.id),
+                link: messageInboxLink(recipient.role, room.id),
                 data: { roomId: room.id, messageId: message.id, adminBroadcast: true },
             });
             this.notificationsGateway.sendNotification(recipient.id, notification);
@@ -154,21 +158,6 @@ export class AdminMessagingService {
         }
 
         return message;
-    }
-
-    private inboxLink(role: UserRole, roomId: string): string {
-        switch (role) {
-            case UserRole.DEALER:
-                return `/dashboard/dealer/messages?room=${roomId}`;
-            case UserRole.CONTRACTOR:
-                return `/dashboard/service/messages?room=${roomId}`;
-            case UserRole.FINANCE_PARTNER:
-                return `/dashboard/finance/messages?room=${roomId}`;
-            case UserRole.INSURANCE_PARTNER:
-                return `/dashboard/insurance/messages?room=${roomId}`;
-            default:
-                return `/dashboard/user?tab=messages&room=${roomId}`;
-        }
     }
 
     private buildStoredContent(dto: AdminSendMessageDto, text: string): string {
