@@ -21,11 +21,12 @@ import {
 } from '@nestjs/swagger';
 import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
-import { CreateRoomDto, SendMessageDto } from './dto';
+import { CreateChatAttachmentUploadDto, CreateRoomDto, SendChatAttachmentDto, SendMessageDto } from './dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
 import { ChatRateLimitService } from './chat-rate-limit.service';
+import { ChatAttachmentService } from './chat-attachment.service';
 
 /**
  * REST Controller for chat operations.
@@ -40,6 +41,7 @@ export class ChatController {
         private readonly chatService: ChatService,
         private readonly chatGateway: ChatGateway,
         private readonly chatRateLimit: ChatRateLimitService,
+        private readonly chatAttachmentService: ChatAttachmentService,
     ) { }
 
     /**
@@ -193,6 +195,55 @@ export class ChatController {
         // HTTP is the fallback transport when the socket is unavailable or
         // acknowledgement times out. New HTTP-saved messages still need the
         // same realtime broadcast as WebSocket-saved messages.
+        if (created) {
+            this.chatGateway.broadcastMessage(roomId, message);
+        }
+
+        return new StandardResponse(message);
+    }
+
+    /**
+     * Create a short-lived signed upload ticket for a private chat photo.
+     * The backend authorizes the room before issuing the path/token.
+     */
+    @Post('rooms/:id/attachments/upload-url')
+    @ApiOperation({ summary: 'Create a private photo upload ticket' })
+    @ApiParam({ name: 'id', description: 'Chat room ID' })
+    async createAttachmentUpload(
+        @CurrentUser() user: any,
+        @Param('id') roomId: string,
+        @Body() dto: CreateChatAttachmentUploadDto,
+    ) {
+        this.chatRateLimit.consumeAttachmentTicket(user.id);
+        await this.chatService.assertCanMessageRoom(roomId, user.id);
+        const ticket = await this.chatAttachmentService.createUploadTicket(
+            roomId,
+            user.id,
+            dto.name,
+            dto.mime,
+            dto.size,
+        );
+        return new StandardResponse(ticket);
+    }
+
+    /**
+     * Persist a photo message after the signed upload has completed.
+     */
+    @Post('rooms/:id/attachments')
+    @ApiOperation({ summary: 'Send a private photo message' })
+    @ApiParam({ name: 'id', description: 'Chat room ID' })
+    async sendAttachment(
+        @CurrentUser() user: any,
+        @Param('id') roomId: string,
+        @Body() dto: SendChatAttachmentDto,
+    ) {
+        this.chatRateLimit.consumeMessage(user.id);
+        const { message, created } = await this.chatService.sendAttachmentMessage(
+            roomId,
+            user.id,
+            dto,
+        );
+
         if (created) {
             this.chatGateway.broadcastMessage(roomId, message);
         }
