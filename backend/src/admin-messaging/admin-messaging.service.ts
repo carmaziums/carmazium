@@ -319,18 +319,12 @@ export class AdminMessagingService {
                     },
                 });
 
-                const [requested, failed] = await Promise.all([
-                    this.prisma.broadcastCampaign.findUnique({
-                        where: { id: candidate.id },
-                        select: { requested: true },
-                    }),
-                    this.prisma.broadcastDelivery.count({
-                        where: {
-                            campaignId: candidate.id,
-                            status: BroadcastDeliveryStatus.FAILED,
-                        },
-                    }),
-                ]);
+                const failed = await this.prisma.broadcastDelivery.count({
+                    where: {
+                        campaignId: candidate.id,
+                        status: BroadcastDeliveryStatus.FAILED,
+                    },
+                });
 
                 await this.prisma.broadcastCampaign.update({
                     where: { id: candidate.id },
@@ -341,9 +335,6 @@ export class AdminMessagingService {
                     },
                 });
 
-                if (!requested) {
-                    this.logger.warn(`Scheduled campaign ${candidate.id} disappeared during failure recovery`);
-                }
             }
         }
 
@@ -710,8 +701,8 @@ export class AdminMessagingService {
         return { deleted: true };
     }
 
-    private campaignDateWhere(from?: string, to?: string): Prisma.DateTimeFilter | undefined {
-        const filter: Prisma.DateTimeFilter = {};
+    private campaignDateWhere(from?: string, to?: string) {
+        const filter: { gte?: Date; lte?: Date } = {};
         if (from) {
             const parsed = new Date(from);
             if (Number.isNaN(parsed.getTime())) throw new BadRequestException('Invalid from date.');
