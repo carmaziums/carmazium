@@ -504,6 +504,9 @@ export class PaymentsService {
             throw new BadRequestException('Auction listings do not require a retail listing fee');
         }
 
+        const readiness = await this.getListingFeeReadiness(listingId);
+        this.assertListingFeeReady(readiness);
+
         // Heal legacy FREE retail drafts and always charge using the server-side tier.
         const persistedTier =
             listing.badgeTier === 'FREE' ? 'BASIC' : listing.badgeTier;
@@ -613,6 +616,9 @@ export class PaymentsService {
                 if (listing.type !== 'CLASSIFIED') {
                     throw new BadRequestException('Auction listings do not require a retail listing fee');
                 }
+
+                const readiness = await this.getListingFeeReadiness(listingId);
+                this.assertListingFeeReady(readiness);
 
                 // Mobile Payment Sheet follows the same server-authoritative rule
                 // as hosted Checkout: the saved listing tier determines the charge.
@@ -866,22 +872,9 @@ export class PaymentsService {
                     });
                 }
 
-                if (type === 'LISTING_FEE') {
+                if (type === 'LISTING_FEE' && listingId) {
                     const badgeTier = session.metadata.badgeTier;
-
-                    // Payment doesn't publish the listing — it moves to PENDING_REVIEW
-                    // and only goes live once an admin approves it. isFeatured/
-                    // featuredUntil (for PREMIUM) are set at approval time instead, so
-                    // sellers don't lose boost days while sitting in the review queue.
-                    await this.prisma.listing.update({
-                        where: { id: listingId },
-                        data: {
-                            status: 'PENDING_REVIEW',
-                            badgeTier,
-                            rejectionReason: null,
-                        },
-                    });
-                    this.notifyListingSubmittedForReview(listingId).catch(() => { });
+                    await this.submitPaidListingIfReady(listingId, badgeTier);
                 }
 
                 if (type === 'HPI_REPORT') {
@@ -938,16 +931,7 @@ export class PaymentsService {
                 }
 
                 if (type === 'LISTING_FEE' && listingId) {
-                    // Same review gate as the web checkout.session.completed path above.
-                    await this.prisma.listing.update({
-                        where: { id: listingId },
-                        data: {
-                            status: 'PENDING_REVIEW',
-                            badgeTier,
-                            rejectionReason: null,
-                        },
-                    });
-                    this.notifyListingSubmittedForReview(listingId).catch(() => { });
+                    await this.submitPaidListingIfReady(listingId, badgeTier);
                 }
 
                 if (type === 'DEPOSIT' && listingId) {
