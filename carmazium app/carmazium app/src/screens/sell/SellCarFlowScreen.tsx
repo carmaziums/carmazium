@@ -2497,7 +2497,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         <SectionBox title={isAuction ? 'Set Your Estimated Market Value' : 'Set Your Price Range'} accent={Colors.accent}>
           {isAuction ? (
             <Text style={s.fieldHint}>
-              The <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Estimated Market Value</Text> is internal reference only — it caps your Starting Bid at 70% of this value and is never shown to bidders.
+              The <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Estimated Market Value</Text> is internal reference only — CarMazium automatically sets the Opening Bid at 70% of this value and never shows the market value to bidders.
             </Text>
           ) : (
             <Text style={s.fieldHint}>
