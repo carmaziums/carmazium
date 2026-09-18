@@ -153,6 +153,52 @@ export class ListingsService {
         return (vrm ?? '').replace(/\s+/g, '').trim().toUpperCase();
     }
 
+    private assertListingImageUrls(imageUrls: string[], userId?: string): void {
+        if (imageUrls.length > 100) {
+            throw new BadRequestException('A maximum of 100 listing photos is allowed');
+        }
+
+        const supabaseBase = this.config.get<string>('SUPABASE_URL')
+            || this.config.get<string>('NEXT_PUBLIC_SUPABASE_URL');
+        if (!supabaseBase) {
+            throw new BadRequestException('Vehicle photo storage is not configured');
+        }
+
+        let allowedOrigin = '';
+        try {
+            allowedOrigin = new URL(supabaseBase).origin;
+        } catch {
+            throw new BadRequestException('Vehicle photo storage is not configured');
+        }
+
+        const prefix = '/storage/v1/object/public/listings/';
+        const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+        for (const value of imageUrls) {
+            const clean = value?.split('#')[0] ?? '';
+            let parsed: URL;
+            try {
+                parsed = new URL(clean);
+            } catch {
+                throw new BadRequestException('Every listing photo must be a valid CarMazium storage URL');
+            }
+
+            if (parsed.protocol !== 'https:' || parsed.origin !== allowedOrigin || !parsed.pathname.startsWith(prefix)) {
+                throw new BadRequestException('Only CarMazium listing photos may be attached to a listing');
+            }
+
+            const objectKey = decodeURIComponent(parsed.pathname.slice(prefix.length));
+            if (!objectKey || objectKey.includes('..')) {
+                throw new BadRequestException('Invalid listing photo path');
+            }
+
+            const firstSegment = objectKey.split('/')[0];
+            if (userId && uuidLike.test(firstSegment) && firstSegment !== userId) {
+                throw new ForbiddenException('The listing contains a photo outside your upload area');
+            }
+        }
+    }
+
     private getSubmissionMissingFields(listing: any): string[] {
         const missing: string[] = [];
 
