@@ -374,6 +374,11 @@ model User {
   supportNotesAuthored      SupportNote[]
   broadcastCampaigns        BroadcastCampaign[]
   broadcastDeliveries       BroadcastDelivery[]
+  disputesAsBuyer            DisputeCase[]            @relation("DisputeBuyer")
+  disputesAsSeller           DisputeCase[]            @relation("DisputeSeller")
+  disputesOpened             DisputeCase[]            @relation("DisputeOpenedBy")
+  disputesJoined             DisputeCase[]            @relation("DisputeJoinedAdmin")
+  disputesResolved           DisputeCase[]            @relation("DisputeResolvedBy")
   messages                 Message[]
   notifications            Notification[]
   watchlistItems           WatchlistItem[]
@@ -797,6 +802,7 @@ model Listing {
   hpiReport           HpiReport?
   deliveryRequests    DeliveryRequest[]
   serviceJobVehicles  ServiceJobVehicle[]
+  disputes            DisputeCase[]
 
   @@index([sellerId])
   @@index([vehicleId])
@@ -1082,6 +1088,13 @@ enum ChatContext {
   @@map("chat_context")
 }
 
+enum DisputeStatus {
+  OPEN
+  RESOLVED
+
+  @@map("dispute_status")
+}
+
 enum BroadcastCampaignStatus {
   SCHEDULED
   SENDING
@@ -1120,6 +1133,8 @@ model ChatRoom {
   listing              Listing?      @relation(fields: [listingId], references: [id])
   supportAssignedAdmin User?         @relation("SupportAssignedAdmin", fields: [supportAssignedAdminId], references: [id], onDelete: SetNull)
   supportNotes         SupportNote[]
+  disputeAsSource      DisputeCase?  @relation("DisputeSourceRoom")
+  disputeCase          DisputeCase?  @relation("DisputeChatRoom")
   messages             Message[]
 
   @@index([initiatorId])
@@ -1169,6 +1184,40 @@ model SupportNote {
   @@index([chatRoomId, createdAt(sort: Desc)])
   @@index([authorId])
   @@map("support_notes")
+}
+
+model DisputeCase {
+  id            String        @id @default(uuid())
+  sourceRoomId  String        @unique
+  chatRoomId    String        @unique
+  listingId     String
+  buyerId       String
+  sellerId      String
+  openedById    String
+  joinedAdminId String?
+  resolvedById  String?
+  status        DisputeStatus @default(OPEN)
+  reason        String?
+  adminJoinedAt DateTime?
+  resolvedAt    DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  sourceRoom  ChatRoom @relation("DisputeSourceRoom", fields: [sourceRoomId], references: [id], onDelete: Restrict)
+  chatRoom    ChatRoom @relation("DisputeChatRoom", fields: [chatRoomId], references: [id], onDelete: Cascade)
+  listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  buyer       User     @relation("DisputeBuyer", fields: [buyerId], references: [id], onDelete: Restrict)
+  seller      User     @relation("DisputeSeller", fields: [sellerId], references: [id], onDelete: Restrict)
+  openedBy    User     @relation("DisputeOpenedBy", fields: [openedById], references: [id], onDelete: Restrict)
+  joinedAdmin User?    @relation("DisputeJoinedAdmin", fields: [joinedAdminId], references: [id], onDelete: SetNull)
+  resolvedBy  User?    @relation("DisputeResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([joinedAdminId, status])
+  @@index([listingId])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@map("dispute_cases")
 }
 
 model BroadcastCampaign {
