@@ -1801,6 +1801,30 @@ export class ChatService {
             orderBy: { updatedAt: 'desc' },
         });
 
+        // Aggregate unread two-party/support messages in one query instead
+        // of issuing one COUNT per room. Disputes keep their per-user read
+        // cursor logic below because each room can have a different timestamp.
+        const nonDisputeRoomIds = rooms
+            .filter((room) => room.context !== ChatContext.DISPUTE)
+            .map((room) => room.id);
+        const unreadGroups = nonDisputeRoomIds.length > 0
+            ? await this.prisma.message.groupBy({
+                by: ['chatRoomId', 'senderId'],
+                where: {
+                    chatRoomId: { in: nonDisputeRoomIds },
+                    isRead: false,
+                    deletedAt: null,
+                },
+                _count: { _all: true },
+            })
+            : [];
+        const unreadByRoom = new Map<string, Map<string, number>>();
+        for (const group of unreadGroups as any[]) {
+            const bySender = unreadByRoom.get(group.chatRoomId) ?? new Map<string, number>();
+            bySender.set(group.senderId, group._count._all);
+            unreadByRoom.set(group.chatRoomId, bySender);
+        }
+
         // Add unread count and format response
         return Promise.all(
             rooms.map(async (room) => {
@@ -1829,16 +1853,14 @@ export class ChatService {
                         },
                     });
                 } else {
-                    unreadCount = await this.prisma.message.count({
-                        where: {
-                            chatRoomId: room.id,
-                            ...(room.context === ChatContext.SUPPORT && role === UserRole.ADMIN && customerId
-                                ? { senderId: customerId }
-                                : { senderId: { not: userId } }),
-                            isRead: false,
-                            deletedAt: null,
-                        },
-                    });
+                    const bySender = unreadByRoom.get(room.id) ?? new Map<string, number>();
+                    if (room.context === ChatContext.SUPPORT && role === UserRole.ADMIN && customerId) {
+                        unreadCount = bySender.get(customerId) ?? 0;
+                    } else {
+                        unreadCount = Array.from(bySender.entries())
+                            .filter(([senderId]) => senderId !== userId)
+                            .reduce((total, [, count]) => total + count, 0);
+                    }
                 }
 
                 const roomView = this.withOtherUser(room, userId);

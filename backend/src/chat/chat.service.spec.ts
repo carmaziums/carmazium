@@ -107,6 +107,7 @@ describe('ChatService — conversation context and authorization', () => {
                 findUnique: jest.fn(),
                 findFirst: jest.fn(),
                 count: jest.fn(),
+                groupBy: jest.fn().mockResolvedValue([]),
                 findMany: jest.fn(),
                 updateMany: jest.fn(),
             },
@@ -651,6 +652,61 @@ describe('ChatService — conversation context and authorization', () => {
         await expect(
             service.assertCanMessageRoom('retail-room', secondAdminId),
         ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('batches unread counts for non-dispute rooms instead of counting once per room', async () => {
+        prisma.chatRoom.findMany.mockResolvedValue([
+            {
+                id: 'support-room-1',
+                initiatorId: buyerId,
+                participantId: adminId,
+                context: ChatContext.SUPPORT,
+                conversationKey: `SUPPORT:CARMAZIUM:${buyerId}`,
+                supportAssignedAdminId: adminId,
+                supportAssignedAdmin: null,
+                supportTags: [],
+                supportClosedAt: null,
+                deletedAt: null,
+                initiator: { id: buyerId, role: 'BUYER' },
+                participant: { id: adminId, role: 'ADMIN' },
+                disputeCase: null,
+                disputeAsSource: null,
+                blocks: [],
+                listing: null,
+                messages: [],
+                updatedAt: new Date(),
+            },
+            {
+                id: 'support-room-2',
+                initiatorId: otherBuyerId,
+                participantId: adminId,
+                context: ChatContext.SUPPORT,
+                conversationKey: `SUPPORT:CARMAZIUM:${otherBuyerId}`,
+                supportAssignedAdminId: adminId,
+                supportAssignedAdmin: null,
+                supportTags: [],
+                supportClosedAt: null,
+                deletedAt: null,
+                initiator: { id: otherBuyerId, role: 'BUYER' },
+                participant: { id: adminId, role: 'ADMIN' },
+                disputeCase: null,
+                disputeAsSource: null,
+                blocks: [],
+                listing: null,
+                messages: [],
+                updatedAt: new Date(),
+            },
+        ]);
+        prisma.message.groupBy.mockResolvedValue([
+            { chatRoomId: 'support-room-1', senderId: buyerId, _count: { _all: 2 } },
+            { chatRoomId: 'support-room-2', senderId: otherBuyerId, _count: { _all: 3 } },
+        ]);
+
+        const rooms = await service.getUserRooms(adminId);
+
+        expect(rooms.map((room) => room.unreadCount)).toEqual([2, 3]);
+        expect(prisma.message.groupBy).toHaveBeenCalledTimes(1);
+        expect(prisma.message.count).not.toHaveBeenCalled();
     });
 
     it('marks only customer-authored support messages read when another admin opens the thread', async () => {
