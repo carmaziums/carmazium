@@ -215,8 +215,10 @@ export async function deleteImage(
         throw new Error('Supabase is not configured. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your environment variables.');
     }
 
-    // Extract filename from public URL
-    const urlParts = publicUrl.split('/');
+    // Presentation metadata is stored in the URL fragment and is never part
+    // of the Supabase object path. Strip it before resolving the storage key.
+    const cleanUrl = publicUrl.split('#')[0];
+    const urlParts = cleanUrl.split('/');
     const fileName = urlParts[urlParts.length - 1];
 
     const { error } = await supabase.storage.from(bucket).remove([fileName]);

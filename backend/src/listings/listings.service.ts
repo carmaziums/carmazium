@@ -6,6 +6,7 @@ import {
     BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import OpenAI from 'openai';
 import { PrismaService } from '../prisma/prisma.service';
 import {
     CreateListingDto,
@@ -1790,6 +1791,135 @@ export class ListingsService {
             page,
             totalPages: Math.ceil(totalSales / limit),
         };
+    }
+
+    /**
+     * Use vision to choose a professional cover photo from customer-uploaded
+     * vehicle images. The original image order remains the fallback when AI is
+     * unavailable, and callers can always override the recommendation manually.
+     */
+    async recommendVehicleCoverPhoto(imageUrls: string[]) {
+        if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
+            throw new BadRequestException('At least one vehicle photo is required');
+        }
+        if (imageUrls.length > 30) {
+            throw new BadRequestException('A maximum of 30 vehicle photos can be analysed at once');
+        }
+
+        const supabaseBase = this.config.get<string>('SUPABASE_URL')
+            || this.config.get<string>('NEXT_PUBLIC_SUPABASE_URL');
+        if (!supabaseBase) {
+            throw new BadRequestException('Vehicle photo analysis is not configured');
+        }
+
+        let allowedOrigin = '';
+        try {
+            allowedOrigin = new URL(supabaseBase).origin;
+        } catch {
+            throw new BadRequestException('Vehicle photo analysis is not configured');
+        }
+
+        const safeUrls = imageUrls.map((value) => {
+            if (typeof value !== 'string') return null;
+            const clean = value.split('#')[0];
+            try {
+                const parsed = new URL(clean);
+                if (parsed.protocol !== 'https:' || parsed.origin !== allowedOrigin) return null;
+                if (!parsed.pathname.startsWith('/storage/v1/object/public/listings/')) return null;
+                return clean;
+            } catch {
+                return null;
+            }
+        });
+
+        if (safeUrls.some((url) => !url)) {
+            throw new BadRequestException('Only CarMazium listing photos can be analysed');
+        }
+
+        const apiKey = this.config.get<string>('OPENAI_API_KEY');
+        if (!apiKey) {
+            return {
+                recommendedIndex: null,
+                confidence: 0,
+                view: 'unknown',
+                reason: 'Automatic cover selection is not configured.',
+            };
+        }
+
+        const client = new OpenAI({ apiKey });
+        const content: any[] = [
+            {
+                type: 'input_text',
+                text: [
+                    'You are selecting the primary cover photo for a UK vehicle marketplace listing.',
+                    'Identify which supplied photo shows the FRONT of the vehicle and is the strongest professional cover.',
+                    'Prefer, in order: straight-on front, front three-quarter, then another clearly front-biased exterior view.',
+                    'The whole vehicle should be visible where possible, sharp, well-lit, unobstructed and reasonably centred.',
+                    'Do not choose rear, side-only, interior, detail, damage, document, screenshot or non-vehicle photos.',
+                    'If no photo clearly shows the front or front three-quarter of the vehicle, return recommendedIndex null.',
+                    'Indexes are zero-based and correspond to the labels immediately before each image.',
+                ].join(' '),
+            },
+        ];
+
+        safeUrls.forEach((url, index) => {
+            content.push({ type: 'input_text', text: `Photo index ${index}` });
+            content.push({ type: 'input_image', image_url: url, detail: 'low' });
+        });
+
+        try {
+            const response = await client.responses.create({
+                model: this.config.get<string>('OPENAI_VISION_MODEL') || 'gpt-5.6-luna',
+                input: [{ role: 'user', content }],
+                reasoning: { effort: 'none' },
+                max_output_tokens: 300,
+                text: {
+                    format: {
+                        type: 'json_schema',
+                        name: 'vehicle_cover_selection',
+                        strict: true,
+                        schema: {
+                            type: 'object',
+                            additionalProperties: false,
+                            properties: {
+                                recommendedIndex: { type: ['integer', 'null'] },
+                                confidence: { type: 'number', minimum: 0, maximum: 1 },
+                                view: {
+                                    type: 'string',
+                                    enum: ['front', 'front_three_quarter', 'side', 'rear', 'interior', 'detail', 'damage', 'other', 'unknown'],
+                                },
+                                reason: { type: 'string' },
+                            },
+                            required: ['recommendedIndex', 'confidence', 'view', 'reason'],
+                        },
+                    },
+                },
+            } as any);
+
+            const parsed = JSON.parse(response.output_text || '{}');
+            const recommendedIndex = Number.isInteger(parsed.recommendedIndex)
+                && parsed.recommendedIndex >= 0
+                && parsed.recommendedIndex < safeUrls.length
+                ? parsed.recommendedIndex
+                : null;
+
+            return {
+                recommendedIndex,
+                confidence: typeof parsed.confidence === 'number'
+                    ? Math.min(1, Math.max(0, parsed.confidence))
+                    : 0,
+                view: typeof parsed.view === 'string' ? parsed.view : 'unknown',
+                reason: typeof parsed.reason === 'string' ? parsed.reason.slice(0, 240) : '',
+            };
+        } catch (error: any) {
+            this.logger.warn(`Vehicle cover photo analysis failed: ${error?.message || error}`);
+            return {
+                recommendedIndex: null,
+                confidence: 0,
+                view: 'unknown',
+                reason: 'Automatic cover selection was unavailable. The photo order was left unchanged.',
+            };
+        }
     }
 
     /**
