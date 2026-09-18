@@ -64,6 +64,41 @@ describe('ListingsService', () => {
         service = module.get<ListingsService>(ListingsService);
     });
 
+    describe('generic listing update protection', () => {
+        it('does not write lifecycle/commercial fields even if the service is called with a forged DTO object', async () => {
+            const existing = {
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                status: 'DRAFT',
+                type: 'CLASSIFIED',
+                badgeTier: 'BASIC',
+                location: null,
+                deletedAt: null,
+            };
+            prisma.listing.findUnique.mockResolvedValue(existing);
+            prisma.listing.update.mockImplementation(async ({ data }: any) => ({
+                ...existing,
+                ...data,
+            }));
+
+            await service.update(
+                'listing-1',
+                'seller-1',
+                {
+                    title: 'Updated vehicle title',
+                    status: 'ACTIVE',
+                    listingType: 'AUCTION',
+                    badgeTier: 'PREMIUM',
+                } as any,
+            );
+
+            expect(prisma.listing.update).toHaveBeenCalledWith({
+                where: { id: 'listing-1' },
+                data: { title: 'Updated vehicle title' },
+            });
+        });
+    });
+
     describe('updateStatus -> SOLD', () => {
         it('creates a Sale record when transitioning to SOLD for the first time', async () => {
             prisma.listing.findUnique.mockResolvedValue({
