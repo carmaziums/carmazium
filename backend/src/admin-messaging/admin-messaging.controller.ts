@@ -16,6 +16,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
+import { UpdateChatReportDto } from '../chat/dto';
 import { AdminMessagingService } from './admin-messaging.service';
 import {
     AdminAudienceDto,
@@ -36,6 +37,36 @@ import {
 @Roles(UserRole.ADMIN)
 export class AdminMessagingController {
     constructor(private readonly messaging: AdminMessagingService) {}
+
+    @Get('moderation/reports')
+    @ApiOperation({ summary: 'List reported chat messages without exposing private transcripts' })
+    async chatReports(
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+        @Query('status') status?: string,
+        @Query('search') search?: string,
+    ) {
+        return new StandardResponse(
+            await this.messaging.listChatReports(
+                Number(page || 1),
+                Number(limit || 30),
+                status,
+                search,
+            ),
+        );
+    }
+
+    @Patch('moderation/reports/:id')
+    @ApiOperation({ summary: 'Review, resolve or dismiss a reported chat message' })
+    async updateChatReport(
+        @CurrentUser() admin: any,
+        @Param('id') reportId: string,
+        @Body() dto: UpdateChatReportDto,
+    ) {
+        return new StandardResponse(
+            await this.messaging.updateChatReport(reportId, admin.id, dto),
+        );
+    }
 
     @Get('disputes')
     @ApiOperation({ summary: 'List vehicle dispute cases without exposing private source chat' })
