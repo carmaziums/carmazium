@@ -25,6 +25,7 @@ import { CreateRoomDto, SendMessageDto } from './dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
+import { ChatRateLimitService } from './chat-rate-limit.service';
 
 /**
  * REST Controller for chat operations.
@@ -38,6 +39,7 @@ export class ChatController {
     constructor(
         private readonly chatService: ChatService,
         private readonly chatGateway: ChatGateway,
+        private readonly chatRateLimit: ChatRateLimitService,
     ) { }
 
     /**
@@ -62,6 +64,7 @@ export class ChatController {
         @CurrentUser() user: any,
         @Body() createRoomDto: CreateRoomDto,
     ) {
+        this.chatRateLimit.consumeRoomCreate(user.id);
         const room = await this.chatService.findOrCreateRoom(
             user.id,
             createRoomDto,
@@ -82,6 +85,7 @@ export class ChatController {
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Get or create my support conversation with CarMazium' })
     async getSupportRoom(@CurrentUser() user: any) {
+        this.chatRateLimit.consumeRoomCreate(user.id);
         const room = await this.chatService.findOrCreateSupportRoom(user.id);
         this.chatGateway.joinRoomForUser(user.id, room.id);
         this.chatGateway.joinRoomForUser((room as any).otherUser.id, room.id);
@@ -179,6 +183,7 @@ export class ChatController {
         @Param('id') roomId: string,
         @Body() sendMessageDto: SendMessageDto,
     ) {
+        this.chatRateLimit.consumeMessage(user.id);
         const { message, created } = await this.chatService.sendMessage(
             roomId,
             user.id,
