@@ -757,6 +757,8 @@ export class ListingsService {
                         id: true,
                         status: true,
                         reservePrice: true,
+                        startingBid: true,
+                        minIncrement: true,
                         startTime: true,
                         endTime: true,
                         winnerId: true,
