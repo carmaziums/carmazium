@@ -67,7 +67,11 @@ export class BidsService {
         const minIncrement = Number(auction.minIncrement);
         // Enforce the 70% market-value floor server-side as well. This protects
         // legacy auctions whose stored startingBid may pre-date the new rule.
-        const marketValueFloor = calculatePlatformOpeningBid(Number(listing.price));
+        const marketValue = Number(listing.price);
+        if (!Number.isFinite(marketValue) || marketValue <= 0) {
+            throw new BadRequestException('This auction does not have a valid Estimated Market Value');
+        }
+        const marketValueFloor = calculatePlatformOpeningBid(marketValue);
         const startingBid = Math.max(Number(auction.startingBid), marketValueFloor);
 
         const highestBid = await this.prisma.bid.findFirst({
