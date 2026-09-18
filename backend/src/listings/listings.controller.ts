@@ -403,7 +403,7 @@ export class ListingsController {
         @Param('id') id: string,
         @Body('startTime') startTime: string,
         @Body('reservePrice') reservePrice: number,
-        @Body('startingBid') startingBid: number,
+        @Body('startingBid') startingBid: number | undefined,
         @Body('minIncrement') minIncrement: number | undefined,
         @CurrentUser() user: any,
     ) {
