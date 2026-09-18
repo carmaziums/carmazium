@@ -1,12 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { MessageSquare, Send, Loader2, ArrowLeft, User, Check, Zap, Paperclip, ShieldAlert, CheckCircle2 } from "lucide-react"
+import { MessageSquare, Send, Loader2, ArrowLeft, User, Check, Zap, Paperclip, ShieldAlert, CheckCircle2, Ban, Flag, X } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import Image from "next/image"
 import { useChat } from "@/context/ChatContext"
 import { useAuth } from "@/context/AuthContext"
-import { createChatAttachmentUpload, getChatMessages, sendChatAttachment, sendChatMessage, markMessagesAsRead, getChatDisplayName, isSupportUser, openVehicleDispute, type ChatHistoryCursor, type ChatMessage, type ChatRoom } from "@/lib/chatApi"
+import { blockChatRoom, createChatAttachmentUpload, getChatMessages, sendChatAttachment, sendChatMessage, markMessagesAsRead, getChatDisplayName, isSupportUser, openVehicleDispute, reportChatMessage, unblockChatRoom, type ChatHistoryCursor, type ChatMessage, type ChatReportReason, type ChatRoom } from "@/lib/chatApi"
 import { disputeEventLabel, parseChatMessageContent, parseDisputeEventContent } from "@/lib/chatMessageContent"
 import { resolveAdminDispute } from "@/lib/adminApi"
 import { supabase } from "@/lib/supabase"
@@ -52,6 +52,18 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const [disputeOpened, setDisputeOpened] = React.useState(false)
     const [resolvingDispute, setResolvingDispute] = React.useState(false)
     const [resolvedLocally, setResolvedLocally] = React.useState(false)
+    const [chatBlocked, setChatBlocked] = React.useState(Boolean(room.chatBlocked))
+    const [blockedByMe, setBlockedByMe] = React.useState(Boolean(room.blockedByMe))
+    const [showBlockPanel, setShowBlockPanel] = React.useState(false)
+    const [blockReasonDraft, setBlockReasonDraft] = React.useState("")
+    const [blockActionError, setBlockActionError] = React.useState<string | null>(null)
+    const [blocking, setBlocking] = React.useState(false)
+    const [reportTarget, setReportTarget] = React.useState<ChatMessage | null>(null)
+    const [reportReason, setReportReason] = React.useState<ChatReportReason | "">("")
+    const [reportDetails, setReportDetails] = React.useState("")
+    const [reportActionError, setReportActionError] = React.useState<string | null>(null)
+    const [reporting, setReporting] = React.useState(false)
+    const [reportedMessageIds, setReportedMessageIds] = React.useState<Set<string>>(new Set())
     const messagesEndRef = React.useRef<HTMLDivElement>(null)
     const messagesContainerRef = React.useRef<HTMLDivElement>(null)
     const inputRef = React.useRef<HTMLInputElement>(null)
@@ -69,7 +81,17 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         setDisputeActionError(null)
         setDisputeOpened(false)
         setResolvedLocally(room.disputeCase?.status === 'RESOLVED')
-    }, [room.id, room.disputeCase?.status])
+        setChatBlocked(Boolean(room.chatBlocked))
+        setBlockedByMe(Boolean(room.blockedByMe))
+        setShowBlockPanel(false)
+        setBlockReasonDraft(room.blockReason || "")
+        setBlockActionError(null)
+        setReportTarget(null)
+        setReportReason("")
+        setReportDetails("")
+        setReportActionError(null)
+        setReportedMessageIds(new Set())
+    }, [room.id, room.disputeCase?.status, room.chatBlocked, room.blockedByMe, room.blockReason])
 
     const openDispute = async () => {
         if (!room.canOpenDispute || openingDispute) return
@@ -109,6 +131,82 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             }
         } finally {
             setResolvingDispute(false)
+        }
+    }
+
+    const blockConversation = async () => {
+        if (blocking) return
+        try {
+            setBlocking(true)
+            setBlockActionError(null)
+            const updated = await blockChatRoom(room.id, blockReasonDraft)
+            setChatBlocked(Boolean(updated.chatBlocked))
+            setBlockedByMe(Boolean(updated.blockedByMe))
+            setShowBlockPanel(false)
+            setBlockReasonDraft(updated.blockReason || "")
+            await refreshRooms()
+        } catch (error: any) {
+            if (error?.message !== "AUTH_REDIRECT") {
+                setBlockActionError(error?.message || "Could not block this conversation")
+            }
+        } finally {
+            setBlocking(false)
+        }
+    }
+
+    const unblockConversation = async () => {
+        if (blocking) return
+        try {
+            setBlocking(true)
+            setBlockActionError(null)
+            const updated = await unblockChatRoom(room.id)
+            setChatBlocked(Boolean(updated.chatBlocked))
+            setBlockedByMe(Boolean(updated.blockedByMe))
+            setBlockReasonDraft("")
+            setShowBlockPanel(false)
+            await refreshRooms()
+        } catch (error: any) {
+            if (error?.message !== "AUTH_REDIRECT") {
+                setBlockActionError(error?.message || "Could not unblock this conversation")
+            }
+        } finally {
+            setBlocking(false)
+        }
+    }
+
+    const openReport = (message: ChatMessage) => {
+        setReportTarget(message)
+        setReportReason("")
+        setReportDetails("")
+        setReportActionError(null)
+    }
+
+    const closeReport = () => {
+        if (reporting) return
+        setReportTarget(null)
+        setReportReason("")
+        setReportDetails("")
+        setReportActionError(null)
+    }
+
+    const submitReport = async () => {
+        if (!reportTarget || !reportReason || reporting) return
+        try {
+            setReporting(true)
+            setReportActionError(null)
+            await reportChatMessage(reportTarget.id, reportReason, reportDetails)
+            setReportedMessageIds(prev => {
+                const next = new Set(prev)
+                next.add(reportTarget.id)
+                return next
+            })
+            closeReport()
+        } catch (error: any) {
+            if (error?.message !== "AUTH_REDIRECT") {
+                setReportActionError(error?.message || "Could not submit this report")
+            }
+        } finally {
+            setReporting(false)
         }
     }
 
@@ -500,6 +598,37 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         Reconnecting
                     </span>
                 )}
+                {!isAdminViewer &&
+                    (room.context === 'RETAIL' || room.context === 'AUCTION') && (
+                        <>
+                            {chatBlocked && !blockedByMe ? (
+                                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-red-500/25 bg-red-500/10 px-2.5 py-1.5 text-[10px] font-black text-red-400">
+                                    <Ban size={12} /> Messaging blocked
+                                </span>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (blockedByMe) {
+                                            void unblockConversation()
+                                        } else {
+                                            setShowBlockPanel(true)
+                                            setBlockActionError(null)
+                                        }
+                                    }}
+                                    disabled={blocking}
+                                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs font-black transition-colors disabled:opacity-50 ${blockedByMe
+                                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                                        : 'border-red-500/25 bg-red-500/10 text-red-400'
+                                    }`}
+                                    title={blockedByMe ? "Unblock this conversation" : "Block this conversation"}
+                                >
+                                    {blocking ? <Loader2 size={13} className="animate-spin" /> : <Ban size={13} />}
+                                    {blockedByMe ? "Unblock" : "Block"}
+                                </button>
+                            )}
+                        </>
+                    )}
             </div>
 
             {(isDispute || room.canOpenDispute || room.sourceDispute || disputeOpened) && (
@@ -757,6 +886,22 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                                         <path d="M5.5 5.5L9 9L15.5 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                                                     </svg>
                                                 )}
+                                                {!isOwn &&
+                                                    !isAdminViewer &&
+                                                    room.context !== 'SUPPORT' &&
+                                                    msg.sender?.role !== 'ADMIN' && (
+                                                        reportedMessageIds.has(msg.id) ? (
+                                                            <span className="font-semibold text-emerald-400">Reported</span>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openReport(msg)}
+                                                                className="font-semibold underline underline-offset-2 hover:text-red-400"
+                                                            >
+                                                                Report
+                                                            </button>
+                                                        )
+                                                    )}
                                             </div>
                                         </div>
                                     </div>
@@ -784,7 +929,26 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
 
             {/* Input */}
             <div className="border-t border-[var(--border-default)]">
-                {isDispute && disputeResolved ? (
+                {chatBlocked ? (
+                    <div className="flex flex-wrap items-center justify-center gap-2 px-4 py-4 text-center text-sm text-[var(--text-muted)]">
+                        <Ban size={16} className="text-red-400" />
+                        <span>
+                            {blockedByMe
+                                ? "You blocked this conversation. Messaging is paused, but the transcript remains available."
+                                : "Messaging is unavailable in this conversation. The transcript remains available."}
+                        </span>
+                        {blockedByMe && (
+                            <button
+                                type="button"
+                                onClick={() => void unblockConversation()}
+                                disabled={blocking}
+                                className="font-black text-primary underline underline-offset-2 disabled:opacity-50"
+                            >
+                                Unblock
+                            </button>
+                        )}
+                    </div>
+                ) : isDispute && disputeResolved ? (
                     <div className="flex items-center justify-center gap-2 px-4 py-4 text-sm text-[var(--text-muted)]">
                         <CheckCircle2 size={16} className="text-emerald-400" />
                         This dispute is resolved. The transcript is read-only.
@@ -860,6 +1024,151 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 </>
                 )}
             </div>
+
+            {showBlockPanel && !chatBlocked && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true">
+                    <div className="w-full max-w-md rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 shadow-2xl">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <h4 className="text-lg font-black text-[var(--text-primary)]">Block this conversation?</h4>
+                                <p className="mt-1 text-sm text-[var(--text-muted)]">
+                                    Messaging will stop for both sides. Existing messages stay as evidence, and any eligible dispute route remains available.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowBlockPanel(false)}
+                                disabled={blocking}
+                                className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                                title="Close"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <textarea
+                            value={blockReasonDraft}
+                            onChange={(event) => setBlockReasonDraft(event.target.value)}
+                            maxLength={500}
+                            rows={3}
+                            placeholder="Optional private reason for your own record"
+                            className="mt-4 w-full resize-y rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        />
+                        {blockActionError && (
+                            <p className="mt-2 text-xs text-red-400">{blockActionError}</p>
+                        )}
+                        <div className="mt-4 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowBlockPanel(false)}
+                                disabled={blocking}
+                                className="rounded-xl border border-[var(--border-default)] px-4 py-2 text-sm font-bold"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => void blockConversation()}
+                                disabled={blocking}
+                                className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50"
+                            >
+                                {blocking ? <Loader2 size={15} className="animate-spin" /> : <Ban size={15} />}
+                                Block messaging
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {reportTarget && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true">
+                    <div className="w-full max-w-lg rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 shadow-2xl">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <div className="mb-1 flex items-center gap-2 text-xs font-black uppercase tracking-wide text-red-400">
+                                    <Flag size={13} /> Report message
+                                </div>
+                                <h4 className="text-lg font-black text-[var(--text-primary)]">Send this message to CarMazium moderation</h4>
+                                <p className="mt-1 text-sm text-[var(--text-muted)]">
+                                    Only this reported message and its attachment will be shared with moderators, not the surrounding private conversation.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={closeReport}
+                                disabled={reporting}
+                                className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                                title="Close"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="mt-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-3">
+                            <p className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words text-sm text-[var(--text-secondary)]">
+                                {reportTarget.content || (reportTarget.attachmentPath ? "Photo message" : "Empty message")}
+                            </p>
+                            {reportTarget.attachmentPath && (
+                                <p className="mt-2 text-xs font-bold text-[var(--text-muted)]">
+                                    Attachment: {reportTarget.attachmentName || "Private photo"}
+                                </p>
+                            )}
+                        </div>
+
+                        <label className="mt-4 block text-xs font-black uppercase tracking-wide text-[var(--text-muted)]">
+                            Reason
+                            <select
+                                value={reportReason}
+                                onChange={(event) => setReportReason(event.target.value as ChatReportReason | "")}
+                                className="mt-1 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--text-primary)]"
+                            >
+                                <option value="">Choose a reason</option>
+                                <option value="HARASSMENT">Harassment</option>
+                                <option value="SCAM_FRAUD">Scam or fraud</option>
+                                <option value="SPAM">Spam</option>
+                                <option value="INAPPROPRIATE_CONTENT">Inappropriate content</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </label>
+
+                        <label className="mt-3 block text-xs font-black uppercase tracking-wide text-[var(--text-muted)]">
+                            Details (optional)
+                            <textarea
+                                value={reportDetails}
+                                onChange={(event) => setReportDetails(event.target.value)}
+                                maxLength={1000}
+                                rows={3}
+                                placeholder="Add any useful context for the moderator"
+                                className="mt-1 w-full resize-y rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm font-normal normal-case tracking-normal text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            />
+                        </label>
+
+                        {reportActionError && (
+                            <p className="mt-2 text-xs text-red-400">{reportActionError}</p>
+                        )}
+
+                        <div className="mt-4 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={closeReport}
+                                disabled={reporting}
+                                className="rounded-xl border border-[var(--border-default)] px-4 py-2 text-sm font-bold"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => void submitReport()}
+                                disabled={!reportReason || reporting}
+                                className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50"
+                            >
+                                {reporting ? <Loader2 size={15} className="animate-spin" /> : <Flag size={15} />}
+                                Submit report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
