@@ -25,10 +25,12 @@ describe('AdminMessagingService', () => {
                 findFirst: jest.fn(),
             },
             message: {
+                findUnique: jest.fn().mockResolvedValue(null),
                 create: jest.fn().mockResolvedValue({
                     id: 'message-1',
                     chatRoomId: 'room-1',
                     senderId: 'admin-1',
+                    clientMessageId: 'delivery-1',
                     content: 'Hello',
                     sender: { id: 'admin-1', firstName: 'Admin', lastName: null, profileImage: null },
                 }),
@@ -206,6 +208,63 @@ describe('AdminMessagingService', () => {
                     sent: 1,
                     failed: 0,
                     status: 'COMPLETED',
+                }),
+            }),
+        );
+    });
+
+    it('uses the delivery id as a message idempotency key', async () => {
+        const { service, prisma, notificationsService } = makeService();
+
+        await service.send('admin-1', {
+            audience: AdminMessageAudience.ALL,
+            text: 'Platform update',
+            expectedRecipientCount: 1,
+        });
+
+        expect(prisma.message.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.objectContaining({
+                    clientMessageId: 'delivery-1',
+                }),
+            }),
+        );
+
+        prisma.message.findUnique.mockResolvedValue({
+            id: 'message-1',
+            chatRoomId: 'room-1',
+            senderId: 'admin-1',
+            clientMessageId: 'delivery-1',
+            content: 'Platform update',
+            sender: { id: 'admin-1', firstName: 'Admin', lastName: null, profileImage: null },
+        });
+        prisma.message.create.mockClear();
+        notificationsService.create.mockClear();
+
+        await service.send('admin-1', {
+            audience: AdminMessageAudience.ALL,
+            text: 'Platform update',
+            expectedRecipientCount: 1,
+        });
+
+        expect(prisma.message.create).not.toHaveBeenCalled();
+        expect(notificationsService.create).not.toHaveBeenCalled();
+    });
+
+    it('recovers stale SENDING campaigns that still have pending deliveries', async () => {
+        const { service, prisma } = makeService();
+        prisma.broadcastCampaign.findMany.mockResolvedValue([{ id: 'campaign-1' }]);
+
+        const result = await service.recoverStaleSendingBroadcasts(5, 1);
+
+        expect(result).toEqual({ found: 1, recovered: 1 });
+        expect(prisma.broadcastCampaign.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: expect.objectContaining({
+                    status: BroadcastCampaignStatus.SENDING,
+                    deliveries: {
+                        some: { status: BroadcastDeliveryStatus.PENDING },
+                    },
                 }),
             }),
         );

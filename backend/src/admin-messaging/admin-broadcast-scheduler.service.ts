@@ -17,6 +17,13 @@ export class AdminBroadcastSchedulerService {
         this.running = true;
 
         try {
+            const recovery = await this.messaging.recoverStaleSendingBroadcasts(5);
+            if (recovery.recovered > 0) {
+                this.logger.warn(
+                    `Recovered ${recovery.recovered}/${recovery.found} stale sending broadcast(s)`,
+                );
+            }
+
             const result = await this.messaging.processDueScheduledBroadcasts(5);
             if (result.claimed > 0) {
                 this.logger.log(

@@ -145,12 +145,59 @@ export class ChatService {
         const blockableContext =
             room.context === ChatContext.RETAIL || room.context === ChatContext.AUCTION;
 
-        // Never expose the raw block records. They contain the blocker's
-        // private reason, which must not leak to the other participant.
-        const { blocks: _privateBlocks, ...safeRoom } = room as any;
+        const viewerRole =
+            room.initiatorId === userId
+                ? room.initiator?.role
+                : room.participantId === userId
+                    ? room.participant?.role
+                    : room.context === ChatContext.DISPUTE &&
+                        (room as any).disputeCase?.joinedAdminId === userId
+                        ? UserRole.ADMIN
+                        : null;
+        const viewerIsAdmin = viewerRole === UserRole.ADMIN;
+
+        // Never expose raw block records or internal support operations to
+        // ordinary members. The admin support workspace fetches these fields
+        // through the same room service, but member payloads must not reveal
+        // assignment, tags, staff identity/email or closed-state metadata.
+        const {
+            blocks: _privateBlocks,
+            supportAssignedAdmin,
+            supportAssignedAdminId,
+            supportTags,
+            supportClosedAt,
+            disputeCase,
+            ...safeRoom
+        } = room as any;
+
+        // Dispute members need participant identity in the three-party UI, but
+        // they do not need private contact addresses. Joined admins retain the
+        // richer case payload because their access is explicit and audited.
+        const stripEmail = (value: any) => {
+            if (!value) return value;
+            const { email: _email, ...rest } = value;
+            return rest;
+        };
+        const safeDisputeCase = disputeCase && !viewerIsAdmin
+            ? {
+                ...disputeCase,
+                buyer: stripEmail(disputeCase.buyer),
+                seller: stripEmail(disputeCase.seller),
+                joinedAdmin: stripEmail(disputeCase.joinedAdmin),
+            }
+            : disputeCase;
 
         return {
             ...safeRoom,
+            ...(viewerIsAdmin
+                ? {
+                    supportAssignedAdmin,
+                    supportAssignedAdminId,
+                    supportTags,
+                    supportClosedAt,
+                }
+                : {}),
+            disputeCase: safeDisputeCase,
             otherUser,
             chatBlocked: blocks.length > 0,
             blockedByMe: !!myBlock,
@@ -1715,25 +1762,40 @@ export class ChatService {
     /**
      * Get all chat rooms for a user with last message preview
      */
-    async getUserRooms(userId: string): Promise<any[]> {
+    async getUserRooms(
+        userId: string,
+        options: { limit?: number; before?: Date; beforeId?: string } = {},
+    ): Promise<any[]> {
         const role = await this.actorRole(userId);
+        const membership = role === UserRole.ADMIN
+            ? [
+                { context: ChatContext.SUPPORT },
+                {
+                    context: ChatContext.DISPUTE,
+                    disputeCase: { is: { joinedAdminId: userId } },
+                },
+                { initiatorId: userId },
+                { participantId: userId },
+            ]
+            : [
+                { initiatorId: userId },
+                { participantId: userId },
+            ];
+        const usingCursor = !!options.before && !!options.beforeId;
         const rooms = await this.prisma.chatRoom.findMany({
             where: {
-                OR: role === UserRole.ADMIN
-                    ? [
-                        { context: ChatContext.SUPPORT },
-                        {
-                            context: ChatContext.DISPUTE,
-                            disputeCase: { is: { joinedAdminId: userId } },
-                        },
-                        { initiatorId: userId },
-                        { participantId: userId },
-                    ]
-                    : [
-                        { initiatorId: userId },
-                        { participantId: userId },
-                    ],
                 deletedAt: null,
+                AND: [
+                    { OR: membership },
+                    ...(usingCursor
+                        ? [{
+                            OR: [
+                                { updatedAt: { lt: options.before } },
+                                { updatedAt: options.before, id: { lt: options.beforeId } },
+                            ],
+                        }]
+                        : []),
+                ],
             },
             include: {
                 ...this.roomInclude,
@@ -1751,8 +1813,38 @@ export class ChatService {
                     },
                 },
             },
-            orderBy: { updatedAt: 'desc' },
+            orderBy: [
+                { updatedAt: 'desc' },
+                { id: 'desc' },
+            ],
+            ...(options.limit
+                ? { take: Math.min(Math.max(options.limit, 1), 101) }
+                : {}),
         });
+
+        // Aggregate unread two-party/support messages in one query instead
+        // of issuing one COUNT per room. Disputes keep their per-user read
+        // cursor logic below because each room can have a different timestamp.
+        const nonDisputeRoomIds = rooms
+            .filter((room) => room.context !== ChatContext.DISPUTE)
+            .map((room) => room.id);
+        const unreadGroups = nonDisputeRoomIds.length > 0
+            ? await this.prisma.message.groupBy({
+                by: ['chatRoomId', 'senderId'],
+                where: {
+                    chatRoomId: { in: nonDisputeRoomIds },
+                    isRead: false,
+                    deletedAt: null,
+                },
+                _count: { _all: true },
+            })
+            : [];
+        const unreadByRoom = new Map<string, Map<string, number>>();
+        for (const group of unreadGroups as any[]) {
+            const bySender = unreadByRoom.get(group.chatRoomId) ?? new Map<string, number>();
+            bySender.set(group.senderId, group._count._all);
+            unreadByRoom.set(group.chatRoomId, bySender);
+        }
 
         // Add unread count and format response
         return Promise.all(
@@ -1782,16 +1874,14 @@ export class ChatService {
                         },
                     });
                 } else {
-                    unreadCount = await this.prisma.message.count({
-                        where: {
-                            chatRoomId: room.id,
-                            ...(room.context === ChatContext.SUPPORT && role === UserRole.ADMIN && customerId
-                                ? { senderId: customerId }
-                                : { senderId: { not: userId } }),
-                            isRead: false,
-                            deletedAt: null,
-                        },
-                    });
+                    const bySender = unreadByRoom.get(room.id) ?? new Map<string, number>();
+                    if (room.context === ChatContext.SUPPORT && role === UserRole.ADMIN && customerId) {
+                        unreadCount = bySender.get(customerId) ?? 0;
+                    } else {
+                        unreadCount = Array.from(bySender.entries())
+                            .filter(([senderId]) => senderId !== userId)
+                            .reduce((total, [, count]) => total + count, 0);
+                    }
                 }
 
                 const roomView = this.withOtherUser(room, userId);
@@ -1812,11 +1902,15 @@ export class ChatService {
                         !!room.listing.deletedAt ||
                         !['ACTIVE', 'OFFER_ACCEPTED', 'SOLD'].includes(room.listing.status)
                     ),
-                    supportAssignedAdmin: room.supportAssignedAdmin,
-                    supportAssignedAdminId: room.supportAssignedAdminId,
-                    supportTags: room.supportTags,
-                    supportClosedAt: room.supportClosedAt,
-                    disputeCase: room.disputeCase,
+                    ...(role === UserRole.ADMIN
+                        ? {
+                            supportAssignedAdmin: room.supportAssignedAdmin,
+                            supportAssignedAdminId: room.supportAssignedAdminId,
+                            supportTags: room.supportTags,
+                            supportClosedAt: room.supportClosedAt,
+                        }
+                        : {}),
+                    disputeCase: roomView.disputeCase,
                     sourceDispute: room.disputeAsSource,
                     chatBlocked: roomView.chatBlocked,
                     blockedByMe: roomView.blockedByMe,
@@ -1833,7 +1927,7 @@ export class ChatService {
                                 ['OFFER_ACCEPTED', 'SOLD'].includes(room.listing.status)
                             )
                         ),
-                    needsReply,
+                    ...(role === UserRole.ADMIN ? { needsReply } : {}),
                     lastMessage,
                     unreadCount,
                     updatedAt: room.updatedAt,
@@ -2217,7 +2311,7 @@ export class ChatService {
             }
         }
 
-        await this.chatAttachmentService.assertUploaded(dto.path);
+        await this.chatAttachmentService.assertUploaded(dto.path, dto.mime, dto.size);
 
         let message: any;
         try {
@@ -2364,6 +2458,66 @@ export class ChatService {
     }
 
     /**
+     * Lightweight counterpart lookup for the initial presence snapshot. Do not
+     * hydrate message previews or unread counts during every socket connect.
+     */
+    async getUserPresencePartnerIds(userId: string): Promise<string[]> {
+        const role = await this.actorRole(userId);
+        const rooms = await this.prisma.chatRoom.findMany({
+            where: {
+                OR: role === UserRole.ADMIN
+                    ? [
+                        { context: ChatContext.SUPPORT },
+                        {
+                            context: ChatContext.DISPUTE,
+                            disputeCase: { is: { joinedAdminId: userId } },
+                        },
+                        { initiatorId: userId },
+                        { participantId: userId },
+                    ]
+                    : [
+                        { initiatorId: userId },
+                        { participantId: userId },
+                    ],
+                deletedAt: null,
+                blocks: { none: { revokedAt: null } },
+            },
+            select: {
+                initiatorId: true,
+                participantId: true,
+                context: true,
+                initiator: { select: { role: true } },
+                participant: { select: { role: true } },
+                disputeCase: {
+                    select: {
+                        buyerId: true,
+                        joinedAdminId: true,
+                    },
+                },
+            },
+        });
+
+        return Array.from(new Set(rooms
+            .map((room) => {
+                if (room.initiatorId === userId) return room.participantId;
+                if (room.participantId === userId) return room.initiatorId;
+                if (room.context === ChatContext.SUPPORT) {
+                    return room.initiator.role === UserRole.ADMIN
+                        ? room.participantId
+                        : room.initiatorId;
+                }
+                if (
+                    room.context === ChatContext.DISPUTE &&
+                    room.disputeCase?.joinedAdminId === userId
+                ) {
+                    return room.disputeCase.buyerId;
+                }
+                return null;
+            })
+            .filter((id): id is string => !!id)));
+    }
+
+    /**
      * Get room IDs for a user (for WebSocket room joining)
      */
     async getUserRoomIds(userId: string): Promise<string[]> {
@@ -2385,6 +2539,7 @@ export class ChatService {
                         { participantId: userId },
                     ],
                 deletedAt: null,
+                blocks: { none: { revokedAt: null } },
             },
             select: { id: true },
         });

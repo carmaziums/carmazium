@@ -4,10 +4,11 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { io, Socket } from 'socket.io-client'
 import { useAuth } from './AuthContext'
 import {
-    getChatRooms,
+    getChatRoomsPage,
     getUnreadCount,
     getAccessToken,
     type ChatRoom,
+    type ChatRoomCursor,
     type ChatMessage,
     getWebSocketUrl
 } from '@/lib/chatApi'
@@ -23,22 +24,27 @@ interface ChatContextType {
     unreadCount: number
     isConnected: boolean
     isLoading: boolean
+    hasMoreRooms: boolean
+    isLoadingMoreRooms: boolean
     /** User IDs of conversation partners who currently have a live connection. */
     onlineUserIds: Set<string>
 
     // Actions
     refreshRooms: () => Promise<void>
+    loadMoreRooms: () => Promise<void>
     refreshUnreadCount: () => Promise<void>
     sendMessage: (roomId: string, content: string, clientMessageId: string) => Promise<ChatMessage>
     startTyping: (roomId: string) => void
     stopTyping: (roomId: string) => void
-    markAsRead: (roomId: string) => void
+    markAsRead: (roomId: string, notifyServer?: boolean) => void
+    setActiveRoom: (roomId: string | null) => void
     upsertRoom: (room: ChatRoom) => void
 
     // Event subscriptions
     onNewMessage: (callback: (message: ChatMessage) => void) => () => void
     onTyping: (callback: (data: { roomId: string; userId: string; isTyping: boolean }) => void) => () => void
     onMessagesRead: (callback: (data: { roomId: string; readBy: string }) => void) => () => void
+    onRoomUpdated: (callback: (room: ChatRoom) => void) => () => void
 }
 
 type ChatSendAck =
@@ -63,12 +69,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const [unreadCount, setUnreadCount] = useState(0)
     const [isConnected, setIsConnected] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
+    const [hasMoreRooms, setHasMoreRooms] = useState(false)
+    const [isLoadingMoreRooms, setIsLoadingMoreRooms] = useState(false)
+    const [roomCursor, setRoomCursor] = useState<ChatRoomCursor | null>(null)
     const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set())
 
     const socketRef = useRef<Socket | null>(null)
     const messageCallbacks = useRef<Set<(message: ChatMessage) => void>>(new Set())
     const typingCallbacks = useRef<Set<(data: any) => void>>(new Set())
     const readCallbacks = useRef<Set<(data: any) => void>>(new Set())
+    const roomUpdateCallbacks = useRef<Set<(room: ChatRoom) => void>>(new Set())
+    const activeRoomIdRef = useRef<string | null>(null)
     const hasInitiallyLoaded = useRef(false)
 
     // Initialize socket connection — only after profile is loaded (backend session confirmed)
@@ -78,6 +89,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             socketRef.current = null
             setIsConnected(false)
             setOnlineUserIds(new Set())
+            activeRoomIdRef.current = null
             hasInitiallyLoaded.current = false
             return
         }
@@ -104,15 +116,31 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                 setIsConnected(true)
             })
 
-            socket.on('disconnect', () => {
+            socket.on('disconnect', async (reason) => {
                 console.log('Chat disconnected')
                 setIsConnected(false)
+
+                // A server-side authentication rejection uses "io server disconnect",
+                // which Socket.IO does not automatically reconnect. Refresh the
+                // Supabase token before explicitly reconnecting so a long-lived tab
+                // can recover after its original JWT expires.
+                if (reason === 'io server disconnect') {
+                    const freshToken = await getAccessToken().catch(() => null)
+                    if (freshToken && socket) {
+                        socket.auth = { token: freshToken }
+                        socket.connect()
+                    }
+                }
             })
 
             socket.on('message:new', (message: ChatMessage) => {
                 messageCallbacks.current.forEach(cb => cb(message))
-                // Update unread count + room list preview for messages from others
-                if (message.senderId !== user.id) {
+                const incomingFromOther = message.senderId !== user.id
+                const roomIsActive = activeRoomIdRef.current === message.chatRoomId
+
+                // Messages already visible in the open conversation must not create
+                // a transient/stuck unread badge.
+                if (incomingFromOther && !roomIsActive) {
                     setUnreadCount(prev => prev + 1)
                 }
                 // Optimistically move the affected room to the top with updated last-message preview
@@ -123,7 +151,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                         // started a brand-new chat with us) — a per-message patch has
                         // nothing to update, so pull the real room record instead of
                         // silently dropping the event until the next manual refresh.
-                        getChatRooms().then(setRooms).catch(() => { })
+                        getChatRoomsPage().then((page) => {
+                            setRooms(current => {
+                                const byId = new Map(current.map(room => [room.id, room]))
+                                for (const room of page.rooms) byId.set(room.id, room)
+                                return Array.from(byId.values())
+                                    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                            })
+                        }).catch(() => { })
                         return prev
                     }
                     const updated = {
@@ -135,7 +170,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                             isRead: false,
                             createdAt: message.createdAt,
                         },
-                        unreadCount: message.senderId !== user.id
+                        unreadCount: incomingFromOther && !roomIsActive
                             ? prev[idx].unreadCount + 1
                             : prev[idx].unreadCount,
                         updatedAt: message.createdAt,
@@ -166,6 +201,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                 readCallbacks.current.forEach(cb => cb(data))
             })
 
+            socket.on('room:updated', (room: ChatRoom) => {
+                setRooms(current => {
+                    const index = current.findIndex(item => item.id === room.id)
+                    if (index === -1) return [room, ...current]
+                    const next = [...current]
+                    next[index] = { ...next[index], ...room }
+                    return next
+                })
+                roomUpdateCallbacks.current.forEach(cb => cb(room))
+            })
+
             socket.on('error', (error: any) => {
                 console.error('Chat socket error:', error)
             })
@@ -186,14 +232,34 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         if (!user) return
         try {
             setIsLoading(true)
-            const data = await getChatRooms()
-            setRooms(data)
+            const page = await getChatRoomsPage()
+            setRooms(page.rooms)
+            setHasMoreRooms(page.pagination.hasMore)
+            setRoomCursor(page.pagination.nextCursor)
         } catch (error) {
             console.error('Failed to fetch rooms:', error)
         } finally {
             setIsLoading(false)
         }
     }, [user])
+
+    const loadMoreRooms = useCallback(async () => {
+        if (!user || !roomCursor || !hasMoreRooms || isLoadingMoreRooms) return
+        try {
+            setIsLoadingMoreRooms(true)
+            const page = await getChatRoomsPage(roomCursor)
+            setRooms(current => {
+                const existing = new Set(current.map(room => room.id))
+                return [...current, ...page.rooms.filter(room => !existing.has(room.id))]
+            })
+            setHasMoreRooms(page.pagination.hasMore)
+            setRoomCursor(page.pagination.nextCursor)
+        } catch (error) {
+            console.error('Failed to load older chat rooms:', error)
+        } finally {
+            setIsLoadingMoreRooms(false)
+        }
+    }, [user, roomCursor, hasMoreRooms, isLoadingMoreRooms])
 
     const refreshUnreadCount = useCallback(async () => {
         if (!user) return
@@ -266,6 +332,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         socketRef.current?.emit('typing:stop', { roomId })
     }, [])
 
+    const setActiveRoom = useCallback((roomId: string | null) => {
+        activeRoomIdRef.current = roomId
+    }, [])
+
     const upsertRoom = useCallback((room: ChatRoom) => {
         setRooms(prev => {
             const idx = prev.findIndex(r => r.id === room.id)
@@ -278,8 +348,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         })
     }, [])
 
-    const markAsRead = useCallback((roomId: string) => {
-        socketRef.current?.emit('message:read', { roomId })
+    const markAsRead = useCallback((roomId: string, notifyServer = true) => {
+        if (notifyServer) {
+            socketRef.current?.emit('message:read', { roomId })
+        }
         // Zero out this room's badge and subtract its exact count from the global total
         setRooms(prev => {
             const idx = prev.findIndex(r => r.id === roomId)
@@ -315,22 +387,34 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }
     }, [])
 
+    const onRoomUpdated = useCallback((callback: (room: ChatRoom) => void) => {
+        roomUpdateCallbacks.current.add(callback)
+        return () => {
+            roomUpdateCallbacks.current.delete(callback)
+        }
+    }, [])
+
     const value: ChatContextType = {
         rooms,
         unreadCount,
         isConnected,
         isLoading,
+        hasMoreRooms,
+        isLoadingMoreRooms,
         onlineUserIds,
         refreshRooms,
+        loadMoreRooms,
         refreshUnreadCount,
         sendMessage,
         startTyping,
         stopTyping,
         markAsRead,
+        setActiveRoom,
         upsertRoom,
         onNewMessage,
         onTyping,
         onMessagesRead,
+        onRoomUpdated,
     }
 
     return (

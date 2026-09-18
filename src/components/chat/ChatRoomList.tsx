@@ -24,17 +24,9 @@ export function ChatRoomList({
     roomsOverride,
     showSupportOps = false,
 }: ChatRoomListProps) {
-    const { rooms, isLoading, refreshRooms, onNewMessage } = useChat()
+    const { rooms, isLoading, hasMoreRooms, isLoadingMoreRooms, loadMoreRooms } = useChat()
     const sourceRooms = roomsOverride ?? rooms
     const [searchTerm, setSearchTerm] = React.useState("")
-
-    // Refresh rooms when a new message arrives
-    React.useEffect(() => {
-        const unsubscribe = onNewMessage(() => {
-            refreshRooms()
-        })
-        return unsubscribe
-    }, [onNewMessage, refreshRooms])
 
     const filteredRooms = React.useMemo(() => {
         if (!searchTerm) return sourceRooms
@@ -103,6 +95,7 @@ export function ChatRoomList({
                         </p>
                     </div>
                 ) : (
+                    <>
                     <div className="divide-y divide-[var(--border-default)]">
                         {filteredRooms.map((room) => {
                             const support = isSupportUser(room.otherUser)
@@ -230,6 +223,19 @@ export function ChatRoomList({
                             )
                         })}
                     </div>
+                    {hasMoreRooms && (
+                        <div className="border-t border-[var(--border-default)] p-3">
+                            <button
+                                type="button"
+                                onClick={() => void loadMoreRooms()}
+                                disabled={isLoadingMoreRooms}
+                                className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-xs font-bold text-[var(--text-secondary)] transition-colors hover:text-primary disabled:opacity-50"
+                            >
+                                {isLoadingMoreRooms ? 'Loading…' : 'Load older conversations'}
+                            </button>
+                        </div>
+                    )}
+                    </>
                 )}
             </div>
         </div>

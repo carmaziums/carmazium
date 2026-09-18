@@ -146,6 +146,23 @@ export interface ChatRoomsResponse {
     data: ChatRoom[]
 }
 
+export interface ChatRoomCursor {
+    updatedAt: string
+    id: string
+}
+
+export interface ChatRoomsPageResponse {
+    success: boolean
+    data: {
+        rooms: ChatRoom[]
+        pagination: {
+            limit: number
+            hasMore: boolean
+            nextCursor: ChatRoomCursor | null
+        }
+    }
+}
+
 export interface ChatHistoryCursor {
     createdAt: string
     id: string
@@ -201,6 +218,26 @@ export async function getChatRooms(): Promise<ChatRoom[]> {
         method: 'GET',
         cache: 'no-store',
     })
+    return data.data
+}
+
+export async function getChatRoomsPage(
+    cursor?: ChatRoomCursor | null,
+    limit = 50,
+): Promise<ChatRoomsPageResponse['data']> {
+    const params = new URLSearchParams({ limit: String(limit) })
+    if (cursor) {
+        params.set('before', cursor.updatedAt)
+        params.set('beforeId', cursor.id)
+    }
+
+    const data = await apiClient<ChatRoomsPageResponse>(
+        `/chat/rooms-page?${params.toString()}`,
+        {
+            method: 'GET',
+            cache: 'no-store',
+        },
+    )
     return data.data
 }
 

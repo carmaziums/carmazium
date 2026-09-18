@@ -233,6 +233,7 @@ export class AdminMessagingService {
             const batch = campaign.deliveries.slice(i, i + SEND_BATCH_SIZE);
             const results = await Promise.allSettled(
                 batch.map((delivery) => this.deliverOne(
+                    delivery.id,
                     adminId,
                     delivery.user,
                     content,
@@ -311,6 +312,42 @@ export class AdminMessagingService {
             status: finalStatus,
             failures: failures.slice(0, 20),
         };
+    }
+
+    async recoverStaleSendingBroadcasts(
+        limit = 5,
+        staleAfterMs = 15 * 60 * 1000,
+    ) {
+        const cutoff = new Date(Date.now() - staleAfterMs);
+        const stale = await this.prisma.broadcastCampaign.findMany({
+            where: {
+                status: BroadcastCampaignStatus.SENDING,
+                startedAt: { lte: cutoff },
+                deliveries: {
+                    some: { status: BroadcastDeliveryStatus.PENDING },
+                },
+            },
+            select: { id: true },
+            orderBy: { startedAt: 'asc' },
+            take: Math.min(Math.max(limit, 1), 20),
+        });
+
+        let recovered = 0;
+        for (const campaign of stale) {
+            try {
+                await this.deliverCampaign(
+                    campaign.id,
+                    [BroadcastDeliveryStatus.PENDING],
+                );
+                recovered += 1;
+            } catch (error: any) {
+                this.logger.error(
+                    `Stale broadcast recovery failed for ${campaign.id}: ${error?.message || error}`,
+                );
+            }
+        }
+
+        return { found: stale.length, recovered };
     }
 
     async processDueScheduledBroadcasts(limit = 5) {
@@ -438,6 +475,7 @@ export class AdminMessagingService {
     }
 
     private async deliverOne(
+        deliveryId: string,
         adminId: string,
         recipient: Recipient,
         content: string,
@@ -445,19 +483,60 @@ export class AdminMessagingService {
         mediaKind?: AdminMediaKind,
     ) {
         const room = await this.chatService.findOrCreateRoom(adminId, { participantId: recipient.id });
-
-        const message = await this.prisma.message.create({
-            data: {
-                chatRoomId: room.id,
-                senderId: adminId,
-                content,
+        const messageInclude = {
+            sender: {
+                select: { id: true, firstName: true, lastName: true, profileImage: true },
             },
-            include: {
-                sender: {
-                    select: { id: true, firstName: true, lastName: true, profileImage: true },
+        };
+
+        // The delivery UUID is also the message idempotency key. If the process
+        // crashes after persisting a message but before BroadcastDelivery is
+        // marked SENT, recovery reuses this exact message instead of creating a
+        // duplicate or notification.
+        const existing = await this.prisma.message.findUnique({
+            where: {
+                senderId_clientMessageId: {
+                    senderId: adminId,
+                    clientMessageId: deliveryId,
                 },
             },
+            include: messageInclude,
         });
+        if (existing) {
+            return { message: existing, room, duplicate: true };
+        }
+
+        let message: any;
+        try {
+            message = await this.prisma.message.create({
+                data: {
+                    chatRoomId: room.id,
+                    senderId: adminId,
+                    clientMessageId: deliveryId,
+                    content,
+                },
+                include: messageInclude,
+            });
+        } catch (error) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2002'
+            ) {
+                const raced = await this.prisma.message.findUnique({
+                    where: {
+                        senderId_clientMessageId: {
+                            senderId: adminId,
+                            clientMessageId: deliveryId,
+                        },
+                    },
+                    include: messageInclude,
+                });
+                if (raced) {
+                    return { message: raced, room, duplicate: true };
+                }
+            }
+            throw error;
+        }
 
         await this.prisma.chatRoom.update({
             where: { id: room.id },
@@ -491,7 +570,7 @@ export class AdminMessagingService {
             this.logger.warn(`Notification failed for ${recipient.id}: ${error?.message}`);
         }
 
-        return { message, room };
+        return { message, room, duplicate: false };
     }
 
     private broadcastStatus(sent: number, failed: number, requested: number): BroadcastCampaignStatus {

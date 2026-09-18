@@ -119,10 +119,9 @@ export class ChatGateway
             // also needs to know who's already online right now, otherwise
             // every conversation partner reads as offline until their next
             // connect/disconnect.
-            const rooms = await this.chatService.getUserRooms(userId);
-            const onlineUserIds = rooms
-                .map((r: any) => r.otherUser?.id as string | undefined)
-                .filter((id): id is string => !!id && this.connectedUsers.has(id));
+            const partnerIds = await this.chatService.getUserPresencePartnerIds(userId);
+            const onlineUserIds = partnerIds
+                .filter((id) => this.connectedUsers.has(id));
             client.emit('presence:snapshot', { onlineUserIds });
 
             this.logger.log(
@@ -270,12 +269,8 @@ export class ChatGateway
                 userId,
             );
 
-            // Notify other user that messages were read
-            this.server.to(`room:${data.roomId}`).emit('messages:read', {
-                roomId: data.roomId,
-                readBy: userId,
-                count,
-            });
+            // Notify the other room members that messages were read.
+            this.broadcastReadReceipt(data.roomId, userId, count);
         } catch (error) {
             client.emit('error', { message: error.message });
         }
@@ -340,6 +335,19 @@ export class ChatGateway
     }
 
     /**
+     * Broadcast an authoritative read receipt. REST and Socket.IO read paths
+     * both call this so sender-side ticks cannot depend on which transport the
+     * recipient happened to use.
+     */
+    broadcastReadReceipt(roomId: string, readBy: string, count: number): void {
+        this.server?.to(`room:${roomId}`).emit('messages:read', {
+            roomId,
+            readBy,
+            count,
+        });
+    }
+
+    /**
      * Makes every currently-connected socket for this user join a room's
      * channel. `handleConnection` only auto-joins the rooms that already
      * existed at connect time, so a room created afterwards via REST (any
@@ -353,6 +361,22 @@ export class ChatGateway
         if (!socketIds) return;
         for (const socketId of socketIds) {
             this.server?.sockets?.sockets?.get(socketId)?.join(`room:${roomId}`);
+        }
+    }
+
+    leaveRoomForUser(userId: string, roomId: string): void {
+        const socketIds = this.connectedUsers.get(userId);
+        if (!socketIds) return;
+        for (const socketId of socketIds) {
+            this.server?.sockets?.sockets?.get(socketId)?.leave(`room:${roomId}`);
+        }
+    }
+
+    emitRoomUpdatedToUser(userId: string, room: any): void {
+        const socketIds = this.connectedUsers.get(userId);
+        if (!socketIds) return;
+        for (const socketId of socketIds) {
+            this.server?.sockets?.sockets?.get(socketId)?.emit('room:updated', room);
         }
     }
 

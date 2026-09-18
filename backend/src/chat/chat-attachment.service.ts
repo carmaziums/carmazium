@@ -15,7 +15,30 @@ export const CHAT_ATTACHMENT_MIME_TYPES = [
     'image/webp',
 ] as const;
 
-type AllowedMime = typeof CHAT_ATTACHMENT_MIME_TYPES[number];
+export type AllowedChatAttachmentMime = typeof CHAT_ATTACHMENT_MIME_TYPES[number];
+
+export function hasExpectedImageSignature(
+    bytes: Uint8Array,
+    mime: AllowedChatAttachmentMime,
+): boolean {
+    if (mime === 'image/jpeg') {
+        return bytes.length >= 3 &&
+            bytes[0] === 0xff &&
+            bytes[1] === 0xd8 &&
+            bytes[2] === 0xff;
+    }
+    if (mime === 'image/png') {
+        const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+        return bytes.length >= signature.length &&
+            signature.every((value, index) => bytes[index] === value);
+    }
+    if (mime === 'image/webp') {
+        return bytes.length >= 12 &&
+            String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF' &&
+            String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP';
+    }
+    return false;
+}
 
 @Injectable()
 export class ChatAttachmentService {
@@ -51,7 +74,7 @@ export class ChatAttachmentService {
         return this.supabase;
     }
 
-    private extensionForMime(mime: AllowedMime): string {
+    private extensionForMime(mime: AllowedChatAttachmentMime): string {
         switch (mime) {
             case 'image/png':
                 return 'png';
@@ -63,17 +86,17 @@ export class ChatAttachmentService {
         }
     }
 
-    validateMetadata(name: string, mime: string, size: number): AllowedMime {
+    validateMetadata(name: string, mime: string, size: number): AllowedChatAttachmentMime {
         if (!name?.trim() || name.trim().length > 255) {
             throw new BadRequestException('Photo name is invalid.');
         }
-        if (!CHAT_ATTACHMENT_MIME_TYPES.includes(mime as AllowedMime)) {
+        if (!CHAT_ATTACHMENT_MIME_TYPES.includes(mime as AllowedChatAttachmentMime)) {
             throw new BadRequestException('Only JPEG, PNG and WebP photos can be sent.');
         }
         if (!Number.isInteger(size) || size < 1 || size > CHAT_ATTACHMENT_MAX_BYTES) {
             throw new BadRequestException('Photos must be 10 MB or smaller.');
         }
-        return mime as AllowedMime;
+        return mime as AllowedChatAttachmentMime;
     }
 
     async createUploadTicket(
@@ -114,7 +137,23 @@ export class ChatAttachmentService {
         }
     }
 
-    async assertUploaded(path: string): Promise<void> {
+    private async removeInvalidUpload(path: string): Promise<void> {
+        try {
+            await this.client()
+                .storage
+                .from(CHAT_ATTACHMENT_BUCKET)
+                .remove([path]);
+        } catch {
+            // Best-effort cleanup only. Validation failure remains authoritative.
+        }
+    }
+
+    async assertUploaded(
+        path: string,
+        expectedMime: string,
+        expectedSize: number,
+    ): Promise<void> {
+        const allowedMime = this.validateMetadata('attachment', expectedMime, expectedSize);
         const parts = path.split('/');
         const fileName = parts.pop();
         const folder = parts.join('/');
@@ -122,21 +161,57 @@ export class ChatAttachmentService {
             throw new BadRequestException('Photo upload path is invalid.');
         }
 
-        const { data, error } = await this.client()
-            .storage
-            .from(CHAT_ATTACHMENT_BUCKET)
-            .list(folder, {
-                limit: 5,
-                search: fileName,
-            });
+        const bucket = this.client().storage.from(CHAT_ATTACHMENT_BUCKET);
+        const { data, error } = await bucket.list(folder, {
+            limit: 5,
+            search: fileName,
+        });
 
         if (error) {
             this.logger.warn(`Could not verify chat attachment ${path}: ${error.message}`);
             throw new ServiceUnavailableException('Could not verify the uploaded photo.');
         }
 
-        if (!data?.some((item) => item.name === fileName)) {
+        const stored = data?.find((item) => item.name === fileName);
+        if (!stored) {
             throw new BadRequestException('Upload the photo before sending it.');
+        }
+
+        const metadata = (stored.metadata || {}) as Record<string, unknown>;
+        const storedSize = Number(metadata.size || 0);
+        const storedMime = String(
+            metadata.mimetype ||
+            metadata.mimeType ||
+            metadata.contentType ||
+            '',
+        ).toLowerCase();
+
+        if (
+            (storedSize > 0 && storedSize !== expectedSize) ||
+            storedSize > CHAT_ATTACHMENT_MAX_BYTES ||
+            (storedMime && storedMime !== allowedMime)
+        ) {
+            await this.removeInvalidUpload(path);
+            throw new BadRequestException('Uploaded photo metadata does not match the message.');
+        }
+
+        const { data: file, error: downloadError } = await bucket.download(path);
+        if (downloadError || !file) {
+            this.logger.warn(
+                `Could not inspect chat attachment ${path}: ${downloadError?.message || 'missing file'}`,
+            );
+            throw new ServiceUnavailableException('Could not verify the uploaded photo.');
+        }
+
+        if (file.size !== expectedSize || file.size > CHAT_ATTACHMENT_MAX_BYTES) {
+            await this.removeInvalidUpload(path);
+            throw new BadRequestException('Uploaded photo size does not match the message.');
+        }
+
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        if (!hasExpectedImageSignature(bytes.subarray(0, 16), allowedMime)) {
+            await this.removeInvalidUpload(path);
+            throw new BadRequestException('Uploaded file is not a valid JPEG, PNG or WebP photo.');
         }
     }
 

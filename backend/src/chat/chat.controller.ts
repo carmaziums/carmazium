@@ -55,6 +55,51 @@ export class ChatController {
         return new StandardResponse(rooms);
     }
 
+    @Get('rooms-page')
+    @ApiOperation({ summary: 'Get my chat rooms with stable cursor pagination' })
+    @ApiQuery({ name: 'limit', required: false, description: 'Page size, max 100' })
+    @ApiQuery({ name: 'before', required: false, description: 'Updated-at cursor timestamp' })
+    @ApiQuery({ name: 'beforeId', required: false, description: 'Room ID paired with before cursor' })
+    async getRoomsPage(
+        @CurrentUser() user: any,
+        @Query('limit') limit?: string,
+        @Query('before') before?: string,
+        @Query('beforeId') beforeId?: string,
+    ) {
+        const safeLimit = Math.min(Math.max(Number(limit || 50) || 50, 1), 100);
+        if ((before && !beforeId) || (!before && beforeId)) {
+            throw new BadRequestException('Both before and beforeId are required for room pagination.');
+        }
+
+        let beforeDate: Date | undefined;
+        if (before) {
+            beforeDate = new Date(before);
+            if (Number.isNaN(beforeDate.getTime())) {
+                throw new BadRequestException('Invalid room pagination cursor.');
+            }
+        }
+
+        const rows = await this.chatService.getUserRooms(user.id, {
+            limit: safeLimit + 1,
+            before: beforeDate,
+            beforeId,
+        });
+        const hasMore = rows.length > safeLimit;
+        const rooms = rows.slice(0, safeLimit);
+        const oldest = rooms[rooms.length - 1];
+
+        return new StandardResponse({
+            rooms,
+            pagination: {
+                limit: safeLimit,
+                hasMore,
+                nextCursor: hasMore && oldest
+                    ? { updatedAt: oldest.updatedAt, id: oldest.id }
+                    : null,
+            },
+        });
+    }
+
     /**
      * Create or find a chat room with another user.
      */
@@ -129,7 +174,19 @@ export class ChatController {
         @Body() dto: BlockChatRoomDto,
     ) {
         this.chatRateLimit.consumeBlockChange(user.id);
-        const room = await this.chatService.blockRoom(roomId, user.id, dto);
+        const room: any = await this.chatService.blockRoom(roomId, user.id, dto);
+        const otherUserId = room.initiatorId === user.id
+            ? room.participantId
+            : room.initiatorId;
+        const otherRoom = await this.chatService.getRoom(roomId, otherUserId);
+
+        // A block pauses all private realtime activity, not only message sends.
+        // Existing history remains available through the authenticated REST API.
+        this.chatGateway.leaveRoomForUser(user.id, roomId);
+        this.chatGateway.leaveRoomForUser(otherUserId, roomId);
+        this.chatGateway.emitRoomUpdatedToUser(user.id, room);
+        this.chatGateway.emitRoomUpdatedToUser(otherUserId, otherRoom);
+
         return new StandardResponse(room);
     }
 
@@ -142,7 +199,19 @@ export class ChatController {
         @Param('id') roomId: string,
     ) {
         this.chatRateLimit.consumeBlockChange(user.id);
-        const room = await this.chatService.unblockRoom(roomId, user.id);
+        const room: any = await this.chatService.unblockRoom(roomId, user.id);
+        const otherUserId = room.initiatorId === user.id
+            ? room.participantId
+            : room.initiatorId;
+        const otherRoom = await this.chatService.getRoom(roomId, otherUserId);
+
+        if (!room.chatBlocked) {
+            this.chatGateway.joinRoomForUser(user.id, roomId);
+            this.chatGateway.joinRoomForUser(otherUserId, roomId);
+        }
+        this.chatGateway.emitRoomUpdatedToUser(user.id, room);
+        this.chatGateway.emitRoomUpdatedToUser(otherUserId, otherRoom);
+
         return new StandardResponse(room);
     }
 
@@ -332,6 +401,7 @@ export class ChatController {
         @Param('id') roomId: string,
     ) {
         const count = await this.chatService.markMessagesAsRead(roomId, user.id);
+        this.chatGateway.broadcastReadReceipt(roomId, user.id, count);
         return new StandardResponse({ markedCount: count });
     }
 

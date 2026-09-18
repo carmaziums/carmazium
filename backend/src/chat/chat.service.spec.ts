@@ -107,6 +107,7 @@ describe('ChatService — conversation context and authorization', () => {
                 findUnique: jest.fn(),
                 findFirst: jest.fn(),
                 count: jest.fn(),
+                groupBy: jest.fn().mockResolvedValue([]),
                 findMany: jest.fn(),
                 updateMany: jest.fn(),
             },
@@ -502,7 +503,7 @@ describe('ChatService — conversation context and authorization', () => {
             'room-photo',
             buyerId,
         );
-        expect(chatAttachmentService.assertUploaded).toHaveBeenCalledWith(dto.path);
+        expect(chatAttachmentService.assertUploaded).toHaveBeenCalledWith(dto.path, dto.mime, dto.size);
         expect(prisma.message.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 data: expect.objectContaining({
@@ -555,6 +556,68 @@ describe('ChatService — conversation context and authorization', () => {
         expect(prisma.chatRoom.upsert.mock.calls[0][0].create.supportAssignedAdminId).toBe(adminId);
     });
 
+    it('does not expose internal support assignment or tags to the member room payload', async () => {
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'support-room',
+            initiatorId: buyerId,
+            participantId: adminId,
+            listingId: null,
+            context: ChatContext.SUPPORT,
+            conversationKey: `SUPPORT:CARMAZIUM:${buyerId}`,
+            supportAssignedAdminId: secondAdminId,
+            supportAssignedAdmin: {
+                id: secondAdminId,
+                firstName: 'Support',
+                lastName: 'Agent',
+                email: 'private@carmazium.test',
+            },
+            supportTags: ['refund', 'urgent'],
+            supportClosedAt: new Date(),
+            deletedAt: null,
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: adminId, role: 'ADMIN' },
+            disputeCase: null,
+            blocks: [],
+            listing: null,
+        });
+
+        const room = await service.getRoom('support-room', buyerId);
+
+        expect(room).not.toHaveProperty('supportAssignedAdmin');
+        expect(room).not.toHaveProperty('supportAssignedAdminId');
+        expect(room).not.toHaveProperty('supportTags');
+        expect(room).not.toHaveProperty('supportClosedAt');
+    });
+
+    it('removes dispute participant and joined-admin emails from member room payloads', async () => {
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'dispute-room',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            listingId,
+            context: ChatContext.DISPUTE,
+            conversationKey: 'DISPUTE:source-room',
+            deletedAt: null,
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+            blocks: [],
+            listing: null,
+            disputeCase: {
+                id: 'dispute-1',
+                joinedAdminId: adminId,
+                buyer: { id: buyerId, firstName: 'Buyer', email: 'buyer@example.test' },
+                seller: { id: sellerId, firstName: 'Seller', email: 'seller@example.test' },
+                joinedAdmin: { id: adminId, firstName: 'Admin', email: 'admin@carmazium.test' },
+            },
+        });
+
+        const room = await service.getRoom('dispute-room', buyerId);
+
+        expect(room.disputeCase.buyer).not.toHaveProperty('email');
+        expect(room.disputeCase.seller).not.toHaveProperty('email');
+        expect(room.disputeCase.joinedAdmin).not.toHaveProperty('email');
+    });
+
     it('allows another admin into SUPPORT but not into a private retail room', async () => {
         prisma.chatRoom.findUnique.mockResolvedValueOnce({
             id: 'support-room',
@@ -589,6 +652,109 @@ describe('ChatService — conversation context and authorization', () => {
         await expect(
             service.assertCanMessageRoom('retail-room', secondAdminId),
         ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('applies a stable updatedAt/id cursor when a room page is requested', async () => {
+        const before = new Date('2026-09-18T12:00:00.000Z');
+        prisma.chatRoom.findMany.mockResolvedValue([]);
+
+        await service.getUserRooms(buyerId, {
+            limit: 51,
+            before,
+            beforeId: 'aaaaaaaa-0000-4000-8000-000000000000',
+        });
+
+        expect(prisma.chatRoom.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                take: 51,
+                orderBy: [
+                    { updatedAt: 'desc' },
+                    { id: 'desc' },
+                ],
+                where: expect.objectContaining({
+                    AND: expect.arrayContaining([
+                        expect.objectContaining({
+                            OR: expect.arrayContaining([
+                                { updatedAt: { lt: before } },
+                                {
+                                    updatedAt: before,
+                                    id: { lt: 'aaaaaaaa-0000-4000-8000-000000000000' },
+                                },
+                            ]),
+                        }),
+                    ]),
+                }),
+            }),
+        );
+    });
+
+    it('excludes actively blocked rooms from realtime room membership', async () => {
+        prisma.chatRoom.findMany.mockResolvedValue([]);
+
+        await service.getUserRoomIds(buyerId);
+
+        expect(prisma.chatRoom.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: expect.objectContaining({
+                    blocks: { none: { revokedAt: null } },
+                }),
+            }),
+        );
+    });
+
+    it('batches unread counts for non-dispute rooms instead of counting once per room', async () => {
+        prisma.chatRoom.findMany.mockResolvedValue([
+            {
+                id: 'support-room-1',
+                initiatorId: buyerId,
+                participantId: adminId,
+                context: ChatContext.SUPPORT,
+                conversationKey: `SUPPORT:CARMAZIUM:${buyerId}`,
+                supportAssignedAdminId: adminId,
+                supportAssignedAdmin: null,
+                supportTags: [],
+                supportClosedAt: null,
+                deletedAt: null,
+                initiator: { id: buyerId, role: 'BUYER' },
+                participant: { id: adminId, role: 'ADMIN' },
+                disputeCase: null,
+                disputeAsSource: null,
+                blocks: [],
+                listing: null,
+                messages: [],
+                updatedAt: new Date(),
+            },
+            {
+                id: 'support-room-2',
+                initiatorId: otherBuyerId,
+                participantId: adminId,
+                context: ChatContext.SUPPORT,
+                conversationKey: `SUPPORT:CARMAZIUM:${otherBuyerId}`,
+                supportAssignedAdminId: adminId,
+                supportAssignedAdmin: null,
+                supportTags: [],
+                supportClosedAt: null,
+                deletedAt: null,
+                initiator: { id: otherBuyerId, role: 'BUYER' },
+                participant: { id: adminId, role: 'ADMIN' },
+                disputeCase: null,
+                disputeAsSource: null,
+                blocks: [],
+                listing: null,
+                messages: [],
+                updatedAt: new Date(),
+            },
+        ]);
+        prisma.message.groupBy.mockResolvedValue([
+            { chatRoomId: 'support-room-1', senderId: buyerId, _count: { _all: 2 } },
+            { chatRoomId: 'support-room-2', senderId: otherBuyerId, _count: { _all: 3 } },
+        ]);
+
+        const rooms = await service.getUserRooms(adminId);
+
+        expect(rooms.map((room) => room.unreadCount)).toEqual([2, 3]);
+        expect(prisma.message.groupBy).toHaveBeenCalledTimes(1);
+        expect(prisma.message.count).not.toHaveBeenCalled();
     });
 
     it('marks only customer-authored support messages read when another admin opens the thread', async () => {
