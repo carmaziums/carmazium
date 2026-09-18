@@ -56,7 +56,6 @@ export async function getAdminUsers(page = 1, limit = 20, search?: string) {
 export type AdminMessageAudience =
   | 'ALL'
   | 'ROLE'
-  | 'PERSON'
   | 'DEALERS'
   | 'SERVICE_PROVIDERS'
   | 'DELIVERY_PROVIDERS'
