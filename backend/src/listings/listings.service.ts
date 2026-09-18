@@ -26,7 +26,7 @@ import {
     ListingType,
     ListingStatus,
 } from '@prisma/client';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { SellersService } from '../sellers/sellers.service';
 import { ScraperService } from '../scraper/scraper.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -1365,15 +1365,21 @@ export class ListingsService {
         const source = await this.findById(listingId);
         if (source.sellerId !== userId) throw new ForbiddenException('You do not own this listing');
         if (source.type !== 'CLASSIFIED') throw new BadRequestException('Source listing must be of type CLASSIFIED');
+        if (source.status !== 'ACTIVE') {
+            throw new BadRequestException('Only an active retail listing can also be placed into auction');
+        }
         if ((source as any).linkedListingId) throw new BadRequestException('This listing already has a linked auction listing');
+        if ((source.images?.length ?? 0) < 10) {
+            throw new BadRequestException(
+                `Auctions require at least 10 photos before scheduling. You have ${source.images?.length ?? 0}.`,
+            );
+        }
         if (dto.reservePrice > Number(source.price)) {
             throw new BadRequestException(
                 `Reserve price (£${dto.reservePrice.toLocaleString('en-GB')}) cannot exceed the retail listing price (£${Number(source.price).toLocaleString('en-GB')}). Lower the reserve or raise the retail price first.`,
             );
         }
-        // The linked auction uses the same platform-owned opening bid rule:
-        // 70% of this listing's reference/retail value. Ignore any legacy
-        // client-supplied startingBid so web/mobile cannot drift from the rule.
+
         const sourceValue = Number(source.price);
         if (!Number.isFinite(sourceValue) || sourceValue <= 0) {
             throw new BadRequestException('A valid vehicle price is required before creating the linked auction');
@@ -1381,73 +1387,82 @@ export class ListingsService {
         const platformStartingBid = calculatePlatformOpeningBid(sourceValue);
 
         const startTime = new Date(dto.startTime);
-        if (isNaN(startTime.getTime()) || startTime.getTime() < Date.now() - 60_000) {
+        if (Number.isNaN(startTime.getTime()) || startTime.getTime() < Date.now() - 60_000) {
             throw new BadRequestException('Invalid or past startTime');
         }
-        const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000); // 24h auction
-
+        const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000);
         const slug = this.generateSlug(source.title);
+        const auctionListingId = randomUUID();
 
-        const auctionListing = await this.prisma.listing.create({
-            data: {
-                title: source.title,
-                price: source.price,
-                images: source.images,
-                videoUrls: source.videoUrls,
-                type: 'AUCTION',
-                status: 'ACTIVE',
-                description: source.description,
-                slug,
-                make: source.make, model: source.model, year: source.year, mileage: source.mileage,
-                vrm: source.vrm, vin: source.vin,
-                fuelType: source.fuelType, transmission: source.transmission,
-                color: source.color, doors: source.doors, seats: source.seats,
-                engineSize: source.engineSize, bhp: source.bhp, bodyType: source.bodyType,
-                features: source.features ?? undefined,
-                location: source.location, latitude: source.latitude, longitude: source.longitude,
-                condition: source.condition, ulezCompliant: source.ulezCompliant,
-                euroStandard: source.euroStandard, co2Emissions: source.co2Emissions,
-                motStatus: source.motStatus, taxStatus: source.taxStatus,
-                motExpiryDate: source.motExpiryDate, taxDueDate: source.taxDueDate,
-                markedForExport: source.markedForExport,
-                monthOfFirstRegistration: source.monthOfFirstRegistration,
-                wheelplan: source.wheelplan, typeApproval: source.typeApproval,
-                variant: source.variant, driveType: source.driveType,
-                numberOfKeys: source.numberOfKeys, serviceHistory: source.serviceHistory,
-                owners: source.owners, torqueNm: source.torqueNm,
-                topSpeedMph: source.topSpeedMph, zeroTo60Mph: source.zeroTo60Mph,
-                combinedMpg: source.combinedMpg, extraUrbanMpg: source.extraUrbanMpg,
-                exteriorGrade: source.exteriorGrade,
-                bannerLabel: source.bannerLabel,
-                badgeTier: 'FREE',
-                sellerId: userId,
-                vehicleType: source.vehicleType,
-                isImported: source.isImported,
-                stolenRecovered: source.stolenRecovered,
-                hasOutstandingFinance: source.hasOutstandingFinance,
-                isLegalRegisteredKeeper: source.isLegalRegisteredKeeper,
-                writeOffCategory: source.writeOffCategory,
-                linkedListingId: listingId,
-            } as any,
-        });
+        // The clone, Auction row and reverse link are one unit. If any write
+        // fails, Prisma rolls all three back so no orphan/half-linked vehicle is
+        // left behind. The new auction still requires admin review.
+        const [auctionListing, auction] = await this.prisma.$transaction([
+            this.prisma.listing.create({
+                data: {
+                    id: auctionListingId,
+                    title: source.title,
+                    price: source.price,
+                    images: source.images,
+                    videoUrls: source.videoUrls,
+                    type: 'AUCTION',
+                    status: 'PENDING_REVIEW',
+                    description: source.description,
+                    slug,
+                    make: source.make, model: source.model, year: source.year, mileage: source.mileage,
+                    vrm: source.vrm, vin: source.vin,
+                    fuelType: source.fuelType, transmission: source.transmission,
+                    color: source.color, doors: source.doors, seats: source.seats,
+                    engineSize: source.engineSize, bhp: source.bhp, bodyType: source.bodyType,
+                    features: source.features ?? undefined,
+                    location: source.location, latitude: source.latitude, longitude: source.longitude,
+                    condition: source.condition, ulezCompliant: source.ulezCompliant,
+                    euroStandard: source.euroStandard, co2Emissions: source.co2Emissions,
+                    motStatus: source.motStatus, taxStatus: source.taxStatus,
+                    motExpiryDate: source.motExpiryDate, taxDueDate: source.taxDueDate,
+                    markedForExport: source.markedForExport,
+                    monthOfFirstRegistration: source.monthOfFirstRegistration,
+                    wheelplan: source.wheelplan, typeApproval: source.typeApproval,
+                    variant: source.variant, driveType: source.driveType,
+                    numberOfKeys: source.numberOfKeys, serviceHistory: source.serviceHistory,
+                    owners: source.owners, torqueNm: source.torqueNm,
+                    topSpeedMph: source.topSpeedMph, zeroTo60Mph: source.zeroTo60Mph,
+                    combinedMpg: source.combinedMpg, extraUrbanMpg: source.extraUrbanMpg,
+                    exteriorGrade: source.exteriorGrade,
+                    bannerLabel: source.bannerLabel,
+                    badgeTier: 'FREE',
+                    sellerId: userId,
+                    vehicleType: source.vehicleType,
+                    isImported: source.isImported,
+                    stolenRecovered: source.stolenRecovered,
+                    hasOutstandingFinance: source.hasOutstandingFinance,
+                    isLegalRegisteredKeeper: source.isLegalRegisteredKeeper,
+                    writeOffCategory: source.writeOffCategory,
+                    linkedListingId: listingId,
+                } as any,
+            }),
+            this.prisma.auction.create({
+                data: {
+                    listingId: auctionListingId,
+                    startTime,
+                    endTime,
+                    reservePrice: dto.reservePrice,
+                    startingBid: platformStartingBid,
+                    minIncrement: dto.minIncrement ?? 100,
+                    status: 'SCHEDULED',
+                    ...(dto.buyItNowPrice ? { buyItNowPrice: dto.buyItNowPrice } : {}),
+                },
+            }),
+            this.prisma.listing.update({
+                where: { id: listingId },
+                data: { linkedListingId: auctionListingId } as any,
+            }),
+        ]);
 
-        const auction = await this.prisma.auction.create({
-            data: {
-                listingId: auctionListing.id,
-                startTime,
-                endTime,
-                reservePrice: dto.reservePrice,
-                startingBid: platformStartingBid,
-                minIncrement: dto.minIncrement ?? 100,
-                status: 'SCHEDULED',
-                ...(dto.buyItNowPrice ? { buyItNowPrice: dto.buyItNowPrice } : {}),
-            },
-        });
-
-        // Link the source CLASSIFIED listing back to the new auction listing
-        await this.prisma.listing.update({
-            where: { id: listingId },
-            data: { linkedListingId: auctionListing.id } as any,
+        await this.notifySubmittedForReview({
+            id: auctionListing.id,
+            title: auctionListing.title,
+            sellerId: auctionListing.sellerId,
         });
 
         return { linkedListingId: auctionListing.id, auctionId: auction.id };
