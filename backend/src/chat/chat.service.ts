@@ -612,6 +612,21 @@ export class ChatService {
                     },
                 });
 
+                await tx.disputeReadState.createMany({
+                    data: [
+                        {
+                            disputeId: dispute.id,
+                            userId: buyerId,
+                            lastReadAt: userId === buyerId ? new Date() : null,
+                        },
+                        {
+                            disputeId: dispute.id,
+                            userId: sellerId,
+                            lastReadAt: userId === sellerId ? new Date() : null,
+                        },
+                    ],
+                });
+
                 const eventMessage = await tx.message.create({
                     data: {
                         chatRoomId: disputeRoom.id,
@@ -883,6 +898,21 @@ export class ChatService {
                 throw new NotFoundException('Dispute not found.');
             }
 
+            await tx.disputeReadState.upsert({
+                where: {
+                    disputeId_userId: {
+                        disputeId,
+                        userId: adminId,
+                    },
+                },
+                update: {},
+                create: {
+                    disputeId,
+                    userId: adminId,
+                    lastReadAt: null,
+                },
+            });
+
             const eventMessage = await tx.message.create({
                 data: {
                     chatRoomId: dispute.chatRoomId,
@@ -1152,16 +1182,41 @@ export class ChatService {
         return Promise.all(
             rooms.map(async (room) => {
                 const customerId = this.supportCustomerId(room);
-                const unreadCount = await this.prisma.message.count({
-                    where: {
-                        chatRoomId: room.id,
-                        ...(room.context === ChatContext.SUPPORT && role === UserRole.ADMIN && customerId
-                            ? { senderId: customerId }
-                            : { senderId: { not: userId } }),
-                        isRead: false,
-                        deletedAt: null,
-                    },
-                });
+                let unreadCount: number;
+
+                if (room.context === ChatContext.DISPUTE && room.disputeCase) {
+                    const readState = await this.prisma.disputeReadState.findUnique({
+                        where: {
+                            disputeId_userId: {
+                                disputeId: room.disputeCase.id,
+                                userId,
+                            },
+                        },
+                        select: { lastReadAt: true },
+                    });
+
+                    unreadCount = await this.prisma.message.count({
+                        where: {
+                            chatRoomId: room.id,
+                            senderId: { not: userId },
+                            deletedAt: null,
+                            ...(readState?.lastReadAt
+                                ? { createdAt: { gt: readState.lastReadAt } }
+                                : {}),
+                        },
+                    });
+                } else {
+                    unreadCount = await this.prisma.message.count({
+                        where: {
+                            chatRoomId: room.id,
+                            ...(room.context === ChatContext.SUPPORT && role === UserRole.ADMIN && customerId
+                                ? { senderId: customerId }
+                                : { senderId: { not: userId } }),
+                            isRead: false,
+                            deletedAt: null,
+                        },
+                    });
+                }
 
                 const { otherUser } = this.withOtherUser(room, userId);
                 const lastMessage = room.messages[0] || null;
@@ -1646,6 +1701,49 @@ export class ChatService {
     async markMessagesAsRead(roomId: string, userId: string): Promise<number> {
         const room: any = await this.getRoom(roomId, userId);
         const role = await this.actorRole(userId);
+
+        if (room.context === ChatContext.DISPUTE) {
+            if (!room.disputeCase) {
+                throw new ForbiddenException('This dispute conversation is missing its case record.');
+            }
+
+            const readState = await this.prisma.disputeReadState.findUnique({
+                where: {
+                    disputeId_userId: {
+                        disputeId: room.disputeCase.id,
+                        userId,
+                    },
+                },
+                select: { lastReadAt: true },
+            });
+            const markedCount = await this.prisma.message.count({
+                where: {
+                    chatRoomId: roomId,
+                    senderId: { not: userId },
+                    deletedAt: null,
+                    ...(readState?.lastReadAt
+                        ? { createdAt: { gt: readState.lastReadAt } }
+                        : {}),
+                },
+            });
+
+            await this.prisma.disputeReadState.upsert({
+                where: {
+                    disputeId_userId: {
+                        disputeId: room.disputeCase.id,
+                        userId,
+                    },
+                },
+                update: { lastReadAt: new Date() },
+                create: {
+                    disputeId: room.disputeCase.id,
+                    userId,
+                    lastReadAt: new Date(),
+                },
+            });
+            return markedCount;
+        }
+
         const customerId = this.supportCustomerId(room);
 
         // In a multi-agent SUPPORT room, an admin opening the thread must only
