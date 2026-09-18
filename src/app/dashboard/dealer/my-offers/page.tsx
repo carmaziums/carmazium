@@ -5,12 +5,13 @@ import Link from "next/link"
 import Image from "next/image"
 import {
     Loader2, Gavel, Clock, CheckCircle, XCircle, RefreshCw,
-    Trophy, Tag, Car, ArrowUpRight, Search
+    Trophy, Tag, Car, ArrowUpRight, Search, Pencil
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { MetricCard } from "@/components/dashboard/MetricCard"
+import { AmendOfferModal } from "@/components/offers/AmendOfferModal"
 import { useAuth } from "@/context/AuthContext"
 import {
     getMyOffers,
@@ -34,6 +35,8 @@ export default function DealerMyOffersPage() {
     const [loading, setLoading] = React.useState(true)
     const [actionLoading, setActionLoading] = React.useState<Record<string, boolean>>({})
     const [searchTerm, setSearchTerm] = React.useState("")
+    const [viewMode, setViewMode] = React.useState<'current' | 'history' | 'all'>('current')
+    const [amendingOffer, setAmendingOffer] = React.useState<Offer | null>(null)
 
     const fetchOffers = React.useCallback(async () => {
         setLoading(true)
@@ -84,8 +87,13 @@ export default function DealerMyOffersPage() {
     const pendingCount = offers.filter(o => o.status === "PENDING").length
     const acceptedCount = offers.filter(o => o.status === "ACCEPTED").length
     const counteredCount = offers.filter(o => o.status === "COUNTERED").length
+    const currentCount = offers.filter(o => o.status === "PENDING" || o.status === "COUNTERED").length
 
     const filtered = offers.filter(o => {
+        const isCurrent = o.status === 'PENDING' || o.status === 'COUNTERED'
+        if (viewMode === 'current' && !isCurrent) return false
+        if (viewMode === 'history' && isCurrent) return false
+
         if (!searchTerm) return true
         const needle = searchTerm.toLowerCase()
         return (
@@ -94,6 +102,12 @@ export default function DealerMyOffersPage() {
             o.listing?.model?.toLowerCase().includes(needle)
         )
     })
+
+    const listHeading = viewMode === 'current'
+        ? 'Current Bids'
+        : viewMode === 'history'
+            ? 'Offer History'
+            : 'All Outgoing Bids'
 
     return (
         <div className="min-h-screen pt-20 pb-12">
@@ -106,8 +120,26 @@ export default function DealerMyOffersPage() {
                         subHeader="Track outgoing bids you've placed on other dealers' inventory"
                     />
 
+                    {amendingOffer && (
+                        <AmendOfferModal
+                            offer={amendingOffer}
+                            onClose={() => setAmendingOffer(null)}
+                            onSaved={async () => { await fetchOffers() }}
+                        />
+                    )}
+
                     {/* Summary metrics */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                        <MetricCard
+                            label="Current Bids"
+                            value={currentCount}
+                            icon={Gavel}
+                            color="text-violet-400"
+                            bg="bg-violet-500/10"
+                            border="border-violet-500/20"
+                            statusLabel="Active"
+                            loading={loading}
+                        />
                         <MetricCard
                             label="Awaiting Response"
                             value={pendingCount}
@@ -147,7 +179,27 @@ export default function DealerMyOffersPage() {
                         viewport, which is what caused it to overlap the table. */}
                     <div className="sticky top-20 z-20 pt-2 -mt-2 bg-[var(--bg-body)]/95 backdrop-blur-md">
                         <div className="dealer-glass-card p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                            <h3 className="text-sm font-black uppercase tracking-widest text-[var(--text-secondary)]">Outgoing Bids</h3>
+                            <div className="flex flex-col gap-3">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-[var(--text-secondary)]">{listHeading}</h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {([
+                                        ['current', 'Current'],
+                                        ['history', 'History'],
+                                        ['all', 'All'],
+                                    ] as const).map(([value, label]) => (
+                                        <button
+                                            key={value}
+                                            type="button"
+                                            onClick={() => setViewMode(value)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest border transition-colors ${viewMode === value
+                                                ? 'bg-primary text-white border-primary'
+                                                : 'bg-[var(--bg-input)] text-[var(--text-muted)] border-[var(--border-default)] hover:border-primary/40'}`}
+                                        >
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                             <div className="relative w-full md:w-64">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
                                 <input
@@ -170,10 +222,18 @@ export default function DealerMyOffersPage() {
                             <div className="p-16 text-center">
                                 <Gavel className="h-12 w-12 text-gray-700 mx-auto mb-3" />
                                 <p className="text-[var(--text-muted)] font-bold">
-                                    {searchTerm ? "No outgoing offers match your search." : "No outgoing offers yet"}
+                                    {searchTerm
+                                        ? "No offers match your search."
+                                        : viewMode === 'current'
+                                            ? "No current bids"
+                                            : viewMode === 'history'
+                                                ? "No closed offer history yet"
+                                                : "No outgoing offers yet"}
                                 </p>
                                 <p className="text-gray-600 text-sm mt-1">
-                                    Offers you place on other dealers' inventory will appear here.
+                                    {viewMode === 'current'
+                                        ? "Live offers you can still manage will appear here."
+                                        : "Offers you place on marketplace vehicles will appear here."}
                                 </p>
                                 {!searchTerm && (
                                     <div className="mt-6">
@@ -201,7 +261,7 @@ export default function DealerMyOffersPage() {
                                                     {image ? <Image src={image} alt={offer.listing?.title || ''} fill className="object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-600"><Car size={16} /></div>}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <Link href={`/vehicle/${slug}`} className="font-black text-[var(--text-primary)] text-sm truncate block hover:text-primary transition-colors">{offer.listing?.title || 'Listing'}</Link>
+                                                    <Link href={`/buy-cars/${slug}`} className="font-black text-[var(--text-primary)] text-sm truncate block hover:text-primary transition-colors">{offer.listing?.title || 'Listing'}</Link>
                                                     <p className="text-xs text-[var(--text-muted)] font-bold uppercase truncate">{offer.listing?.year} {offer.listing?.make} {offer.listing?.model}</p>
                                                 </div>
                                                 <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-black tracking-widest uppercase border shrink-0 ${style.bg} ${style.text} ${style.border}`}>{style.label}</span>
@@ -216,10 +276,18 @@ export default function DealerMyOffersPage() {
                                                     <p className="text-xs text-[var(--text-muted)]">{new Date(offer.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
                                                 </div>
                                                 <div className="flex items-center gap-2 flex-wrap justify-end">
-                                                    {offer.status === 'PENDING' && <button onClick={() => handleWithdraw(offer.id)} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl disabled:opacity-50">{isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Withdraw'}</button>}
-                                                    {offer.status === 'COUNTERED' && <>
+                                                    {offer.status === 'PENDING' && <>
+                                                        <button onClick={() => setAmendingOffer(offer)} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl disabled:opacity-50 inline-flex items-center gap-1"><Pencil size={11} /> Amend</button>
+                                                        <button onClick={() => handleWithdraw(offer.id)} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl disabled:opacity-50">{isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Withdraw'}</button>
+                                                    </>}
+                                                    {offer.status === 'COUNTERED' && offer.lastCounteredBy === 'SELLER' && <>
                                                         <button onClick={() => handleCounterResponse(offer.id, 'ACCEPTED')} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">{isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Accept'}</button>
                                                         <button onClick={() => handleCounterResponse(offer.id, 'REJECTED')} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl">Reject</button>
+                                                        <button onClick={() => handleWithdraw(offer.id)} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 border border-[var(--border-default)] text-[var(--text-muted)] rounded-xl">Cancel bid</button>
+                                                    </>}
+                                                    {offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER' && <>
+                                                        <span className="text-xs font-bold text-blue-400">Awaiting seller</span>
+                                                        <button onClick={() => handleWithdraw(offer.id)} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 border border-red-500/20 text-red-400 rounded-xl">Cancel bid</button>
                                                     </>}
                                                 </div>
                                             </div>
@@ -250,7 +318,7 @@ export default function DealerMyOffersPage() {
                                             return (
                                                 <tr key={offer.id} className="group hover:bg-white/[0.02] transition-colors">
                                                     <td className="px-6 py-5">
-                                                        <Link href={`/vehicle/${slug}`} className="flex items-center gap-3 group/link">
+                                                        <Link href={`/buy-cars/${slug}`} className="flex items-center gap-3 group/link">
                                                             <div className="relative w-14 h-10 rounded-lg overflow-hidden border border-[var(--border-default)] shrink-0 bg-[var(--bg-input)]">
                                                                 {image ? (
                                                                     <Image src={image} alt={offer.listing?.title || ''} fill className="object-cover" />
@@ -304,6 +372,16 @@ export default function DealerMyOffersPage() {
                                                     <td className="px-6 py-5 text-right">
                                                         <div className="flex items-center justify-end gap-2">
                                                             {offer.status === 'PENDING' && (
+                                                                <>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    disabled={isActioning}
+                                                                    onClick={() => setAmendingOffer(offer)}
+                                                                    className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-blue-500/20 rounded-xl gap-1"
+                                                                >
+                                                                    <Pencil size={12} /> Amend
+                                                                </Button>
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
@@ -313,8 +391,9 @@ export default function DealerMyOffersPage() {
                                                                 >
                                                                     {isActioning ? <Loader2 size={14} className="animate-spin" /> : 'Withdraw'}
                                                                 </Button>
+                                                                </>
                                                             )}
-                                                            {offer.status === 'COUNTERED' && (
+                                                            {offer.status === 'COUNTERED' && offer.lastCounteredBy === 'SELLER' && (
                                                                 <>
                                                                     <Button
                                                                         variant="ghost"
@@ -333,6 +412,20 @@ export default function DealerMyOffersPage() {
                                                                         className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-red-500/20 rounded-xl"
                                                                     >
                                                                         Reject
+                                                                    </Button>
+                                                                </>
+                                                            )}
+                                                            {offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER' && (
+                                                                <>
+                                                                    <span className="text-xs font-black uppercase tracking-widest text-blue-400">Awaiting seller</span>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        disabled={isActioning}
+                                                                        onClick={() => handleWithdraw(offer.id)}
+                                                                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-red-500/20 rounded-xl"
+                                                                    >
+                                                                        {isActioning ? <Loader2 size={14} className="animate-spin" /> : 'Cancel Bid'}
                                                                     </Button>
                                                                 </>
                                                             )}
