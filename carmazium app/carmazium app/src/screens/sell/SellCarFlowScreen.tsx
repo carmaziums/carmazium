@@ -29,6 +29,7 @@ import { getRawListingById } from '../../lib/listingsApi';
 import { CAR_MAKES, getModelsForMake } from '../../data/carData';
 import { BottomSheet } from '../../components/BottomSheet';
 import * as Location from 'expo-location';
+import { getAuctionOpeningBid, getAuctionReserveGuide } from '../../lib/auctionPricing';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -661,6 +662,17 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [minIncrement, setMinIncrement] = useState('100');
   const [buyItNowPrice, setBuyItNowPrice] = useState('');
 
+  const auctionMarketValue = listingType === 'AUCTION'
+    ? (parseFloat(priceAsking.replace(/[^0-9.]/g, '')) || 0)
+    : 0;
+  const platformOpeningBid = getAuctionOpeningBid(auctionMarketValue);
+  const reserveGuide = getAuctionReserveGuide(auctionMarketValue);
+
+  useEffect(() => {
+    if (listingType !== 'AUCTION' || platformOpeningBid <= 0) return;
+    setStartingBid(String(platformOpeningBid));
+  }, [listingType, platformOpeningBid]);
+
   // ── Per-image upload progress ──
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
@@ -893,15 +905,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     if (key === 'declAcknowledged' && !declAcknowledged) return 'You must acknowledge this declaration to continue';
     if (key === 'auctionStartDate' && auctionStartMode === 'SCHEDULED' && !auctionStartDate.trim()) return 'Required';
     if (key === 'reservePrice' && (!reservePrice.trim() || parseFloat(reservePrice) <= 0)) return 'Enter a valid reserve price';
-    if (key === 'startingBid') {
-      if (!startingBid.trim() || parseFloat(startingBid) <= 0) return 'Enter a valid starting bid';
-      // Backend rejects startingBid > 70% of asking price on both POST /auctions
-      // and POST /listings/:id/also-auction — mirror that here so the user sees
-      // the problem before submit instead of a raw 400 from the server.
-      const askNum = parseFloat(priceAsking.replace(/[^0-9.]/g, '')) || 0;
-      if (askNum > 0 && parseFloat(startingBid) > askNum * 0.7) {
-        return `Starting bid must be at least 30% below the asking price of £${askNum.toLocaleString()} (max £${(askNum * 0.7).toLocaleString(undefined, { maximumFractionDigits: 0 })})`;
-      }
+    if (key === 'startingBid' && platformOpeningBid <= 0) {
+      return 'Enter a valid Estimated Market Value first';
     }
     if (key === 'minIncrement' && (!minIncrement.trim() || parseFloat(minIncrement) <= 0)) return 'Enter a valid minimum increment';
     return null;
@@ -2779,8 +2784,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // ─── Step 4 — Auction Schedule (auction only) ────────────────────────────────
 
   function renderAuctionSchedule() {
-    const askNum = parseFloat(priceAsking.replace(/[^0-9.]/g, '')) || 0;
-    const maxStartingBid = askNum > 0 ? askNum * 0.7 : 0;
+    const askNum = auctionMarketValue;
     return (
       <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
 
@@ -2836,23 +2840,35 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             placeholder="Minimum you'll accept"
             keyboardType="number-pad"
             required
-            hint="The auction must reach this price for the sale to complete."
-            error={fieldError('reservePrice') ?? undefined}
-          />
-          <FieldInput
-            label="STARTING BID (£) *"
-            value={startingBid}
-            onChange={v => { setStartingBid(v); if (touched.startingBid) setTouched(prev => ({ ...prev, startingBid: true })); }}
-            placeholder="Opening bid amount"
-            keyboardType="number-pad"
-            required
             hint={
               askNum > 0
-                ? `The first bid placed must be at least this amount. Max £${maxStartingBid.toLocaleString(undefined, { maximumFractionDigits: 0 })} (30% below £${askNum.toLocaleString()} asking).`
-                : 'The first bid placed must be at least this amount.'
+                ? `The auction normally completes at reserve. Suggested range: £${reserveGuide.low.toLocaleString('en-GB')}–£${reserveGuide.high.toLocaleString('en-GB')}.`
+                : 'The auction must reach this price for the sale to complete.'
             }
-            error={fieldError('startingBid') ?? undefined}
+            error={fieldError('reservePrice') ?? undefined}
           />
+          {askNum > 0 && reservePrice && Number(reservePrice) > reserveGuide.high ? (
+            <View style={[s.banner, Number(reservePrice) >= askNum ? s.bannerRed : s.bannerAmber, { marginTop: -8, marginBottom: 12 }]}>
+              <Ionicons name="warning-outline" size={12} color={Number(reservePrice) >= askNum ? Colors.accent : Colors.warning} />
+              <Text style={[s.bannerText, { color: Number(reservePrice) >= askNum ? Colors.paleRed_fca5a5 : Colors.lightYellow }]}>
+                {Number(reservePrice) >= askNum
+                  ? 'Your reserve is at or above the Estimated Market Value. Dealer bidding may be very limited.'
+                  : 'Your reserve is above CarMazium’s suggested range and may reduce bidding.'}
+              </Text>
+            </View>
+          ) : null}
+          <View style={{ marginBottom: 16 }}>
+            <SL label="OPENING BID (£)" />
+            <Text style={s.fieldHint}>
+              CarMazium sets this automatically at 70% of your Estimated Market Value, allowing verified dealers to enter up to 30% below market value.
+            </Text>
+            <View style={[s.input, { opacity: 0.85, justifyContent: 'center' }]}>
+              <Text style={{ fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.white }}>
+                {platformOpeningBid > 0 ? `£${platformOpeningBid.toLocaleString('en-GB')}` : 'Set market value first'}
+              </Text>
+            </View>
+            {fieldError('startingBid') ? <Text style={s.inlineError}>{fieldError('startingBid')}</Text> : null}
+          </View>
           <FieldInput
             label="MINIMUM BID INCREMENT (£) *"
             value={minIncrement}
@@ -2879,6 +2895,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             <View style={s.reviewCell}><Text style={s.reviewCellLabel}>DURATION</Text><Text style={s.reviewCellValue}>24 Hours</Text></View>
             <View style={s.reviewCell}><Text style={s.reviewCellLabel}>ANTI-SNIPE</Text><Text style={s.reviewCellValue}>3 Minutes</Text></View>
             <View style={s.reviewCell}><Text style={s.reviewCellLabel}>START</Text><Text style={s.reviewCellValue}>{auctionStartMode === 'NOW' ? 'Immediately' : auctionStartDate || '—'}</Text></View>
+            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>OPENING BID</Text><Text style={s.reviewCellValue}>{platformOpeningBid > 0 ? `£${platformOpeningBid.toLocaleString('en-GB')}` : '—'}</Text></View>
             <View style={s.reviewCell}><Text style={s.reviewCellLabel}>LISTING FEE</Text><Text style={[s.reviewCellValue, { color: Colors.accentGreen }]}>Free</Text></View>
           </View>
         </SectionBox>
