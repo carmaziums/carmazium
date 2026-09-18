@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsUUID, IsOptional, MaxLength } from 'class-validator';
+import { IsIn, IsInt, IsNotEmpty, IsString, IsUUID, IsOptional, Max, MaxLength, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
@@ -77,4 +77,37 @@ export class MarkReadDto {
     @IsOptional()
     @IsUUID()
     messageId?: string;
+}
+
+
+export class CreateChatAttachmentUploadDto {
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(255)
+    name: string;
+
+    @IsString()
+    @IsIn(['image/jpeg', 'image/png', 'image/webp'])
+    mime: string;
+
+    @IsInt()
+    @Min(1)
+    @Max(10 * 1024 * 1024)
+    size: number;
+}
+
+export class SendChatAttachmentDto extends CreateChatAttachmentUploadDto {
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(500)
+    path: string;
+
+    @IsOptional()
+    @IsString()
+    @MaxLength(2000)
+    caption?: string;
+
+    @IsOptional()
+    @IsUUID()
+    clientMessageId?: string;
 }
