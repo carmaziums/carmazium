@@ -776,6 +776,18 @@ export class ListingsService {
         if (updateListingDto.listingType) {
             updateData.type = updateListingDto.listingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED';
         }
+
+        // FREE is reserved for Auction listings. If an older/stale client sends
+        // FREE for a retail listing (or converts a FREE auction draft to retail),
+        // normalise it to BASIC so the £1 payment gate cannot be bypassed.
+        const targetListingType = updateData.type ?? listing.type;
+        if (updateListingDto.badgeTier !== undefined || (targetListingType === 'CLASSIFIED' && listing.badgeTier === 'FREE')) {
+            const requestedBadgeTier = updateListingDto.badgeTier ?? listing.badgeTier;
+            updateData.badgeTier =
+                targetListingType === 'CLASSIFIED' && requestedBadgeTier === 'FREE'
+                    ? 'BASIC'
+                    : requestedBadgeTier;
+        }
         // DVLA extended fields
         if (updateListingDto.motStatus !== undefined) updateData.motStatus = updateListingDto.motStatus;
         if (updateListingDto.taxStatus !== undefined) updateData.taxStatus = updateListingDto.taxStatus;
@@ -961,6 +973,20 @@ export class ListingsService {
             );
         }
 
+        // FREE is only valid for auctions. Heal legacy/stale retail drafts before
+        // any status/payment decision so retail can never inherit the auction tier.
+        const effectiveBadgeTier =
+            listing.type === 'CLASSIFIED' && listing.badgeTier === 'FREE'
+                ? 'BASIC'
+                : listing.badgeTier;
+
+        if (effectiveBadgeTier !== listing.badgeTier) {
+            await this.prisma.listing.update({
+                where: { id },
+                data: { badgeTier: effectiveBadgeTier },
+            });
+        }
+
         // Already active — nothing to do
         if (listing.status === 'ACTIVE') {
             return { activated: true };
@@ -1009,19 +1035,19 @@ export class ListingsService {
         if (isAdmin) {
             await this.prisma.listing.update({
                 where: { id },
-                data: buildListingActivationData(listing.badgeTier),
+                data: buildListingActivationData(effectiveBadgeTier),
             });
             if (listing.sellerId) {
                 await this.sellersService.incrementListings(listing.sellerId).catch(() => { });
             }
             this.logger.log(
-                `Listing ${id} published directly by admin ${userId} on the ${listing.badgeTier} tier — no fee, no review`,
+                `Listing ${id} published directly by admin ${userId} on the ${effectiveBadgeTier} tier — no fee, no review`,
             );
             return { activated: true };
         }
 
-        // FREE tier listings have no fee — submit for review directly
-        if (listing.badgeTier === 'FREE') {
+        // Only FREE AUCTION listings skip the listing fee.
+        if (listing.type === 'AUCTION' && effectiveBadgeTier === 'FREE') {
             await this.prisma.listing.update({ where: { id }, data: { status: 'PENDING_REVIEW', rejectionReason: null } });
             await this.notifySubmittedForReview(listing);
             return { activated: false, pendingReview: true };
