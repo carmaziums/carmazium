@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRoomDto, SendMessageDto } from './dto';
-import { ChatContext, Message, Prisma } from '@prisma/client';
+import { ChatContext, Message, Prisma, UserRole } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { messageInboxLink } from './chat-routing';
 
 /**
  * Chat service handling all chat room and message operations
@@ -413,6 +414,8 @@ export class ChatService {
                 listingId: true,
                 context: true,
                 deletedAt: true,
+                initiator: { select: { role: true } },
+                participant: { select: { role: true } },
             },
         });
 
@@ -690,6 +693,11 @@ export class ChatService {
         const recipientId = room.initiatorId === senderId
             ? room.participantId
             : room.initiatorId;
+        const recipientRole = (
+            room.initiatorId === senderId
+                ? room.participant.role
+                : room.initiator.role
+        ) as UserRole;
 
         try {
             const notification = await this.notificationsService.create({
@@ -697,7 +705,7 @@ export class ChatService {
                 type: 'MESSAGE_RECEIVED',
                 title: 'New Message',
                 message: dto.content.substring(0, 50) + (dto.content.length > 50 ? '...' : ''),
-                link: `/dashboard/user?tab=messages&room=${roomId}`,
+                link: messageInboxLink(recipientRole, roomId),
                 data: { roomId, messageId: message.id },
             });
             this.notificationsGateway.sendNotification(recipientId, notification);
