@@ -650,6 +650,22 @@ export class AuctionsService {
         if (auction.status !== 'ACTIVE') {
             throw new BadRequestException('Only ACTIVE auctions can be closed early');
         }
+
+        const highestBid = await this.prisma.bid.findFirst({
+            where: {
+                listingId: auction.listingId,
+                deletedAt: null,
+                cancelledAt: null,
+                archivedAt: null,
+            },
+            orderBy: { amount: 'desc' },
+        });
+        if (highestBid && Number(highestBid.amount) >= Number(auction.reservePrice)) {
+            throw new BadRequestException(
+                'The reserve has been met. The auction must continue normally until it ends.',
+            );
+        }
+
         await this.closeAuction(auctionId);
     }
 
@@ -684,6 +700,13 @@ export class AuctionsService {
         }
 
         const winningAmount = Number(bid.amount);
+        const reservePrice = Number(auction.reservePrice);
+        if (winningAmount >= reservePrice) {
+            throw new BadRequestException(
+                'The reserve has been met. The auction must continue normally until it ends.',
+            );
+        }
+
         const winnerId = bid.bidderId;
         const linkedListingId = (auction.listing as any).linkedListingId as string | null;
 

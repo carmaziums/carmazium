@@ -717,8 +717,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const handleCloseEarly = useCallback(() => {
     if (!auction) return;
     Alert.alert(
-      'Close auction early?',
-      'The current highest bid will be set as the winner. This cannot be undone.',
+      'End auction without a sale?',
+      'This closes the auction without accepting the current below-reserve offer. To sell at the current offer, use Accept Offer instead.',
       [
         { text: 'Keep Open', style: 'cancel' },
         {
@@ -903,14 +903,14 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
       )}
       {/* Seller quick-close control — only when auction is actively running */}
-      {isSeller && isActive && (
+      {isSeller && isActive && !reserveMet && (
         <View style={s.sellerToolsRow}>
           <Ionicons name="settings-outline" size={13} color={Colors.warning} />
           <Text style={s.sellerToolsLabel}>Seller Tools</Text>
           <TouchableOpacity
-            style={[s.sellerCloseBtn, closingEarly && { opacity: 0.6 }]}
+            style={[s.sellerCloseBtn, (closingEarly || reserveMet) && { opacity: 0.6 }]}
             onPress={handleCloseEarly}
-            disabled={closingEarly}
+            disabled={closingEarly || reserveMet}
             activeOpacity={0.8}
           >
             {closingEarly
@@ -1437,7 +1437,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                         <Text style={[s.bidAmt, { fontFamily: FontFamily.mono }]}>{fmt(bid.amount)}</Text>
                         <Text style={s.bidTime}>{bid.time}</Text>
                         {/* Seller-only "Accept" button — ends the auction at this bid */}
-                        {isSeller && isActive && i === 0 && (
+                        {isSeller && isActive && !reserveMet && i === 0 && (
                           <TouchableOpacity
                             style={[s.acceptBidBtn, acceptingBidId === bid.id && { opacity: 0.6 }]}
                             onPress={() => handleAcceptBid(bid)}
@@ -1699,14 +1699,14 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 from live state, and web has no equivalent. */}
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity
-                style={[s.quickBidBtn, { flex: 1, backgroundColor: Colors.accentAlpha10, borderColor: Colors.accentAlpha25, borderWidth: 1 }, closingEarly && { opacity: 0.6 }]}
+                style={[s.quickBidBtn, { flex: 1, backgroundColor: Colors.accentAlpha10, borderColor: Colors.accentAlpha25, borderWidth: 1 }, (closingEarly || reserveMet) && { opacity: 0.6 }]}
                 activeOpacity={0.8}
                 onPress={handleCloseEarly}
-                disabled={closingEarly}
+                disabled={closingEarly || reserveMet}
               >
                 {closingEarly
                   ? <ActivityIndicator size="small" color={Colors.accent} />
-                  : <Text style={[s.quickBidBtnText, { color: Colors.accent }]}>CLOSE NOW</Text>
+                  : <Text style={[s.quickBidBtnText, { color: Colors.accent }]}>{reserveMet ? 'RUNNING TO END' : 'CLOSE NOW'}</Text>
                 }
               </TouchableOpacity>
             </View>

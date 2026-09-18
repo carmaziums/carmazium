@@ -310,6 +310,72 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
         expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
+    it('does not let the seller use the legacy close-now path after reserve is met', async () => {
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1',
+            listingId: 'listing-1',
+            status: 'ACTIVE',
+            reservePrice: 10000,
+            listing: {
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                price: 10000,
+                linkedListingId: null,
+                bids: [],
+            },
+        });
+        prisma.bid.findFirst.mockResolvedValue({
+            id: 'bid-current',
+            listingId: 'listing-1',
+            bidderId: 'dealer-1',
+            amount: 10000,
+        });
+
+        await expect(
+            service.sellerClose('auction-1', 'seller-1'),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/reserve has been met/i) });
+
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('rejects early acceptance once the current highest bid has met the reserve', async () => {
+        const auction = {
+            id: 'auction-1',
+            listingId: 'listing-1',
+            status: 'ACTIVE',
+            reservePrice: 10000,
+            listing: {
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                price: 10000,
+                linkedListingId: null,
+                year: 2020,
+                make: 'Test',
+                model: 'Car',
+                bids: [],
+            },
+        };
+        const bid = {
+            id: 'bid-current',
+            listingId: 'listing-1',
+            bidderId: 'dealer-1',
+            amount: 10000,
+            deletedAt: null,
+            cancelledAt: null,
+            archivedAt: null,
+        };
+
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.bid.findUnique.mockResolvedValue(bid);
+        prisma.bid.findFirst.mockResolvedValue(bid);
+
+        await expect(
+            service.acceptBid('auction-1', 'bid-current', 'seller-1'),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/reserve has been met/i) });
+
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
     it('allows the seller to accept the current highest offer even when it is below reserve', async () => {
         const auction = {
             id: 'auction-1',
