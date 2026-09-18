@@ -109,9 +109,9 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/dealer/wishlist",
-        label: "Wishlist",
-        title: "Wishlist",
-        subHeader: "Vehicles you're tracking across the marketplace",
+        label: "Saved Cars",
+        title: "Saved Cars",
+        subHeader: "Vehicles you've saved to review and make offers on",
         icon: Heart,
         section: "Buying"
     },
