@@ -8,6 +8,7 @@ import {
     Tag, Fingerprint, Wrench, History as HistoryIcon, ShieldCheck,
     MapPinned, Truck, Layers, Gavel, ImageIcon, AlignLeft,
     Star, SlidersHorizontal, RotateCcw, ArrowLeft, ArrowRight,
+    GripVertical, Move,
 } from "lucide-react"
 import { getAdminListing, updateListingAsAdmin } from "@/lib/adminApi"
 import { uploadImage } from "@/lib/supabase"
@@ -142,6 +143,19 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
     const [imageUploading, setImageUploading] = React.useState(false)
     const [adjustingImageIndex, setAdjustingImageIndex] = React.useState<number | null>(null)
     const [imageDraft, setImageDraft] = React.useState<{ fit: VehicleImageFit; x: number; y: number; zoom: number }>({ fit: 'cover', x: 50, y: 50, zoom: 1 })
+    const [draggingImageIndex, setDraggingImageIndex] = React.useState<number | null>(null)
+    const [isPanningImage, setIsPanningImage] = React.useState(false)
+    const imageReorderRef = React.useRef<{ pointerId: number; index: number } | null>(null)
+    const imagePanRef = React.useRef<{
+        pointerId: number
+        startClientX: number
+        startClientY: number
+        startX: number
+        startY: number
+        zoom: number
+        width: number
+        height: number
+    } | null>(null)
     const [saving, setSaving] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [savedMsg, setSavedMsg] = React.useState<string | null>(null)
@@ -268,26 +282,66 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
         setAdjustingImageIndex(current => current === index ? null : current !== null && current > index ? current - 1 : current)
     }
 
-    const makeCover = (index: number) => {
-        if (index <= 0) return
+    const moveImageTo = (from: number, target: number) => {
+        if (from === target || from < 0 || target < 0 || from >= editImages.length || target >= editImages.length) return
+
         setEditImages(prev => {
             const next = [...prev]
-            const [image] = next.splice(index, 1)
-            next.unshift(image)
+            const [image] = next.splice(from, 1)
+            next.splice(target, 0, image)
             return next
         })
-        setAdjustingImageIndex(current => current === index ? 0 : current !== null && current < index ? current + 1 : current)
+
+        setAdjustingImageIndex(current => {
+            if (current === null) return current
+            if (current === from) return target
+            if (from < target && current > from && current <= target) return current - 1
+            if (target < from && current >= target && current < from) return current + 1
+            return current
+        })
+    }
+
+    const makeCover = (index: number) => {
+        if (index <= 0) return
+        moveImageTo(index, 0)
     }
 
     const moveImage = (index: number, delta: number) => {
-        const target = index + delta
-        if (target < 0 || target >= editImages.length) return
-        setEditImages(prev => {
-            const next = [...prev]
-            ;[next[index], next[target]] = [next[target], next[index]]
-            return next
-        })
-        setAdjustingImageIndex(current => current === index ? target : current === target ? index : current)
+        moveImageTo(index, index + delta)
+    }
+
+    const beginImageReorder = (index: number, event: React.PointerEvent<HTMLButtonElement>) => {
+        if (event.pointerType === 'mouse' && event.button !== 0) return
+        event.preventDefault()
+        event.stopPropagation()
+        event.currentTarget.setPointerCapture(event.pointerId)
+        imageReorderRef.current = { pointerId: event.pointerId, index }
+        setDraggingImageIndex(index)
+    }
+
+    const handleImageReorderMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+        const drag = imageReorderRef.current
+        if (!drag || drag.pointerId !== event.pointerId) return
+
+        event.preventDefault()
+        const targetCard = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-photo-index]')
+        const target = targetCard ? Number(targetCard.dataset.photoIndex) : NaN
+        if (!Number.isInteger(target) || target < 0 || target >= editImages.length || target === drag.index) return
+
+        moveImageTo(drag.index, target)
+        drag.index = target
+        setDraggingImageIndex(target)
+    }
+
+    const endImageReorder = (event: React.PointerEvent<HTMLButtonElement>) => {
+        const drag = imageReorderRef.current
+        if (!drag || drag.pointerId !== event.pointerId) return
+
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId)
+        }
+        imageReorderRef.current = null
+        setDraggingImageIndex(null)
     }
 
     const openImageAdjuster = (index: number) => {
@@ -307,6 +361,52 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
 
     const resetImageAdjustment = () => {
         setImageDraft({ fit: 'cover', x: 50, y: 50, zoom: 1 })
+    }
+
+    const beginImagePan = (event: React.PointerEvent<HTMLDivElement>) => {
+        if (event.pointerType === 'mouse' && event.button !== 0) return
+
+        const rect = event.currentTarget.getBoundingClientRect()
+        event.preventDefault()
+        event.currentTarget.setPointerCapture(event.pointerId)
+        imagePanRef.current = {
+            pointerId: event.pointerId,
+            startClientX: event.clientX,
+            startClientY: event.clientY,
+            startX: imageDraft.x,
+            startY: imageDraft.y,
+            zoom: imageDraft.zoom,
+            width: Math.max(rect.width, 1),
+            height: Math.max(rect.height, 1),
+        }
+        setIsPanningImage(true)
+    }
+
+    const handleImagePan = (event: React.PointerEvent<HTMLDivElement>) => {
+        const pan = imagePanRef.current
+        if (!pan || pan.pointerId !== event.pointerId) return
+
+        event.preventDefault()
+        const xDelta = ((event.clientX - pan.startClientX) / pan.width) * 100 / Math.max(pan.zoom, 1)
+        const yDelta = ((event.clientY - pan.startClientY) / pan.height) * 100 / Math.max(pan.zoom, 1)
+        const clamp = (value: number) => Math.min(100, Math.max(0, value))
+
+        setImageDraft(current => ({
+            ...current,
+            x: clamp(pan.startX - xDelta),
+            y: clamp(pan.startY - yDelta),
+        }))
+    }
+
+    const endImagePan = (event: React.PointerEvent<HTMLDivElement>) => {
+        const pan = imagePanRef.current
+        if (!pan || pan.pointerId !== event.pointerId) return
+
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId)
+        }
+        imagePanRef.current = null
+        setIsPanningImage(false)
     }
 
     const handleSave = async () => {
@@ -588,7 +688,7 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                                     <div className="space-y-5">
                                         <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
                                             <p className="text-sm font-bold">Photo presentation</p>
-                                            <p className="mt-1 text-xs text-[var(--text-muted)]">Photo 1 is the public cover. Reorder photos, choose a different cover, or adjust how any photo sits inside listing frames. The stored image itself is not recompressed or cropped.</p>
+                                            <p className="mt-1 text-xs text-[var(--text-muted)]">Photo 1 is the public cover. Drag photo cards into the order you want, choose a different cover, or adjust how any photo sits inside listing frames. In the adjuster, drag the photo itself to reposition it. The stored image itself is not recompressed or cropped.</p>
                                         </div>
 
                                         {adjustingImageIndex !== null && editImages[adjustingImageIndex] && (() => {
@@ -600,11 +700,20 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                                                             <p className="text-xs font-black uppercase tracking-widest">Adjust photo {adjustingImageIndex + 1}</p>
                                                             {adjustingImageIndex === 0 && <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold text-white"><Star size={10} fill="currentColor" /> Cover</span>}
                                                         </div>
-                                                        <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-[var(--border-default)] bg-black/10">
+                                                        <div
+                                                            className={`relative aspect-[4/3] overflow-hidden rounded-xl border border-[var(--border-default)] bg-black/10 select-none ${isPanningImage ? 'cursor-grabbing ring-2 ring-primary/50' : 'cursor-grab'}`}
+                                                            style={{ touchAction: 'none' }}
+                                                            onPointerDown={beginImagePan}
+                                                            onPointerMove={handleImagePan}
+                                                            onPointerUp={endImagePan}
+                                                            onPointerCancel={endImagePan}
+                                                            aria-label="Drag photo to reposition it inside the frame"
+                                                        >
                                                             <img
                                                                 src={source}
                                                                 alt={`Vehicle photo ${adjustingImageIndex + 1} preview`}
-                                                                className="h-full w-full transition-transform duration-150"
+                                                                draggable={false}
+                                                                className="pointer-events-none h-full w-full select-none transition-transform duration-150"
                                                                 style={{
                                                                     objectFit: imageDraft.fit,
                                                                     objectPosition: `${imageDraft.x}% ${imageDraft.y}%`,
@@ -612,6 +721,9 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                                                                     transformOrigin: `${imageDraft.x}% ${imageDraft.y}%`,
                                                                 }}
                                                             />
+                                                            <span className="pointer-events-none absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-[10px] font-bold text-white shadow-lg">
+                                                                <Move size={12} /> Drag photo to reposition
+                                                            </span>
                                                         </div>
                                                     </div>
                                                     <div className="space-y-4">
@@ -646,7 +758,11 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                                             {editImages.map((img, i) => {
                                                 const presentation = parseVehicleImagePresentation(img)
                                                 return (
-                                                    <div key={`${presentation.src}-${i}`} className="group overflow-hidden rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)]">
+                                                    <div
+                                                        key={presentation.src}
+                                                        data-photo-index={i}
+                                                        className={`group overflow-hidden rounded-xl border bg-[var(--bg-input)] transition-all ${draggingImageIndex === i ? 'border-primary opacity-75 ring-2 ring-primary/40 shadow-lg' : 'border-[var(--border-default)]'}`}
+                                                    >
                                                         <div className="relative aspect-[4/3] overflow-hidden bg-black/10">
                                                             <Image
                                                                 src={presentation.src}
@@ -658,6 +774,19 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                                                             />
                                                             <span className="absolute left-2 top-2 rounded bg-black/65 px-2 py-1 text-[10px] font-bold text-white">#{i + 1}</span>
                                                             {i === 0 && <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold text-white"><Star size={10} fill="currentColor" /> Cover</span>}
+                                                            <button
+                                                                type="button"
+                                                                aria-label={`Drag photo ${i + 1} to reorder`}
+                                                                title="Drag to reorder"
+                                                                onPointerDown={(event) => beginImageReorder(i, event)}
+                                                                onPointerMove={handleImageReorderMove}
+                                                                onPointerUp={endImageReorder}
+                                                                onPointerCancel={endImageReorder}
+                                                                className="absolute bottom-2 left-1/2 inline-flex -translate-x-1/2 cursor-grab touch-none items-center gap-1 rounded-full bg-black/70 px-2.5 py-1.5 text-[10px] font-bold text-white shadow-md active:cursor-grabbing"
+                                                                style={{ touchAction: 'none' }}
+                                                            >
+                                                                <GripVertical size={12} /> Drag
+                                                            </button>
                                                         </div>
                                                         <div className="grid grid-cols-2 gap-1.5 p-2">
                                                             {i !== 0 ? <button type="button" onClick={() => makeCover(i)} className="col-span-2 inline-flex items-center justify-center gap-1 rounded-lg bg-amber-500/10 px-2 py-1.5 text-[10px] font-bold text-amber-500 hover:bg-amber-500/20"><Star size={11} /> Make cover</button> : <span className="col-span-2 py-1.5 text-center text-[10px] font-bold text-[var(--text-muted)]">Primary listing photo</span>}
