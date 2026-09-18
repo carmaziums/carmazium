@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Image from "next/image"
-import { MessageSquare, Search, User, Loader2, Check } from "lucide-react"
+import { MessageSquare, Search, User, Loader2, Check, ShieldAlert } from "lucide-react"
 import { useChat } from "@/context/ChatContext"
 import { getChatDisplayName, isSupportUser, type ChatRoom } from "@/lib/chatApi"
 import { chatMessagePreview } from "@/lib/chatMessageContent"
@@ -156,6 +156,23 @@ export function ChatRoomList({
                                             <p className="text-xs text-primary/90 truncate mb-1 font-medium">
                                                 {room.listing.title}
                                             </p>
+                                        )}
+
+                                        {room.context === 'DISPUTE' && (
+                                            <div className="mb-1.5 flex flex-wrap gap-1">
+                                                <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-black uppercase ${room.disputeCase?.status === 'RESOLVED'
+                                                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                                                    : 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                                                }`}>
+                                                    <ShieldAlert size={9} />
+                                                    {room.disputeCase?.status === 'RESOLVED' ? 'Resolved dispute' : 'Dispute'}
+                                                </span>
+                                                {room.disputeCase?.joinedAdminId && (
+                                                    <span className="rounded-full border border-blue-500/25 bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-bold text-blue-400">
+                                                        CarMazium joined
+                                                    </span>
+                                                )}
+                                            </div>
                                         )}
 
                                         {showSupportOps && room.context === 'SUPPORT' && (
