@@ -68,6 +68,9 @@ export class AuctionsService {
         // of that value. The browser/app may still send startingBid for backward
         // compatibility, but it is never authoritative.
         const marketValue = Number(listing.price);
+        if (!Number.isFinite(marketValue) || marketValue <= 0) {
+            throw new BadRequestException('A valid Estimated Market Value is required before this vehicle can be auctioned');
+        }
         const platformStartingBid = calculatePlatformOpeningBid(marketValue);
 
         const existing = await this.prisma.auction.findUnique({
