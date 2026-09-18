@@ -370,6 +370,10 @@ model User {
   transactions             Transaction[]
   chatRoomsAsInitiator     ChatRoom[]              @relation("Initiator")
   chatRoomsAsParticipant   ChatRoom[]              @relation("Participant")
+  supportAssignments        ChatRoom[]              @relation("SupportAssignedAdmin")
+  supportNotesAuthored      SupportNote[]
+  broadcastCampaigns        BroadcastCampaign[]
+  broadcastDeliveries       BroadcastDelivery[]
   messages                 Message[]
   notifications            Notification[]
   watchlistItems           WatchlistItem[]
@@ -1078,25 +1082,49 @@ enum ChatContext {
   @@map("chat_context")
 }
 
-model ChatRoom {
-  id              String      @id @default(uuid())
-  initiatorId     String
-  participantId   String
-  listingId       String?
-  context         ChatContext
-  conversationKey String       @unique
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  deletedAt       DateTime?
+enum BroadcastCampaignStatus {
+  SENDING
+  COMPLETED
+  PARTIAL
+  FAILED
 
-  initiator   User      @relation("Initiator", fields: [initiatorId], references: [id])
-  participant User      @relation("Participant", fields: [participantId], references: [id])
-  listing     Listing?  @relation(fields: [listingId], references: [id])
-  messages    Message[]
+  @@map("broadcast_campaign_status")
+}
+
+enum BroadcastDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+
+  @@map("broadcast_delivery_status")
+}
+
+model ChatRoom {
+  id                     String      @id @default(uuid())
+  initiatorId            String
+  participantId          String
+  listingId              String?
+  context                ChatContext
+  conversationKey        String       @unique
+  supportAssignedAdminId String?
+  supportTags            String[]     @default([])
+  supportClosedAt        DateTime?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+  deletedAt              DateTime?
+
+  initiator            User          @relation("Initiator", fields: [initiatorId], references: [id])
+  participant          User          @relation("Participant", fields: [participantId], references: [id])
+  listing              Listing?      @relation(fields: [listingId], references: [id])
+  supportAssignedAdmin User?         @relation("SupportAssignedAdmin", fields: [supportAssignedAdminId], references: [id], onDelete: SetNull)
+  supportNotes         SupportNote[]
+  messages             Message[]
 
   @@index([initiatorId])
   @@index([participantId])
   @@index([context])
+  @@index([supportAssignedAdminId])
+  @@index([supportClosedAt])
   @@map("chat_rooms")
 }
 
@@ -1123,6 +1151,68 @@ model Message {
   @@index([senderId])
   @@index([chatRoomId, createdAt(sort: Desc), id(sort: Desc)])
   @@map("messages")
+}
+
+model SupportNote {
+  id         String   @id @default(uuid())
+  chatRoomId String
+  authorId   String
+  body       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  author   User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([chatRoomId, createdAt(sort: Desc)])
+  @@index([authorId])
+  @@map("support_notes")
+}
+
+model BroadcastCampaign {
+  id         String                  @id @default(uuid())
+  adminId    String
+  audience   String
+  role       UserRole?
+  text       String?
+  mediaUrl   String?
+  mediaKind  String?
+  mediaName  String?
+  mediaMime  String?
+  mediaSize  Int?
+  requested  Int
+  sent       Int                     @default(0)
+  failed     Int                     @default(0)
+  status     BroadcastCampaignStatus @default(SENDING)
+  createdAt  DateTime                @default(now())
+  finishedAt DateTime?
+
+  admin      User                @relation(fields: [adminId], references: [id])
+  deliveries BroadcastDelivery[]
+
+  @@index([createdAt(sort: Desc)])
+  @@index([adminId])
+  @@map("broadcast_campaigns")
+}
+
+model BroadcastDelivery {
+  id         String                  @id @default(uuid())
+  campaignId String
+  userId     String
+  roomId     String?
+  messageId  String?
+  status     BroadcastDeliveryStatus @default(PENDING)
+  error      String?
+  createdAt  DateTime                @default(now())
+  updatedAt  DateTime                @updatedAt
+
+  campaign BroadcastCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, userId])
+  @@index([campaignId, status])
+  @@index([userId])
+  @@map("broadcast_deliveries")
 }
 
 // ============================================================================
