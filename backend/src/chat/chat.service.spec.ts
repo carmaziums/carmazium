@@ -100,6 +100,7 @@ describe('ChatService — conversation context and authorization', () => {
                 findMany: jest.fn(),
                 count: jest.fn(),
                 update: jest.fn(),
+                updateMany: jest.fn(),
             },
             message: {
                 create: jest.fn(),
@@ -1348,6 +1349,100 @@ describe('ChatService — conversation context and authorization', () => {
         expect(result.data[0].messageContent).toBe('Reported evidence only');
         expect(prisma.message.findMany).not.toHaveBeenCalled();
         expect(prisma.chatRoom.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('claims an open moderation report atomically for exactly one admin', async () => {
+        const openReport = {
+            id: 'report-claim',
+            chatRoomId: 'private-room',
+            reporterId: buyerId,
+            reportedUserId: sellerId,
+            status: 'OPEN',
+            reviewedById: null,
+        };
+        const reviewingReport = {
+            ...openReport,
+            status: 'REVIEWING',
+            reviewedById: adminId,
+            reporter: { id: buyerId, email: 'buyer@example.com', role: 'BUYER' },
+            reportedUser: { id: sellerId, email: 'seller@example.com', role: 'SELLER' },
+            reviewedBy: { id: adminId, email: 'admin@example.com' },
+        };
+
+        prisma.chatReport.findUnique
+            .mockResolvedValueOnce(openReport)
+            .mockResolvedValueOnce(reviewingReport);
+        prisma.chatReport.updateMany.mockResolvedValue({ count: 1 });
+
+        const result = await service.updateChatReport(
+            openReport.id,
+            adminId,
+            { status: 'REVIEWING' as any },
+        );
+
+        expect(result.status).toBe('REVIEWING');
+        expect(prisma.chatReport.updateMany).toHaveBeenCalledWith({
+            where: {
+                id: openReport.id,
+                status: 'OPEN',
+                reviewedById: null,
+            },
+            data: expect.objectContaining({
+                status: 'REVIEWING',
+                reviewedById: adminId,
+                reviewedAt: expect.any(Date),
+            }),
+        });
+    });
+
+    it('rejects a losing moderation claim when another admin wins the race', async () => {
+        const openReport = {
+            id: 'report-race',
+            chatRoomId: 'private-room',
+            reporterId: buyerId,
+            reportedUserId: sellerId,
+            status: 'OPEN',
+            reviewedById: null,
+        };
+
+        prisma.chatReport.findUnique
+            .mockResolvedValueOnce(openReport)
+            .mockResolvedValueOnce({
+                status: 'REVIEWING',
+                reviewedById: secondAdminId,
+            });
+        prisma.chatReport.updateMany.mockResolvedValue({ count: 0 });
+
+        await expect(
+            service.updateChatReport(
+                openReport.id,
+                adminId,
+                { status: 'REVIEWING' as any },
+            ),
+        ).rejects.toMatchObject({
+            message: expect.stringMatching(/claimed by another admin/i),
+        });
+    });
+
+    it('keeps closed moderation reports immutable', async () => {
+        prisma.chatReport.findUnique.mockResolvedValue({
+            id: 'report-closed',
+            status: 'RESOLVED',
+            reviewedById: adminId,
+        });
+
+        await expect(
+            service.updateChatReport(
+                'report-closed',
+                secondAdminId,
+                { status: 'RESOLVED' as any },
+            ),
+        ).rejects.toMatchObject({
+            message: expect.stringMatching(/already been closed/i),
+        });
+
+        expect(prisma.chatReport.updateMany).not.toHaveBeenCalled();
+        expect(prisma.chatReport.update).not.toHaveBeenCalled();
     });
 
     it('uses different conversation keys for different retail vehicles between the same users', async () => {
