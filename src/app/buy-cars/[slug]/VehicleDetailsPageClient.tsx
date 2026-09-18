@@ -178,7 +178,7 @@ function OfferModal({
                 <div className="flex gap-3">
                     <Button variant="outline" className="flex-1 border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white" onClick={onClose}>Cancel</Button>
                     <Button className="flex-1 shadow-neon" disabled={loading || isInvalid} onClick={handleSubmit}>
-                        {loading ? <><Loader2 size={16} className="animate-spin mr-2" />Submitting...</> : `Submit Offer`}
+                        {loading ? <><Loader2 size={16} className="animate-spin mr-2" />Submitting...</> : isEditing ? 'Update Offer' : 'Submit Private Offer'}
                     </Button>
                 </div>
             </div>
@@ -241,8 +241,8 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     const [isDescExpanded, setIsDescExpanded] = React.useState(false)
     const [enquiring, setEnquiring] = React.useState(false)
     const [showOfferModal, setShowOfferModal] = React.useState(false)
-    const [latestOffer, setLatestOffer] = React.useState<LatestOffer | null>(null)
     const [myOffer, setMyOffer] = React.useState<LatestOffer | null>(null)
+    const [myOfferLoaded, setMyOfferLoaded] = React.useState(false)
     const [offerSuccess, setOfferSuccess] = React.useState(false)
     const [isWatchlisted, setIsWatchlisted] = React.useState(false)
     const [watchlistLoading, setWatchlistLoading] = React.useState(false)
@@ -258,11 +258,6 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
         if (!userLoc.lat || !userLoc.lng || !listing?.latitude || !listing?.longitude) return null
         return haversineDistanceMiles(userLoc.lat, userLoc.lng, listing.latitude, listing.longitude)
     }, [userLoc, listing])
-
-    // Auto-open offer modal if navigated with ?editOffer=true
-    React.useEffect(() => {
-        if (isEditMode) setShowOfferModal(true)
-    }, [isEditMode])
 
     // Returning from Stripe after paying to have the HPI report emailed —
     // verify the session actually completed, apply the fallback in case the
@@ -294,9 +289,6 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
         // it down as initialListing — skip the redundant client-side refetch
         // that used to fire on every mount regardless.
         if (hasInitialListing) {
-            if (initialListing!.offers && initialListing!.offers.length > 0) {
-                setLatestOffer(initialListing!.offers[0])
-            }
             return
         }
         async function fetchListing() {
@@ -304,9 +296,6 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                 setLoading(true)
                 const data = await getListingBySlug(slug)
                 setListing(data)
-                if (data.offers && data.offers.length > 0) {
-                    setLatestOffer(data.offers[0])
-                }
             } catch (err) {
                 console.error('Failed to fetch listing:', err)
                 setError('Failed to load vehicle details')
@@ -335,14 +324,34 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
             .catch(() => { })
     }, [user, authLoading, slug])
 
-    // Separately fetch the current user's own offer for this listing
-    // This runs after the listing is loaded so we have the listing ID
+    // Fetch only the authenticated viewer's own offer. Retail negotiations
+    // are private, so no other buyer's offer is loaded into this page.
     React.useEffect(() => {
-        if (!user || !listing) return
-        // Don't fetch for the seller — they can't make offers on their own listing
-        if (listing.sellerId === user.id) return
-        getMyOfferForListing(listing.id).then(setMyOffer).catch(() => { })
-    }, [user, listing])
+        if (!listing) return
+        if (!user || listing.sellerId === user.id) {
+            setMyOffer(null)
+            setMyOfferLoaded(true)
+            return
+        }
+        setMyOfferLoaded(false)
+        getMyOfferForListing(listing.id)
+            .then(setMyOffer)
+            .catch(() => setMyOffer(null))
+            .finally(() => setMyOfferLoaded(true))
+    }, [user, listing?.id, listing?.sellerId])
+
+    // Saved Cars can deep-link directly into Make/Edit Offer. Wait for the
+    // user's existing negotiation to load so a pending offer is amended in
+    // place rather than accidentally attempting to create a duplicate.
+    React.useEffect(() => {
+        if (!isEditMode || !listing || !myOfferLoaded) return
+        if (listing.status !== 'ACTIVE' || listing.sellerId === user?.id) return
+        if (myOffer?.status === 'COUNTERED') {
+            router.replace('/dashboard/buyer/offers')
+            return
+        }
+        setShowOfferModal(true)
+    }, [isEditMode, listing, myOfferLoaded, myOffer, user?.id, router])
 
     // Check if listing is in user's watchlist
     React.useEffect(() => {
@@ -364,15 +373,6 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
             .then(data => data && setDeliveryDistanceInfo(data))
             .catch(() => {})
     }, [listing?.id, userLoc?.postcode])
-
-    // Determine the current viewer's relationship to the offer
-    // Uses myOffer (not latestOffer) so third-party buyers aren't misidentified as 'public'
-    const offerViewerRole: 'buyer' | 'seller' | 'public' = React.useMemo(() => {
-        if (!user || !latestOffer) return 'public'
-        if (listing?.sellerId === user.id) return 'seller'
-        if (myOffer) return 'buyer'   // I have made an offer on this listing
-        return 'public'
-    }, [user, latestOffer, myOffer, listing])
 
     // Client-side document.title for SEO
     React.useEffect(() => {
@@ -540,10 +540,10 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
             {showOfferModal && listing && (
                 <OfferModal
                     listing={listing}
+                    existingOffer={myOffer}
                     onClose={() => setShowOfferModal(false)}
                     onSuccess={(offer) => {
-                        setMyOffer(offer)            // update buyer's own offer
-                        setLatestOffer(offer)         // also update the public display
+                        setMyOffer(offer)
                         setShowOfferModal(false)
                         setOfferSuccess(true)
                     }}
@@ -921,12 +921,9 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                         </div>
                                     </div>
 
-                                    {(offerViewerRole === 'buyer' ? myOffer : latestOffer) && (
+                                    {myOffer && listing.sellerId !== user?.id && (
                                         <div className="mb-4">
-                                            <OfferStatusChip
-                                                offer={(offerViewerRole === 'buyer' ? myOffer : latestOffer)!}
-                                                viewerRole={offerViewerRole}
-                                            />
+                                            <OfferStatusChip offer={myOffer} />
                                         </div>
                                     )}
 
@@ -1370,14 +1367,10 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                             </div>
                                         </div>
 
-                                        {/* Offer Status */}
-                                        {/* Buyer sees their own offer chip; seller/public see the listing's latest offer chip */}
-                                        {(offerViewerRole === 'buyer' ? myOffer : latestOffer) && (
+                                        {/* Private offer status: only the current buyer sees their negotiation. */}
+                                        {myOffer && listing.sellerId !== user?.id && (
                                             <div className="mb-4">
-                                                <OfferStatusChip
-                                                    offer={(offerViewerRole === 'buyer' ? myOffer : latestOffer)!}
-                                                    viewerRole={offerViewerRole}
-                                                />
+                                                <OfferStatusChip offer={myOffer} />
                                             </div>
                                         )}
                                         <div className="space-y-3">
