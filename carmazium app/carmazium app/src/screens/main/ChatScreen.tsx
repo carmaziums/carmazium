@@ -963,6 +963,25 @@ const styles = StyleSheet.create({
     padding: 18,
     paddingBottom: 26,
   },
+  loadEarlierButton: {
+    alignSelf: 'center',
+    minWidth: 170,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    backgroundColor: Colors.bgSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+    marginBottom: 4,
+    paddingHorizontal: 16,
+  },
+  loadEarlierText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+  },
   dateSeparator: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs - 2,
@@ -1013,6 +1032,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 4,
+  },
+  bubbleFailed: {
+    borderWidth: 1,
+    borderColor: Colors.warning,
   },
   bubbleText: {
     fontFamily: FontFamily.regular,
@@ -1072,6 +1095,19 @@ const styles = StyleSheet.create({
   },
   readTick: {
     marginLeft: 4,
+  },
+  deliveryStateRow: {
+    marginTop: 5,
+    paddingHorizontal: 2,
+  },
+  deliveryStateText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size10,
+    color: Colors.textMuted,
+  },
+  deliveryStateFailed: {
+    color: Colors.warning,
+    textDecorationLine: 'underline',
   },
   // "Seen" indicator (Instagram-style: tiny avatar + label under last read bubble)
   seenRow: {
