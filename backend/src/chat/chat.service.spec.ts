@@ -12,6 +12,7 @@ describe('ChatService — conversation context and authorization', () => {
     let prisma: any;
     let notificationsService: any;
     let notificationsGateway: any;
+    let chatAttachmentService: any;
     let service: ChatService;
 
     const users = (first = buyerId, second = sellerId) => ([
@@ -73,7 +74,19 @@ describe('ChatService — conversation context and authorization', () => {
         };
         notificationsService = { create: jest.fn() };
         notificationsGateway = { sendNotification: jest.fn() };
-        service = new ChatService(prisma, notificationsService, notificationsGateway);
+        chatAttachmentService = {
+            hydrateMessages: jest.fn(async (messages: any[]) => messages),
+            hydrateMessage: jest.fn(async (message: any) => ({ ...message, attachmentUrl: null })),
+            validateMetadata: jest.fn(),
+            assertPathOwnership: jest.fn(),
+            assertUploaded: jest.fn(),
+        };
+        service = new ChatService(
+            prisma,
+            notificationsService,
+            notificationsGateway,
+            chatAttachmentService,
+        );
     });
 
     it('blocks auction room creation until the auction has ended and the winner fee is paid', async () => {
@@ -222,6 +235,8 @@ describe('ChatService — conversation context and authorization', () => {
             listingId,
             context: ChatContext.RETAIL,
             deletedAt: null,
+            initiator: { role: 'BUYER' },
+            participant: { role: 'SELLER' },
         });
         prisma.listing.findUnique.mockResolvedValue(retailListing());
         prisma.message.findFirst.mockResolvedValue(savedMessage);
