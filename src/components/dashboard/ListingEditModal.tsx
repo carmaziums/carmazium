@@ -7,9 +7,15 @@ import {
     X, Loader2, Save, AlertCircle, CheckCircle2, Circle, CircleDot,
     Tag, Fingerprint, Wrench, History as HistoryIcon, ShieldCheck,
     MapPinned, Truck, Layers, Gavel, ImageIcon, AlignLeft,
+    Star, SlidersHorizontal, RotateCcw, ArrowLeft, ArrowRight,
 } from "lucide-react"
 import { getAdminListing, updateListingAsAdmin } from "@/lib/adminApi"
 import { uploadImage } from "@/lib/supabase"
+import {
+    encodeVehicleImagePresentation,
+    parseVehicleImagePresentation,
+    type VehicleImageFit,
+} from "@/lib/vehicleImagePresentation"
 
 const FUEL_TYPES = ['PETROL', 'DIESEL', 'ELECTRIC', 'HYBRID', 'PLUGIN_HYBRID', 'LPG', 'HYDROGEN_CELL', 'BI_FUEL', 'NATURAL_GAS', 'PETROL_HYBRID', 'DIESEL_HYBRID', 'PETROL_PLUGIN_HYBRID', 'DIESEL_PLUGIN_HYBRID', 'UNLISTED']
 const TRANSMISSIONS = ['MANUAL', 'AUTOMATIC', 'SEMI_AUTOMATIC', 'CVT']
@@ -134,6 +140,8 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
     const [originalImages, setOriginalImages] = React.useState<string[]>([])
     const [activeSection, setActiveSection] = React.useState<string>('core')
     const [imageUploading, setImageUploading] = React.useState(false)
+    const [adjustingImageIndex, setAdjustingImageIndex] = React.useState<number | null>(null)
+    const [imageDraft, setImageDraft] = React.useState<{ fit: VehicleImageFit; x: number; y: number; zoom: number }>({ fit: 'cover', x: 50, y: 50, zoom: 1 })
     const [saving, setSaving] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [savedMsg, setSavedMsg] = React.useState<string | null>(null)
@@ -227,6 +235,7 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                 const images = Array.isArray(l.images) ? [...l.images] : []
                 setEditImages(images)
                 setOriginalImages(images)
+                setAdjustingImageIndex(null)
             })
             .catch(err => setLoadError(errorMessage(err, 'Failed to load listing')))
             .finally(() => setLoading(false))
@@ -256,6 +265,48 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
 
     const handleRemoveImage = (index: number) => {
         setEditImages(prev => prev.filter((_, i) => i !== index))
+        setAdjustingImageIndex(current => current === index ? null : current !== null && current > index ? current - 1 : current)
+    }
+
+    const makeCover = (index: number) => {
+        if (index <= 0) return
+        setEditImages(prev => {
+            const next = [...prev]
+            const [image] = next.splice(index, 1)
+            next.unshift(image)
+            return next
+        })
+        setAdjustingImageIndex(current => current === index ? 0 : current !== null && current < index ? current + 1 : current)
+    }
+
+    const moveImage = (index: number, delta: number) => {
+        const target = index + delta
+        if (target < 0 || target >= editImages.length) return
+        setEditImages(prev => {
+            const next = [...prev]
+            ;[next[index], next[target]] = [next[target], next[index]]
+            return next
+        })
+        setAdjustingImageIndex(current => current === index ? target : current === target ? index : current)
+    }
+
+    const openImageAdjuster = (index: number) => {
+        const image = parseVehicleImagePresentation(editImages[index])
+        setImageDraft({ fit: image.fit, x: image.x, y: image.y, zoom: image.zoom })
+        setAdjustingImageIndex(index)
+    }
+
+    const applyImageAdjustment = () => {
+        if (adjustingImageIndex === null) return
+        setEditImages(prev => prev.map((image, index) =>
+            index === adjustingImageIndex
+                ? encodeVehicleImagePresentation(image, imageDraft)
+                : image
+        ))
+    }
+
+    const resetImageAdjustment = () => {
+        setImageDraft({ fit: 'cover', x: 50, y: 50, zoom: 1 })
     }
 
     const handleSave = async () => {
@@ -309,7 +360,7 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                 <div className="shrink-0 flex items-center gap-4 p-4 md:p-5 border-b border-[var(--border-default)]">
                     <div className="w-12 h-12 rounded-lg overflow-hidden bg-[var(--bg-input)] border border-[var(--border-default)] shrink-0 flex items-center justify-center">
                         {listing?.images?.[0] ? (
-                            <Image src={listing.images[0]} alt="" width={48} height={48} className="w-full h-full object-cover" />
+                            <Image src={parseVehicleImagePresentation(listing.images[0]).src} alt="" width={48} height={48} className="w-full h-full object-cover" />
                         ) : (
                             <ImageIcon size={18} className="text-[var(--text-muted)]" />
                         )}
@@ -534,34 +585,105 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                                 )}
 
                                 {active.key === 'photos' && (
-                                    <div className="flex flex-wrap gap-3">
-                                        {editImages.map((img, i) => (
-                                            <div key={i} className="relative group">
-                                                <Image src={img} alt="" width={112} height={84} className="w-28 h-[84px] rounded-lg object-cover border border-[var(--border-default)]" />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRemoveImage(i)}
-                                                    aria-label="Remove photo"
-                                                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
-                                                >
-                                                    <X size={12} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                        <label className="w-28 h-[84px] rounded-lg border border-dashed border-[var(--border-default)] flex items-center justify-center cursor-pointer hover:border-primary/40 transition-colors shrink-0">
-                                            {imageUploading ? <Loader2 size={18} className="animate-spin text-[var(--text-muted)]" /> : <span className="text-2xl text-[var(--text-muted)]">+</span>}
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="hidden"
-                                                disabled={imageUploading}
-                                                onChange={(e) => {
-                                                    const file = e.target.files?.[0]
-                                                    if (file) handleAddImage(file)
-                                                    e.target.value = ''
-                                                }}
-                                            />
-                                        </label>
+                                    <div className="space-y-5">
+                                        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                                            <p className="text-sm font-bold">Photo presentation</p>
+                                            <p className="mt-1 text-xs text-[var(--text-muted)]">Photo 1 is the public cover. Reorder photos, choose a different cover, or adjust how any photo sits inside listing frames. The stored image itself is not recompressed or cropped.</p>
+                                        </div>
+
+                                        {adjustingImageIndex !== null && editImages[adjustingImageIndex] && (() => {
+                                            const source = parseVehicleImagePresentation(editImages[adjustingImageIndex]).src
+                                            return (
+                                                <div className="grid gap-5 rounded-2xl border border-primary/25 bg-primary/5 p-4 md:grid-cols-[minmax(280px,1.1fr)_minmax(260px,0.9fr)]">
+                                                    <div>
+                                                        <div className="mb-2 flex items-center justify-between gap-3">
+                                                            <p className="text-xs font-black uppercase tracking-widest">Adjust photo {adjustingImageIndex + 1}</p>
+                                                            {adjustingImageIndex === 0 && <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold text-white"><Star size={10} fill="currentColor" /> Cover</span>}
+                                                        </div>
+                                                        <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-[var(--border-default)] bg-black/10">
+                                                            <img
+                                                                src={source}
+                                                                alt={`Vehicle photo ${adjustingImageIndex + 1} preview`}
+                                                                className="h-full w-full transition-transform duration-150"
+                                                                style={{
+                                                                    objectFit: imageDraft.fit,
+                                                                    objectPosition: `${imageDraft.x}% ${imageDraft.y}%`,
+                                                                    transform: `scale(${imageDraft.zoom})`,
+                                                                    transformOrigin: `${imageDraft.x}% ${imageDraft.y}%`,
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-4">
+                                                        <div>
+                                                            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Frame</p>
+                                                            <div className="flex gap-2">
+                                                                <button type="button" onClick={() => setImageDraft(v => ({ ...v, fit: 'cover' }))} className={`rounded-lg border px-3 py-2 text-xs font-bold ${imageDraft.fit === 'cover' ? 'border-primary bg-primary/15 text-primary' : 'border-[var(--border-default)]'}`}>Fill frame</button>
+                                                                <button type="button" onClick={() => setImageDraft(v => ({ ...v, fit: 'contain' }))} className={`rounded-lg border px-3 py-2 text-xs font-bold ${imageDraft.fit === 'contain' ? 'border-primary bg-primary/15 text-primary' : 'border-[var(--border-default)]'}`}>Show full photo</button>
+                                                            </div>
+                                                        </div>
+                                                        {([
+                                                            ['Zoom', 'zoom', 1, 2.5, 0.05, `${Math.round(imageDraft.zoom * 100)}%`],
+                                                            ['Move left / right', 'x', 0, 100, 1, `${Math.round(imageDraft.x)}%`],
+                                                            ['Move up / down', 'y', 0, 100, 1, `${Math.round(imageDraft.y)}%`],
+                                                        ] as const).map(([label, key, min, max, step, valueLabel]) => (
+                                                            <label key={key} className="block">
+                                                                <span className="mb-2 flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]"><span>{label}</span><span>{valueLabel}</span></span>
+                                                                <input type="range" min={min} max={max} step={step} value={imageDraft[key]} onChange={(e) => setImageDraft(v => ({ ...v, [key]: Number(e.target.value) }))} className="w-full accent-[var(--primary)]" />
+                                                            </label>
+                                                        ))}
+                                                        <div className="flex flex-wrap gap-2 pt-1">
+                                                            <button type="button" onClick={applyImageAdjustment} className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white"><Save size={13} /> Apply placement</button>
+                                                            <button type="button" onClick={resetImageAdjustment} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border-default)] px-3 py-2 text-xs font-bold"><RotateCcw size={13} /> Reset</button>
+                                                            <button type="button" onClick={() => setAdjustingImageIndex(null)} className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-xs font-bold">Close</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })()}
+
+                                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                                            {editImages.map((img, i) => {
+                                                const presentation = parseVehicleImagePresentation(img)
+                                                return (
+                                                    <div key={`${presentation.src}-${i}`} className="group overflow-hidden rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)]">
+                                                        <div className="relative aspect-[4/3] overflow-hidden bg-black/10">
+                                                            <Image
+                                                                src={presentation.src}
+                                                                alt={`Vehicle photo ${i + 1}`}
+                                                                fill
+                                                                sizes="(max-width: 768px) 50vw, 240px"
+                                                                className="transition-transform duration-150"
+                                                                style={{ objectFit: presentation.fit, objectPosition: `${presentation.x}% ${presentation.y}%`, transform: `scale(${presentation.zoom})`, transformOrigin: `${presentation.x}% ${presentation.y}%` }}
+                                                            />
+                                                            <span className="absolute left-2 top-2 rounded bg-black/65 px-2 py-1 text-[10px] font-bold text-white">#{i + 1}</span>
+                                                            {i === 0 && <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold text-white"><Star size={10} fill="currentColor" /> Cover</span>}
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-1.5 p-2">
+                                                            {i !== 0 ? <button type="button" onClick={() => makeCover(i)} className="col-span-2 inline-flex items-center justify-center gap-1 rounded-lg bg-amber-500/10 px-2 py-1.5 text-[10px] font-bold text-amber-500 hover:bg-amber-500/20"><Star size={11} /> Make cover</button> : <span className="col-span-2 py-1.5 text-center text-[10px] font-bold text-[var(--text-muted)]">Primary listing photo</span>}
+                                                            <button type="button" onClick={() => openImageAdjuster(i)} className="inline-flex items-center justify-center gap-1 rounded-lg border border-[var(--border-default)] px-2 py-1.5 text-[10px] font-bold hover:border-primary/40"><SlidersHorizontal size={11} /> Adjust</button>
+                                                            <button type="button" onClick={() => handleRemoveImage(i)} className="inline-flex items-center justify-center gap-1 rounded-lg border border-red-500/30 px-2 py-1.5 text-[10px] font-bold text-red-400 hover:bg-red-500/10"><X size={11} /> Remove</button>
+                                                            <button type="button" disabled={i === 0} onClick={() => moveImage(i, -1)} className="inline-flex items-center justify-center gap-1 rounded-lg border border-[var(--border-default)] px-2 py-1.5 text-[10px] font-bold disabled:opacity-30"><ArrowLeft size={11} /> Earlier</button>
+                                                            <button type="button" disabled={i === editImages.length - 1} onClick={() => moveImage(i, 1)} className="inline-flex items-center justify-center gap-1 rounded-lg border border-[var(--border-default)] px-2 py-1.5 text-[10px] font-bold disabled:opacity-30">Later <ArrowRight size={11} /></button>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                            <label className="aspect-[4/3] rounded-xl border border-dashed border-[var(--border-default)] flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 transition-colors">
+                                                {imageUploading ? <Loader2 size={18} className="animate-spin text-[var(--text-muted)]" /> : <><span className="text-2xl text-[var(--text-muted)]">+</span><span className="mt-1 text-[10px] font-bold text-[var(--text-muted)]">Add photo</span></>}
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    disabled={imageUploading}
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0]
+                                                        if (file) handleAddImage(file)
+                                                        e.target.value = ''
+                                                    }}
+                                                />
+                                            </label>
+                                        </div>
                                     </div>
                                 )}
 
