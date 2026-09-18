@@ -14,7 +14,7 @@ import { EmailService } from '../email/email.service';
 import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
-import { Auction } from '@prisma/client';
+import { Auction, Prisma } from '@prisma/client';
 import { calculatePlatformOpeningBid } from './auction-pricing';
 
 const AUCTION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
@@ -22,6 +22,12 @@ const ANTI_SNIPE_MINUTES = 3;
 // Grace window a declared winner has to pay the £125 buyer fee before the win
 // auto-reverts — see UnpaidAuctionFeeExpiryService.
 const BUYER_FEE_GRACE_MS = 72 * 60 * 60 * 1000; // 72 hours
+
+export interface RetailDealAuctionCancellation {
+    auctionId: string;
+    bidderIds: string[];
+    listingTitle: string;
+}
 
 @Injectable()
 export class AuctionsService {
@@ -527,6 +533,113 @@ export class AuctionsService {
         }
 
         return cancelled;
+    }
+
+    /**
+     * Cancel a linked auction because the same vehicle has entered a retail
+     * sale-pending state. When a transaction client is supplied, all database
+     * changes participate in the caller's transaction; realtime/push side
+     * effects are deliberately published only after that transaction commits.
+     */
+    async cancelLinkedAuctionForRetailDeal(
+        auctionListingId: string,
+        retailListingId: string,
+        tx?: Prisma.TransactionClient,
+    ): Promise<RetailDealAuctionCancellation | null> {
+        const db: any = tx ?? this.prisma;
+
+        const auction = await db.auction.findFirst({
+            where: {
+                listingId: auctionListingId,
+                status: { in: ['ACTIVE', 'SCHEDULED'] },
+                deletedAt: null,
+            },
+            select: {
+                id: true,
+                listing: { select: { title: true } },
+            },
+        });
+
+        const bidderRows = auction
+            ? await db.bid.findMany({
+                where: {
+                    listingId: auctionListingId,
+                    deletedAt: null,
+                    cancelledAt: null,
+                    archivedAt: null,
+                },
+                distinct: ['bidderId'],
+                select: { bidderId: true },
+            })
+            : [];
+
+        // Break the dual-channel relationship whether or not the auction is
+        // still live. A retail acceptance owns the vehicle from this point.
+        await db.listing.updateMany({
+            where: { id: { in: [retailListingId, auctionListingId] } },
+            data: { linkedListingId: null },
+        });
+
+        if (!auction) return null;
+
+        await db.auction.update({
+            where: { id: auction.id },
+            data: {
+                status: 'CANCELLED',
+                buyItNowPendingBuyerId: null,
+                buyItNowPendingAt: null,
+            },
+        });
+
+        await db.listing.update({
+            where: { id: auctionListingId },
+            data: {
+                status: 'DRAFT',
+                linkedListingId: null,
+            },
+        });
+
+        return {
+            auctionId: auction.id,
+            bidderIds: bidderRows.map((row: any) => row.bidderId),
+            listingTitle: auction.listing?.title ?? 'this vehicle',
+        };
+    }
+
+    /**
+     * Realtime and persisted notifications for a retail-deal auction
+     * cancellation. Call only after the surrounding database transaction has
+     * committed successfully.
+     */
+    async publishRetailDealAuctionCancellation(
+        cancellation: RetailDealAuctionCancellation | null,
+    ): Promise<void> {
+        if (!cancellation) return;
+
+        this.auctionGateway.broadcastAuctionEnd(cancellation.auctionId, {
+            auctionId: cancellation.auctionId,
+            winnerId: null,
+            winningBidAmount: null,
+            reserveMet: false,
+        });
+
+        for (const bidderId of cancellation.bidderIds) {
+            try {
+                const notification = await this.notificationsService.create({
+                    userId: bidderId,
+                    type: 'AUCTION_CANCELLED',
+                    title: 'Auction Closed',
+                    message: `The auction for "${cancellation.listingTitle}" has closed because the vehicle is now sale pending through a retail offer.`,
+                    link: '/dashboard/dealer/my-offers',
+                    entityType: 'AUCTION',
+                    entityId: cancellation.auctionId,
+                    actionType: 'CANCELLED',
+                });
+                this.notificationsGateway.sendNotification(bidderId, notification);
+            } catch (error) {
+                console.error('[AuctionsService] Failed to notify bidder of retail-deal cancellation:', error);
+            }
+        }
     }
 
     async sellerClose(auctionId: string, userId: string): Promise<void> {
