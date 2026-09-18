@@ -1303,7 +1303,7 @@ export async function alsoListRetail(
 
 export async function alsoAuction(
     listingId: string,
-    dto: { startTime: string; reservePrice: number; startingBid: number; minIncrement?: number; buyItNowPrice?: number },
+    dto: { startTime: string; reservePrice: number; startingBid?: number; minIncrement?: number; buyItNowPrice?: number },
 ): Promise<{ linkedListingId: string; auctionId: string }> {
     const data = await apiClient<{ data: { linkedListingId: string; auctionId: string } }>(`/listings/${listingId}/also-auction`, {
         method: 'POST',
