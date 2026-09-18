@@ -861,15 +861,15 @@ export class ChatService {
         if (!existing) {
             throw new NotFoundException('Dispute not found.');
         }
-        if (existing.status !== DisputeStatus.OPEN) {
-            throw new BadRequestException('Only an open dispute can be joined.');
-        }
         if (existing.joinedAdminId === adminId) {
             return {
                 room: await this.getRoom(existing.chatRoomId, adminId),
                 eventMessage: null,
                 joined: false,
             };
+        }
+        if (existing.status !== DisputeStatus.OPEN) {
+            throw new BadRequestException('Only an open dispute can be joined.');
         }
         if (existing.joinedAdminId) {
             throw new BadRequestException('This dispute is already assigned to another admin.');
