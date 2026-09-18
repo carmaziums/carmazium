@@ -55,6 +55,7 @@ import { Input } from "@/components/ui/Input"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { RecordSaleModal } from "@/components/dashboard/RecordSaleModal"
+import { AmendOfferModal } from "@/components/offers/AmendOfferModal"
 import { ChatRoomList } from "@/components/chat/ChatRoomList"
 import dynamic from "next/dynamic"
 const ChatWindow = dynamic(() => import("@/components/chat/ChatWindow").then(mod => mod.ChatWindow), { ssr: false })
@@ -374,6 +375,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
 // ─────────────────────────────────────────────────────────────────────────────
 
 function WatchlistTab() {
+    const { user } = useAuth()
     const [items, setItems] = React.useState<WatchlistItem[]>([])
     const [loading, setLoading] = React.useState(true)
     const [removing, setRemoving] = React.useState<string | null>(null)
@@ -410,7 +412,7 @@ function WatchlistTab() {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Watchlist</h2>
+                <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Saved Cars</h2>
             </div>
 
             {loading ? (
@@ -424,7 +426,7 @@ function WatchlistTab() {
                     <div className="w-20 h-20 bg-pink-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-pink-500/20">
                         <Heart size={40} className="text-pink-400/50" />
                     </div>
-                    <h3 className="text-xl font-black text-[var(--text-primary)] uppercase mb-2">Your Watchlist is Empty</h3>
+                    <h3 className="text-xl font-black text-[var(--text-primary)] uppercase mb-2">No Saved Cars Yet</h3>
                     <p className="text-[var(--text-muted)] text-sm max-w-md mx-auto mb-8">
                         Save the vehicles you're interested in by clicking the heart icon on any listing.
                     </p>
@@ -454,7 +456,7 @@ function WatchlistTab() {
                                         onClick={() => handleRemove(item.listingId)}
                                         disabled={removing === item.listingId}
                                         className="absolute top-2 right-2 w-11 h-11 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center text-pink-400 hover:bg-red-500/80 hover:text-white transition-all"
-                                        title="Remove from watchlist"
+                                        title="Remove from Saved Cars"
                                     >
                                         {removing === item.listingId
                                             ? <Loader2 size={16} className="animate-spin" />
@@ -469,11 +471,20 @@ function WatchlistTab() {
                                         {[item.listing.year, item.listing.mileage ? `${item.listing.mileage.toLocaleString()} mi` : null].filter(Boolean).join(' · ')}
                                     </p>
                                     <p className="text-primary font-black text-xl mt-2">{formatPrice(Number(item.listing.price))}</p>
-                                    <Link href={`/buy-cars/${item.listing.slug}`} className="block mt-2">
-                                        <Button variant="outline" className="w-full min-h-[44px] gap-1.5">
-                                            View listing <ChevronRight size={14} />
-                                        </Button>
-                                    </Link>
+                                    <div className="grid grid-cols-1 gap-2 mt-3">
+                                        {item.listing.status === 'ACTIVE' && item.listing.type === 'CLASSIFIED' && item.listing.sellerId !== user?.id && (
+                                            <Link href={`/buy-cars/${item.listing.slug}?makeOffer=true`} className="block">
+                                                <Button className="w-full min-h-[44px] gap-1.5">
+                                                    <Gavel size={14} /> Make Offer
+                                                </Button>
+                                            </Link>
+                                        )}
+                                        <Link href={`/buy-cars/${item.listing.slug}`} className="block">
+                                            <Button variant="outline" className="w-full min-h-[44px] gap-1.5">
+                                                View listing <ChevronRight size={14} />
+                                            </Button>
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -1192,6 +1203,8 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [startingChat, setStartingChat] = React.useState<string | null>(null)
     const [counterAmounts, setCounterAmounts] = React.useState<Record<string, string>>({})
     const [buyerCountering, setBuyerCountering] = React.useState<string | null>(null)
+    const [viewMode, setViewMode] = React.useState<'current' | 'history' | 'all'>('current')
+    const [amendingOffer, setAmendingOffer] = React.useState<Offer | null>(null)
     const router = useRouter()
     const { refreshRooms } = useChat()
 
@@ -1288,31 +1301,80 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
         }
     }
 
+    const currentOffers = offers.filter(offer => offer.status === 'PENDING' || offer.status === 'COUNTERED')
+    const historyOffers = offers.filter(offer => !['PENDING', 'COUNTERED'].includes(offer.status))
+    const displayedOffers = viewMode === 'current'
+        ? currentOffers
+        : viewMode === 'history'
+            ? historyOffers
+            : offers
+    const needsActionCount = currentOffers.filter(offer =>
+        offer.status === 'COUNTERED' && offer.lastCounteredBy === 'SELLER'
+    ).length
+    const acceptedCount = offers.filter(offer => offer.status === 'ACCEPTED').length
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Offers</h2>
-            
+            {amendingOffer && (
+                <AmendOfferModal
+                    offer={amendingOffer}
+                    onClose={() => setAmendingOffer(null)}
+                    onSaved={async () => { await fetchData(); onRefreshStats() }}
+                />
+            )}
+
+            <div>
+                <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Offers</h2>
+                <p className="text-sm text-[var(--text-muted)] mt-1">Manage current bids separately from completed offer history.</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <MetricCard label="Current Bids" value={currentOffers.length} icon={Gavel} color="text-violet-400" bg="bg-violet-500/10" border="border-violet-500/20" statusLabel="Active" loading={loading} />
+                <MetricCard label="Action Required" value={needsActionCount} icon={RefreshCw} color="text-blue-400" bg="bg-blue-500/10" border="border-blue-500/20" statusLabel="Counter" loading={loading} />
+                <MetricCard label="Accepted Offers" value={acceptedCount} icon={CheckCircle2} color="text-emerald-400" bg="bg-emerald-500/10" border="border-emerald-500/20" statusLabel="Closed" loading={loading} />
+            </div>
+
             {/* Active Offers Section */}
             <div className="space-y-4">
-                <h3 className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2">
-                    <Tag size={14} /> Outgoing Offers
-                </h3>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <h3 className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2">
+                        <Tag size={14} /> {viewMode === 'current' ? 'Current Bids' : viewMode === 'history' ? 'Offer History' : 'All Offers'}
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                        {([
+                            ['current', 'Current'],
+                            ['history', 'History'],
+                            ['all', 'All'],
+                        ] as const).map(([value, label]) => (
+                            <button
+                                key={value}
+                                type="button"
+                                onClick={() => setViewMode(value)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest border transition-colors ${viewMode === value
+                                    ? 'bg-primary text-white border-primary'
+                                    : 'bg-[var(--bg-input)] text-[var(--text-muted)] border-[var(--border-default)]'}`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
                 <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                     {/* ── Simple mobile cards (< sm) ── */}
                     <div className="sm:hidden divide-y divide-[var(--border-default)]">
                         {loading ? (
                             <div className="py-16 text-center"><Loader2 className="h-9 w-9 animate-spin text-primary mx-auto" /></div>
-                        ) : offers.length === 0 ? (
-                            <div className="py-16 text-center text-[var(--text-secondary)] italic px-6">No outgoing offers.</div>
+                        ) : displayedOffers.length === 0 ? (
+                            <div className="py-16 text-center text-[var(--text-secondary)] italic px-6">{viewMode === 'current' ? 'No current bids.' : viewMode === 'history' ? 'No closed offer history yet.' : 'No outgoing offers.'}</div>
                         ) : (
-                            offers.map(offer => {
+                            displayedOffers.map(offer => {
                                 const thumb = offer.listing?.images?.[0] || '/assets/images/featured-sports.png'
                                 const isBuyerTurn = offer.status === 'COUNTERED' && offer.lastCounteredBy === 'SELLER'
                                 const isBuyerLocked = (offer.counterAttemptsBuyer ?? 0) >= 5
                                 const expiresAt = offer.counterExpiresAt ? new Date(offer.counterExpiresAt) : null
                                 return (
                                     <div key={offer.id} className="p-4">
-                                        <Link href={`/vehicle/${offer.listing?.slug}`} className="flex gap-3">
+                                        <Link href={`/buy-cars/${offer.listing?.slug}`} className="flex gap-3">
                                             <div className="relative w-20 h-16 rounded-xl overflow-hidden border border-[var(--border-default)] shrink-0">
                                                 <Image src={thumb} alt="" fill className="object-cover" />
                                             </div>
@@ -1373,12 +1435,31 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                         )}
 
                                         {offer.status === 'PENDING' && (
+                                            <div className="grid grid-cols-2 gap-2 mt-3">
+                                                <button
+                                                    onClick={() => setAmendingOffer(offer)}
+                                                    disabled={actioning === offer.id}
+                                                    className="min-h-[46px] rounded-xl border border-blue-500/30 text-blue-400 font-bold text-sm disabled:opacity-60 flex items-center justify-center gap-1.5"
+                                                >
+                                                    <Pencil size={14} /> Amend
+                                                </button>
+                                                <button
+                                                    onClick={() => handleWithdraw(offer.id)}
+                                                    disabled={actioning === offer.id}
+                                                    className="min-h-[46px] rounded-xl border border-red-500/30 text-red-400 font-bold text-sm disabled:opacity-60"
+                                                >
+                                                    {actioning === offer.id ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : 'Cancel bid'}
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {offer.status === 'COUNTERED' && (
                                             <button
                                                 onClick={() => handleWithdraw(offer.id)}
                                                 disabled={actioning === offer.id}
-                                                className="w-full min-h-[46px] mt-3 rounded-xl border border-red-500/30 text-red-400 font-bold text-sm disabled:opacity-60"
+                                                className="w-full min-h-[44px] mt-2 rounded-xl border border-red-500/20 text-red-400 font-bold text-sm disabled:opacity-60"
                                             >
-                                                {actioning === offer.id ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : 'Withdraw offer'}
+                                                {actioning === offer.id ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : 'Cancel bid'}
                                             </button>
                                         )}
 
@@ -1411,10 +1492,10 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                             <tbody className="divide-y divide-[var(--border-default)]">
                                 {loading ? (
                                     <tr><td colSpan={4} className="px-6 py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></td></tr>
-                                ) : offers.length === 0 ? (
-                                    <tr><td colSpan={4} className="px-6 py-10 text-center text-[var(--text-secondary)] italic">No outgoing offers.</td></tr>
+                                ) : displayedOffers.length === 0 ? (
+                                    <tr><td colSpan={4} className="px-6 py-10 text-center text-[var(--text-secondary)] italic">{viewMode === 'current' ? 'No current bids.' : viewMode === 'history' ? 'No closed offer history yet.' : 'No outgoing offers.'}</td></tr>
                                 ) : (
-                                    offers.map(offer => {
+                                    displayedOffers.map(offer => {
                                         const thumb = offer.listing?.images?.[0] || '/assets/images/featured-sports.png'
                                         const buyerRemaining = 5 - (offer.counterAttemptsBuyer ?? 0)
                                         const isBuyerLocked = (offer.counterAttemptsBuyer ?? 0) >= 5
@@ -1423,7 +1504,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                         return (
                                         <tr key={offer.id} className="hover:bg-white/[0.02]">
                                             <td className="px-6 py-4">
-                                                <Link href={`/vehicle/${offer.listing?.slug}`} className="flex items-center gap-3 group">
+                                                <Link href={`/buy-cars/${offer.listing?.slug}`} className="flex items-center gap-3 group">
                                                     <div className="relative w-10 h-8 rounded border border-[var(--border-default)] overflow-hidden shrink-0">
                                                         <Image src={thumb} alt="" fill className="object-cover" />
                                                     </div>
@@ -1485,7 +1566,8 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                                 </div>
                                                             )}
 
-                                                            {/* Standard Accept/Decline actions */}
+                                                            {/* Standard Accept/Decline actions — only after the seller has countered */}
+                                                            {isBuyerTurn && (
                                                             <div className="flex gap-2">
                                                                 <Button
                                                                     size="sm"
@@ -1515,10 +1597,21 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                                     {startingChat === offer.listing?.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'MESSAGE'}
                                                                 </Button>
                                                             </div>
+                                                            )}
                                                         </div>
                                                     )}
                                                     {offer.status === 'PENDING' && (
-                                                        <Button size="sm" variant="ghost" className="h-8 text-red-400 text-xs font-black" onClick={() => handleWithdraw(offer.id)} disabled={actioning === offer.id}>WITHDRAW</Button>
+                                                        <>
+                                                            <Button size="sm" variant="ghost" className="h-8 text-blue-400 text-xs font-black gap-1" onClick={() => setAmendingOffer(offer)} disabled={actioning === offer.id}>
+                                                                <Pencil size={12} /> AMEND
+                                                            </Button>
+                                                            <Button size="sm" variant="ghost" className="h-8 text-red-400 text-xs font-black" onClick={() => handleWithdraw(offer.id)} disabled={actioning === offer.id}>CANCEL</Button>
+                                                        </>
+                                                    )}
+                                                    {offer.status === 'COUNTERED' && (
+                                                        <Button size="sm" variant="ghost" className="h-8 text-red-400 text-xs font-black" onClick={() => handleWithdraw(offer.id)} disabled={actioning === offer.id}>
+                                                            {actioning === offer.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'CANCEL BID'}
+                                                        </Button>
                                                     )}
                                                     {offer.status === 'ACCEPTED' && (
                                                         <Button

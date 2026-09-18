@@ -1180,6 +1180,7 @@ function SearchPageContent() {
                                 {featuredListings.map((listing) => (
                                     <CarCard
                                         key={listing.id}
+                                        listingId={listing.id}
                                         title={listing.title}
                                         make={listing.make}
                                         model={listing.model}
@@ -1220,6 +1221,7 @@ function SearchPageContent() {
                             {listings.map((listing) => (
                                 <CarCard
                                     key={listing.id}
+                                    listingId={listing.id}
                                     title={listing.title}
                                     make={listing.make}
                                     model={listing.model}

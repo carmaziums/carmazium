@@ -244,7 +244,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     const { slug } = React.use(params)
     const router = useRouter()
     const searchParams = useSearchParams()
-    const isEditMode = searchParams.get('editOffer') === 'true'
+    const isEditMode = searchParams.get('editOffer') === 'true' || searchParams.get('makeOffer') === 'true'
     const { user, loading: authLoading } = useAuth()
     const hasInitialListing = initialListing != null && initialListing.slug === slug
     const [listing, setListing] = React.useState<Listing | null>(hasInitialListing ? initialListing : null)

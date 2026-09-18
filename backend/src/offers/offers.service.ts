@@ -9,6 +9,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { EmailService } from '../email/email.service';
 import { CreateOfferDto } from './dto/create-offer.dto';
+import { AmendOfferDto } from './dto/amend-offer.dto';
 import { OfferResponseStatus } from './dto/respond-offer.dto';
 import { Offer, OfferStatus } from '@prisma/client';
 
@@ -550,11 +551,130 @@ export class OffersService {
         });
     }
 
+    // ─── Buyer: Amend a pending offer ──────────────────────────────────────
+
+    /**
+     * Amend a PENDING offer before the seller responds.
+     *
+     * This preserves the same Offer row/negotiation ledger instead of creating
+     * a duplicate offer. The same marketplace protections as makeOffer apply:
+     * the listing must still be active, the offer must be at least 70% of the
+     * asking price, and it must remain strictly above another buyer's highest
+     * active offer.
+     */
+    async amendOffer(offerId: string, buyerId: string, dto: AmendOfferDto): Promise<Offer> {
+        const offer = await this.prisma.offer.findUnique({
+            where: { id: offerId },
+            include: {
+                listing: {
+                    select: {
+                        id: true,
+                        title: true,
+                        sellerId: true,
+                        status: true,
+                        deletedAt: true,
+                        price: true,
+                    },
+                },
+            },
+        });
+
+        if (!offer) {
+            throw new NotFoundException('Offer not found.');
+        }
+        if (offer.buyerId !== buyerId) {
+            throw new ForbiddenException('You did not submit this offer.');
+        }
+        if (offer.status !== 'PENDING') {
+            throw new BadRequestException(
+                'Only a pending offer can be amended. If the seller has countered, use the counter-offer controls instead.',
+            );
+        }
+        if (offer.listing.deletedAt || offer.listing.status !== 'ACTIVE') {
+            throw new BadRequestException('This listing is no longer active.');
+        }
+        if (offer.listing.sellerId === buyerId) {
+            throw new ForbiddenException('You cannot make an offer on your own listing.');
+        }
+
+        const askingPrice = Number(offer.listing.price);
+        const minAllowedOffer = Math.floor(askingPrice * 0.7);
+        const buyerMin = dto.amountMin ?? dto.amount;
+        const buyerMax = dto.amountMax ?? dto.amount;
+
+        if (buyerMin > buyerMax) {
+            throw new BadRequestException('Minimum offer amount cannot be higher than maximum offer amount.');
+        }
+        if (dto.amount < buyerMin || dto.amount > buyerMax) {
+            throw new BadRequestException('Offer amount must be within your minimum and maximum offer range.');
+        }
+        if (buyerMax < minAllowedOffer) {
+            throw new BadRequestException(
+                `Offer must be at least £${minAllowedOffer.toLocaleString('en-GB')} (70% of the asking price).`,
+            );
+        }
+
+        const highestOtherOffer = await this.prisma.offer.findFirst({
+            where: {
+                listingId: offer.listingId,
+                buyerId: { not: buyerId },
+                status: { in: ['PENDING', 'COUNTERED', 'ACCEPTED'] },
+            },
+            orderBy: [
+                { counterAmount: 'desc' },
+                { amount: 'desc' },
+            ],
+        });
+
+        if (highestOtherOffer) {
+            const competingAmount = Math.max(
+                Number(highestOtherOffer.amount),
+                Number(highestOtherOffer.counterAmount ?? 0),
+            );
+            if (dto.amount <= competingAmount) {
+                throw new BadRequestException(
+                    `Your bid must be higher than the current highest bid of £${competingAmount.toLocaleString('en-GB')}.`,
+                );
+            }
+        }
+
+        const updated = await this.prisma.offer.update({
+            where: { id: offerId },
+            data: {
+                amount: dto.amount,
+                amountMin: buyerMin,
+                amountMax: buyerMax,
+                message: dto.message !== undefined ? (dto.message || null) : offer.message,
+            },
+        });
+
+        if (offer.listing.sellerId) {
+            try {
+                const notification = await this.notificationsService.create({
+                    userId: offer.listing.sellerId,
+                    type: 'OFFER_AMENDED',
+                    title: 'Offer Updated',
+                    message: `A buyer updated their offer on "${offer.listing.title}" to £${Number(dto.amount).toLocaleString('en-GB')}.`,
+                    link: '/dashboard/seller/offers',
+                    entityType: 'OFFER',
+                    entityId: offer.id,
+                    actionType: 'AMENDED',
+                    data: { listingId: offer.listingId, offerId: offer.id },
+                });
+                this.notificationsGateway.sendNotification(offer.listing.sellerId, notification);
+            } catch (error) {
+                console.error('[OffersService] Failed to notify seller of amended offer:', error);
+            }
+        }
+
+        return updated;
+    }
+
     // ─── Buyer: Withdraw an offer ───────────────────────────────────────────
 
     /**
-     * Withdraw an offer. Only the buyer who submitted it may withdraw.
-     * The offer must be in PENDING status.
+     * Withdraw an active offer. Only the buyer who submitted it may withdraw.
+     * PENDING and COUNTERED negotiations can be cancelled; closed offers cannot.
      */
     async withdrawOffer(offerId: string, buyerId: string): Promise<Offer> {
         const offer = await this.prisma.offer.findUnique({
@@ -574,7 +694,7 @@ export class OffersService {
             throw new ForbiddenException('You did not submit this offer.');
         }
 
-        if (offer.status !== 'PENDING') {
+        if (!['PENDING', 'COUNTERED'].includes(offer.status)) {
             throw new BadRequestException(`You cannot withdraw an offer that is already ${offer.status.toLowerCase()}.`);
         }
 

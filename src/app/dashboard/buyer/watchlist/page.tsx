@@ -4,11 +4,12 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { getWatchlist, removeFromWatchlist, formatPrice, type WatchlistItem } from "@/lib/listingApi"
-import { Loader2, Heart, Trash2 } from "lucide-react"
+import { Loader2, Heart, Trash2, Gavel, ChevronRight } from "lucide-react"
 
-export default function WatchlistPage() {
+export default function SavedCarsPage() {
     const { user, loading: authLoading } = useAuth()
     const [items, setItems] = React.useState<WatchlistItem[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -25,7 +26,7 @@ export default function WatchlistPage() {
                 setItems(data.data || [])
                 setTotalPages(data.pagination?.totalPages || 1)
             } catch (err) {
-                console.error('Failed to fetch watchlist:', err)
+                console.error('Failed to fetch saved cars:', err)
             } finally {
                 setLoading(false)
             }
@@ -55,7 +56,7 @@ export default function WatchlistPage() {
                 <main className="flex-1 space-y-6">
                     <div className="flex justify-between items-center mb-6">
                         <h1 className="text-3xl font-bold font-heading flex items-center gap-3">
-                            <Heart className="text-pink-400" /> Watchlist
+                            <Heart className="text-pink-400" /> Saved Cars
                         </h1>
                     </div>
 
@@ -65,7 +66,7 @@ export default function WatchlistPage() {
                         </div>
                     ) : items.length === 0 ? (
                         <div className="glass-card p-12 text-center text-[var(--text-muted)]">
-                            Your watchlist is empty. <Link href="/cars" className="text-primary hover:underline">Browse cars to add some!</Link>
+                            Your Saved Cars list is empty. <Link href="/search" className="text-primary hover:underline">Browse cars to add some!</Link>
                         </div>
                     ) : (
                         <>
@@ -76,7 +77,7 @@ export default function WatchlistPage() {
                                             onClick={() => handleRemove(item.listingId)}
                                             disabled={removing === item.listingId}
                                             className="absolute top-3 right-3 z-10 bg-[var(--bg-card)] p-2 rounded-full text-pink-400 hover:bg-red-600 hover:text-white transition-colors disabled:opacity-50"
-                                            title="Remove from watchlist"
+                                            title="Remove from saved cars"
                                         >
                                             {removing === item.listingId ? (
                                                 <Loader2 size={18} className="animate-spin" />
@@ -84,7 +85,7 @@ export default function WatchlistPage() {
                                                 <Heart size={18} fill="currentColor" />
                                             )}
                                         </button>
-                                        <Link href={`/cars/${item.listing.slug}`}>
+                                        <Link href={`/buy-cars/${item.listing.slug}`}>
                                             <div className="relative h-48 w-full bg-[var(--bg-input)]">
                                                 {item.listing.images?.[0] ? (
                                                     <Image
@@ -115,6 +116,16 @@ export default function WatchlistPage() {
                                                 </div>
                                             </div>
                                         </Link>
+                                        <div className="p-4 pt-0 grid gap-2">
+                                            {item.listing.status === 'ACTIVE' && item.listing.type === 'CLASSIFIED' && item.listing.sellerId !== user?.id && (
+                                                <Link href={`/buy-cars/${item.listing.slug}?makeOffer=true`}>
+                                                    <Button className="w-full gap-2"><Gavel size={14} /> Make Offer</Button>
+                                                </Link>
+                                            )}
+                                            <Link href={`/buy-cars/${item.listing.slug}`}>
+                                                <Button variant="outline" className="w-full gap-2">View Listing <ChevronRight size={14} /></Button>
+                                            </Link>
+                                        </div>
                                     </div>
                                 ))}
                             </div>

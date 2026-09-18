@@ -132,6 +132,110 @@ describe('OffersService — incremental bidding', () => {
             service.makeOffer('buyer-A', { listingId: 'listing-1', amount: 5000 } as any),
         ).rejects.toMatchObject({ message: expect.stringMatching(/70%/i) });
     });
+
+
+    it('amends the same pending offer row instead of creating a replacement offer', async () => {
+        prisma.offer.findUnique.mockResolvedValue({
+            id: 'offer-B',
+            listingId: 'listing-1',
+            buyerId: 'buyer-B',
+            amount: 8000,
+            message: 'Old message',
+            status: 'PENDING',
+            listing: {
+                id: 'listing-1',
+                title: 'Test',
+                sellerId: 'seller-1',
+                status: 'ACTIVE',
+                deletedAt: null,
+                price: 10000,
+            },
+        });
+        prisma.offer.findFirst.mockResolvedValue(null);
+        prisma.offer.update.mockResolvedValue({
+            id: 'offer-B',
+            listingId: 'listing-1',
+            buyerId: 'buyer-B',
+            amount: 8500,
+            status: 'PENDING',
+        });
+
+        const result = await service.amendOffer('offer-B', 'buyer-B', {
+            amount: 8500,
+            message: 'Can collect tomorrow',
+        } as any);
+
+        expect(prisma.offer.update).toHaveBeenCalledWith({
+            where: { id: 'offer-B' },
+            data: expect.objectContaining({
+                amount: 8500,
+                amountMin: 8500,
+                amountMax: 8500,
+                message: 'Can collect tomorrow',
+            }),
+        });
+        expect(prisma.offer.create).not.toHaveBeenCalled();
+        expect(result.amount).toBe(8500);
+    });
+
+    it('rejects an amendment that is not above another buyer\'s active offer', async () => {
+        prisma.offer.findUnique.mockResolvedValue({
+            id: 'offer-B',
+            listingId: 'listing-1',
+            buyerId: 'buyer-B',
+            amount: 8500,
+            message: null,
+            status: 'PENDING',
+            listing: {
+                id: 'listing-1',
+                title: 'Test',
+                sellerId: 'seller-1',
+                status: 'ACTIVE',
+                deletedAt: null,
+                price: 10000,
+            },
+        });
+        prisma.offer.findFirst.mockResolvedValue({
+            id: 'offer-A',
+            buyerId: 'buyer-A',
+            amount: 9000,
+            counterAmount: null,
+            status: 'PENDING',
+        });
+
+        await expect(
+            service.amendOffer('offer-B', 'buyer-B', { amount: 9000 } as any),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/higher than the current highest bid/i) });
+
+        expect(prisma.offer.update).not.toHaveBeenCalled();
+    });
+
+    it('allows a buyer to cancel a COUNTERED negotiation that is still active', async () => {
+        prisma.offer.findUnique.mockResolvedValue({
+            id: 'offer-B',
+            listingId: 'listing-1',
+            buyerId: 'buyer-B',
+            amount: 8500,
+            status: 'COUNTERED',
+            listing: {
+                id: 'listing-1',
+                title: 'Test',
+                sellerId: 'seller-1',
+            },
+        });
+        prisma.offer.update.mockResolvedValue({
+            id: 'offer-B',
+            status: 'WITHDRAWN',
+        });
+
+        const result = await service.withdrawOffer('offer-B', 'buyer-B');
+
+        expect(prisma.offer.update).toHaveBeenCalledWith({
+            where: { id: 'offer-B' },
+            data: { status: 'WITHDRAWN' },
+        });
+        expect(result.status).toBe('WITHDRAWN');
+    });
 });
 
 /**
