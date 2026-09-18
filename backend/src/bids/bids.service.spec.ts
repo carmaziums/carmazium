@@ -255,3 +255,120 @@ describe('BidsService — cancelBid', () => {
         ).rejects.toBeInstanceOf(BadRequestException);
     });
 });
+
+
+describe('BidsService — current auction positions', () => {
+    let service: BidsService;
+    let prisma: any;
+
+    beforeEach(async () => {
+        prisma = {
+            listing: { findUnique: jest.fn() },
+            bid: {
+                findFirst: jest.fn(),
+                findMany: jest.fn(),
+                findUnique: jest.fn(),
+                count: jest.fn(),
+                create: jest.fn(),
+                update: jest.fn(),
+            },
+            user: { findUnique: jest.fn() },
+            $queryRaw: jest.fn(),
+        };
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                BidsService,
+                { provide: PrismaService, useValue: prisma },
+                { provide: AuctionsService, useValue: { maybeExtend: jest.fn().mockResolvedValue(null) } },
+                { provide: AuctionGateway, useValue: { broadcastBid: jest.fn(), broadcastBidCancelled: jest.fn() } },
+                { provide: NotificationsService, useValue: { create: jest.fn().mockResolvedValue(null) } },
+            ],
+        }).compile();
+
+        service = module.get<BidsService>(BidsService);
+    });
+
+    it('returns one live position per auction using the user\'s highest bid', async () => {
+        const endTime = new Date(Date.now() + 60 * 60 * 1000);
+        const baseListing = {
+            id: 'listing-1',
+            title: '2019 Test Car',
+            slug: '2019-test-car',
+            images: [],
+            make: 'Test',
+            model: 'Car',
+            year: 2019,
+            mileage: 50000,
+            sellerId: 'seller-1',
+            auction: {
+                id: 'auction-1',
+                status: 'ACTIVE',
+                endTime,
+                minIncrement: 100,
+                startingBid: 5000,
+            },
+        };
+
+        prisma.bid.findMany
+            .mockResolvedValueOnce([
+                { id: 'mine-2', listingId: 'listing-1', bidderId: 'dealer-1', amount: 6200, createdAt: new Date(), listing: baseListing },
+                { id: 'mine-1', listingId: 'listing-1', bidderId: 'dealer-1', amount: 6000, createdAt: new Date(), listing: baseListing },
+            ])
+            .mockResolvedValueOnce([
+                { id: 'other', listingId: 'listing-1', bidderId: 'dealer-2', amount: 6500, createdAt: new Date() },
+                { id: 'mine-2', listingId: 'listing-1', bidderId: 'dealer-1', amount: 6200, createdAt: new Date() },
+                { id: 'mine-1', listingId: 'listing-1', bidderId: 'dealer-1', amount: 6000, createdAt: new Date() },
+            ]);
+
+        const result = await service.findMyActiveAuctionPositions('dealer-1');
+
+        expect(result).toHaveLength(1);
+        expect(result[0]).toMatchObject({
+            listingId: 'listing-1',
+            auctionId: 'auction-1',
+            myHighestBid: 6200,
+            currentHighestBid: 6500,
+            isLeading: false,
+            nextMinimumBid: 6600,
+            bidCount: 3,
+        });
+    });
+
+    it('marks the trader as leading when their highest bid is the live highest bid', async () => {
+        const listing = {
+            id: 'listing-2',
+            title: 'Lead Car',
+            slug: 'lead-car',
+            images: [],
+            make: 'Lead',
+            model: 'Car',
+            year: 2020,
+            mileage: 40000,
+            sellerId: 'seller-2',
+            auction: {
+                id: 'auction-2',
+                status: 'ACTIVE',
+                endTime: new Date(Date.now() + 3600000),
+                minIncrement: 250,
+                startingBid: 5000,
+            },
+        };
+        const now = new Date();
+
+        prisma.bid.findMany
+            .mockResolvedValueOnce([
+                { id: 'mine', listingId: 'listing-2', bidderId: 'dealer-1', amount: 7000, createdAt: now, listing },
+            ])
+            .mockResolvedValueOnce([
+                { id: 'mine', listingId: 'listing-2', bidderId: 'dealer-1', amount: 7000, createdAt: now },
+                { id: 'other', listingId: 'listing-2', bidderId: 'dealer-2', amount: 6500, createdAt: now },
+            ]);
+
+        const result = await service.findMyActiveAuctionPositions('dealer-1');
+
+        expect(result[0].isLeading).toBe(true);
+        expect(result[0].nextMinimumBid).toBe(7250);
+        expect(result[0].canCancelCurrentBid).toBe(true);
+    });
+});
