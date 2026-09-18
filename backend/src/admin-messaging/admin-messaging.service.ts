@@ -243,11 +243,6 @@ export class AdminMessagingService {
                 where = { ...base, role: dto.role };
                 break;
 
-            case AdminMessageAudience.PERSON:
-                if (!dto.userId) throw new BadRequestException('Choose a member.');
-                where = { ...base, id: dto.userId };
-                break;
-
             case AdminMessageAudience.DEALERS:
                 where = { ...base, role: UserRole.DEALER };
                 break;
