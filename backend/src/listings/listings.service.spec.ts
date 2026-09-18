@@ -29,6 +29,7 @@ describe('ListingsService', () => {
                 count: jest.fn(),
                 aggregate: jest.fn(),
                 update: jest.fn(),
+                create: jest.fn(),
             },
             sale: {
                 findFirst: jest.fn(),
@@ -39,8 +40,8 @@ describe('ListingsService', () => {
             dealerStaff: { findFirst: jest.fn() },
             user: { findUnique: jest.fn() },
             transaction: { findMany: jest.fn() },
-            auction: { create: jest.fn() },
-            $transaction: jest.fn(async (cb: any) => cb(prisma)),
+            auction: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+            $transaction: jest.fn(async (arg: any) => Array.isArray(arg) ? Promise.all(arg) : arg(prisma)),
         };
         sellers = { incrementListings: jest.fn(), incrementSales: jest.fn() };
         const config = { get: jest.fn() };
@@ -194,6 +195,26 @@ describe('ListingsService', () => {
 
     describe('publishListing retail payment gate', () => {
         const tenImages = Array.from({ length: 10 }, (_, i) => `image-${i}`);
+        const submissionReady = {
+            images: tenImages,
+            vrm: 'AB12CDE',
+            make: 'BMW',
+            model: 'M3',
+            year: 2020,
+            mileage: 25000,
+            fuelType: 'PETROL',
+            transmission: 'AUTOMATIC',
+            bodyType: 'COUPE',
+            title: 'BMW M3 2020',
+            location: 'Birmingham',
+            owners: '1',
+            description: 'Well presented vehicle with full details.',
+            condition: 'GOOD',
+            stolenRecovered: false,
+            hasOutstandingFinance: false,
+            isLegalRegisteredKeeper: true,
+            isDepartedSale: false,
+        };
 
         it('heals a legacy FREE retail draft to BASIC and still requires payment', async () => {
             prisma.listing.findUnique.mockResolvedValue({
@@ -202,7 +223,7 @@ describe('ListingsService', () => {
                 type: 'CLASSIFIED',
                 badgeTier: 'FREE',
                 status: 'DRAFT',
-                images: tenImages,
+                ...submissionReady,
                 deletedAt: null,
             });
             prisma.user.findUnique.mockResolvedValue({ role: 'USER' });
@@ -229,12 +250,19 @@ describe('ListingsService', () => {
                 type: 'AUCTION',
                 badgeTier: 'FREE',
                 status: 'DRAFT',
+                ...submissionReady,
                 title: 'Auction car',
-                images: tenImages,
                 deletedAt: null,
             });
             prisma.user.findUnique.mockResolvedValue({ role: 'USER' });
             prisma.listing.update.mockResolvedValue({});
+            prisma.auction.findUnique.mockResolvedValue({
+                id: 'auction-1',
+                deletedAt: null,
+                status: 'SCHEDULED',
+                startTime: new Date(Date.now() + 60_000),
+                endTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            });
 
             const result = await service.publishListing('listing-2', 'seller-1');
 
@@ -256,13 +284,14 @@ describe('ListingsService', () => {
             price: 10000,
             title: 'BMW M3',
             slug: 'bmw-m3',
-            images: [],
+            status: 'ACTIVE',
+            images: Array.from({ length: 10 }, (_, i) => `image-${i}`),
             videoUrls: [],
         };
 
         it('normalises a legacy client starting bid to 70% of the retail/reference price', async () => {
             prisma.listing.findUnique.mockResolvedValue(baseSource);
-            prisma.listing.create = jest.fn().mockResolvedValue({ id: 'auction-listing-1' });
+            prisma.listing.create.mockResolvedValue({ id: 'auction-listing-1', title: 'BMW M3', sellerId: 'seller-1' });
             prisma.auction.create.mockResolvedValue({ id: 'auction-1' });
             prisma.listing.update.mockResolvedValue({});
 

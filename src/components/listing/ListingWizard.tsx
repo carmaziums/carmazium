@@ -223,7 +223,7 @@ function InfoTooltip({ text }: { text: string }) {
 
 // ─── HPI Bait Section ─────────────────────────────────────────────────────────
 
-function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnlock: () => void }) {
+function HpiBaitSection({ isUnlocked, required, onUnlock }: { isUnlocked: boolean, required: boolean, onUnlock: () => void }) {
     if (isUnlocked) {
         // Payment succeeded, but the report itself is prepared by our team
         // after review — nothing has actually been checked yet at this point,
@@ -267,16 +267,18 @@ function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnloc
                     </div>
                     
                     <p className="text-[var(--text-secondary)] mb-6 leading-relaxed">
-                        We've found an official HPI record for this vehicle. Unlocking the full report gives you a <strong className="text-[var(--text-primary)]">Premium Verification Badge</strong> on your listing.
+                        {required
+                            ? 'A CarMazium vehicle history report is required before this listing can be submitted.'
+                            : 'Add a CarMazium vehicle history report to strengthen buyer confidence in this listing.'}
                     </p>
                     
                     <div className="flex flex-col items-center md:items-start gap-3 mt-auto">
                         <Button type="button" onClick={onUnlock} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-8 py-6 text-base shadow-neon shrink-0 w-full sm:w-auto border-0">
-                            Unlock Full HPI Report
+                            {required ? 'Request Required HPI Report' : 'Request HPI Report'}
                         </Button>
                         <p className="text-xs text-[var(--text-muted)] italic flex items-center gap-1.5">
                             <BadgeCheck size={14} className="text-emerald-400" />
-                            *Proven to help cars sell up to 2x faster!
+                            {required ? 'Required for new CarMazium listings' : 'Optional for this legacy draft'}
                         </p>
                     </div>
                 </div>
@@ -316,6 +318,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // HPI Payment State
     const [showHpiModal, setShowHpiModal] = React.useState(false)
     const [isHpiUnlocked, setIsHpiUnlocked] = React.useState(false)
+    const [hpiRequired, setHpiRequired] = React.useState(true)
+    const [existingAuctionStatus, setExistingAuctionStatus] = React.useState<string | null>(null)
     const [isVerifyingHpiPayment, setIsVerifyingHpiPayment] = React.useState(false)
     const [hpiVerifyError, setHpiVerifyError] = React.useState<string | null>(null)
     const [isProcessingPayment, setIsProcessingPayment] = React.useState(false)
@@ -416,6 +420,25 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     deliveryMaxMiles: l.deliveryMaxMiles ? String(l.deliveryMaxMiles) : '',
                 }))
                 // Jump straight to step 1 (already pre-filled)
+                const rollout = new Date('2026-09-19T00:00:00.000Z').getTime()
+                const createdAt = l.createdAt ? new Date(l.createdAt).getTime() : rollout
+                setHpiRequired(createdAt >= rollout)
+                setIsHpiUnlocked(!!l.hpiReport)
+                setDvlaSuccess(true)
+                setExistingAuctionStatus(l.auction?.status ?? null)
+                if (l.type === 'AUCTION') {
+                    const now = Date.now()
+                    const auctionStart = l.auction?.startTime ? new Date(l.auction.startTime) : null
+                    setAuctionSchedule({
+                        startTime: auctionStart && auctionStart.getTime() > now
+                            ? auctionStart.toISOString().slice(0, 16)
+                            : 'NOW',
+                        reservePrice: l.auction?.reservePrice ? String(l.auction.reservePrice) : '',
+                        startingBid: l.auction?.startingBid ? String(l.auction.startingBid) : '',
+                        minIncrement: l.auction?.minIncrement ? String(l.auction.minIncrement) : '100',
+                        buyItNowPrice: l.auction?.buyItNowPrice ? String(l.auction.buyItNowPrice) : '',
+                    })
+                }
                 setSellingMethod('list')
                 setCurrentStep(1)
 
@@ -610,7 +633,22 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const validateStep = (): boolean => {
         switch (currentStep) {
             case 1: {
-                const baseValid = !!(formData.vrm && formData.make && formData.model && formData.year && formData.mileage && formData.fuelType && formData.transmission && formData.title && formData.title.length >= 5 && formData.location && formData.owners)
+                const baseValid = !!(
+                    formData.vrm &&
+                    formData.make &&
+                    formData.model &&
+                    formData.year &&
+                    formData.mileage &&
+                    formData.fuelType &&
+                    formData.transmission &&
+                    formData.bodyType &&
+                    formData.title &&
+                    formData.title.length >= 5 &&
+                    formData.location &&
+                    formData.owners &&
+                    formData.description.trim() &&
+                    formData.condition
+                )
                 const isKeeperOrExplained = formData.isLegalRegisteredKeeper === true
                     || (formData.isLegalRegisteredKeeper === false && (formData.notOwnerRelationship ?? '').trim() !== '')
                 const declarationsValid = formData.writeOffCategory !== '' && formData.stolenRecovered !== null && formData.hasOutstandingFinance !== null && isKeeperOrExplained && formData.declarationAcknowledged
@@ -623,7 +661,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 }
                 return baseValid && declarationsValid
             }
-            case 2: return editId ? formData.images.length > 0 : formData.images.length >= 10
+            case 2: return formData.images.length >= 10 && (!hpiRequired || isHpiUnlocked)
             case 3: {
                 const pMin = parseFloat(formData.priceMin)
                 const pAsk = parseFloat(formData.priceAsking)
@@ -731,6 +769,37 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         }
     }
 
+    const ensureAuctionScheduled = async (listingId: string) => {
+        if (formData.listingType !== 'AUCTION') return
+
+        // Existing scheduled auctions are already complete. Cancelled/ended
+        // auctions (for example after admin rejection) are intentionally sent
+        // through the same endpoint so the backend can restart the same row.
+        if (existingAuctionStatus && !['CANCELLED', 'ENDED'].includes(existingAuctionStatus)) {
+            return
+        }
+
+        const isImmediate = auctionSchedule.startTime === 'NOW'
+        const startTimeIso = isImmediate
+            ? new Date().toISOString()
+            : new Date(auctionSchedule.startTime).toISOString()
+
+        await apiClient('/auctions', {
+            method: 'POST',
+            body: JSON.stringify({
+                listingId,
+                startTime: startTimeIso,
+                reservePrice: parseFloat(auctionSchedule.reservePrice),
+                startingBid: parseFloat(auctionSchedule.startingBid),
+                minIncrement: parseFloat(auctionSchedule.minIncrement),
+                ...(auctionSchedule.buyItNowPrice
+                    ? { buyItNowPrice: parseFloat(auctionSchedule.buyItNowPrice) }
+                    : {}),
+            }),
+        })
+        setExistingAuctionStatus('SCHEDULED')
+    }
+
     const handleSubmit = async () => {
         if (!isAuthenticated) { setShowLoginModal(true); return }
         if (!isEmailVerified) { router.push("/auth/onboarding"); return }
@@ -815,11 +884,21 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     : null,
             }
 
+            // Generic listing PATCHes may only change seller-editable vehicle
+            // fields. Lifecycle/commercial fields are handled by dedicated
+            // publish/payment/auction endpoints and are deliberately stripped.
+            const {
+                status: _status,
+                listingType: _listingType,
+                badgeTier: _badgeTier,
+                ...editablePayload
+            } = payload;
+
             if (editId) {
                 // Update existing listing
                 await apiClient<{ data: any }>(`/listings/${editId}`, {
                     method: 'PATCH',
-                    body: JSON.stringify(payload),
+                    body: JSON.stringify(editablePayload),
                 })
 
                 // Save damage records (overwrites previous damage for this listing)
@@ -840,6 +919,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         console.error('Failed to save damage records:', e)
                     }
                 }
+
+                await ensureAuctionScheduled(editId)
 
                 if (payload.badgeTier !== 'FREE') {
                     // Check if this listing already has a completed payment — avoid double-charging
@@ -870,7 +951,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 // User returned from HPI payment — update the existing draft listing instead of creating a new one
                 const response = await apiClient<{ data: any }>(`/listings/${draftListingId}`, {
                     method: 'PATCH',
-                    body: JSON.stringify(payload),
+                    body: JSON.stringify(editablePayload),
                 })
                 const finalListingId = response.data.id
                 const finalSlug = response.data.slug
@@ -896,24 +977,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 localStorage.removeItem('carmazium_listing_draft')
                 localStorage.removeItem('carmazium_hpi_draft_id')
 
-                // Schedule auction if this is an auction listing
-                if (payload.listingType === 'AUCTION') {
-                    const isImmediate = auctionSchedule.startTime === 'NOW'
-                    const startTimeIso = isImmediate
-                        ? new Date().toISOString()
-                        : new Date(auctionSchedule.startTime).toISOString()
-                    await apiClient('/auctions', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            listingId: finalListingId,
-                            startTime: startTimeIso,
-                            reservePrice: parseFloat(auctionSchedule.reservePrice),
-                            startingBid: parseFloat(auctionSchedule.startingBid),
-                            minIncrement: parseFloat(auctionSchedule.minIncrement),
-                            ...(auctionSchedule.buyItNowPrice ? { buyItNowPrice: parseFloat(auctionSchedule.buyItNowPrice) } : {}),
-                        }),
-                    })
-                }
+                await ensureAuctionScheduled(finalListingId)
 
                 if (payload.badgeTier !== 'FREE') {
                     // Check if this draft already has a completed payment — avoid double-charging
@@ -983,24 +1047,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     }
                 }
 
-                // Schedule auction if this is an auction listing
-                if (payload.listingType === 'AUCTION') {
-                    const isImmediate = auctionSchedule.startTime === 'NOW'
-                    const startTimeIso = isImmediate
-                        ? new Date().toISOString()
-                        : new Date(auctionSchedule.startTime).toISOString()
-                    await apiClient('/auctions', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            listingId: newListingId,
-                            startTime: startTimeIso,
-                            reservePrice: parseFloat(auctionSchedule.reservePrice),
-                            startingBid: parseFloat(auctionSchedule.startingBid),
-                            minIncrement: parseFloat(auctionSchedule.minIncrement),
-                            ...(auctionSchedule.buyItNowPrice ? { buyItNowPrice: parseFloat(auctionSchedule.buyItNowPrice) } : {}),
-                        }),
-                    })
-                }
+                await ensureAuctionScheduled(newListingId)
 
                 if (isPaidTier) {
                     // Ask the server whether this listing actually needs paying for before
@@ -2570,7 +2617,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {/* HPI Bait Section (shown after VRM lookup) */}
                             {dvlaSuccess && (
                                 <HpiBaitSection
-                                    isUnlocked={isHpiUnlocked}
+                                    isUnlocked={isHpiUnlocked} required={hpiRequired}
                                     onUnlock={() => setShowHpiModal(true)}
                                 />
                             )}

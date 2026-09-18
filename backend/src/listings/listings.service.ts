@@ -26,7 +26,7 @@ import {
     ListingType,
     ListingStatus,
 } from '@prisma/client';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { SellersService } from '../sellers/sellers.service';
 import { ScraperService } from '../scraper/scraper.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -149,6 +149,82 @@ export class ListingsService {
         return `${baseSlug}-${uniqueSuffix}`;
     }
 
+    private normalizeVrm(vrm: string | null | undefined): string {
+        return (vrm ?? '').replace(/\s+/g, '').trim().toUpperCase();
+    }
+
+    private assertListingImageUrls(imageUrls: string[], userId?: string): void {
+        if (imageUrls.length > 100) {
+            throw new BadRequestException('A maximum of 100 listing photos is allowed');
+        }
+
+        const supabaseBase = this.config.get<string>('SUPABASE_URL')
+            || this.config.get<string>('NEXT_PUBLIC_SUPABASE_URL');
+        if (!supabaseBase) {
+            throw new BadRequestException('Vehicle photo storage is not configured');
+        }
+
+        let allowedOrigin = '';
+        try {
+            allowedOrigin = new URL(supabaseBase).origin;
+        } catch {
+            throw new BadRequestException('Vehicle photo storage is not configured');
+        }
+
+        const prefix = '/storage/v1/object/public/listings/';
+        const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+        for (const value of imageUrls) {
+            const clean = value?.split('#')[0] ?? '';
+            let parsed: URL;
+            try {
+                parsed = new URL(clean);
+            } catch {
+                throw new BadRequestException('Every listing photo must be a valid CarMazium storage URL');
+            }
+
+            if (parsed.protocol !== 'https:' || parsed.origin !== allowedOrigin || !parsed.pathname.startsWith(prefix)) {
+                throw new BadRequestException('Only CarMazium listing photos may be attached to a listing');
+            }
+
+            const objectKey = decodeURIComponent(parsed.pathname.slice(prefix.length));
+            if (!objectKey || objectKey.includes('..')) {
+                throw new BadRequestException('Invalid listing photo path');
+            }
+
+            const firstSegment = objectKey.split('/')[0];
+            if (userId && uuidLike.test(firstSegment) && firstSegment !== userId) {
+                throw new ForbiddenException('The listing contains a photo outside your upload area');
+            }
+        }
+    }
+
+    private getSubmissionMissingFields(listing: any): string[] {
+        const missing: string[] = [];
+
+        if (!Array.isArray(listing.images) || listing.images.length < 10) missing.push('at least 10 photos');
+        if (!listing.vrm) missing.push('VRM');
+        if (!listing.make) missing.push('make');
+        if (!listing.model) missing.push('model');
+        if (!listing.year) missing.push('year');
+        if (listing.mileage === null || listing.mileage === undefined) missing.push('mileage');
+        if (!listing.fuelType) missing.push('fuel type');
+        if (!listing.transmission) missing.push('transmission');
+        if (!listing.bodyType) missing.push('body type');
+        if (!listing.title || listing.title.trim().length < 5) missing.push('title');
+        if (!listing.location?.trim()) missing.push('location');
+        if (!listing.owners?.trim()) missing.push('previous keepers');
+        if (!listing.description?.trim()) missing.push('description');
+        if (!listing.condition) missing.push('condition');
+        if (listing.stolenRecovered === null || listing.stolenRecovered === undefined) missing.push('stolen/recovered declaration');
+        if (listing.hasOutstandingFinance === null || listing.hasOutstandingFinance === undefined) missing.push('outstanding finance declaration');
+        if (listing.isLegalRegisteredKeeper === null || listing.isLegalRegisteredKeeper === undefined) missing.push('registered keeper declaration');
+        if (listing.isLegalRegisteredKeeper === false && !listing.notOwnerRelationship?.trim()) missing.push('relationship/authority to sell');
+        if (listing.isDepartedSale && !listing.departedRelationship?.trim()) missing.push('estate/departed-sale relationship');
+
+        return missing;
+    }
+
     /**
      * Re-hosts external images to Supabase Storage
      */
@@ -206,8 +282,34 @@ export class ListingsService {
      */
     async create(createListingDto: CreateListingDto, userId?: string): Promise<Listing> {
         const slug = this.generateSlug(createListingDto.title);
+        const normalizedVrm = this.normalizeVrm(createListingDto.vrm);
+        const originalImages = createListingDto.images ?? [];
+
+        this.assertListingImageUrls(originalImages, userId);
 
         const listingType: ListingType = createListingDto.listingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED';
+
+        // Prevent double-submit/retry races from creating multiple unsold
+        // records for the same seller and VRM. Retail+auction dual-channel
+        // listings use the explicit linked-listing endpoints instead.
+        if (userId && normalizedVrm) {
+            const existingForSeller = await this.prisma.listing.findMany({
+                where: {
+                    sellerId: userId,
+                    deletedAt: null,
+                    status: { not: 'SOLD' },
+                },
+                select: { id: true, vrm: true, type: true, status: true },
+            });
+            const duplicate = existingForSeller.find(
+                candidate => this.normalizeVrm(candidate.vrm) === normalizedVrm,
+            );
+            if (duplicate) {
+                throw new BadRequestException(
+                    `This vehicle already has an existing ${duplicate.type.toLowerCase()} listing (${duplicate.status.toLowerCase()}). Open that listing instead of creating a duplicate.`,
+                );
+            }
+        }
 
         // Auctions are free to list; all classified listings require at minimum BASIC (£1)
         const rawBadgeTier = createListingDto.badgeTier ?? 'BASIC';
@@ -234,10 +336,7 @@ export class ListingsService {
             );
         }
 
-        // Create listing immediately with original image URLs so the endpoint returns fast.
-        // Image re-hosting (Supabase upload) runs in the background and updates the record.
-        const originalImages = createListingDto.images ?? [];
-
+        // Create the listing with validated CarMazium storage URLs.
         const listing = await this.prisma.listing.create({
             data: {
                 title: createListingDto.title,
@@ -255,7 +354,7 @@ export class ListingsService {
                 model: createListingDto.model ?? null,
                 year: createListingDto.year,
                 mileage: createListingDto.mileage,
-                vrm: createListingDto.vrm ?? null,
+                vrm: normalizedVrm || null,
                 vin: createListingDto.vin ?? null,
                 // Technical specs
                 fuelType: mapFuelType(createListingDto.fuelType),
@@ -658,6 +757,8 @@ export class ListingsService {
                         id: true,
                         status: true,
                         reservePrice: true,
+                        startingBid: true,
+                        minIncrement: true,
                         startTime: true,
                         endTime: true,
                         winnerId: true,
@@ -776,25 +877,9 @@ export class ListingsService {
         if (updateListingDto.vrm) updateData.vrm = updateListingDto.vrm;
         if (updateListingDto.fuelType) updateData.fuelType = mapFuelType(updateListingDto.fuelType);
         if (updateListingDto.transmission) updateData.transmission = mapTransmission(updateListingDto.transmission);
-        if (updateListingDto.status) {
-            updateData.status = updateListingDto.status === 'ACTIVE' ? 'ACTIVE' :
-                updateListingDto.status === 'SOLD' ? 'SOLD' : 'DRAFT';
-        }
-        if (updateListingDto.listingType) {
-            updateData.type = updateListingDto.listingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED';
-        }
-
-        // FREE is reserved for Auction listings. If an older/stale client sends
-        // FREE for a retail listing (or converts a FREE auction draft to retail),
-        // normalise it to BASIC so the £1 payment gate cannot be bypassed.
-        const targetListingType = updateData.type ?? listing.type;
-        if (updateListingDto.badgeTier !== undefined || (targetListingType === 'CLASSIFIED' && listing.badgeTier === 'FREE')) {
-            const requestedBadgeTier = updateListingDto.badgeTier ?? listing.badgeTier;
-            updateData.badgeTier =
-                targetListingType === 'CLASSIFIED' && requestedBadgeTier === 'FREE'
-                    ? 'BASIC'
-                    : requestedBadgeTier;
-        }
+        // status, listing type and badge tier are intentionally not editable here.
+        // Those fields drive payment, review and auction lifecycle rules and must
+        // go through their dedicated server-side endpoints.
         // DVLA extended fields
         if (updateListingDto.motStatus !== undefined) updateData.motStatus = updateListingDto.motStatus;
         if (updateListingDto.taxStatus !== undefined) updateData.taxStatus = updateListingDto.taxStatus;
@@ -808,11 +893,9 @@ export class ListingsService {
         if (updateListingDto.hasOutstandingFinance !== undefined) updateData.hasOutstandingFinance = updateListingDto.hasOutstandingFinance;
         if (updateListingDto.isLegalRegisteredKeeper !== undefined) updateData.isLegalRegisteredKeeper = updateListingDto.isLegalRegisteredKeeper;
         if (updateListingDto.writeOffCategory !== undefined) {
-            // Enforce the auction-only rule on update too
-            const targetType = updateListingDto.listingType
-                ? (updateListingDto.listingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED')
-                : listing.type;
-            if ((updateListingDto.writeOffCategory === 'CAT_A' || updateListingDto.writeOffCategory === 'CAT_B') && targetType === 'CLASSIFIED') {
+            // Listing type is immutable through the generic seller edit route.
+            // Enforce the auction-only rule against the persisted listing type.
+            if ((updateListingDto.writeOffCategory === 'CAT_A' || updateListingDto.writeOffCategory === 'CAT_B') && listing.type === 'CLASSIFIED') {
                 throw new BadRequestException(
                     'Cat A and Cat B write-offs cannot be listed for retail sale. Switch to an Auction listing to proceed.',
                 );
@@ -973,11 +1056,63 @@ export class ListingsService {
             throw new ForbiddenException('You do not have permission to publish this listing');
         }
 
-        // Photo minimum guard — listings require at least 10 images before publishing
-        if (listing.images.length < 10) {
+        const missingFields = this.getSubmissionMissingFields(listing);
+        if (missingFields.length > 0) {
             throw new BadRequestException(
-                `Listings require at least 10 photos before publishing. You have ${listing.images.length}.`,
+                `Listing is not ready to submit. Missing: ${missingFields.join(', ')}.`,
             );
+        }
+
+        // HPI is mandatory for listings created after the hardened upload
+        // rollout. Older drafts are grandfathered so existing sellers are not
+        // stranded by a new rule introduced after they began their listing.
+        const hpiRequiredFrom = new Date('2026-09-19T00:00:00.000Z');
+        if (listing.createdAt >= hpiRequiredFrom) {
+            const hpiReport = await this.prisma.hpiReport.findUnique({
+                where: { listingId: id },
+                select: { id: true },
+            });
+            if (!hpiReport) {
+                throw new BadRequestException(
+                    'A CarMazium vehicle history (HPI) report must be requested before this listing can be submitted.',
+                );
+            }
+        }
+
+        // An AUCTION listing is only a vehicle shell until its Auction row exists.
+        // Never let an orphan listing enter review or become active: this prevents
+        // incomplete quick-list/two-request flows from producing invisible auctions.
+        if (listing.type === 'AUCTION') {
+            const auction = await this.prisma.auction.findUnique({
+                where: { listingId: id },
+                select: { id: true, deletedAt: true, status: true, startTime: true, endTime: true },
+            });
+            if (!auction || auction.deletedAt) {
+                throw new BadRequestException(
+                    'Auction setup is incomplete. Add the auction schedule, reserve and bidding settings before submitting for review.',
+                );
+            }
+
+            // Admin rejection cancels the pending auction so it can never start
+            // accidentally. When the seller fixes and resubmits that rejected
+            // listing, re-arm the same Auction row instead of forcing duplicate
+            // listing/auction creation. A past schedule restarts from now.
+            if (auction.status === 'CANCELLED' && listing.status === 'REJECTED') {
+                const now = new Date();
+                const startTime = auction.startTime > now ? auction.startTime : now;
+                await this.prisma.auction.update({
+                    where: { id: auction.id },
+                    data: {
+                        status: 'SCHEDULED',
+                        startTime,
+                        endTime: new Date(startTime.getTime() + 24 * 60 * 60 * 1000),
+                    },
+                });
+            } else if (auction.status !== 'SCHEDULED' && listing.status !== 'ACTIVE' && listing.status !== 'PENDING_REVIEW') {
+                throw new BadRequestException(
+                    `Auction cannot be submitted while its auction status is ${auction.status}. Create or restart the auction schedule first.`,
+                );
+            }
         }
 
         // FREE is only valid for auctions. Heal legacy/stale retail drafts before
@@ -1336,7 +1471,7 @@ export class ListingsService {
 
     /**
      * Create a linked AUCTION listing alongside an existing CLASSIFIED retail listing.
-     * Copies all vehicle data; the auction listing is FREE and goes live immediately.
+     * Copies all vehicle data; the FREE auction listing is created PENDING_REVIEW and goes live only after admin approval.
      * Returns the new auction listing ID and the Auction record ID.
      */
     async alsoAuction(
@@ -1347,15 +1482,21 @@ export class ListingsService {
         const source = await this.findById(listingId);
         if (source.sellerId !== userId) throw new ForbiddenException('You do not own this listing');
         if (source.type !== 'CLASSIFIED') throw new BadRequestException('Source listing must be of type CLASSIFIED');
+        if (source.status !== 'ACTIVE') {
+            throw new BadRequestException('Only an active retail listing can also be placed into auction');
+        }
         if ((source as any).linkedListingId) throw new BadRequestException('This listing already has a linked auction listing');
+        if ((source.images?.length ?? 0) < 10) {
+            throw new BadRequestException(
+                `Auctions require at least 10 photos before scheduling. You have ${source.images?.length ?? 0}.`,
+            );
+        }
         if (dto.reservePrice > Number(source.price)) {
             throw new BadRequestException(
                 `Reserve price (£${dto.reservePrice.toLocaleString('en-GB')}) cannot exceed the retail listing price (£${Number(source.price).toLocaleString('en-GB')}). Lower the reserve or raise the retail price first.`,
             );
         }
-        // The linked auction uses the same platform-owned opening bid rule:
-        // 70% of this listing's reference/retail value. Ignore any legacy
-        // client-supplied startingBid so web/mobile cannot drift from the rule.
+
         const sourceValue = Number(source.price);
         if (!Number.isFinite(sourceValue) || sourceValue <= 0) {
             throw new BadRequestException('A valid vehicle price is required before creating the linked auction');
@@ -1363,73 +1504,82 @@ export class ListingsService {
         const platformStartingBid = calculatePlatformOpeningBid(sourceValue);
 
         const startTime = new Date(dto.startTime);
-        if (isNaN(startTime.getTime()) || startTime.getTime() < Date.now() - 60_000) {
+        if (Number.isNaN(startTime.getTime()) || startTime.getTime() < Date.now() - 60_000) {
             throw new BadRequestException('Invalid or past startTime');
         }
-        const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000); // 24h auction
-
+        const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000);
         const slug = this.generateSlug(source.title);
+        const auctionListingId = randomUUID();
 
-        const auctionListing = await this.prisma.listing.create({
-            data: {
-                title: source.title,
-                price: source.price,
-                images: source.images,
-                videoUrls: source.videoUrls,
-                type: 'AUCTION',
-                status: 'ACTIVE',
-                description: source.description,
-                slug,
-                make: source.make, model: source.model, year: source.year, mileage: source.mileage,
-                vrm: source.vrm, vin: source.vin,
-                fuelType: source.fuelType, transmission: source.transmission,
-                color: source.color, doors: source.doors, seats: source.seats,
-                engineSize: source.engineSize, bhp: source.bhp, bodyType: source.bodyType,
-                features: source.features ?? undefined,
-                location: source.location, latitude: source.latitude, longitude: source.longitude,
-                condition: source.condition, ulezCompliant: source.ulezCompliant,
-                euroStandard: source.euroStandard, co2Emissions: source.co2Emissions,
-                motStatus: source.motStatus, taxStatus: source.taxStatus,
-                motExpiryDate: source.motExpiryDate, taxDueDate: source.taxDueDate,
-                markedForExport: source.markedForExport,
-                monthOfFirstRegistration: source.monthOfFirstRegistration,
-                wheelplan: source.wheelplan, typeApproval: source.typeApproval,
-                variant: source.variant, driveType: source.driveType,
-                numberOfKeys: source.numberOfKeys, serviceHistory: source.serviceHistory,
-                owners: source.owners, torqueNm: source.torqueNm,
-                topSpeedMph: source.topSpeedMph, zeroTo60Mph: source.zeroTo60Mph,
-                combinedMpg: source.combinedMpg, extraUrbanMpg: source.extraUrbanMpg,
-                exteriorGrade: source.exteriorGrade,
-                bannerLabel: source.bannerLabel,
-                badgeTier: 'FREE',
-                sellerId: userId,
-                vehicleType: source.vehicleType,
-                isImported: source.isImported,
-                stolenRecovered: source.stolenRecovered,
-                hasOutstandingFinance: source.hasOutstandingFinance,
-                isLegalRegisteredKeeper: source.isLegalRegisteredKeeper,
-                writeOffCategory: source.writeOffCategory,
-                linkedListingId: listingId,
-            } as any,
-        });
+        // The clone, Auction row and reverse link are one unit. If any write
+        // fails, Prisma rolls all three back so no orphan/half-linked vehicle is
+        // left behind. The new auction still requires admin review.
+        const [auctionListing, auction] = await this.prisma.$transaction([
+            this.prisma.listing.create({
+                data: {
+                    id: auctionListingId,
+                    title: source.title,
+                    price: source.price,
+                    images: source.images,
+                    videoUrls: source.videoUrls,
+                    type: 'AUCTION',
+                    status: 'PENDING_REVIEW',
+                    description: source.description,
+                    slug,
+                    make: source.make, model: source.model, year: source.year, mileage: source.mileage,
+                    vrm: source.vrm, vin: source.vin,
+                    fuelType: source.fuelType, transmission: source.transmission,
+                    color: source.color, doors: source.doors, seats: source.seats,
+                    engineSize: source.engineSize, bhp: source.bhp, bodyType: source.bodyType,
+                    features: source.features ?? undefined,
+                    location: source.location, latitude: source.latitude, longitude: source.longitude,
+                    condition: source.condition, ulezCompliant: source.ulezCompliant,
+                    euroStandard: source.euroStandard, co2Emissions: source.co2Emissions,
+                    motStatus: source.motStatus, taxStatus: source.taxStatus,
+                    motExpiryDate: source.motExpiryDate, taxDueDate: source.taxDueDate,
+                    markedForExport: source.markedForExport,
+                    monthOfFirstRegistration: source.monthOfFirstRegistration,
+                    wheelplan: source.wheelplan, typeApproval: source.typeApproval,
+                    variant: source.variant, driveType: source.driveType,
+                    numberOfKeys: source.numberOfKeys, serviceHistory: source.serviceHistory,
+                    owners: source.owners, torqueNm: source.torqueNm,
+                    topSpeedMph: source.topSpeedMph, zeroTo60Mph: source.zeroTo60Mph,
+                    combinedMpg: source.combinedMpg, extraUrbanMpg: source.extraUrbanMpg,
+                    exteriorGrade: source.exteriorGrade,
+                    bannerLabel: source.bannerLabel,
+                    badgeTier: 'FREE',
+                    sellerId: userId,
+                    vehicleType: source.vehicleType,
+                    isImported: source.isImported,
+                    stolenRecovered: source.stolenRecovered,
+                    hasOutstandingFinance: source.hasOutstandingFinance,
+                    isLegalRegisteredKeeper: source.isLegalRegisteredKeeper,
+                    writeOffCategory: source.writeOffCategory,
+                    linkedListingId: listingId,
+                } as any,
+            }),
+            this.prisma.auction.create({
+                data: {
+                    listingId: auctionListingId,
+                    startTime,
+                    endTime,
+                    reservePrice: dto.reservePrice,
+                    startingBid: platformStartingBid,
+                    minIncrement: dto.minIncrement ?? 100,
+                    status: 'SCHEDULED',
+                    ...(dto.buyItNowPrice ? { buyItNowPrice: dto.buyItNowPrice } : {}),
+                },
+            }),
+            this.prisma.listing.update({
+                where: { id: listingId },
+                data: { linkedListingId: auctionListingId } as any,
+            }),
+        ]);
 
-        const auction = await this.prisma.auction.create({
-            data: {
-                listingId: auctionListing.id,
-                startTime,
-                endTime,
-                reservePrice: dto.reservePrice,
-                startingBid: platformStartingBid,
-                minIncrement: dto.minIncrement ?? 100,
-                status: 'SCHEDULED',
-                ...(dto.buyItNowPrice ? { buyItNowPrice: dto.buyItNowPrice } : {}),
-            },
-        });
-
-        // Link the source CLASSIFIED listing back to the new auction listing
-        await this.prisma.listing.update({
-            where: { id: listingId },
-            data: { linkedListingId: auctionListing.id } as any,
+        await this.notifySubmittedForReview({
+            id: auctionListing.id,
+            title: auctionListing.title,
+            sellerId: auctionListing.sellerId,
         });
 
         return { linkedListingId: auctionListing.id, auctionId: auction.id };

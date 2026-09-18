@@ -9,6 +9,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl || 'https://missing-url.supabase.co', supabaseAnonKey || 'missing-key');
 
+
+async function getAuthenticatedUserId(): Promise<string | null> {
+    if (typeof window === 'undefined') return null;
+
+    try {
+        const { data } = await supabase.auth.getSession();
+        return data.session?.user?.id ?? null;
+    } catch {
+        return null;
+    }
+}
+
 /**
  * Get the current access token from the Supabase session.
  *
@@ -130,7 +142,7 @@ async function directUploadToSupabase(
                 'Authorization': authHeader,
                 'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
                 'Content-Type': file.type || 'application/octet-stream',
-                'x-upsert': 'true',
+                'x-upsert': 'false',
                 'Cache-Control': 'max-age=3600',
             },
             body: file,
@@ -168,13 +180,25 @@ export async function uploadImage(
         throw new Error('Supabase is not configured. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your environment variables.');
     }
 
-    // Generate unique filename: timestamp-uuid.ext
+    // Generate unique filename: timestamp-random.ext
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 15);
     const fileExt = file.name.split('.').pop()?.toLowerCase() || 'bin';
     const baseName = `${timestamp}-${randomId}.${fileExt}`;
-    // Prepend folder prefix if provided (e.g. 'kyc/1234567-abc.jpg')
-    const fileName = folder ? `${folder.replace(/\/+$/, '')}/${baseName}` : baseName;
+
+    // Vehicle listing media is owner-scoped in Storage. The first folder segment
+    // is the authenticated user's ID so Supabase RLS can enforce that one seller
+    // cannot upload into or delete another seller's media namespace.
+    let effectiveFolder = folder?.replace(/^\/+|\/+$/g, '');
+    if (bucket === 'listings') {
+        const userId = await getAuthenticatedUserId();
+        if (!userId) {
+            throw new Error('Please sign in before uploading vehicle photos.');
+        }
+        effectiveFolder = `${userId}/${effectiveFolder || 'vehicle'}`;
+    }
+
+    const fileName = effectiveFolder ? `${effectiveFolder}/${baseName}` : baseName;
 
     let lastError: Error | null = null;
 
@@ -218,10 +242,18 @@ export async function deleteImage(
     // Presentation metadata is stored in the URL fragment and is never part
     // of the Supabase object path. Strip it before resolving the storage key.
     const cleanUrl = publicUrl.split('#')[0];
-    const urlParts = cleanUrl.split('/');
-    const fileName = urlParts[urlParts.length - 1];
+    const marker = `/storage/v1/object/public/${bucket}/`;
+    const markerIndex = cleanUrl.indexOf(marker);
+    if (markerIndex < 0) {
+        throw new Error('This photo is not a valid CarMazium storage URL.');
+    }
 
-    const { error } = await supabase.storage.from(bucket).remove([fileName]);
+    const objectPath = decodeURIComponent(cleanUrl.slice(markerIndex + marker.length));
+    if (!objectPath || objectPath.includes('..')) {
+        throw new Error('Invalid storage object path.');
+    }
+
+    const { error } = await supabase.storage.from(bucket).remove([objectPath]);
 
     if (error) {
         console.error('Delete error:', error);

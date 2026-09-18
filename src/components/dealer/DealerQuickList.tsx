@@ -273,9 +273,15 @@ export function DealerQuickList() {
             if (editId) {
                 // Always save as DRAFT in edit mode — publishing goes through the
                 // plan-selection modal so the dealer picks a tier and payment is gated.
+                const {
+                    status: _status,
+                    listingType: _listingType,
+                    badgeTier: _badgeTier,
+                    ...editablePayload
+                } = payload
                 await apiClient(`/listings/${editId}`, {
                     method: 'PATCH',
-                    body: JSON.stringify({ ...payload, status: 'DRAFT' }),
+                    body: JSON.stringify(editablePayload),
                 })
                 if (damageRecords.length > 0) {
                     await apiClient(`/damage/${editId}/save`, {
@@ -414,13 +420,13 @@ export function DealerQuickList() {
                         </button>
                         <button
                             type="button"
-                            onClick={() => setListingType("AUCTION")}
+                            onClick={() => router.push('/sell?method=auction#sell-options')}
                             className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${listingType === "AUCTION" ? "border-orange-500/60 bg-orange-500/10 text-orange-600 dark:text-orange-400" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"}`}
                         >
                             <Gavel size={18} className={listingType === "AUCTION" ? "text-orange-400" : ""} />
                             <div>
                                 <p className="font-bold text-sm">Auction</p>
-                                <p className="text-[11px] opacity-60 mt-0.5">Live bidding, 5h duration</p>
+                                <p className="text-[11px] opacity-60 mt-0.5">Full auction setup, 24h duration</p>
                             </div>
                         </button>
                     </div>

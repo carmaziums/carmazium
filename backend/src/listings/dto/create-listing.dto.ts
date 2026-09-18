@@ -9,6 +9,7 @@ import {
     Min,
     Max,
     IsArray,
+    ArrayMaxSize,
     IsUrl,
     IsOptional,
     IsBoolean,
@@ -187,6 +188,7 @@ export class CreateListingDto {
         type: [String],
     })
     @IsArray()
+    @ArrayMaxSize(100, { message: 'A maximum of 100 listing photos is allowed' })
     @IsString({ each: true })
     @IsUrl({}, { each: true, message: 'Each image must be a valid URL' })
     @IsOptional()
