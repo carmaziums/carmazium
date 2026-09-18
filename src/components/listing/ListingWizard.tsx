@@ -769,6 +769,37 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         }
     }
 
+    const ensureAuctionScheduled = async (listingId: string) => {
+        if (formData.listingType !== 'AUCTION') return
+
+        // Existing scheduled auctions are already complete. Cancelled/ended
+        // auctions (for example after admin rejection) are intentionally sent
+        // through the same endpoint so the backend can restart the same row.
+        if (existingAuctionStatus && !['CANCELLED', 'ENDED'].includes(existingAuctionStatus)) {
+            return
+        }
+
+        const isImmediate = auctionSchedule.startTime === 'NOW'
+        const startTimeIso = isImmediate
+            ? new Date().toISOString()
+            : new Date(auctionSchedule.startTime).toISOString()
+
+        await apiClient('/auctions', {
+            method: 'POST',
+            body: JSON.stringify({
+                listingId,
+                startTime: startTimeIso,
+                reservePrice: parseFloat(auctionSchedule.reservePrice),
+                startingBid: parseFloat(auctionSchedule.startingBid),
+                minIncrement: parseFloat(auctionSchedule.minIncrement),
+                ...(auctionSchedule.buyItNowPrice
+                    ? { buyItNowPrice: parseFloat(auctionSchedule.buyItNowPrice) }
+                    : {}),
+            }),
+        })
+        setExistingAuctionStatus('SCHEDULED')
+    }
+
     const handleSubmit = async () => {
         if (!isAuthenticated) { setShowLoginModal(true); return }
         if (!isEmailVerified) { router.push("/auth/onboarding"); return }
@@ -889,6 +920,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     }
                 }
 
+                await ensureAuctionScheduled(editId)
+
                 if (payload.badgeTier !== 'FREE') {
                     // Check if this listing already has a completed payment — avoid double-charging
                     const publish = await publishListing(editId)
@@ -944,24 +977,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 localStorage.removeItem('carmazium_listing_draft')
                 localStorage.removeItem('carmazium_hpi_draft_id')
 
-                // Schedule auction if this is an auction listing
-                if (payload.listingType === 'AUCTION') {
-                    const isImmediate = auctionSchedule.startTime === 'NOW'
-                    const startTimeIso = isImmediate
-                        ? new Date().toISOString()
-                        : new Date(auctionSchedule.startTime).toISOString()
-                    await apiClient('/auctions', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            listingId: finalListingId,
-                            startTime: startTimeIso,
-                            reservePrice: parseFloat(auctionSchedule.reservePrice),
-                            startingBid: parseFloat(auctionSchedule.startingBid),
-                            minIncrement: parseFloat(auctionSchedule.minIncrement),
-                            ...(auctionSchedule.buyItNowPrice ? { buyItNowPrice: parseFloat(auctionSchedule.buyItNowPrice) } : {}),
-                        }),
-                    })
-                }
+                await ensureAuctionScheduled(finalListingId)
 
                 if (payload.badgeTier !== 'FREE') {
                     // Check if this draft already has a completed payment — avoid double-charging
@@ -1031,24 +1047,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     }
                 }
 
-                // Schedule auction if this is an auction listing
-                if (payload.listingType === 'AUCTION') {
-                    const isImmediate = auctionSchedule.startTime === 'NOW'
-                    const startTimeIso = isImmediate
-                        ? new Date().toISOString()
-                        : new Date(auctionSchedule.startTime).toISOString()
-                    await apiClient('/auctions', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            listingId: newListingId,
-                            startTime: startTimeIso,
-                            reservePrice: parseFloat(auctionSchedule.reservePrice),
-                            startingBid: parseFloat(auctionSchedule.startingBid),
-                            minIncrement: parseFloat(auctionSchedule.minIncrement),
-                            ...(auctionSchedule.buyItNowPrice ? { buyItNowPrice: parseFloat(auctionSchedule.buyItNowPrice) } : {}),
-                        }),
-                    })
-                }
+                await ensureAuctionScheduled(newListingId)
 
                 if (isPaidTier) {
                     // Ask the server whether this listing actually needs paying for before
