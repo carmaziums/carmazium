@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
-import { DealerQuickList } from "@/components/dealer/DealerQuickList"
+import { ListingWizard } from "@/components/listing/ListingWizard"
 import { Loader2 } from "lucide-react"
 
 export default function DashboardAddListingPage() {
@@ -17,7 +17,7 @@ export default function DashboardAddListingPage() {
                             <Loader2 className="animate-spin text-primary" size={32} />
                         </div>
                     }>
-                        <DealerQuickList />
+                        <ListingWizard isDashboard />
                     </React.Suspense>
                 </main>
             </div>
