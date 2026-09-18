@@ -167,12 +167,27 @@ describe('PaymentsService — createPaymentSheet (LISTING_FEE)', () => {
         const module: TestingModule = await buildModule(prisma);
         service = module.get<PaymentsService>(PaymentsService);
 
-        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', deletedAt: null });
+        prisma.listing.findUnique.mockResolvedValue({
+            id: 'listing-1',
+            title: 'BMW M3',
+            sellerId: 'user-1',
+            type: 'CLASSIFIED',
+            badgeTier: 'BASIC',
+            deletedAt: null,
+        });
         mockEphemeralKeysCreate.mockResolvedValue({ secret: 'ek_mock' });
         mockPaymentIntentsCreate.mockResolvedValue({ id: 'pi_mock', client_secret: 'pi_mock_secret' });
     });
 
-    it('accepts type LISTING_FEE (previously rejected by DTO validation) and includes badgeTier in the PaymentIntent metadata', async () => {
+    it('accepts type LISTING_FEE and includes the persisted badgeTier in PaymentIntent metadata', async () => {
+        prisma.listing.findUnique.mockResolvedValue({
+            id: 'listing-1',
+            title: 'BMW M3',
+            sellerId: 'user-1',
+            type: 'CLASSIFIED',
+            badgeTier: 'PREMIUM',
+            deletedAt: null,
+        });
         await service.createPaymentSheet('listing-1', 'user-1', 25, 'LISTING_FEE', 'gbp', 'PREMIUM');
 
         expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(
@@ -247,7 +262,15 @@ describe('PaymentsService — createPaymentSheet (F2: server-side amount, ignore
     });
 
     it('charges the real LISTING_FEES[badgeTier] amount regardless of a lower client-supplied amount', async () => {
-        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
+        prisma.listing.findUnique.mockResolvedValue({
+            id: 'listing-1',
+            title: 'BMW M3',
+            price: 30000,
+            sellerId: 'user-1',
+            type: 'CLASSIFIED',
+            badgeTier: 'PREMIUM',
+            deletedAt: null,
+        });
 
         await service.createPaymentSheet('listing-1', 'user-1', 1, 'LISTING_FEE', 'gbp', 'PREMIUM');
 
