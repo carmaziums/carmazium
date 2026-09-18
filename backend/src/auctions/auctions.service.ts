@@ -46,11 +46,10 @@ export class AuctionsService {
 
         // Allow immediate start (startTime in the past or very near future is treated as 'now')
         // Only reject if startTime is more than 1 minute in the past (clock skew tolerance)
-        if (startTime.getTime() < now.getTime() - 60 * 1000) {
+        if (Number.isNaN(startTime.getTime()) || startTime.getTime() < now.getTime() - 60 * 1000) {
             throw new BadRequestException('Start time cannot be in the past');
         }
 
-        // Compute endTime server-side — always startTime + 24 hours
         const endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
 
         const listing = await this.prisma.listing.findUnique({
@@ -60,19 +59,27 @@ export class AuctionsService {
         if (!listing || listing.deletedAt) {
             throw new NotFoundException('Listing not found');
         }
-
         if (listing.sellerId !== userId) {
             throw new ForbiddenException('You do not own this listing');
         }
-
         if (listing.status === 'SOLD') {
             throw new BadRequestException('This listing has already been sold');
+        }
+        if (listing.type !== 'AUCTION') {
+            throw new BadRequestException(
+                'This endpoint only schedules an AUCTION listing. Use the linked-auction flow to auction a retail listing.',
+            );
+        }
+        if ((listing.images?.length ?? 0) < 10) {
+            throw new BadRequestException(
+                `Auctions require at least 10 photos before scheduling. You have ${listing.images?.length ?? 0}.`,
+            );
         }
 
         // For auction listings, Listing.price is the seller's Estimated Market Value.
         // CarMazium owns the opening bid rule: every fresh auction opens at 70%
-        // of that value. The browser/app may still send startingBid for backward
-        // compatibility, but it is never authoritative.
+        // of that value. The browser/app may send startingBid for compatibility,
+        // but it is never authoritative.
         const marketValue = Number(listing.price);
         if (!Number.isFinite(marketValue) || marketValue <= 0) {
             throw new BadRequestException('A valid Estimated Market Value is required before this vehicle can be auctioned');
@@ -83,42 +90,25 @@ export class AuctionsService {
             where: { listingId: createAuctionDto.listingId },
         });
 
-        // Block only if a live (SCHEDULED or ACTIVE) auction already exists
         if (existing && !existing.deletedAt && existing.status !== 'ENDED' && existing.status !== 'CANCELLED') {
             throw new BadRequestException('An auction already exists for this listing');
         }
 
-        // Scheduling an auction is itself a submission that needs a fresh admin
-        // pass — whether this is a brand-new listing or an already-ACTIVE retail
-        // listing the seller is now also putting up for auction, and regardless
-        // of instant vs. scheduled start time. Force the listing back to
-        // PENDING_REVIEW (unless it's already there) so it lands in the same
-        // admin/listings review queue as everything else, clearing any stale
-        // rejection reason from a previous pass.
-        const listingUpdateData: Record<string, unknown> = {};
-        if (listing.type !== 'AUCTION') listingUpdateData.type = 'AUCTION';
         const needsReview = listing.status !== 'PENDING_REVIEW';
-        if (needsReview) {
-            listingUpdateData.status = 'PENDING_REVIEW';
-            listingUpdateData.rejectionReason = null;
-        }
-        if (Object.keys(listingUpdateData).length > 0) {
-            await this.prisma.listing.update({
-                where: { id: createAuctionDto.listingId },
-                data: listingUpdateData,
-            });
-        }
-        if (needsReview) {
-            this.notifyAuctionSubmittedForReview(listing.id, listing.title, listing.sellerId).catch(() => { });
-        }
+        const listingUpdate = this.prisma.listing.update({
+            where: { id: createAuctionDto.listingId },
+            data: {
+                status: 'PENDING_REVIEW',
+                rejectionReason: null,
+            },
+        });
 
-        // Re-use the existing Auction row because listingId is @unique, but
-        // treat this as a brand-new auction run. Bids from the completed run
-        // stay in the database as history and are archived so they cannot
-        // become the opening/highest bid of the re-listed auction.
+        let auction: Auction;
+
         if (existing) {
             const archivedAt = new Date();
-            const [, restartedAuction] = await this.prisma.$transaction([
+            const [, , restartedAuction] = await this.prisma.$transaction([
+                listingUpdate,
                 this.prisma.bid.updateMany({
                     where: {
                         listingId: createAuctionDto.listingId,
@@ -152,21 +142,31 @@ export class AuctionsService {
                     },
                 }),
             ]);
-            return restartedAuction;
+            auction = restartedAuction;
+        } else {
+            const [, createdAuction] = await this.prisma.$transaction([
+                listingUpdate,
+                this.prisma.auction.create({
+                    data: {
+                        listingId: createAuctionDto.listingId,
+                        startTime,
+                        endTime,
+                        reservePrice: createAuctionDto.reservePrice,
+                        startingBid: platformStartingBid,
+                        minIncrement: createAuctionDto.minIncrement,
+                        buyItNowPrice: createAuctionDto.buyItNowPrice ?? null,
+                        status: 'SCHEDULED',
+                    },
+                }),
+            ]);
+            auction = createdAuction;
         }
 
-        return this.prisma.auction.create({
-            data: {
-                listingId: createAuctionDto.listingId,
-                startTime,
-                endTime,
-                reservePrice: createAuctionDto.reservePrice,
-                startingBid: platformStartingBid,
-                minIncrement: createAuctionDto.minIncrement,
-                buyItNowPrice: createAuctionDto.buyItNowPrice ?? null,
-                status: 'SCHEDULED',
-            },
-        });
+        if (needsReview) {
+            this.notifyAuctionSubmittedForReview(listing.id, listing.title, listing.sellerId).catch(() => { });
+        }
+
+        return auction;
     }
 
     private async notifyAuctionSubmittedForReview(listingId: string, listingTitle: string, sellerId: string | null): Promise<void> {
