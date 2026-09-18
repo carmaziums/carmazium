@@ -208,11 +208,18 @@ describe('PaymentsService — createPaymentSheet (LISTING_FEE)', () => {
         expect(callArg.metadata.badgeTier).toBeUndefined();
     });
 
-    it('throws BadRequestException for LISTING_FEE with no badgeTier', async () => {
-        await expect(
-            service.createPaymentSheet('listing-1', 'user-1', 25, 'LISTING_FEE', 'gbp', undefined),
-        ).rejects.toThrow('badgeTier is required');
-        expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
+    it('uses the persisted retail tier when the mobile client omits badgeTier', async () => {
+        await service.createPaymentSheet('listing-1', 'user-1', 25, 'LISTING_FEE', 'gbp', undefined);
+
+        expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                amount: 100,
+                metadata: expect.objectContaining({
+                    type: 'LISTING_FEE',
+                    badgeTier: 'BASIC',
+                }),
+            }),
+        );
     });
 });
 
