@@ -15,6 +15,7 @@ describe('ChatService — conversation context and authorization', () => {
     let notificationsService: any;
     let notificationsGateway: any;
     let chatAttachmentService: any;
+    let tradeTeamService: any;
     let service: ChatService;
 
     const users = (first = buyerId, second = sellerId) => ([
@@ -70,6 +71,9 @@ describe('ChatService — conversation context and authorization', () => {
             listing: {
                 findUnique: jest.fn(),
             },
+            serviceJob: {
+                findUnique: jest.fn(),
+            },
             chatRoom: {
                 findUnique: jest.fn().mockResolvedValue(null),
                 create: jest.fn(),
@@ -115,6 +119,9 @@ describe('ChatService — conversation context and authorization', () => {
         prisma.$transaction = jest.fn(async (callback: any) => callback(prisma));
         notificationsService = { create: jest.fn().mockResolvedValue({ id: 'notification' }) };
         notificationsGateway = { sendNotification: jest.fn() };
+        tradeTeamService = {
+            tryResolveActor: jest.fn().mockResolvedValue(null),
+        };
         chatAttachmentService = {
             hydrateMessages: jest.fn(async (messages: any[]) => messages),
             hydrateMessage: jest.fn(async (message: any) => ({ ...message, attachmentUrl: null })),
@@ -127,7 +134,110 @@ describe('ChatService — conversation context and authorization', () => {
             notificationsService,
             notificationsGateway,
             chatAttachmentService,
+            tradeTeamService,
         );
+    });
+
+    it('opens one service-job room only after payment and scopes it to the job', async () => {
+        const jobId = '66666666-6666-4666-8666-666666666666';
+        prisma.serviceJob.findUnique.mockResolvedValue({
+            id: jobId,
+            title: 'Deliver vehicle',
+            status: 'PAID',
+            serviceType: 'DELIVERY',
+            customerId: buyerId,
+            contractorId: 'contractor-1',
+            contractor: {
+                id: 'contractor-1',
+                userId: sellerId,
+                businessName: 'Provider Ltd',
+            },
+            payment: { status: 'PAID' },
+        });
+        prisma.chatRoom.upsert.mockImplementation(({ create }: any) => Promise.resolve({
+            id: 'service-room',
+            ...create,
+            deletedAt: null,
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+            serviceJob: {
+                id: jobId,
+                customerId: buyerId,
+                contractorId: 'contractor-1',
+                serviceType: 'DELIVERY',
+                contractor: { userId: sellerId, businessName: 'Provider Ltd' },
+                payment: { status: 'PAID' },
+            },
+            blocks: [],
+            listing: null,
+        }));
+
+        const room = await service.findOrCreateServiceJobRoom(jobId, buyerId);
+
+        expect(prisma.chatRoom.upsert).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: { conversationKey: `SERVICE_JOB:${jobId}` },
+                create: expect.objectContaining({
+                    initiatorId: buyerId,
+                    participantId: sellerId,
+                    serviceJobId: jobId,
+                    context: ChatContext.SERVICE_JOB,
+                }),
+            }),
+        );
+        expect(room.id).toBe('service-room');
+    });
+
+    it('does not open service-job chat before payment is confirmed', async () => {
+        prisma.serviceJob.findUnique.mockResolvedValue({
+            id: 'job-unpaid',
+            status: 'ACCEPTED',
+            serviceType: 'DELIVERY',
+            customerId: buyerId,
+            contractorId: 'contractor-1',
+            contractor: { id: 'contractor-1', userId: sellerId },
+            payment: { status: 'PENDING' },
+        });
+
+        await expect(
+            service.findOrCreateServiceJobRoom('job-unpaid', buyerId),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/after CarMazium has confirmed payment/i) });
+
+        expect(prisma.chatRoom.upsert).not.toHaveBeenCalled();
+    });
+
+    it('lets an authorised provider team member access the paid service-job room', async () => {
+        const staffId = otherBuyerId;
+        const serviceRoom = {
+            id: 'service-room',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            context: ChatContext.SERVICE_JOB,
+            deletedAt: null,
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+            serviceJob: {
+                id: 'job-1',
+                status: 'PAID',
+                serviceType: 'DELIVERY',
+                customerId: buyerId,
+                contractorId: 'contractor-1',
+                contractor: { userId: sellerId },
+                payment: { status: 'PAID' },
+            },
+            disputeCase: null,
+            blocks: [],
+            listing: null,
+        };
+        prisma.chatRoom.findUnique.mockResolvedValue(serviceRoom);
+        tradeTeamService.tryResolveActor.mockResolvedValue({
+            contractorProfileId: 'contractor-1',
+            allowedServiceTypes: ['DELIVERY'],
+        });
+
+        await expect(service.assertCanMessageRoom('service-room', staffId)).resolves.toMatchObject({
+            id: 'service-room',
+        });
     });
 
     it('blocks auction room creation until the auction has ended and the winner fee is paid', async () => {

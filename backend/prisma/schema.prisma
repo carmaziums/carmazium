@@ -1089,6 +1089,7 @@ enum ChatContext {
   RETAIL
   AUCTION
   DISPUTE
+  SERVICE_JOB
   LEGACY
 
   @@map("chat_context")
@@ -1144,6 +1145,7 @@ model ChatRoom {
   initiatorId            String
   participantId          String
   listingId              String?
+  serviceJobId           String?      @unique
   context                ChatContext
   conversationKey        String       @unique
   supportAssignedAdminId String?
@@ -1156,6 +1158,7 @@ model ChatRoom {
   initiator            User          @relation("Initiator", fields: [initiatorId], references: [id])
   participant          User          @relation("Participant", fields: [participantId], references: [id])
   listing              Listing?      @relation(fields: [listingId], references: [id])
+  serviceJob           ServiceJob?   @relation("ServiceJobChat", fields: [serviceJobId], references: [id], onDelete: Cascade)
   supportAssignedAdmin User?         @relation("SupportAssignedAdmin", fields: [supportAssignedAdminId], references: [id], onDelete: SetNull)
   supportNotes         SupportNote[]
   disputeAsSource      DisputeCase?  @relation("DisputeSourceRoom")
@@ -1836,6 +1839,7 @@ model ServiceJob {
   vehicles      ServiceJobVehicle[]
   quotes        ServiceQuote[]
   payment       ServicePayment?
+  chatRoom      ChatRoom?            @relation("ServiceJobChat")
 
   @@index([customerId, status])
   @@index([contractorId, status])

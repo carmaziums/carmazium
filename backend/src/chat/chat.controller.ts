@@ -27,6 +27,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
 import { ChatRateLimitService } from './chat-rate-limit.service';
 import { ChatAttachmentService } from './chat-attachment.service';
+import { messageInboxLink } from './chat-routing';
 
 /**
  * REST Controller for chat operations.
@@ -137,6 +138,29 @@ export class ChatController {
         this.chatGateway.joinRoomForUser(user.id, room.id);
         this.chatGateway.joinRoomForUser((room as any).otherUser.id, room.id);
         return new StandardResponse(room);
+    }
+
+    @Post('service-jobs/:jobId')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Get or create the paid service-job conversation' })
+    @ApiParam({ name: 'jobId', description: 'TradeXchange service job ID' })
+    async getServiceJobRoom(
+        @CurrentUser() user: any,
+        @Param('jobId') jobId: string,
+    ) {
+        this.chatRateLimit.consumeRoomCreate(user.id);
+        const room: any = await this.chatService.findOrCreateServiceJobRoom(jobId, user.id);
+
+        // The customer and provider owner are the canonical room pair. A team
+        // member opening the room joins explicitly as the authorised actor.
+        this.chatGateway.joinRoomForUser(room.initiatorId, room.id);
+        this.chatGateway.joinRoomForUser(room.participantId, room.id);
+        this.chatGateway.joinRoomForUser(user.id, room.id);
+
+        return new StandardResponse({
+            room,
+            inboxUrl: messageInboxLink(user.role, room.id),
+        });
     }
 
     @Post('rooms/:id/dispute')
