@@ -1579,7 +1579,7 @@ export class ChatService {
         }
         if (
             (room.context === ChatContext.RETAIL || room.context === ChatContext.AUCTION) &&
-            room.blocks.length > 0
+            (room.blocks?.length ?? 0) > 0
         ) {
             throw new ForbiddenException(
                 'Messaging is paused because this conversation has been blocked. The transcript remains available.',
