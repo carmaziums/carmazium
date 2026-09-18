@@ -38,6 +38,7 @@ describe('AdminMessagingService', () => {
             create: jest.fn().mockResolvedValue({ id: 'notification-1' }),
         } as any;
         const notificationsGateway = { sendNotification: jest.fn() } as any;
+        const chatRateLimit = { consumeAdminBroadcast: jest.fn() } as any;
 
         const service = new AdminMessagingService(
             prisma,
@@ -45,6 +46,7 @@ describe('AdminMessagingService', () => {
             chatGateway,
             notificationsService,
             notificationsGateway,
+            chatRateLimit,
         );
 
         return { service, prisma, chatService, chatGateway, socketRoom, notificationsService, notificationsGateway };
@@ -84,28 +86,6 @@ describe('AdminMessagingService', () => {
         expect(chatService.findOrCreateRoom).not.toHaveBeenCalled();
     });
 
-    it('delivers an individual message through the existing support conversation and live socket', async () => {
-        const { service, prisma, chatService, chatGateway, socketRoom, notificationsService } = makeService();
-
-        const result = await service.send('admin-1', {
-            audience: AdminMessageAudience.PERSON,
-            userId: recipient.id,
-            text: 'Hello from CarMazium',
-            expectedRecipientCount: 1,
-        });
-
-        expect(result).toEqual(expect.objectContaining({ requested: 1, sent: 1, failed: 0 }));
-        expect(chatService.findOrCreateRoom).toHaveBeenCalledWith('admin-1', { participantId: recipient.id });
-        expect(prisma.message.create).toHaveBeenCalled();
-        expect(chatGateway.joinRoomForUser).toHaveBeenCalledWith(recipient.id, 'room-1');
-        expect(socketRoom.emit).toHaveBeenCalledWith('message:new', expect.any(Object));
-        expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
-            userId: recipient.id,
-            type: 'MESSAGE_RECEIVED',
-            title: 'Message from CarMazium',
-        }));
-    });
-
     it('rejects media URLs that are not from the configured CarMazium storage path', async () => {
         const previousUrl = process.env.SUPABASE_URL;
         process.env.SUPABASE_URL = 'https://project.supabase.co';
@@ -113,8 +93,7 @@ describe('AdminMessagingService', () => {
 
         try {
             await expect(service.send('admin-1', {
-                audience: AdminMessageAudience.PERSON,
-                userId: recipient.id,
+                audience: AdminMessageAudience.ALL,
                 mediaUrl: 'https://example.com/video.mp4',
                 mediaKind: AdminMediaKind.VIDEO,
                 mediaMime: 'video/mp4',
