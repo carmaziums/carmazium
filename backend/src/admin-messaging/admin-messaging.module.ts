@@ -5,10 +5,11 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AdminMessagingController } from './admin-messaging.controller';
 import { AdminMessagingService } from './admin-messaging.service';
+import { AdminBroadcastSchedulerService } from './admin-broadcast-scheduler.service';
 
 @Module({
     imports: [PrismaModule, AuthModule, ChatModule, NotificationsModule],
     controllers: [AdminMessagingController],
-    providers: [AdminMessagingService],
+    providers: [AdminMessagingService, AdminBroadcastSchedulerService],
 })
 export class AdminMessagingModule {}
