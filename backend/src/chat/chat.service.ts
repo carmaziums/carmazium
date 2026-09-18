@@ -310,7 +310,13 @@ export class ChatService {
     }
 
     private async assertConversationCanBeCreated(
-        resolved: Awaited<ReturnType<ChatService['resolveConversationRequest']>>,
+        resolved: {
+            context: ChatContext;
+            conversationKey: string;
+            listingId: string | null;
+            listing: any | null;
+            users: Array<{ id: string; role: string }>;
+        },
         userId: string,
         participantId: string,
     ): Promise<void> {
