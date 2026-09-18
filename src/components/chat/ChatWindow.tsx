@@ -1,13 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { MessageSquare, Send, Loader2, ArrowLeft, User, Check, Zap } from "lucide-react"
+import { MessageSquare, Send, Loader2, ArrowLeft, User, Check, Zap, Paperclip } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import Image from "next/image"
 import { useChat } from "@/context/ChatContext"
 import { useAuth } from "@/context/AuthContext"
-import { getChatMessages, sendChatMessage, markMessagesAsRead, getChatDisplayName, isSupportUser, type ChatHistoryCursor, type ChatMessage, type ChatRoom } from "@/lib/chatApi"
+import { createChatAttachmentUpload, getChatMessages, sendChatAttachment, sendChatMessage, markMessagesAsRead, getChatDisplayName, isSupportUser, type ChatHistoryCursor, type ChatMessage, type ChatRoom } from "@/lib/chatApi"
 import { parseChatMessageContent } from "@/lib/chatMessageContent"
+import { supabase } from "@/lib/supabase"
 
 interface ChatWindowProps {
     room: ChatRoom
@@ -40,10 +41,13 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const [hasMore, setHasMore] = React.useState(false)
     const [historyCursor, setHistoryCursor] = React.useState<ChatHistoryCursor | null>(null)
     const [sending, setSending] = React.useState(false)
+    const [uploadingAttachment, setUploadingAttachment] = React.useState(false)
+    const [attachmentError, setAttachmentError] = React.useState<string | null>(null)
     const [isTyping, setIsTyping] = React.useState(false)
     const messagesEndRef = React.useRef<HTMLDivElement>(null)
     const messagesContainerRef = React.useRef<HTMLDivElement>(null)
     const inputRef = React.useRef<HTMLInputElement>(null)
+    const attachmentInputRef = React.useRef<HTMLInputElement>(null)
     const typingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
     const isInitialLoad = React.useRef(true)
 
@@ -295,6 +299,55 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         }
     }
 
+    const handlePhotoFile = async (file?: File) => {
+        if (!file || uploadingAttachment) return
+
+        const allowed = ['image/jpeg', 'image/png', 'image/webp']
+        if (!allowed.includes(file.type)) {
+            setAttachmentError('Only JPEG, PNG or WebP photos can be sent.')
+            return
+        }
+        if (file.size < 1 || file.size > 10 * 1024 * 1024) {
+            setAttachmentError('Photos must be 10 MB or smaller.')
+            return
+        }
+
+        const caption = newMessage.trim()
+        const clientMessageId = crypto.randomUUID()
+
+        try {
+            setUploadingAttachment(true)
+            setAttachmentError(null)
+
+            const ticket = await createChatAttachmentUpload(room.id, file)
+            const { error } = await supabase.storage
+                .from(ticket.bucket)
+                .uploadToSignedUrl(ticket.path, ticket.token, file, {
+                    contentType: file.type,
+                })
+
+            if (error) throw error
+
+            const confirmed = await sendChatAttachment(room.id, {
+                path: ticket.path,
+                name: file.name,
+                mime: file.type,
+                size: file.size,
+                caption: caption || undefined,
+                clientMessageId,
+            })
+
+            if (caption) setNewMessage("")
+            confirmLocalMessage(clientMessageId, confirmed)
+        } catch (error: any) {
+            console.error('Failed to send photo:', error)
+            setAttachmentError(error?.message || 'Photo could not be sent.')
+        } finally {
+            setUploadingAttachment(false)
+            if (attachmentInputRef.current) attachmentInputRef.current.value = ''
+        }
+    }
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault()
@@ -444,6 +497,23 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                                 : 'bg-[var(--bg-card)] text-[var(--text-primary)] rounded-bl-sm'
                                                 }`}
                                         >
+                                            {msg.attachmentPath && (
+                                                <div className="mb-2 overflow-hidden rounded-xl bg-black/10">
+                                                    {msg.attachmentUrl ? (
+                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                        <img
+                                                            src={msg.attachmentUrl}
+                                                            alt={msg.attachmentName || 'Private chat photo'}
+                                                            className="block max-h-[420px] w-auto max-w-full object-contain"
+                                                            loading="lazy"
+                                                        />
+                                                    ) : (
+                                                        <div className="px-4 py-8 text-center text-xs opacity-75">
+                                                            Private photo unavailable. Reopen the conversation to refresh access.
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                             {parsed.media && (
                                                 <div className="mb-2 overflow-hidden rounded-xl bg-black/10">
                                                     {parsed.media.kind === 'IMAGE' ? (
@@ -530,7 +600,32 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         ))}
                     </div>
                 )}
+                {attachmentError && (
+                    <div className="px-4 pt-3 text-xs text-red-400">{attachmentError}</div>
+                )}
                 <div className="flex gap-2 items-end p-4">
+                    <input
+                        ref={attachmentInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(event) => handlePhotoFile(event.target.files?.[0])}
+                    />
+                    <Button
+                        type="button"
+                        onClick={() => attachmentInputRef.current?.click()}
+                        disabled={sending || uploadingAttachment}
+                        shape="pill"
+                        size="icon"
+                        className="h-[46px] w-[46px] shrink-0"
+                        title="Send photo"
+                    >
+                        {uploadingAttachment ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                            <Paperclip className="h-4 w-4" />
+                        )}
+                    </Button>
                     <input
                         ref={inputRef}
                         type="text"
@@ -539,11 +634,11 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message..."
                         className="flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/50"
-                        disabled={sending}
+                        disabled={sending || uploadingAttachment}
                     />
                     <Button
                         onClick={handleSend}
-                        disabled={!newMessage.trim() || sending}
+                        disabled={!newMessage.trim() || sending || uploadingAttachment}
                         shape="pill"
                         size="icon"
                         className="h-[46px] w-[46px] shrink-0"

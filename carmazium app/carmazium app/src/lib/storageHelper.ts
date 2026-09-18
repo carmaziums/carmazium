@@ -89,3 +89,29 @@ export async function uploadToStorage(
   const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
   return urlData.publicUrl;
 }
+
+
+/**
+ * Upload a local file through a short-lived Supabase signed upload token.
+ * Unlike uploadToStorage(), this does not expose or return a public URL.
+ */
+export async function uploadToSignedStorage(
+  localUri: string,
+  bucket: string,
+  path: string,
+  token: string,
+  contentType: string = 'image/jpeg',
+): Promise<void> {
+  const base64 = await FileSystem.readAsStringAsync(localUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  const arrayBuffer = decode(base64);
+
+  const { error } = await supabase.storage
+    .from(bucket)
+    .uploadToSignedUrl(path, token, arrayBuffer, {
+      contentType,
+    });
+
+  if (error) throw error;
+}

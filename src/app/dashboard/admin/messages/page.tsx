@@ -1,10 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { MessageSquare, Radio } from "lucide-react"
+import { MessageSquare, MessageSquarePlus, Radio } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { ChatRoomList } from "@/components/chat/ChatRoomList"
 import { AdminBroadcastComposer } from "@/components/admin/AdminBroadcastComposer"
+import { AdminNewConversation } from "@/components/admin/AdminNewConversation"
 import dynamic from "next/dynamic"
 const ChatWindow = dynamic(() => import("@/components/chat/ChatWindow").then(mod => mod.ChatWindow), { ssr: false })
 import { useAuth } from "@/context/AuthContext"
@@ -19,7 +20,7 @@ function AdminMessagesContent() {
     const router = useRouter()
     const targetRoomId = searchParams.get("room")
     const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null)
-    const [mode, setMode] = React.useState<"inbox" | "broadcast">("inbox")
+    const [mode, setMode] = React.useState<"inbox" | "new" | "broadcast">("inbox")
     const autoSelectedRef = React.useRef(false)
 
     React.useEffect(() => {
@@ -86,6 +87,16 @@ function AdminMessagesContent() {
                                 <button
                                     type="button"
                                     onClick={() => {
+                                        setMode("new")
+                                        setSelectedRoom(null)
+                                    }}
+                                    className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold transition-all ${mode === "new" ? "bg-primary text-white shadow" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
+                                >
+                                    <MessageSquarePlus size={15} /> New Conversation
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
                                         setMode("broadcast")
                                         setSelectedRoom(null)
                                     }}
@@ -99,6 +110,15 @@ function AdminMessagesContent() {
                         <div className="h-[calc(100%-105px)] sm:h-[calc(100%-89px)]">
                             {mode === "broadcast" ? (
                                 <AdminBroadcastComposer />
+                            ) : mode === "new" ? (
+                                <AdminNewConversation
+                                    onCancel={() => setMode("inbox")}
+                                    onCreated={(room) => {
+                                        setSelectedRoom(room)
+                                        setMode("inbox")
+                                        refreshRooms()
+                                    }}
+                                />
                             ) : (
                                 <div className="flex h-full">
                                     <div className={`w-full lg:w-80 border-r border-[var(--border-default)] ${selectedRoom ? 'hidden lg:block' : ''}`}>

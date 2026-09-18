@@ -88,7 +88,11 @@ const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress, isOnlin
   const isUnread = room.unreadCount > 0;
   const displayName = getDisplayName(room.otherUser);
   const initials = getInitials(displayName);
-  const lastMsgContent = room.lastMessage?.content || 'No messages yet';
+  const lastMsgContent = room.lastMessage
+    ? room.lastMessage.attachmentPath
+      ? (room.lastMessage.content ? `Photo · ${room.lastMessage.content}` : 'Photo')
+      : (room.lastMessage.content || 'No messages yet')
+    : 'No messages yet';
   const hasOfferCounter = lastMsgContent.startsWith('Counter-offer');
   const isDealer = room.otherUser.role === 'DEALER';
 

@@ -5,7 +5,9 @@ on:
     paths:
       - "carmazium app/carmazium app/src/context/ChatContext.tsx"
       - "carmazium app/carmazium app/src/lib/chatApi.ts"
+      - "carmazium app/carmazium app/src/lib/storageHelper.ts"
       - "carmazium app/carmazium app/src/screens/main/ChatScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/main/MessagesScreen.tsx"
       - ".github/workflows/mobile-chat-ci.yml"
 
 permissions:
@@ -45,7 +47,7 @@ jobs:
             exit 0
           fi
 
-          CHAT_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E 'src/(context/ChatContext|lib/chatApi|screens/main/ChatScreen)\.tsx?' || true)"
+          CHAT_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E 'src/(context/ChatContext|lib/(chatApi|storageHelper)|screens/main/(ChatScreen|MessagesScreen))\.tsx?' || true)"
           if [ -n "$CHAT_ERRORS" ]; then
             echo
             echo "TypeScript errors were found in mobile chat files changed by this PR:"

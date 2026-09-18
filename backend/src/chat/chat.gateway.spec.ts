@@ -4,6 +4,7 @@ describe('ChatGateway — message acknowledgements', () => {
     let chatService: any;
     let authService: any;
     let gateway: ChatGateway;
+    let chatRateLimit: any;
     let emit: jest.Mock;
     let to: jest.Mock;
     let client: any;
@@ -13,7 +14,11 @@ describe('ChatGateway — message acknowledgements', () => {
             sendMessage: jest.fn(),
         };
         authService = {};
-        gateway = new ChatGateway(chatService, authService);
+        chatRateLimit = {
+            consumeMessage: jest.fn(),
+            consumeTyping: jest.fn(),
+        };
+        gateway = new ChatGateway(chatService, authService, chatRateLimit);
 
         emit = jest.fn();
         to = jest.fn().mockReturnValue({ emit });
@@ -48,6 +53,7 @@ describe('ChatGateway — message acknowledgements', () => {
             message,
             duplicate: false,
         });
+        expect(chatRateLimit.consumeMessage).toHaveBeenCalledWith(client.data.userId);
         expect(to).toHaveBeenCalledWith(`room:${message.chatRoomId}`);
         expect(emit).toHaveBeenCalledWith('message:new', message);
     });

@@ -1,9 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateRoomDto, SendMessageDto } from './dto';
-import { ChatContext, Message, Prisma } from '@prisma/client';
+import { CreateRoomDto, SendChatAttachmentDto, SendMessageDto } from './dto';
+import { ChatContext, Message, Prisma, UserRole } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { messageInboxLink } from './chat-routing';
+import { ChatAttachmentService } from './chat-attachment.service';
 
 /**
  * Chat service handling all chat room and message operations
@@ -14,6 +16,7 @@ export class ChatService {
         private readonly prisma: PrismaService,
         private readonly notificationsService: NotificationsService,
         private readonly notificationsGateway: NotificationsGateway,
+        private readonly chatAttachmentService: ChatAttachmentService,
     ) { }
 
     /**
@@ -413,6 +416,8 @@ export class ChatService {
                 listingId: true,
                 context: true,
                 deletedAt: true,
+                initiator: { select: { role: true } },
+                participant: { select: { role: true } },
             },
         });
 
@@ -466,6 +471,7 @@ export class ChatService {
                     select: {
                         id: true,
                         content: true,
+                        attachmentPath: true,
                         senderId: true,
                         isRead: true,
                         createdAt: true,
@@ -538,7 +544,7 @@ export class ChatService {
         before?: Date,
         beforeId?: string,
     ): Promise<{
-        data: Message[];
+        data: any[];
         total: number;
         hasMore: boolean;
         nextCursor: { createdAt: string; id: string } | null;
@@ -588,8 +594,10 @@ export class ChatService {
         const visibleRows = (usingCursor ? rows.slice(0, safeLimit) : rows).reverse();
         const oldest = visibleRows[0];
 
+        const hydratedRows = await this.chatAttachmentService.hydrateMessages(visibleRows);
+
         return {
-            data: visibleRows,
+            data: hydratedRows,
             total,
             hasMore,
             nextCursor: oldest
@@ -619,6 +627,7 @@ export class ChatService {
         if (
             existing.chatRoomId !== roomId ||
             existing.content !== content ||
+            existing.attachmentPath ||
             existing.deletedAt
         ) {
             throw new BadRequestException(
@@ -690,6 +699,11 @@ export class ChatService {
         const recipientId = room.initiatorId === senderId
             ? room.participantId
             : room.initiatorId;
+        const recipientRole = (
+            room.initiatorId === senderId
+                ? room.participant.role
+                : room.initiator.role
+        ) as UserRole;
 
         try {
             const notification = await this.notificationsService.create({
@@ -697,7 +711,7 @@ export class ChatService {
                 type: 'MESSAGE_RECEIVED',
                 title: 'New Message',
                 message: dto.content.substring(0, 50) + (dto.content.length > 50 ? '...' : ''),
-                link: `/dashboard/user?tab=messages&room=${roomId}`,
+                link: messageInboxLink(recipientRole, roomId),
                 data: { roomId, messageId: message.id },
             });
             this.notificationsGateway.sendNotification(recipientId, notification);
@@ -706,6 +720,132 @@ export class ChatService {
         }
 
         return { message, created: true };
+    }
+
+    private assertIdempotentAttachmentMatches(
+        existing: any,
+        roomId: string,
+        dto: SendChatAttachmentDto,
+    ): void {
+        const content = dto.caption?.trim() || '';
+        if (
+            existing.chatRoomId !== roomId ||
+            existing.content !== content ||
+            existing.attachmentPath !== dto.path ||
+            existing.attachmentName !== dto.name ||
+            existing.attachmentMime !== dto.mime ||
+            existing.attachmentSize !== dto.size ||
+            existing.deletedAt
+        ) {
+            throw new BadRequestException(
+                'This message retry key has already been used for a different message.',
+            );
+        }
+    }
+
+    /**
+     * Send a private photo message. Storage access is scoped to the room and
+     * sender path; recipients only receive a short-lived signed read URL.
+     */
+    async sendAttachmentMessage(
+        roomId: string,
+        senderId: string,
+        dto: SendChatAttachmentDto,
+    ): Promise<{ message: any; created: boolean }> {
+        const room = await this.assertCanMessageRoom(roomId, senderId);
+        this.chatAttachmentService.validateMetadata(dto.name, dto.mime, dto.size);
+        this.chatAttachmentService.assertPathOwnership(dto.path, roomId, senderId);
+
+        const content = dto.caption?.trim() || '';
+
+        if (dto.clientMessageId) {
+            const existing = await this.findMessageByClientId(
+                senderId,
+                dto.clientMessageId,
+            );
+            if (existing) {
+                this.assertIdempotentAttachmentMatches(existing, roomId, dto);
+                return {
+                    message: await this.chatAttachmentService.hydrateMessage(existing),
+                    created: false,
+                };
+            }
+        }
+
+        await this.chatAttachmentService.assertUploaded(dto.path);
+
+        let message: any;
+        try {
+            message = await this.prisma.message.create({
+                data: {
+                    chatRoomId: roomId,
+                    senderId,
+                    clientMessageId: dto.clientMessageId,
+                    content,
+                    attachmentPath: dto.path,
+                    attachmentName: dto.name.trim(),
+                    attachmentMime: dto.mime,
+                    attachmentSize: dto.size,
+                },
+                include: this.messageInclude,
+            });
+        } catch (error) {
+            if (
+                dto.clientMessageId &&
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2002'
+            ) {
+                const existing = await this.findMessageByClientId(
+                    senderId,
+                    dto.clientMessageId,
+                );
+                if (existing) {
+                    this.assertIdempotentAttachmentMatches(existing, roomId, dto);
+                    return {
+                        message: await this.chatAttachmentService.hydrateMessage(existing),
+                        created: false,
+                    };
+                }
+            }
+            throw error;
+        }
+
+        await this.prisma.chatRoom.update({
+            where: { id: roomId },
+            data: { updatedAt: new Date() },
+        });
+
+        const recipientId = room.initiatorId === senderId
+            ? room.participantId
+            : room.initiatorId;
+        const recipientRole = (
+            room.initiatorId === senderId
+                ? room.participant.role
+                : room.initiator.role
+        ) as UserRole;
+
+        const preview = content
+            ? `Photo: ${content.slice(0, 60)}${content.length > 60 ? '…' : ''}`
+            : 'You received a photo.';
+
+        try {
+            const notification = await this.notificationsService.create({
+                userId: recipientId,
+                type: 'MESSAGE_RECEIVED',
+                title: 'New Photo',
+                message: preview,
+                link: messageInboxLink(recipientRole, roomId),
+                data: { roomId, messageId: message.id, hasAttachment: true },
+            });
+            this.notificationsGateway.sendNotification(recipientId, notification);
+        } catch (notifErr) {
+            console.warn(`[ChatService] Failed to send photo notification: ${notifErr?.message}`);
+        }
+
+        return {
+            message: await this.chatAttachmentService.hydrateMessage(message),
+            created: true,
+        };
     }
 
     /**

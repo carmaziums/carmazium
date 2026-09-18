@@ -32,5 +32,5 @@ jobs:
       - name: Build backend
         run: npm run build
 
-      - name: Run chat authorization tests
-        run: npm test -- --runInBand chat/chat.service.spec.ts
+      - name: Run chat regression tests
+        run: npm test -- --runInBand chat/chat.service.spec.ts chat/chat.gateway.spec.ts chat/chat-rate-limit.service.spec.ts admin-messaging/admin-messaging.service.spec.ts
