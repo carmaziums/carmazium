@@ -18,7 +18,8 @@ describe('ServiceLeadsService', () => {
             },
             serviceLead: {
                 create: jest.fn(),
-                findMany: jest.fn(),
+                count: jest.fn().mockResolvedValue(0),
+                findMany: jest.fn().mockResolvedValue([]),
                 findFirst: jest.fn(),
                 findUnique: jest.fn(),
                 updateMany: jest.fn().mockResolvedValue({ count: 0 }),
