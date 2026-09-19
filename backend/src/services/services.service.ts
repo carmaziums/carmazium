@@ -489,6 +489,16 @@ export class ServicesService {
 
         let verification: Awaited<ReturnType<typeof assertCapabilityVerificationReady>> | null = null;
         if (dto.status === CapabilityStatus.APPROVED) {
+            if (
+                [ServiceType.DELIVERY, ServiceType.INSPECTION].includes(cap.serviceType)
+                && (cap as any).jobNationwide === false
+                && Array.isArray((cap as any).jobPostcodeAreas)
+                && (cap as any).jobPostcodeAreas.length === 0
+            ) {
+                throw new BadRequestException(
+                    'Configure nationwide coverage or at least one UK postcode area before approving this paid-job capability.',
+                );
+            }
             const u = cap.contractor.user;
             if (!u.stripeConnectAccountId || !u.stripeConnectOnboardingComplete) {
                 throw new BadRequestException(
