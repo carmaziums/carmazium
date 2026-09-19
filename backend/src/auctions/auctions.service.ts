@@ -69,11 +69,9 @@ export class AuctionsService {
             where: { listingId: createAuctionDto.listingId },
         });
 
-        // Reserve-not-met auctions intentionally return the vehicle to a DRAFT
-        // CLASSIFIED inventory state so the seller can choose retail instead.
-        // The Re-auction action reuses that same Listing/Auction pair; allow only
-        // that proven ended/cancelled-auction case and atomically switch it back
-        // to AUCTION. Arbitrary retail drafts must still use the linked-auction flow.
+        // Reserve-not-met legacy auctions were historically converted to a
+        // DRAFT CLASSIFIED shell. Reuse only that proven ended/cancelled auction
+        // record; an arbitrary retail draft still belongs in the linked-auction flow.
         const isReauctionableRetailDraft = (
             listing.type === 'CLASSIFIED'
             && listing.status === 'DRAFT'
@@ -93,17 +91,64 @@ export class AuctionsService {
             throw new BadRequestException('An auction already exists for this listing');
         }
 
-        // This endpoint is a submission path used by the seller auction dashboards
-        // and by HPI-created drafts. It must enforce exactly the same readiness
-        // contract as POST /listings/:id/publish before it can move a listing into
-        // the admin queue; otherwise calling POST /auctions directly bypasses HPI,
-        // declarations and the full vehicle-completeness gate.
-        const hpiReport = await this.prisma.hpiReport.findUnique({
+        const normaliseVrm = (value: string | null | undefined) =>
+            (value ?? '').replace(/\s/g, '').toUpperCase();
+
+        // Linked auctions reuse the HPI request from their active retail source.
+        // New reserve-not-met records now retain that link. For legacy records
+        // whose link was previously erased, recover exactly one unlinked ACTIVE
+        // retail sibling with the same seller+VRM and re-establish the reciprocal
+        // relationship atomically when the auction is restarted.
+        let linkedRetailSource: any = null;
+        let shouldHealLegacyLink = false;
+
+        if (listing.linkedListingId) {
+            linkedRetailSource = await this.prisma.listing.findUnique({
+                where: { id: listing.linkedListingId },
+                include: { hpiReport: { select: { id: true } } },
+            });
+            if (
+                !linkedRetailSource
+                || linkedRetailSource.deletedAt
+                || linkedRetailSource.type !== 'CLASSIFIED'
+                || linkedRetailSource.status !== 'ACTIVE'
+                || linkedRetailSource.sellerId !== userId
+                || linkedRetailSource.linkedListingId !== listing.id
+            ) {
+                throw new BadRequestException(
+                    'The linked retail listing is no longer active and correctly paired with this auction. Refresh the vehicle before re-auctioning.',
+                );
+            }
+        } else if (isReauctionableRetailDraft && normaliseVrm(listing.vrm)) {
+            const candidates = await this.prisma.listing.findMany({
+                where: {
+                    id: { not: listing.id },
+                    sellerId: userId,
+                    type: 'CLASSIFIED',
+                    status: 'ACTIVE',
+                    deletedAt: null,
+                    linkedListingId: null,
+                },
+                include: { hpiReport: { select: { id: true } } },
+            });
+            const sameVehicle = candidates.filter(
+                (candidate: any) => normaliseVrm(candidate.vrm) === normaliseVrm(listing.vrm),
+            );
+            if (sameVehicle.length === 1) {
+                linkedRetailSource = sameVehicle[0];
+                shouldHealLegacyLink = true;
+            }
+        }
+
+        // This endpoint is a submission path used by seller auction dashboards.
+        // It must enforce the same completeness/HPI contract as publishListing()
+        // before it can move anything into the admin review queue.
+        const ownHpi = await this.prisma.hpiReport.findUnique({
             where: { listingId: listing.id },
             select: { id: true },
         });
         const readiness = getListingSubmissionReadiness(listing, {
-            hasRequiredHpi: Boolean(hpiReport),
+            hasRequiredHpi: Boolean(ownHpi || linkedRetailSource?.hpiReport),
         });
         if (readiness.missingFields.length > 0) {
             throw new BadRequestException(
@@ -116,41 +161,57 @@ export class AuctionsService {
             );
         }
 
-        // For auction listings, Listing.price is the seller's Estimated Market Value.
-        // CarMazium owns the opening bid rule: every fresh auction opens at 70%
-        // of that value. The browser/app may send startingBid for compatibility,
-        // but it is never authoritative.
         const marketValue = Number(listing.price);
         if (!Number.isFinite(marketValue) || marketValue <= 0) {
             throw new BadRequestException('A valid Estimated Market Value is required before this vehicle can be auctioned');
         }
         const platformStartingBid = calculatePlatformOpeningBid(marketValue);
-
         const needsReview = listing.status !== 'PENDING_REVIEW';
-        const listingUpdate = this.prisma.listing.update({
-            where: { id: createAuctionDto.listingId },
-            data: {
-                status: 'PENDING_REVIEW',
-                rejectionReason: null,
-                ...(isReauctionableRetailDraft ? { type: 'AUCTION' as const } : {}),
-            },
-        });
 
         let auction: Auction;
 
         if (existing) {
             const archivedAt = new Date();
-            const [, , restartedAuction] = await this.prisma.$transaction([
-                listingUpdate,
-                this.prisma.bid.updateMany({
+            auction = await this.prisma.$transaction(async (tx) => {
+                if (shouldHealLegacyLink && linkedRetailSource) {
+                    const claimed = await tx.listing.updateMany({
+                        where: {
+                            id: linkedRetailSource.id,
+                            sellerId: userId,
+                            type: 'CLASSIFIED',
+                            status: 'ACTIVE',
+                            deletedAt: null,
+                            linkedListingId: null,
+                        },
+                        data: { linkedListingId: listing.id },
+                    });
+                    if (claimed.count !== 1) {
+                        throw new BadRequestException(
+                            'The retail listing changed while this auction was being restarted. Refresh and try again.',
+                        );
+                    }
+                }
+
+                await tx.listing.update({
+                    where: { id: createAuctionDto.listingId },
+                    data: {
+                        status: 'PENDING_REVIEW',
+                        rejectionReason: null,
+                        ...(isReauctionableRetailDraft ? { type: 'AUCTION' as const } : {}),
+                        ...(shouldHealLegacyLink && linkedRetailSource
+                            ? { linkedListingId: linkedRetailSource.id }
+                            : {}),
+                    },
+                });
+                await tx.bid.updateMany({
                     where: {
                         listingId: createAuctionDto.listingId,
                         deletedAt: null,
                         archivedAt: null,
                     },
                     data: { archivedAt },
-                }),
-                this.prisma.auction.update({
+                });
+                return tx.auction.update({
                     where: { id: existing.id },
                     data: {
                         startTime,
@@ -173,13 +234,18 @@ export class AuctionsService {
                         buyItNowPendingBuyerId: null,
                         buyItNowPendingAt: null,
                     },
-                }),
-            ]);
-            auction = restartedAuction;
+                });
+            });
         } else {
-            const [, createdAuction] = await this.prisma.$transaction([
-                listingUpdate,
-                this.prisma.auction.create({
+            auction = await this.prisma.$transaction(async (tx) => {
+                await tx.listing.update({
+                    where: { id: createAuctionDto.listingId },
+                    data: {
+                        status: 'PENDING_REVIEW',
+                        rejectionReason: null,
+                    },
+                });
+                return tx.auction.create({
                     data: {
                         listingId: createAuctionDto.listingId,
                         startTime,
@@ -190,9 +256,8 @@ export class AuctionsService {
                         buyItNowPrice: createAuctionDto.buyItNowPrice ?? null,
                         status: 'SCHEDULED',
                     },
-                }),
-            ]);
-            auction = createdAuction;
+                });
+            });
         }
 
         if (needsReview) {
@@ -572,6 +637,7 @@ export class AuctionsService {
                 data: {
                     status: 'DRAFT',
                     linkedListingId: null,
+                    ...(classifiedId ? { deletedAt: new Date() } : {}),
                 } as any,
             }),
         ];
@@ -933,6 +999,7 @@ export class AuctionsService {
                 data: {
                     status: 'DRAFT',
                     linkedListingId: null,
+                    ...(classifiedId ? { deletedAt: new Date() } : {}),
                 } as any,
             }),
         ];
@@ -1086,9 +1153,11 @@ export class AuctionsService {
             await this.notifyAuctionEnd(auction, topBid.bidderId, Number(topBid.amount), true);
         } else {
             // No winner — reserve not met.
-            // Move listing to DRAFT (seller's inventory). It will NOT appear in
-            // public retail search until the seller explicitly relists it from
-            // their inventory dashboard.
+            // Standalone auction listings return to a retail DRAFT so the seller
+            // can choose retail or re-auction. A linked auction is different:
+            // its retail counterpart is already live, so preserve the reciprocal
+            // link and keep this shell as AUCTION/DRAFT. Re-auction can then reuse
+            // the same auction row without creating two uncoupled live channels.
             const classifiedId = (auction.listing as any).linkedListingId as string | null;
             await this.prisma.$transaction([
                 this.prisma.auction.update({
@@ -1097,20 +1166,17 @@ export class AuctionsService {
                 }),
                 this.prisma.listing.update({
                     where: { id: auction.listingId },
-                    data: {
-                        status: 'DRAFT',
-                        type: 'CLASSIFIED', // Reset type so seller can list it for retail
-                        linkedListingId: null, // Clear link so seller can re-auction
-                    } as any,
+                    data: classifiedId
+                        ? {
+                            status: 'DRAFT',
+                            type: 'AUCTION',
+                        } as any
+                        : {
+                            status: 'DRAFT',
+                            type: 'CLASSIFIED',
+                            linkedListingId: null,
+                        } as any,
                 }),
-                // If there was a paired CLASSIFIED retail listing, clear its link too
-                // so the seller can re-auction the same vehicle if they want
-                ...(classifiedId ? [
-                    this.prisma.listing.update({
-                        where: { id: classifiedId },
-                        data: { linkedListingId: null } as any,
-                    }),
-                ] : []),
             ]);
 
             const endPayload: AuctionEndPayload = {
