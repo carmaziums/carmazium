@@ -19,6 +19,12 @@ export class ServiceListQueryDto {
     cursor?: string;
 }
 
+export class ServiceJobFeedQueryDto extends ServiceListQueryDto {
+    @ApiPropertyOptional({ enum: JOB_SERVICE_TYPES })
+    @IsOptional() @IsEnum(ServiceType)
+    serviceType?: ServiceType;
+}
+
 export class JobVehicleDto {
     @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(10)
     registration?: string;
