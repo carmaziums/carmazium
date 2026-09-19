@@ -1,6 +1,5 @@
 "use client"
 
-import { notFound } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import {
@@ -18,6 +17,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { deliveryServiceEnabled } from "@/lib/featureFlags"
+import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
 import { useAuth } from "@/context/AuthContext"
 
 const STEPS = [
@@ -29,7 +29,7 @@ const STEPS = [
 
 export default function DeliveryLandingPage() {
     const { user } = useAuth()
-    if (!deliveryServiceEnabled) notFound()
+    if (!deliveryServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Delivery & Recovery" />
 
     const providerHref = user
         ? "/dashboard/partner"
