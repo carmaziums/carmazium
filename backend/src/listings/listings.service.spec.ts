@@ -92,7 +92,7 @@ describe('ListingsService', () => {
             ...overrides,
         });
 
-        it('creates the Listing and Auction in one Prisma nested write and keeps the listing DRAFT', async () => {
+        it('creates Listing + Auction explicitly inside one transaction and keeps the listing DRAFT', async () => {
             prisma.listing.findMany.mockResolvedValue([]);
             prisma.listing.create.mockResolvedValue({
                 id: 'listing-new',
@@ -101,6 +101,7 @@ describe('ListingsService', () => {
                 type: 'AUCTION',
                 status: 'DRAFT',
             });
+            prisma.auction.create.mockResolvedValue({ id: 'auction-new' });
 
             const start = new Date(Date.now() + 60_000);
             await service.create(
@@ -115,27 +116,27 @@ describe('ListingsService', () => {
                 sellerId,
             );
 
-            const createCall = prisma.listing.create.mock.calls[0][0];
-            expect(createCall.data.status).toBe('DRAFT');
-            expect(createCall.data.type).toBe('AUCTION');
-            expect(createCall.data.auction).toEqual({
-                create: expect.objectContaining({
-                    reservePrice: 9000,
-                    startingBid: 7000,
-                    minIncrement: 100,
-                    buyItNowPrice: 12000,
-                    status: 'SCHEDULED',
-                }),
-            });
+            const listingCreateCall = prisma.listing.create.mock.calls[0][0];
+            expect(listingCreateCall.data.status).toBe('DRAFT');
+            expect(listingCreateCall.data.type).toBe('AUCTION');
+            expect(listingCreateCall.data.auction).toBeUndefined();
 
-            const nestedAuction = createCall.data.auction.create;
-            expect(nestedAuction.startTime.getTime()).toBe(start.getTime());
-            expect(nestedAuction.endTime.getTime() - nestedAuction.startTime.getTime())
+            expect(prisma.auction.create).toHaveBeenCalledTimes(1);
+            const auctionCreateCall = prisma.auction.create.mock.calls[0][0];
+            expect(auctionCreateCall.data).toEqual(expect.objectContaining({
+                listingId: 'listing-new',
+                reservePrice: 9000,
+                startingBid: 7000,
+                minIncrement: 100,
+                buyItNowPrice: 12000,
+                status: 'SCHEDULED',
+            }));
+            expect(auctionCreateCall.data.startTime.getTime()).toBe(start.getTime());
+            expect(auctionCreateCall.data.endTime.getTime() - auctionCreateCall.data.startTime.getTime())
                 .toBe(24 * 60 * 60 * 1000);
 
-            // There must be no second standalone Auction create call. Prisma's
-            // nested Listing.create is the atomic boundary.
-            expect(prisma.auction.create).not.toHaveBeenCalled();
+            // Both creates execute through the same interactive transaction.
+            expect(prisma.$transaction).toHaveBeenCalled();
         });
 
         it('keeps an intentional AUCTION draft as DRAFT when no schedule is supplied', async () => {
