@@ -2650,7 +2650,7 @@ export class ChatService {
                         { initiatorId: userId },
                         { participantId: userId },
                     ];
-        if (serviceActor) {
+        if (serviceActor && (!serviceActor.isStaff || serviceActor.canView)) {
             membership.push({
                 context: ChatContext.SERVICE_JOB,
                 serviceJob: {
@@ -2730,7 +2730,7 @@ export class ChatService {
                         { initiatorId: userId },
                         { participantId: userId },
                     ];
-        if (serviceActor) {
+        if (serviceActor && (!serviceActor.isStaff || serviceActor.canView)) {
             membership.push({
                 context: ChatContext.SERVICE_JOB,
                 serviceJob: {
