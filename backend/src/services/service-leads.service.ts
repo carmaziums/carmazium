@@ -309,7 +309,7 @@ export class ServiceLeadsService {
                 listing.sellerId === customerId
                 || listing.sale?.buyerId === customerId
                 || listing.auction?.winnerId === customerId
-                || listing.offers.some((offer: any) => offer.buyerId === customerId);
+                || (listing.offers ?? []).some((offer: any) => offer.buyerId === customerId);
             if (!related && String(listing.status) !== 'ACTIVE') {
                 throw new ForbiddenException(
                     'You can only link an active public listing or a vehicle connected to your account.',
