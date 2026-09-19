@@ -722,6 +722,16 @@ export class ServiceLeadsService {
         if (!cap) throw new NotFoundException('Application not found');
         this.assertLeadType(cap.serviceType);
 
+        if (
+            dto.status === CapabilityStatus.APPROVED
+            && !cap.leadNationwide
+            && (cap.leadPostcodeAreas?.length ?? 0) === 0
+        ) {
+            throw new BadRequestException(
+                'Configure nationwide coverage or at least one postcode area before approving this lead capability.',
+            );
+        }
+
         const updated = await this.prisma.contractorCapability.update({
             where: { id },
             data: {
@@ -749,6 +759,87 @@ export class ServiceLeadsService {
         return updated;
     }
 
+    async adminRematch(leadId: string) {
+        await this.expireOldLeads();
+
+        const result = await this.prisma.$transaction(async (tx) => {
+            const lead = await tx.serviceLead.findUnique({
+                where: { id: leadId },
+                include: {
+                    recipients: {
+                        select: { contractorId: true },
+                    },
+                },
+            });
+            if (!lead) throw new NotFoundException('Enquiry not found');
+            this.assertLeadType(lead.serviceType);
+            if (
+                lead.status !== 'OPEN'
+                || lead.expiresAt <= new Date()
+                || lead.anonymizedAt
+                || !lead.consentToProviderContact
+            ) {
+                throw new BadRequestException('Only an open, consented enquiry can be rematched.');
+            }
+
+            const existingIds = lead.recipients.map((recipient) => recipient.contractorId);
+            const slots = MAX_LEAD_RECIPIENTS - existingIds.length;
+            if (slots <= 0) {
+                return { lead, matching: [] as any[], total: existingIds.length };
+            }
+
+            const matching = await this.matchingProviders(tx, {
+                serviceType: lead.serviceType,
+                postcode: lead.postcode,
+                vehicleValuePence: lead.vehicleValuePence,
+                vehicleYear: lead.vehicleYear,
+                vehicleMileage: lead.vehicleMileage,
+                annualIncomePence: lead.annualIncomePence,
+                termMonths: lead.termMonths,
+                warrantyMonths: lead.warrantyMonths,
+                warrantyLevel: lead.warrantyLevel,
+            }, existingIds, slots);
+
+            if (matching.length) {
+                const now = new Date();
+                await tx.serviceLeadRecipient.createMany({
+                    data: matching.map((provider: any) => ({
+                        leadId: lead.id,
+                        contractorId: provider.contractorId,
+                        status: 'NEW',
+                        matchedAt: now,
+                        matchSource: 'ADMIN_REMATCH',
+                        matchReason: provider.matchReason,
+                    })),
+                    skipDuplicates: true,
+                });
+            }
+
+            return {
+                lead,
+                matching,
+                total: Math.min(MAX_LEAD_RECIPIENTS, existingIds.length + matching.length),
+            };
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+        await Promise.allSettled(result.matching.map((provider: any) => this.notifications.create({
+            userId: provider.contractor.userId,
+            type: 'SERVICE_LEAD_NEW',
+            title: result.lead.serviceType === ServiceType.FINANCE ? 'New finance enquiry' : 'New warranty enquiry',
+            message: 'A CarMazium administrator matched a relevant enquiry to your provider account.',
+            link: '/dashboard/service/leads',
+            entityType: 'ServiceLead',
+            entityId: result.lead.id,
+            actionType: 'ADMIN_REMATCH',
+        })));
+
+        return {
+            added: result.matching.length,
+            recipientCount: result.total,
+            recipientLimit: MAX_LEAD_RECIPIENTS,
+        };
+    }
+
     async adminList(serviceType?: ServiceType, status?: string) {
         if (serviceType) this.assertLeadType(serviceType);
 
@@ -770,6 +861,13 @@ export class ServiceLeadsService {
 
         return leads.map((lead) => this.leadWithCounts(lead));
     }
+}
+
+function postcodeArea(value?: string | null): string | null {
+    const compact = value?.trim().toUpperCase().replace(/\s+/g, '');
+    if (!compact) return null;
+    const match = compact.match(/^([A-Z]{1,3})(?=\d)/);
+    return match?.[1] ?? null;
 }
 
 function normPostcode(value?: string | null): string | null {
