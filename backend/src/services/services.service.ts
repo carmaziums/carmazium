@@ -350,6 +350,35 @@ export class ServicesService {
         };
     }
 
+    async updateJobMatching(userId: string, capabilityId: string, dto: UpdateJobMatchingDto) {
+        const capability = await this.prisma.contractorCapability.findFirst({
+            where: {
+                id: capabilityId,
+                contractor: { userId, deletedAt: null },
+            },
+            select: { id: true, serviceType: true },
+        });
+        if (!capability) throw new NotFoundException('Service capability not found on your account.');
+        if (![ServiceType.DELIVERY, ServiceType.INSPECTION].includes(capability.serviceType)) {
+            throw new BadRequestException('Job matching settings apply only to Delivery/Recovery and Inspection capabilities.');
+        }
+
+        const postcodeAreas = [...new Set((dto.jobPostcodeAreas ?? [])
+            .map((area) => area.trim().toUpperCase())
+            .filter(Boolean))];
+        if (!dto.jobNationwide && postcodeAreas.length === 0) {
+            throw new BadRequestException('Choose nationwide coverage or at least one UK postcode area.');
+        }
+
+        return this.prisma.contractorCapability.update({
+            where: { id: capability.id },
+            data: {
+                jobNationwide: dto.jobNationwide,
+                jobPostcodeAreas: dto.jobNationwide ? [] : postcodeAreas,
+            },
+        });
+    }
+
     async updateLeadMatching(userId: string, capabilityId: string, dto: UpdateLeadMatchingDto) {
         const capability = await this.prisma.contractorCapability.findFirst({
             where: {
