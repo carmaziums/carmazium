@@ -417,13 +417,10 @@ export class ListingsController {
     @ApiResponse({ status: 403, description: 'You do not own this listing' })
     async alsoAuction(
         @Param('id') id: string,
-        @Body('startTime') startTime: string,
-        @Body('reservePrice') reservePrice: number,
-        @Body('startingBid') startingBid: number | undefined,
-        @Body('minIncrement') minIncrement: number | undefined,
+        @Body() dto: AlsoAuctionDto,
         @CurrentUser() user: any,
     ) {
-        const result = await this.listingsService.alsoAuction(id, user.id, { startTime, reservePrice, startingBid, minIncrement });
+        const result = await this.listingsService.alsoAuction(id, user.id, dto);
         return new StandardResponse(result);
     }
 
