@@ -214,12 +214,16 @@ describe('TradeXchange payment hardening', () => {
     });
 
     function releasableJob(status: ServiceJobStatus) {
+        const startedAt = new Date(Date.now() - 2 * 60_000);
+        const completedAt = new Date(Date.now() - 60_000);
         return {
             id: 'job-1',
             title: 'Move BMW',
             customerId: 'customer-1',
             contractorId: 'contractor-1',
             status,
+            startedAt,
+            completedAt,
             confirmedAt: null,
             payment: {
                 id: 'pay-1',
