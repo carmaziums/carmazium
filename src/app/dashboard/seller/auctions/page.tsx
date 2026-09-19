@@ -51,6 +51,13 @@ function formatDate(iso: string) {
     })
 }
 
+function addHours(iso: string, hours: number): string {
+    return new Date(new Date(iso).getTime() + hours * 3_600_000).toLocaleString("en-GB", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+    })
+}
+
 // A plain grey "ENDED" pill hides the one thing a seller actually needs to
 // know: whether there's something left to do. This surfaces that directly on
 // the row instead of making them notice a separate section further down the
