@@ -7,8 +7,10 @@ import {
 } from '@nestjs/common';
 import { CapabilityStatus, Prisma, ServiceType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { TradeTeamPermissionInput, UpdateTradeTeamPermissionsDto } from './trade-team.dto';
 
-export type TradeTeamAction = 'quote' | 'manage' | 'complete';
+export type TradeTeamAction = 'view' | 'chat' | 'quote' | 'manage' | 'complete';
 
 export interface TradeActorContext {
     actingUserId: string;
@@ -18,15 +20,8 @@ export interface TradeActorContext {
     businessName: string | null;
     isStaff: boolean;
     allowedServiceTypes: ServiceType[];
-    canQuote: boolean;
-    canManage: boolean;
-    canComplete: boolean;
-}
-
-export interface TradeTeamPermissionInput {
-    email: string;
-    deliveryEnabled: boolean;
-    inspectionEnabled: boolean;
+    canView: boolean;
+    canChat: boolean;
     canQuote: boolean;
     canManage: boolean;
     canComplete: boolean;
@@ -35,9 +30,12 @@ export interface TradeTeamPermissionInput {
 type PermissionRow = {
     id: string;
     dealerProfileId: string;
+    staffUserId: string | null;
     email: string;
     deliveryEnabled: boolean;
     inspectionEnabled: boolean;
+    canView: boolean;
+    canChat: boolean;
     canQuote: boolean;
     canManage: boolean;
     canComplete: boolean;
@@ -47,19 +45,87 @@ type PermissionRow = {
 
 @Injectable()
 export class TradeTeamService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly notifications: NotificationsService,
+    ) { }
 
     private normaliseEmail(value: string) {
         return String(value || '').trim().toLowerCase();
     }
 
-    private async permissionFor(dealerProfileId: string, email: string): Promise<PermissionRow | null> {
+    private strictPermissionInput(input: UpdateTradeTeamPermissionsDto): TradeTeamPermissionInput {
+        const booleanFields = [
+            'deliveryEnabled',
+            'inspectionEnabled',
+            'canView',
+            'canChat',
+            'canQuote',
+            'canManage',
+            'canComplete',
+        ] as const;
+        for (const field of booleanFields) {
+            if (typeof input[field] !== 'boolean') {
+                throw new BadRequestException(`${field} must be a real boolean value.`);
+            }
+        }
+        return {
+            email: this.normaliseEmail(input.email),
+            deliveryEnabled: input.deliveryEnabled as boolean,
+            inspectionEnabled: input.inspectionEnabled as boolean,
+            canView: input.canView as boolean,
+            canChat: input.canChat as boolean,
+            canQuote: input.canQuote as boolean,
+            canManage: input.canManage as boolean,
+            canComplete: input.canComplete as boolean,
+        };
+    }
+
+    private async syncBusinessIdentity(dealer: any) {
+        const provider = dealer.user?.contractorProfile;
+        if (!provider) return provider;
+
+        const data = {
+            businessName: dealer.companyName?.trim() || null,
+            phone: dealer.phone?.trim() || null,
+            serviceArea: dealer.businessAddress?.trim() || null,
+        };
+        if (
+            provider.businessName !== data.businessName ||
+            provider.phone !== data.phone ||
+            provider.serviceArea !== data.serviceArea
+        ) {
+            return this.prisma.contractorProfile.update({
+                where: { id: provider.id },
+                data,
+                include: { capabilities: { orderBy: { appliedAt: 'desc' } } },
+            });
+        }
+        return provider;
+    }
+
+    private async permissionFor(dealerProfileId: string, userId: string, email: string): Promise<PermissionRow | null> {
         const rows = await this.prisma.$queryRaw<PermissionRow[]>(Prisma.sql`
             SELECT * FROM "trade_service_team_permissions"
-            WHERE "dealerProfileId" = ${dealerProfileId} AND "email" = ${email}
+            WHERE "dealerProfileId" = ${dealerProfileId}
+              AND (
+                  "staffUserId" = ${userId}
+                  OR ("staffUserId" IS NULL AND "email" = ${email})
+              )
+            ORDER BY CASE WHEN "staffUserId" = ${userId} THEN 0 ELSE 1 END
             LIMIT 1
         `);
-        return rows[0] ?? null;
+        const permission = rows[0] ?? null;
+        if (permission && !permission.staffUserId) {
+            const bound = await this.prisma.$queryRaw<PermissionRow[]>(Prisma.sql`
+                UPDATE "trade_service_team_permissions"
+                SET "staffUserId" = ${userId}, "email" = ${email}, "updatedAt" = CURRENT_TIMESTAMP
+                WHERE "id" = ${permission.id} AND "staffUserId" IS NULL
+                RETURNING *
+            `);
+            return bound[0] ?? permission;
+        }
+        return permission;
     }
 
     /**
@@ -107,7 +173,7 @@ export class TradeTeamService {
             const provider = dealer.user.contractorProfile;
             if (!provider) continue;
 
-            const permission = await this.permissionFor(dealer.id, email);
+            const permission = await this.permissionFor(dealer.id, userId, email);
             if (!permission) continue;
 
             const approved = new Set(provider.capabilities.map((c) => c.serviceType));
@@ -124,6 +190,8 @@ export class TradeTeamService {
                 businessName: dealer.companyName,
                 isStaff: true,
                 allowedServiceTypes: allowed,
+                canView: permission.canView,
+                canChat: permission.canChat,
                 canQuote: permission.canQuote,
                 canManage: permission.canManage,
                 canComplete: permission.canComplete,
@@ -160,6 +228,8 @@ export class TradeTeamService {
             businessName: direct.businessName ?? null,
             isStaff: false,
             allowedServiceTypes: direct.capabilities.map((c) => c.serviceType),
+            canView: true,
+            canChat: true,
             canQuote: true,
             canManage: true,
             canComplete: true,
@@ -189,7 +259,12 @@ export class TradeTeamService {
             throw new BadRequestException('You cannot quote on a job posted by you or your business.');
         }
         if (actor.isStaff) {
-            const allowed = action === 'quote' ? actor.canQuote : action === 'manage' ? actor.canManage : actor.canComplete;
+            const allowed =
+                action === 'view' ? actor.canView :
+                action === 'chat' ? actor.canChat :
+                action === 'quote' ? actor.canQuote :
+                action === 'manage' ? actor.canManage :
+                actor.canComplete;
             if (!allowed) throw new ForbiddenException(`Your business role does not allow you to ${action} this job.`);
         }
         return job;
@@ -203,19 +278,67 @@ export class TradeTeamService {
             select: { serviceType: true },
         });
         if (!job || !actor.allowedServiceTypes.includes(job.serviceType)) return null;
+        if (actor.isStaff && !actor.canView) return null;
         return actor.contractorProfileId;
     }
 
     async logAction(actor: TradeActorContext, jobId: string, action: string, metadata?: Record<string, unknown>) {
         if (!actor.isStaff) return;
+        const auditMetadata = {
+            ...(metadata ?? {}),
+            permissionSnapshot: {
+                serviceTypes: actor.allowedServiceTypes,
+                canView: actor.canView,
+                canChat: actor.canChat,
+                canQuote: actor.canQuote,
+                canManage: actor.canManage,
+                canComplete: actor.canComplete,
+            },
+        };
         await this.prisma.$executeRaw(Prisma.sql`
             INSERT INTO "trade_service_team_action_log" (
                 "id", "jobId", "dealerProfileId", "contractorProfileId", "actingUserId", "action", "metadata", "createdAt"
             ) VALUES (
                 gen_random_uuid()::text, ${jobId}, ${actor.dealerProfileId}, ${actor.contractorProfileId},
-                ${actor.actingUserId}, ${action}, ${metadata ? JSON.stringify(metadata) : null}::jsonb, CURRENT_TIMESTAMP
+                ${actor.actingUserId}, ${action}, ${JSON.stringify(auditMetadata)}::jsonb, CURRENT_TIMESTAMP
             )
         `);
+    }
+
+    async notifyOperationalStaff(
+        contractorProfileId: string,
+        serviceType: ServiceType,
+        type: string,
+        title: string,
+        message: string,
+        link: string,
+    ) {
+        const rows = await this.prisma.$queryRaw<Array<{ userId: string }>>(Prisma.sql`
+            SELECT DISTINCT p."staffUserId" AS "userId"
+            FROM "trade_service_team_permissions" p
+            JOIN "dealer_staff" ds
+              ON ds."dealerProfileId" = p."dealerProfileId"
+             AND ds."userId" = p."staffUserId"
+             AND ds."isActive" = true
+            JOIN "dealer_profiles" d ON d."id" = p."dealerProfileId"
+            JOIN "contractor_profiles" cp ON cp."userId" = d."userId"
+            WHERE cp."id" = ${contractorProfileId}
+              AND p."staffUserId" IS NOT NULL
+              AND p."canView" = true
+              AND (
+                  (${serviceType}::service_type = 'DELIVERY'::service_type AND p."deliveryEnabled" = true)
+                  OR
+                  (${serviceType}::service_type = 'INSPECTION'::service_type AND p."inspectionEnabled" = true)
+              )
+        `);
+        await Promise.allSettled(rows.map((row) => this.notifications.create({
+            userId: row.userId,
+            type,
+            title,
+            message,
+            link,
+            entityType: 'SERVICE_JOB',
+        } as any)));
     }
 
     private async ownerDealer(userId: string) {
