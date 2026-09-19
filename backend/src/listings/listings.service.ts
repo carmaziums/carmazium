@@ -446,10 +446,9 @@ export class ListingsService {
         const isPremium = badgeTier === 'PREMIUM';
 
         // Every new listing must pass admin review before it can go live — nothing
-        // is ever created directly as ACTIVE. Paid tiers start DRAFT (moved to
-        // PENDING_REVIEW once payment completes, see publishListing()/the Stripe
-        // webhook). FREE tier (auctions) has no payment step, so it goes straight
-        // to PENDING_REVIEW unless the caller explicitly asked to save as a DRAFT.
+        // is ever created directly as ACTIVE. Retail paid tiers start DRAFT and
+        // auctions now also always start DRAFT, even when their Auction row is
+        // created atomically. publishListing() owns the readiness/HPI review gate.
         // AUCTION creation always starts as DRAFT, even when the Auction row is
         // created atomically below. Submission/readiness/HPI checks remain owned
         // by publishListing(); the atomic create only guarantees structural
@@ -578,10 +577,10 @@ export class ListingsService {
                 .catch(() => { /* silent */ });
         }
 
-        // FREE-tier (auction) listings have no payment step, so this create() call
-        // is the only signal that the seller has finished submitting — notify them
-        // it's now awaiting admin review. Paid tiers get this from publishListing()
-        // / the Stripe webhook once payment completes instead.
+        // A create() call alone never submits an auction for review. Auctions are
+        // DRAFT until publishListing() passes readiness/HPI checks. This branch is
+        // retained for any non-auction create flow that legitimately starts in
+        // PENDING_REVIEW.
         if (listingStatus === 'PENDING_REVIEW') {
             this.notifySubmittedForReview({ id: listing.id, title: listing.title, sellerId: userId ?? listing.sellerId }).catch(() => { });
         }
