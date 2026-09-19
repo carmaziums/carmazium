@@ -8,11 +8,10 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
 import {
-    adminGetCapabilities, adminReviewCapability, adminGetJobs, adminGetServiceLeads,
+    adminGetCapabilities, adminReviewCapability, adminGetJobs, adminGetDisputes, adminGetServiceLeads,
     formatPence, SERVICE_LABELS,
-    type ContractorCapability, type ServiceJob, type CapabilityStatus, type ServiceLead,
+    type ContractorCapability, type ServiceJob, type CapabilityStatus, type ServiceLead, type ServiceType,
 } from "@/lib/servicesApi"
-import { adminResolveDisputeWithCase } from "@/lib/serviceOperationsApi"
 import { JobListCard } from "@/components/services/JobBits"
 
 type Tab = "queue" | "providers" | "jobs" | "leads" | "disputes"
@@ -23,17 +22,39 @@ function AdminServices() {
     const [tab, setTab] = React.useState<Tab>((params.get("tab") as Tab) || "queue")
     const [caps, setCaps] = React.useState<ContractorCapability[] | null>(null)
     const [jobs, setJobs] = React.useState<ServiceJob[] | null>(null)
+    const [disputes, setDisputes] = React.useState<ServiceJob[] | null>(null)
     const [leads, setLeads] = React.useState<ServiceLead[] | null>(null)
+    const [query, setQuery] = React.useState("")
+    const [serviceFilter, setServiceFilter] = React.useState<"ALL" | ServiceType>("ALL")
     const [busy, setBusy] = React.useState<string | null>(null)
     const [error, setError] = React.useState<string | null>(null)
 
-    const load = React.useCallback(() => {
+    const load = React.useCallback(async () => {
         setError(null)
-        adminGetCapabilities().then(setCaps).catch(e => setError(e?.message))
-        adminGetJobs().then(setJobs).catch(e => setError(e?.message))
-        adminGetServiceLeads().then(setLeads).catch(e => setError(e?.message))
-    }, [])
-    React.useEffect(() => { if (user) load() }, [user, load])
+        const q = query.trim() || undefined
+        const capabilityService = serviceFilter === "ALL" ? undefined : serviceFilter
+        const paidService = serviceFilter === "DELIVERY" || serviceFilter === "INSPECTION" ? serviceFilter : undefined
+        const leadService = serviceFilter === "FINANCE" || serviceFilter === "WARRANTY" ? serviceFilter : undefined
+        try {
+            const [nextCaps, nextJobs, nextDisputes, nextLeads] = await Promise.all([
+                adminGetCapabilities({ serviceType: capabilityService, q }),
+                adminGetJobs({ serviceType: paidService, q }),
+                adminGetDisputes({ serviceType: paidService, q }),
+                adminGetServiceLeads(leadService, undefined, q),
+            ])
+            setCaps(nextCaps)
+            setJobs(nextJobs)
+            setDisputes(nextDisputes)
+            setLeads(nextLeads)
+        } catch (e: any) {
+            setError(e?.message || "Could not load TradeXchange operations.")
+        }
+    }, [query, serviceFilter])
+    React.useEffect(() => {
+        if (!user) return
+        const timer = window.setTimeout(() => { void load() }, 250)
+        return () => window.clearTimeout(timer)
+    }, [user, load])
 
     const review = async (id: string, status: CapabilityStatus) => {
         const reviewNote = status === "APPROVED" ? undefined : (prompt("Note to the provider:") ?? undefined)
@@ -43,23 +64,15 @@ function AdminServices() {
         catch (e: any) { setError(e?.message) } finally { setBusy(null) }
     }
 
-    const resolve = async (id: string, outcome: "RELEASE" | "REFUND") => {
-        const note = prompt(outcome === "RELEASE" ? "Release payment to the provider. Note (optional):" : "Refund the customer in full. Note (optional):")
-        if (note === null) return
-        setBusy(id); setError(null)
-        try { await adminResolveDisputeWithCase(id, { outcome, note: note || undefined }); load() }
-        catch (e: any) { setError(e?.message) } finally { setBusy(null) }
-    }
-
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}`.trim() : user?.email || "Admin"
     const pending = caps?.filter(c => c.status === "PENDING") ?? []
     const others = caps?.filter(c => c.status !== "PENDING") ?? []
-    const disputes = jobs?.filter(j => j.status === "DISPUTED") ?? []
+    const activeDisputes = disputes ?? []
     const TABS: [Tab, string][] = [
         ["queue", `Applications${pending.length ? ` (${pending.length})` : ""}`],
         ["providers", "Providers"], ["jobs", `Jobs${jobs ? ` (${jobs.length})` : ""}`],
         ["leads", `Finance / Warranty${leads ? ` (${leads.length})` : ""}`],
-        ["disputes", `Disputes${disputes.length ? ` (${disputes.length})` : ""}`],
+        ["disputes", `Disputes${activeDisputes.length ? ` (${activeDisputes.length})` : ""}`],
     ]
 
     return <div className="min-h-screen pt-20 pb-12"><div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
@@ -67,8 +80,18 @@ function AdminServices() {
         <main className="flex-1 space-y-6">
             <div><h1 className="text-3xl font-bold font-heading mb-1">Trade Exchange services</h1><p className="text-sm text-[var(--text-muted)]">Provider approvals, paid jobs, Finance/Warranty enquiries and disputes.</p></div>
             <div className="flex items-center gap-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl p-1 w-fit flex-wrap">{TABS.map(([k,label]) => <button key={k} type="button" onClick={() => setTab(k)} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${tab===k?"bg-primary text-white":"text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>{label}</button>)}</div>
+            <div className="grid md:grid-cols-[minmax(0,1fr)_220px] gap-3">
+                <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search jobs, providers, customers, emails or vehicles…" className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-sm outline-none focus:border-primary" />
+                <select value={serviceFilter} onChange={e => setServiceFilter(e.target.value as "ALL" | ServiceType)} className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-sm outline-none focus:border-primary">
+                    <option value="ALL">All services</option>
+                    <option value="DELIVERY">Delivery & Recovery</option>
+                    <option value="INSPECTION">Vehicle Inspections</option>
+                    <option value="FINANCE">Vehicle Finance</option>
+                    <option value="WARRANTY">Warranty</option>
+                </select>
+            </div>
             {error && <div className="p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-300 text-sm flex items-start gap-3"><AlertCircle size={18} className="shrink-0 mt-0.5" /> {error}</div>}
-            {(!caps || !jobs || !leads) && !error && <div className="flex justify-center py-16"><Loader2 className="animate-spin text-primary" /></div>}
+            {(!caps || !jobs || !disputes || !leads) && !error && <div className="flex justify-center py-16"><Loader2 className="animate-spin text-primary" /></div>}
 
             {caps && (tab === "queue" || tab === "providers") && <div className="space-y-3">
                 {(tab === "queue" ? pending : others).length === 0 && <p className="text-sm text-[var(--text-muted)] py-10 text-center">{tab === "queue" ? "No applications waiting." : "No reviewed providers yet."}</p>}
@@ -91,7 +114,7 @@ function AdminServices() {
 
             {leads && tab === "leads" && <div className="space-y-3">{leads.length===0 && <p className="text-sm text-[var(--text-muted)] py-10 text-center">No Finance or Warranty enquiries yet.</p>}{leads.map(l => <div key={l.id} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5"><div className="flex items-start justify-between gap-4"><div><div className="flex gap-2 items-center flex-wrap"><h3 className="font-heading font-bold">{[l.vehicleRegistration,l.vehicleMake,l.vehicleModel].filter(Boolean).join(" · ") || "Vehicle enquiry"}</h3><span className="text-[10px] font-black uppercase tracking-widest text-primary">{SERVICE_LABELS[l.serviceType]}</span></div><p className="text-xs text-[var(--text-muted)] mt-2">Customer: {l.fullName} · {l.email}{l.phone ? ` · ${l.phone}` : ""}</p><p className="text-xs text-[var(--text-muted)] mt-1">Matched providers: {l.recipientCount ?? 0} · Responses: {l.responseCount ?? 0} · Created {new Date(l.createdAt).toLocaleDateString("en-GB")}</p><Link href={`/dashboard/admin/services/leads/${l.id}`} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline mt-3"><FileSearch size={13}/> Open enquiry & provider responses</Link></div><span className="text-[10px] font-black uppercase tracking-widest border border-[var(--border-default)] rounded-full px-2.5 py-1">{l.status}</span></div></div>)}</div>}
 
-            {jobs && tab === "disputes" && <div className="space-y-3">{disputes.length===0 && <p className="text-sm text-[var(--text-muted)] py-10 text-center">Nothing in dispute.</p>}{disputes.map(j => <div key={j.id} className="rounded-2xl border border-red-500/30 bg-[var(--bg-card)] p-5"><div className="flex items-start justify-between gap-4 mb-3"><div><h3 className="font-heading font-bold">{j.title}</h3><p className="text-xs text-[var(--text-muted)]">Held: {j.payment ? formatPence(j.payment.grossPence) : "—"} · provider share {j.payment ? formatPence(j.payment.contractorPence) : "—"}</p>{j.cancelReason && <p className="text-sm mt-2">{j.cancelReason}</p>}<Link href={`/dashboard/admin/services/jobs/${j.id}`} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline mt-3"><FileSearch size={13}/> Open dispute case</Link></div><Scale size={20} className="text-red-500 shrink-0"/></div><div className="flex gap-2"><Button size="sm" disabled={busy===j.id} onClick={() => resolve(j.id,"RELEASE")}>Release to provider</Button><Button size="sm" variant="outline" disabled={busy===j.id} onClick={() => resolve(j.id,"REFUND")}>Refund customer</Button></div></div>)}</div>}
+            {disputes && tab === "disputes" && <div className="space-y-3">{activeDisputes.length===0 && <p className="text-sm text-[var(--text-muted)] py-10 text-center">Nothing in dispute.</p>}{activeDisputes.map(j => <div key={j.id} className="rounded-2xl border border-red-500/30 bg-[var(--bg-card)] p-5"><div className="flex items-start justify-between gap-4"><div><h3 className="font-heading font-bold">{j.title}</h3><p className="text-xs text-[var(--text-muted)]">Held: {j.payment ? formatPence(j.payment.grossPence) : "—"} · provider share {j.payment ? formatPence(j.payment.contractorPence) : "—"}</p>{j.cancelReason && <p className="text-sm mt-2">{j.cancelReason}</p>}<p className="text-xs text-[var(--text-muted)] mt-2">Settlement is available only inside the full dispute case so evidence and the audit trail remain in one operational workflow.</p><Link href={`/dashboard/admin/services/jobs/${j.id}`} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline mt-3"><FileSearch size={13}/> Open dispute case</Link></div><Scale size={20} className="text-red-500 shrink-0"/></div></div>)}</div>}
         </main>
     </div></div>
 }
