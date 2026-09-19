@@ -21,6 +21,23 @@ import {
 const SERVICE_PLATFORM_FEE_RATE = 0.09;
 
 /**
+ * Public runtime availability for customer-facing TradeXchange pages.
+ *
+ * This deliberately has no SessionAuthGuard: it contains no account data and
+ * lets the website use the backend's live kill switches as the single runtime
+ * source of truth instead of relying on a separate Vercel build-time value.
+ */
+@ApiTags('TradeXchange public')
+@Controller('services')
+export class PublicServicesController {
+    @Get('availability')
+    @ApiOperation({ summary: 'Current public TradeXchange service availability' })
+    availability() {
+        return new StandardResponse({ availability: serviceAvailabilitySnapshot() });
+    }
+}
+
+/**
  * TradeXchange service marketplace.
  *
  * Route order matters: the static contractor routes (`jobs/feed`,
