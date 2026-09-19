@@ -61,9 +61,7 @@ interface DamageEntry {
 // Full parity with web's FuelType enum (ListingWizard.tsx) — was missing 9 of
 // 14 values, silently blocking sellers with e.g. an LPG or hydrogen car from
 // listing accurately.
-/** Upper bound the photo tracker measures against — matches web's MAX_PHOTOS
- *  (ListingWizard.tsx:1718). Not enforced as a hard cap on either platform, and
- *  the backend has no server-side limit. */
+/** Hard upload maximum shared by web, mobile and CreateListingDto. */
 const MAX_PHOTOS = 100;
 /** The count worth coaching sellers toward, which is a different number and
  *  should not double as the tracker's maximum. */
@@ -156,7 +154,7 @@ const BADGES = [
     id: 'FREE' as const, label: 'Auction', price: 'Free',
     sub: '£0 seller listing fee',
     listingType: 'AUCTION' as const,
-    features: ['Open bidding', '24-hour auction', 'Anyone can bid'],
+    features: ['Open bidding', '24-hour auction', 'Verified traders can bid'],
     negative: ['No trust badges'],
     accent: Colors.lightOrange_f97316,
   },
@@ -1158,12 +1156,28 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }
 
   async function handlePickPhoto() {
+    const currentCount = exteriorImages.length + interiorImages.length + damageImages.length;
+    const remainingSlots = MAX_PHOTOS - currentCount;
+    if (remainingSlots <= 0) {
+      Alert.alert('Photo limit reached', `A listing can contain up to ${MAX_PHOTOS} photos.`);
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images' as any,
       allowsMultipleSelection: true,
       quality: 1.0, // raw quality — convertAndCompress handles compression
     });
     if (result.canceled) return;
+
+    const selectedAssets = result.assets.slice(0, remainingSlots);
+    if (result.assets.length > remainingSlots) {
+      Alert.alert(
+        'Photo limit',
+        `You can add ${remainingSlots} more photo${remainingSlots === 1 ? '' : 's'}. Only the first ${remainingSlots} selected will be uploaded.`,
+      );
+    }
+
     setUploadingPhoto(true);
     try {
       const category = photoTab.toLowerCase();
@@ -1175,8 +1189,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       ).length;
 
       const urls: string[] = [];
-      for (let i = 0; i < result.assets.length; i++) {
-        const url = await uploadImage(result.assets[i].uri, category, startIndex + i);
+      for (let i = 0; i < selectedAssets.length; i++) {
+        const url = await uploadImage(selectedAssets[i].uri, category, startIndex + i);
         urls.push(url);
       }
       if (photoTab === 'Exterior') setExteriorImages(p => [...p, ...urls]);
@@ -2407,13 +2421,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </Text>
         </View>
         <View style={s.photoTrackerBar}>
-          {/* Progress runs to MAX_PHOTOS, matching web (ListingWizard.tsx:1718).
-              This tracker previously ran to 20 — the RECOMMENDED count, not the
-              maximum — so a seller who uploaded 20 saw a full bar and reasonably
-              concluded they were done, when web would have shown 20/100 and
-              invited more. Neither app enforces a hard cap; the backend has
-              none either. The "aim for 20" coaching moves into the hint below,
-              which is where it belonged. */}
+          {/* Progress runs to the same hard MAX_PHOTOS limit enforced by web,
+              mobile and the backend. RECOMMENDED_PHOTOS remains coaching only. */}
           <View style={[s.photoTrackerFill, { width: `${Math.min((totalCount / MAX_PHOTOS) * 100, 100)}%` }]} />
         </View>
         <Text style={[s.photoTrackerHint, belowMinimum && s.photoTrackerHintBlocking]}>
@@ -2464,7 +2473,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 : <>
                     <Ionicons name="camera-outline" size={28} color={Colors.iconMuted} />
                     <Text style={s.uploadZoneTitle}>Add {photoTab} Photos</Text>
-                    <Text style={s.uploadZoneHint}>Tap to select from gallery · Max 50 photos</Text>
+                    <Text style={s.uploadZoneHint}>Tap to select from gallery · Max {MAX_PHOTOS} photos</Text>
                     <Text style={s.uploadZoneFormats}>JPEG, PNG, WebP, HEIC · auto-converted to JPEG</Text>
                   </>
               }
