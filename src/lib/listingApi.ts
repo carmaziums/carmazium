@@ -16,7 +16,7 @@ export interface CreateListingRequest {
     images: string[]
     listingType: 'AUCTION' | 'CLASSIFIED'
     // Initial auction schedule. When supplied for a new AUCTION listing the
-    // backend creates Listing + Auction atomically in one Prisma nested write.
+    // backend creates Listing + Auction atomically in one Prisma transaction.
     auctionStartTime?: string
     auctionReservePrice?: number
     auctionMinIncrement?: number
