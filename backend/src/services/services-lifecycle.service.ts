@@ -33,11 +33,16 @@ export class ServicesLifecycleService {
             const reopened = await this.expireUnpaidAcceptedJobs();
             const expired = await this.services.expireOpenJobs();
             const expiredLeads = await this.leads?.expireOldLeads() ?? 0;
+            const rematchedLeads = await this.leads?.rematchOpenLeads() ?? { scanned: 0, leadsUpdated: 0, recipientsAdded: 0 };
             const released = await this.services.autoConfirmCompleted();
             const verification = await this.maintainCapabilityVerification();
-            if (reopened || expired || expiredLeads || released || verification.expired || verification.reminded) {
+            if (
+                reopened || expired || expiredLeads || released
+                || rematchedLeads.recipientsAdded
+                || verification.expired || verification.reminded
+            ) {
                 this.logger.log(
-                    `Service jobs: reopened unpaid ${reopened}, expired ${expired}, expired enquiries ${expiredLeads}, auto-confirmed ${released}; provider verification: expired ${verification.expired}, reminders ${verification.reminded}`,
+                    `Service jobs: reopened unpaid ${reopened}, expired ${expired}, expired enquiries ${expiredLeads}, auto-confirmed ${released}; lead rematch: updated ${rematchedLeads.leadsUpdated}, recipients added ${rematchedLeads.recipientsAdded}; provider verification: expired ${verification.expired}, reminders ${verification.reminded}`,
                 );
             }
         } catch (e: any) {
