@@ -209,6 +209,12 @@ describe('ListingsService', () => {
                 vrm: existing.vrm,
                 type: existing.type,
                 status: existing.status,
+                title: 'BMW M3 2020',
+                price: 10000,
+                year: 2020,
+                mileage: 30000,
+                linkedListingId: null,
+                importedFromUrl: null,
             }]);
             prisma.listing.findUnique.mockResolvedValue(existing);
 
@@ -217,6 +223,26 @@ describe('ListingsService', () => {
             expect(prisma.$queryRaw).toHaveBeenCalled();
             expect(prisma.listing.create).not.toHaveBeenCalled();
             expect(result).toBe(existing);
+        });
+
+        it('rejects a different same-VRM draft instead of silently returning stale data', async () => {
+            prisma.listing.findMany.mockResolvedValue([{
+                id: 'older-draft',
+                vrm: 'AB12CDE',
+                type: 'CLASSIFIED',
+                status: 'DRAFT',
+                title: 'Older BMW draft',
+                price: 9500,
+                year: 2020,
+                mileage: 30000,
+                linkedListingId: null,
+                importedFromUrl: null,
+            }]);
+
+            await expect(service.create(payload as any, sellerId))
+                .rejects.toThrow(/already has an existing classified listing \(draft\)/i);
+
+            expect(prisma.listing.create).not.toHaveBeenCalled();
         });
 
         it('rejects a conflicting live listing instead of creating another row', async () => {
@@ -603,6 +629,12 @@ describe('ListingsService', () => {
                 vrm: 'AB 12 CDE',
                 type: 'CLASSIFIED',
                 status: 'DRAFT',
+                title: 'Imported BMW 3 Series',
+                price: 12000,
+                year: null,
+                mileage: null,
+                linkedListingId: null,
+                importedFromUrl: 'https://www.autotrader.co.uk/car-details/123',
             }]);
             prisma.listing.findUnique.mockResolvedValue(existing);
 
