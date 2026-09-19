@@ -64,20 +64,25 @@ export class ServiceLeadsService {
             select: { id: true },
             take: 500,
         });
-        if (stale.length === 0) return 0;
 
-        const ids = stale.map((lead) => lead.id);
-        await this.prisma.$transaction([
-            this.prisma.serviceLead.updateMany({
-                where: { id: { in: ids }, status: 'OPEN', expiresAt: { lte: now } },
-                data: { status: 'EXPIRED', closedAt: now, updatedAt: now },
-            }),
-            this.prisma.serviceLeadRecipient.updateMany({
-                where: { leadId: { in: ids }, status: { in: ['NEW', 'VIEWED'] } },
-                data: { status: 'CLOSED', updatedAt: now },
-            }),
-        ]);
-        return ids.length;
+        let expired = 0;
+        for (const lead of stale) {
+            const claimed = await this.prisma.$transaction(async (tx) => {
+                const updated = await tx.serviceLead.updateMany({
+                    where: { id: lead.id, status: 'OPEN', expiresAt: { lte: now } },
+                    data: { status: 'EXPIRED', closedAt: now, updatedAt: now },
+                });
+                if (updated.count !== 1) return false;
+
+                await tx.serviceLeadRecipient.updateMany({
+                    where: { leadId: lead.id, status: { in: ['NEW', 'VIEWED'] } },
+                    data: { status: 'CLOSED', updatedAt: now },
+                });
+                return true;
+            });
+            if (claimed) expired += 1;
+        }
+        return expired;
     }
 
     private async anonymizeRetainedLeads() {
