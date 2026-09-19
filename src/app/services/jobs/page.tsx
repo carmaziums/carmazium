@@ -6,17 +6,35 @@ import Link from "next/link"
 import { ArrowLeft, Loader2, Truck, Plus } from "lucide-react"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { deliveryServiceEnabled, inspectionServiceEnabled } from "@/lib/featureFlags"
-import { getMyJobs, type ServiceJob } from "@/lib/servicesApi"
+import { getMyJobsPage, type ServiceJob } from "@/lib/servicesApi"
 import { JobListCard } from "@/components/services/JobBits"
 
 /** Jobs the signed-in customer has posted, any service. */
 function MyJobsList() {
     const [jobs, setJobs] = React.useState<ServiceJob[] | null>(null)
     const [error, setError] = React.useState<string | null>(null)
+    const [nextCursor, setNextCursor] = React.useState<string | null>(null)
+    const [loadingMore, setLoadingMore] = React.useState(false)
 
     React.useEffect(() => {
-        getMyJobs().then(setJobs).catch(e => setError(e?.message || "Could not load your jobs"))
+        getMyJobsPage()
+            .then(page => { setJobs(page.items); setNextCursor(page.nextCursor) })
+            .catch(e => setError(e?.message || "Could not load your jobs"))
     }, [])
+
+    const loadMore = async () => {
+        if (!nextCursor || loadingMore) return
+        setLoadingMore(true)
+        try {
+            const page = await getMyJobsPage(nextCursor)
+            setJobs(current => [...(current ?? []), ...page.items])
+            setNextCursor(page.nextCursor)
+        } catch (e: any) {
+            setError(e?.message || "Could not load more jobs")
+        } finally {
+            setLoadingMore(false)
+        }
+    }
 
     const active = jobs?.filter(j => !["RELEASED", "CANCELLED", "EXPIRED"].includes(j.status)) ?? []
     const past = jobs?.filter(j => ["RELEASED", "CANCELLED", "EXPIRED"].includes(j.status)) ?? []
@@ -75,6 +93,12 @@ function MyJobsList() {
                     </div>
                 </section>
             )}
+            {nextCursor && <div className="flex justify-center mt-8">
+                <button type="button" onClick={loadMore} disabled={loadingMore}
+                    className="rounded-xl border border-[var(--border-default)] px-5 py-2.5 text-sm font-bold hover:border-primary disabled:opacity-50">
+                    {loadingMore ? "Loading…" : "Load more jobs"}
+                </button>
+            </div>}
         </div>
     )
 }
