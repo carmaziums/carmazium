@@ -312,8 +312,8 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
 
         const result = await service.rematchOpenLeads(ServiceType.FINANCE);
 
-        expect(rematch).toHaveBeenNthCalledWith(1, 'lead-1', 'AUTO_REMATCH');
-        expect(rematch).toHaveBeenNthCalledWith(2, 'lead-2', 'AUTO_REMATCH');
+        expect(rematch).toHaveBeenNthCalledWith(1, 'lead-1', 'AUTO_REMATCH', true);
+        expect(rematch).toHaveBeenNthCalledWith(2, 'lead-2', 'AUTO_REMATCH', true);
         expect(result).toEqual({ scanned: 2, leadsUpdated: 1, recipientsAdded: 1 });
     });
 
