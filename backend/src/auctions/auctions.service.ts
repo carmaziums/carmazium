@@ -901,9 +901,9 @@ export class AuctionsService {
      * Called by UnpaidAuctionFeeExpiryService (hourly cron). Any ENDED auction
      * with a winner who hasn't paid the £125 buyer fee within BUYER_FEE_GRACE_MS
      * of wonAt gets unwound: the win is cancelled, the Sale record removed, the
-     * listing goes back to ACTIVE, and both the (former) winner and the seller
-     * are notified. Without this, a winner who never pays leaves the listing
-     * permanently stuck SOLD with no way back onto the market.
+     * listing returns to a coherent seller-controlled state, and both the
+     * former winner and seller are notified. Linked auctions restore the retail
+     * channel; standalone auctions return to inventory for relist/re-auction.
      */
     async revertUnpaidWins(): Promise<{ reverted: number }> {
         const cutoff = new Date(Date.now() - BUYER_FEE_GRACE_MS);
