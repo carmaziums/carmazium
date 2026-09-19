@@ -262,33 +262,111 @@ export class ServiceLeadsService {
             );
         }
 
-        if (
-            dto.serviceType === ServiceType.WARRANTY
-            && !dto.vehicleRegistration
-            && !(dto.vehicleMake && dto.vehicleModel)
-        ) {
-            throw new BadRequestException('Warranty enquiries need a registration or vehicle make and model.');
-        }
-
         const customer = await this.prisma.user.findUnique({
             where: { id: customerId },
             select: { email: true, firstName: true, lastName: true, phone: true, postcode: true },
         });
         if (!customer) throw new NotFoundException('Account not found');
 
+        let listingVehicle: {
+            registration: string | null;
+            make: string | null;
+            model: string | null;
+            year: number | null;
+            mileage: number | null;
+        } | null = null;
+
+        if (dto.listingId) {
+            const listing = await this.prisma.listing.findUnique({
+                where: { id: dto.listingId },
+                include: {
+                    vehicle: true,
+                    sale: { select: { buyerId: true } },
+                    auction: { select: { winnerId: true } },
+                    offers: {
+                        where: { status: 'ACCEPTED' },
+                        select: { buyerId: true },
+                    },
+                },
+            });
+            if (!listing || listing.deletedAt) {
+                throw new BadRequestException('The linked CarMazium listing is not available.');
+            }
+
+            const related =
+                listing.sellerId === customerId
+                || listing.sale?.buyerId === customerId
+                || listing.auction?.winnerId === customerId
+                || listing.offers.some((offer: any) => offer.buyerId === customerId);
+            if (!related && String(listing.status) !== 'ACTIVE') {
+                throw new ForbiddenException(
+                    'You can only link an active public listing or a vehicle connected to your account.',
+                );
+            }
+
+            listingVehicle = {
+                registration: listing.vehicle?.registration ?? listing.vrm ?? null,
+                make: listing.vehicle?.make ?? listing.make ?? null,
+                model: listing.vehicle?.model ?? listing.model ?? null,
+                year: listing.vehicle?.year ?? listing.year ?? null,
+                mileage: listing.vehicle?.mileage ?? listing.mileage ?? null,
+            };
+        }
+
+        const registration = (
+            listingVehicle?.registration
+            ?? dto.vehicleRegistration
+            ?? ''
+        ).toUpperCase().replace(/\s+/g, '') || null;
+        const vehicleMake = listingVehicle?.make?.trim() || dto.vehicleMake?.trim() || null;
+        const vehicleModel = listingVehicle?.model?.trim() || dto.vehicleModel?.trim() || null;
+        const vehicleYear = listingVehicle?.year ?? dto.vehicleYear ?? null;
+        const vehicleMileage = listingVehicle?.mileage ?? dto.vehicleMileage ?? null;
+
+        if (!registration && !(vehicleMake && vehicleModel)) {
+            throw new BadRequestException('Enquiries need a registration or vehicle make and model.');
+        }
+
+        const rawPostcode = dto.postcode?.trim() || customer.postcode?.trim() || null;
+        const postcode = normaliseUkPostcode(rawPostcode);
+        if (rawPostcode && !postcode) {
+            throw new BadRequestException('Postcode must be a valid UK postcode.');
+        }
+
+        const serviceType = dto.serviceType;
+        if (serviceType === ServiceType.FINANCE) {
+            if (!postcode) {
+                throw new BadRequestException('Finance enquiries need a valid UK postcode.');
+            }
+            if (!dto.vehicleValuePence || dto.vehicleValuePence <= 0) {
+                throw new BadRequestException('Finance enquiries need the approximate vehicle value.');
+            }
+            if (!dto.termMonths) {
+                throw new BadRequestException('Finance enquiries need a preferred finance term.');
+            }
+            if (!dto.employmentStatus?.trim()) {
+                throw new BadRequestException('Finance enquiries need an employment status.');
+            }
+            if (
+                (!dto.monthlyBudgetPence || dto.monthlyBudgetPence <= 0)
+                && (!dto.annualIncomePence || dto.annualIncomePence <= 0)
+            ) {
+                throw new BadRequestException(
+                    'Finance enquiries need a monthly budget or annual income so providers can assess suitability.',
+                );
+            }
+        }
+
         const fullName = [customer.firstName, customer.lastName].filter(Boolean).join(' ').trim()
             || customer.email.split('@')[0];
         const phone = dto.phone?.trim() || customer.phone || null;
-        const postcode = normPostcode(dto.postcode) || normPostcode(customer.postcode);
-        const registration = dto.vehicleRegistration?.toUpperCase().replace(/\s+/g, '') || null;
-        const serviceType = dto.serviceType;
         const now = new Date();
         const leadMatchInput = {
             serviceType,
             postcode,
             vehicleValuePence: dto.vehicleValuePence ?? null,
-            vehicleYear: dto.vehicleYear ?? null,
-            vehicleMileage: dto.vehicleMileage ?? null,
+            vehicleYear,
+            vehicleMileage,
             annualIncomePence: serviceType === ServiceType.FINANCE ? dto.annualIncomePence ?? null : null,
             termMonths: serviceType === ServiceType.FINANCE ? dto.termMonths ?? null : null,
             warrantyMonths: serviceType === ServiceType.WARRANTY ? dto.warrantyMonths ?? null : null,
@@ -296,8 +374,23 @@ export class ServiceLeadsService {
         };
 
         const transaction = await this.prisma.$transaction(async (tx) => {
-            const matching = await this.matchingProviders(tx, leadMatchInput);
+            await tx.$executeRaw(Prisma.sql`
+                SELECT pg_advisory_xact_lock(hashtextextended(${`service-lead:${customerId}`}, 0))
+            `);
+            const activeCount = await tx.serviceLead.count({
+                where: {
+                    customerId,
+                    status: 'OPEN',
+                    expiresAt: { gt: now },
+                },
+            });
+            if (activeCount >= MAX_ACTIVE_SERVICE_LEADS_PER_CUSTOMER) {
+                throw new BadRequestException(
+                    `You can have up to ${MAX_ACTIVE_SERVICE_LEADS_PER_CUSTOMER} active Finance/Warranty enquiries at one time. Close an existing enquiry before creating another.`,
+                );
+            }
 
+            const matching = await this.matchingProviders(tx, leadMatchInput);
             const created = await tx.serviceLead.create({
                 data: {
                     customerId,
@@ -305,10 +398,10 @@ export class ServiceLeadsService {
                     status: 'OPEN',
                     listingId: dto.listingId ?? null,
                     vehicleRegistration: registration,
-                    vehicleMake: dto.vehicleMake?.trim() || null,
-                    vehicleModel: dto.vehicleModel?.trim() || null,
-                    vehicleYear: dto.vehicleYear ?? null,
-                    vehicleMileage: dto.vehicleMileage ?? null,
+                    vehicleMake,
+                    vehicleModel,
+                    vehicleYear,
+                    vehicleMileage,
                     vehicleValuePence: dto.vehicleValuePence ?? null,
                     fullName,
                     email: customer.email,
@@ -366,12 +459,27 @@ export class ServiceLeadsService {
         };
     }
 
-    async myLeads(customerId: string) {
+    async myLeads(
+        customerId: string,
+        options: { limit?: number; cursor?: string } = {},
+    ) {
         await this.expireOldLeads();
 
+        const limit = boundedServiceLimit(options.limit);
+        const cursor = decodeServiceCursor(options.cursor);
+        const cursorDate = cursor ? new Date(cursor.at) : null;
         const leads = await this.prisma.serviceLead.findMany({
-            where: { customerId },
-            orderBy: { createdAt: 'desc' },
+            where: {
+                customerId,
+                ...(cursorDate ? {
+                    OR: [
+                        { createdAt: { lt: cursorDate } },
+                        { createdAt: cursorDate, id: { lt: cursor!.id } },
+                    ],
+                } : {}),
+            },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            take: limit + 1,
             include: {
                 _count: { select: { recipients: true } },
                 recipients: {
@@ -381,7 +489,14 @@ export class ServiceLeadsService {
             },
         });
 
-        return leads.map((lead) => this.leadWithCounts(lead));
+        const page = makeServicePage(leads, limit, (lead) => ({
+            at: lead.createdAt.toISOString(),
+            id: lead.id,
+        }));
+        return {
+            ...page,
+            items: page.items.map((lead) => this.leadWithCounts(lead)),
+        };
     }
 
     async customerLead(customerId: string, id: string) {
