@@ -230,7 +230,7 @@ export class ServicesService {
                 listing.sellerId === customerId
                 || listing.sale?.buyerId === customerId
                 || listing.auction?.winnerId === customerId
-                || listing.offers.some((offer: any) => offer.buyerId === customerId);
+                || (listing.offers ?? []).some((offer: any) => offer.buyerId === customerId);
 
             if (serviceType === ServiceType.DELIVERY && !related) {
                 throw new ForbiddenException(
