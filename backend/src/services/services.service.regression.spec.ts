@@ -346,7 +346,12 @@ describe('ServicesService TradeXchange hardening regressions', () => {
             });
             expect(prisma.serviceJob.updateMany).toHaveBeenCalledWith({
                 where: { id: 'job-1', status: ServiceJobStatus.ACCEPTED },
-                data: { status: ServiceJobStatus.PAID },
+                data: {
+                    status: ServiceJobStatus.PAID,
+                    startedAt: null,
+                    completedAt: null,
+                    confirmedAt: null,
+                },
             });
         });
 
@@ -399,6 +404,8 @@ describe('ServicesService TradeXchange hardening regressions', () => {
             title: 'Move vehicle',
             customerId: 'customer-1',
             status: ServiceJobStatus.COMPLETED,
+            startedAt: new Date(Date.now() - 2 * 60_000),
+            completedAt: new Date(Date.now() - 60_000),
             confirmedAt: null,
             payment: {
                 id: 'payment-1',
