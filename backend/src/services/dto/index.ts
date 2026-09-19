@@ -208,3 +208,13 @@ export class ResolveDisputeDto {
     @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(1000)
     note?: string;
 }
+
+export class CreateServiceReviewDto {
+    @ApiProperty({ minimum: 1, maximum: 5, description: 'Verified customer rating for a financially released service job' })
+    @IsInt() @Min(1) @Max(5)
+    rating: number;
+
+    @ApiPropertyOptional({ maxLength: 2000 })
+    @IsOptional() @IsString() @MaxLength(2000)
+    comment?: string;
+}
