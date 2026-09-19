@@ -371,14 +371,13 @@ export default function DealerInventoryPage() {
                                                 )}
                                                 {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && (listing as any).linkedListing?.status === 'DRAFT' && (
                                                     <button
-                                                        onClick={async () => {
+                                                        onClick={() => {
                                                             const linked = (listing as any).linkedListing
-                                                            const { url } = await createListingCheckout(linked.id, linked.badgeTier || 'BASIC')
-                                                            window.location.href = url
+                                                            router.push(`/dashboard/dealer/add-listing?editId=${linked.id}`)
                                                         }}
                                                         className="w-full min-h-[46px] flex items-center gap-2.5 px-3 rounded-xl text-amber-400 bg-amber-500/5 font-bold text-sm"
                                                     >
-                                                        <Tag size={16} /> Resume retail payment
+                                                        <Tag size={16} /> Complete linked retail listing
                                                     </button>
                                                 )}
                                                 <button
@@ -465,7 +464,7 @@ export default function DealerInventoryPage() {
                                                         </div>
                                                     </td>
 
-                                                    {/* Status + completeness */}
+                                                    {/* Status */}
                                                     <td className="px-6 py-6 text-center">
                                                         <div className="flex flex-col items-center gap-1.5">
                                                             <span className={`inline-flex px-3 py-1.5 rounded-lg text-xs font-black tracking-widest border shadow-sm ${STATUS_COLORS[listing.status] || STATUS_COLORS.DRAFT}`}>
@@ -504,9 +503,8 @@ export default function DealerInventoryPage() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    title="Publish Listing"
-                                                                    onClick={() => handlePublish(listing)}
                                                                     title="Complete & publish in full listing wizard"
+                                                                    onClick={() => handlePublish(listing)}
                                                                     className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20"
                                                                 >
                                                                     <CheckCircle2 size={16} />
@@ -549,18 +547,17 @@ export default function DealerInventoryPage() {
                                                                             <Tag size={14} /> Also List for Retail
                                                                         </button>
                                                                     )}
-                                                                    {/* Resume payment if retail listing was created but not paid for */}
+                                                                    {/* A linked retail DRAFT must complete the full wizard before payment. */}
                                                                     {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && (listing as any).linkedListing?.status === 'DRAFT' && (
                                                                         <button
-                                                                            onClick={async (e) => {
+                                                                            onClick={(e) => {
                                                                                 e.preventDefault(); e.stopPropagation()
                                                                                 const linked = (listing as any).linkedListing
-                                                                                const { url } = await createListingCheckout(linked.id, linked.badgeTier || 'BASIC')
-                                                                                window.location.href = url
+                                                                                router.push(`/dashboard/dealer/add-listing?editId=${linked.id}`)
                                                                             }}
                                                                             className="flex items-center gap-2 px-3 py-2 text-sm text-amber-400 hover:bg-amber-500/10 transition-colors w-full text-left"
                                                                         >
-                                                                            <Tag size={14} /> Resume Retail Payment
+                                                                            <Tag size={14} /> Complete Linked Retail
                                                                         </button>
                                                                     )}
                                                                     {/* Dual-channel: CLASSIFIED listing → create auction */}
