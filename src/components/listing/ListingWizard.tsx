@@ -763,6 +763,87 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     // ─── Navigation ─────────────────────────────────────────────────────────────
 
+    const getStepValidationError = (): string | null => {
+        switch (currentStep) {
+            case 1: {
+                const missing: string[] = []
+                if (!formData.vrm) missing.push('registration')
+                if (!formData.make) missing.push('make')
+                if (!formData.model) missing.push('model')
+                if (!formData.year) missing.push('year')
+                if (!formData.mileage) missing.push('mileage')
+                if (!formData.fuelType) missing.push('fuel type')
+                if (!formData.transmission) missing.push('transmission')
+                if (!formData.bodyType) missing.push('body type')
+                if (!formData.title || formData.title.length < 5) missing.push('listing title')
+                if (!formData.location) missing.push('location')
+                if (!formData.owners) missing.push('previous keepers')
+                if (!formData.description.trim()) missing.push('description')
+                if (!formData.condition) missing.push('condition')
+                if (formData.writeOffCategory === '') missing.push('write-off status')
+                if (formData.stolenRecovered === null) missing.push('stolen/recovered declaration')
+                if (formData.hasOutstandingFinance === null) missing.push('outstanding finance declaration')
+                if (formData.isLegalRegisteredKeeper === null) missing.push('registered keeper declaration')
+                if (formData.isLegalRegisteredKeeper === false && !(formData.notOwnerRelationship ?? '').trim()) {
+                    missing.push('relationship/authority to sell')
+                }
+                if (formData.isDepartedSale && !(formData.departedRelationship ?? '').trim()) {
+                    missing.push('estate/departed-sale relationship')
+                }
+                if (!formData.declarationAcknowledged) missing.push('seller declaration')
+                if ((formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') && formData.listingType !== 'AUCTION') {
+                    return 'Category A and Category B vehicles can only be listed in Auction. Switch this listing to Auction to continue.'
+                }
+                return missing.length > 0
+                    ? `Please complete: ${missing.join(', ')}.`
+                    : null
+            }
+            case 2: {
+                const missingPhotos = Math.max(0, 10 - formData.images.length)
+                return missingPhotos > 0
+                    ? `Please add ${missingPhotos} more photo${missingPhotos === 1 ? '' : 's'} to continue. A minimum of 10 photos is required. HPI is optional.`
+                    : null
+            }
+            case 3: {
+                const pMin = parseFloat(formData.priceMin)
+                const pAsk = parseFloat(formData.priceAsking)
+                if (!formData.priceAsking || isNaN(pAsk) || pAsk <= 0) {
+                    return isAuction
+                        ? 'Please enter a valid estimated market value before continuing.'
+                        : 'Please enter a valid asking price before continuing.'
+                }
+                if (formData.priceMin && !isNaN(pMin) && pMin > pAsk) {
+                    return 'The minimum price cannot be higher than the asking price.'
+                }
+                return null
+            }
+            case 4: {
+                if (!isAuction) return null
+                if (!auctionSchedule.startTime && auctionSchedule.startTime !== 'NOW') {
+                    return 'Please choose when the auction should start.'
+                }
+                if (auctionSchedule.startTime !== 'NOW') {
+                    const startMs = new Date(auctionSchedule.startTime).getTime()
+                    if (startMs < Date.now() - 60 * 1000) {
+                        return 'The auction start time cannot be in the past.'
+                    }
+                }
+                if (!auctionSchedule.reservePrice || parseFloat(auctionSchedule.reservePrice) <= 0) {
+                    return 'Please enter a valid reserve price.'
+                }
+                if (!auctionSchedule.startingBid || parseFloat(auctionSchedule.startingBid) <= 0) {
+                    return 'Please enter a valid opening bid.'
+                }
+                if (!auctionSchedule.minIncrement || parseFloat(auctionSchedule.minIncrement) <= 0) {
+                    return 'Please enter a valid minimum bid increment.'
+                }
+                return null
+            }
+            default:
+                return null
+        }
+    }
+
     const validateStep = (): boolean => {
         switch (currentStep) {
             case 1: {
@@ -828,7 +909,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 step: currentStep,
                 step_name: WIZARD_STEPS.find(s => s.id === currentStep)?.title ?? String(currentStep),
             })
-            alert("Please fill in all required fields before proceeding.")
+            alert(getStepValidationError() ?? "Please complete the required information before proceeding.")
             return
         }
         setHasAttemptedNext(false)
