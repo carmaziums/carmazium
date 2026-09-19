@@ -303,6 +303,44 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
         }));
     });
 
+    it('automatically rematches still-open enquiries using AUTO_REMATCH', async () => {
+        prisma.serviceLead.findMany.mockResolvedValue([{ id: 'lead-1' }, { id: 'lead-2' }]);
+        const rematch = jest.spyOn(service, 'adminRematch')
+            .mockResolvedValueOnce({ added: 1, recipientCount: 1, recipientLimit: MAX_LEAD_RECIPIENTS })
+            .mockResolvedValueOnce({ added: 0, recipientCount: 5, recipientLimit: MAX_LEAD_RECIPIENTS });
+
+        const result = await service.rematchOpenLeads(ServiceType.FINANCE);
+
+        expect(rematch).toHaveBeenNthCalledWith(1, 'lead-1', 'AUTO_REMATCH');
+        expect(rematch).toHaveBeenNthCalledWith(2, 'lead-2', 'AUTO_REMATCH');
+        expect(result).toEqual({ scanned: 2, leadsUpdated: 1, recipientsAdded: 1 });
+    });
+
+    it('automatic rematch records AUTO_REMATCH on new recipient rows', async () => {
+        prisma.serviceLead.findUnique.mockResolvedValue({
+            ...openLead(),
+            recipients: [],
+        });
+        prisma.contractorCapability.findMany.mockResolvedValue([candidate('new-provider')]);
+        prisma.serviceLeadRecipient.createMany.mockResolvedValue({ count: 1 });
+
+        const result = await service.adminRematch('lead-1', 'AUTO_REMATCH');
+
+        expect(result.added).toBe(1);
+        expect(prisma.serviceLeadRecipient.createMany).toHaveBeenCalledWith({
+            data: [expect.objectContaining({
+                leadId: 'lead-1',
+                contractorId: 'new-provider',
+                matchSource: 'AUTO_REMATCH',
+            })],
+            skipDuplicates: true,
+        });
+        expect(notifications.create).toHaveBeenCalledWith(expect.objectContaining({
+            userId: 'user-new-provider',
+            actionType: 'AUTO_REMATCH',
+        }));
+    });
+
     it('anonymises closed/expired enquiry identity after the retention period', async () => {
         prisma.serviceLead.findMany.mockResolvedValue([{ id: 'old-lead' }]);
 
