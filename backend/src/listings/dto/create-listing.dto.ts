@@ -204,6 +204,42 @@ export class CreateListingDto {
     @IsEnum(ListingType)
     listingType: ListingType;
 
+    // Initial AUCTION creation can carry its schedule in the same POST /listings
+    // request. When these fields are present, Prisma creates Listing + Auction as
+    // one nested write so a scheduling failure cannot leave an orphan listing.
+    @ApiProperty({ description: 'Initial auction start time (ISO-8601). AUCTION only.', required: false })
+    @IsString()
+    @IsOptional()
+    auctionStartTime?: string;
+
+    @ApiProperty({ description: 'Initial auction reserve price in GBP. AUCTION only.', required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    @IsOptional()
+    auctionReservePrice?: number;
+
+    @ApiProperty({ description: 'Initial auction minimum bid increment in GBP. AUCTION only.', required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    @IsOptional()
+    auctionMinIncrement?: number;
+
+    @ApiProperty({ description: 'Optional initial Buy It Now price in GBP. AUCTION only.', required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    @IsOptional()
+    auctionBuyItNowPrice?: number;
+
+    @ApiProperty({ description: 'Legacy client opening-bid field. Server still calculates 70% of market value.', required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    @IsOptional()
+    auctionStartingBid?: number;
+
     @ApiProperty({ description: 'Status of the listing', enum: ListingStatus, example: ListingStatus.DRAFT, required: false, default: ListingStatus.DRAFT })
     @IsEnum(ListingStatus)
     @IsOptional()
