@@ -289,7 +289,17 @@ export function calculateVehicleValuation(
         highRaw = mid * (usable.length === 0 ? 1.18 : 1.12);
     }
 
-    // Never present an implausibly narrow "precision theatre" range.
+    // Keep ranges honest but useful. Sparse asking-price evidence can contain
+    // a single badly priced advert; do not let that one advert turn a £10k car
+    // into a displayed £5k–£11k "valuation". Completed transaction evidence is
+    // allowed a little more dispersion, but even then we cap the visible range.
+    const rangeFloor = strongEvidence > 0 ? mid * 0.80 : mid * 0.85;
+    const rangeCeiling = strongEvidence > 0 ? mid * 1.20 : mid * 1.15;
+    lowRaw = Math.max(lowRaw, rangeFloor);
+    highRaw = Math.min(highRaw, rangeCeiling);
+
+    // Also avoid false precision: even a tight cluster should still be shown as
+    // a guide rather than an exact guaranteed sale price.
     lowRaw = Math.min(lowRaw, mid * 0.93);
     highRaw = Math.max(highRaw, mid * 1.07);
 
@@ -321,7 +331,10 @@ export function calculateVehicleValuation(
             : `Based on ${usable.length} similar live CarMazium asking prices. Completed-sale evidence for this exact vehicle is still limited.`;
 
     const suggestedAsking = mid;
-    const suggestedMinimum = roundMoney(Math.min(low, mid * 0.94));
+    // "Minimum" is seller guidance, not the statistical bottom of the market
+    // range. Keep it close enough to the estimated value to avoid encouraging
+    // users to under-price a vehicle because of one outlying comparable.
+    const suggestedMinimum = roundMoney(mid * 0.90);
     // Keep these exactly aligned with the existing auctionPricing helpers so
     // the valuation card and the Auction step never show different figures.
     const openingBid = Math.round(mid * 0.70 * 100) / 100;
