@@ -9,5 +9,14 @@ import { CreateListingDto } from './create-listing.dto';
  * endpoints so sellers cannot bypass review, fees, or auction orchestration.
  */
 export class UpdateListingDto extends PartialType(
-    OmitType(CreateListingDto, ['status', 'listingType', 'badgeTier'] as const),
+    OmitType(CreateListingDto, [
+        'status',
+        'listingType',
+        'badgeTier',
+        'auctionStartTime',
+        'auctionReservePrice',
+        'auctionMinIncrement',
+        'auctionBuyItNowPrice',
+        'auctionStartingBid',
+    ] as const),
 ) { }
