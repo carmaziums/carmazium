@@ -459,7 +459,7 @@ export class ServiceLeadsService {
         };
     }
 
-    async myLeads(
+    async myLeadsPage(
         customerId: string,
         options: { limit?: number; cursor?: string } = {},
     ) {
@@ -497,6 +497,11 @@ export class ServiceLeadsService {
             ...page,
             items: page.items.map((lead) => this.leadWithCounts(lead)),
         };
+    }
+
+    /** Compatibility helper for internal/tests; HTTP list routes use cursor pages. */
+    async myLeads(customerId: string) {
+        return (await this.myLeadsPage(customerId, { limit: 50 })).items;
     }
 
     async customerLead(customerId: string, id: string) {
@@ -596,7 +601,7 @@ export class ServiceLeadsService {
         return profile;
     }
 
-    async inbox(
+    async inboxPage(
         userId: string,
         serviceType?: ServiceType,
         options: { limit?: number; cursor?: string } = {},
@@ -671,6 +676,11 @@ export class ServiceLeadsService {
             id: row.id,
         }));
         return page;
+    }
+
+    /** Compatibility helper for internal/tests; HTTP inbox uses cursor pages. */
+    async inbox(userId: string, serviceType?: ServiceType) {
+        return (await this.inboxPage(userId, serviceType, { limit: 50 })).items;
     }
 
     async providerLead(userId: string, leadId: string) {
