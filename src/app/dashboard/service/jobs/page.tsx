@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Loader2, Briefcase, AlertCircle, Inbox, ArrowLeft } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
-import { getJobFeed, getAssignedJobs, formatPence, type ServiceJob } from "@/lib/servicesApi"
+import { getJobFeedPage, getAssignedJobsPage, formatPence, type ServiceJob } from "@/lib/servicesApi"
 import { JobListCard } from "@/components/services/JobBits"
 
 /**
@@ -22,11 +22,17 @@ export default function ContractorJobsPage() {
     const [mine, setMine] = React.useState<ServiceJob[] | null>(null)
     const [notApproved, setNotApproved] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
+    const [feedCursor, setFeedCursor] = React.useState<string | null>(null)
+    const [mineCursor, setMineCursor] = React.useState<string | null>(null)
+    const [loadingMore, setLoadingMore] = React.useState(false)
 
     React.useEffect(() => {
         if (authLoading || !user) return
-        Promise.all([getJobFeed(), getAssignedJobs()])
-            .then(([f, m]) => { setFeed(f); setMine(m) })
+        Promise.all([getJobFeedPage(), getAssignedJobsPage()])
+            .then(([f, m]) => {
+                setFeed(f.items); setFeedCursor(f.nextCursor)
+                setMine(m.items); setMineCursor(m.nextCursor)
+            })
             .catch(e => {
                 const msg: string = e?.message || ""
                 if (/no approved services|approved service providers/i.test(msg)) setNotApproved(true)
@@ -34,6 +40,28 @@ export default function ContractorJobsPage() {
                 setFeed([]); setMine([])
             })
     }, [authLoading, user])
+
+    const loadMore = async () => {
+        if (loadingMore) return
+        const cursor = tab === "open" ? feedCursor : mineCursor
+        if (!cursor) return
+        setLoadingMore(true)
+        try {
+            if (tab === "open") {
+                const page = await getJobFeedPage(undefined, cursor)
+                setFeed(current => [...(current ?? []), ...page.items])
+                setFeedCursor(page.nextCursor)
+            } else {
+                const page = await getAssignedJobsPage(cursor)
+                setMine(current => [...(current ?? []), ...page.items])
+                setMineCursor(page.nextCursor)
+            }
+        } catch (e: any) {
+            setError(e?.message || "Could not load more jobs")
+        } finally {
+            setLoadingMore(false)
+        }
+    }
 
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}`.trim() : user?.email || "Provider"
     const list = tab === "open" ? feed : mine
@@ -102,6 +130,12 @@ export default function ContractorJobsPage() {
                             })}
                         </div>
                     )}
+                    {(tab === "open" ? feedCursor : mineCursor) && <div className="flex justify-center">
+                        <button type="button" onClick={loadMore} disabled={loadingMore}
+                            className="rounded-xl border border-[var(--border-default)] px-5 py-2.5 text-sm font-bold hover:border-primary disabled:opacity-50">
+                            {loadingMore ? "Loading…" : "Load more"}
+                        </button>
+                    </div>}
                 </main>
             </div>
         </div>
