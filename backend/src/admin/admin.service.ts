@@ -12,6 +12,7 @@ import { SellersService } from '../sellers/sellers.service';
 import { AuctionsService } from '../auctions/auctions.service';
 import { buildListingActivationData } from '../listings/listing-activation';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
+import { AUCTION_DURATION_MS } from '../auctions/auction-pricing';
 
 @Injectable()
 export class AdminService {
@@ -258,7 +259,7 @@ export class AdminService {
     }
 
     async lockUser(userId: string) {
-        const lockUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        const lockUntil = new Date(Date.now() + AUCTION_DURATION_MS);
         return this.prisma.user.update({
             where: { id: userId },
             data: { lockoutUntil: lockUntil },
@@ -481,7 +482,7 @@ export class AdminService {
             if (dto.startTime !== undefined) {
                 const startTime = new Date(dto.startTime);
                 auctionData.startTime = startTime;
-                auctionData.endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000);
+                auctionData.endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
             }
             await this.prisma.auction.update({ where: { id: listing.auction.id }, data: auctionData });
         }
@@ -590,7 +591,7 @@ export class AdminService {
                     where: { id: listing.auction.id },
                     data: {
                         startTime: now,
-                        endTime: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+                        endTime: new Date(now.getTime() + AUCTION_DURATION_MS),
                     },
                 });
             }
