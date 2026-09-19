@@ -1052,18 +1052,30 @@ export class ServiceLeadsService {
     async rematchOpenLeads(serviceType?: ServiceType, limit = 250) {
         if (serviceType) this.assertLeadType(serviceType);
         const now = new Date();
-        const leads = await this.prisma.serviceLead.findMany({
-            where: {
-                status: 'OPEN',
-                expiresAt: { gt: now },
-                anonymizedAt: null,
-                consentToProviderContact: true,
-                ...(serviceType ? { serviceType } : { serviceType: { in: [...LEAD_TYPES] } }),
-            },
-            select: { id: true },
-            orderBy: { createdAt: 'asc' },
-            take: Math.min(Math.max(limit, 1), 500),
-        });
+        const boundedLimit = Math.min(Math.max(limit, 1), 500);
+        const typeFilter = serviceType
+            ? Prisma.sql`l."serviceType" = ${serviceType}::"ServiceType"`
+            : Prisma.sql`l."serviceType" IN ('FINANCE'::"ServiceType", 'WARRANTY'::"ServiceType")`;
+
+        // Select only enquiries that still have recipient capacity. Without
+        // this filter, a large block of older already-full leads could occupy
+        // every lifecycle scan and starve newer unmatched enquiries forever.
+        const leads = await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+            SELECT l."id"
+            FROM "service_leads" l
+            WHERE l."status" = 'OPEN'
+              AND l."expiresAt" > ${now}
+              AND l."anonymizedAt" IS NULL
+              AND l."consentToProviderContact" = TRUE
+              AND ${typeFilter}
+              AND (
+                  SELECT COUNT(*)
+                  FROM "service_lead_recipients" r
+                  WHERE r."leadId" = l."id"
+              ) < ${MAX_LEAD_RECIPIENTS}
+            ORDER BY l."createdAt" ASC
+            LIMIT ${boundedLimit}
+        `);
 
         let recipientsAdded = 0;
         let leadsUpdated = 0;
