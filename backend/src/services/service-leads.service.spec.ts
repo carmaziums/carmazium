@@ -349,13 +349,8 @@ describe('ServiceLeadsService', () => {
             annualIncomePence: 3_600_000,
             recipientStatus: 'VIEWED',
         });
-        expect(prisma.serviceLeadRecipient.update).toHaveBeenCalledWith(expect.objectContaining({
-            where: {
-                leadId_contractorId: {
-                    leadId: 'lead-1',
-                    contractorId: 'provider-profile-1',
-                },
-            },
+        expect(prisma.serviceLeadRecipient.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: { id: 'recipient-1', status: 'NEW' },
             data: expect.objectContaining({ status: 'VIEWED' }),
         }));
     });
