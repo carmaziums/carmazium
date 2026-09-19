@@ -14,7 +14,7 @@ import { ACCEPTED_PAYMENT_TIMEOUT_MINUTES } from './services-lifecycle.service';
 import { serviceAvailabilitySnapshot } from './service-availability';
 import {
     CreateJobDto, JobFromPurchaseDto, CancelJobDto, UpsertQuoteDto, ApplyCapabilityDto,
-    UpdateLeadMatchingDto, UpdateJobMatchingDto, ServiceListQueryDto, ServiceJobFeedQueryDto,
+    UpdateLeadMatchingDto, UpdateJobMatchingDto, ServiceListQueryDto, ServiceJobFeedQueryDto, CreateServiceReviewDto,
 } from './dto';
 
 /** The TradeXchange paid-job commercial split is fixed: 9% CarMazium / 91% provider business. */
@@ -228,5 +228,17 @@ export class ServicesController {
     @ApiOperation({ summary: 'Freeze a paid job for admin review' })
     async dispute(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: CancelJobDto) {
         return new StandardResponse(await this.services.openDispute(user.id, id, dto.reason));
+    }
+
+    @Post('jobs/:id/review')
+    @Throttle({ default: { limit: 5, ttl: 60_000 } })
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Leave one verified review after the service job and payment are released' })
+    async reviewService(
+        @CurrentUser() user: any,
+        @Param('id') id: string,
+        @Body() dto: CreateServiceReviewDto,
+    ) {
+        return new StandardResponse(await this.services.createServiceReview(user.id, id, dto));
     }
 }
