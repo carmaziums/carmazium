@@ -50,6 +50,7 @@ const RELATIONS: Record<string, Record<string, (row: Row, db: FakeDb) => any>> =
     serviceJobVehicle: {
         listing: () => null,
     },
+    serviceCaseEntry: {},
     user: {},
     offer: {},
     auction: {},
@@ -63,6 +64,18 @@ const DEFAULTS: Record<string, () => Row> = {
     serviceQuote: () => ({ status: 'ACTIVE', message: null, validUntil: null }),
     servicePayment: () => ({ status: 'PENDING', stripeCheckoutSessionId: null, stripePaymentIntentId: null, stripeTransferId: null, paidAt: null, releasedAt: null, refundedAt: null }),
     serviceJobVehicle: () => ({ registration: null, make: null, model: null, year: null, notes: null, listingId: null }),
+    serviceCaseEntry: () => ({
+        scope: 'CAPABILITY',
+        kind: 'DOCUMENT',
+        evidenceStatus: 'APPROVED',
+        evidenceIssuer: 'Test issuer',
+        evidenceReference: null,
+        evidenceValidFrom: null,
+        evidenceExpiresAt: null,
+        evidenceReviewedAt: new Date(),
+        evidenceReviewedById: 'u_admin',
+        evidenceReviewNote: null,
+    }),
 };
 
 function matches(row: Row, where: Row | undefined): boolean {
@@ -194,7 +207,16 @@ class FakeDb {
     }
 
     prisma(): any {
-        const p: Row = { $transaction: async (ops: any) => (typeof ops === 'function' ? ops(p) : Promise.all(ops)) };
+        const p: Row = {
+            $transaction: async (ops: any) => (typeof ops === 'function' ? ops(p) : Promise.all(ops)),
+            $queryRaw: async (query: any) => {
+                const capabilityId = query?.values?.[0];
+                return this.many('serviceCaseEntry', {
+                    scope: 'CAPABILITY',
+                    ...(capabilityId ? { entityId: capabilityId } : {}),
+                }).map((row) => ({ ...row }));
+            },
+        };
         for (const m of Object.keys(RELATIONS)) p[m] = this.client(m);
         return p;
     }
@@ -244,6 +266,24 @@ beforeAll(async () => {
 
 const notificationsTo = (userId: string) => notify.mock.calls.filter((c) => c[0].userId === userId).map((c) => c[0].type);
 
+const addVerifiedEvidence = (capabilityId: string, serviceType: 'DELIVERY' | 'INSPECTION') => {
+    const expiry = new Date(Date.now() + 180 * 86_400_000);
+    const evidenceTypes = serviceType === 'DELIVERY'
+        ? ['BUSINESS_IDENTITY', 'DELIVERY_BUSINESS_INSURANCE', 'DELIVERY_GOODS_IN_TRANSIT']
+        : ['BUSINESS_IDENTITY', 'INSPECTION_BUSINESS_INSURANCE', 'INSPECTION_QUALIFICATION'];
+    for (const evidenceType of evidenceTypes) {
+        db.tables.serviceCaseEntry.push({
+            id: uid('evidence'),
+            ...DEFAULTS.serviceCaseEntry(),
+            entityId: capabilityId,
+            evidenceType,
+            evidenceExpiresAt: evidenceType.includes('INSURANCE') || evidenceType === 'DELIVERY_GOODS_IN_TRANSIT' ? expiry : null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+    }
+};
+
 // ─── The story ──────────────────────────────────────────────────────────────
 
 describe('Delivery & Recovery — end to end', () => {
@@ -283,12 +323,14 @@ describe('Delivery & Recovery — end to end', () => {
     });
 
     it('admin approves Kent and the rival', async () => {
+        addVerifiedEvidence(kentCapId, 'DELIVERY');
         const approved = await svc.adminReviewCapability(ADMIN.id, kentCapId, { status: 'APPROVED' } as any);
         expect(approved.status).toBe('APPROVED');
         expect(approved.reviewedById).toBe(ADMIN.id);
         expect(notificationsTo(TRUCKER.id)).toContain('SERVICE_CAPABILITY_APPROVED');
 
         const rc = await svc.applyCapability(RIVAL.id, { serviceType: 'DELIVERY', businessName: 'Rival Recovery' } as any);
+        addVerifiedEvidence(rc.id, 'DELIVERY');
         await svc.adminReviewCapability(ADMIN.id, rc.id, { status: 'APPROVED' } as any);
         rivalProfileId = db.one('contractorProfile', { userId: RIVAL.id })!.id;
     });
@@ -609,6 +651,7 @@ describe('Vehicle Inspection — end to end', () => {
         } as any);
 
         expect(cap.status).toBe('PENDING');
+        addVerifiedEvidence(cap.id, 'INSPECTION');
 
         const approved = await svc.adminReviewCapability(
             ADMIN.id,
