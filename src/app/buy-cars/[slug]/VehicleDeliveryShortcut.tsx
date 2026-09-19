@@ -34,15 +34,15 @@ export function VehicleDeliveryShortcut({ listing }: VehicleDeliveryShortcutProp
     return (
         <Link
             href={`/services/delivery/new?${params.toString()}`}
-            className="fixed z-40 bottom-5 right-5 md:bottom-7 md:right-7 inline-flex items-center gap-3 rounded-2xl bg-primary px-4 py-3.5 text-white shadow-2xl shadow-black/30 hover:bg-primary/90 transition-colors max-w-[calc(100vw-2.5rem)]"
+            className="fixed z-40 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-[5.5rem] lg:bottom-7 lg:right-7 inline-flex items-center gap-2.5 sm:gap-3 rounded-2xl bg-primary px-3 py-2.5 sm:px-4 sm:py-3.5 text-white shadow-2xl shadow-black/30 hover:bg-primary/90 transition-colors max-w-[calc(100vw-6.5rem)] lg:max-w-[calc(100vw-3.5rem)]"
             aria-label={`Get ${listing.title} delivered`}
         >
             <span className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
                 <Truck size={19} />
             </span>
-            <span className="text-left leading-tight">
-                <span className="block text-sm font-black">Get this car delivered</span>
-                <span className="block text-[10px] text-white/80 mt-0.5">Post a job · compare provider quotes</span>
+            <span className="text-left leading-tight min-w-0">
+                <span className="block text-sm font-black whitespace-nowrap">Get this car delivered</span>
+                <span className="hidden sm:block text-[10px] text-white/80 mt-0.5">Post a job · compare provider quotes</span>
             </span>
         </Link>
     )
