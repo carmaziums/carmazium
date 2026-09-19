@@ -436,11 +436,28 @@ describe('AuctionsService — create', () => {
                     id: 'listing-1',
                     sellerId: 'seller-1',
                     deletedAt: null,
+                    createdAt: new Date('2026-09-19T01:00:00.000Z'),
                     status: 'DRAFT',
                     type: 'AUCTION',
                     price: 10000,
-                    title: 'BMW M3',
+                    title: 'BMW M3 2022',
                     images: Array.from({ length: 10 }, (_, i) => `image-${i}`),
+                    vrm: 'AB12CDE',
+                    make: 'BMW',
+                    model: 'M3',
+                    year: 2022,
+                    mileage: 30000,
+                    fuelType: 'PETROL',
+                    transmission: 'AUTOMATIC',
+                    bodyType: 'COUPE',
+                    location: 'Birmingham',
+                    owners: '1',
+                    description: 'Well presented vehicle with full details.',
+                    condition: 'GOOD',
+                    stolenRecovered: false,
+                    hasOutstandingFinance: false,
+                    isLegalRegisteredKeeper: true,
+                    isDepartedSale: false,
                 }),
                 update: jest.fn(),
             },
@@ -451,6 +468,9 @@ describe('AuctionsService — create', () => {
             },
             bid: {
                 updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+            },
+            hpiReport: {
+                findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }),
             },
             $transaction: jest.fn(async (operations: any[]) => Promise.all(operations)),
         };
@@ -467,6 +487,45 @@ describe('AuctionsService — create', () => {
         }).compile();
 
         service = module.get<AuctionsService>(AuctionsService);
+    });
+
+    it('rejects direct scheduling when the listing is incomplete before it can enter review', async () => {
+        prisma.listing.findUnique.mockResolvedValue({
+            id: 'listing-1',
+            sellerId: 'seller-1',
+            deletedAt: null,
+            createdAt: new Date('2026-09-19T01:00:00.000Z'),
+            status: 'DRAFT',
+            type: 'AUCTION',
+            price: 10000,
+            title: 'BMW M3 2022',
+            images: [],
+        });
+
+        await expect(service.create(makeDto(), 'seller-1'))
+            .rejects.toThrow(/at least 10 photos/i);
+
+        expect(prisma.listing.update).not.toHaveBeenCalled();
+        expect(prisma.auction.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a post-rollout auction without an HPI request before it can enter review', async () => {
+        prisma.hpiReport.findUnique.mockResolvedValue(null);
+
+        await expect(service.create(makeDto(), 'seller-1'))
+            .rejects.toThrow(/HPI/i);
+
+        expect(prisma.listing.update).not.toHaveBeenCalled();
+        expect(prisma.auction.create).not.toHaveBeenCalled();
+    });
+
+    it('always creates a 24-hour schedule', async () => {
+        const start = new Date(Date.now() + 60_000);
+        await service.create(makeDto({ startTime: start.toISOString() }), 'seller-1');
+
+        const createCall = prisma.auction.create.mock.calls[0][0];
+        expect(createCall.data.endTime.getTime() - createCall.data.startTime.getTime())
+            .toBe(24 * 60 * 60 * 1000);
     });
 
     it('normalises any legacy client starting bid to 70% of Estimated Market Value', async () => {
@@ -539,5 +598,80 @@ describe('AuctionsService — create', () => {
                 }),
             }),
         );
+    });
+
+    it('re-auctions an ended reserve-not-met CLASSIFIED draft by switching it back to AUCTION atomically', async () => {
+        const revertedRetailDraft = {
+            id: 'listing-1',
+            sellerId: 'seller-1',
+            deletedAt: null,
+            createdAt: new Date('2026-09-19T01:00:00.000Z'),
+            status: 'DRAFT',
+            type: 'CLASSIFIED',
+            price: 10000,
+            title: 'BMW M3 2022',
+            images: Array.from({ length: 10 }, (_, i) => `image-${i}`),
+            vrm: 'AB12CDE',
+            make: 'BMW',
+            model: 'M3',
+            year: 2022,
+            mileage: 30000,
+            fuelType: 'PETROL',
+            transmission: 'AUTOMATIC',
+            bodyType: 'COUPE',
+            location: 'Birmingham',
+            owners: '1',
+            description: 'Well presented vehicle with full details.',
+            condition: 'GOOD',
+            stolenRecovered: false,
+            hasOutstandingFinance: false,
+            isLegalRegisteredKeeper: true,
+            isDepartedSale: false,
+        };
+        prisma.listing.findUnique.mockResolvedValue(revertedRetailDraft);
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1',
+            listingId: 'listing-1',
+            status: 'ENDED',
+            deletedAt: null,
+            winnerId: null,
+        });
+        prisma.auction.update.mockResolvedValue({ id: 'auction-1', status: 'SCHEDULED' });
+
+        await service.create(makeDto(), 'seller-1');
+
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'listing-1' },
+            data: {
+                status: 'PENDING_REVIEW',
+                rejectionReason: null,
+                type: 'AUCTION',
+            },
+        });
+        expect(prisma.bid.updateMany).toHaveBeenCalled();
+        expect(prisma.auction.update).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: { id: 'auction-1' },
+                data: expect.objectContaining({ status: 'SCHEDULED' }),
+            }),
+        );
+    });
+
+    it('still rejects an arbitrary CLASSIFIED draft that was not reverted from an ended auction', async () => {
+        prisma.listing.findUnique.mockResolvedValue({
+            id: 'listing-1',
+            sellerId: 'seller-1',
+            deletedAt: null,
+            status: 'DRAFT',
+            type: 'CLASSIFIED',
+            price: 10000,
+            images: Array.from({ length: 10 }, (_, i) => `image-${i}`),
+        });
+        prisma.auction.findUnique.mockResolvedValue(null);
+
+        await expect(service.create(makeDto(), 'seller-1'))
+            .rejects.toThrow(/only schedules an AUCTION listing/i);
+
+        expect(prisma.listing.update).not.toHaveBeenCalled();
     });
 });
