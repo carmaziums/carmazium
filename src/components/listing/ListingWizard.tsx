@@ -1022,9 +1022,33 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     onContinue: () => router.push(payload.listingType === 'AUCTION' ? '/dashboard/seller/auctions' : '/dashboard/seller/listings'),
                 })
             } else {
-                // For paid tiers, create as DRAFT — the Stripe webhook activates it after payment
+                // Brand-new auctions carry their schedule in this same POST /listings
+                // request. The backend performs a Prisma nested write, so a failed
+                // Auction create rolls back the Listing too. Existing/HPI drafts
+                // still use ensureAuctionScheduled() above because their Listing
+                // row already exists.
+                const initialAuctionFields = formData.listingType === 'AUCTION'
+                    ? {
+                        auctionStartTime: auctionSchedule.startTime === 'NOW'
+                            ? new Date().toISOString()
+                            : new Date(auctionSchedule.startTime).toISOString(),
+                        auctionReservePrice: parseFloat(auctionSchedule.reservePrice),
+                        auctionMinIncrement: parseFloat(auctionSchedule.minIncrement),
+                        auctionStartingBid: parseFloat(auctionSchedule.startingBid),
+                        ...(auctionSchedule.buyItNowPrice
+                            ? { auctionBuyItNowPrice: parseFloat(auctionSchedule.buyItNowPrice) }
+                            : {}),
+                    }
+                    : {}
+
+                // For paid tiers, create as DRAFT — the Stripe webhook activates it after payment.
+                // Auction listings also remain DRAFT until publishListing() passes
+                // readiness/HPI checks and submits them for admin review.
                 const isPaidTier = payload.badgeTier !== 'FREE'
-                const createPayload = isPaidTier ? { ...payload, status: 'DRAFT' as const } : payload
+                const createPayload = {
+                    ...(isPaidTier ? { ...payload, status: 'DRAFT' as const } : payload),
+                    ...initialAuctionFields,
+                }
                 const response = await createListing(createPayload)
                 const newListingId = response.data.id
 
@@ -1047,8 +1071,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     }
                 }
 
-                await ensureAuctionScheduled(newListingId)
-
+                // No second /auctions request for a brand-new auction: it was
+                // created atomically with the Listing above.
                 if (isPaidTier) {
                     // Ask the server whether this listing actually needs paying for before
                     // sending anyone to Stripe. Admins list free, so publishListing() takes
