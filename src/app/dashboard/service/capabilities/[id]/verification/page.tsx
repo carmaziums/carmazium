@@ -109,29 +109,70 @@ export default function ProviderVerificationPage() {
         <main className="flex-1 max-w-3xl space-y-6">
             <div>
                 <Link href="/dashboard/service/capabilities" className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-primary mb-5"><ArrowLeft size={14}/> Service areas</Link>
-                <h1 className="text-3xl font-bold font-heading">Business verification</h1>
-                <p className="text-sm text-[var(--text-muted)] mt-1">{capability ? SERVICE_LABELS[capability.serviceType] : "Service application"} · supporting evidence for CarMazium admin review.</p>
+                <h1 className="text-3xl font-bold font-heading">Provider verification</h1>
+                <p className="text-sm text-[var(--text-muted)] mt-1">{capability ? SERVICE_LABELS[capability.serviceType] : "Service application"} · complete every required evidence item before CarMazium approval.</p>
             </div>
 
-            {error && <div className="p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-300 text-sm flex items-start gap-3"><AlertCircle size={18} className="shrink-0 mt-0.5"/>{error}</div>}
+            {error && <div role="alert" className="p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-300 text-sm flex items-start gap-3"><AlertCircle size={18} className="shrink-0 mt-0.5"/>{error}</div>}
+            {notice && <div role="status" className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 text-sm">{notice}</div>}
+            {!detail && !error && <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary"/></div>}
 
-            <section className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
-                <div className="flex gap-3"><ShieldCheck size={20} className="text-amber-500 shrink-0 mt-0.5"/><div><h2 className="font-bold">Upload business evidence only</h2><p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">Useful evidence includes business insurance, goods-in-transit cover, Companies House certificates, operator/trade credentials or inspection qualifications. Do not upload passports, driving licences, bank statements or other sensitive personal identity documents here.</p></div></div>
-            </section>
+            {detail && <>
+                <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 className="font-heading font-bold text-lg">Verification status</h2>
+                            <p className="text-xs text-[var(--text-muted)] mt-1">Approval lasts for up to 12 months, or until required evidence expires sooner.</p>
+                        </div>
+                        <span className={"inline-flex rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-wider " + stateClass(detail.verification.verificationStatus)}>
+                            {detail.verification.verificationStatus.replaceAll("_", " ")}
+                        </span>
+                    </div>
+                    {detail.verification.verificationExpiresAt && <p className="text-sm mt-4">Current verification expires <strong>{new Date(detail.verification.verificationExpiresAt).toLocaleDateString("en-GB")}</strong>.</p>}
+                </section>
 
-            <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 space-y-4">
-                <div><h2 className="font-heading font-bold text-lg">Add verification document</h2><p className="text-xs text-[var(--text-muted)] mt-1">PDF, JPG, PNG or WEBP. Maximum 10 files per service application.</p></div>
-                <input className={inputCls} value={label} onChange={e => setLabel(e.target.value)} placeholder="Document label, e.g. Goods in transit insurance" maxLength={160}/>
-                <input id="verification-file" className={inputCls} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={e => setFile(e.target.files?.[0] ?? null)}/>
-                <Button onClick={upload} disabled={busy || !file}>{busy ? <Loader2 size={16} className="animate-spin mr-2"/> : <Upload size={16} className="mr-2"/>}Upload document</Button>
-            </section>
+                <section className="space-y-3">
+                    <div><h2 className="font-heading font-bold text-lg">Required evidence</h2><p className="text-xs text-[var(--text-muted)] mt-1">Every item must have current admin-approved evidence.</p></div>
+                    {detail.verification.requirements.map(req => <div key={req.type} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="flex gap-3">
+                                {req.state === "SATISFIED" ? <CheckCircle size={20} className="text-emerald-500 shrink-0 mt-0.5"/> : req.state === "REJECTED" ? <XCircle size={20} className="text-red-500 shrink-0 mt-0.5"/> : <ShieldCheck size={20} className="text-amber-500 shrink-0 mt-0.5"/>}
+                                <div><h3 className="font-bold">{req.title}</h3><p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{req.description}</p>{req.expiryRequired && <p className="text-[11px] text-amber-500 mt-2">A current expiry date is required.</p>}{req.evidenceExpiresAt && <p className="text-[11px] text-[var(--text-muted)] mt-2">Approved evidence expires {new Date(req.evidenceExpiresAt).toLocaleDateString("en-GB")}.</p>}</div>
+                            </div>
+                            <span className={"shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider " + stateClass(req.state)}>{req.state}</span>
+                        </div>
+                    </div>)}
+                </section>
 
-            <section className="space-y-3">
-                <h2 className="font-heading font-bold text-lg">Submitted documents {entries ? `(${entries.length})` : ""}</h2>
-                {entries === null && !error && <div className="flex justify-center py-10"><Loader2 className="animate-spin text-primary"/></div>}
-                {entries?.length === 0 && <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-8 text-center text-sm text-[var(--text-muted)]">No verification documents uploaded yet.</div>}
-                {entries?.map(entry => <div key={entry.id} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 flex items-center justify-between gap-4"><div className="min-w-0 flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"><FileText size={18} className="text-primary"/></div><div className="min-w-0"><p className="font-bold text-sm truncate">{entry.label || "Verification document"}</p><p className="text-xs text-[var(--text-muted)]">Uploaded {new Date(entry.createdAt).toLocaleDateString("en-GB")}</p></div></div>{entry.url && <a href={entry.url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-primary hover:underline shrink-0">Open</a>}</div>)}
-            </section>
+                <section className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
+                    <div className="flex gap-3"><ShieldCheck size={20} className="text-amber-500 shrink-0 mt-0.5"/><div><h2 className="font-bold">Business evidence only</h2><p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">Upload business, insurance, qualification or regulatory evidence for this service. Do not upload passports, driving licences, personal bank statements or unrelated identity documents.</p></div></div>
+                </section>
+
+                <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 space-y-5">
+                    <div><h2 className="font-heading font-bold text-lg">Upload evidence</h2><p className="text-xs text-[var(--text-muted)] mt-1">PDF, JPG, PNG or WEBP, maximum 10 MB each. Reviewed evidence is retained for audit.</p></div>
+                    <div><label className={labelCls}>Requirement</label><select className={inputCls} value={evidenceType} onChange={e => setEvidenceType(e.target.value as CapabilityEvidenceType)}>{detail.verification.requirements.map(req => <option key={req.type} value={req.type}>{req.title}</option>)}</select></div>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                        <div><label className={labelCls}>Issuer / organisation</label><input className={inputCls} value={issuer} onChange={e => setIssuer(e.target.value)} placeholder="Insurer, FCA principal, awarding body..."/></div>
+                        <div><label className={labelCls}>Policy / FRN / certificate reference</label><input className={inputCls} value={reference} onChange={e => setReference(e.target.value)} placeholder="Reference number"/></div>
+                        <div><label className={labelCls}>Valid from</label><input className={inputCls} type="date" value={validFrom} onChange={e => setValidFrom(e.target.value)}/></div>
+                        <div><label className={labelCls}>Expiry {selectedRequirement?.expiryRequired ? "(required)" : "(if applicable)"}</label><input className={inputCls} type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)}/></div>
+                    </div>
+                    <div><label className={labelCls}>Evidence file</label><input id="verification-file" className={inputCls} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={e => setFile(e.target.files?.[0] ?? null)}/></div>
+                    <Button onClick={upload} disabled={busy || !file || !evidenceType}>{busy ? <Loader2 size={16} className="animate-spin mr-2"/> : <Upload size={16} className="mr-2"/>}Upload for review</Button>
+                </section>
+
+                <section className="space-y-3">
+                    <h2 className="font-heading font-bold text-lg">Evidence history ({detail.attachments.length})</h2>
+                    {detail.attachments.length === 0 && <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-8 text-center text-sm text-[var(--text-muted)]">No verification evidence uploaded yet.</div>}
+                    {detail.attachments.map(entry => <div key={entry.id} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4">
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0 flex gap-3"><div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"><FileText size={18} className="text-primary"/></div><div className="min-w-0"><p className="font-bold text-sm">{entry.label || "Verification evidence"}</p><p className="text-xs text-[var(--text-muted)] mt-1">{entry.evidenceIssuer || "Issuer not supplied"}{entry.evidenceReference ? " · " + entry.evidenceReference : ""}</p><p className="text-xs text-[var(--text-muted)] mt-1">Uploaded {new Date(entry.createdAt).toLocaleDateString("en-GB")}{entry.evidenceExpiresAt ? " · Expires " + new Date(entry.evidenceExpiresAt).toLocaleDateString("en-GB") : ""}</p>{entry.evidenceReviewNote && <p className="text-xs mt-2">{entry.evidenceReviewNote}</p>}</div></div>
+                            <div className="flex items-center gap-2 shrink-0"><span className={"rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider " + stateClass(entry.evidenceStatus || "PENDING")}>{entry.evidenceStatus || "PENDING"}</span>{entry.evidenceStatus === "PENDING" && <button type="button" onClick={() => remove(entry)} disabled={busy} className="p-2 rounded-lg border border-[var(--border-default)] hover:border-red-500/40 hover:text-red-500" aria-label="Delete pending evidence"><Trash2 size={14}/></button>}</div>
+                        </div>
+                        {entry.url && <a href={entry.url} target="_blank" rel="noopener noreferrer" className="inline-flex mt-3 text-xs font-bold text-primary hover:underline">Open evidence</a>}
+                    </div>)}
+                </section>
+            </>}
         </main>
     </div></div>
 }
