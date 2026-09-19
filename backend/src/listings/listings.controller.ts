@@ -110,12 +110,11 @@ export class ListingsController {
      * before authentication/payment friction. The response contains aggregates
      * only — never another user's listing, identity or contact details.
      */
-    @Post('valuation')
-    @HttpCode(HttpStatus.OK)
+    @Get('valuation')
     @ApiOperation({ summary: 'Estimate vehicle value from CarMazium market data' })
     @ApiResponse({ status: 200, description: 'Estimated retail range and auction guidance' })
     async valuation(
-        @Body() dto: VehicleValuationDto,
+        @Query() dto: VehicleValuationDto,
     ): Promise<StandardResponse<any>> {
         const valuation = await this.listingsService.estimateVehicleValue(dto);
         return new StandardResponse(valuation);
