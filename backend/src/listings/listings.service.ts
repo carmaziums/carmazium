@@ -16,6 +16,7 @@ import {
 } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { ListingFilterDto } from './dto/listing-filter.dto';
+import { AlsoAuctionDto } from './dto/also-auction.dto';
 // These types come from @prisma/client and are available once `prisma generate` has run.
 // VehicleCondition and EuroStandard are new — resolve after the migration is applied.
 import {
@@ -1608,45 +1609,86 @@ export class ListingsService {
     async alsoAuction(
         listingId: string,
         userId: string,
-        dto: { startTime: string; reservePrice: number; startingBid?: number; minIncrement?: number; buyItNowPrice?: number },
+        dto: AlsoAuctionDto,
     ): Promise<{ linkedListingId: string; auctionId: string }> {
-        const source = await this.findById(listingId);
-        if (source.sellerId !== userId) throw new ForbiddenException('You do not own this listing');
-        if (source.type !== 'CLASSIFIED') throw new BadRequestException('Source listing must be of type CLASSIFIED');
-        if (source.status !== 'ACTIVE') {
-            throw new BadRequestException('Only an active retail listing can also be placed into auction');
-        }
-        if ((source as any).linkedListingId) throw new BadRequestException('This listing already has a linked auction listing');
-        if ((source.images?.length ?? 0) < 10) {
-            throw new BadRequestException(
-                `Auctions require at least 10 photos before scheduling. You have ${source.images?.length ?? 0}.`,
-            );
-        }
-        if (dto.reservePrice > Number(source.price)) {
-            throw new BadRequestException(
-                `Reserve price (£${dto.reservePrice.toLocaleString('en-GB')}) cannot exceed the retail listing price (£${Number(source.price).toLocaleString('en-GB')}). Lower the reserve or raise the retail price first.`,
-            );
-        }
-
-        const sourceValue = Number(source.price);
-        if (!Number.isFinite(sourceValue) || sourceValue <= 0) {
-            throw new BadRequestException('A valid vehicle price is required before creating the linked auction');
-        }
-        const platformStartingBid = calculatePlatformOpeningBid(sourceValue);
-
         const startTime = new Date(dto.startTime);
         if (Number.isNaN(startTime.getTime()) || startTime.getTime() < Date.now() - 60_000) {
             throw new BadRequestException('Invalid or past startTime');
         }
         const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000);
-        const slug = this.generateSlug(source.title);
         const auctionListingId = randomUUID();
 
-        // The clone, Auction row and reverse link are one unit. If any write
-        // fails, Prisma rolls all three back so no orphan/half-linked vehicle is
-        // left behind. The new auction still requires admin review.
-        const [auctionListing, auction] = await this.prisma.$transaction([
-            this.prisma.listing.create({
+        const result = await this.prisma.$transaction(async (tx) => {
+            // Re-read the source inside the transaction. Validation done before
+            // a transaction can go stale between read and write (sold/withdrawn,
+            // deleted, ownership changed, or another alsoAuction request winning
+            // the race). This is the authoritative snapshot used for cloning.
+            const source = await tx.listing.findUnique({
+                where: { id: listingId },
+            });
+
+            if (!source || source.deletedAt) {
+                throw new NotFoundException('Listing not found');
+            }
+            if (source.sellerId !== userId) {
+                throw new ForbiddenException('You do not own this listing');
+            }
+            if (source.type !== 'CLASSIFIED') {
+                throw new BadRequestException('Source listing must be of type CLASSIFIED');
+            }
+            if (source.status !== 'ACTIVE') {
+                throw new BadRequestException('Only an active retail listing can also be placed into auction');
+            }
+            if (source.linkedListingId) {
+                throw new BadRequestException('This listing already has a linked auction listing');
+            }
+            if ((source.images?.length ?? 0) < 10) {
+                throw new BadRequestException(
+                    `Auctions require at least 10 photos before scheduling. You have ${source.images?.length ?? 0}.`,
+                );
+            }
+
+            const sourceValue = Number(source.price);
+            if (!Number.isFinite(sourceValue) || sourceValue <= 0) {
+                throw new BadRequestException('A valid vehicle price is required before creating the linked auction');
+            }
+            if (dto.reservePrice > sourceValue) {
+                throw new BadRequestException(
+                    `Reserve price (£${dto.reservePrice.toLocaleString('en-GB')}) cannot exceed the retail listing price (£${sourceValue.toLocaleString('en-GB')}). Lower the reserve or raise the retail price first.`,
+                );
+            }
+
+            const platformStartingBid = calculatePlatformOpeningBid(sourceValue);
+            const slug = this.generateSlug(source.title);
+
+            // Compare-and-set the reverse link while every eligibility condition
+            // is still true. Two concurrent requests may both read linkedListingId
+            // as null, but only one can update this row with linkedListingId:null
+            // in the WHERE clause. A stale/sold/withdrawn/deleted source also fails
+            // this claim. Throwing rolls back the entire transaction.
+            const claimed = await tx.listing.updateMany({
+                where: {
+                    id: listingId,
+                    sellerId: userId,
+                    type: 'CLASSIFIED',
+                    status: 'ACTIVE',
+                    linkedListingId: null,
+                    deletedAt: null,
+                },
+                data: { linkedListingId: auctionListingId },
+            });
+
+            if (claimed.count !== 1) {
+                throw new BadRequestException(
+                    'The retail listing changed while the auction was being created. Refresh the listing before trying again.',
+                );
+            }
+
+            // Nested Auction creation makes the linked AUCTION Listing + Auction
+            // row one atomic write. The clone remains PENDING_REVIEW and the
+            // Auction remains SCHEDULED; the lifecycle cron cannot activate it
+            // until admin approval changes the Listing to ACTIVE.
+            const auctionListing = await tx.listing.create({
                 data: {
                     id: auctionListingId,
                     title: source.title,
@@ -1687,33 +1729,41 @@ export class ListingsService {
                     isLegalRegisteredKeeper: source.isLegalRegisteredKeeper,
                     writeOffCategory: source.writeOffCategory,
                     linkedListingId: listingId,
+                    auction: {
+                        create: {
+                            startTime,
+                            endTime,
+                            reservePrice: dto.reservePrice,
+                            startingBid: platformStartingBid,
+                            minIncrement: dto.minIncrement ?? 100,
+                            buyItNowPrice: dto.buyItNowPrice ?? null,
+                            status: 'SCHEDULED',
+                        },
+                    },
                 } as any,
-            }),
-            this.prisma.auction.create({
-                data: {
-                    listingId: auctionListingId,
-                    startTime,
-                    endTime,
-                    reservePrice: dto.reservePrice,
-                    startingBid: platformStartingBid,
-                    minIncrement: dto.minIncrement ?? 100,
-                    status: 'SCHEDULED',
-                    ...(dto.buyItNowPrice ? { buyItNowPrice: dto.buyItNowPrice } : {}),
-                },
-            }),
-            this.prisma.listing.update({
-                where: { id: listingId },
-                data: { linkedListingId: auctionListingId } as any,
-            }),
-        ]);
+                include: { auction: true },
+            });
 
-        await this.notifySubmittedForReview({
-            id: auctionListing.id,
-            title: auctionListing.title,
-            sellerId: auctionListing.sellerId,
+            if (!auctionListing.auction) {
+                throw new BadRequestException('Linked auction setup could not be completed');
+            }
+
+            return {
+                auctionListing,
+                auctionId: auctionListing.auction.id,
+            };
         });
 
-        return { linkedListingId: auctionListing.id, auctionId: auction.id };
+        await this.notifySubmittedForReview({
+            id: result.auctionListing.id,
+            title: result.auctionListing.title,
+            sellerId: result.auctionListing.sellerId,
+        });
+
+        return {
+            linkedListingId: result.auctionListing.id,
+            auctionId: result.auctionId,
+        };
     }
 
     /**
