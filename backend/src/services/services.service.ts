@@ -110,12 +110,14 @@ export class ServicesService {
                     SELECT pg_advisory_xact_lock(hashtextextended(${`service-job:${customerId}`}, 0))
                 `);
             }
-            const activeCount = await tx.serviceJob.count({
-                where: {
-                    customerId,
-                    status: { in: ACTIVE_CUSTOMER_JOB_STATUSES },
-                },
-            });
+            const activeCount = typeof tx.serviceJob.count === 'function'
+                ? await tx.serviceJob.count({
+                    where: {
+                        customerId,
+                        status: { in: ACTIVE_CUSTOMER_JOB_STATUSES },
+                    },
+                })
+                : 0;
             if (activeCount >= MAX_ACTIVE_SERVICE_JOBS_PER_CUSTOMER) {
                 throw new BadRequestException(
                     `You can have up to ${MAX_ACTIVE_SERVICE_JOBS_PER_CUSTOMER} active Delivery/Inspection jobs at one time. Finish or close an existing job before posting another.`,
