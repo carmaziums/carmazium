@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import {
     CapabilityStatus,
     ServiceJobStatus,
@@ -99,6 +99,8 @@ describe('ServicesService TradeXchange hardening regressions', () => {
             serviceJob: {
                 findUnique: jest.fn(),
                 findMany: jest.fn(),
+                count: jest.fn().mockResolvedValue(0),
+                create: jest.fn(),
                 update: jest.fn().mockResolvedValue({}),
                 updateMany: jest.fn().mockResolvedValue({ count: 1 }),
             },
@@ -171,6 +173,21 @@ describe('ServicesService TradeXchange hardening regressions', () => {
             });
         });
 
+        it('rejects an approved provider when an OPEN job is outside the configured postcode coverage', async () => {
+            prisma.serviceJob.findUnique.mockResolvedValue(openDeliveryJob());
+            prisma.contractorCapability.findUnique.mockResolvedValue({
+                status: CapabilityStatus.APPROVED,
+                jobNationwide: false,
+                jobPostcodeAreas: ['M'],
+            });
+
+            await expect(service.getJob({
+                userId: 'provider-user',
+                role: UserRole.CONTRACTOR,
+                contractorProfileId: 'contractor-1',
+            }, 'job-1')).rejects.toBeInstanceOf(ForbiddenException);
+        });
+
         it('allows direct OPEN-job access only with an APPROVED capability for that service type', async () => {
             prisma.serviceJob.findUnique.mockResolvedValue(openDeliveryJob());
             prisma.contractorCapability.findUnique.mockResolvedValue({ status: CapabilityStatus.APPROVED });
@@ -236,6 +253,46 @@ describe('ServicesService TradeXchange hardening regressions', () => {
             }, 'job-1');
             expect(customerView.contractor.phone).toBe('07111111111');
             expect(customerView.contractor.user.email).toBe('provider@example.com');
+        });
+    });
+
+    describe('Block 8 customer posting controls', () => {
+        it('rejects a new paid-service job when the customer already has ten active jobs', async () => {
+            prisma.serviceJob.count.mockResolvedValue(10);
+
+            await expect(service.createJob('customer-1', {
+                serviceType: ServiceType.DELIVERY,
+                title: 'Move another vehicle',
+                pickupPostcode: 'B1 1AA',
+                deliveryPostcode: 'B2 2BB',
+                vehicles: [{ registration: 'AB12 CDE' }],
+            } as any)).rejects.toBeInstanceOf(BadRequestException);
+
+            expect(prisma.serviceJob.create).not.toHaveBeenCalled();
+        });
+
+        it('rejects a malformed UK postcode before creating a paid-service job', async () => {
+            await expect(service.createJob('customer-1', {
+                serviceType: ServiceType.DELIVERY,
+                title: 'Move vehicle',
+                pickupPostcode: 'ZZ99 9ZZ',
+                deliveryPostcode: 'B2 2BB',
+                vehicles: [{ registration: 'AB12 CDE' }],
+            } as any)).rejects.toBeInstanceOf(BadRequestException);
+
+            expect(prisma.serviceJob.create).not.toHaveBeenCalled();
+        });
+
+        it('rejects a requested service date in the past', async () => {
+            await expect(service.createJob('customer-1', {
+                serviceType: ServiceType.INSPECTION,
+                title: 'Inspect vehicle',
+                servicePostcode: 'B1 1AA',
+                requestedFor: new Date(Date.now() - 3_600_000).toISOString(),
+                vehicles: [{ registration: 'AB12 CDE' }],
+            } as any)).rejects.toBeInstanceOf(BadRequestException);
+
+            expect(prisma.serviceJob.create).not.toHaveBeenCalled();
         });
     });
 
