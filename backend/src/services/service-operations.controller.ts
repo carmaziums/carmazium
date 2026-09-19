@@ -19,7 +19,7 @@ import { ResolveDisputeDto } from './dto';
 @ApiTags('Trade Exchange provider verification')
 @ApiCookieAuth()
 @Controller('services/operations')
-@UseGuards(SessionAuthGuard)
+@UseGuards(SessionAuthGuard, ThrottlerGuard)
 export class ServiceOperationsController {
     constructor(private readonly operations: ServiceOperationsService) { }
 
@@ -36,6 +36,7 @@ export class ServiceOperationsController {
     }
 
     @Post('capabilities/:id/attachments')
+    @Throttle({ default: { limit: 10, ttl: 60_000 } })
     @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
     @ApiOperation({ summary: 'Securely upload typed private verification evidence to one service application' })
     async addCapabilityAttachment(
@@ -50,6 +51,7 @@ export class ServiceOperationsController {
     }
 
     @Delete('capabilities/:id/attachments/:entryId')
+    @Throttle({ default: { limit: 20, ttl: 60_000 } })
     @ApiOperation({ summary: 'Delete one of the caller’s private verification documents' })
     async deleteCapabilityAttachment(
         @CurrentUser() user: any,
