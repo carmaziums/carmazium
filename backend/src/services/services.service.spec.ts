@@ -486,7 +486,7 @@ describe('Delivery & Recovery — end to end', () => {
     it('confirming before completion is refused', async () => {
         // (state is COMPLETED now, so this checks the guard on a fresh OPEN job)
         const other = await svc.createJob(CUSTOMER.id, { serviceType: 'DELIVERY', title: 'other', pickupPostcode: 'A1 1AA', deliveryPostcode: 'B2 2BB', vehicles: [{ make: 'x', model: 'y' }] } as any);
-        await expect(svc.confirmCompletion(CUSTOMER.id, other.id)).rejects.toThrow(/not marked/);
+        await expect(svc.confirmCompletion(CUSTOMER.id, other.id)).rejects.toThrow(/required job lifecycle/);
     });
 
     it('the customer confirms: exactly the contractor share is transferred, once', async () => {
