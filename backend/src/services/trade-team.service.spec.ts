@@ -227,6 +227,53 @@ describe('TradeTeamService', () => {
         expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
     });
 
+    it.each([ServiceType.FINANCE, ServiceType.WARRANTY])(
+        'lets a Partner business apply for %s without changing account role',
+        async (serviceType) => {
+            prisma.dealerProfile.findUnique.mockResolvedValue({
+                id: 'dealer-1',
+                companyName: 'Example Motors',
+                phone: '01234 567890',
+                businessAddress: 'Birmingham',
+                user: {
+                    id: 'business-owner',
+                    stripeConnectAccountId: null,
+                    stripeConnectOnboardingComplete: false,
+                    contractorProfile: null,
+                },
+                staff: [],
+                invites: [],
+            });
+            prisma.contractorProfile.upsert.mockResolvedValue({
+                id: 'business-provider',
+                userId: 'business-owner',
+                businessName: 'Example Motors',
+            });
+            prisma.contractorCapability.findUnique.mockResolvedValue(null);
+            prisma.contractorCapability.upsert.mockResolvedValue({
+                id: `cap-${serviceType.toLowerCase()}`,
+                contractorId: 'business-provider',
+                serviceType,
+                status: 'PENDING',
+            });
+
+            const result = await service.applyBusinessCapability('business-owner', serviceType);
+
+            expect(result).toMatchObject({ serviceType, status: 'PENDING' });
+            expect(prisma.contractorProfile.upsert).toHaveBeenCalledWith(expect.objectContaining({
+                where: { userId: 'business-owner' },
+            }));
+            expect(prisma.contractorCapability.upsert).toHaveBeenCalledWith(expect.objectContaining({
+                where: {
+                    contractorId_serviceType: {
+                        contractorId: 'business-provider',
+                        serviceType,
+                    },
+                },
+            }));
+        },
+    );
+
     it('preserves the existing independent provider flow when the user has no dealership TradeXchange assignment', async () => {
         prisma.user.findUnique.mockResolvedValue({ email: 'independent@example.com' });
         prisma.dealerStaff.findMany.mockResolvedValue([]);
