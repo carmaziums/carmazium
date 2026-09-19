@@ -1783,6 +1783,11 @@ model ContractorCapability {
   verificationReminder30SentAt DateTime?
   verificationReminder7SentAt  DateTime?
 
+  // Delivery/Inspection paid-job geographic matching. Providers only see and
+  // quote open work in one of these UK postcode areas unless nationwide.
+  jobNationwide              Boolean  @default(false)
+  jobPostcodeAreas           String[] @default([])
+
   // Finance/Warranty lead matching. These settings are ignored by paid
   // Delivery/Inspection jobs. A lead is only shared when its service area and
   // every configured eligibility rule match.
@@ -1909,6 +1914,9 @@ model ServiceJob {
   deliveryAddress  String?
   servicePostcode  String?
   serviceAddress   String?
+  /// Normalised postcode area used for provider matching. Delivery = pickup
+  /// area; Inspection = service location area.
+  workPostcodeArea String?
 
   /// When the customer wants it. Null = as soon as possible.
   requestedFor DateTime?
@@ -1950,6 +1958,7 @@ model ServiceJob {
   @@index([customerId, status])
   @@index([contractorId, status])
   @@index([serviceType, status, createdAt])
+  @@index([serviceType, status, workPostcodeArea, createdAt])
   @@index([status, expiresAt])
   @@map("service_jobs")
 }
