@@ -1296,6 +1296,13 @@ export class ServicesService {
         if (!approved.includes(job.serviceType)) {
             throw new ForbiddenException(`You are not approved for ${this.label(job.serviceType)} jobs.`);
         }
+        if (!(await this.capabilityAllowsJob(
+            contractorProfileId,
+            job.serviceType,
+            this.jobArea(job),
+        ))) {
+            throw new ForbiddenException('This job is outside your approved TradeXchange service area.');
+        }
         if (job.customerId === userId) throw new BadRequestException('You cannot quote on your own job.');
 
         const validUntil = dto.validUntil ? new Date(dto.validUntil) : null;
@@ -1443,16 +1450,11 @@ export class ServicesService {
         const hasQuoted = !!viewer.contractorProfileId && job.quotes.some((q) => q.contractorId === viewer.contractorProfileId);
         let isEligible = false;
         if (viewer.contractorProfileId && job.status === ServiceJobStatus.OPEN) {
-            const capability = await this.prisma.contractorCapability.findUnique({
-                where: {
-                    contractorId_serviceType: {
-                        contractorId: viewer.contractorProfileId,
-                        serviceType: job.serviceType,
-                    },
-                },
-                select: { status: true },
-            });
-            isEligible = capability?.status === CapabilityStatus.APPROVED;
+            isEligible = await this.capabilityAllowsJob(
+                viewer.contractorProfileId,
+                job.serviceType,
+                this.jobArea(job),
+            );
         }
 
         if (!isCustomer && !isAdmin && !isAccepted && !hasQuoted && !isEligible) {
