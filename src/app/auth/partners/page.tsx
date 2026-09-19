@@ -157,7 +157,7 @@ export default function PartnersLoginPage() {
                         </p>
                         <p className="text-sm text-gray-500 mt-2">
                             New partner?{" "}
-                            <Link href="/auth/signup" className="text-primary hover:text-white font-bold transition-colors">
+                            <Link href="/auth/signup?role=DEALER" className="text-primary hover:text-white font-bold transition-colors">
                                 Register
                             </Link>
                         </p>

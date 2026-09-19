@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/Button"
 type CapabilityStatus = "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED"
 type PartnerCapability = {
     id: string
-    serviceType: "DELIVERY" | "INSPECTION"
+    serviceType: "DELIVERY" | "INSPECTION" | "FINANCE" | "WARRANTY"
     status: CapabilityStatus
     reviewNote?: string | null
 }
@@ -123,7 +123,7 @@ export default function PartnerDashboardPage() {
         }
     }
 
-    const applyService = async (serviceType: "DELIVERY" | "INSPECTION") => {
+    const applyService = async (serviceType: "DELIVERY" | "INSPECTION" | "FINANCE" | "WARRANTY") => {
         setBusy(serviceType)
         setError(null)
         try {
@@ -168,6 +168,8 @@ export default function PartnerDashboardPage() {
 
     const delivery = team?.capabilities?.find(c => c.serviceType === "DELIVERY")
     const inspection = team?.capabilities?.find(c => c.serviceType === "INSPECTION")
+    const finance = team?.capabilities?.find(c => c.serviceType === "FINANCE")
+    const warranty = team?.capabilities?.find(c => c.serviceType === "WARRANTY")
     const dealerActive = !!partnerBusiness?.isVerified
 
     if (!isPartnerRole && !isLegacyProvider && !isAdmin) {
@@ -177,7 +179,7 @@ export default function PartnerDashboardPage() {
                     <Building2 className="mx-auto text-primary mb-5" size={46} />
                     <h1 className="text-3xl font-black font-heading mb-3">Create a Partner Account</h1>
                     <p className="text-[var(--text-muted)] max-w-xl mx-auto mb-7">
-                        One business account lets you add the CarMazium services you need — Vehicle Dealer, Delivery & Recovery and Vehicle Inspection — without changing account type each time.
+                        One business account lets you add the CarMazium services you need — Vehicle Dealer, Delivery & Recovery, Vehicle Inspection, Vehicle Finance and Warranty — without changing account type each time.
                     </p>
                     {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
                     <Button onClick={becomePartner} disabled={busy === "partner"}>
@@ -262,7 +264,7 @@ export default function PartnerDashboardPage() {
                         <div className="flex items-end justify-between gap-4 mb-5">
                             <div><h2 className="text-2xl font-black font-heading">Your add-ons</h2><p className="text-sm text-[var(--text-muted)]">Activate one service or several. Adding one never removes another.</p></div>
                         </div>
-                        <div className="grid lg:grid-cols-3 gap-5">
+                        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
                             <AddonCard
                                 icon={Building2}
                                 title="Vehicle Dealer"
@@ -290,6 +292,26 @@ export default function PartnerDashboardPage() {
                                 action={inspection?.status === "APPROVED"
                                     ? <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link>
                                     : <Button size="sm" onClick={() => applyService("INSPECTION")} disabled={busy === "INSPECTION" || inspection?.status === "PENDING"}>{busy === "INSPECTION" ? <Loader2 className="animate-spin" size={14} /> : inspection?.status === "PENDING" ? "Application pending" : "Add service"}</Button>}
+                            />
+                            <AddonCard
+                                icon={CreditCard}
+                                title="Vehicle Finance"
+                                description="Receive matched customer finance enquiries and respond with your own products and terms. No CarMazium payout account is required."
+                                status={finance ? statusLabel[finance.status] : "Not activated"}
+                                active={finance?.status === "APPROVED"}
+                                action={finance?.status === "APPROVED"
+                                    ? <Link href="/dashboard/service/leads"><Button size="sm" variant="outline">Open enquiries</Button></Link>
+                                    : <Button size="sm" onClick={() => applyService("FINANCE")} disabled={busy === "FINANCE" || finance?.status === "PENDING"}>{busy === "FINANCE" ? <Loader2 className="animate-spin" size={14} /> : finance?.status === "PENDING" ? "Application pending" : "Add service"}</Button>}
+                            />
+                            <AddonCard
+                                icon={ShieldCheck}
+                                title="Warranty Provider"
+                                description="Receive matched warranty enquiries and respond with suitable cover options. No CarMazium payout account is required."
+                                status={warranty ? statusLabel[warranty.status] : "Not activated"}
+                                active={warranty?.status === "APPROVED"}
+                                action={warranty?.status === "APPROVED"
+                                    ? <Link href="/dashboard/service/leads"><Button size="sm" variant="outline">Open enquiries</Button></Link>
+                                    : <Button size="sm" onClick={() => applyService("WARRANTY")} disabled={busy === "WARRANTY" || warranty?.status === "PENDING"}>{busy === "WARRANTY" ? <Loader2 className="animate-spin" size={14} /> : warranty?.status === "PENDING" ? "Application pending" : "Add service"}</Button>}
                             />
                         </div>
                     </section>

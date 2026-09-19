@@ -55,7 +55,7 @@ const PARTNER_FEATURES = [
     {
         icon: Truck,
         title: "Add business services",
-        description: "Enable Delivery & Recovery and Vehicle Inspection services alongside Vehicle Dealer tools.",
+        description: "Add Delivery & Recovery, Vehicle Inspection, Vehicle Finance and Warranty services alongside Vehicle Dealer tools.",
     },
     {
         icon: Users,

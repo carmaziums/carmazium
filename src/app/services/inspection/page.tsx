@@ -30,8 +30,8 @@ export default function InspectionLandingPage() {
     if (!inspectionServiceEnabled) notFound()
 
     const providerHref = user
-        ? "/dashboard/service/capabilities"
-        : "/auth/signup?role=CONTRACTOR&redirect=%2Fdashboard%2Fservice%2Fcapabilities"
+        ? "/dashboard/partner"
+        : "/auth/signup?role=DEALER"
 
     return (
         <div className="min-h-screen" style={{ background: "var(--bg-body)" }}>

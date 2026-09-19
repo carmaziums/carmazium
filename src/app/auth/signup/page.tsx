@@ -12,7 +12,7 @@ import { friendlyAuthError } from "@/lib/authErrors"
 
 // New business signups use one Partner Account. DEALER remains the internal
 // compatibility role so existing auctions, KYC and staff rules keep working;
-// Delivery/Inspection are capabilities added after signup, not account roles.
+// TradeXchange provider services are capabilities added after signup, not account roles.
 const VALID_SIGNUP_ROLES = ["BUYER", "SELLER", "DEALER"] as const
 
 type SignupRole = typeof VALID_SIGNUP_ROLES[number]
@@ -138,7 +138,7 @@ function SignupForm() {
             id: "DEALER" as SignupRole,
             icon: Building2,
             label: "Partner Account",
-            sub: "One business login — add Vehicle Dealer, Delivery and Inspection services",
+            sub: "One business login — add Dealer, Delivery, Inspection, Finance and Warranty services",
             active: "bg-primary/20 text-primary",
             hover: "group-hover:bg-primary/20 group-hover:text-primary",
         },

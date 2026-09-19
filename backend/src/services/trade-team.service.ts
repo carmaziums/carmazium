@@ -257,9 +257,7 @@ export class TradeTeamService {
                 connected: !!dealer.user.stripeConnectAccountId,
                 complete: !!dealer.user.stripeConnectOnboardingComplete,
             },
-            capabilities: (dealer.user.contractorProfile?.capabilities ?? []).filter((c) =>
-                c.serviceType === ServiceType.DELIVERY || c.serviceType === ServiceType.INSPECTION,
-            ),
+            capabilities: dealer.user.contractorProfile?.capabilities ?? [],
             permissions,
             payoutPolicy: 'Customers pay CarMazium. CarMazium deducts 9%; the remaining 91% is paid only to the business Stripe Connect account.',
         };
@@ -300,8 +298,14 @@ export class TradeTeamService {
     }
 
     async applyBusinessCapability(ownerUserId: string, serviceType: ServiceType) {
-        if (serviceType !== ServiceType.DELIVERY && serviceType !== ServiceType.INSPECTION) {
-            throw new BadRequestException('Dealership team roles currently support Delivery/Recovery and Vehicle Inspection jobs.');
+        const supported: readonly ServiceType[] = [
+            ServiceType.DELIVERY,
+            ServiceType.INSPECTION,
+            ServiceType.FINANCE,
+            ServiceType.WARRANTY,
+        ];
+        if (!supported.includes(serviceType)) {
+            throw new BadRequestException('This service cannot be added to a Partner Account.');
         }
         const dealer = await this.ownerDealer(ownerUserId);
         const profile = await this.prisma.contractorProfile.upsert({

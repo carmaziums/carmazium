@@ -14,7 +14,7 @@ export class TradeTeamController {
     constructor(private readonly tradeTeam: TradeTeamService) { }
 
     @Get()
-    @ApiOperation({ summary: 'Dealership owner TradeXchange team permissions and business provider status' })
+    @ApiOperation({ summary: 'Partner business TradeXchange permissions and provider capability status' })
     async team(@CurrentUser() user: any) {
         return new StandardResponse(await this.tradeTeam.listTeam(user.id));
     }
@@ -26,7 +26,7 @@ export class TradeTeamController {
     }
 
     @Post('capabilities/:serviceType')
-    @ApiOperation({ summary: 'Apply the dealership business to provide Delivery or Inspection services' })
+    @ApiOperation({ summary: 'Apply the Partner business to provide Delivery, Inspection, Finance or Warranty services' })
     async capability(@CurrentUser() user: any, @Param('serviceType') serviceType: string) {
         return new StandardResponse(
             await this.tradeTeam.applyBusinessCapability(user.id, serviceType as ServiceType),
