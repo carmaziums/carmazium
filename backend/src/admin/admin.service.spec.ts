@@ -19,8 +19,8 @@ describe('AdminService listing approval readiness', () => {
             prisma,
             {} as any,
             {} as any,
-            {} as any,
-            {} as any,
+            { sendNotification: jest.fn() } as any,
+            { create: jest.fn().mockResolvedValue(null) } as any,
             { incrementListings: jest.fn() } as any,
             {} as any,
         );
