@@ -386,12 +386,12 @@ describe('ServiceLeadsService', () => {
 
         expect(expired).toBe(1);
         expect(prisma.serviceLead.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-            where: expect.objectContaining({ id: { in: ['lead-expired'] }, status: 'OPEN' }),
+            where: expect.objectContaining({ id: 'lead-expired', status: 'OPEN' }),
             data: expect.objectContaining({ status: 'EXPIRED', closedAt: expect.any(Date) }),
         }));
         expect(prisma.serviceLeadRecipient.updateMany).toHaveBeenCalledWith(expect.objectContaining({
             where: {
-                leadId: { in: ['lead-expired'] },
+                leadId: 'lead-expired',
                 status: { in: ['NEW', 'VIEWED'] },
             },
             data: expect.objectContaining({ status: 'CLOSED' }),
