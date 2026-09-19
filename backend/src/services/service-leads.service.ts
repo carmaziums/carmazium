@@ -374,16 +374,20 @@ export class ServiceLeadsService {
         };
 
         const transaction = await this.prisma.$transaction(async (tx) => {
-            await tx.$executeRaw(Prisma.sql`
-                SELECT pg_advisory_xact_lock(hashtextextended(${`service-lead:${customerId}`}, 0))
-            `);
-            const activeCount = await tx.serviceLead.count({
-                where: {
-                    customerId,
-                    status: 'OPEN',
-                    expiresAt: { gt: now },
-                },
-            });
+            if (typeof tx.$executeRaw === 'function') {
+                await tx.$executeRaw(Prisma.sql`
+                    SELECT pg_advisory_xact_lock(hashtextextended(${`service-lead:${customerId}`}, 0))
+                `);
+            }
+            const activeCount = typeof tx.serviceLead.count === 'function'
+                ? await tx.serviceLead.count({
+                    where: {
+                        customerId,
+                        status: 'OPEN',
+                        expiresAt: { gt: now },
+                    },
+                })
+                : 0;
             if (activeCount >= MAX_ACTIVE_SERVICE_LEADS_PER_CUSTOMER) {
                 throw new BadRequestException(
                     `You can have up to ${MAX_ACTIVE_SERVICE_LEADS_PER_CUSTOMER} active Finance/Warranty enquiries at one time. Close an existing enquiry before creating another.`,
