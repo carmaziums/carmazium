@@ -18,7 +18,7 @@ function isLikelyTestListingSlug(slug: string): boolean {
 
 async function getListingBySlug(slug: string) {
     try {
-        const res = await serverFetchWithRetry(`${API_BASE}/listings/${slug}`, { next: { revalidate: 60 } })
+        const res = await serverFetchWithRetry(`${API_BASE}/listings/${slug}`, 60)
         if (!res.ok) return null
         const json = await res.json()
         return json.data ?? null
