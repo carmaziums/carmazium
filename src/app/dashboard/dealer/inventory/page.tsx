@@ -7,9 +7,9 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import {
-    Car, Search, Filter, PlusCircle, MoreVertical,
-    Loader2, Upload, TrendingUp, ShieldCheck, Trash2, Eye, RefreshCcw, Pencil, AlertTriangle,
-    Star, Zap, X, BadgeCheck, Shield, CheckCircle2, ChevronRight, Gavel, Tag, MapPin
+    Car, Search, PlusCircle, MoreVertical,
+    Loader2, Upload, TrendingUp, Trash2, Eye, RefreshCcw, Pencil,
+    X, CheckCircle2, ChevronRight, Gavel, Tag, MapPin
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
