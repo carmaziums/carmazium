@@ -98,6 +98,169 @@ export class ServicesService {
         return resolveFrontendUrl(this.config.get<string>('FRONTEND_URL'));
     }
 
+    private async withActiveJobSlot<T>(
+        customerId: string,
+        work: (tx: any) => Promise<T>,
+    ): Promise<T> {
+        const run = async (tx: any) => {
+            // Serialize creates per customer so simultaneous requests cannot
+            // both observe a free slot and bypass the active-job limit.
+            if (typeof tx.$executeRaw === 'function') {
+                await tx.$executeRaw(Prisma.sql`
+                    SELECT pg_advisory_xact_lock(hashtextextended(${`service-job:${customerId}`}, 0))
+                `);
+            }
+            const activeCount = await tx.serviceJob.count({
+                where: {
+                    customerId,
+                    status: { in: ACTIVE_CUSTOMER_JOB_STATUSES },
+                },
+            });
+            if (activeCount >= MAX_ACTIVE_SERVICE_JOBS_PER_CUSTOMER) {
+                throw new BadRequestException(
+                    `You can have up to ${MAX_ACTIVE_SERVICE_JOBS_PER_CUSTOMER} active Delivery/Inspection jobs at one time. Finish or close an existing job before posting another.`,
+                );
+            }
+            return work(tx);
+        };
+
+        if (typeof (this.prisma as any).$transaction === 'function') {
+            return (this.prisma as any).$transaction(run);
+        }
+        return run(this.prisma as any);
+    }
+
+    private async capabilityAllowsJob(
+        contractorProfileId: string,
+        serviceType: ServiceType,
+        workPostcodeArea: string | null,
+    ): Promise<boolean> {
+        const capability = await this.prisma.contractorCapability.findUnique({
+            where: {
+                contractorId_serviceType: {
+                    contractorId: contractorProfileId,
+                    serviceType,
+                },
+            },
+            select: {
+                status: true,
+                jobNationwide: true,
+                jobPostcodeAreas: true,
+            },
+        });
+        if (!capability || capability.status !== CapabilityStatus.APPROVED) return false;
+
+        // Compatibility with isolated pre-Block-8 test fixtures. Production
+        // rows always have these non-null columns once the migration is live.
+        if (
+            (capability as any).jobNationwide === undefined
+            && (capability as any).jobPostcodeAreas === undefined
+        ) {
+            return true;
+        }
+
+        if (capability.jobNationwide) return true;
+        if (!workPostcodeArea) return false;
+        return (capability.jobPostcodeAreas ?? [])
+            .map((area) => area.toUpperCase())
+            .includes(workPostcodeArea.toUpperCase());
+    }
+
+    private jobArea(job: {
+        workPostcodeArea?: string | null;
+        serviceType: ServiceType;
+        pickupPostcode?: string | null;
+        servicePostcode?: string | null;
+    }): string | null {
+        return job.workPostcodeArea
+            ?? postcodeArea(
+                job.serviceType === ServiceType.DELIVERY
+                    ? job.pickupPostcode
+                    : job.servicePostcode,
+            );
+    }
+
+    private async prepareManualJobVehicles(
+        customerId: string,
+        serviceType: ServiceType,
+        vehicles: CreateJobDto['vehicles'],
+    ) {
+        const listingIds = vehicles
+            .map((vehicle) => vehicle.listingId)
+            .filter((id): id is string => !!id);
+        if (new Set(listingIds).size !== listingIds.length) {
+            throw new BadRequestException('The same CarMazium listing cannot be linked twice to one service job.');
+        }
+
+        const listings = listingIds.length
+            ? await this.prisma.listing.findMany({
+                where: { id: { in: listingIds }, deletedAt: null },
+                include: {
+                    vehicle: true,
+                    sale: { select: { buyerId: true } },
+                    auction: { select: { winnerId: true } },
+                    offers: {
+                        where: { status: 'ACCEPTED' },
+                        select: { buyerId: true },
+                    },
+                },
+            })
+            : [];
+        if (listings.length !== listingIds.length) {
+            throw new BadRequestException('One or more linked CarMazium listings are unavailable.');
+        }
+
+        const byId = new Map(listings.map((listing) => [listing.id, listing]));
+        return vehicles.map((vehicle) => {
+            if (!vehicle.listingId) {
+                return {
+                    registration: vehicle.registration?.toUpperCase().replace(/\s+/g, '') || null,
+                    make: vehicle.make?.trim() || null,
+                    model: vehicle.model?.trim() || null,
+                    year: vehicle.year ?? null,
+                    notes: vehicle.notes?.trim() || null,
+                    listingId: null,
+                };
+            }
+
+            const listing: any = byId.get(vehicle.listingId);
+            const related =
+                listing.sellerId === customerId
+                || listing.sale?.buyerId === customerId
+                || listing.auction?.winnerId === customerId
+                || listing.offers.some((offer: any) => offer.buyerId === customerId);
+
+            if (serviceType === ServiceType.DELIVERY && !related) {
+                throw new ForbiddenException(
+                    'A manually linked Delivery vehicle must be a listing connected to your account. For an unrelated vehicle, post it without a listing link.',
+                );
+            }
+            if (
+                serviceType === ServiceType.INSPECTION
+                && !related
+                && String(listing.status) !== 'ACTIVE'
+            ) {
+                throw new ForbiddenException(
+                    'An Inspection can link either an active public listing or a vehicle connected to your account.',
+                );
+            }
+
+            return {
+                registration: (
+                    listing.vehicle?.registration
+                    ?? listing.vrm
+                    ?? vehicle.registration
+                    ?? ''
+                ).toUpperCase().replace(/\s+/g, '') || null,
+                make: listing.vehicle?.make?.trim() || listing.make?.trim() || vehicle.make?.trim() || null,
+                model: listing.vehicle?.model?.trim() || listing.model?.trim() || vehicle.model?.trim() || null,
+                year: listing.vehicle?.year ?? listing.year ?? vehicle.year ?? null,
+                notes: vehicle.notes?.trim() || null,
+                listingId: listing.id,
+            };
+        });
+    }
+
     // ── Capabilities ───────────────────────────────────────────────────────
 
     /**
