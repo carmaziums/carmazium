@@ -485,7 +485,120 @@ export class ServiceOperationsService {
             },
         });
         if (!capability) throw new NotFoundException('Provider application not found.');
-        return { ...capability, attachments: await this.listEntries('CAPABILITY', capabilityId) };
+        const [attachments, verification] = await Promise.all([
+            this.listEntries('CAPABILITY', capabilityId),
+            getCapabilityVerificationSummary(this.prisma, capabilityId),
+        ]);
+        return { ...capability, attachments, verification };
+    }
+
+    async adminReviewCapabilityEvidence(
+        adminId: string,
+        capabilityId: string,
+        entryId: string,
+        input: CapabilityEvidenceReviewInput,
+    ) {
+        if (!APPROVABLE_EVIDENCE_STATUSES.includes(input.status as any)) {
+            throw new BadRequestException('Evidence review status must be APPROVED or REJECTED.');
+        }
+
+        const capability = await this.prisma.contractorCapability.findUnique({
+            where: { id: capabilityId },
+            select: { id: true, serviceType: true, status: true },
+        });
+        if (!capability) throw new NotFoundException('Provider application not found.');
+
+        const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+            SELECT
+                "id", "evidenceType", "evidenceStatus", "evidenceExpiresAt",
+                "submittedById", "kind"
+            FROM "service_case_entries"
+            WHERE "id" = ${entryId}
+              AND "scope" = 'CAPABILITY'
+              AND "entityId" = ${capabilityId}
+            LIMIT 1
+        `);
+        const entry = rows[0];
+        if (!entry) throw new NotFoundException('Verification evidence not found.');
+        if (!entry.evidenceType) throw new BadRequestException('This file is not classified verification evidence.');
+
+        const requirement = capabilityEvidenceRequirement(capability.serviceType, entry.evidenceType);
+        if (!requirement) throw new BadRequestException('This evidence type does not belong to this service.');
+
+        const reviewedExpiry = input.expiresAt !== undefined
+            ? this.parseOptionalDate(input.expiresAt, 'Expiry date')
+            : entry.evidenceExpiresAt
+                ? new Date(entry.evidenceExpiresAt)
+                : null;
+
+        if (input.status === 'APPROVED') {
+            if (requirement.expiryRequired && !reviewedExpiry) {
+                throw new BadRequestException(`${requirement.title} requires an expiry date before approval.`);
+            }
+            if (reviewedExpiry && reviewedExpiry <= new Date()) {
+                throw new BadRequestException('Expired evidence cannot be approved.');
+            }
+        }
+
+        const note = this.cleanText(input.reviewNote, 1000);
+        const now = new Date();
+        await this.prisma.$transaction(async (tx) => {
+            if (input.status === 'APPROVED') {
+                await tx.$executeRaw(Prisma.sql`
+                    UPDATE "service_case_entries"
+                    SET
+                        "evidenceStatus" = 'SUPERSEDED',
+                        "evidenceReviewNote" = COALESCE("evidenceReviewNote", 'Superseded by newer approved evidence.')
+                    WHERE "scope" = 'CAPABILITY'
+                      AND "entityId" = ${capabilityId}
+                      AND "evidenceType" = ${entry.evidenceType}
+                      AND "evidenceStatus" = 'APPROVED'
+                      AND "id" <> ${entryId}
+                `);
+            }
+
+            await tx.$executeRaw(Prisma.sql`
+                UPDATE "service_case_entries"
+                SET
+                    "evidenceStatus" = ${input.status},
+                    "evidenceExpiresAt" = ${reviewedExpiry},
+                    "evidenceReviewedAt" = ${now},
+                    "evidenceReviewedById" = ${adminId},
+                    "evidenceReviewNote" = ${note}
+                WHERE "id" = ${entryId}
+                  AND "scope" = 'CAPABILITY'
+                  AND "entityId" = ${capabilityId}
+            `);
+        });
+
+        const summary = await getCapabilityVerificationSummary(this.prisma, capabilityId);
+        const nextVerificationStatus = capability.status === CapabilityStatus.APPROVED
+            ? 'VERIFIED'
+            : pendingVerificationStatus(summary.requirements);
+
+        await this.prisma.contractorCapability.update({
+            where: { id: capabilityId },
+            data: capability.status === CapabilityStatus.APPROVED && summary.ready && summary.recommendedExpiresAt
+                ? {
+                    verificationStatus: nextVerificationStatus,
+                    verificationCompletedAt: now,
+                    verificationExpiresAt: summary.recommendedExpiresAt,
+                    verificationReminder30SentAt: null,
+                    verificationReminder7SentAt: null,
+                }
+                : {
+                    verificationStatus: nextVerificationStatus,
+                    verificationCompletedAt: null,
+                    verificationExpiresAt: null,
+                    verificationReminder30SentAt: null,
+                    verificationReminder7SentAt: null,
+                },
+        });
+
+        return {
+            evidence: (await this.listEntries('CAPABILITY', capabilityId)).find((item) => item.id === entryId) ?? null,
+            verification: await getCapabilityVerificationSummary(this.prisma, capabilityId),
+        };
     }
 
     async adminJobDetail(jobId: string) {
