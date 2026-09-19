@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
@@ -7,7 +7,12 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { StandardResponse } from '../listings/dto/response.dto';
-import { ServiceOperationsService, type ServiceCaseEntryInput } from './service-operations.service';
+import {
+    ServiceOperationsService,
+    type CapabilityEvidenceReviewInput,
+    type CapabilityEvidenceUploadInput,
+    type ServiceCaseEntryInput,
+} from './service-operations.service';
 
 @ApiTags('Trade Exchange provider verification')
 @ApiCookieAuth()
@@ -22,17 +27,23 @@ export class ServiceOperationsController {
         return new StandardResponse(await this.operations.providerCapabilityEntries(user.id, id));
     }
 
+    @Get('capabilities/:id/verification')
+    @ApiOperation({ summary: 'Service-specific provider verification checklist and evidence state' })
+    async capabilityVerification(@CurrentUser() user: any, @Param('id') id: string) {
+        return new StandardResponse(await this.operations.providerCapabilityVerification(user.id, id));
+    }
+
     @Post('capabilities/:id/attachments')
     @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
-    @ApiOperation({ summary: 'Securely upload a private verification document to one of the caller’s service applications' })
+    @ApiOperation({ summary: 'Securely upload typed private verification evidence to one service application' })
     async addCapabilityAttachment(
         @CurrentUser() user: any,
         @Param('id') id: string,
         @UploadedFile() file: any,
-        @Body() body: { label?: string },
+        @Body() body: CapabilityEvidenceUploadInput,
     ) {
         return new StandardResponse(
-            await this.operations.uploadProviderCapabilityDocument(user.id, id, file, body?.label),
+            await this.operations.uploadProviderCapabilityDocument(user.id, id, file, body),
         );
     }
 
@@ -61,6 +72,19 @@ export class AdminServiceOperationsController {
     @ApiOperation({ summary: 'Provider application detail including uploaded verification documents' })
     async capability(@Param('id') id: string) {
         return new StandardResponse(await this.operations.adminCapabilityDetail(id));
+    }
+
+    @Patch('capabilities/:id/evidence/:entryId')
+    @ApiOperation({ summary: 'Approve or reject one provider verification evidence item' })
+    async reviewCapabilityEvidence(
+        @CurrentUser() admin: any,
+        @Param('id') id: string,
+        @Param('entryId') entryId: string,
+        @Body() body: CapabilityEvidenceReviewInput,
+    ) {
+        return new StandardResponse(
+            await this.operations.adminReviewCapabilityEvidence(admin.id, id, entryId, body),
+        );
     }
 
     @Get('jobs/:id')

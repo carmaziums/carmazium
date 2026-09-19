@@ -117,6 +117,11 @@ export interface ContractorCapability {
   appliedAt: string;
   reviewedAt: string | null;
   reviewNote: string | null;
+  verificationStatus: 'NOT_SUBMITTED' | 'IN_REVIEW' | 'READY' | 'VERIFIED' | 'REVERIFICATION_REQUIRED' | 'REJECTED' | string;
+  verificationCompletedAt: string | null;
+  verificationExpiresAt: string | null;
+  verificationReminder30SentAt: string | null;
+  verificationReminder7SentAt: string | null;
   leadNationwide: boolean;
   leadPostcodeAreas: string[];
   leadMinVehicleValuePence: number | null;

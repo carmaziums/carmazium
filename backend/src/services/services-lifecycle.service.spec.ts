@@ -52,6 +52,10 @@ describe('ServicesLifecycleService TradeXchange unpaid acceptance timeout', () =
             contractorProfile: {
                 findUnique: jest.fn().mockResolvedValue({ userId: 'provider-user' }),
             },
+            contractorCapability: {
+                findMany: jest.fn().mockResolvedValue([]),
+                updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+            },
             $transaction: jest.fn().mockImplementation(async (ops: Promise<unknown>[]) => Promise.all(ops)),
         };
         lifecycle = new ServicesLifecycleService(services, prisma, payments, notifications);
@@ -111,5 +115,85 @@ describe('ServicesLifecycleService TradeXchange unpaid acceptance timeout', () =
         expect(reopened).toBe(0);
         expect(prisma.$transaction).not.toHaveBeenCalled();
         expect(prisma.servicePayment.delete).not.toHaveBeenCalled();
+    });
+
+
+    it('returns an expired verified provider to pending re-verification and notifies once', async () => {
+        prisma.contractorCapability.findMany.mockResolvedValue([{
+            id: 'cap-1',
+            status: 'APPROVED',
+            verificationStatus: 'VERIFIED',
+            verificationExpiresAt: new Date(Date.now() - 60_000),
+            verificationReminder30SentAt: null,
+            verificationReminder7SentAt: null,
+            contractor: { user: { id: 'provider-user' } },
+        }]);
+
+        const result = await lifecycle.maintainCapabilityVerification();
+
+        expect(result).toEqual({ expired: 1, reminded: 0 });
+        expect(prisma.contractorCapability.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: expect.objectContaining({
+                id: 'cap-1',
+                status: 'APPROVED',
+                verificationStatus: 'VERIFIED',
+            }),
+            data: expect.objectContaining({
+                status: 'PENDING',
+                verificationStatus: 'REVERIFICATION_REQUIRED',
+                verificationCompletedAt: null,
+            }),
+        }));
+        expect(notifications.create).toHaveBeenCalledWith(expect.objectContaining({
+            userId: 'provider-user',
+            actionType: 'REVERIFICATION_REQUIRED',
+        }));
+    });
+
+    it('sends the 30-day verification reminder only when not previously sent', async () => {
+        prisma.contractorCapability.findMany.mockResolvedValue([{
+            id: 'cap-1',
+            status: 'APPROVED',
+            verificationStatus: 'VERIFIED',
+            verificationExpiresAt: new Date(Date.now() + 20 * 86_400_000),
+            verificationReminder30SentAt: null,
+            verificationReminder7SentAt: null,
+            contractor: { user: { id: 'provider-user' } },
+        }]);
+
+        const result = await lifecycle.maintainCapabilityVerification();
+
+        expect(result).toEqual({ expired: 0, reminded: 1 });
+        expect(prisma.contractorCapability.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ verificationReminder30SentAt: expect.any(Date) }),
+        }));
+        expect(notifications.create).toHaveBeenCalledWith(expect.objectContaining({
+            actionType: 'VERIFICATION_EXPIRING_30_DAYS',
+        }));
+    });
+
+    it('sends the 7-day reminder and marks the 30-day reminder as covered', async () => {
+        prisma.contractorCapability.findMany.mockResolvedValue([{
+            id: 'cap-1',
+            status: 'APPROVED',
+            verificationStatus: 'VERIFIED',
+            verificationExpiresAt: new Date(Date.now() + 5 * 86_400_000),
+            verificationReminder30SentAt: null,
+            verificationReminder7SentAt: null,
+            contractor: { user: { id: 'provider-user' } },
+        }]);
+
+        const result = await lifecycle.maintainCapabilityVerification();
+
+        expect(result).toEqual({ expired: 0, reminded: 1 });
+        expect(prisma.contractorCapability.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({
+                verificationReminder7SentAt: expect.any(Date),
+                verificationReminder30SentAt: expect.any(Date),
+            }),
+        }));
+        expect(notifications.create).toHaveBeenCalledWith(expect.objectContaining({
+            actionType: 'VERIFICATION_EXPIRING_7_DAYS',
+        }));
     });
 });

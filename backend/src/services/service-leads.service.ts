@@ -11,6 +11,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CreateServiceLeadDto, RespondToServiceLeadDto } from './service-leads.dto';
 import { ReviewCapabilityDto } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
+import { assertCapabilityVerificationReady } from './capability-verification';
 
 const LEAD_TYPES = [ServiceType.FINANCE, ServiceType.WARRANTY] as const;
 const LEAD_LIFETIME_MS = 14 * 24 * 60 * 60 * 1000;
@@ -722,23 +723,35 @@ export class ServiceLeadsService {
         if (!cap) throw new NotFoundException('Application not found');
         this.assertLeadType(cap.serviceType);
 
-        if (
-            dto.status === CapabilityStatus.APPROVED
-            && !cap.leadNationwide
-            && (cap.leadPostcodeAreas?.length ?? 0) === 0
-        ) {
-            throw new BadRequestException(
-                'Configure nationwide coverage or at least one postcode area before approving this lead capability.',
-            );
+        let verification: Awaited<ReturnType<typeof assertCapabilityVerificationReady>> | null = null;
+        if (dto.status === CapabilityStatus.APPROVED) {
+            if (!cap.leadNationwide && (cap.leadPostcodeAreas?.length ?? 0) === 0) {
+                throw new BadRequestException(
+                    'Configure nationwide coverage or at least one postcode area before approving this lead capability.',
+                );
+            }
+            verification = await assertCapabilityVerificationReady(this.prisma, id, cap.serviceType);
         }
 
+        const now = new Date();
         const updated = await this.prisma.contractorCapability.update({
             where: { id },
             data: {
                 status: dto.status,
-                reviewedAt: new Date(),
+                reviewedAt: now,
                 reviewedById: adminId,
                 reviewNote: dto.reviewNote ?? null,
+                ...(dto.status === CapabilityStatus.APPROVED && verification?.recommendedExpiresAt
+                    ? {
+                        verificationStatus: 'VERIFIED',
+                        verificationCompletedAt: now,
+                        verificationExpiresAt: verification.recommendedExpiresAt,
+                        verificationReminder30SentAt: null,
+                        verificationReminder7SentAt: null,
+                    }
+                    : dto.status === CapabilityStatus.REJECTED
+                        ? { verificationStatus: 'REJECTED' }
+                        : {}),
             },
         });
 
