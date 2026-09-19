@@ -218,12 +218,17 @@ function SellerAuctionsPage() {
                     .map(a => a.listingId)
             )
             setEligibleListings(
-                listed.filter(l =>
-                    l.type === "CLASSIFIED" &&
-                    (l.status === "ACTIVE" || (l.status === "DRAFT" && endedAuctionListingIds.has(l.id))) &&
-                    !auctionListingIds.has(l.id) &&
-                    !(l as any).linkedListingId
-                )
+                listed.filter(l => {
+                    if (auctionListingIds.has(l.id)) return false
+                    const isFreshRetailSource =
+                        l.type === "CLASSIFIED" &&
+                        l.status === "ACTIVE" &&
+                        !(l as any).linkedListingId
+                    const isEndedAuctionDraft =
+                        l.status === "DRAFT" &&
+                        endedAuctionListingIds.has(l.id)
+                    return isFreshRetailSource || isEndedAuctionDraft
+                })
             )
         } catch {
             setFormError("Failed to load your listings.")
