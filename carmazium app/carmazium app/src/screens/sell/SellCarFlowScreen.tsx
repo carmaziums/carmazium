@@ -641,6 +641,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // deletion: remove them from the form first, then the nightly orphan cleanup
   // deletes the physical object only after the listing PATCH no longer references it.
   const backendReferencedPhotoSourcesRef = useRef<Set<string>>(new Set());
+  const newlyUploadedPhotoSourcesRef = useRef<Set<string>>(new Set());
 
   // ── Step 3 — Pricing ──
   const [priceMin, setPriceMin] = useState('');
@@ -1150,7 +1151,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const url = await uploadToStorage(jpegUri, 'listings', filename, 'image/jpeg');
     setUploadProgress(prev => ({ ...prev, [id]: 100 }));
     const categoryValue = category.toUpperCase() as VehicleImageCategory;
-    return encodeVehicleImageCategory(url, categoryValue);
+    const encodedUrl = encodeVehicleImageCategory(url, categoryValue);
+    const source = parseVehicleImageMetadata(encodedUrl).src;
+    if (source) newlyUploadedPhotoSourcesRef.current.add(source);
+    return encodedUrl;
   }
 
   async function handlePickPhoto() {
@@ -1191,9 +1195,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     // A photo already referenced by an existing/HPI draft listing must not be
     // physically deleted before PATCH succeeds. Removing it from state stages
     // the deletion; the backend cleanup removes it after it becomes unreferenced.
-    if (source && !backendReferencedPhotoSourcesRef.current.has(source)) {
+    if (
+      source
+      && newlyUploadedPhotoSourcesRef.current.has(source)
+      && !backendReferencedPhotoSourcesRef.current.has(source)
+    ) {
       try {
         await deletePublicStorageObject(source, 'listings');
+        newlyUploadedPhotoSourcesRef.current.delete(source);
       } catch (error) {
         // Do not trap the seller in the editor because cleanup can safely retry
         // an unreferenced upload after the 24h grace period.
