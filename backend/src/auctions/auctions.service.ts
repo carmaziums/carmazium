@@ -713,6 +713,7 @@ export class AuctionsService {
             data: {
                 status: 'DRAFT',
                 linkedListingId: null,
+                deletedAt: new Date(),
             },
         });
 
@@ -915,7 +916,7 @@ export class AuctionsService {
                 deletedAt: null,
             },
             include: {
-                listing: { select: { id: true, title: true, sellerId: true } },
+                listing: { select: { id: true, title: true, sellerId: true, linkedListingId: true } },
             },
         });
 
@@ -923,6 +924,7 @@ export class AuctionsService {
             const winnerId = auction.winnerId!;
             const listing = auction.listing;
 
+            const linkedRetailId = listing.linkedListingId;
             await this.prisma.$transaction([
                 this.prisma.auction.update({
                     where: { id: auction.id },
@@ -930,8 +932,27 @@ export class AuctionsService {
                 }),
                 this.prisma.listing.update({
                     where: { id: listing.id },
-                    data: { status: 'ACTIVE' },
+                    data: linkedRetailId
+                        ? {
+                            status: 'DRAFT',
+                            linkedListingId: null,
+                            deletedAt: new Date(),
+                        } as any
+                        : {
+                            status: 'DRAFT',
+                            type: 'CLASSIFIED',
+                            linkedListingId: null,
+                        } as any,
                 }),
+                ...(linkedRetailId ? [
+                    this.prisma.listing.update({
+                        where: { id: linkedRetailId },
+                        data: {
+                            status: 'ACTIVE',
+                            linkedListingId: null,
+                        } as any,
+                    }),
+                ] : []),
                 this.prisma.sale.deleteMany({ where: { listingId: listing.id, buyerId: winnerId } }),
                 ...(listing.sellerId ? [
                     this.prisma.sellerProfile.update({
@@ -945,7 +966,7 @@ export class AuctionsService {
                 userId: winnerId,
                 type: 'AUCTION_WIN_EXPIRED',
                 title: 'Your auction win was cancelled',
-                message: `You didn't pay the £125 buyer fee for "${listing.title}" in time, so the win was cancelled and the listing is back on the market.`,
+                message: `You didn't pay the £125 buyer fee for "${listing.title}" in time, so the win was cancelled.`,
                 entityType: 'AUCTION',
                 entityId: auction.id,
                 link: `/dashboard/dealer/auctions/won`,
@@ -955,8 +976,10 @@ export class AuctionsService {
                 const notification = await this.notificationsService.create({
                     userId: listing.sellerId,
                     type: 'AUCTION_WIN_EXPIRED',
-                    title: 'Auction sale fell through — relisted',
-                    message: `The winning buyer for "${listing.title}" didn't pay the buyer fee in time, so the sale was cancelled and your listing is active again.`,
+                    title: 'Auction sale fell through',
+                    message: linkedRetailId
+                        ? `The winning buyer for "${listing.title}" didn't pay the buyer fee in time. Your retail listing has been restored and the auction was cancelled.`
+                        : `The winning buyer for "${listing.title}" didn't pay the buyer fee in time. The vehicle has returned to your inventory so you can relist or re-auction it.`,
                     entityType: 'AUCTION',
                     entityId: auction.id,
                     link: `/dashboard/seller/auctions`,
