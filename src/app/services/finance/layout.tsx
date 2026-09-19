@@ -10,6 +10,10 @@ export const metadata: Metadata = {
         url: "/services/finance",
         type: "website",
     },
+    twitter: {
+        title: "Vehicle Finance Enquiries UK | CarMazium",
+        description: "Send a vehicle finance enquiry to approved matching providers through CarMazium TradeXchange.",
+    },
 }
 
 export default function FinanceLayout({ children }: { children: React.ReactNode }) {
