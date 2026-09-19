@@ -2,10 +2,9 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { notFound, useParams } from "next/navigation"
+import { useParams } from "next/navigation"
 import { ArrowLeft, Loader2, Star } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import { financeServiceEnabled, warrantyServiceEnabled } from "@/lib/featureFlags"
 import { closeServiceLead, formatPence, getServiceLead, SERVICE_LABELS, type ServiceLead } from "@/lib/servicesApi"
 
 export default function ServiceLeadDetailPage() {
@@ -14,8 +13,6 @@ export default function ServiceLeadDetailPage() {
     const [error, setError] = React.useState<string | null>(null)
     const [busy, setBusy] = React.useState(true)
     const [closing, setClosing] = React.useState(false)
-
-    if (!financeServiceEnabled && !warrantyServiceEnabled) notFound()
 
     const load = React.useCallback(() => {
         setBusy(true)
