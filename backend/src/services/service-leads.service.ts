@@ -271,19 +271,20 @@ export class ServiceLeadsService {
         const registration = dto.vehicleRegistration?.toUpperCase().replace(/\s+/g, '') || null;
         const serviceType = dto.serviceType;
         const now = new Date();
+        const leadMatchInput = {
+            serviceType,
+            postcode,
+            vehicleValuePence: dto.vehicleValuePence ?? null,
+            vehicleYear: dto.vehicleYear ?? null,
+            vehicleMileage: dto.vehicleMileage ?? null,
+            annualIncomePence: serviceType === ServiceType.FINANCE ? dto.annualIncomePence ?? null : null,
+            termMonths: serviceType === ServiceType.FINANCE ? dto.termMonths ?? null : null,
+            warrantyMonths: serviceType === ServiceType.WARRANTY ? dto.warrantyMonths ?? null : null,
+            warrantyLevel: serviceType === ServiceType.WARRANTY ? dto.warrantyLevel?.trim() || null : null,
+        };
 
         const transaction = await this.prisma.$transaction(async (tx) => {
-            const matching = await tx.contractorCapability.findMany({
-                where: {
-                    serviceType,
-                    status: CapabilityStatus.APPROVED,
-                    contractor: { deletedAt: null },
-                },
-                select: {
-                    contractorId: true,
-                    contractor: { select: { userId: true } },
-                },
-            });
+            const matching = await this.matchingProviders(tx, leadMatchInput);
 
             const created = await tx.serviceLead.create({
                 data: {
@@ -316,9 +317,12 @@ export class ServiceLeadsService {
                     expiresAt: new Date(now.getTime() + LEAD_LIFETIME_MS),
                     recipients: matching.length
                         ? {
-                            create: matching.map((provider) => ({
+                            create: matching.map((provider: any) => ({
                                 contractorId: provider.contractorId,
                                 status: 'NEW',
+                                matchedAt: now,
+                                matchSource: 'AUTO',
+                                matchReason: provider.matchReason,
                             })),
                         }
                         : undefined,
