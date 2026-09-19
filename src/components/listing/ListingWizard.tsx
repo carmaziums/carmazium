@@ -338,6 +338,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     // Edit mode — detect from URL params
     const searchParams = useSearchParams()
+    const draftRestoreAttemptedRef = React.useRef(false)
     const editId = searchParams.get('editId')
     const editSlug = searchParams.get('editSlug')
     const [editLoading, setEditLoading] = React.useState(false)
@@ -464,6 +465,46 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [editId])
 
+    // Restore an ordinary browser draft after refresh/navigation, not only
+    // after returning from HPI checkout. Edit mode owns its own server-backed
+    // prefill and HPI-return has a dedicated restoration path below, so neither
+    // should be overwritten by a stale local draft.
+    React.useEffect(() => {
+        if (draftRestoreAttemptedRef.current) return
+        if (editId || searchParams.get('hpi_success') === 'true') return
+        draftRestoreAttemptedRef.current = true
+
+        const saved = localStorage.getItem('carmazium_listing_draft')
+        if (!saved) return
+
+        try {
+            const parsed = JSON.parse(saved) as Partial<FormData>
+            if (!parsed.vrm) return
+
+            const urlVrm = searchParams.get('vrm')
+            const normaliseVrm = (value: string) => value.replace(/\s/g, '').toUpperCase()
+            if (urlVrm && normaliseVrm(urlVrm) !== normaliseVrm(parsed.vrm)) return
+
+            setFormData(prev => ({ ...prev, ...parsed }))
+            setSellingMethod('list')
+
+            const savedStep = Number(localStorage.getItem('carmazium_listing_draft_step'))
+            const maxStep = parsed.listingType === 'AUCTION' ? 5 : 4
+            setCurrentStep(
+                Number.isInteger(savedStep) && savedStep >= 1
+                    ? Math.min(savedStep, maxStep)
+                    : 1
+            )
+
+            const savedDraftId = localStorage.getItem('carmazium_hpi_draft_id')
+            if (savedDraftId) setDraftListingId(savedDraftId)
+        } catch (error) {
+            console.error('Failed to restore saved listing draft:', error)
+            localStorage.removeItem('carmazium_listing_draft')
+            localStorage.removeItem('carmazium_listing_draft_step')
+        }
+    }, [editId, searchParams])
+
     // Handle Stripe return for HPI — verify the session actually completed
     // instead of trusting the bare `hpi_success` URL flag (which anyone could
     // navigate to directly, e.g. after a cancelled checkout), and fall back to
@@ -517,12 +558,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams])
 
-    // Persist form data to localStorage
+    // Persist the form and the seller's current step so a normal browser
+    // refresh resumes where they were instead of dropping back to method choice.
     React.useEffect(() => {
         if (sellingMethod === 'list' && formData.vrm) {
             localStorage.setItem('carmazium_listing_draft', JSON.stringify(formData))
+            localStorage.setItem('carmazium_listing_draft_step', String(currentStep))
         }
-    }, [formData, sellingMethod])
+    }, [formData, sellingMethod, currentStep])
 
 
     const isAuthenticated = !!user
@@ -975,6 +1018,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 }
 
                 localStorage.removeItem('carmazium_listing_draft')
+                localStorage.removeItem('carmazium_listing_draft_step')
                 localStorage.removeItem('carmazium_hpi_draft_id')
 
                 await ensureAuctionScheduled(finalListingId)
@@ -1084,6 +1128,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         trackListingSubmitted(payload, newListingId, 'published')
                         setFormData(INITIAL_FORM)
                         localStorage.removeItem('carmazium_listing_draft')
+                localStorage.removeItem('carmazium_listing_draft_step')
                         setCurrentStep(1)
                         setSellingMethod(null)
                         router.push(response.data.slug ? `/buy-cars/${response.data.slug}` : '/dashboard/seller/listings')
@@ -1096,6 +1141,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             onContinue: () => {
                                 setFormData(INITIAL_FORM)
                                 localStorage.removeItem('carmazium_listing_draft')
+                localStorage.removeItem('carmazium_listing_draft_step')
                                 setCurrentStep(1)
                                 setSellingMethod(null)
                                 router.push('/dashboard/seller/listings')
@@ -1120,6 +1166,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     onContinue: () => {
                         setFormData(INITIAL_FORM)
                         localStorage.removeItem('carmazium_listing_draft')
+                localStorage.removeItem('carmazium_listing_draft_step')
                         setCurrentStep(1)
                         setSellingMethod(null)
                         router.push(payload.listingType === 'AUCTION' ? '/dashboard/seller/auctions' : '/dashboard/seller/listings')
