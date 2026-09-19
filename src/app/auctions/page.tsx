@@ -189,8 +189,8 @@ const PROVIDER_BENEFITS = [
 const PROVIDER_STEPS = [
     {
         step: "01",
-        title: "Create your provider account",
-        text: "Register with CarMazium and open the service-provider area of your dashboard.",
+        title: "Create your Partner Account",
+        text: "Register one CarMazium business account, then add the provider services your business offers.",
     },
     {
         step: "02",
@@ -212,8 +212,8 @@ const PROVIDER_STEPS = [
 export default function TradeXchangePage() {
     const { user } = useAuth()
     const providerHref = user
-        ? "/dashboard/service/capabilities"
-        : "/auth/signup?role=CONTRACTOR&redirect=%2Fdashboard%2Fservice%2Fcapabilities"
+        ? "/dashboard/partner"
+        : "/auth/signup?role=DEALER"
     const jobMarketplaceEnabled = deliveryServiceEnabled || inspectionServiceEnabled
 
     return (
@@ -257,7 +257,7 @@ export default function TradeXchangePage() {
                         >
                             <Button asChild size="lg">
                                 <Link href={providerHref}>
-                                    Join as a service provider <ArrowRight size={16} />
+                                    Join as a Partner provider <ArrowRight size={16} />
                                 </Link>
                             </Button>
                             <Button asChild variant="outline" size="lg" className="border-white/25 bg-white/10 text-white hover:border-white/40 hover:bg-white/15 hover:text-white">
@@ -408,14 +408,14 @@ export default function TradeXchangePage() {
                         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                             <div className="max-w-2xl">
                                 <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Ready to grow with CarMazium?</p>
-                                <h3 className="mb-2 text-2xl md:text-3xl font-black font-heading">Create your provider account and apply for the services you offer.</h3>
+                                <h3 className="mb-2 text-2xl md:text-3xl font-black font-heading">Create one Partner Account and apply for the services you offer.</h3>
                                 <p className="text-sm leading-relaxed text-[var(--text-muted)]">
                                     Start with one capability or apply for several. Approval is handled per service, so your TradeXchange presence can grow with your business.
                                 </p>
                             </div>
                             <Button asChild size="lg" className="shrink-0">
                                 <Link href={providerHref}>
-                                    Create provider account <ArrowRight size={16} />
+                                    Create Partner Account <ArrowRight size={16} />
                                 </Link>
                             </Button>
                         </div>
