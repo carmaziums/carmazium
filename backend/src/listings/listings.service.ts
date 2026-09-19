@@ -184,7 +184,18 @@ export class ListingsService {
         db: any,
         userId: string,
         normalizedVrm: string,
-    ): Promise<Array<{ id: string; vrm: string | null; type: ListingType; status: ListingStatus }>> {
+    ): Promise<Array<{
+        id: string;
+        vrm: string | null;
+        type: ListingType;
+        status: ListingStatus;
+        title: string;
+        price: any;
+        year: number | null;
+        mileage: number | null;
+        linkedListingId: string | null;
+        importedFromUrl: string | null;
+    }>> {
         const candidates = await db.listing.findMany({
             where: {
                 sellerId: userId,
@@ -196,6 +207,12 @@ export class ListingsService {
                 vrm: true,
                 type: true,
                 status: true,
+                title: true,
+                price: true,
+                year: true,
+                mileage: true,
+                linkedListingId: true,
+                importedFromUrl: true,
             },
             orderBy: { updatedAt: 'desc' },
         });
@@ -206,35 +223,49 @@ export class ListingsService {
     }
 
     /**
-     * Normal POST/import retries are idempotent while the seller still has an
-     * editable draft/rejected listing of the same channel. A live/review/pending
-     * sale or different-channel record is a genuine conflict and must use the
-     * existing listing/explicit linked-listing flow instead.
+     * Resolve an existing same-vehicle row while holding the seller+VRM lock.
+     * Only an exact retry signature is idempotently reused. A different draft
+     * is surfaced as a conflict so fresh input can never be silently replaced
+     * by stale listing data.
      */
     private async resolveExistingCreate(
         db: any,
         userId: string,
         normalizedVrm: string,
-        requestedType: ListingType,
+        requested: {
+            type: ListingType;
+            title: string;
+            price: number;
+            year?: number | null;
+            mileage?: number | null;
+            importedFromUrl?: string | null;
+        },
     ): Promise<Listing | null> {
         const matches = await this.findCurrentListingsForVrm(db, userId, normalizedVrm);
         if (matches.length === 0) return null;
 
-        const conflicting = matches.find(
-            (candidate) =>
-                candidate.type !== requestedType
-                || !['DRAFT', 'REJECTED'].includes(candidate.status),
+        const reusable = matches.find((candidate) =>
+            candidate.type === requested.type
+            && ['DRAFT', 'REJECTED'].includes(candidate.status)
+            && !candidate.linkedListingId
+            && candidate.title.trim() === requested.title.trim()
+            && Number(candidate.price) === Number(requested.price)
+            && (requested.year === undefined || candidate.year === requested.year)
+            && (requested.mileage === undefined || candidate.mileage === requested.mileage)
+            && (
+                requested.importedFromUrl === undefined
+                || candidate.importedFromUrl === requested.importedFromUrl
+            )
         );
-        if (conflicting) {
-            throw new BadRequestException(
-                `This vehicle already has an existing ${conflicting.type.toLowerCase()} listing (${conflicting.status.toLowerCase()}). Open that listing instead of creating a duplicate.`,
-            );
+
+        if (reusable) {
+            return db.listing.findUnique({ where: { id: reusable.id } });
         }
 
-        // Legacy data can contain more than one duplicate draft. Reuse the most
-        // recently updated match rather than creating yet another row.
-        const reusable = matches[0];
-        return db.listing.findUnique({ where: { id: reusable.id } });
+        const existing = matches[0];
+        throw new BadRequestException(
+            `This vehicle already has an existing ${existing.type.toLowerCase()} listing (${existing.status.toLowerCase()}). Open that listing instead of creating a duplicate.`,
+        );
     }
 
     private assertListingImageUrls(imageUrls: string[], userId?: string): void {
@@ -511,7 +542,13 @@ export class ListingsService {
                     tx,
                     userId,
                     normalizedVrm,
-                    listingType,
+                    {
+                        type: listingType,
+                        title: createListingDto.title,
+                        price: createListingDto.price,
+                        year: createListingDto.year,
+                        mileage: createListingDto.mileage,
+                    },
                 );
                 if (existing) {
                     return { listing: existing, created: false };
@@ -2413,7 +2450,14 @@ export class ListingsService {
                     tx,
                     userId,
                     normalizedVrm,
-                    'CLASSIFIED',
+                    {
+                        type: 'CLASSIFIED',
+                        title,
+                        price: overrides.price,
+                        year: scraped.year ?? null,
+                        mileage: scraped.mileage ?? null,
+                        importedFromUrl: scraped.originalUrl ?? url,
+                    },
                 );
                 if (existing) {
                     return { listing: existing, created: false };
