@@ -81,6 +81,7 @@ function JobDetail() {
     }
 
     const submitReview = async () => {
+        if (!job) return
         if (reviewRating < 1 || reviewRating > 5) {
             setError("Choose a rating from 1 to 5 stars.")
             return
