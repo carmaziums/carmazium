@@ -8,7 +8,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { adminReviewCapability, SERVICE_LABELS, type CapabilityStatus } from "@/lib/servicesApi"
-import { adminGetCapabilityDetail, type AdminCapabilityDetail } from "@/lib/serviceOperationsApi"
+import { adminGetCapabilityDetail, adminReviewCapabilityEvidence, type AdminCapabilityDetail, type ServiceCaseEntry } from "@/lib/serviceOperationsApi"
 
 export default function AdminProviderReviewPage() {
     const { id } = useParams<{ id: string }>()
@@ -16,6 +16,7 @@ export default function AdminProviderReviewPage() {
     const [data, setData] = React.useState<AdminCapabilityDetail | null>(null)
     const [busy, setBusy] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
+    const [notice, setNotice] = React.useState<string | null>(null)
 
     const load = React.useCallback(async () => {
         if (!id) return
@@ -28,16 +29,37 @@ export default function AdminProviderReviewPage() {
     const review = async (status: CapabilityStatus) => {
         const reviewNote = status === "APPROVED" ? undefined : (prompt("Note to the provider:") ?? undefined)
         if (status !== "APPROVED" && reviewNote === undefined) return
-        setBusy(true); setError(null)
-        try { await adminReviewCapability(id, { status, reviewNote }); await load() }
+        setBusy(true); setError(null); setNotice(null)
+        try { await adminReviewCapability(id, { status, reviewNote }); setNotice("Provider application updated."); await load() }
         catch (e: any) { setError(e?.message || "Could not update application") }
         finally { setBusy(false) }
     }
 
-    const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}`.trim() : user?.email || "Admin"
+    const reviewEvidence = async (entry: ServiceCaseEntry, status: "APPROVED" | "REJECTED") => {
+        const reviewNote = status === "REJECTED" ? (prompt("Reason this evidence is not acceptable:") ?? undefined) : undefined
+        if (status === "REJECTED" && reviewNote === undefined) return
+        setBusy(true); setError(null); setNotice(null)
+        try {
+            await adminReviewCapabilityEvidence(id, entry.id, {
+                status,
+                reviewNote,
+                expiresAt: entry.evidenceExpiresAt || undefined,
+            })
+            setNotice(status === "APPROVED" ? "Evidence approved." : "Evidence rejected.")
+            await load()
+        } catch (e: any) {
+            setError(e?.message || "Could not review this evidence")
+        } finally { setBusy(false) }
+    }
+
+        const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}`.trim() : user?.email || "Admin"
     const u = data?.contractor?.user
     const paidService = data?.serviceType === "DELIVERY" || data?.serviceType === "INSPECTION"
     const stripeReady = !!u?.stripeConnectAccountId && !!u?.stripeConnectOnboardingComplete
+    const leadService = data?.serviceType === "FINANCE" || data?.serviceType === "WARRANTY"
+    const matchingReady = !leadService || !!data?.leadNationwide || (data?.leadPostcodeAreas?.length ?? 0) > 0
+    const verificationReady = !!data?.verification?.ready
+    const canApprove = verificationReady && matchingReady && (!paidService || stripeReady)
 
     return <div className="min-h-screen pt-20 pb-12"><div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
         <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
