@@ -7,6 +7,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { EmailService } from '../email/email.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
+import { getListingSubmissionReadiness } from '../listings/listing-readiness';
 
 @Injectable()
 export class PaymentsService {
@@ -21,6 +22,98 @@ export class PaymentsService {
         private readonly emailService: EmailService,
         private readonly moduleRef: ModuleRef,
     ) {}
+
+    private async getListingFeeReadiness(listingId: string) {
+        const listing = await this.prisma.listing.findUnique({
+            where: { id: listingId },
+            include: {
+                hpiReport: { select: { id: true } },
+            },
+        });
+
+        if (!listing || listing.deletedAt) {
+            throw new NotFoundException('Listing not found');
+        }
+
+        const readiness = getListingSubmissionReadiness(listing, {
+            hasRequiredHpi: Boolean(listing.hpiReport),
+        });
+
+        return { listing, ...readiness };
+    }
+
+    private assertListingFeeReady(
+        readiness: { missingFields: string[]; missingHpi: boolean },
+    ): void {
+        if (readiness.missingFields.length > 0) {
+            throw new BadRequestException(
+                `Listing is not ready for payment. Missing: ${readiness.missingFields.join(', ')}.`,
+            );
+        }
+        if (readiness.missingHpi) {
+            throw new BadRequestException(
+                'A CarMazium vehicle history (HPI) report must be requested before paying the listing fee.',
+            );
+        }
+    }
+
+    /**
+     * A Stripe success proves money was paid, not that the listing is currently
+     * fit for review. Old/in-flight sessions are therefore revalidated here.
+     * Payment remains COMPLETED either way; an incomplete listing stays editable
+     * and publishListing() can reuse the completed fee after the seller fixes it.
+     */
+    private async submitPaidListingIfReady(
+        listingId: string,
+        badgeTier?: string,
+    ): Promise<boolean> {
+        const readiness = await this.getListingFeeReadiness(listingId);
+
+        if (!readiness.ready) {
+            if (badgeTier && ['BASIC', 'STANDARD', 'PREMIUM'].includes(badgeTier)) {
+                await this.prisma.listing.update({
+                    where: { id: listingId },
+                    data: { badgeTier: badgeTier as any },
+                });
+            }
+
+            this.logger.warn(
+                `Paid listing ${listingId} remains out of review because submission requirements are incomplete: ${[
+                    ...readiness.missingFields,
+                    ...(readiness.missingHpi ? ['HPI report request'] : []),
+                ].join(', ')}`,
+            );
+            return false;
+        }
+
+        // Never use a delayed/stale payment event to demote or resurrect a
+        // listing that has already moved beyond the editable/review lifecycle.
+        if (!['DRAFT', 'REJECTED', 'PENDING_REVIEW'].includes(readiness.listing.status)) {
+            this.logger.warn(
+                `Ignoring listing-fee submission transition for ${listingId} because current status is ${readiness.listing.status}`,
+            );
+            return false;
+        }
+
+        const updateData: Record<string, unknown> = {
+            status: 'PENDING_REVIEW',
+            rejectionReason: null,
+        };
+        if (badgeTier && ['BASIC', 'STANDARD', 'PREMIUM'].includes(badgeTier)) {
+            updateData.badgeTier = badgeTier;
+        }
+
+        await this.prisma.listing.update({
+            where: { id: listingId },
+            data: updateData as any,
+        });
+
+        if (readiness.listing.status !== 'PENDING_REVIEW') {
+            this.notifyListingSubmittedForReview(listingId).catch(() => { });
+        }
+
+        return true;
+    }
 
     /**
      * Notify a seller in-app that their listing fee payment went through and the
@@ -400,30 +493,19 @@ export class PaymentsService {
     async createListingSession(badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM', userId: string, listingId: string) {
         // Never trust the browser to decide whether a retail listing is free or
         // which paid tier should be charged. The persisted listing is authoritative.
-        const [actor, listing] = await Promise.all([
+        const [actor, readiness] = await Promise.all([
             this.prisma.user.findUnique({
                 where: { id: userId },
                 select: { role: true },
             }),
-            this.prisma.listing.findUnique({
-                where: { id: listingId },
-                select: {
-                    id: true,
-                    sellerId: true,
-                    type: true,
-                    badgeTier: true,
-                    deletedAt: true,
-                },
-            }),
+            this.getListingFeeReadiness(listingId),
         ]);
+        const { listing } = readiness;
 
         if (actor?.role === 'ADMIN') {
             throw new BadRequestException(
                 'Admin listings are free — no listing fee is charged. Submit the listing directly.',
             );
-        }
-        if (!listing || listing.deletedAt) {
-            throw new NotFoundException('Listing not found');
         }
         if (listing.sellerId !== userId) {
             throw new ForbiddenException('You do not have permission to pay for this listing');
@@ -431,6 +513,8 @@ export class PaymentsService {
         if (listing.type !== 'CLASSIFIED') {
             throw new BadRequestException('Auction listings do not require a retail listing fee');
         }
+
+        this.assertListingFeeReady(readiness);
 
         // Heal legacy FREE retail drafts and always charge using the server-side tier.
         const persistedTier =
@@ -541,6 +625,9 @@ export class PaymentsService {
                 if (listing.type !== 'CLASSIFIED') {
                     throw new BadRequestException('Auction listings do not require a retail listing fee');
                 }
+
+                const listingFeeReadiness = await this.getListingFeeReadiness(listingId);
+                this.assertListingFeeReady(listingFeeReadiness);
 
                 // Mobile Payment Sheet follows the same server-authoritative rule
                 // as hosted Checkout: the saved listing tier determines the charge.
@@ -794,22 +881,14 @@ export class PaymentsService {
                     });
                 }
 
-                if (type === 'LISTING_FEE') {
-                    const badgeTier = session.metadata.badgeTier;
-
-                    // Payment doesn't publish the listing — it moves to PENDING_REVIEW
-                    // and only goes live once an admin approves it. isFeatured/
-                    // featuredUntil (for PREMIUM) are set at approval time instead, so
-                    // sellers don't lose boost days while sitting in the review queue.
-                    await this.prisma.listing.update({
-                        where: { id: listingId },
-                        data: {
-                            status: 'PENDING_REVIEW',
-                            badgeTier,
-                            rejectionReason: null,
-                        },
-                    });
-                    this.notifyListingSubmittedForReview(listingId).catch(() => { });
+                if (type === 'LISTING_FEE' && listingId) {
+                    // Payment is recorded above regardless. Submission is a
+                    // separate decision and must pass the same authoritative
+                    // completeness + HPI gate as every other path.
+                    await this.submitPaidListingIfReady(
+                        listingId,
+                        session.metadata.badgeTier,
+                    );
                 }
 
                 if (type === 'HPI_REPORT') {
@@ -866,16 +945,7 @@ export class PaymentsService {
                 }
 
                 if (type === 'LISTING_FEE' && listingId) {
-                    // Same review gate as the web checkout.session.completed path above.
-                    await this.prisma.listing.update({
-                        where: { id: listingId },
-                        data: {
-                            status: 'PENDING_REVIEW',
-                            badgeTier,
-                            rejectionReason: null,
-                        },
-                    });
-                    this.notifyListingSubmittedForReview(listingId).catch(() => { });
+                    await this.submitPaidListingIfReady(listingId, badgeTier);
                 }
 
                 if (type === 'DEPOSIT' && listingId) {

@@ -40,6 +40,9 @@ import {
     downloadExternalImage,
     ImportedListingPlatform,
 } from './external-image-import';
+import {
+    getListingSubmissionReadiness,
+} from './listing-readiness';
 
 // ─── Enum mappers ─────────────────────────────────────────────────────────────
 
@@ -203,32 +206,6 @@ export class ListingsService {
                 throw new ForbiddenException('The listing contains a photo outside your upload area');
             }
         }
-    }
-
-    private getSubmissionMissingFields(listing: any): string[] {
-        const missing: string[] = [];
-
-        if (!Array.isArray(listing.images) || listing.images.length < 10) missing.push('at least 10 photos');
-        if (!listing.vrm) missing.push('VRM');
-        if (!listing.make) missing.push('make');
-        if (!listing.model) missing.push('model');
-        if (!listing.year) missing.push('year');
-        if (listing.mileage === null || listing.mileage === undefined) missing.push('mileage');
-        if (!listing.fuelType) missing.push('fuel type');
-        if (!listing.transmission) missing.push('transmission');
-        if (!listing.bodyType) missing.push('body type');
-        if (!listing.title || listing.title.trim().length < 5) missing.push('title');
-        if (!listing.location?.trim()) missing.push('location');
-        if (!listing.owners?.trim()) missing.push('previous keepers');
-        if (!listing.description?.trim()) missing.push('description');
-        if (!listing.condition) missing.push('condition');
-        if (listing.stolenRecovered === null || listing.stolenRecovered === undefined) missing.push('stolen/recovered declaration');
-        if (listing.hasOutstandingFinance === null || listing.hasOutstandingFinance === undefined) missing.push('outstanding finance declaration');
-        if (listing.isLegalRegisteredKeeper === null || listing.isLegalRegisteredKeeper === undefined) missing.push('registered keeper declaration');
-        if (listing.isLegalRegisteredKeeper === false && !listing.notOwnerRelationship?.trim()) missing.push('relationship/authority to sell');
-        if (listing.isDepartedSale && !listing.departedRelationship?.trim()) missing.push('estate/departed-sale relationship');
-
-        return missing;
     }
 
     private getImportImageAllowedHosts(): string[] {
@@ -1188,27 +1165,33 @@ export class ListingsService {
             throw new ForbiddenException('You do not have permission to publish this listing');
         }
 
-        const missingFields = this.getSubmissionMissingFields(listing);
-        if (missingFields.length > 0) {
-            throw new BadRequestException(
-                `Listing is not ready to submit. Missing: ${missingFields.join(', ')}.`,
-            );
-        }
-
-        // HPI is mandatory for listings created after the hardened upload
-        // rollout. Older drafts are grandfathered so existing sellers are not
-        // stranded by a new rule introduced after they began their listing.
-        const hpiRequiredFrom = new Date('2026-09-19T00:00:00.000Z');
-        if (listing.createdAt >= hpiRequiredFrom) {
-            const hpiReport = await this.prisma.hpiReport.findUnique({
+        const [ownHpi, linkedSourceHpi] = await Promise.all([
+            this.prisma.hpiReport.findUnique({
                 where: { listingId: id },
                 select: { id: true },
-            });
-            if (!hpiReport) {
-                throw new BadRequestException(
-                    'A CarMazium vehicle history (HPI) report must be requested before this listing can be submitted.',
-                );
-            }
+            }),
+            listing.type === 'AUCTION' && listing.linkedListingId
+                ? this.prisma.hpiReport.findUnique({
+                    where: { listingId: listing.linkedListingId },
+                    select: { id: true },
+                })
+                : Promise.resolve(null),
+        ]);
+
+        const readiness = getListingSubmissionReadiness(listing, {
+            // A linked auction represents the same vehicle as its active retail
+            // source, so the source HPI request satisfies the auction's HPI gate.
+            hasRequiredHpi: Boolean(ownHpi || linkedSourceHpi),
+        });
+        if (readiness.missingFields.length > 0) {
+            throw new BadRequestException(
+                `Listing is not ready to submit. Missing: ${readiness.missingFields.join(', ')}.`,
+            );
+        }
+        if (readiness.missingHpi) {
+            throw new BadRequestException(
+                'A CarMazium vehicle history (HPI) report must be requested before this listing can be submitted.',
+            );
         }
 
         // An AUCTION listing is only a vehicle shell until its Auction row exists.
@@ -1625,6 +1608,9 @@ export class ListingsService {
             // the race). This is the authoritative snapshot used for cloning.
             const source = await tx.listing.findUnique({
                 where: { id: listingId },
+                include: {
+                    hpiReport: { select: { id: true } },
+                },
             });
 
             if (!source || source.deletedAt) {
@@ -1642,9 +1628,22 @@ export class ListingsService {
             if (source.linkedListingId) {
                 throw new BadRequestException('This listing already has a linked auction listing');
             }
-            if ((source.images?.length ?? 0) < 10) {
+            // This request creates a brand-new auction clone now, so it must
+            // satisfy today's full submission standard even if the ACTIVE retail
+            // source predates the rollout. Its HPI can be reused because both
+            // listings represent the same linked vehicle.
+            const linkedReadiness = getListingSubmissionReadiness(source, {
+                hasRequiredHpi: Boolean(source.hpiReport),
+                forceHpi: true,
+            });
+            if (linkedReadiness.missingFields.length > 0) {
                 throw new BadRequestException(
-                    `Auctions require at least 10 photos before scheduling. You have ${source.images?.length ?? 0}.`,
+                    `The retail listing is not complete enough to create an auction. Missing: ${linkedReadiness.missingFields.join(', ')}.`,
+                );
+            }
+            if (linkedReadiness.missingHpi) {
+                throw new BadRequestException(
+                    'A CarMazium vehicle history (HPI) report must be requested for the retail listing before creating its linked auction.',
                 );
             }
 

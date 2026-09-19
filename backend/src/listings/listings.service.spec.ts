@@ -43,6 +43,7 @@ describe('ListingsService', () => {
             dealerStaff: { findFirst: jest.fn() },
             user: { findUnique: jest.fn() },
             transaction: { findMany: jest.fn() },
+            hpiReport: { findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }) },
             auction: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
             $transaction: jest.fn(async (arg: any) => Array.isArray(arg) ? Promise.all(arg) : arg(prisma)),
         };
@@ -361,6 +362,46 @@ describe('ListingsService', () => {
             isDepartedSale: false,
         };
 
+        it('rejects incomplete listings before any payment/review decision', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-incomplete',
+                sellerId: 'seller-1',
+                type: 'CLASSIFIED',
+                badgeTier: 'BASIC',
+                status: 'DRAFT',
+                ...submissionReady,
+                images: [],
+                createdAt: new Date('2026-09-19T01:00:00.000Z'),
+                deletedAt: null,
+            });
+
+            await expect(
+                service.publishListing('listing-incomplete', 'seller-1'),
+            ).rejects.toThrow(/at least 10 photos/i);
+
+            expect(prisma.transaction.findMany).not.toHaveBeenCalled();
+        });
+
+        it('rejects a new listing when no HPI request exists', async () => {
+            prisma.hpiReport.findUnique.mockResolvedValue(null);
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-no-hpi',
+                sellerId: 'seller-1',
+                type: 'CLASSIFIED',
+                badgeTier: 'BASIC',
+                status: 'DRAFT',
+                ...submissionReady,
+                createdAt: new Date('2026-09-19T01:00:00.000Z'),
+                deletedAt: null,
+            });
+
+            await expect(
+                service.publishListing('listing-no-hpi', 'seller-1'),
+            ).rejects.toThrow(/HPI/i);
+
+            expect(prisma.transaction.findMany).not.toHaveBeenCalled();
+        });
+
         it('heals a legacy FREE retail draft to BASIC and still requires payment', async () => {
             prisma.listing.findUnique.mockResolvedValue({
                 id: 'listing-1',
@@ -479,8 +520,26 @@ describe('ListingsService', () => {
             slug: 'bmw-m3',
             status: 'ACTIVE',
             deletedAt: null,
+            createdAt: new Date('2026-09-18T12:00:00.000Z'),
             images: Array.from({ length: 10 }, (_, i) => `image-${i}`),
             videoUrls: [],
+            vrm: 'AB12CDE',
+            make: 'BMW',
+            model: 'M3',
+            year: 2020,
+            mileage: 25000,
+            fuelType: 'PETROL',
+            transmission: 'AUTOMATIC',
+            bodyType: 'COUPE',
+            location: 'Birmingham',
+            owners: '1',
+            description: 'Well presented vehicle with full details.',
+            condition: 'GOOD',
+            stolenRecovered: false,
+            hasOutstandingFinance: false,
+            isLegalRegisteredKeeper: true,
+            isDepartedSale: false,
+            hpiReport: { id: 'hpi-1' },
         };
 
         beforeEach(() => {
