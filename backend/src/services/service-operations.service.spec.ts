@@ -187,26 +187,52 @@ describe('ServiceOperationsService', () => {
         expect(prisma.$queryRaw).not.toHaveBeenCalled();
     });
 
-    it('returns an admin job with its case history without exposing storage paths', async () => {
+    it('returns an admin job with case, settlement and payment audit history', async () => {
         prisma.serviceJob.findUnique.mockResolvedValue({ id: 'job-1', status: 'DISPUTED', title: 'Vehicle move' });
-        prisma.$queryRaw.mockResolvedValueOnce([{
-            id: 'entry-1',
-            scope: 'DISPUTE',
-            note: 'Photos reviewed',
-            storagePath: null,
-        }]);
+        prisma.$queryRaw
+            .mockResolvedValueOnce([{
+                id: 'entry-1',
+                scope: 'DISPUTE',
+                note: 'Photos reviewed',
+                storagePath: null,
+            }])
+            .mockResolvedValueOnce([{
+                id: 'settlement-1',
+                status: 'REQUIRES_RECONCILIATION',
+                outcome: 'REFUND',
+            }])
+            .mockResolvedValueOnce([{
+                id: 'audit-1',
+                fromStatus: 'PENDING',
+                toStatus: 'PAID',
+            }]);
 
         const result = await service.adminJobDetail('job-1');
 
         expect(result.id).toBe('job-1');
         expect(result.caseEntries).toHaveLength(1);
         expect(result.caseEntries[0].storagePath).toBeUndefined();
+        expect(result.settlementOperations).toEqual([
+            expect.objectContaining({ id: 'settlement-1', status: 'REQUIRES_RECONCILIATION' }),
+        ]);
+        expect(result.paymentAuditEvents).toEqual([
+            expect.objectContaining({ id: 'audit-1', toStatus: 'PAID' }),
+        ]);
     });
 
-    it('records the admin resolution after the existing safe dispute resolver succeeds', async () => {
-        prisma.$queryRaw.mockResolvedValueOnce([{ id: 'resolution-1', kind: 'RESOLUTION' }]);
+    it('creates the durable settlement operation before calling the money resolver', async () => {
+        prisma.serviceJob.findUnique.mockResolvedValue({
+            id: 'job-1',
+            status: 'DISPUTED',
+            payment: { id: 'payment-1', status: 'PAID', stripeTransferId: null },
+        });
+        prisma.$queryRaw
+            .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([{ id: 'settlement-1', status: 'STARTED' }])
+            .mockResolvedValueOnce([{ id: 'resolution-1' }]);
+        services.adminResolveDispute.mockResolvedValue({ success: true, refundId: 're_1' });
 
-        await service.adminResolveDispute('admin-1', 'job-1', {
+        const result = await service.adminResolveDispute('admin-1', 'job-1', {
             outcome: 'REFUND',
             note: 'Damage evidence supports the customer.',
         });
@@ -215,7 +241,52 @@ describe('ServiceOperationsService', () => {
             outcome: 'REFUND',
             note: 'Damage evidence supports the customer.',
         });
-        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.$queryRaw.mock.invocationCallOrder[1])
+            .toBeLessThan(services.adminResolveDispute.mock.invocationCallOrder[0]);
+        expect(prisma.$executeRaw).toHaveBeenCalled();
+        expect(result).toEqual(expect.objectContaining({
+            success: true,
+            settlementOperationId: 'settlement-1',
+            externalReference: 're_1',
+        }));
+    });
+
+    it('marks a failed settlement for reconciliation when the Stripe/DB claim remains held', async () => {
+        prisma.serviceJob.findUnique
+            .mockResolvedValueOnce({
+                id: 'job-1',
+                status: 'DISPUTED',
+                payment: { id: 'payment-1', status: 'PAID', stripeTransferId: null },
+            })
+            .mockResolvedValueOnce({
+                id: 'job-1',
+                status: 'DISPUTED',
+                payment: {
+                    id: 'payment-1',
+                    status: 'PAID',
+                    stripeTransferId: 'claim:refund:payment-1',
+                },
+            });
+        prisma.$queryRaw
+            .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([{ id: 'settlement-1', status: 'STARTED' }]);
+        services.adminResolveDispute.mockRejectedValue(new Error('database finalization failed'));
+
+        await expect(service.adminResolveDispute('admin-1', 'job-1', {
+            outcome: 'REFUND',
+        })).rejects.toThrow('database finalization failed');
+
+        const values = prisma.$executeRaw.mock.calls.flatMap((call: any[]) => call[0]?.values ?? []);
+        expect(values).toContain('REQUIRES_RECONCILIATION');
+    });
+
+    it('does not allow dispute evidence deletion after the case is resolved', async () => {
+        prisma.serviceJob.findUnique.mockResolvedValue({ id: 'job-1', status: 'RELEASED' });
+
+        await expect(service.adminDeleteDisputeDocument('job-1', 'entry-1'))
+            .rejects.toBeInstanceOf(BadRequestException);
+
+        expect(prisma.$queryRaw).not.toHaveBeenCalled();
     });
 
     it('returns Finance/Warranty recipient detail and normalises representative APR', async () => {

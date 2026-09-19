@@ -56,6 +56,17 @@ export interface ServiceQuote {
   contractor?: ContractorSummary;
 }
 
+export interface ServiceReview {
+  id: string;
+  jobId: string;
+  customerId: string;
+  contractorId: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ServicePayment {
   id: string;
   grossPence: number;
@@ -105,6 +116,8 @@ export interface ServiceJob {
   contractor?: ContractorSummary | null;
   quotes?: ServiceQuote[];
   payment?: ServicePayment | null;
+  review?: ServiceReview | null;
+  canReview?: boolean;
   _count?: { quotes: number; vehicles?: number };
   viewerRole?: 'customer' | 'contractor' | 'admin' | 'bidder';
 }
@@ -277,6 +290,16 @@ export async function confirmCompletion(id: string): Promise<void> { await apiCl
 export async function disputeJob(id: string, reason?: string): Promise<void> {
   await apiClient(`/services/jobs/${id}/dispute`, { method: 'POST', body: JSON.stringify({ reason }) });
 }
+export async function createServiceReview(
+  id: string,
+  input: { rating: number; comment?: string },
+): Promise<ServiceReview> {
+  const r = await apiClient<{ data: ServiceReview }>(`/services/jobs/${id}/review`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  return r.data;
+}
 
 // Provider capabilities + paid-job work
 export async function applyCapability(input: { serviceType: ServiceType; businessName?: string; phone?: string; serviceArea?: string }): Promise<ContractorCapability> {
@@ -427,28 +450,70 @@ export async function respondToServiceLead(
 }
 
 // Admin
-export async function adminGetCapabilities(status?: CapabilityStatus): Promise<ContractorCapability[]> {
-  const q = status ? `?status=${status}` : '';
-  const r = await apiClient<{ data: ContractorCapability[] }>(`/admin/services/capabilities${q}`); return r.data;
+export interface AdminCapabilityFilters {
+  status?: CapabilityStatus;
+  serviceType?: ServiceType;
+  q?: string;
+}
+export async function adminGetCapabilities(
+  input?: CapabilityStatus | AdminCapabilityFilters,
+): Promise<ContractorCapability[]> {
+  const filters = typeof input === 'string' ? { status: input } : (input ?? {});
+  const q = new URLSearchParams();
+  if (filters.status) q.set('status', filters.status);
+  if (filters.serviceType) q.set('serviceType', filters.serviceType);
+  if (filters.q?.trim()) q.set('q', filters.q.trim());
+  const suffix = q.toString() ? `?${q.toString()}` : '';
+  const r = await apiClient<{ data: ContractorCapability[] }>(`/admin/services/capabilities${suffix}`);
+  return r.data;
 }
 export async function adminReviewCapability(id: string, input: { status: CapabilityStatus; reviewNote?: string }): Promise<ContractorCapability> {
   const r = await apiClient<{ data: ContractorCapability }>(`/admin/services/capabilities/${id}`, { method: 'PATCH', body: JSON.stringify(input) }); return r.data;
 }
-export async function adminGetJobs(status?: ServiceJobStatus): Promise<ServiceJob[]> {
-  const q = status ? `?status=${status}` : '';
-  const r = await apiClient<{ data: ServiceJob[] }>(`/admin/services/jobs${q}`); return r.data;
+export interface AdminJobFilters {
+  status?: ServiceJobStatus;
+  serviceType?: Extract<ServiceType, 'DELIVERY' | 'INSPECTION'>;
+  q?: string;
 }
+export async function adminGetJobs(
+  input?: ServiceJobStatus | AdminJobFilters,
+): Promise<ServiceJob[]> {
+  const filters = typeof input === 'string' ? { status: input } : (input ?? {});
+  const q = new URLSearchParams();
+  if (filters.status) q.set('status', filters.status);
+  if (filters.serviceType) q.set('serviceType', filters.serviceType);
+  if (filters.q?.trim()) q.set('q', filters.q.trim());
+  const suffix = q.toString() ? `?${q.toString()}` : '';
+  const r = await apiClient<{ data: ServiceJob[] }>(`/admin/services/jobs${suffix}`);
+  return r.data;
+}
+export async function adminGetDisputes(
+  input?: Omit<AdminJobFilters, 'status'>,
+): Promise<ServiceJob[]> {
+  const q = new URLSearchParams();
+  if (input?.serviceType) q.set('serviceType', input.serviceType);
+  if (input?.q?.trim()) q.set('q', input.q.trim());
+  const suffix = q.toString() ? `?${q.toString()}` : '';
+  const r = await apiClient<{ data: ServiceJob[] }>(`/admin/services/disputes${suffix}`);
+  return r.data;
+}
+/** Compatibility wrapper: all admin dispute settlement goes through the authoritative operations route. */
 export async function adminResolveDispute(id: string, input: { outcome: 'RELEASE' | 'REFUND'; note?: string }): Promise<void> {
-  await apiClient(`/admin/services/jobs/${id}/resolve`, { method: 'POST', body: JSON.stringify(input) });
+  await apiClient(`/admin/services/operations/jobs/${id}/resolve`, { method: 'POST', body: JSON.stringify(input) });
 }
 export async function adminRematchServiceLead(id: string): Promise<{ added: number; recipientCount: number; recipientLimit: number }> {
   const r = await apiClient<{ data: { added: number; recipientCount: number; recipientLimit: number } }>(`/admin/services/leads/${id}/rematch`, { method: 'POST' });
   return r.data;
 }
-export async function adminGetServiceLeads(serviceType?: 'FINANCE' | 'WARRANTY', status?: ServiceLeadStatus): Promise<ServiceLead[]> {
+export async function adminGetServiceLeads(
+  serviceType?: 'FINANCE' | 'WARRANTY',
+  status?: ServiceLeadStatus,
+  query?: string,
+): Promise<ServiceLead[]> {
   const q = new URLSearchParams();
   if (serviceType) q.set('serviceType', serviceType);
   if (status) q.set('status', status);
+  if (query?.trim()) q.set('q', query.trim());
   const suffix = q.toString() ? `?${q.toString()}` : '';
   const r = await apiClient<{ data: ServiceLead[] }>(`/admin/services/leads${suffix}`); return r.data;
 }

@@ -24,7 +24,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
 import {
     CreateJobDto, JobFromPurchaseDto, CancelJobDto, UpsertQuoteDto,
-    ApplyCapabilityDto, UpdateLeadMatchingDto, UpdateJobMatchingDto, ReviewCapabilityDto, ResolveDisputeDto, JOB_SERVICE_TYPES,
+    ApplyCapabilityDto, UpdateLeadMatchingDto, UpdateJobMatchingDto, ReviewCapabilityDto, ResolveDisputeDto, CreateServiceReviewDto, JOB_SERVICE_TYPES,
 } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
 import { assertCapabilityVerificationReady } from './capability-verification';
@@ -456,13 +456,48 @@ export class ServicesService {
         });
     }
 
-    async adminListCapabilities(status?: CapabilityStatus) {
+    async adminListCapabilities(
+        input?: CapabilityStatus | { status?: CapabilityStatus; serviceType?: ServiceType; q?: string },
+    ) {
+        const filters: { status?: CapabilityStatus; serviceType?: ServiceType; q?: string } =
+            typeof input === 'string' ? { status: input as CapabilityStatus } : (input ?? {});
+        const { status, serviceType } = filters;
+        const q = filters.q?.trim().slice(0, 100) || undefined;
+
         if (status && !Object.values(CapabilityStatus).includes(status)) {
             throw new BadRequestException(`Unknown status "${status}"`);
         }
+        if (serviceType && !Object.values(ServiceType).includes(serviceType)) {
+            throw new BadRequestException(`Unknown service type "${serviceType}"`);
+        }
+
         return this.prisma.contractorCapability.findMany({
-            where: status ? { status } : {},
+            where: {
+                ...(status ? { status } : {}),
+                ...(serviceType ? { serviceType } : {}),
+                ...(q ? {
+                    contractor: {
+                        is: {
+                            OR: [
+                                { businessName: { contains: q, mode: 'insensitive' } },
+                                {
+                                    user: {
+                                        is: {
+                                            OR: [
+                                                { email: { contains: q, mode: 'insensitive' } },
+                                                { firstName: { contains: q, mode: 'insensitive' } },
+                                                { lastName: { contains: q, mode: 'insensitive' } },
+                                            ],
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                } : {}),
+            },
             orderBy: { appliedAt: 'asc' },
+            take: 250,
             include: {
                 contractor: {
                     select: {
@@ -1485,18 +1520,138 @@ export class ServicesService {
             shaped = { ...shaped, contractor: this.contractorPublicView(shaped.contractor) };
         }
 
+        let review: any = null;
+        if ((isCustomer || isAdmin) && job.status === ServiceJobStatus.RELEASED) {
+            const reviews = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+                SELECT
+                    r."id", r."jobId", r."customerId", r."contractorId",
+                    r."rating", r."comment", r."createdAt", r."updatedAt"
+                FROM "service_reviews" r
+                WHERE r."jobId" = ${jobId}
+                LIMIT 1
+            `);
+            review = reviews[0] ?? null;
+        }
+
         return {
             ...shaped,
+            review,
+            canReview: isCustomer && job.status === ServiceJobStatus.RELEASED && !review,
             viewerRole: isCustomer ? 'customer' : isAccepted ? 'contractor' : isAdmin ? 'admin' : 'bidder',
         };
     }
 
-    async adminListJobs(status?: ServiceJobStatus) {
+    async createServiceReview(customerId: string, jobId: string, dto: CreateServiceReviewDto) {
+        const comment = dto.comment?.trim().slice(0, 2000) || null;
+
+        try {
+            return await this.prisma.$transaction(async (tx) => {
+                const job = await tx.serviceJob.findUnique({
+                    where: { id: jobId },
+                    select: {
+                        customerId: true,
+                        contractorId: true,
+                        status: true,
+                        payment: { select: { status: true } },
+                    },
+                });
+                if (!job) throw new NotFoundException('Job not found');
+                if (job.customerId !== customerId) throw new ForbiddenException('Only the customer who booked this job can review it.');
+                if (!job.contractorId) throw new BadRequestException('This job has no provider to review.');
+                if (job.status !== ServiceJobStatus.RELEASED || job.payment?.status !== ServicePaymentStatus.RELEASED) {
+                    throw new BadRequestException('You can review a service only after the completed job payment has been released.');
+                }
+
+                const existing = await tx.$queryRaw<any[]>(Prisma.sql`
+                    SELECT "id" FROM "service_reviews" WHERE "jobId" = ${jobId} LIMIT 1
+                `);
+                if (existing.length) throw new ConflictException('This service job has already been reviewed.');
+
+                const created = await tx.$queryRaw<any[]>(Prisma.sql`
+                    INSERT INTO "service_reviews"
+                        ("jobId", "customerId", "contractorId", "rating", "comment")
+                    VALUES (
+                        ${jobId},
+                        ${customerId},
+                        ${job.contractorId},
+                        ${dto.rating},
+                        ${comment}
+                    )
+                    RETURNING
+                        "id", "jobId", "customerId", "contractorId",
+                        "rating", "comment", "createdAt", "updatedAt"
+                `);
+                return created[0];
+            });
+        } catch (error: any) {
+            if (error instanceof NotFoundException || error instanceof ForbiddenException
+                || error instanceof BadRequestException || error instanceof ConflictException) {
+                throw error;
+            }
+            if (String(error?.message || '').toLowerCase().includes('unique')) {
+                throw new ConflictException('This service job has already been reviewed.');
+            }
+            throw error;
+        }
+    }
+
+    async adminListJobs(
+        input?: ServiceJobStatus | { status?: ServiceJobStatus; serviceType?: ServiceType; q?: string },
+    ) {
+        const filters: { status?: ServiceJobStatus; serviceType?: ServiceType; q?: string } =
+            typeof input === 'string' ? { status: input as ServiceJobStatus } : (input ?? {});
+        const { status, serviceType } = filters;
+        const q = filters.q?.trim().slice(0, 100) || undefined;
+
         if (status && !Object.values(ServiceJobStatus).includes(status)) {
             throw new BadRequestException(`Unknown status "${status}"`);
         }
+        if (serviceType && !(JOB_SERVICE_TYPES as readonly ServiceType[]).includes(serviceType)) {
+            throw new BadRequestException(`Unknown paid-job service type "${serviceType}"`);
+        }
+
         return this.prisma.serviceJob.findMany({
-            where: status ? { status } : {},
+            where: {
+                ...(status ? { status } : {}),
+                ...(serviceType ? { serviceType } : {}),
+                ...(q ? {
+                    OR: [
+                        { title: { contains: q, mode: 'insensitive' } },
+                        { description: { contains: q, mode: 'insensitive' } },
+                        {
+                            customer: {
+                                is: {
+                                    OR: [
+                                        { email: { contains: q, mode: 'insensitive' } },
+                                        { firstName: { contains: q, mode: 'insensitive' } },
+                                        { lastName: { contains: q, mode: 'insensitive' } },
+                                    ],
+                                },
+                            },
+                        },
+                        {
+                            contractor: {
+                                is: {
+                                    OR: [
+                                        { businessName: { contains: q, mode: 'insensitive' } },
+                                        {
+                                            user: {
+                                                is: {
+                                                    OR: [
+                                                        { email: { contains: q, mode: 'insensitive' } },
+                                                        { firstName: { contains: q, mode: 'insensitive' } },
+                                                        { lastName: { contains: q, mode: 'insensitive' } },
+                                                    ],
+                                                },
+                                            },
+                                        },
+                                    ],
+                                },
+                            },
+                        },
+                    ],
+                } : {}),
+            },
             orderBy: { updatedAt: 'desc' },
             take: 200,
             include: {

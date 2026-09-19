@@ -130,6 +130,7 @@ describe('ServicesService TradeXchange hardening regressions', () => {
                 findMany: jest.fn().mockResolvedValue([]),
             },
             $transaction: jest.fn(async (work: any) => typeof work === 'function' ? work(prisma) : Promise.all(work)),
+            $queryRaw: jest.fn().mockResolvedValue([]),
             $executeRaw: jest.fn().mockResolvedValue(1),
         };
 
@@ -601,6 +602,72 @@ describe('ServicesService TradeXchange hardening regressions', () => {
             expect(prisma.serviceJob.updateMany).not.toHaveBeenCalled();
             expect(notifications.create).not.toHaveBeenCalled();
             expect(prisma.serviceJob.findUnique).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('Block 9 verified service reviews', () => {
+        it('rejects a review until both the job and payment are released', async () => {
+            prisma.serviceJob.findUnique.mockResolvedValue({
+                id: 'job-1',
+                customerId: 'customer-1',
+                contractorId: 'contractor-1',
+                status: ServiceJobStatus.COMPLETED,
+                payment: { status: ServicePaymentStatus.RELEASED },
+            });
+
+            await expect(service.createServiceReview('customer-1', 'job-1', {
+                rating: 5,
+                comment: 'Great service',
+            } as any)).rejects.toBeInstanceOf(BadRequestException);
+
+            expect(prisma.$queryRaw).not.toHaveBeenCalled();
+        });
+
+        it('creates exactly one verified review for the booking customer', async () => {
+            prisma.serviceJob.findUnique.mockResolvedValue({
+                id: 'job-1',
+                customerId: 'customer-1',
+                contractorId: 'contractor-1',
+                status: ServiceJobStatus.RELEASED,
+                payment: { status: ServicePaymentStatus.RELEASED },
+            });
+            prisma.$queryRaw
+                .mockResolvedValueOnce([])
+                .mockResolvedValueOnce([{
+                    id: 'review-1',
+                    jobId: 'job-1',
+                    customerId: 'customer-1',
+                    contractorId: 'contractor-1',
+                    rating: 5,
+                    comment: 'Great service',
+                }]);
+
+            const result = await service.createServiceReview('customer-1', 'job-1', {
+                rating: 5,
+                comment: ' Great service ',
+            } as any);
+
+            expect(result).toEqual(expect.objectContaining({
+                id: 'review-1',
+                rating: 5,
+                comment: 'Great service',
+            }));
+            expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+        });
+
+        it('prevents a second review for the same released job', async () => {
+            prisma.serviceJob.findUnique.mockResolvedValue({
+                id: 'job-1',
+                customerId: 'customer-1',
+                contractorId: 'contractor-1',
+                status: ServiceJobStatus.RELEASED,
+                payment: { status: ServicePaymentStatus.RELEASED },
+            });
+            prisma.$queryRaw.mockResolvedValueOnce([{ id: 'review-1' }]);
+
+            await expect(service.createServiceReview('customer-1', 'job-1', {
+                rating: 4,
+            } as any)).rejects.toBeInstanceOf(ConflictException);
         });
     });
 

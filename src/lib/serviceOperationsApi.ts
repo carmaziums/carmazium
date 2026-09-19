@@ -92,13 +92,59 @@ export interface ServiceCaseEntryInput {
   note?: string;
 }
 
+export interface CapabilityStatusHistoryEntry {
+  id: string;
+  capabilityId: string;
+  fromStatus: string | null;
+  toStatus: string;
+  adminId: string | null;
+  note: string | null;
+  createdAt: string;
+  adminFirstName?: string | null;
+  adminLastName?: string | null;
+  adminEmail?: string | null;
+}
+
 export interface AdminCapabilityDetail extends ContractorCapability {
   attachments: ServiceCaseEntry[];
   verification: CapabilityVerificationSummary;
+  statusHistory: CapabilityStatusHistoryEntry[];
+}
+
+export interface ServiceSettlementOperation {
+  id: string;
+  jobId: string;
+  paymentId: string;
+  adminId: string;
+  outcome: 'RELEASE' | 'REFUND';
+  status: 'STARTED' | 'SUCCEEDED' | 'FAILED' | 'REQUIRES_RECONCILIATION';
+  note: string | null;
+  externalReference: string | null;
+  error: string | null;
+  attemptCount: number;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  adminFirstName?: string | null;
+  adminLastName?: string | null;
+  adminEmail?: string | null;
+}
+
+export interface ServicePaymentAuditEvent {
+  id: string;
+  paymentId: string;
+  jobId: string;
+  fromStatus: string | null;
+  toStatus: string;
+  stripeTransferId: string | null;
+  stripePaymentIntentId: string | null;
+  createdAt: string;
 }
 
 export interface AdminJobDetail extends ServiceJob {
   caseEntries: ServiceCaseEntry[];
+  settlementOperations: ServiceSettlementOperation[];
+  paymentAuditEvents: ServicePaymentAuditEvent[];
 }
 
 export interface AdminLeadRecipient {
@@ -232,9 +278,22 @@ export async function adminDeleteDisputeCaseEntry(id: string, entryId: string): 
 export async function adminResolveDisputeWithCase(
   id: string,
   input: { outcome: 'RELEASE' | 'REFUND'; note?: string },
-): Promise<void> {
-  await apiClient(`/admin/services/operations/jobs/${id}/resolve`, {
+): Promise<{
+  success: boolean;
+  settlementOperationId?: string;
+  externalReference?: string | null;
+  alreadyResolved?: boolean;
+  recovered?: boolean;
+}> {
+  const r = await apiClient<{ data: {
+    success: boolean;
+    settlementOperationId?: string;
+    externalReference?: string | null;
+    alreadyResolved?: boolean;
+    recovered?: boolean;
+  } }>(`/admin/services/operations/jobs/${id}/resolve`, {
     method: 'POST',
     body: JSON.stringify(input),
   });
+  return r.data;
 }

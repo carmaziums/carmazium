@@ -1037,13 +1037,25 @@ export class ServiceLeadsService {
         };
     }
 
-    async adminList(serviceType?: ServiceType, status?: string) {
+    async adminList(serviceType?: ServiceType, status?: string, query?: string) {
         if (serviceType) this.assertLeadType(serviceType);
+        const q = query?.trim().slice(0, 100) || undefined;
 
         const leads = await this.prisma.serviceLead.findMany({
             where: {
                 ...(serviceType ? { serviceType } : {}),
                 ...(status ? { status } : {}),
+                ...(q ? {
+                    OR: [
+                        { vehicleRegistration: { contains: q, mode: 'insensitive' } },
+                        { vehicleMake: { contains: q, mode: 'insensitive' } },
+                        { vehicleModel: { contains: q, mode: 'insensitive' } },
+                        { fullName: { contains: q, mode: 'insensitive' } },
+                        { email: { contains: q, mode: 'insensitive' } },
+                        { phone: { contains: q } },
+                        { postcode: { contains: q, mode: 'insensitive' } },
+                    ],
+                } : {}),
             },
             orderBy: { createdAt: 'desc' },
             take: 250,
