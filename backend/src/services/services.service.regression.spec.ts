@@ -115,7 +115,13 @@ describe('ServicesService TradeXchange hardening regressions', () => {
                 updateMany: jest.fn().mockResolvedValue({ count: 1 }),
             },
             contractorCapability: {
-                findUnique: jest.fn(),
+                findUnique: jest.fn().mockResolvedValue({
+                    status: CapabilityStatus.APPROVED,
+                    verificationStatus: 'VERIFIED',
+                    verificationExpiresAt: new Date(Date.now() + 86_400_000),
+                    jobNationwide: true,
+                    jobPostcodeAreas: [],
+                }),
                 findFirst: jest.fn(),
                 findMany: jest.fn().mockResolvedValue([]),
                 update: jest.fn(),
@@ -175,6 +181,8 @@ describe('ServicesService TradeXchange hardening regressions', () => {
                 },
                 select: {
                     status: true,
+                    verificationStatus: true,
+                    verificationExpiresAt: true,
                     jobNationwide: true,
                     jobPostcodeAreas: true,
                 },
@@ -185,6 +193,8 @@ describe('ServicesService TradeXchange hardening regressions', () => {
             prisma.serviceJob.findUnique.mockResolvedValue(openDeliveryJob());
             prisma.contractorCapability.findUnique.mockResolvedValue({
                 status: CapabilityStatus.APPROVED,
+                verificationStatus: 'VERIFIED',
+                verificationExpiresAt: new Date(Date.now() + 86_400_000),
                 jobNationwide: false,
                 jobPostcodeAreas: ['M'],
             });
@@ -196,9 +206,32 @@ describe('ServicesService TradeXchange hardening regressions', () => {
             }, 'job-1')).rejects.toBeInstanceOf(ForbiddenException);
         });
 
-        it('allows direct OPEN-job access only with an APPROVED capability for that service type', async () => {
+        it('rejects an APPROVED capability whose verification is expired', async () => {
             prisma.serviceJob.findUnique.mockResolvedValue(openDeliveryJob());
-            prisma.contractorCapability.findUnique.mockResolvedValue({ status: CapabilityStatus.APPROVED });
+            prisma.contractorCapability.findUnique.mockResolvedValue({
+                status: CapabilityStatus.APPROVED,
+                verificationStatus: 'VERIFIED',
+                verificationExpiresAt: new Date(Date.now() - 1_000),
+                jobNationwide: true,
+                jobPostcodeAreas: [],
+            });
+
+            await expect(service.getJob({
+                userId: 'provider-user',
+                role: UserRole.CONTRACTOR,
+                contractorProfileId: 'contractor-1',
+            }, 'job-1')).rejects.toBeInstanceOf(ForbiddenException);
+        });
+
+        it('allows direct OPEN-job access only with a currently verified APPROVED capability', async () => {
+            prisma.serviceJob.findUnique.mockResolvedValue(openDeliveryJob());
+            prisma.contractorCapability.findUnique.mockResolvedValue({
+                status: CapabilityStatus.APPROVED,
+                verificationStatus: 'VERIFIED',
+                verificationExpiresAt: new Date(Date.now() + 86_400_000),
+                jobNationwide: true,
+                jobPostcodeAreas: [],
+            });
 
             const result = await service.getJob({
                 userId: 'provider-user',
@@ -339,6 +372,15 @@ describe('ServicesService TradeXchange hardening regressions', () => {
                 { limit: 1 },
             );
 
+            expect(prisma.contractorCapability.findMany).toHaveBeenCalledWith(expect.objectContaining({
+                where: expect.objectContaining({
+                    contractorId: 'contractor-1',
+                    serviceType: { in: [ServiceType.DELIVERY] },
+                    status: CapabilityStatus.APPROVED,
+                    verificationStatus: 'VERIFIED',
+                    verificationExpiresAt: { gt: expect.any(Date) },
+                }),
+            }));
             expect(prisma.serviceJob.findMany).toHaveBeenCalledWith(expect.objectContaining({
                 where: expect.objectContaining({
                     status: ServiceJobStatus.OPEN,
@@ -481,6 +523,31 @@ describe('ServicesService TradeXchange hardening regressions', () => {
 
             await expect(service.acceptQuote('customer-1', 'job-1', 'quote-1'))
                 .rejects.toThrow(/expired/i);
+            expect(prisma.$transaction).not.toHaveBeenCalled();
+            expect(prisma.servicePayment.create).not.toHaveBeenCalled();
+        });
+
+        it('refuses an otherwise-active quote when the provider verification has expired', async () => {
+            const job = openDeliveryJob();
+            job.quotes = [{
+                id: 'quote-1',
+                jobId: 'job-1',
+                contractorId: 'contractor-1',
+                status: ServiceQuoteStatus.ACTIVE,
+                amountPence: 10000,
+                validUntil: null,
+            } as any];
+            prisma.serviceJob.findUnique.mockResolvedValue(job);
+            prisma.contractorCapability.findUnique.mockResolvedValue({
+                status: CapabilityStatus.APPROVED,
+                verificationStatus: 'VERIFIED',
+                verificationExpiresAt: new Date(Date.now() - 1_000),
+                jobNationwide: true,
+                jobPostcodeAreas: [],
+            });
+
+            await expect(service.acceptQuote('customer-1', 'job-1', 'quote-1'))
+                .rejects.toThrow(/no longer verified/i);
             expect(prisma.$transaction).not.toHaveBeenCalled();
             expect(prisma.servicePayment.create).not.toHaveBeenCalled();
         });
