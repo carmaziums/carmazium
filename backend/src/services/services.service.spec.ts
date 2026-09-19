@@ -577,8 +577,11 @@ describe('Delivery & Recovery — end to end', () => {
         await svc.acceptQuote(CUSTOMER.id, done.id, q.id);
         const pay = db.one('servicePayment', { jobId: done.id })!;
         await svc.markPaid(done.id, pay.id, 'pi_a');
+        await svc.startJob(kentProfileId, done.id);
         await svc.completeJob(kentProfileId, done.id);
-        db.one('serviceJob', { id: done.id })!.completedAt = new Date(Date.now() - 49 * 3_600_000);
+        const doneJob = db.one('serviceJob', { id: done.id })!;
+        doneJob.startedAt = new Date(Date.now() - 50 * 3_600_000);
+        doneJob.completedAt = new Date(Date.now() - 49 * 3_600_000);
 
         transfersCreate.mockResolvedValueOnce({ id: 'tr_auto' });
         expect(await svc.autoConfirmCompleted()).toBe(1);
