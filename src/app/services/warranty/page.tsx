@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { ArrowLeft, ArrowRight, BadgeCheck, CheckCircle, FileText, LayoutDashboard, ShieldCheck, Users } from "lucide-react"
-import { warrantyServiceEnabled } from "@/lib/featureFlags"
+import { useTradeXchangeAvailability } from "@/hooks/useTradeXchangeAvailability"
 import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
 import { ServiceLeadForm } from "@/components/services/ServiceLeadForm"
 import { Button } from "@/components/ui/Button"
@@ -10,7 +10,12 @@ import { useAuth } from "@/context/AuthContext"
 
 export default function WarrantyServicePage() {
     const { user } = useAuth()
-    if (!warrantyServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Warranty" />
+    const { availability, loading } = useTradeXchangeAvailability()
+
+    if (loading) {
+        return <div className="min-h-screen pt-32 text-center text-sm text-[var(--text-muted)]">Checking TradeXchange availability…</div>
+    }
+    if (!availability?.WARRANTY) return <ServiceTemporarilyUnavailable serviceName="Warranty" />
 
     const providerHref = user
         ? "/dashboard/partner"
