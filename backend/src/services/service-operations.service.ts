@@ -6,7 +6,7 @@ import {
     NotFoundException,
     ServiceUnavailableException,
 } from '@nestjs/common';
-import { CapabilityStatus, Prisma, ServiceJobStatus, ServiceType } from '@prisma/client';
+import { CapabilityStatus, Prisma, ServiceJobStatus, ServicePaymentStatus, ServiceType } from '@prisma/client';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -485,11 +485,23 @@ export class ServiceOperationsService {
             },
         });
         if (!capability) throw new NotFoundException('Provider application not found.');
-        const [attachments, verification] = await Promise.all([
+        const [attachments, verification, statusHistory] = await Promise.all([
             this.listEntries('CAPABILITY', capabilityId),
             getCapabilityVerificationSummary(this.prisma, capabilityId),
+            this.prisma.$queryRaw<any[]>(Prisma.sql`
+                SELECT
+                    h."id", h."capabilityId", h."fromStatus"::text AS "fromStatus",
+                    h."toStatus"::text AS "toStatus", h."adminId", h."note", h."createdAt",
+                    u."firstName" AS "adminFirstName",
+                    u."lastName" AS "adminLastName",
+                    u."email" AS "adminEmail"
+                FROM "service_capability_status_history" h
+                LEFT JOIN "users" u ON u."id" = h."adminId"
+                WHERE h."capabilityId" = ${capabilityId}
+                ORDER BY h."createdAt" ASC, h."id" ASC
+            `),
         ]);
-        return { ...capability, attachments, verification };
+        return { ...capability, attachments, verification, statusHistory };
     }
 
     async adminReviewCapabilityEvidence(
@@ -653,7 +665,33 @@ export class ServiceOperationsService {
             },
         });
         if (!job) throw new NotFoundException('Service job not found.');
-        return { ...job, caseEntries: await this.listEntries('DISPUTE', jobId) };
+        const [caseEntries, settlementOperations, paymentAuditEvents] = await Promise.all([
+            this.listEntries('DISPUTE', jobId),
+            this.prisma.$queryRaw<any[]>(Prisma.sql`
+                SELECT
+                    s."id", s."jobId", s."paymentId", s."adminId", s."outcome",
+                    s."status", s."note", s."externalReference", s."error",
+                    s."attemptCount", s."completedAt", s."createdAt", s."updatedAt",
+                    u."firstName" AS "adminFirstName",
+                    u."lastName" AS "adminLastName",
+                    u."email" AS "adminEmail"
+                FROM "service_settlement_operations" s
+                LEFT JOIN "users" u ON u."id" = s."adminId"
+                WHERE s."jobId" = ${jobId}
+                ORDER BY s."createdAt" ASC, s."id" ASC
+            `),
+            this.prisma.$queryRaw<any[]>(Prisma.sql`
+                SELECT
+                    a."id", a."paymentId", a."jobId",
+                    a."fromStatus"::text AS "fromStatus",
+                    a."toStatus"::text AS "toStatus",
+                    a."stripeTransferId", a."stripePaymentIntentId", a."createdAt"
+                FROM "service_payment_audit_events" a
+                WHERE a."jobId" = ${jobId}
+                ORDER BY a."createdAt" ASC, a."id" ASC
+            `),
+        ]);
+        return { ...job, caseEntries, settlementOperations, paymentAuditEvents };
     }
 
     async adminLeadDetail(leadId: string) {
@@ -722,7 +760,41 @@ export class ServiceOperationsService {
             select: { status: true },
         });
         if (!job) throw new NotFoundException('Service job not found.');
+        if (job.status !== ServiceJobStatus.DISPUTED) {
+            throw new BadRequestException('Resolved dispute evidence is immutable.');
+        }
         return this.deleteStoredEntry('DISPUTE', jobId, entryId);
+    }
+
+    private async ensureResolutionCaseEntry(
+        adminId: string,
+        jobId: string,
+        outcome: 'RELEASE' | 'REFUND',
+        note?: string | null,
+    ) {
+        const existing = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+            SELECT "id"
+            FROM "service_case_entries"
+            WHERE "scope" = 'DISPUTE'
+              AND "entityId" = ${jobId}
+              AND "kind" = 'RESOLUTION'
+            LIMIT 1
+        `);
+        if (existing.length) return;
+
+        const decision = outcome === 'RELEASE'
+            ? 'Released payment to provider.'
+            : 'Refunded customer in full.';
+        await this.insertEntry(
+            'DISPUTE',
+            jobId,
+            adminId,
+            {
+                kind: 'RESOLUTION',
+                note: [decision, this.cleanText(note, 4000)].filter(Boolean).join(' '),
+            },
+            ['RESOLUTION'],
+        );
     }
 
     async adminResolveDispute(
@@ -733,15 +805,200 @@ export class ServiceOperationsService {
         if (input.outcome !== 'RELEASE' && input.outcome !== 'REFUND') {
             throw new BadRequestException('Resolution must be RELEASE or REFUND.');
         }
-        const result = await this.services.adminResolveDispute(adminId, jobId, input as any);
-        const decision = input.outcome === 'RELEASE' ? 'Released payment to provider.' : 'Refunded customer in full.';
-        await this.insertEntry(
-            'DISPUTE',
-            jobId,
-            adminId,
-            { kind: 'RESOLUTION', note: [decision, this.cleanText(input.note, 4000)].filter(Boolean).join(' ') },
-            ['RESOLUTION'],
-        );
-        return result;
+
+        const note = this.cleanText(input.note, 4000);
+        const job = await this.prisma.serviceJob.findUnique({
+            where: { id: jobId },
+            include: { payment: true },
+        });
+        if (!job) throw new NotFoundException('Service job not found.');
+        if (!job.payment) throw new BadRequestException('This job has no payment to settle.');
+
+        const existing = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+            SELECT *
+            FROM "service_settlement_operations"
+            WHERE "jobId" = ${jobId}
+              AND "paymentId" = ${job.payment.id}
+              AND "outcome" = ${input.outcome}
+            LIMIT 1
+        `);
+        const prior = existing[0];
+
+        if (prior?.status === 'SUCCEEDED') {
+            try {
+                await this.ensureResolutionCaseEntry(adminId, jobId, input.outcome, note);
+            } catch (error: any) {
+                this.logger.warn(`Settlement ${prior.id} is complete but its case-entry mirror could not be restored: ${error?.message}`);
+            }
+            return {
+                success: true,
+                alreadyResolved: true,
+                settlementOperationId: prior.id,
+                externalReference: prior.externalReference ?? null,
+            };
+        }
+
+        const terminalMatchesOutcome =
+            input.outcome === 'RELEASE'
+                ? job.status === ServiceJobStatus.RELEASED && job.payment.status === ServicePaymentStatus.RELEASED
+                : job.status === ServiceJobStatus.CANCELLED && job.payment.status === ServicePaymentStatus.REFUNDED;
+
+        if (!terminalMatchesOutcome) {
+            if (job.status !== ServiceJobStatus.DISPUTED) {
+                throw new BadRequestException('Job is not disputed.');
+            }
+            if (job.payment.status !== ServicePaymentStatus.PAID) {
+                throw new BadRequestException('No held payment to resolve.');
+            }
+        }
+
+        const operationRows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+            INSERT INTO "service_settlement_operations"
+                ("jobId", "paymentId", "adminId", "outcome", "status", "note", "attemptCount", "updatedAt")
+            VALUES (
+                ${jobId},
+                ${job.payment.id},
+                ${adminId},
+                ${input.outcome},
+                'STARTED',
+                ${note},
+                1,
+                CURRENT_TIMESTAMP
+            )
+            ON CONFLICT ("jobId", "paymentId", "outcome")
+            DO UPDATE SET
+                "adminId" = EXCLUDED."adminId",
+                "note" = EXCLUDED."note",
+                "status" = CASE
+                    WHEN "service_settlement_operations"."status" = 'SUCCEEDED'
+                        THEN 'SUCCEEDED'
+                    ELSE 'STARTED'
+                END,
+                "error" = CASE
+                    WHEN "service_settlement_operations"."status" = 'SUCCEEDED'
+                        THEN "service_settlement_operations"."error"
+                    ELSE NULL
+                END,
+                "attemptCount" = CASE
+                    WHEN "service_settlement_operations"."status" = 'SUCCEEDED'
+                        THEN "service_settlement_operations"."attemptCount"
+                    ELSE "service_settlement_operations"."attemptCount" + 1
+                END,
+                "updatedAt" = CURRENT_TIMESTAMP
+            RETURNING *
+        `);
+        const operation = operationRows[0];
+
+        if (terminalMatchesOutcome) {
+            const externalReference = input.outcome === 'RELEASE'
+                ? job.payment.stripeTransferId
+                : job.payment.stripePaymentIntentId
+                    ? `refund:${job.payment.stripePaymentIntentId}`
+                    : 'refund:completed';
+            await this.prisma.$executeRaw(Prisma.sql`
+                UPDATE "service_settlement_operations"
+                SET "status" = 'SUCCEEDED',
+                    "externalReference" = ${externalReference},
+                    "error" = NULL,
+                    "completedAt" = COALESCE("completedAt", CURRENT_TIMESTAMP),
+                    "updatedAt" = CURRENT_TIMESTAMP
+                WHERE "id" = ${operation.id}
+            `);
+            try {
+                await this.ensureResolutionCaseEntry(adminId, jobId, input.outcome, note);
+            } catch (error: any) {
+                this.logger.warn(`Recovered settlement ${operation.id} but could not restore its case-entry mirror: ${error?.message}`);
+            }
+            return {
+                success: true,
+                alreadyResolved: true,
+                settlementOperationId: operation.id,
+                externalReference,
+            };
+        }
+
+        try {
+            const result = await this.services.adminResolveDispute(adminId, jobId, {
+                outcome: input.outcome,
+                note: note ?? undefined,
+            } as any);
+            const externalReference =
+                (result as any)?.transferId
+                ?? (result as any)?.refundId
+                ?? null;
+
+            await this.prisma.$executeRaw(Prisma.sql`
+                UPDATE "service_settlement_operations"
+                SET "status" = 'SUCCEEDED',
+                    "externalReference" = ${externalReference},
+                    "error" = NULL,
+                    "completedAt" = CURRENT_TIMESTAMP,
+                    "updatedAt" = CURRENT_TIMESTAMP
+                WHERE "id" = ${operation.id}
+            `);
+
+            try {
+                await this.ensureResolutionCaseEntry(adminId, jobId, input.outcome, note);
+            } catch (error: any) {
+                this.logger.warn(`Settlement ${operation.id} succeeded but its case-entry mirror failed: ${error?.message}`);
+            }
+
+            return {
+                ...result,
+                settlementOperationId: operation.id,
+                externalReference,
+            };
+        } catch (error: any) {
+            const current = await this.prisma.serviceJob.findUnique({
+                where: { id: jobId },
+                include: { payment: true },
+            });
+            const claim = current?.payment?.stripeTransferId;
+            const recoveredSuccess =
+                input.outcome === 'RELEASE'
+                    ? current?.status === ServiceJobStatus.RELEASED
+                        && current?.payment?.status === ServicePaymentStatus.RELEASED
+                    : current?.status === ServiceJobStatus.CANCELLED
+                        && current?.payment?.status === ServicePaymentStatus.REFUNDED;
+            const status = recoveredSuccess
+                ? 'SUCCEEDED'
+                : typeof claim === 'string' && claim.startsWith('claim:')
+                    ? 'REQUIRES_RECONCILIATION'
+                    : 'FAILED';
+            const externalReference = recoveredSuccess
+                ? input.outcome === 'RELEASE'
+                    ? current?.payment?.stripeTransferId ?? null
+                    : current?.payment?.stripePaymentIntentId
+                        ? `refund:${current.payment.stripePaymentIntentId}`
+                        : 'refund:completed'
+                : null;
+            const errorText = this.cleanText(error?.message || String(error), 2000);
+
+            await this.prisma.$executeRaw(Prisma.sql`
+                UPDATE "service_settlement_operations"
+                SET "status" = ${status},
+                    "externalReference" = ${externalReference},
+                    "error" = ${errorText},
+                    "completedAt" = CASE WHEN ${status} = 'SUCCEEDED' THEN CURRENT_TIMESTAMP ELSE NULL END,
+                    "updatedAt" = CURRENT_TIMESTAMP
+                WHERE "id" = ${operation.id}
+            `);
+
+            if (recoveredSuccess) {
+                try {
+                    await this.ensureResolutionCaseEntry(adminId, jobId, input.outcome, note);
+                } catch (mirrorError: any) {
+                    this.logger.warn(`Recovered settlement ${operation.id} but its case-entry mirror failed: ${mirrorError?.message}`);
+                }
+                return {
+                    success: true,
+                    recovered: true,
+                    settlementOperationId: operation.id,
+                    externalReference,
+                };
+            }
+
+            throw error;
+        }
     }
 }
