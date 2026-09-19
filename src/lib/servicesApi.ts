@@ -16,10 +16,18 @@ export const SERVICE_LABELS: Record<ServiceType, string> = {
   WARRANTY: 'Warranty Providers',
 };
 
+export interface ServiceAvailability {
+  DELIVERY: boolean;
+  INSPECTION: boolean;
+  FINANCE: boolean;
+  WARRANTY: boolean;
+}
+
 export interface ServiceMarketplaceSettings {
   platformFeeRate: number;
   providerShareRate: number;
   acceptedPaymentTimeoutMinutes: number;
+  availability?: ServiceAvailability;
 }
 
 export interface JobVehicle {
@@ -235,6 +243,12 @@ export const formatPence = (p: number) =>
 export async function getServiceSettings(): Promise<ServiceMarketplaceSettings> {
   const r = await apiClient<{ data: ServiceMarketplaceSettings }>('/services/settings');
   return r.data;
+}
+
+/** Public runtime kill-switch state sourced from the backend/Fly environment. */
+export async function getPublicServiceAvailability(): Promise<ServiceAvailability> {
+  const r = await apiClient<{ data: { availability: ServiceAvailability } }>('/services/availability');
+  return r.data.availability;
 }
 
 // Paid jobs: Delivery + Inspection
