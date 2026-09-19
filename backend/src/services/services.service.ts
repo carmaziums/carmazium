@@ -62,7 +62,7 @@ export class ServicesService {
         private readonly email: EmailService,
         private readonly payments: PaymentsService,
         private readonly config: ConfigService,
-        private readonly tradeTeam: TradeTeamService,
+        private readonly tradeTeam?: TradeTeamService,
     ) { }
 
     // ── Money ──────────────────────────────────────────────────────────────
@@ -836,7 +836,7 @@ export class ServicesService {
         const c = job.contractor.user;
         await this.notify(c.id, 'SERVICE_JOB_PAID', 'You won the job',
             `"${job.title}" is paid and ready. Contact details are now unlocked.`, `/dashboard/service/jobs/${jobId}`);
-        await this.tradeTeam.notifyOperationalStaff(
+        await this.tradeTeam?.notifyOperationalStaff(
             job.contractor.id,
             job.serviceType,
             'SERVICE_JOB_PAID_TEAM',
