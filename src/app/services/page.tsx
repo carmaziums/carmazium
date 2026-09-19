@@ -15,15 +15,16 @@ import {
 import { GiTowTruck, GiMagnifyingGlass, GiRibbonMedal, GiMoneyStack } from "react-icons/gi"
 import { Button } from "@/components/ui/Button"
 import { PageHero } from "@/components/layout/PageHero"
-import {
-    deliveryServiceEnabled,
-    inspectionServiceEnabled,
-    financeServiceEnabled,
-    warrantyServiceEnabled,
-} from "@/lib/featureFlags"
+import { useTradeXchangeAvailability } from "@/hooks/useTradeXchangeAvailability"
 
 export default function ServicesPage() {
-    const paidJobsEnabled = deliveryServiceEnabled || inspectionServiceEnabled
+    const { availability, loading } = useTradeXchangeAvailability()
+    const deliveryEnabled = availability?.DELIVERY === true
+    const inspectionEnabled = availability?.INSPECTION === true
+    const financeEnabled = availability?.FINANCE === true
+    const warrantyEnabled = availability?.WARRANTY === true
+    const unavailableCta = loading ? "Checking availability…" : "Temporarily unavailable"
+    const paidJobsEnabled = deliveryEnabled || inspectionEnabled
     const services = [
         {
             title: "Vehicle Dealer",
@@ -41,8 +42,8 @@ export default function ServicesPage() {
             desc: "Post a single-car, multi-car or recovery job and let approved transport businesses compete with fixed-price quotes.",
             color: "text-blue-500 dark:text-blue-400",
             bg: "bg-blue-500/10",
-            link: deliveryServiceEnabled ? "/services/delivery" : undefined,
-            cta: deliveryServiceEnabled ? "Arrange transport" : "Coming soon",
+            link: deliveryEnabled ? "/services/delivery" : undefined,
+            cta: deliveryEnabled ? "Arrange transport" : unavailableCta,
             badge: "Paid job marketplace",
         },
         {
@@ -51,8 +52,8 @@ export default function ServicesPage() {
             desc: "Request an independent vehicle inspection and receive quotes from approved inspection providers before you commit to a car.",
             color: "text-emerald-600 dark:text-emerald-400",
             bg: "bg-emerald-500/10",
-            link: inspectionServiceEnabled ? "/services/inspection" : undefined,
-            cta: inspectionServiceEnabled ? "Book an inspection" : "Coming soon",
+            link: inspectionEnabled ? "/services/inspection" : undefined,
+            cta: inspectionEnabled ? "Book an inspection" : unavailableCta,
             badge: "Paid job marketplace",
         },
         {
@@ -61,8 +62,8 @@ export default function ServicesPage() {
             desc: "Send one finance enquiry to approved matching providers. Providers respond with their own terms; CarMazium does not lend or guarantee approval.",
             color: "text-amber-600 dark:text-amber-400",
             bg: "bg-amber-500/10",
-            link: financeServiceEnabled ? "/services/finance" : undefined,
-            cta: financeServiceEnabled ? "Request finance options" : "Coming soon",
+            link: financeEnabled ? "/services/finance" : undefined,
+            cta: financeEnabled ? "Request finance options" : unavailableCta,
             badge: "Matched enquiry",
         },
         {
@@ -71,8 +72,8 @@ export default function ServicesPage() {
             desc: "Tell us about the vehicle and cover you want. Approved warranty providers can respond with suitable products and indicative prices.",
             color: "text-purple-600 dark:text-purple-400",
             bg: "bg-purple-500/10",
-            link: warrantyServiceEnabled ? "/services/warranty" : undefined,
-            cta: warrantyServiceEnabled ? "Request warranty options" : "Coming soon",
+            link: warrantyEnabled ? "/services/warranty" : undefined,
+            cta: warrantyEnabled ? "Request warranty options" : unavailableCta,
             badge: "Matched enquiry",
         },
     ]
@@ -271,7 +272,7 @@ export default function ServicesPage() {
                             <p className="text-sm leading-7 text-[var(--text-muted)]">
                                 These are provider-enquiry workflows, not paid TradeXchange service jobs. The 91% provider share / 9% CarMazium job-fee model does not apply to finance or warranty enquiries.
                             </p>
-                            {(financeServiceEnabled || warrantyServiceEnabled) && (
+                            {(financeEnabled || warrantyEnabled) && (
                                 <Button asChild variant="outline" className="mt-6">
                                     <Link href="/services/leads">My finance & warranty enquiries</Link>
                                 </Button>

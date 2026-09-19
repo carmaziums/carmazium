@@ -7,7 +7,7 @@ import { EmailModule } from '../email/email.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ServicesService } from './services.service';
-import { ServicesController } from './services.controller';
+import { PublicServicesController, ServicesController } from './services.controller';
 import { ServiceLeadsController } from './service-leads.controller';
 import { ServiceLeadsService } from './service-leads.service';
 import { AdminServicesController } from './admin-services.controller';
@@ -39,6 +39,7 @@ import { TradeTeamController } from './trade-team.controller';
         ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     ],
     controllers: [
+        PublicServicesController,
         ServicesController,
         ServiceLeadsController,
         AdminServicesController,

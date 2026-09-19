@@ -2,11 +2,13 @@
 
 import Link from "next/link"
 import { ArrowLeft, ArrowRight, ClipboardCheck, Truck } from "lucide-react"
-import { deliveryServiceEnabled, inspectionServiceEnabled } from "@/lib/featureFlags"
+import { useTradeXchangeAvailability } from "@/hooks/useTradeXchangeAvailability"
 import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
 
 export default function NewServiceJobPage() {
-    if (!deliveryServiceEnabled && !inspectionServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Delivery & Inspection jobs" />
+    const { availability, loading } = useTradeXchangeAvailability()
+    if (loading) return <div className="min-h-screen pt-32 text-center text-sm text-[var(--text-muted)]">Checking TradeXchange availability…</div>
+    if (!availability?.DELIVERY && !availability?.INSPECTION) return <ServiceTemporarilyUnavailable serviceName="Delivery & Inspection jobs" />
 
     const jobTypes = [
         {
@@ -14,7 +16,7 @@ export default function NewServiceJobPage() {
             description: "Move one or more vehicles between locations. Approved transport providers compete with fixed-price quotes.",
             href: "/services/delivery/new",
             icon: Truck,
-            enabled: deliveryServiceEnabled,
+            enabled: availability?.DELIVERY === true,
             detail: "Delivery · Collection · Recovery",
         },
         {
@@ -22,7 +24,7 @@ export default function NewServiceJobPage() {
             description: "Ask an approved inspection provider to check a vehicle before you buy or collect it, then compare provider quotes.",
             href: "/services/inspection/new",
             icon: ClipboardCheck,
-            enabled: inspectionServiceEnabled,
+            enabled: availability?.INSPECTION === true,
             detail: "Pre-purchase · Condition · Independent check",
         },
     ].filter((job) => job.enabled)
