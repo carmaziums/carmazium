@@ -27,7 +27,7 @@ describe('ListingsService', () => {
         prisma = {
             listing: {
                 findUnique: jest.fn(),
-                findMany: jest.fn(),
+                findMany: jest.fn().mockResolvedValue([]),
                 count: jest.fn(),
                 aggregate: jest.fn(),
                 update: jest.fn(),
@@ -45,6 +45,7 @@ describe('ListingsService', () => {
             transaction: { findMany: jest.fn() },
             hpiReport: { findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }) },
             auction: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+            $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
             $transaction: jest.fn(async (arg: any) => Array.isArray(arg) ? Promise.all(arg) : arg(prisma)),
         };
         sellers = { incrementListings: jest.fn(), incrementSales: jest.fn() };
@@ -172,6 +173,79 @@ describe('ListingsService', () => {
 
             expect(prisma.listing.create).not.toHaveBeenCalled();
             expect(prisma.auction.create).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('listing creation idempotency', () => {
+        const sellerId = '11111111-1111-4111-8111-111111111111';
+        const images = Array.from(
+            { length: 10 },
+            (_, index) => `https://test.supabase.co/storage/v1/object/public/listings/${sellerId}/vehicle/${index}.jpg`,
+        );
+        const payload = {
+            title: 'BMW M3 2020',
+            price: 10000,
+            mileage: 30000,
+            year: 2020,
+            vrm: 'AB 12 CDE',
+            images,
+            listingType: 'CLASSIFIED',
+            badgeTier: 'BASIC',
+            status: 'DRAFT',
+        };
+
+        it('reuses an existing same-channel DRAFT under the transaction lock', async () => {
+            const existing = {
+                id: 'existing-draft',
+                sellerId,
+                vrm: 'AB12CDE',
+                type: 'CLASSIFIED',
+                status: 'DRAFT',
+                title: 'Existing BMW M3',
+                deletedAt: null,
+            };
+            prisma.listing.findMany.mockResolvedValue([{
+                id: existing.id,
+                vrm: existing.vrm,
+                type: existing.type,
+                status: existing.status,
+            }]);
+            prisma.listing.findUnique.mockResolvedValue(existing);
+
+            const result = await service.create(payload as any, sellerId);
+
+            expect(prisma.$queryRaw).toHaveBeenCalled();
+            expect(prisma.listing.create).not.toHaveBeenCalled();
+            expect(result).toBe(existing);
+        });
+
+        it('rejects a conflicting live listing instead of creating another row', async () => {
+            prisma.listing.findMany.mockResolvedValue([{
+                id: 'live-listing',
+                vrm: 'AB12CDE',
+                type: 'CLASSIFIED',
+                status: 'ACTIVE',
+            }]);
+
+            await expect(service.create(payload as any, sellerId))
+                .rejects.toThrow(/already has an existing classified listing \(active\)/i);
+
+            expect(prisma.$queryRaw).toHaveBeenCalled();
+            expect(prisma.listing.create).not.toHaveBeenCalled();
+        });
+
+        it('rejects a normal create when the same VRM already exists in the other channel', async () => {
+            prisma.listing.findMany.mockResolvedValue([{
+                id: 'auction-draft',
+                vrm: 'AB12CDE',
+                type: 'AUCTION',
+                status: 'DRAFT',
+            }]);
+
+            await expect(service.create(payload as any, sellerId))
+                .rejects.toThrow(/existing auction listing/i);
+
+            expect(prisma.listing.create).not.toHaveBeenCalled();
         });
     });
 
@@ -506,6 +580,95 @@ describe('ListingsService', () => {
                     },
                 }),
             );
+        });
+
+        it('reuses an existing imported/normal DRAFT for the same seller and normalized VRM', async () => {
+            scraper.scrape.mockResolvedValue({
+                platform: 'AUTOTRADER',
+                originalUrl: 'https://www.autotrader.co.uk/car-details/123',
+                title: 'Imported BMW 3 Series',
+                images: [],
+            });
+            const existing = {
+                id: 'existing-import-draft',
+                sellerId: 'seller-1',
+                vrm: 'AB12CDE',
+                type: 'CLASSIFIED',
+                status: 'DRAFT',
+                title: 'Existing BMW',
+                images: [],
+            };
+            prisma.listing.findMany.mockResolvedValue([{
+                id: existing.id,
+                vrm: 'AB 12 CDE',
+                type: 'CLASSIFIED',
+                status: 'DRAFT',
+            }]);
+            prisma.listing.findUnique.mockResolvedValue(existing);
+
+            const result = await service.importFromUrl(
+                'https://www.autotrader.co.uk/car-details/123',
+                'seller-1',
+                { price: 12000, vrm: ' ab 12 cde ', badgeTier: 'BASIC' },
+            );
+
+            expect(prisma.$queryRaw).toHaveBeenCalled();
+            expect(prisma.listing.create).not.toHaveBeenCalled();
+            expect(result).toBe(existing);
+        });
+    });
+
+    describe('alsoListRetail', () => {
+        it('returns the existing linked retail DRAFT instead of deleting and recreating it', async () => {
+            prisma.listing.findUnique
+                .mockResolvedValueOnce({
+                    id: 'auction-1',
+                    sellerId: 'seller-1',
+                    type: 'AUCTION',
+                    status: 'ACTIVE',
+                    deletedAt: null,
+                    linkedListingId: 'retail-1',
+                })
+                .mockResolvedValueOnce({
+                    id: 'retail-1',
+                    deletedAt: null,
+                });
+
+            const result = await service.alsoListRetail(
+                'auction-1',
+                'seller-1',
+                { price: 12000, badgeTier: 'BASIC' },
+            );
+
+            expect(result).toEqual({ linkedListingId: 'retail-1' });
+            expect(prisma.listing.create).not.toHaveBeenCalled();
+            expect(prisma.listing.updateMany).not.toHaveBeenCalled();
+        });
+
+        it('returns the winning link when another request claims the source first', async () => {
+            prisma.listing.findUnique
+                .mockResolvedValueOnce({
+                    id: 'auction-1',
+                    sellerId: 'seller-1',
+                    type: 'AUCTION',
+                    status: 'ACTIVE',
+                    deletedAt: null,
+                    linkedListingId: null,
+                    title: 'BMW M3',
+                })
+                .mockResolvedValueOnce({
+                    linkedListingId: 'retail-winner',
+                });
+            prisma.listing.updateMany.mockResolvedValue({ count: 0 });
+
+            const result = await service.alsoListRetail(
+                'auction-1',
+                'seller-1',
+                { price: 12000, badgeTier: 'BASIC' },
+            );
+
+            expect(result).toEqual({ linkedListingId: 'retail-winner' });
+            expect(prisma.listing.create).not.toHaveBeenCalled();
         });
     });
 
