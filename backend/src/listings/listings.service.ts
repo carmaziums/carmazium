@@ -694,12 +694,9 @@ export class ListingsService {
 
         // Every new listing must pass admin review before it can go live — nothing
         // is ever created directly as ACTIVE. Retail paid tiers start DRAFT and
-        // auctions now also always start DRAFT, even when their Auction row is
-        // created atomically. publishListing() owns the readiness/HPI review gate.
-        // AUCTION creation always starts as DRAFT, even when the Auction row is
-        // created atomically below. Submission/readiness/HPI checks remain owned
-        // by publishListing(); the atomic create only guarantees structural
-        // integrity between Listing and Auction.
+        // auctions also always start DRAFT, even when their Auction row is created
+        // atomically. publishListing() owns the listing-completeness review gate.
+        // HPI is optional and never participates in submission readiness.
         const listingStatus: ListingStatus = listingType === 'AUCTION'
             ? 'DRAFT'
             : createListingDto.status === 'DRAFT'
@@ -1463,32 +1460,12 @@ export class ListingsService {
             throw new ForbiddenException('You do not have permission to publish this listing');
         }
 
-        const [ownHpi, linkedSourceHpi] = await Promise.all([
-            this.prisma.hpiReport.findUnique({
-                where: { listingId: id },
-                select: { id: true },
-            }),
-            listing.type === 'AUCTION' && listing.linkedListingId
-                ? this.prisma.hpiReport.findUnique({
-                    where: { listingId: listing.linkedListingId },
-                    select: { id: true },
-                })
-                : Promise.resolve(null),
-        ]);
-
-        const readiness = getListingSubmissionReadiness(listing, {
-            // A linked auction represents the same vehicle as its active retail
-            // source, so the source HPI request satisfies the auction's HPI gate.
-            hasRequiredHpi: Boolean(ownHpi || linkedSourceHpi),
-        });
+        // HPI is an optional paid add-on for both Retail and Auction listings.
+        // Submission readiness is based on listing completeness only.
+        const readiness = getListingSubmissionReadiness(listing);
         if (readiness.missingFields.length > 0) {
             throw new BadRequestException(
                 `Listing is not ready to submit. Missing: ${readiness.missingFields.join(', ')}.`,
-            );
-        }
-        if (readiness.missingHpi) {
-            throw new BadRequestException(
-                'A CarMazium vehicle history (HPI) report must be requested before this listing can be submitted.',
             );
         }
 
@@ -1955,22 +1932,13 @@ export class ListingsService {
             if (source.linkedListingId) {
                 throw new BadRequestException('This listing already has a linked auction listing');
             }
-            // This request creates a brand-new auction clone now, so it must
-            // satisfy today's full submission standard even if the ACTIVE retail
-            // source predates the rollout. Its HPI can be reused because both
-            // listings represent the same linked vehicle.
-            const linkedReadiness = getListingSubmissionReadiness(source, {
-                hasRequiredHpi: Boolean(source.hpiReport),
-                forceHpi: true,
-            });
+            // A linked auction still has to satisfy the normal listing
+            // completeness rules, but HPI remains optional just as it is for the
+            // source Retail listing.
+            const linkedReadiness = getListingSubmissionReadiness(source);
             if (linkedReadiness.missingFields.length > 0) {
                 throw new BadRequestException(
                     `The retail listing is not complete enough to create an auction. Missing: ${linkedReadiness.missingFields.join(', ')}.`,
-                );
-            }
-            if (linkedReadiness.missingHpi) {
-                throw new BadRequestException(
-                    'A CarMazium vehicle history (HPI) report must be requested for the retail listing before creating its linked auction.',
                 );
             }
 

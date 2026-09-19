@@ -223,9 +223,9 @@ function InfoTooltip({ text }: { text: string }) {
     )
 }
 
-// ─── HPI Bait Section ─────────────────────────────────────────────────────────
+// ─── Optional HPI Section ─────────────────────────────────────────────────────
 
-function HpiBaitSection({ isUnlocked, required, onUnlock }: { isUnlocked: boolean, required: boolean, onUnlock: () => void }) {
+function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnlock: () => void }) {
     if (isUnlocked) {
         // Payment succeeded, but the report itself is prepared by our team
         // after review — nothing has actually been checked yet at this point,
@@ -269,18 +269,16 @@ function HpiBaitSection({ isUnlocked, required, onUnlock }: { isUnlocked: boolea
                     </div>
                     
                     <p className="text-[var(--text-secondary)] mb-6 leading-relaxed">
-                        {required
-                            ? 'A CarMazium vehicle history report is required before this listing can be submitted.'
-                            : 'Add a CarMazium vehicle history report to strengthen buyer confidence in this listing.'}
+                        Add a CarMazium vehicle history report if you want extra reassurance for buyers. It is optional and does not block publishing.
                     </p>
                     
                     <div className="flex flex-col items-center md:items-start gap-3 mt-auto">
                         <Button type="button" onClick={onUnlock} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-8 py-6 text-base shadow-neon shrink-0 w-full sm:w-auto border-0">
-                            {required ? 'Request Required HPI Report' : 'Request HPI Report'}
+                            Request HPI Report (Optional)
                         </Button>
                         <p className="text-xs text-[var(--text-muted)] italic flex items-center gap-1.5">
                             <BadgeCheck size={14} className="text-emerald-400" />
-                            {required ? 'Required for new CarMazium listings' : 'Optional for this legacy draft'}
+                            Optional for both Auction and Retail listings
                         </p>
                     </div>
                 </div>
@@ -323,7 +321,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // HPI Payment State
     const [showHpiModal, setShowHpiModal] = React.useState(false)
     const [isHpiUnlocked, setIsHpiUnlocked] = React.useState(false)
-    const [hpiRequired, setHpiRequired] = React.useState(true)
     const [existingAuctionStatus, setExistingAuctionStatus] = React.useState<string | null>(null)
     const [isVerifyingHpiPayment, setIsVerifyingHpiPayment] = React.useState(false)
     const [hpiVerifyError, setHpiVerifyError] = React.useState<string | null>(null)
@@ -426,9 +423,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     deliveryMaxMiles: l.deliveryMaxMiles ? String(l.deliveryMaxMiles) : '',
                 }))
                 // Jump straight to step 1 (already pre-filled)
-                const rollout = new Date('2026-09-19T00:00:00.000Z').getTime()
-                const createdAt = l.createdAt ? new Date(l.createdAt).getTime() : rollout
-                setHpiRequired(createdAt >= rollout)
                 setIsHpiUnlocked(!!l.hpiReport)
                 setDvlaSuccess(true)
                 setExistingAuctionStatus(l.auction?.status ?? null)
@@ -800,7 +794,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 }
                 return baseValid && declarationsValid
             }
-            case 2: return formData.images.length >= 10 && (!hpiRequired || isHpiUnlocked)
+            case 2: return formData.images.length >= 10
             case 3: {
                 const pMin = parseFloat(formData.priceMin)
                 const pAsk = parseFloat(formData.priceAsking)
@@ -2795,10 +2789,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </div>
                             )}
 
-                            {/* HPI Bait Section (shown after VRM lookup) */}
+                            {/* Optional HPI add-on (shown after VRM lookup) */}
                             {dvlaSuccess && (
                                 <HpiBaitSection
-                                    isUnlocked={isHpiUnlocked} required={hpiRequired}
+                                    isUnlocked={isHpiUnlocked}
                                     onUnlock={() => setShowHpiModal(true)}
                                 />
                             )}

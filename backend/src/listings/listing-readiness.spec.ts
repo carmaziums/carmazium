@@ -51,20 +51,28 @@ describe('listing readiness', () => {
             .toContain(expected);
     });
 
-    it('requires HPI for new listings but grandfathers pre-rollout drafts', () => {
-        expect(listingRequiresHpi(new Date(HPI_REQUIRED_FROM.getTime() + 1))).toBe(true);
+    it('never requires HPI for retail or auction listing readiness', () => {
+        expect(listingRequiresHpi(new Date(HPI_REQUIRED_FROM.getTime() + 1))).toBe(false);
         expect(listingRequiresHpi(new Date(HPI_REQUIRED_FROM.getTime() - 1))).toBe(false);
+        expect(listingRequiresHpi(undefined)).toBe(false);
     });
 
-    it('can force HPI for a newly-created derivative of an old listing', () => {
-        const oldDate = new Date(HPI_REQUIRED_FROM.getTime() - 24 * 60 * 60 * 1000);
-        expect(listingRequiresHpi(oldDate, true)).toBe(true);
-    });
-
-    it('returns ready only when completeness and HPI both pass', () => {
+    it('does not allow legacy forceHpi options to make HPI mandatory', () => {
+        expect(listingRequiresHpi(new Date(), true)).toBe(false);
         expect(getListingSubmissionReadiness(
             readyListing(),
-            { hasRequiredHpi: true },
+            { hasRequiredHpi: false, forceHpi: true },
+        )).toEqual({
+            ready: true,
+            missingFields: [],
+            missingHpi: false,
+        });
+    });
+
+    it('bases readiness only on listing completeness, not HPI purchase state', () => {
+        expect(getListingSubmissionReadiness(
+            readyListing(),
+            { hasRequiredHpi: false },
         )).toEqual({
             ready: true,
             missingFields: [],
@@ -72,12 +80,12 @@ describe('listing readiness', () => {
         });
 
         expect(getListingSubmissionReadiness(
-            readyListing(),
-            { hasRequiredHpi: false },
+            readyListing({ images: [] }),
+            { hasRequiredHpi: true },
         )).toEqual({
             ready: false,
-            missingFields: [],
-            missingHpi: true,
+            missingFields: ['at least 10 photos'],
+            missingHpi: false,
         });
     });
 });
