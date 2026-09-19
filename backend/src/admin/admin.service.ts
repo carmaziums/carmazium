@@ -500,7 +500,19 @@ export class AdminService {
     async approveListing(id: string) {
         const listing = await this.prisma.listing.findUnique({
             where: { id },
-            include: { auction: true },
+            include: {
+                auction: true,
+                linkedListing: {
+                    select: {
+                        id: true,
+                        sellerId: true,
+                        type: true,
+                        status: true,
+                        linkedListingId: true,
+                        deletedAt: true,
+                    },
+                },
+            },
         });
         if (!listing) {
             throw new NotFoundException('Listing not found');
@@ -522,6 +534,27 @@ export class AdminService {
                 throw new BadRequestException(
                     `Auction must be scheduled before approval. Current auction status: ${listing.auction.status}.`,
                 );
+            }
+
+            // Linked auctions must still have a valid, reciprocal ACTIVE retail
+            // source when the admin approves them. The source can change while
+            // this clone waits in review (sold/withdrawn/deleted/unlinked), and
+            // approving after that would put the same vehicle into an invalid
+            // auction state.
+            if (listing.linkedListingId) {
+                const source = listing.linkedListing;
+                if (
+                    !source
+                    || source.deletedAt
+                    || source.type !== 'CLASSIFIED'
+                    || source.status !== 'ACTIVE'
+                    || source.sellerId !== listing.sellerId
+                    || source.linkedListingId !== listing.id
+                ) {
+                    throw new BadRequestException(
+                        'The linked retail listing is no longer active and correctly paired with this auction. Resolve the retail listing before approval.',
+                    );
+                }
             }
 
             // Review time must not shorten a seller's 24-hour auction. If the
