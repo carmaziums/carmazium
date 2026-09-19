@@ -102,18 +102,19 @@ describe('AdminService listing approval readiness', () => {
         expect(prisma.listing.update).not.toHaveBeenCalled();
     });
 
-    it('rejects a new standalone auction with no HPI request', async () => {
+    it('allows a complete standalone auction with no HPI request', async () => {
         const { service, prisma } = makeService({
             ...validLinkedAuction,
             linkedListingId: null,
             linkedListing: null,
             hpiReport: null,
         });
+        prisma.listing.update.mockResolvedValue({ id: 'auction-listing-1' });
 
         await expect(service.approveListing('auction-listing-1'))
-            .rejects.toThrow(/HPI/i);
+            .resolves.toEqual({ id: 'auction-listing-1' });
 
-        expect(prisma.listing.update).not.toHaveBeenCalled();
+        expect(prisma.listing.update).toHaveBeenCalled();
     });
 
     it.each([

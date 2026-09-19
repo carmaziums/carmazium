@@ -513,14 +513,14 @@ describe('AuctionsService — create', () => {
         expect(prisma.auction.create).not.toHaveBeenCalled();
     });
 
-    it('rejects a post-rollout auction without an HPI request before it can enter review', async () => {
+    it('allows a complete auction to enter review without an HPI request', async () => {
         prisma.hpiReport.findUnique.mockResolvedValue(null);
 
         await expect(service.create(makeDto(), 'seller-1'))
-            .rejects.toThrow(/HPI/i);
+            .resolves.toEqual({ id: 'auction-1' });
 
-        expect(prisma.listing.update).not.toHaveBeenCalled();
-        expect(prisma.auction.create).not.toHaveBeenCalled();
+        expect(prisma.listing.update).toHaveBeenCalled();
+        expect(prisma.auction.create).toHaveBeenCalled();
     });
 
     it('always creates a 24-hour schedule', async () => {

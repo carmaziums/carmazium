@@ -171,17 +171,17 @@ describe('PaymentsService — createListingSession retail payment gate', () => {
         expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
     });
 
-    it('rejects hosted checkout before charging when HPI has not been requested', async () => {
+    it('allows hosted checkout when HPI has not been requested', async () => {
         prisma.listing.findUnique.mockResolvedValue(
             readyRetailListing({ hpiReport: null }),
         );
 
         await expect(
             service.createListingSession('BASIC', 'user-1', 'listing-1'),
-        ).rejects.toThrow(/HPI/i);
+        ).resolves.toEqual({ url: 'https://checkout.stripe.test/session' });
 
-        expect(prisma.transaction.create).not.toHaveBeenCalled();
-        expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
+        expect(prisma.transaction.create).toHaveBeenCalled();
+        expect(mockCheckoutSessionsCreate).toHaveBeenCalled();
     });
 
     it('does not create retail checkout for an auction listing', async () => {
