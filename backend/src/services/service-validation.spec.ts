@@ -11,6 +11,7 @@ describe('TradeXchange service validation', () => {
         expect(normaliseUkPostcode(' b19 1es ')).toBe('B19 1ES');
         expect(requireUkPostcode('sw1a 1aa', 'Postcode')).toBe('SW1A 1AA');
         expect(postcodeArea('SW1A 1AA')).toBe('SW');
+        expect(postcodeArea('GIR 0AA')).toBe('GIR');
     });
 
     it('rejects malformed UK postcodes instead of accepting arbitrary short strings', () => {
