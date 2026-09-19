@@ -22,6 +22,68 @@ export interface ServiceCaseEntry {
   submittedByLastName?: string | null;
   submittedByEmail?: string | null;
   submittedByRole?: string | null;
+  evidenceType?: CapabilityEvidenceType | null;
+  evidenceStatus?: CapabilityEvidenceStatus | null;
+  evidenceIssuer?: string | null;
+  evidenceReference?: string | null;
+  evidenceValidFrom?: string | null;
+  evidenceExpiresAt?: string | null;
+  evidenceReviewedAt?: string | null;
+  evidenceReviewedById?: string | null;
+  evidenceReviewedByFirstName?: string | null;
+  evidenceReviewedByLastName?: string | null;
+  evidenceReviewNote?: string | null;
+}
+
+export type CapabilityEvidenceType =
+  | 'BUSINESS_IDENTITY'
+  | 'DELIVERY_BUSINESS_INSURANCE'
+  | 'DELIVERY_GOODS_IN_TRANSIT'
+  | 'INSPECTION_BUSINESS_INSURANCE'
+  | 'INSPECTION_QUALIFICATION'
+  | 'FINANCE_REGULATORY_AUTHORITY'
+  | 'WARRANTY_REGULATORY_AUTHORITY'
+  | 'WARRANTY_PRODUCT_AUTHORITY';
+
+export type CapabilityEvidenceStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUPERSEDED';
+
+export interface CapabilityVerificationRequirement {
+  type: CapabilityEvidenceType;
+  title: string;
+  description: string;
+  expiryRequired: boolean;
+  state: 'SATISFIED' | 'PENDING' | 'REJECTED' | 'MISSING';
+  currentEvidenceId: string | null;
+  approvedEvidenceId: string | null;
+  evidenceExpiresAt: string | null;
+}
+
+export interface CapabilityVerificationSummary {
+  capabilityId: string;
+  serviceType: 'DELIVERY' | 'INSPECTION' | 'FINANCE' | 'WARRANTY';
+  capabilityStatus: string;
+  verificationStatus: string;
+  verificationCompletedAt: string | null;
+  verificationExpiresAt: string | null;
+  ready: boolean;
+  recommendedExpiresAt: string | null;
+  requirements: CapabilityVerificationRequirement[];
+}
+
+export interface CapabilityVerificationDetail {
+  capabilityId: string;
+  serviceType: CapabilityVerificationSummary['serviceType'];
+  verification: CapabilityVerificationSummary;
+  attachments: ServiceCaseEntry[];
+}
+
+export interface CapabilityEvidenceUploadInput {
+  evidenceType: CapabilityEvidenceType;
+  label?: string;
+  issuer?: string;
+  reference?: string;
+  validFrom?: string;
+  expiresAt?: string;
 }
 
 export interface ServiceCaseEntryInput {
@@ -32,6 +94,7 @@ export interface ServiceCaseEntryInput {
 
 export interface AdminCapabilityDetail extends ContractorCapability {
   attachments: ServiceCaseEntry[];
+  verification: CapabilityVerificationSummary;
 }
 
 export interface AdminJobDetail extends ServiceJob {
@@ -77,14 +140,24 @@ export async function getCapabilityAttachments(id: string): Promise<ServiceCaseE
   return r.data;
 }
 
+export async function getCapabilityVerification(id: string): Promise<CapabilityVerificationDetail> {
+  const r = await apiClient<{ data: CapabilityVerificationDetail }>(`/services/operations/capabilities/${id}/verification`);
+  return r.data;
+}
+
 export async function uploadCapabilityAttachment(
   id: string,
   file: File,
-  label?: string,
+  input: CapabilityEvidenceUploadInput,
 ): Promise<ServiceCaseEntry> {
   const body = new FormData();
   body.append('file', file);
-  if (label?.trim()) body.append('label', label.trim());
+  body.append('evidenceType', input.evidenceType);
+  if (input.label?.trim()) body.append('label', input.label.trim());
+  if (input.issuer?.trim()) body.append('issuer', input.issuer.trim());
+  if (input.reference?.trim()) body.append('reference', input.reference.trim());
+  if (input.validFrom) body.append('validFrom', input.validFrom);
+  if (input.expiresAt) body.append('expiresAt', input.expiresAt);
 
   const r = await apiClient<{ data: ServiceCaseEntry }>(`/services/operations/capabilities/${id}/attachments`, {
     method: 'POST',
@@ -101,6 +174,18 @@ export async function deleteCapabilityAttachment(id: string, entryId: string): P
 
 export async function adminGetCapabilityDetail(id: string): Promise<AdminCapabilityDetail> {
   const r = await apiClient<{ data: AdminCapabilityDetail }>(`/admin/services/operations/capabilities/${id}`);
+  return r.data;
+}
+
+export async function adminReviewCapabilityEvidence(
+  capabilityId: string,
+  entryId: string,
+  input: { status: 'APPROVED' | 'REJECTED'; reviewNote?: string; expiresAt?: string },
+): Promise<{ evidence: ServiceCaseEntry | null; verification: CapabilityVerificationSummary }> {
+  const r = await apiClient<{ data: { evidence: ServiceCaseEntry | null; verification: CapabilityVerificationSummary } }>(
+    `/admin/services/operations/capabilities/${capabilityId}/evidence/${entryId}`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  );
   return r.data;
 }
 
