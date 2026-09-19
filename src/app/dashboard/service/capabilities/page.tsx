@@ -68,7 +68,7 @@ export default function CapabilitiesPage() {
     const apply = async (type: ServiceType) => {
         setBusy(type); setError(null)
         try {
-            if (isPartner && (type === "DELIVERY" || type === "INSPECTION")) {
+            if (isPartner) {
                 if (!profile?.dealerProfile) {
                     throw new Error("Set up your Partner business details first from the Partner Dashboard.")
                 }
@@ -103,7 +103,7 @@ export default function CapabilitiesPage() {
 
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}`.trim() : user?.email || "Partner"
     const byType = new Map((data?.capabilities ?? []).map(c => [c.serviceType, c]))
-    const visibleServices = isPartner ? APPLICABLE.filter(s => s.type === "DELIVERY" || s.type === "INSPECTION") : APPLICABLE
+    const visibleServices = APPLICABLE
 
     return (
         <div className="min-h-screen pt-20 pb-12">
@@ -122,7 +122,7 @@ export default function CapabilitiesPage() {
                     {!authLoading && user && !isProvider && (
                         <section className="rounded-2xl border border-primary/30 bg-primary/5 p-6">
                             <h2 className="font-heading font-bold text-lg mb-1">Create a Partner Account</h2>
-                            <p className="text-sm text-[var(--text-muted)] mb-5">Businesses use one Partner Account, then add Vehicle Dealer, Delivery, Recovery or Inspection services from that dashboard.</p>
+                            <p className="text-sm text-[var(--text-muted)] mb-5">Businesses use one Partner Account, then add Vehicle Dealer, Delivery, Recovery, Inspection, Finance or Warranty services from that dashboard.</p>
                             <Button onClick={becomePartner} disabled={switching}>{switching ? <Loader2 className="animate-spin" size={16} /> : <>Create Partner Account <ArrowRight size={16} className="ml-2" /></>}</Button>
                         </section>
                     )}
