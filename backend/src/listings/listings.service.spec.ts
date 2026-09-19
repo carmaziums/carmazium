@@ -138,7 +138,7 @@ describe('ListingsService', () => {
             expect(prisma.auction.create).not.toHaveBeenCalled();
         });
 
-        it('keeps an intentional pre-HPI AUCTION draft as DRAFT when no schedule is supplied', async () => {
+        it('keeps an intentional AUCTION draft as DRAFT when no schedule is supplied', async () => {
             prisma.listing.findMany.mockResolvedValue([]);
             prisma.listing.create.mockResolvedValue({
                 id: 'listing-draft',
@@ -482,7 +482,7 @@ describe('ListingsService', () => {
             expect(prisma.transaction.findMany).not.toHaveBeenCalled();
         });
 
-        it('rejects a new listing when no HPI request exists', async () => {
+        it('allows a complete retail listing to continue without an HPI request', async () => {
             prisma.hpiReport.findUnique.mockResolvedValue(null);
             prisma.listing.findUnique.mockResolvedValue({
                 id: 'listing-no-hpi',
@@ -494,12 +494,13 @@ describe('ListingsService', () => {
                 createdAt: new Date('2026-09-19T01:00:00.000Z'),
                 deletedAt: null,
             });
+            prisma.user.findUnique.mockResolvedValue({ role: 'USER' });
+            prisma.transaction.findMany.mockResolvedValue([]);
 
-            await expect(
-                service.publishListing('listing-no-hpi', 'seller-1'),
-            ).rejects.toThrow(/HPI/i);
+            const result = await service.publishListing('listing-no-hpi', 'seller-1');
 
-            expect(prisma.transaction.findMany).not.toHaveBeenCalled();
+            expect(result).toEqual({ activated: false, requiresPayment: true });
+            expect(prisma.hpiReport.findUnique).not.toHaveBeenCalled();
         });
 
         it('heals a legacy FREE retail draft to BASIC and still requires payment', async () => {
@@ -751,6 +752,24 @@ describe('ListingsService', () => {
                     ...data.auction.create,
                 },
             }));
+        });
+
+        it('allows a linked auction to be created when the retail source has no HPI report', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                ...baseSource,
+                hpiReport: null,
+            });
+
+            const result = await service.alsoAuction('listing-1', 'seller-1', {
+                startTime: new Date(Date.now() + 60_000).toISOString(),
+                reservePrice: 9000,
+                startingBid: 9500,
+                minIncrement: 100,
+                buyItNowPrice: 12000,
+            });
+
+            expect(result).toBeDefined();
+            expect(prisma.listing.create).toHaveBeenCalled();
         });
 
         it('atomically claims the active retail source before creating the linked auction', async () => {
