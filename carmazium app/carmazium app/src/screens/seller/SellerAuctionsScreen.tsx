@@ -694,12 +694,17 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           knownAuctions.filter(a => a.status === 'ENDED').map(a => a.listingId),
         );
 
-        const eligible = items.filter(l =>
-          l.type === 'CLASSIFIED' &&
-          (l.status === 'ACTIVE' || (l.status === 'DRAFT' && revertedListingIds.has(l.id))) &&
-          !busyListingIds.has(l.id) &&
-          !l.linkedListingId
-        );
+        const eligible = items.filter(l => {
+          if (busyListingIds.has(l.id)) return false;
+          const isFreshRetailSource =
+            l.type === 'CLASSIFIED' &&
+            l.status === 'ACTIVE' &&
+            !l.linkedListingId;
+          const isEndedAuctionDraft =
+            l.status === 'DRAFT' &&
+            revertedListingIds.has(l.id);
+          return isFreshRetailSource || isEndedAuctionDraft;
+        });
         setEligibleListings(eligible);
         if (presetListingId) {
           const match = eligible.find(l => l.id === presetListingId);
@@ -795,22 +800,40 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     setCreateSubmitting(true);
     setCreateError(null);
     try {
-      await apiClient('/auctions', {
-        method: 'POST',
-        body: JSON.stringify({
-          listingId: selectedListing.id,
-          startTime: startDate.toISOString(),
-          reservePrice: reserve,
-          startingBid: starting,
-          minIncrement: increment,
-          ...(bin != null && !isNaN(bin) && bin > 0 && { buyItNowPrice: bin }),
-        }),
-      });
+      const auctionPayload = {
+        startTime: startDate.toISOString(),
+        reservePrice: reserve,
+        startingBid: starting,
+        minIncrement: increment,
+        ...(bin != null && !isNaN(bin) && bin > 0 && { buyItNowPrice: bin }),
+      };
+
+      if (selectedListing.status === 'ACTIVE' && selectedListing.type === 'CLASSIFIED') {
+        // Preserve the live retail listing and create the auction as its linked
+        // review-gated counterpart.
+        await apiClient(`/listings/${selectedListing.id}/also-auction`, {
+          method: 'POST',
+          body: JSON.stringify(auctionPayload),
+        });
+      } else {
+        // Reserve-not-met auctions return to DRAFT/CLASSIFIED and are rescheduled
+        // on their existing Listing/Auction pair by POST /auctions.
+        await apiClient('/auctions', {
+          method: 'POST',
+          body: JSON.stringify({
+            listingId: selectedListing.id,
+            ...auctionPayload,
+          }),
+        });
+      }
       haptics.success();
       setCreateModalVisible(false);
       resetCreateModal();
       await fetchAuctions(true);
-      Alert.alert('Auction Scheduled!', 'Your auction has been created and will start at the scheduled time.');
+      Alert.alert(
+        'Auction Submitted for Review',
+        'Your auction has been scheduled and sent for review. Once approved, it will run for a full 24 hours.',
+      );
     } catch (err: any) {
       setCreateError(err?.message ?? 'Could not create auction. Please try again.');
     } finally {

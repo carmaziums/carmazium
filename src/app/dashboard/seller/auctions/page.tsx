@@ -24,7 +24,7 @@ import {
 } from "@/lib/auctionApi"
 import { apiClient } from "@/lib/apiClient"
 import { uploadImage } from "@/lib/supabase"
-import { getStripeConnectStatus, alsoListRetail, createListingCheckout, type StripeConnectStatus, type Listing } from "@/lib/listingApi"
+import { getStripeConnectStatus, alsoAuction, alsoListRetail, createListingCheckout, type StripeConnectStatus, type Listing } from "@/lib/listingApi"
 import { getAuctionOpeningBid, getAuctionReserveGuide } from "@/lib/auctionPricing"
 
 const STATUS_STYLES: Record<string, string> = {
@@ -225,11 +225,17 @@ function SellerAuctionsPage() {
                     .map(a => a.listingId)
             )
             setEligibleListings(
-                listed.filter(l =>
-                    (l.status === "ACTIVE" || (l.status === "DRAFT" && endedAuctionListingIds.has(l.id))) &&
-                    !auctionListingIds.has(l.id) &&
-                    !(l as any).linkedListingId
-                )
+                listed.filter(l => {
+                    if (auctionListingIds.has(l.id)) return false
+                    const isFreshRetailSource =
+                        l.type === "CLASSIFIED" &&
+                        l.status === "ACTIVE" &&
+                        !(l as any).linkedListingId
+                    const isEndedAuctionDraft =
+                        l.status === "DRAFT" &&
+                        endedAuctionListingIds.has(l.id)
+                    return isFreshRetailSource || isEndedAuctionDraft
+                })
             )
         } catch {
             setFormError("Failed to load your listings.")
@@ -263,9 +269,23 @@ function SellerAuctionsPage() {
                 minIncrement: Number(formMinIncrement) || 100,
                 ...(formBinPrice ? { buyItNowPrice: Number(formBinPrice) } : {}),
             }
-            await createAuction(dto)
-            const endDisplay = addHours(resolvedStartTime, 24)
-            setSuccessMsg(formStartImmediately ? `Auction is now live! It will run until ${endDisplay}.` : `Auction scheduled! It will run until ${endDisplay}.`)
+            if (selectedAuctionListing?.status === 'ACTIVE' && selectedAuctionListing.type === 'CLASSIFIED') {
+                // Keep the live retail listing intact and create a linked auction
+                // clone through the dedicated atomic dual-channel flow.
+                await alsoAuction(selectedAuctionListing.id, {
+                    startTime: dto.startTime,
+                    reservePrice: dto.reservePrice,
+                    startingBid: dto.startingBid,
+                    minIncrement: dto.minIncrement,
+                    buyItNowPrice: dto.buyItNowPrice,
+                })
+            } else {
+                // Reserve-not-met auctions return to a DRAFT CLASSIFIED shell.
+                // POST /auctions recognises that proven ended-auction state and
+                // atomically switches the same row back to AUCTION.
+                await createAuction(dto)
+            }
+            setSuccessMsg('Auction submitted for review. Once approved, it will run for a full 24 hours.')
             setShowForm(false)
             setFormListingId(""); setFormStartTime(""); setFormStartImmediately(false); setFormReservePrice("")
             setFormStartingBid(""); setFormMinIncrement("100"); setFormBinPrice("")

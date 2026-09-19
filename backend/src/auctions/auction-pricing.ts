@@ -1,6 +1,8 @@
 export const AUCTION_OPENING_BID_RATIO = 0.70;
 export const AUCTION_RESERVE_GUIDE_LOW_RATIO = 0.85;
 export const AUCTION_RESERVE_GUIDE_HIGH_RATIO = 0.92;
+export const AUCTION_DURATION_HOURS = 24;
+export const AUCTION_DURATION_MS = AUCTION_DURATION_HOURS * 60 * 60 * 1000;
 
 export function calculatePlatformOpeningBid(marketValue: number): number {
     if (!Number.isFinite(marketValue) || marketValue <= 0) {

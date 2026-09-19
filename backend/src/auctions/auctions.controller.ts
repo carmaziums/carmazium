@@ -121,8 +121,8 @@ export class AuctionsController {
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
     @HttpCode(HttpStatus.CREATED)
-    @ApiOperation({ summary: 'Create a new auction for a listing you own' })
-    @ApiResponse({ status: 201, description: 'Auction created. endTime = startTime + 5 hours.' })
+    @ApiOperation({ summary: 'Schedule or re-schedule an owned auction and submit it for review' })
+    @ApiResponse({ status: 201, description: 'Auction scheduled for review. endTime is always startTime + 24 hours.' })
     @ApiResponse({ status: 400, description: 'Validation error or auction already exists' })
     @ApiResponse({ status: 403, description: 'You do not own this listing' })
     async create(@Body() createAuctionDto: CreateAuctionDto, @CurrentUser() user: any) {

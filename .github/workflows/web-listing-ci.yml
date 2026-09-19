@@ -1,0 +1,58 @@
+name: Web Listing CI
+
+on:
+  pull_request:
+    paths:
+      - "src/components/listing/**"
+      - "src/app/dashboard/seller/auctions/**"
+      - "src/lib/listingApi.ts"
+      - "src/lib/auctionApi.ts"
+      - "src/lib/auctionPricing.ts"
+      - ".github/workflows/web-listing-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck web listing surfaces
+        shell: bash
+        run: |
+          set +e
+          OUTPUT="$(npx tsc --noEmit --pretty false 2>&1)"
+          STATUS=$?
+          set -e
+
+          printf '%s\n' "$OUTPUT"
+
+          if [ "$STATUS" -eq 0 ]; then
+            exit 0
+          fi
+
+          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(components/listing/|app/dashboard/seller/auctions/|lib/(listingApi|auctionApi|auctionPricing)\.ts)' || true)"
+
+          if [ -n "$LISTING_ERRORS" ]; then
+            echo
+            echo "TypeScript errors were found in web listing/auction surfaces:"
+            printf '%s\n' "$LISTING_ERRORS"
+            exit 1
+          fi
+
+          echo
+          echo "The full web TypeScript project has pre-existing errors outside the listing scope."
+          echo "No TypeScript errors were reported in web listing/auction files covered by this workflow."
