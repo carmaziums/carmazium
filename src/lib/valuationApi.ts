@@ -271,9 +271,25 @@ export async function getVehicleValuation(
     request: VehicleValuationRequest,
 ): Promise<VehicleValuation> {
     try {
-        const response = await apiClient<{ data: VehicleValuation }>('/listings/valuation', {
-            method: 'POST',
-            body: JSON.stringify(request),
+        const params = new URLSearchParams({
+            make: request.make,
+            model: request.model,
+            year: String(request.year),
+            mileage: String(request.mileage),
+        })
+        if (request.variant) params.set('variant', request.variant)
+        if (request.fuelType) params.set('fuelType', request.fuelType)
+        if (request.transmission) params.set('transmission', request.transmission)
+        if (request.condition) params.set('condition', request.condition)
+        if (request.serviceHistory) params.set('serviceHistory', request.serviceHistory)
+        if (request.owners) params.set('owners', request.owners)
+        if (request.writeOffCategory) params.set('writeOffCategory', request.writeOffCategory)
+        if (request.isImported !== undefined) params.set('isImported', String(request.isImported))
+        if (request.excludeListingId) params.set('excludeListingId', request.excludeListingId)
+
+        const response = await apiClient<{ data: VehicleValuation }>(`/listings/valuation?${params.toString()}`, {
+            method: 'GET',
+            cache: 'no-store',
         })
         return response.data
     } catch {
