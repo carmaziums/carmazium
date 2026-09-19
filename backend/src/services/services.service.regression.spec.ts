@@ -116,6 +116,12 @@ describe('ServicesService TradeXchange hardening regressions', () => {
             },
             contractorCapability: {
                 findUnique: jest.fn(),
+                findFirst: jest.fn(),
+                findMany: jest.fn().mockResolvedValue([]),
+                update: jest.fn(),
+            },
+            listing: {
+                findMany: jest.fn().mockResolvedValue([]),
             },
             contractorProfile: {
                 findUnique: jest.fn(),
@@ -124,6 +130,7 @@ describe('ServicesService TradeXchange hardening regressions', () => {
                 findMany: jest.fn().mockResolvedValue([]),
             },
             $transaction: jest.fn(async (work: any) => typeof work === 'function' ? work(prisma) : Promise.all(work)),
+            $executeRaw: jest.fn().mockResolvedValue(1),
         };
 
         notifications = {
@@ -293,6 +300,168 @@ describe('ServicesService TradeXchange hardening regressions', () => {
             } as any)).rejects.toBeInstanceOf(BadRequestException);
 
             expect(prisma.serviceJob.create).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('Block 8 provider matching and linked-listing controls', () => {
+        it('filters the open provider feed to configured service/postcode coverage and paginates', async () => {
+            prisma.contractorCapability.findMany.mockResolvedValue([{
+                serviceType: ServiceType.DELIVERY,
+                jobNationwide: false,
+                jobPostcodeAreas: ['B'],
+            }]);
+            prisma.serviceJob.findMany.mockResolvedValue([
+                {
+                    ...openDeliveryJob(),
+                    id: 'job-2',
+                    workPostcodeArea: 'B',
+                    createdAt: new Date('2026-09-19T12:00:00Z'),
+                    isRecovery: false,
+                    quotes: [],
+                    _count: { quotes: 0 },
+                },
+                {
+                    ...openDeliveryJob(),
+                    id: 'job-1',
+                    workPostcodeArea: 'B',
+                    createdAt: new Date('2026-09-19T11:00:00Z'),
+                    isRecovery: false,
+                    quotes: [],
+                    _count: { quotes: 0 },
+                },
+            ]);
+
+            const page = await service.feedPage(
+                'contractor-1',
+                [ServiceType.DELIVERY],
+                ServiceType.DELIVERY,
+                { limit: 1 },
+            );
+
+            expect(prisma.serviceJob.findMany).toHaveBeenCalledWith(expect.objectContaining({
+                where: expect.objectContaining({
+                    status: ServiceJobStatus.OPEN,
+                    AND: expect.arrayContaining([
+                        expect.objectContaining({
+                            OR: [expect.objectContaining({
+                                serviceType: ServiceType.DELIVERY,
+                                workPostcodeArea: { in: ['B'] },
+                            })],
+                        }),
+                    ]),
+                }),
+                take: 2,
+            }));
+            expect(page.items).toHaveLength(1);
+            expect(page.nextCursor).toEqual(expect.any(String));
+        });
+
+        it('returns no open jobs when the approved capability has no configured paid-job coverage', async () => {
+            prisma.contractorCapability.findMany.mockResolvedValue([{
+                serviceType: ServiceType.DELIVERY,
+                jobNationwide: false,
+                jobPostcodeAreas: [],
+            }]);
+
+            await expect(service.feedPage(
+                'contractor-1',
+                [ServiceType.DELIVERY],
+                undefined,
+                { limit: 20 },
+            )).resolves.toEqual({ items: [], nextCursor: null });
+
+            expect(prisma.serviceJob.findMany).not.toHaveBeenCalled();
+        });
+
+        it('rejects manual Delivery linkage to a listing unrelated to the customer', async () => {
+            prisma.listing.findMany.mockResolvedValue([{
+                id: 'listing-1',
+                sellerId: 'someone-else',
+                status: 'ACTIVE',
+                deletedAt: null,
+                vrm: 'AB12CDE',
+                make: 'BMW',
+                model: '320d',
+                year: 2020,
+                vehicle: null,
+                sale: null,
+                auction: null,
+                offers: [],
+            }]);
+
+            await expect(service.createJob('customer-1', {
+                serviceType: ServiceType.DELIVERY,
+                title: 'Move listed vehicle',
+                pickupPostcode: 'B1 1AA',
+                deliveryPostcode: 'B2 2BB',
+                vehicles: [{ listingId: 'listing-1' }],
+            } as any)).rejects.toBeInstanceOf(ForbiddenException);
+
+            expect(prisma.serviceJob.create).not.toHaveBeenCalled();
+        });
+
+        it('allows an Inspection to reference an active public listing not owned by the requester', async () => {
+            prisma.listing.findMany.mockResolvedValue([{
+                id: 'listing-1',
+                sellerId: 'someone-else',
+                status: 'ACTIVE',
+                deletedAt: null,
+                vrm: 'AB12CDE',
+                make: 'BMW',
+                model: '320d',
+                year: 2020,
+                vehicle: null,
+                sale: null,
+                auction: null,
+                offers: [],
+            }]);
+            prisma.serviceJob.create.mockResolvedValue({
+                id: 'job-inspect',
+                serviceType: ServiceType.INSPECTION,
+                status: ServiceJobStatus.OPEN,
+                workPostcodeArea: 'B',
+                vehicles: [{ listingId: 'listing-1' }],
+            });
+
+            const result = await service.createJob('customer-1', {
+                serviceType: ServiceType.INSPECTION,
+                title: 'Inspect listed vehicle',
+                servicePostcode: 'B1 1AA',
+                vehicles: [{ listingId: 'listing-1' }],
+            } as any);
+
+            expect(result.id).toBe('job-inspect');
+            expect(prisma.serviceJob.create).toHaveBeenCalledWith(expect.objectContaining({
+                data: expect.objectContaining({
+                    workPostcodeArea: 'B',
+                    vehicles: {
+                        create: [expect.objectContaining({ listingId: 'listing-1' })],
+                    },
+                }),
+            }));
+        });
+
+        it('requires paid-job postcode coverage before an admin can approve Delivery', async () => {
+            prisma.contractorCapability.findUnique.mockResolvedValue({
+                id: 'cap-1',
+                serviceType: ServiceType.DELIVERY,
+                status: CapabilityStatus.PENDING,
+                jobNationwide: false,
+                jobPostcodeAreas: [],
+                contractor: {
+                    user: {
+                        id: 'provider-user',
+                        email: 'provider@example.com',
+                        firstName: 'Provider',
+                        stripeConnectAccountId: 'acct_1',
+                        stripeConnectOnboardingComplete: true,
+                    },
+                },
+            });
+
+            await expect(service.adminReviewCapability('admin-1', 'cap-1', {
+                status: CapabilityStatus.APPROVED,
+            } as any)).rejects.toBeInstanceOf(BadRequestException);
         });
     });
 
