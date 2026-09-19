@@ -214,7 +214,15 @@ export async function createJob(input: CreateJobInput): Promise<ServiceJob> {
   const r = await apiClient<{ data: ServiceJob }>('/services/jobs', { method: 'POST', body: JSON.stringify(input) });
   return r.data;
 }
-export async function createJobFromPurchase(input: { offerId?: string; auctionId?: string; deliveryPostcode: string; deliveryAddress?: string; requestedFor?: string }): Promise<ServiceJob> {
+export type PurchaseDeliverySource =
+  | { offerId: string; auctionId?: never }
+  | { auctionId: string; offerId?: never };
+
+export async function createJobFromPurchase(input: PurchaseDeliverySource & {
+  deliveryPostcode: string;
+  deliveryAddress?: string;
+  requestedFor?: string;
+}): Promise<ServiceJob> {
   const r = await apiClient<{ data: ServiceJob }>('/services/jobs/from-purchase', { method: 'POST', body: JSON.stringify(input) });
   return r.data;
 }
