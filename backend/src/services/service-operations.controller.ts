@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -22,13 +23,29 @@ export class ServiceOperationsController {
     }
 
     @Post('capabilities/:id/attachments')
-    @ApiOperation({ summary: 'Attach a business verification document to one of the caller’s service applications' })
+    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+    @ApiOperation({ summary: 'Securely upload a private verification document to one of the caller’s service applications' })
     async addCapabilityAttachment(
         @CurrentUser() user: any,
         @Param('id') id: string,
-        @Body() body: ServiceCaseEntryInput,
+        @UploadedFile() file: any,
+        @Body() body: { label?: string },
     ) {
-        return new StandardResponse(await this.operations.addProviderCapabilityEntry(user.id, id, body));
+        return new StandardResponse(
+            await this.operations.uploadProviderCapabilityDocument(user.id, id, file, body?.label),
+        );
+    }
+
+    @Delete('capabilities/:id/attachments/:entryId')
+    @ApiOperation({ summary: 'Delete one of the caller’s private verification documents' })
+    async deleteCapabilityAttachment(
+        @CurrentUser() user: any,
+        @Param('id') id: string,
+        @Param('entryId') entryId: string,
+    ) {
+        return new StandardResponse(
+            await this.operations.deleteProviderCapabilityDocument(user.id, id, entryId),
+        );
     }
 }
 
@@ -59,13 +76,36 @@ export class AdminServiceOperationsController {
     }
 
     @Post('jobs/:id/case-entry')
-    @ApiOperation({ summary: 'Add an admin note or evidence attachment to a disputed service job' })
+    @ApiOperation({ summary: 'Add an admin note to a disputed service job' })
     async addCaseEntry(
         @CurrentUser() admin: any,
         @Param('id') id: string,
         @Body() body: ServiceCaseEntryInput,
     ) {
         return new StandardResponse(await this.operations.adminAddDisputeEntry(admin.id, id, body));
+    }
+
+    @Post('jobs/:id/case-entry/upload')
+    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+    @ApiOperation({ summary: 'Securely upload private evidence to a disputed service job' })
+    async uploadCaseEntry(
+        @CurrentUser() admin: any,
+        @Param('id') id: string,
+        @UploadedFile() file: any,
+        @Body() body: { label?: string },
+    ) {
+        return new StandardResponse(
+            await this.operations.adminUploadDisputeDocument(admin.id, id, file, body?.label),
+        );
+    }
+
+    @Delete('jobs/:id/case-entry/:entryId')
+    @ApiOperation({ summary: 'Delete a private evidence document from a service dispute case' })
+    async deleteCaseEntry(
+        @Param('id') id: string,
+        @Param('entryId') entryId: string,
+    ) {
+        return new StandardResponse(await this.operations.adminDeleteDisputeDocument(id, entryId));
     }
 
     @Post('jobs/:id/resolve')

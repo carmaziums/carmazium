@@ -27,7 +27,6 @@ export interface ServiceCaseEntry {
 export interface ServiceCaseEntryInput {
   kind?: ServiceCaseEntryKind;
   label?: string;
-  url?: string;
   note?: string;
 }
 
@@ -74,12 +73,26 @@ export async function getCapabilityAttachments(id: string): Promise<ServiceCaseE
   return r.data;
 }
 
-export async function addCapabilityAttachment(id: string, input: ServiceCaseEntryInput): Promise<ServiceCaseEntry> {
+export async function uploadCapabilityAttachment(
+  id: string,
+  file: File,
+  label?: string,
+): Promise<ServiceCaseEntry> {
+  const body = new FormData();
+  body.append('file', file);
+  if (label?.trim()) body.append('label', label.trim());
+
   const r = await apiClient<{ data: ServiceCaseEntry }>(`/services/operations/capabilities/${id}/attachments`, {
     method: 'POST',
-    body: JSON.stringify(input),
+    body,
   });
   return r.data;
+}
+
+export async function deleteCapabilityAttachment(id: string, entryId: string): Promise<void> {
+  await apiClient(`/services/operations/capabilities/${id}/attachments/${entryId}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function adminGetCapabilityDetail(id: string): Promise<AdminCapabilityDetail> {
@@ -103,6 +116,28 @@ export async function adminAddDisputeCaseEntry(id: string, input: ServiceCaseEnt
     body: JSON.stringify(input),
   });
   return r.data;
+}
+
+export async function adminUploadDisputeCaseEntry(
+  id: string,
+  file: File,
+  label?: string,
+): Promise<ServiceCaseEntry> {
+  const body = new FormData();
+  body.append('file', file);
+  if (label?.trim()) body.append('label', label.trim());
+
+  const r = await apiClient<{ data: ServiceCaseEntry }>(`/admin/services/operations/jobs/${id}/case-entry/upload`, {
+    method: 'POST',
+    body,
+  });
+  return r.data;
+}
+
+export async function adminDeleteDisputeCaseEntry(id: string, entryId: string): Promise<void> {
+  await apiClient(`/admin/services/operations/jobs/${id}/case-entry/${entryId}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function adminResolveDisputeWithCase(
