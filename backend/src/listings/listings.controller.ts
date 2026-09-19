@@ -27,6 +27,7 @@ import { ListingsService } from './listings.service';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
+import { VehicleValuationDto } from './dto/vehicle-valuation.dto';
 import { RecordSaleDto } from './dto/record-sale.dto';
 import { ListingFilterDto } from './dto/listing-filter.dto';
 import { StandardResponse, PaginatedResponse } from './dto/response.dto';
@@ -102,6 +103,24 @@ export class ListingsController {
         const recommendation = await this.listingsService.recommendVehicleCoverPhoto(imageUrls);
         return new StandardResponse(recommendation);
     }
+
+    /**
+     * Estimate a vehicle's value from CarMazium's own marketplace evidence.
+     * Public by design: sellers should be able to see useful price guidance
+     * before authentication/payment friction. The response contains aggregates
+     * only — never another user's listing, identity or contact details.
+     */
+    @Post('valuation')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Estimate vehicle value from CarMazium market data' })
+    @ApiResponse({ status: 200, description: 'Estimated retail range and auction guidance' })
+    async valuation(
+        @Body() dto: VehicleValuationDto,
+    ): Promise<StandardResponse<any>> {
+        const valuation = await this.listingsService.estimateVehicleValue(dto);
+        return new StandardResponse(valuation);
+    }
+
 
     /**
      * Create a new listing
