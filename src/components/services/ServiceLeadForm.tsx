@@ -122,7 +122,7 @@ export function ServiceLeadForm({ type }: { type: "FINANCE" | "WARRANTY" }) {
             <label className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4 flex gap-3 items-start cursor-pointer">
                 <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} className="mt-1" />
                 <span className="text-sm leading-relaxed">
-                    I agree that CarMazium may share this enquiry and my contact details with approved {type === "FINANCE" ? "vehicle finance" : "warranty"} providers so they can respond to me.
+                    I agree that CarMazium may share this enquiry and my contact details with up to five matched, approved {type === "FINANCE" ? "vehicle finance" : "warranty"} providers so they can respond to me.
                 </span>
             </label>
 
