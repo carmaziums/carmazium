@@ -960,8 +960,12 @@ export class ServiceLeadsService {
         return updated;
     }
 
-    async adminRematch(leadId: string, matchSource: 'ADMIN_REMATCH' | 'AUTO_REMATCH' = 'ADMIN_REMATCH') {
-        await this.expireOldLeads();
+    async adminRematch(
+        leadId: string,
+        matchSource: 'ADMIN_REMATCH' | 'AUTO_REMATCH' = 'ADMIN_REMATCH',
+        skipExpirySweep = false,
+    ) {
+        if (!skipExpirySweep) await this.expireOldLeads();
 
         const result = await this.prisma.$transaction(async (tx) => {
             const lead = await tx.serviceLead.findUnique({
@@ -1054,8 +1058,8 @@ export class ServiceLeadsService {
         const now = new Date();
         const boundedLimit = Math.min(Math.max(limit, 1), 500);
         const typeFilter = serviceType
-            ? Prisma.sql`l."serviceType" = ${serviceType}::"ServiceType"`
-            : Prisma.sql`l."serviceType" IN ('FINANCE'::"ServiceType", 'WARRANTY'::"ServiceType")`;
+            ? Prisma.sql`l."serviceType" = ${serviceType}::service_type`
+            : Prisma.sql`l."serviceType" IN ('FINANCE'::service_type, 'WARRANTY'::service_type)`;
 
         // Select only enquiries that still have recipient capacity. Without
         // this filter, a large block of older already-full leads could occupy
@@ -1081,7 +1085,7 @@ export class ServiceLeadsService {
         let leadsUpdated = 0;
         for (const lead of leads) {
             try {
-                const result = await this.adminRematch(lead.id, 'AUTO_REMATCH');
+                const result = await this.adminRematch(lead.id, 'AUTO_REMATCH', true);
                 if (result.added > 0) {
                     recipientsAdded += result.added;
                     leadsUpdated += 1;
