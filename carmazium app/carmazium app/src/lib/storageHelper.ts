@@ -113,3 +113,42 @@ export async function uploadToSignedStorage(
 
   if (error) throw error;
 }
+
+
+/**
+ * Delete an owner-scoped vehicle photo by its public Storage URL.
+ * Presentation/category metadata lives in the URL fragment and is stripped
+ * before resolving the underlying object path.
+ */
+export async function deletePublicStorageObject(
+  publicUrl: string,
+  bucket: string = 'listings',
+): Promise<void> {
+  const cleanUrl = publicUrl.split('#')[0];
+  const marker = `/storage/v1/object/public/${bucket}/`;
+  const markerIndex = cleanUrl.indexOf(marker);
+
+  if (markerIndex < 0) {
+    throw new Error('This photo is not a valid CarMazium storage URL.');
+  }
+
+  const objectPath = decodeURIComponent(cleanUrl.slice(markerIndex + marker.length));
+  const [ownerSegment, categorySegment] = objectPath.split('/');
+  const allowedFolders = new Set(['vehicle', 'exterior', 'interior', 'damage']);
+
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError || !authData.user?.id) {
+    throw new Error('Please sign in before deleting vehicle photos.');
+  }
+
+  if (
+    ownerSegment !== authData.user.id
+    || !categorySegment
+    || !allowedFolders.has(categorySegment)
+  ) {
+    throw new Error('Only your own vehicle photos can be deleted from this device.');
+  }
+
+  const { error } = await supabase.storage.from(bucket).remove([objectPath]);
+  if (error) throw error;
+}
