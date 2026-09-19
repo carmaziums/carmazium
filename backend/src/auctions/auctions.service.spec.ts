@@ -753,3 +753,173 @@ describe('AuctionsService — create', () => {
         expect(prisma.listing.update).not.toHaveBeenCalled();
     });
 });
+
+
+describe('AuctionsService — final lifecycle consistency', () => {
+    let service: AuctionsService;
+    let prisma: any;
+    let auctionGateway: any;
+    let notificationsService: any;
+
+    beforeEach(async () => {
+        prisma = {
+            auction: {
+                findUnique: jest.fn(),
+                update: jest.fn().mockResolvedValue({ id: 'auction-1' }),
+            },
+            listing: {
+                update: jest.fn().mockResolvedValue({ id: 'listing-1' }),
+            },
+            bid: {
+                findFirst: jest.fn().mockResolvedValue(null),
+            },
+            sale: {
+                create: jest.fn(),
+            },
+            sellerProfile: {
+                upsert: jest.fn(),
+            },
+            chatRoom: {
+                upsert: jest.fn(),
+            },
+            $transaction: jest.fn(async (arg: any) =>
+                typeof arg === 'function' ? arg(prisma) : Promise.all(arg)
+            ),
+        };
+        auctionGateway = {
+            broadcastAuctionEnd: jest.fn(),
+        };
+        notificationsService = {
+            create: jest.fn().mockResolvedValue({ id: 'notification-1' }),
+        };
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                AuctionsService,
+                { provide: PrismaService, useValue: prisma },
+                { provide: NotificationsService, useValue: notificationsService },
+                { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
+                { provide: AuctionGateway, useValue: auctionGateway },
+                { provide: EmailService, useValue: {} },
+            ],
+        }).compile();
+
+        service = module.get<AuctionsService>(AuctionsService);
+    });
+
+    it('keeps a failed linked auction paired with its active retail counterpart', async () => {
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1',
+            listingId: 'auction-listing-1',
+            status: 'ACTIVE',
+            reservePrice: 15000,
+            listing: {
+                id: 'auction-listing-1',
+                sellerId: 'seller-1',
+                linkedListingId: 'retail-1',
+                year: 2022,
+                make: 'BMW',
+                model: 'M3',
+                bids: [],
+            },
+        });
+
+        await service.closeAuction('auction-1');
+
+        expect(prisma.listing.update).toHaveBeenCalledTimes(1);
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'auction-listing-1' },
+            data: {
+                status: 'DRAFT',
+                type: 'AUCTION',
+            },
+        });
+        expect(auctionGateway.broadcastAuctionEnd).toHaveBeenCalledWith(
+            'auction-1',
+            expect.objectContaining({ reserveMet: false, winnerId: null }),
+        );
+    });
+
+    it('retires a cancelled linked auction clone while returning the retail source to an unlinked state', async () => {
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1',
+            listingId: 'auction-listing-1',
+            status: 'SCHEDULED',
+            listing: {
+                id: 'auction-listing-1',
+                sellerId: 'seller-1',
+                linkedListingId: 'retail-1',
+            },
+        });
+
+        await service.cancel('auction-1', 'seller-1');
+
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'auction-listing-1' },
+            data: expect.objectContaining({
+                status: 'DRAFT',
+                linkedListingId: null,
+                deletedAt: expect.any(Date),
+            }),
+        });
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'retail-1' },
+            data: { linkedListingId: null },
+        });
+    });
+
+    it('rejects moving a scheduled auction start into the past', async () => {
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1',
+            listingId: 'listing-1',
+            status: 'SCHEDULED',
+            startTime: new Date(Date.now() + 60_000),
+            listing: {
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                price: 10000,
+            },
+        });
+
+        await expect(service.update(
+            'auction-1',
+            { startTime: new Date(Date.now() - 5 * 60_000).toISOString() } as any,
+            'seller-1',
+        )).rejects.toThrow(/past/i);
+
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
+    it('keeps edited scheduled auctions at exactly 24 hours and persists Buy It Now', async () => {
+        const futureStart = new Date(Date.now() + 60 * 60_000);
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1',
+            listingId: 'listing-1',
+            status: 'SCHEDULED',
+            startTime: new Date(Date.now() + 30 * 60_000),
+            listing: {
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                price: 10000,
+            },
+        });
+        prisma.auction.update.mockResolvedValue({ id: 'auction-1' });
+
+        await service.update(
+            'auction-1',
+            {
+                startTime: futureStart.toISOString(),
+                reservePrice: 9000,
+                minIncrement: 100,
+                buyItNowPrice: 11000,
+            } as any,
+            'seller-1',
+        );
+
+        const updateData = prisma.auction.update.mock.calls[0][0].data;
+        expect(updateData.endTime.getTime() - updateData.startTime.getTime())
+            .toBe(24 * 60 * 60 * 1000);
+        expect(updateData.buyItNowPrice).toBe(11000);
+        expect(updateData.startingBid).toBe(7000);
+    });
+});
