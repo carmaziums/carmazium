@@ -15,6 +15,7 @@ import {
     BodyType as DtoBodyType,
 } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
+import { VehicleValuationDto } from './dto/vehicle-valuation.dto';
 import { ListingFilterDto } from './dto/listing-filter.dto';
 import { AlsoAuctionDto } from './dto/also-auction.dto';
 // These types come from @prisma/client and are available once `prisma generate` has run.
@@ -43,6 +44,10 @@ import {
 import {
     getListingSubmissionReadiness,
 } from './listing-readiness';
+import {
+    calculateVehicleValuation,
+    VehicleValuationComparable,
+} from './vehicle-valuation';
 
 // ─── Enum mappers ─────────────────────────────────────────────────────────────
 
@@ -111,6 +116,186 @@ export class ListingsService {
         private readonly notificationsService: NotificationsService,
         private readonly notificationsGateway: NotificationsGateway,
     ) { }
+
+    /**
+     * CarMazium's first-party vehicle valuation.
+     *
+     * This intentionally does NOT read market_price_data. That table contains
+     * legacy mock-scraper rows with example source URLs from an earlier
+     * experiment and must not be presented to customers as real market data.
+     *
+     * Instead we use CarMazium's own completed sales, accepted offers, auction
+     * outcomes and live classified asking prices. When the marketplace has too
+     * little evidence for a particular make/model, the pure valuation engine
+     * returns an explicitly LOW-confidence age/mileage profile estimate.
+     */
+    async estimateVehicleValue(dto: VehicleValuationDto) {
+        const make = dto.make.trim();
+        const model = dto.model.trim();
+        const mileageFloor = Math.max(0, dto.mileage - 50_000);
+        const mileageCeiling = dto.mileage + 50_000;
+
+        const select = {
+            id: true,
+            type: true,
+            status: true,
+            price: true,
+            make: true,
+            model: true,
+            variant: true,
+            year: true,
+            mileage: true,
+            fuelType: true,
+            transmission: true,
+            writeOffCategory: true,
+            condition: true,
+            serviceHistory: true,
+            owners: true,
+            isImported: true,
+            sale: {
+                select: {
+                    soldPrice: true,
+                    createdAt: true,
+                },
+            },
+            auction: {
+                select: {
+                    status: true,
+                    winningBidAmount: true,
+                    updatedAt: true,
+                },
+            },
+            offers: {
+                where: { status: 'ACCEPTED' as const },
+                orderBy: { updatedAt: 'desc' as const },
+                take: 1,
+                select: {
+                    amount: true,
+                    finalAmount: true,
+                    updatedAt: true,
+                },
+            },
+        } as const;
+
+        let rows = await this.prisma.listing.findMany({
+            where: {
+                deletedAt: null,
+                vehicleType: 'CAR',
+                ...(dto.excludeListingId ? { id: { not: dto.excludeListingId } } : {}),
+                make: { equals: make, mode: 'insensitive' },
+                model: { equals: model, mode: 'insensitive' },
+                year: { gte: dto.year - 3, lte: dto.year + 3 },
+                status: { in: ['ACTIVE', 'OFFER_ACCEPTED', 'SOLD'] },
+                OR: [
+                    { mileage: null },
+                    { mileage: { gte: mileageFloor, lte: mileageCeiling } },
+                ],
+            },
+            select,
+            orderBy: { updatedAt: 'desc' },
+            take: 100,
+        });
+
+        // Sparse marketplace: widen only the year/mileage window while keeping
+        // make + model exact. Comparing a Fiesta with an Explorer merely because
+        // both are Fords would create misleading precision.
+        if (rows.length < 4) {
+            rows = await this.prisma.listing.findMany({
+                where: {
+                    deletedAt: null,
+                    vehicleType: 'CAR',
+                    ...(dto.excludeListingId ? { id: { not: dto.excludeListingId } } : {}),
+                    make: { equals: make, mode: 'insensitive' },
+                    model: { equals: model, mode: 'insensitive' },
+                    year: { gte: dto.year - 8, lte: dto.year + 8 },
+                    status: { in: ['ACTIVE', 'OFFER_ACCEPTED', 'SOLD'] },
+                },
+                select,
+                orderBy: { updatedAt: 'desc' },
+                take: 120,
+            });
+        }
+
+        const comparables: VehicleValuationComparable[] = [];
+
+        for (const row of rows) {
+            const common = {
+                year: row.year,
+                mileage: row.mileage,
+                variant: row.variant,
+                fuelType: row.fuelType ? String(row.fuelType) : null,
+                transmission: row.transmission ? String(row.transmission) : null,
+                writeOffCategory: row.writeOffCategory ? String(row.writeOffCategory) : null,
+                condition: row.condition ? String(row.condition) : null,
+                serviceHistory: row.serviceHistory ? String(row.serviceHistory) : null,
+                owners: row.owners != null ? String(row.owners) : null,
+                isImported: row.isImported,
+            };
+
+            // Auction outcome is the strongest evidence for an auction listing.
+            // Prefer it over Sale.soldPrice on the same listing to avoid counting
+            // one transaction twice.
+            if (row.type === 'AUCTION' && row.auction?.winningBidAmount != null) {
+                comparables.push({
+                    ...common,
+                    price: Number(row.auction.winningBidAmount),
+                    kind: 'AUCTION_RESULT',
+                });
+                continue;
+            }
+
+            // Prefer an accepted negotiated price over Sale.soldPrice. The
+            // generic "mark sold" path historically records the advert asking
+            // price when no explicit sold price was supplied, whereas an
+            // accepted offer is a directly observed agreed price.
+            const acceptedOffer = row.offers?.[0];
+            if (acceptedOffer) {
+                comparables.push({
+                    ...common,
+                    price: Number(acceptedOffer.finalAmount ?? acceptedOffer.amount),
+                    kind: 'ACCEPTED_OFFER',
+                });
+                continue;
+            }
+
+            if (row.sale?.soldPrice != null) {
+                comparables.push({
+                    ...common,
+                    price: Number(row.sale.soldPrice),
+                    kind: 'SALE',
+                });
+                continue;
+            }
+
+            // Asking prices are useful for early-market context but deliberately
+            // carry much less statistical weight than an actual transaction.
+            if (row.type === 'CLASSIFIED' && row.status === 'ACTIVE') {
+                comparables.push({
+                    ...common,
+                    price: Number(row.price),
+                    kind: 'ACTIVE_ASK',
+                });
+            }
+        }
+
+        return calculateVehicleValuation(
+            {
+                make,
+                model,
+                year: dto.year,
+                mileage: dto.mileage,
+                variant: dto.variant,
+                fuelType: dto.fuelType,
+                transmission: dto.transmission,
+                condition: dto.condition,
+                serviceHistory: dto.serviceHistory,
+                owners: dto.owners,
+                writeOffCategory: dto.writeOffCategory,
+                isImported: dto.isImported,
+            },
+            comparables,
+        );
+    }
 
     /**
      * Notify a seller in-app + by email that their listing was submitted and is

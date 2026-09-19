@@ -32,6 +32,8 @@ import { VehicleDamageMapper, type DamageRecord } from "./VehicleDamageMapper"
 import { useRouter, useSearchParams } from "next/navigation"
 import { apiClient } from "@/lib/apiClient"
 import { getAuctionOpeningBid, getAuctionReserveGuide } from "@/lib/auctionPricing"
+import { getVehicleValuation, type VehicleValuation } from "@/lib/valuationApi"
+import { VehicleValuationCard } from "./VehicleValuationCard"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -314,6 +316,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [dvlaSuccess, setDvlaSuccess] = React.useState(false)
     const [geoLoading, setGeoLoading] = React.useState(false)
     const [isGeneratingDesc, setIsGeneratingDesc] = React.useState(false)
+    const [valuation, setValuation] = React.useState<VehicleValuation | null>(null)
+    const [valuationLoading, setValuationLoading] = React.useState(false)
+    const [valuationError, setValuationError] = React.useState<string | null>(null)
 
     // HPI Payment State
     const [showHpiModal, setShowHpiModal] = React.useState(false)
@@ -576,6 +581,97 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         setFormData(prev => ({ ...prev, [key]: val }))
 
     const isAuction = formData.listingType === 'AUCTION'
+
+    // A seller should see useful price guidance as soon as the basic vehicle
+    // identity is known — before they reach the pricing step. Keep the request
+    // debounced because mileage/trim inputs can change quickly while typing.
+    const valuationReady =
+        formData.vehicleType === 'CAR' &&
+        !!formData.make &&
+        !!formData.model &&
+        Number(formData.year) >= 1950 &&
+        formData.mileage !== '' &&
+        Number(formData.mileage) >= 0
+
+    React.useEffect(() => {
+        if (!valuationReady) {
+            setValuation(null)
+            setValuationError(null)
+            setValuationLoading(false)
+            return
+        }
+
+        let cancelled = false
+        const timer = window.setTimeout(() => {
+            setValuationLoading(true)
+            setValuationError(null)
+
+            getVehicleValuation({
+                make: formData.make,
+                model: formData.model,
+                year: Number(formData.year),
+                mileage: Number(formData.mileage),
+                variant: formData.variant || undefined,
+                fuelType: formData.fuelType || undefined,
+                transmission: formData.transmission || undefined,
+                condition: formData.condition || undefined,
+                serviceHistory: formData.serviceHistory || undefined,
+                owners: formData.owners || undefined,
+                writeOffCategory: formData.writeOffCategory || undefined,
+                isImported: formData.isImported,
+                excludeListingId: editId || undefined,
+            })
+                .then((result) => {
+                    if (!cancelled) setValuation(result)
+                })
+                .catch((error: any) => {
+                    if (cancelled) return
+                    console.error('Vehicle valuation failed:', error)
+                    setValuation(null)
+                    setValuationError(error?.message || 'Valuation unavailable')
+                })
+                .finally(() => {
+                    if (!cancelled) setValuationLoading(false)
+                })
+        }, 550)
+
+        return () => {
+            cancelled = true
+            window.clearTimeout(timer)
+        }
+    }, [
+        valuationReady,
+        formData.make,
+        formData.model,
+        formData.year,
+        formData.mileage,
+        formData.variant,
+        formData.fuelType,
+        formData.transmission,
+        formData.condition,
+        formData.serviceHistory,
+        formData.owners,
+        formData.writeOffCategory,
+        formData.isImported,
+        editId,
+    ])
+
+    function applyValuation() {
+        if (!valuation) return
+
+        if (isAuction) {
+            set("priceAsking", String(valuation.auction.marketValue))
+            setAuctionSchedule(prev => ({
+                ...prev,
+                reservePrice: String(valuation.auction.suggestedReserve),
+            }))
+            return
+        }
+
+        set("priceAsking", String(valuation.retail.suggestedAsking))
+        set("priceMin", String(valuation.retail.suggestedMinimum))
+    }
+
     const auctionMarketValue = isAuction ? (parseFloat(formData.priceAsking) || 0) : 0
     const platformOpeningBid = getAuctionOpeningBid(auctionMarketValue)
     const reserveGuide = getAuctionReserveGuide(auctionMarketValue)
@@ -2121,6 +2217,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <Input type="number" placeholder="e.g. 45000" value={formData.mileage} onChange={(e) => set("mileage", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.mileage ? 'border-red-500' : ''}`} />
                                 </div>
 
+                                {/* Give sellers value guidance immediately after the
+                                    minimum valuation inputs are known, not only after
+                                    photos and declarations are complete. */}
+                                <div className="md:col-span-2">
+                                    <VehicleValuationCard
+                                        valuation={valuation}
+                                        loading={valuationLoading}
+                                        error={valuationError}
+                                        mode={isAuction ? "auction" : "retail"}
+                                        compact
+                                        onApply={applyValuation}
+                                    />
+                                </div>
+
                                 {/* Fuel */}
                                 <SelectField label="Fuel Type" required error={hasAttemptedNext && !formData.fuelType} value={formData.fuelType} onChange={(v) => set("fuelType", v)}
                                     options={[
@@ -2700,7 +2810,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                             <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4">{isAuction ? "Vehicle Value" : "Pricing"}</h2>
 
-
+                            <VehicleValuationCard
+                                valuation={valuation}
+                                loading={valuationLoading}
+                                error={valuationError}
+                                mode={isAuction ? "auction" : "retail"}
+                                onApply={applyValuation}
+                            />
 
                             <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
                                 {isAuction ? (
