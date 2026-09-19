@@ -131,7 +131,9 @@ describe('ServicesService TradeXchange hardening regressions', () => {
                 findMany: jest.fn().mockResolvedValue([]),
             },
             contractorProfile: {
-                findUnique: jest.fn(),
+                findUnique: jest.fn().mockResolvedValue({
+                    user: { stripeConnectAccountId: 'acct_1' },
+                }),
             },
             user: {
                 findMany: jest.fn().mockResolvedValue([]),
