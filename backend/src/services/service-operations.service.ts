@@ -6,11 +6,19 @@ import {
     NotFoundException,
     ServiceUnavailableException,
 } from '@nestjs/common';
-import { CapabilityStatus, Prisma, ServiceJobStatus } from '@prisma/client';
+import { CapabilityStatus, Prisma, ServiceJobStatus, ServiceType } from '@prisma/client';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ServicesService } from './services.service';
+import {
+    APPROVABLE_EVIDENCE_STATUSES,
+    CapabilityEvidenceStatus,
+    CapabilityEvidenceType,
+    capabilityEvidenceRequirement,
+    getCapabilityVerificationSummary,
+    pendingVerificationStatus,
+} from './capability-verification';
 
 export type ServiceCaseScope = 'CAPABILITY' | 'DISPUTE';
 export type ServiceCaseEntryKind = 'DOCUMENT' | 'PHOTO' | 'NOTE' | 'RESOLUTION';
@@ -19,6 +27,21 @@ export interface ServiceCaseEntryInput {
     kind?: ServiceCaseEntryKind;
     label?: string;
     note?: string;
+}
+
+export interface CapabilityEvidenceUploadInput {
+    evidenceType: CapabilityEvidenceType;
+    label?: string;
+    issuer?: string;
+    reference?: string;
+    validFrom?: string;
+    expiresAt?: string;
+}
+
+export interface CapabilityEvidenceReviewInput {
+    status: Extract<CapabilityEvidenceStatus, 'APPROVED' | 'REJECTED'>;
+    reviewNote?: string;
+    expiresAt?: string;
 }
 
 export const TRADEXCHANGE_DOCUMENT_BUCKET = 'tradexchange-documents';
