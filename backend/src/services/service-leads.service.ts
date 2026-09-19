@@ -146,7 +146,7 @@ export class ServiceLeadsService {
             serviceType: ServiceType;
         },
     ): string | null {
-        const area = postcodeArea(lead.postcode);
+        const area = validatedPostcodeArea(lead.postcode);
         const areas = (candidate.leadPostcodeAreas ?? []).map((value: string) => value.toUpperCase());
         if (!candidate.leadNationwide) {
             if (!area || !areas.includes(area)) return null;
