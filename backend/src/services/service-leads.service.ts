@@ -726,27 +726,43 @@ export class ServiceLeadsService {
         }
 
         const now = new Date();
-        const displayedRecipient = {
+        let displayedRecipient = {
             ...recipient,
             status: recipient.status === 'NEW' ? 'VIEWED' : recipient.status,
             viewedAt: recipient.viewedAt ?? now,
             contactDisclosedAt: recipient.contactDisclosedAt ?? now,
         };
-        if (recipient.status === 'NEW' || !recipient.viewedAt || !recipient.contactDisclosedAt) {
-            await this.prisma.serviceLeadRecipient.update({
-                where: {
-                    leadId_contractorId: {
-                        leadId,
-                        contractorId: profile.id,
-                    },
-                },
+        if (recipient.status === 'NEW') {
+            // Claim NEW -> VIEWED atomically. A simultaneous provider response
+            // may already have moved the row to RESPONDED, in which case we
+            // must never downgrade it back to VIEWED.
+            await this.prisma.serviceLeadRecipient.updateMany({
+                where: { id: recipient.id, status: 'NEW' },
                 data: {
-                    ...(recipient.status === 'NEW' ? { status: 'VIEWED' } : {}),
+                    status: 'VIEWED',
+                    viewedAt: recipient.viewedAt ?? now,
+                    contactDisclosedAt: recipient.contactDisclosedAt ?? now,
+                },
+            });
+        } else if (!recipient.viewedAt || !recipient.contactDisclosedAt) {
+            await this.prisma.serviceLeadRecipient.updateMany({
+                where: { id: recipient.id },
+                data: {
                     ...(recipient.viewedAt ? {} : { viewedAt: now }),
                     ...(recipient.contactDisclosedAt ? {} : { contactDisclosedAt: now }),
                 },
             });
         }
+
+        const currentRecipient = await this.prisma.serviceLeadRecipient.findUnique({
+            where: {
+                leadId_contractorId: {
+                    leadId,
+                    contractorId: profile.id,
+                },
+            },
+        });
+        if (currentRecipient) displayedRecipient = currentRecipient;
 
         // Deliberately construct the disclosure payload instead of spreading
         // the database row. This prevents future internal lead fields from
