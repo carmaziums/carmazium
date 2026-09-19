@@ -1,15 +1,20 @@
+/**
+ * Kept for source compatibility with older code/tests.
+ * HPI was previously mandatory for listings created from this date, but the
+ * current CarMazium policy makes vehicle-history reports optional for every
+ * Retail and Auction listing.
+ */
 export const HPI_REQUIRED_FROM = new Date('2026-09-19T00:00:00.000Z');
 
 export interface ListingReadinessOptions {
     /**
-     * Whether this listing has an HPI request that satisfies the submission gate.
-     * A linked AUCTION may satisfy this via the active linked retail source's HPI.
+     * Retained for backwards compatibility. HPI no longer participates in
+     * submission readiness.
      */
     hasRequiredHpi?: boolean;
     /**
-     * Force HPI for a newly-created derivative listing even if its source listing
-     * predates the rollout. Used when cloning an old ACTIVE retail listing into a
-     * brand-new linked auction.
+     * Retained for backwards compatibility. HPI can no longer be forced as a
+     * submission requirement, including for linked/derived auction listings.
      */
     forceHpi?: boolean;
 }
@@ -17,20 +22,17 @@ export interface ListingReadinessOptions {
 export interface ListingSubmissionReadiness {
     ready: boolean;
     missingFields: string[];
+    /**
+     * Always false. HPI is an optional paid add-on in both Retail and Auction.
+     */
     missingHpi: boolean;
 }
 
 export function listingRequiresHpi(
-    createdAt: Date | string | null | undefined,
-    forceHpi = false,
+    _createdAt: Date | string | null | undefined,
+    _forceHpi = false,
 ): boolean {
-    if (forceHpi) return true;
-    if (!createdAt) return true;
-
-    const created = createdAt instanceof Date ? createdAt : new Date(createdAt);
-    if (Number.isNaN(created.getTime())) return true;
-
-    return created >= HPI_REQUIRED_FROM;
+    return false;
 }
 
 export function getListingSubmissionMissingFields(listing: any): string[] {
@@ -82,15 +84,13 @@ export function getListingSubmissionMissingFields(listing: any): string[] {
 
 export function getListingSubmissionReadiness(
     listing: any,
-    options: ListingReadinessOptions = {},
+    _options: ListingReadinessOptions = {},
 ): ListingSubmissionReadiness {
     const missingFields = getListingSubmissionMissingFields(listing);
-    const missingHpi = listingRequiresHpi(listing?.createdAt, options.forceHpi)
-        && options.hasRequiredHpi !== true;
 
     return {
-        ready: missingFields.length === 0 && !missingHpi,
+        ready: missingFields.length === 0,
         missingFields,
-        missingHpi,
+        missingHpi: false,
     };
 }
