@@ -1,11 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { Camera, X, Upload, Loader2, GripVertical, Star, Info, CheckCircle2, AlertCircle, Sparkles } from "lucide-react"
+import { Camera, X, Upload, Loader2, GripVertical, Star, Info, CheckCircle2, AlertCircle, Sparkles, ChevronLeft, ChevronRight } from "lucide-react"
 import Image from "next/image"
 import { uploadImage, deleteImage } from "@/lib/supabase"
 import { recommendVehicleCoverPhoto } from "@/lib/listingApi"
-import { parseVehicleImagePresentation } from "@/lib/vehicleImagePresentation"
+import {
+    encodeVehicleImageCategory,
+    parseVehicleImagePresentation,
+} from "@/lib/vehicleImagePresentation"
 
 export type ImageCategory = 'EXTERIOR' | 'INTERIOR' | 'DAMAGE' | 'UNASSIGNED'
 
@@ -65,18 +68,56 @@ function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob>
  * - downsizes the longest edge to 1920px (Full HD-class)
  * - converts to JPEG and targets <= 4MB for reliable mobile uploads
  */
-async function prepareImageForUpload(file: File): Promise<File> {
-    const safeType = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)
-    const alreadyOptimised = safeType && file.size <= TARGET_UPLOAD_SIZE
+async function convertHeicToJpeg(file: File): Promise<File> {
+    const extension = file.name.split('.').pop()?.toLowerCase() || ''
+    const isHeic = ['heic', 'heif'].includes(extension)
+        || file.type === 'image/heic'
+        || file.type === 'image/heif'
 
-    const objectUrl = URL.createObjectURL(file)
+    if (!isHeic) return file
+
+    try {
+        const { default: heic2any } = await import('heic2any')
+        const converted = await heic2any({
+            blob: file,
+            toType: 'image/jpeg',
+            quality: INITIAL_JPEG_QUALITY,
+        })
+        const blob = Array.isArray(converted) ? converted[0] : converted
+        if (!blob) throw new Error('No JPEG was produced')
+
+        const baseName = file.name.replace(/\.[^.]+$/, '') || 'vehicle-photo'
+        return new File([blob], `${baseName}.jpg`, {
+            type: 'image/jpeg',
+            lastModified: file.lastModified,
+        })
+    } catch (error) {
+        console.error('HEIC conversion failed:', error)
+        throw new Error(`${file.name}: This HEIC/HEIF photo could not be converted. Please try the photo again or export it as JPEG.`)
+    }
+}
+
+/**
+ * Normalise customer photos before uploading:
+ * - accepts high-resolution phone photos (up to 50MB source files)
+ * - converts HEIC/HEIF to browser-safe JPEG first
+ * - preserves aspect ratio
+ * - downsizes the longest edge to 1920px (Full HD-class)
+ * - targets <= 4MB for reliable mobile uploads
+ */
+async function prepareImageForUpload(file: File): Promise<File> {
+    const sourceFile = await convertHeicToJpeg(file)
+    const safeType = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(sourceFile.type)
+    const alreadyOptimised = safeType && sourceFile.size <= TARGET_UPLOAD_SIZE
+
+    const objectUrl = URL.createObjectURL(sourceFile)
 
     try {
         const image = await new Promise<HTMLImageElement>((resolve, reject) => {
             const element = document.createElement('img')
             element.onload = () => resolve(element)
             element.onerror = () => reject(new Error(
-                `${file.name}: This photo format could not be read by your browser. Please use JPEG, PNG or WebP.`
+                `${sourceFile.name}: This photo could not be decoded after conversion. Please use JPEG, PNG or WebP.`
             ))
             element.src = objectUrl
         })
@@ -85,12 +126,11 @@ async function prepareImageForUpload(file: File): Promise<File> {
         const height = image.naturalHeight
 
         if (!width || !height) {
-            throw new Error(`${file.name}: Could not read the photo dimensions.`)
+            throw new Error(`${sourceFile.name}: Could not read the photo dimensions.`)
         }
 
-        // Smaller, already-efficient images do not need recompressing.
         if (alreadyOptimised && Math.max(width, height) <= MAX_IMAGE_EDGE) {
-            return file
+            return sourceFile
         }
 
         const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(width, height))
@@ -103,10 +143,9 @@ async function prepareImageForUpload(file: File): Promise<File> {
 
         const context = canvas.getContext('2d')
         if (!context) {
-            throw new Error(`${file.name}: Your browser could not prepare this photo for upload.`)
+            throw new Error(`${sourceFile.name}: Your browser could not prepare this photo for upload.`)
         }
 
-        // White background avoids black transparency when PNG/WebP images are converted to JPEG.
         context.fillStyle = '#ffffff'
         context.fillRect(0, 0, targetWidth, targetHeight)
         context.drawImage(image, 0, 0, targetWidth, targetHeight)
@@ -119,10 +158,10 @@ async function prepareImageForUpload(file: File): Promise<File> {
             blob = await canvasToBlob(canvas, quality)
         }
 
-        const baseName = file.name.replace(/\.[^.]+$/, '') || 'vehicle-photo'
+        const baseName = sourceFile.name.replace(/\.[^.]+$/, '') || 'vehicle-photo'
         return new File([blob], `${baseName}.jpg`, {
             type: 'image/jpeg',
-            lastModified: file.lastModified,
+            lastModified: sourceFile.lastModified,
         })
     } finally {
         URL.revokeObjectURL(objectUrl)
@@ -137,7 +176,10 @@ export function ImageUpload({
 }: ImageUploadProps) {
     // Map existing string[] to CategorizedImage[] (default to EXTERIOR or UNASSIGNED)
     const [images, setImages] = React.useState<CategorizedImage[]>(() =>
-        existingImages.map(url => ({ url, category: 'UNASSIGNED' }))
+        existingImages.map(url => ({
+            url,
+            category: parseVehicleImagePresentation(url).category,
+        }))
     )
     const [activeTab, setActiveTab] = React.useState<ImageCategory>('EXTERIOR')
     const [uploading, setUploading] = React.useState(false)
@@ -235,8 +277,11 @@ export function ImageUpload({
 
                 try {
                     const preparedFile = await prepareImageForUpload(file)
-                    const publicUrl = await uploadImage(preparedFile, 'listings')
-                    newImages.push({ url: publicUrl, category: activeTab })
+                    const publicUrl = await uploadImage(preparedFile, 'listings', activeTab.toLowerCase())
+                    newImages.push({
+                        url: encodeVehicleImageCategory(publicUrl, activeTab),
+                        category: activeTab,
+                    })
                 } catch (error) {
                     failedCount++
                     lastFailError = error instanceof Error ? error.message : 'Unknown error'
@@ -353,6 +398,17 @@ export function ImageUpload({
             next.splice(target, 0, moved)
             return next
         })
+    }
+
+    const changeImageCategory = (index: number, category: ImageCategory) => {
+        setImages(prev => prev.map((image, imageIndex) => imageIndex === index
+            ? {
+                ...image,
+                category,
+                url: encodeVehicleImageCategory(image.url, category),
+            }
+            : image
+        ))
     }
 
     const beginPointerReorder = (index: number, event: React.PointerEvent<HTMLButtonElement>) => {
@@ -636,10 +692,21 @@ export function ImageUpload({
                                         sizes="(max-width: 768px) 50vw, 20vw"
                                     />
 
-                                    {/* Category tag */}
-                                    <div className="absolute top-2 left-2 bg-black/60 text-white/90 text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded backdrop-blur-md border border-[var(--border-default)]">
-                                        {imgObj.category !== 'UNASSIGNED' ? imgObj.category : 'Photo'}
-                                    </div>
+                                    {/* Category is persisted in the image URL metadata so it
+                                        survives drafts, edits, linked listings and admin repositioning. */}
+                                    <select
+                                        value={imgObj.category}
+                                        onPointerDown={(event) => event.stopPropagation()}
+                                        onClick={(event) => event.stopPropagation()}
+                                        onChange={(event) => changeImageCategory(index, event.target.value as ImageCategory)}
+                                        className="absolute top-2 left-2 z-20 max-w-[44%] rounded bg-black/70 px-1.5 py-1 text-[9px] font-bold uppercase tracking-wider text-white outline-none border border-white/10"
+                                        aria-label={`Category for photo ${index + 1}`}
+                                    >
+                                        <option value="EXTERIOR">Exterior</option>
+                                        <option value="INTERIOR">Interior</option>
+                                        <option value="DAMAGE">Damage</option>
+                                        <option value="UNASSIGNED">Photo</option>
+                                    </select>
 
                                     {/* Cover Badge (first image) */}
                                     {index === 0 && (
@@ -648,20 +715,46 @@ export function ImageUpload({
                                         </div>
                                     )}
 
-                                    <button
-                                        type="button"
-                                        aria-label={`Drag photo ${index + 1} to reorder`}
-                                        title="Drag to reorder"
-                                        onPointerDown={(event) => beginPointerReorder(index, event)}
-                                        onPointerMove={handlePointerReorder}
-                                        onPointerUp={endPointerReorder}
-                                        onPointerCancel={endPointerReorder}
-                                        onClick={(event) => event.stopPropagation()}
-                                        className="absolute bottom-2 right-2 z-10 inline-flex touch-none items-center gap-1 rounded-lg bg-black/70 px-2 py-1 text-[10px] font-bold text-white shadow-lg active:cursor-grabbing"
-                                        style={{ touchAction: 'none' }}
-                                    >
-                                        <GripVertical size={11} /> Drag
-                                    </button>
+                                    <div className="absolute bottom-2 right-2 z-10 flex items-center gap-1">
+                                        <button
+                                            type="button"
+                                            disabled={index === 0}
+                                            aria-label={`Move photo ${index + 1} earlier`}
+                                            onClick={(event) => {
+                                                event.stopPropagation()
+                                                moveImageTo(index, index - 1)
+                                            }}
+                                            className="inline-flex items-center justify-center rounded-lg bg-black/70 p-1.5 text-white shadow-lg disabled:opacity-30"
+                                        >
+                                            <ChevronLeft size={12} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            aria-label={`Drag photo ${index + 1} to reorder`}
+                                            title="Drag to reorder"
+                                            onPointerDown={(event) => beginPointerReorder(index, event)}
+                                            onPointerMove={handlePointerReorder}
+                                            onPointerUp={endPointerReorder}
+                                            onPointerCancel={endPointerReorder}
+                                            onClick={(event) => event.stopPropagation()}
+                                            className="inline-flex touch-none items-center gap-1 rounded-lg bg-black/70 px-2 py-1 text-[10px] font-bold text-white shadow-lg active:cursor-grabbing"
+                                            style={{ touchAction: 'none' }}
+                                        >
+                                            <GripVertical size={11} /> Drag
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={index === images.length - 1}
+                                            aria-label={`Move photo ${index + 1} later`}
+                                            onClick={(event) => {
+                                                event.stopPropagation()
+                                                moveImageTo(index, index + 1)
+                                            }}
+                                            className="inline-flex items-center justify-center rounded-lg bg-black/70 p-1.5 text-white shadow-lg disabled:opacity-30"
+                                        >
+                                            <ChevronRight size={12} />
+                                        </button>
+                                    </div>
 
                                     {/* Cover / delete controls */}
                                     {index !== 0 && (
