@@ -4,7 +4,8 @@ import { ServiceType } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { StandardResponse } from '../listings/dto/response.dto';
-import { TradeTeamPermissionInput, TradeTeamService } from './trade-team.service';
+import { TradeTeamService } from './trade-team.service';
+import { UpdateTradeTeamPermissionsDto } from './trade-team.dto';
 
 @ApiTags('Trade Exchange dealership team')
 @ApiCookieAuth()
@@ -21,7 +22,7 @@ export class TradeTeamController {
 
     @Put('permissions')
     @ApiOperation({ summary: 'Grant or update one staff member’s Delivery/Inspection permissions' })
-    async permissions(@CurrentUser() user: any, @Body() body: TradeTeamPermissionInput) {
+    async permissions(@CurrentUser() user: any, @Body() body: UpdateTradeTeamPermissionsDto) {
         return new StandardResponse(await this.tradeTeam.setPermissions(user.id, body));
     }
 

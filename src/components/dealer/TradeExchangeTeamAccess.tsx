@@ -16,6 +16,8 @@ type Permission = {
     email: string
     deliveryEnabled: boolean
     inspectionEnabled: boolean
+    canView: boolean
+    canChat: boolean
     canQuote: boolean
     canManage: boolean
     canComplete: boolean
@@ -42,6 +44,8 @@ const blankDraft = (email: string): Draft => ({
     email: email.trim().toLowerCase(),
     deliveryEnabled: false,
     inspectionEnabled: false,
+    canView: false,
+    canChat: false,
     canQuote: false,
     canManage: false,
     canComplete: false,
@@ -105,6 +109,8 @@ export function TradeExchangeTeamAccess({
                         email: person.email,
                         deliveryEnabled: current.deliveryEnabled,
                         inspectionEnabled: current.inspectionEnabled,
+                        canView: current.canView,
+                        canChat: current.canChat,
                         canQuote: current.canQuote,
                         canManage: current.canManage,
                         canComplete: current.canComplete,
@@ -128,9 +134,20 @@ export function TradeExchangeTeamAccess({
             const base = current[email] ?? blankDraft(email)
             const next = { ...base, [field]: value }
             if (!next.deliveryEnabled && !next.inspectionEnabled) {
+                next.canView = false
+                next.canChat = false
                 next.canQuote = false
                 next.canManage = false
                 next.canComplete = false
+            }
+            if (field === "canView" && !value) {
+                next.canChat = false
+                next.canQuote = false
+                next.canManage = false
+                next.canComplete = false
+            }
+            if (["canChat", "canQuote", "canManage", "canComplete"].includes(field) && value) {
+                next.canView = true
             }
             return { ...current, [email]: next }
         })
@@ -191,7 +208,7 @@ export function TradeExchangeTeamAccess({
                         <h2 className="font-black text-lg tracking-tight">TradeXchange Team Access</h2>
                     </div>
                     <p className="text-sm text-[var(--text-muted)] max-w-3xl">
-                        Give selected staff permission to work on Delivery & Recovery or Vehicle Inspection jobs on behalf of {team?.companyName || "your business"}. Staff can never become the payout recipient.
+                        Give selected staff precise Delivery & Recovery or Vehicle Inspection rights on behalf of {team?.companyName || "your business"}. Viewing jobs, customer chat, bidding, management and completion are controlled separately. Staff can never become the payout recipient.
                     </p>
                 </div>
                 <Button variant="ghost" size="sm" onClick={load} disabled={loading} className="gap-2 self-start">
@@ -269,12 +286,14 @@ export function TradeExchangeTeamAccess({
                                         {person.pending && <p className="text-[10px] text-[var(--text-muted)] mt-1">Permissions activate only after this invitation is accepted.</p>}
                                     </div>
 
-                                    <div className="flex-1 grid grid-cols-2 sm:grid-cols-5 gap-2">
+                                    <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
                                         <PermissionToggle label="Delivery" checked={draft.deliveryEnabled} onChange={(value) => update(person.email, "deliveryEnabled", value)} />
                                         <PermissionToggle label="Inspection" checked={draft.inspectionEnabled} onChange={(value) => update(person.email, "inspectionEnabled", value)} />
-                                        <PermissionToggle label="Can bid" checked={draft.canQuote} disabled={!hasService} onChange={(value) => update(person.email, "canQuote", value)} />
-                                        <PermissionToggle label="Manage job" checked={draft.canManage} disabled={!hasService} onChange={(value) => update(person.email, "canManage", value)} />
-                                        <PermissionToggle label="Complete job" checked={draft.canComplete} disabled={!hasService} onChange={(value) => update(person.email, "canComplete", value)} />
+                                        <PermissionToggle label="View jobs" checked={draft.canView} disabled={!hasService} onChange={(value) => update(person.email, "canView", value)} />
+                                        <PermissionToggle label="Job chat" checked={draft.canChat} disabled={!hasService || !draft.canView} onChange={(value) => update(person.email, "canChat", value)} />
+                                        <PermissionToggle label="Can bid" checked={draft.canQuote} disabled={!hasService || !draft.canView} onChange={(value) => update(person.email, "canQuote", value)} />
+                                        <PermissionToggle label="Manage job" checked={draft.canManage} disabled={!hasService || !draft.canView} onChange={(value) => update(person.email, "canManage", value)} />
+                                        <PermissionToggle label="Complete job" checked={draft.canComplete} disabled={!hasService || !draft.canView} onChange={(value) => update(person.email, "canComplete", value)} />
                                     </div>
 
                                     <Button onClick={() => save(person.email)} disabled={saving === person.email} className="h-10 gap-2 xl:w-28">

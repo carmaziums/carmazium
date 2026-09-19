@@ -247,14 +247,24 @@ export class ChatService {
         return null;
     }
 
-    private async canAccessServiceJob(job: any, userId: string): Promise<boolean> {
+    private async canAccessServiceJob(
+        job: any,
+        userId: string,
+        action: 'view' | 'chat' = 'view',
+    ): Promise<boolean> {
         if (!job?.customerId || !job?.contractorId) return false;
         if (job.customerId === userId || job.contractor?.userId === userId) return true;
 
         const actor = await this.tradeTeamService.tryResolveActor(userId);
-        return !!actor &&
-            actor.contractorProfileId === job.contractorId &&
-            actor.allowedServiceTypes.includes(job.serviceType);
+        if (
+            !actor ||
+            actor.contractorProfileId !== job.contractorId ||
+            !actor.allowedServiceTypes.includes(job.serviceType)
+        ) {
+            return false;
+        }
+        if (!actor.isStaff) return true;
+        return action === 'chat' ? actor.canChat : actor.canView;
     }
 
     private assertServiceJobPaid(job: any): void {
@@ -651,8 +661,8 @@ export class ChatService {
         });
 
         if (!job) throw new NotFoundException('Service job not found.');
-        if (!(await this.canAccessServiceJob(job, userId))) {
-            throw new ForbiddenException('You do not have access to this service job conversation.');
+        if (!(await this.canAccessServiceJob(job, userId, 'chat'))) {
+            throw new ForbiddenException('Your business role does not allow access to this service job chat.');
         }
         this.assertServiceJobPaid(job);
 
@@ -670,6 +680,10 @@ export class ChatService {
             include: this.roomInclude,
         });
 
+        const actor = await this.tradeTeamService.tryResolveActor(userId);
+        if (actor?.isStaff) {
+            await this.tradeTeamService.logAction(actor, job.id, 'CHAT_OPENED');
+        }
         return this.withOtherUser(room, userId);
     }
 
@@ -1832,7 +1846,7 @@ export class ChatService {
                 room.disputeCase?.joinedAdminId === userId;
             const authorisedServiceActor =
                 room.context === ChatContext.SERVICE_JOB &&
-                await this.canAccessServiceJob(room.serviceJob, userId);
+                await this.canAccessServiceJob(room.serviceJob, userId, 'view');
 
             if (!authorisedSupportAdmin && !authorisedDisputeAdmin && !authorisedServiceActor) {
                 throw new ForbiddenException('You are not a member of this chat room');
@@ -1852,8 +1866,8 @@ export class ChatService {
             return room;
         }
         if (room.context === ChatContext.SERVICE_JOB) {
-            if (!room.serviceJob || !(await this.canAccessServiceJob(room.serviceJob, userId))) {
-                throw new ForbiddenException('You do not have access to this service job conversation.');
+            if (!room.serviceJob || !(await this.canAccessServiceJob(room.serviceJob, userId, 'chat'))) {
+                throw new ForbiddenException('Your business role does not allow messaging on this service job.');
             }
             this.assertServiceJobPaid(room.serviceJob);
             return room;
@@ -1911,7 +1925,7 @@ export class ChatService {
                 { initiatorId: userId },
                 { participantId: userId },
             ];
-        if (serviceActor) {
+        if (serviceActor && (!serviceActor.isStaff || serviceActor.canView)) {
             membership.push({
                 context: ChatContext.SERVICE_JOB,
                 serviceJob: {

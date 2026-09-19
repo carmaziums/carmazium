@@ -52,6 +52,9 @@ function buildPrismaMock() {
             upsert: jest.fn(),
             update: jest.fn(),
         },
+        contractorProfile: {
+            updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        },
         dealerKyc: {
             findUnique: jest.fn(),
             create: jest.fn(),
@@ -280,6 +283,41 @@ describe('DealersService — KYC: submitKyc', () => {
             ['admin@carmazium.uk'],
             'Test Motors',
         );
+    });
+
+    it('synchronises the dealership business identity into an existing ContractorProfile projection', async () => {
+        prisma.dealerProfile.findUnique
+            .mockResolvedValueOnce({
+                id: 'profile-1',
+                userId: 'user-1',
+                companyName: 'Old Motors',
+                phone: '07000000000',
+                businessAddress: 'Old Address',
+                kyc: null,
+                user: { id: 'user-1', role: 'DEALER', firstName: 'John', lastName: 'Doe' },
+            })
+            .mockResolvedValueOnce({
+                id: 'profile-1',
+                userId: 'user-1',
+                companyName: 'Test Motors Ltd',
+                phone: '07000000000',
+                businessAddress: '1 Test Street, London',
+            });
+        prisma.dealerKyc.create.mockImplementation(({ data }: any) =>
+            Promise.resolve({ id: 'kyc-new', ...data }),
+        );
+        prisma.dealerProfile.update.mockResolvedValue({});
+
+        await service.submitKyc('user-1', baseDto as any);
+
+        expect(prisma.contractorProfile.updateMany).toHaveBeenCalledWith({
+            where: { userId: 'user-1' },
+            data: {
+                businessName: 'Test Motors Ltd',
+                phone: '07000000000',
+                serviceArea: '1 Test Street, London',
+            },
+        });
     });
 
     it('never throws on Stripe-related errors — submitKyc no longer talks to Stripe at all', async () => {

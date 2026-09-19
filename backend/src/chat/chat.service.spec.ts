@@ -121,6 +121,7 @@ describe('ChatService — conversation context and authorization', () => {
         notificationsGateway = { sendNotification: jest.fn() };
         tradeTeamService = {
             tryResolveActor: jest.fn().mockResolvedValue(null),
+            logAction: jest.fn().mockResolvedValue(undefined),
         };
         chatAttachmentService = {
             hydrateMessages: jest.fn(async (messages: any[]) => messages),
@@ -233,11 +234,150 @@ describe('ChatService — conversation context and authorization', () => {
         tradeTeamService.tryResolveActor.mockResolvedValue({
             contractorProfileId: 'contractor-1',
             allowedServiceTypes: ['DELIVERY'],
+            isStaff: true,
+            canView: true,
+            canChat: true,
         });
 
         await expect(service.assertCanMessageRoom('service-room', staffId)).resolves.toMatchObject({
             id: 'service-room',
         });
+    });
+
+    it('lets staff with canView read the service-job transcript but blocks messaging without canChat', async () => {
+        const staffId = otherBuyerId;
+        const serviceRoom = {
+            id: 'service-room-view-only',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            context: ChatContext.SERVICE_JOB,
+            deletedAt: null,
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+            serviceJob: {
+                id: 'job-view-only',
+                status: 'PAID',
+                serviceType: 'DELIVERY',
+                customerId: buyerId,
+                contractorId: 'contractor-1',
+                contractor: { userId: sellerId },
+                payment: { status: 'PAID' },
+            },
+            disputeCase: null,
+            blocks: [],
+            listing: null,
+        };
+        prisma.chatRoom.findUnique.mockResolvedValue(serviceRoom);
+        tradeTeamService.tryResolveActor.mockResolvedValue({
+            contractorProfileId: 'contractor-1',
+            allowedServiceTypes: ['DELIVERY'],
+            isStaff: true,
+            canView: true,
+            canChat: false,
+        });
+
+        await expect(service.getRoom('service-room-view-only', staffId))
+            .resolves.toMatchObject({ id: 'service-room-view-only' });
+
+        await expect(service.assertCanMessageRoom('service-room-view-only', staffId))
+            .rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('blocks service-job transcript access entirely when staff lacks canView', async () => {
+        const staffId = otherBuyerId;
+        prisma.chatRoom.findUnique.mockResolvedValue({
+            id: 'service-room-hidden',
+            initiatorId: buyerId,
+            participantId: sellerId,
+            context: ChatContext.SERVICE_JOB,
+            deletedAt: null,
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+            serviceJob: {
+                id: 'job-hidden',
+                status: 'PAID',
+                serviceType: 'DELIVERY',
+                customerId: buyerId,
+                contractorId: 'contractor-1',
+                contractor: { userId: sellerId },
+                payment: { status: 'PAID' },
+            },
+            disputeCase: null,
+            blocks: [],
+            listing: null,
+        });
+        tradeTeamService.tryResolveActor.mockResolvedValue({
+            contractorProfileId: 'contractor-1',
+            allowedServiceTypes: ['DELIVERY'],
+            isStaff: true,
+            canView: false,
+            canChat: false,
+        });
+
+        await expect(service.getRoom('service-room-hidden', staffId))
+            .rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('requires canChat to open a paid service-job room for provider staff and audits a permitted open', async () => {
+        const staffId = otherBuyerId;
+        const job = {
+            id: 'job-chat',
+            title: 'Deliver vehicle',
+            status: 'PAID',
+            serviceType: 'DELIVERY',
+            customerId: buyerId,
+            contractorId: 'contractor-1',
+            contractor: {
+                id: 'contractor-1',
+                userId: sellerId,
+                businessName: 'Provider Ltd',
+            },
+            payment: { status: 'PAID' },
+        };
+        prisma.serviceJob.findUnique.mockResolvedValue(job);
+        tradeTeamService.tryResolveActor.mockResolvedValue({
+            actingUserId: staffId,
+            contractorProfileId: 'contractor-1',
+            businessOwnerUserId: sellerId,
+            dealerProfileId: 'dealer-1',
+            allowedServiceTypes: ['DELIVERY'],
+            isStaff: true,
+            canView: true,
+            canChat: false,
+        });
+
+        await expect(service.findOrCreateServiceJobRoom('job-chat', staffId))
+            .rejects.toBeInstanceOf(ForbiddenException);
+        expect(prisma.chatRoom.upsert).not.toHaveBeenCalled();
+
+        tradeTeamService.tryResolveActor.mockResolvedValue({
+            actingUserId: staffId,
+            contractorProfileId: 'contractor-1',
+            businessOwnerUserId: sellerId,
+            dealerProfileId: 'dealer-1',
+            allowedServiceTypes: ['DELIVERY'],
+            isStaff: true,
+            canView: true,
+            canChat: true,
+        });
+        prisma.chatRoom.upsert.mockImplementation(({ create }: any) => Promise.resolve({
+            id: 'service-room-chat',
+            ...create,
+            deletedAt: null,
+            initiator: { id: buyerId, role: 'BUYER' },
+            participant: { id: sellerId, role: 'SELLER' },
+            serviceJob: job,
+            blocks: [],
+            listing: null,
+        }));
+
+        await expect(service.findOrCreateServiceJobRoom('job-chat', staffId))
+            .resolves.toMatchObject({ id: 'service-room-chat' });
+        expect(tradeTeamService.logAction).toHaveBeenCalledWith(
+            expect.objectContaining({ actingUserId: staffId }),
+            'job-chat',
+            'CHAT_OPENED',
+        );
     });
 
     it('blocks auction room creation until the auction has ended and the winner fee is paid', async () => {

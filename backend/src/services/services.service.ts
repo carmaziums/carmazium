@@ -5,6 +5,7 @@ import {
     ForbiddenException,
     BadRequestException,
     ConflictException,
+    Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -27,6 +28,7 @@ import {
 } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
 import { assertCapabilityVerificationReady } from './capability-verification';
+import { TradeTeamService } from './trade-team.service';
 
 /** Days an OPEN job accepts quotes before it expires. */
 const JOB_OPEN_DAYS = 7;
@@ -61,6 +63,7 @@ export class ServicesService {
         private readonly email: EmailService,
         private readonly payments: PaymentsService,
         private readonly config: ConfigService,
+        @Optional() private readonly tradeTeam?: TradeTeamService,
     ) { }
 
     // ── Money ──────────────────────────────────────────────────────────────
@@ -834,6 +837,14 @@ export class ServicesService {
         const c = job.contractor.user;
         await this.notify(c.id, 'SERVICE_JOB_PAID', 'You won the job',
             `"${job.title}" is paid and ready. Contact details are now unlocked.`, `/dashboard/service/jobs/${jobId}`);
+        await this.tradeTeam?.notifyOperationalStaff(
+            job.contractor.id,
+            job.serviceType,
+            'SERVICE_JOB_PAID_TEAM',
+            'Business job ready',
+            `"${job.title}" is paid and ready for your authorised team.`,
+            `/dashboard/service/jobs/${jobId}`,
+        );
         this.sendEmail(c.email, c.firstName, `You won: ${job.title}`,
             `<p>The customer accepted your quote of <strong>${gbp(payment.grossPence)}</strong> and has paid. You will receive <strong>${gbp(payment.contractorPence)}</strong> once the job is confirmed complete.</p><p>Their contact details are now visible on the job.</p>`,
             'Open the job', `/dashboard/service/jobs/${jobId}`);

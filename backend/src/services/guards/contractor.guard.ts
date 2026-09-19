@@ -30,7 +30,7 @@ export class ContractorGuard implements CanActivate {
         const actor = await this.tradeTeam.requireActor(user.id);
         req.tradeActor = actor;
         req.contractorProfileId = actor.contractorProfileId;
-        req.approvedServiceTypes = actor.allowedServiceTypes;
+        req.approvedServiceTypes = actor.isStaff && !actor.canView ? [] : actor.allowedServiceTypes;
         return true;
     }
 }

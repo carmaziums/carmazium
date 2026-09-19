@@ -176,13 +176,16 @@ export class ServicesController {
 
     @Get('jobs/:id')
     @ApiOperation({ summary: 'A job, shaped for whoever is asking' })
-    async getOne(@CurrentUser() user: any, @Param('id') id: string) {
+    async getOne(@Req() req: any, @CurrentUser() user: any, @Param('id') id: string) {
+        const actor = user.role === 'ADMIN' ? null : await this.tradeTeam.tryResolveActor(user.id);
         const contractorProfileId = user.role === 'ADMIN'
             ? null
             : await this.tradeTeam.contractorProfileForJob(user.id, id);
-        return new StandardResponse(
-            await this.services.getJob({ userId: user.id, role: user.role, contractorProfileId }, id),
-        );
+        const result = await this.services.getJob({ userId: user.id, role: user.role, contractorProfileId }, id);
+        if (actor?.isStaff && contractorProfileId) {
+            await this.tradeTeam.logAction(actor, id, 'JOB_VIEWED');
+        }
+        return new StandardResponse(result);
     }
 
     @Post('jobs/:id/cancel')

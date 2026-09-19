@@ -383,7 +383,11 @@ export class DealersService {
             .catch(() => {});
     }
 
-    /** Sync the relevant KYC fields into DealerProfile so the Settings page is pre-filled */
+    /**
+     * DealerProfile is the canonical business identity for a dealership-owned
+     * Partner Account. Keep its ContractorProfile service-market projection in
+     * lock-step whenever KYC/settings update the business name/contact/address.
+     */
     private async syncProfileFromKyc(profileId: string, kycFields: Record<string, any>) {
         const updates: Record<string, any> = {};
 
@@ -392,24 +396,42 @@ export class DealersService {
         if (kycFields.businessRegisteredAddress) updates.businessAddress = kycFields.businessRegisteredAddress;
         if (kycFields.businessWebsite) updates.website = kycFields.businessWebsite;
 
-        // vatNumber has a @unique constraint — only update if non-empty and different from placeholder
         if (kycFields.vatNumber && !kycFields.vatNumber.startsWith('PENDING-')) {
             updates.vatNumber = kycFields.vatNumber;
         }
 
-        if (Object.keys(updates).length === 0) return;
-
-        try {
-            await this.prisma.dealerProfile.update({ where: { id: profileId }, data: updates });
-        } catch {
-            // If the vatNumber conflicts with another profile (duplicate), retry without it
-            if (updates.vatNumber) {
-                delete updates.vatNumber;
-                if (Object.keys(updates).length > 0) {
-                    await this.prisma.dealerProfile.update({ where: { id: profileId }, data: updates }).catch(() => {});
+        if (Object.keys(updates).length > 0) {
+            try {
+                await this.prisma.dealerProfile.update({ where: { id: profileId }, data: updates });
+            } catch {
+                if (updates.vatNumber) {
+                    delete updates.vatNumber;
+                    if (Object.keys(updates).length > 0) {
+                        await this.prisma.dealerProfile.update({ where: { id: profileId }, data: updates }).catch(() => {});
+                    }
                 }
             }
         }
+
+        const dealer = await this.prisma.dealerProfile.findUnique({
+            where: { id: profileId },
+            select: {
+                userId: true,
+                companyName: true,
+                phone: true,
+                businessAddress: true,
+            },
+        });
+        if (!dealer) return;
+
+        await this.prisma.contractorProfile.updateMany({
+            where: { userId: dealer.userId },
+            data: {
+                businessName: dealer.companyName?.trim() || null,
+                phone: dealer.phone?.trim() || null,
+                serviceArea: dealer.businessAddress?.trim() || null,
+            },
+        });
     }
 
     private async notifyAdminsOfKycSubmission(companyName: string) {
