@@ -532,13 +532,11 @@ export class ServiceLeadsService {
         if (!lead) throw new NotFoundException('Enquiry not found');
 
         this.assertLeadType(lead.serviceType);
-        if (lead.status !== 'OPEN' || lead.expiresAt <= new Date()) {
+        if (lead.status !== 'OPEN' || lead.expiresAt <= new Date() || lead.anonymizedAt) {
             throw new BadRequestException('This enquiry is no longer open.');
         }
 
         const profile = await this.providerProfile(userId, lead.serviceType);
-        await this.ensureRecipients(profile.id, [lead.serviceType]);
-
         const recipient = await this.prisma.serviceLeadRecipient.findUnique({
             where: {
                 leadId_contractorId: {
@@ -552,7 +550,10 @@ export class ServiceLeadsService {
         }
 
         const now = new Date();
-        if (recipient.status === 'NEW') {
+        const recipientStatus = recipient.status === 'NEW' ? 'VIEWED' : recipient.status;
+        const viewedAt = recipient.viewedAt ?? now;
+        const contactDisclosedAt = recipient.contactDisclosedAt ?? now;
+        if (recipient.status === 'NEW' || !recipient.contactDisclosedAt) {
             await this.prisma.serviceLeadRecipient.update({
                 where: {
                     leadId_contractorId: {
@@ -561,23 +562,53 @@ export class ServiceLeadsService {
                     },
                 },
                 data: {
-                    status: 'VIEWED',
-                    viewedAt: recipient.viewedAt ?? now,
+                    status: recipientStatus,
+                    viewedAt,
+                    contactDisclosedAt,
                 },
             });
         }
 
+        // Deliberately construct the disclosure payload instead of spreading
+        // the database row. This prevents future internal lead fields from
+        // becoming provider-visible by accident.
         return {
-            ...lead,
+            id: lead.id,
+            serviceType: lead.serviceType,
+            status: lead.status,
+            fullName: lead.fullName,
+            email: lead.email,
+            phone: lead.phone,
+            postcode: lead.postcode,
+            vehicleRegistration: lead.vehicleRegistration,
+            vehicleMake: lead.vehicleMake,
+            vehicleModel: lead.vehicleModel,
+            vehicleYear: lead.vehicleYear,
+            vehicleMileage: lead.vehicleMileage,
+            vehicleValuePence: lead.vehicleValuePence,
+            summary: lead.summary,
+            depositPence: lead.serviceType === ServiceType.FINANCE ? lead.depositPence : null,
+            termMonths: lead.serviceType === ServiceType.FINANCE ? lead.termMonths : null,
+            monthlyBudgetPence: lead.serviceType === ServiceType.FINANCE ? lead.monthlyBudgetPence : null,
+            employmentStatus: lead.serviceType === ServiceType.FINANCE ? lead.employmentStatus : null,
+            annualIncomePence: lead.serviceType === ServiceType.FINANCE ? lead.annualIncomePence : null,
+            warrantyMonths: lead.serviceType === ServiceType.WARRANTY ? lead.warrantyMonths : null,
+            warrantyLevel: lead.serviceType === ServiceType.WARRANTY ? lead.warrantyLevel : null,
+            expiresAt: lead.expiresAt,
+            createdAt: lead.createdAt,
             recipientId: recipient.id,
-            recipientStatus: recipient.status === 'NEW' ? 'VIEWED' : recipient.status,
+            recipientStatus,
             headline: recipient.headline,
             message: recipient.message,
             productName: recipient.productName,
             indicativePricePence: recipient.indicativePricePence,
             representativeApr: recipient.representativeApr == null ? null : Number(recipient.representativeApr),
             responseTermMonths: recipient.termMonths,
-            viewedAt: recipient.viewedAt ?? (recipient.status === 'NEW' ? now : null),
+            matchedAt: recipient.matchedAt,
+            matchSource: recipient.matchSource,
+            matchReason: recipient.matchReason,
+            viewedAt,
+            contactDisclosedAt,
             respondedAt: recipient.respondedAt,
         };
     }
