@@ -202,9 +202,9 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
       </div>
 
       {/* Instruction banner */}
-      <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
-        <p className="text-xs font-bold text-blue-300 mb-0.5">How to mark damage</p>
-        <p className="text-xs text-[var(--text-muted)]">
+      <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20">
+        <p className="text-xs font-bold text-blue-800 dark:text-blue-300 mb-0.5">How to mark damage</p>
+        <p className="text-xs text-slate-700 dark:text-[var(--text-muted)]">
           Rotate the 3D model to inspect all angles. Click any <span className="text-[var(--text-primary)] font-bold">+</span> hotspot
           on the vehicle to mark a damage zone, then describe it and optionally add a photo.
           You can also click any zone in the list below the model.

@@ -557,11 +557,11 @@ export function ImageUpload({
 
             {/* PRO TIP */}
             {activeCategoryDef && (
-                <div className="bg-blue-500/10 border border-blue-500/20 text-blue-200 p-4 rounded-xl flex gap-3 text-sm">
-                    <Info size={20} className="shrink-0 text-blue-400 mt-0.5" />
+                <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 p-4 rounded-xl flex gap-3 text-sm">
+                    <Info size={20} className="shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
                     <div>
-                        <p className="font-bold text-blue-300 font-heading tracking-wide uppercase text-xs mb-1">Pro Tip: {activeCategoryDef.label}</p>
-                        <p className="text-blue-100/80 leading-relaxed">{activeCategoryDef.tip}</p>
+                        <p className="font-bold text-blue-800 dark:text-blue-300 font-heading tracking-wide uppercase text-xs mb-1">Pro Tip: {activeCategoryDef.label}</p>
+                        <p className="text-slate-700 dark:text-blue-100/80 leading-relaxed">{activeCategoryDef.tip}</p>
                     </div>
                 </div>
             )}

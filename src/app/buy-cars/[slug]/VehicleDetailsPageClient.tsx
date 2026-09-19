@@ -240,6 +240,10 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     const [damagePhotoUrl, setDamagePhotoUrl] = React.useState<string | null>(null)
     const touchStartXRef = React.useRef<number | null>(null)
     const [isDescExpanded, setIsDescExpanded] = React.useState(false)
+    const descriptionNeedsTruncation = Boolean(
+        listing?.description
+        && (listing.description.length > 300 || listing.description.split('\n').length > 4)
+    )
     const [enquiring, setEnquiring] = React.useState(false)
     const [showOfferModal, setShowOfferModal] = React.useState(false)
     const [myOffer, setMyOffer] = React.useState<LatestOffer | null>(null)
@@ -999,13 +1003,13 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                         {listing.description && (
                             <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
                                 <h3 className="text-xl font-bold mb-6 border-l-4 border-primary pl-4">Vehicle Description</h3>
-                                <div className={`text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap relative ${!isDescExpanded ? 'line-clamp-4 overflow-hidden' : ''}`}>
+                                <div className={`text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap relative ${descriptionNeedsTruncation && !isDescExpanded ? 'line-clamp-4 overflow-hidden' : ''}`}>
                                     {listing.description}
-                                    {!isDescExpanded && (
-                                        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-slate-800/90 to-transparent"></div>
+                                    {descriptionNeedsTruncation && !isDescExpanded && (
+                                        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[var(--bg-card)] to-transparent pointer-events-none"></div>
                                     )}
                                 </div>
-                                {(listing.description.length > 300 || listing.description.split('\n').length > 4) && (
+                                {descriptionNeedsTruncation && (
                                     <button
                                         onClick={() => setIsDescExpanded(!isDescExpanded)}
                                         className="text-primary font-bold text-sm mt-4 hover:underline focus:outline-none"
