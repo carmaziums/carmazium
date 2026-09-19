@@ -495,6 +495,13 @@ export class AuctionsService {
             ? new Date(updateAuctionDto.startTime)
             : auction.startTime;
 
+        if (
+            Number.isNaN(startTime.getTime())
+            || startTime.getTime() < Date.now() - 60 * 1000
+        ) {
+            throw new BadRequestException('Start time cannot be in the past');
+        }
+
         const endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
         const platformStartingBid = calculatePlatformOpeningBid(Number(auction.listing.price));
 
@@ -508,6 +515,7 @@ export class AuctionsService {
                 // 70%-of-market-value opening rule as newly created auctions.
                 startingBid: platformStartingBid,
                 ...(updateAuctionDto.minIncrement !== undefined && { minIncrement: updateAuctionDto.minIncrement }),
+                ...(updateAuctionDto.buyItNowPrice !== undefined && { buyItNowPrice: updateAuctionDto.buyItNowPrice }),
             },
         });
     }
@@ -546,25 +554,35 @@ export class AuctionsService {
             throw new BadRequestException('Only SCHEDULED auctions can be cancelled');
         }
 
-        const cancelled = await this.prisma.auction.update({
-            where: { id },
-            data: { status: 'CANCELLED' },
-        });
-
-        // Clear linkedListingId on both the AUCTION listing and the linked CLASSIFIED listing
-        // so the seller can re-auction or proceed with retail only
+        // Clear the auction and its review/live state atomically. A cancelled
+        // AUCTION listing must not remain ACTIVE or PENDING_REVIEW with no live
+        // auction behind it. The seller can reschedule the same row later.
         const classifiedId = (auction.listing as any).linkedListingId as string | null;
-        await this.prisma.listing.update({
-            where: { id: auction.listingId },
-            data: { linkedListingId: null } as any,
-        });
+        const operations: any[] = [
+            this.prisma.auction.update({
+                where: { id },
+                data: {
+                    status: 'CANCELLED',
+                    buyItNowPendingBuyerId: null,
+                    buyItNowPendingAt: null,
+                },
+            }),
+            this.prisma.listing.update({
+                where: { id: auction.listingId },
+                data: {
+                    status: 'DRAFT',
+                    linkedListingId: null,
+                } as any,
+            }),
+        ];
         if (classifiedId) {
-            await this.prisma.listing.update({
+            operations.push(this.prisma.listing.update({
                 where: { id: classifiedId },
                 data: { linkedListingId: null } as any,
-            });
+            }));
         }
 
+        const [cancelled] = await this.prisma.$transaction(operations);
         return cancelled;
     }
 
@@ -904,10 +922,29 @@ export class AuctionsService {
             throw new BadRequestException('Only SCHEDULED auctions can be deleted');
         }
 
-        return this.prisma.auction.update({
-            where: { id },
-            data: { deletedAt: new Date() },
-        });
+        const classifiedId = (auction.listing as any).linkedListingId as string | null;
+        const operations: any[] = [
+            this.prisma.auction.update({
+                where: { id },
+                data: { deletedAt: new Date() },
+            }),
+            this.prisma.listing.update({
+                where: { id: auction.listingId },
+                data: {
+                    status: 'DRAFT',
+                    linkedListingId: null,
+                } as any,
+            }),
+        ];
+        if (classifiedId) {
+            operations.push(this.prisma.listing.update({
+                where: { id: classifiedId },
+                data: { linkedListingId: null } as any,
+            }));
+        }
+
+        const [removed] = await this.prisma.$transaction(operations);
+        return removed;
     }
 
     async submitHandoverProof(auctionId: string, userId: string, proofUrl: string): Promise<any> {
