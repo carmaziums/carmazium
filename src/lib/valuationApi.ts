@@ -166,8 +166,10 @@ function finishEstimate(
     const mid = roundMoney(marketMid)
     const lowBase = values.length >= 4 ? quantile(values, 0.25) : mid * (values.length ? 0.88 : 0.82)
     const highBase = values.length >= 4 ? quantile(values, 0.75) : mid * (values.length ? 1.12 : 1.18)
-    const low = roundMoney(Math.min(lowBase, mid * 0.93))
-    const high = roundMoney(Math.max(highBase, mid * 1.07))
+    const rangeFloor = mid * 0.85
+    const rangeCeiling = mid * 1.15
+    const low = roundMoney(Math.min(Math.max(lowBase, rangeFloor), mid * 0.93))
+    const high = roundMoney(Math.max(Math.min(highBase, rangeCeiling), mid * 1.07))
 
     const confidenceScore = values.length >= 8 ? 0.48 : values.length >= 3 ? 0.38 : values.length ? 0.28 : 0.18
     const confidence: VehicleValuation['confidence'] = confidenceScore >= 0.45 ? 'MEDIUM' : 'LOW'
@@ -192,7 +194,7 @@ function finishEstimate(
             : 'CarMazium does not yet have enough comparable marketplace data for this exact vehicle, so this is an early estimate based on age, mileage and vehicle profile.',
         retail: {
             suggestedAsking: mid,
-            suggestedMinimum: roundMoney(Math.min(low, mid * 0.94)),
+            suggestedMinimum: roundMoney(mid * 0.90),
         },
         auction: {
             marketValue: mid,
