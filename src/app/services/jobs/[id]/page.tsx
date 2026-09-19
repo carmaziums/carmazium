@@ -10,7 +10,7 @@ import { RequireAuth } from "@/components/auth/RequireAuth"
 import { deliveryServiceEnabled, inspectionServiceEnabled } from "@/lib/featureFlags"
 import { Button } from "@/components/ui/Button"
 import {
-    getJob, acceptQuote, confirmCompletion, disputeJob, cancelJob, formatPence,
+    getJob, acceptQuote, confirmCompletion, disputeJob, cancelJob, createServiceReview, formatPence,
     type ServiceJob, type ServiceQuote,
 } from "@/lib/servicesApi"
 import { JobStatusBadge, RecoveryBadge, JobRoute, JobTiming, JobVehicles } from "@/components/services/JobBits"
@@ -30,6 +30,8 @@ function JobDetail() {
     const [job, setJob] = React.useState<ServiceJob | null>(null)
     const [error, setError] = React.useState<string | null>(null)
     const [busy, setBusy] = React.useState<string | null>(null)
+    const [reviewRating, setReviewRating] = React.useState(0)
+    const [reviewComment, setReviewComment] = React.useState("")
     const [flash, setFlash] = React.useState<string | null>(
         params.get("posted") ? "Job posted. Approved providers can now quote it — we will email you as prices come in."
             : params.get("paid") === "1" ? "Payment received. Your provider has been notified and their contact details are below."
@@ -76,6 +78,29 @@ function JobDetail() {
         try { await fn(); if (after) setFlash(after); load() }
         catch (e: any) { setError(e?.message || "Something went wrong") }
         finally { setBusy(null) }
+    }
+
+    const submitReview = async () => {
+        if (reviewRating < 1 || reviewRating > 5) {
+            setError("Choose a rating from 1 to 5 stars.")
+            return
+        }
+        setBusy("review")
+        setError(null)
+        try {
+            await createServiceReview(job.id, {
+                rating: reviewRating,
+                comment: reviewComment.trim() || undefined,
+            })
+            setReviewRating(0)
+            setReviewComment("")
+            setFlash("Thank you. Your verified service review is now published.")
+            load()
+        } catch (e: any) {
+            setError(e?.message || "Could not submit your review")
+        } finally {
+            setBusy(null)
+        }
     }
 
     if (error && !job) return <div className="container mx-auto px-5 py-20 text-center text-red-500">{error}</div>
@@ -238,7 +263,41 @@ function JobDetail() {
                             <p className="text-sm text-[var(--text-muted)] text-center">Under review by CarMazium. We will email you.</p>
                         )}
                         {job.status === "RELEASED" && (
-                            <p className="text-sm text-[var(--text-muted)] text-center inline-flex items-center gap-2 w-full justify-center"><ShieldCheck size={16} className="text-emerald-500" /> Complete</p>
+                            <div className="space-y-4">
+                                <p className="text-sm text-[var(--text-muted)] text-center inline-flex items-center gap-2 w-full justify-center"><ShieldCheck size={16} className="text-emerald-500" /> Complete</p>
+                                {job.review ? (
+                                    <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Verified service review</p>
+                                        <div className="flex items-center gap-1 mt-2" aria-label={`${job.review.rating} out of 5 stars`}>
+                                            {[1,2,3,4,5].map(star => <Star key={star} size={16} className={star <= job.review!.rating ? "text-amber-500 fill-amber-500" : "text-[var(--text-muted)]"} />)}
+                                        </div>
+                                        {job.review.comment && <p className="text-sm mt-3 whitespace-pre-line">{job.review.comment}</p>}
+                                        <p className="text-[11px] text-[var(--text-muted)] mt-2">{new Date(job.review.createdAt).toLocaleDateString("en-GB")}</p>
+                                    </div>
+                                ) : job.canReview ? (
+                                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                                        <p className="font-bold text-sm">Review your {providerLabel}</p>
+                                        <p className="text-[11px] text-[var(--text-muted)] mt-1">Only customers from a completed, paid TradeXchange job can leave this review.</p>
+                                        <div className="flex gap-1 mt-3">
+                                            {[1,2,3,4,5].map(star => (
+                                                <button key={star} type="button" onClick={() => setReviewRating(star)} aria-label={`Rate ${star} star${star === 1 ? "" : "s"}`} className="p-1">
+                                                    <Star size={22} className={star <= reviewRating ? "text-amber-500 fill-amber-500" : "text-[var(--text-muted)]"} />
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <textarea
+                                            value={reviewComment}
+                                            onChange={e => setReviewComment(e.target.value)}
+                                            maxLength={2000}
+                                            placeholder="Optional comment about the service"
+                                            className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-3 py-2 text-sm mt-3 min-h-24 outline-none focus:border-primary"
+                                        />
+                                        <Button type="button" className="w-full mt-3" disabled={busy === "review" || reviewRating === 0} onClick={() => void submitReview()}>
+                                            {busy === "review" ? <Loader2 className="animate-spin" size={16} /> : "Submit verified review"}
+                                        </Button>
+                                    </div>
+                                ) : null}
+                            </div>
                         )}
                     </div>
                 </aside>
