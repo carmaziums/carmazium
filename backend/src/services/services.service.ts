@@ -5,6 +5,7 @@ import {
     ForbiddenException,
     BadRequestException,
     ConflictException,
+    Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -62,7 +63,7 @@ export class ServicesService {
         private readonly email: EmailService,
         private readonly payments: PaymentsService,
         private readonly config: ConfigService,
-        private readonly tradeTeam?: TradeTeamService,
+        @Optional() private readonly tradeTeam?: TradeTeamService,
     ) { }
 
     // ── Money ──────────────────────────────────────────────────────────────
