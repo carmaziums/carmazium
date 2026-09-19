@@ -56,7 +56,8 @@ alter table public.service_case_entries
 alter table public.service_case_entries
     drop constraint if exists service_case_entries_evidence_type_check,
     drop constraint if exists service_case_entries_evidence_status_check,
-    drop constraint if exists service_case_entries_evidence_dates_check;
+    drop constraint if exists service_case_entries_evidence_dates_check,
+    drop constraint if exists service_case_entries_capability_evidence_classified;
 
 alter table public.service_case_entries
     add constraint service_case_entries_evidence_type_check
@@ -91,6 +92,17 @@ alter table public.service_case_entries
     validate constraint service_case_entries_evidence_status_check;
 alter table public.service_case_entries
     validate constraint service_case_entries_evidence_dates_check;
+alter table public.service_case_entries
+    add constraint service_case_entries_capability_evidence_classified
+    check (
+        "scope" <> 'CAPABILITY'
+        or "kind" not in ('DOCUMENT', 'PHOTO')
+        or ("evidenceType" is not null and "evidenceStatus" is not null)
+    ) not valid;
+
+alter table public.service_case_entries
+    validate constraint service_case_entries_capability_evidence_classified;
+
 
 do $$
 begin
@@ -116,6 +128,10 @@ create index if not exists service_case_entries_capability_evidence_idx
         "createdAt" desc
     )
     where "scope" = 'CAPABILITY';
+
+create index if not exists service_case_entries_evidence_reviewer_idx
+    on public.service_case_entries ("evidenceReviewedById")
+    where "evidenceReviewedById" is not null;
 
 create index if not exists service_case_entries_evidence_expiry_idx
     on public.service_case_entries ("evidenceExpiresAt")
