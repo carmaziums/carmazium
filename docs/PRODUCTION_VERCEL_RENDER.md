@@ -27,6 +27,22 @@ Set these in the Render dashboard for your **Web Service**:
 
 ## 2. Frontend (Vercel) – Environment variables
 
+### TradeXchange live-service switches
+
+The four TradeXchange services are intended to remain customer-facing in production. Configure these as `true` in both Production and Preview:
+
+```env
+NEXT_PUBLIC_FEATURE_DELIVERY=true
+NEXT_PUBLIC_FEATURE_INSPECTION=true
+NEXT_PUBLIC_FEATURE_FINANCE_SERVICES=true
+NEXT_PUBLIC_FEATURE_WARRANTY=true
+```
+
+These variables are emergency kill switches, not release gates. Set only the affected service to `false` when CarMazium deliberately needs to stop new customer requests for that service. If a variable is omitted, the service remains ON by design. Any supplied value other than `true` or `false` fails the build.
+
+The backend applies the same availability policy before creating new jobs or Finance/Warranty enquiries. Keep the same four values aligned on the backend runtime (currently Fly.io). A disabled service returns a temporary-unavailable response for new requests while existing work remains accessible.
+
+
 Set these in the Vercel project (Production and Preview if you use them):
 
 | Variable | Required | Description |

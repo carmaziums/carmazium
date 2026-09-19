@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { notFound } from "next/navigation"
 import { motion } from "framer-motion"
 import {
     ArrowLeft,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { inspectionServiceEnabled } from "@/lib/featureFlags"
+import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
 import { useAuth } from "@/context/AuthContext"
 
 const STEPS = [
@@ -27,7 +27,7 @@ const STEPS = [
 
 export default function InspectionLandingPage() {
     const { user } = useAuth()
-    if (!inspectionServiceEnabled) notFound()
+    if (!inspectionServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Vehicle Inspection" />
 
     const providerHref = user
         ? "/dashboard/partner"

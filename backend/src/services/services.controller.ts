@@ -10,6 +10,7 @@ import { ServicesService } from './services.service';
 import { ContractorGuard } from './guards/contractor.guard';
 import { TradeTeamService } from './trade-team.service';
 import { ACCEPTED_PAYMENT_TIMEOUT_MINUTES } from './services-lifecycle.service';
+import { serviceAvailabilitySnapshot } from './service-availability';
 import {
     CreateJobDto, JobFromPurchaseDto, CancelJobDto, UpsertQuoteDto, ApplyCapabilityDto,
 } from './dto';
@@ -43,6 +44,7 @@ export class ServicesController {
             platformFeeRate: SERVICE_PLATFORM_FEE_RATE,
             providerShareRate: 1 - SERVICE_PLATFORM_FEE_RATE,
             acceptedPaymentTimeoutMinutes: ACCEPTED_PAYMENT_TIMEOUT_MINUTES,
+            availability: serviceAvailabilitySnapshot(),
         });
     }
 

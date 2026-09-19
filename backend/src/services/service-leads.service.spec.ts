@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import { CapabilityStatus, ServiceType } from '@prisma/client';
 import { ServiceLeadsService } from './service-leads.service';
 
@@ -37,6 +37,20 @@ describe('ServiceLeadsService', () => {
             serviceType: ServiceType.WARRANTY,
             consentToProviderContact: true,
         } as any)).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('blocks new Finance enquiries when the emergency switch is false', async () => {
+        const previous = process.env.NEXT_PUBLIC_FEATURE_FINANCE_SERVICES;
+        process.env.NEXT_PUBLIC_FEATURE_FINANCE_SERVICES = 'false';
+        try {
+            await expect(service.create('customer-1', {
+                serviceType: ServiceType.FINANCE,
+                consentToProviderContact: true,
+            } as any)).rejects.toBeInstanceOf(ServiceUnavailableException);
+        } finally {
+            if (previous === undefined) delete process.env.NEXT_PUBLIC_FEATURE_FINANCE_SERVICES;
+            else process.env.NEXT_PUBLIC_FEATURE_FINANCE_SERVICES = previous;
+        }
     });
 
     it('does not use the enquiry path for DELIVERY or INSPECTION', async () => {

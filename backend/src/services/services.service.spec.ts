@@ -9,7 +9,7 @@
  * paid twice", "the loser saw the address".
  */
 import { Test } from '@nestjs/testing';
-import { BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, ConflictException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ServicesService } from './services.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -305,6 +305,23 @@ describe('Delivery & Recovery — end to end', () => {
 
     it('rejects an enquiry-based service as a job', async () => {
         await expect(svc.createJob(CUSTOMER.id, { serviceType: 'FINANCE', title: 'x', vehicles: [{}] } as any)).rejects.toThrow(/enquiry/);
+    });
+
+    it('blocks new Delivery jobs when the emergency switch is false', async () => {
+        const previous = process.env.NEXT_PUBLIC_FEATURE_DELIVERY;
+        process.env.NEXT_PUBLIC_FEATURE_DELIVERY = 'false';
+        try {
+            await expect(svc.createJob(CUSTOMER.id, {
+                serviceType: 'DELIVERY',
+                title: 'blocked',
+                pickupPostcode: 'B1 1AA',
+                deliveryPostcode: 'B2 2BB',
+                vehicles: [{ registration: 'AB12CDE' }],
+            } as any)).rejects.toBeInstanceOf(ServiceUnavailableException);
+        } finally {
+            if (previous === undefined) delete process.env.NEXT_PUBLIC_FEATURE_DELIVERY;
+            else process.env.NEXT_PUBLIC_FEATURE_DELIVERY = previous;
+        }
     });
 
     it('posts a two-car recovery job, normalising registrations and postcodes', async () => {

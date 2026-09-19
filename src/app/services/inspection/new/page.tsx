@@ -1,13 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { notFound, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { createJob } from "@/lib/servicesApi"
 import { inspectionServiceEnabled } from "@/lib/featureFlags"
+import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
 import { useSessionDraft } from "@/hooks/useSessionDraft"
 
 const inputCls = "w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-sm outline-none focus:border-primary"
@@ -27,7 +28,7 @@ export default function NewInspectionPage() {
         EMPTY_FORM,
     )
 
-    if (!inspectionServiceEnabled) notFound()
+    if (!inspectionServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Vehicle Inspection" />
 
     const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }))
 

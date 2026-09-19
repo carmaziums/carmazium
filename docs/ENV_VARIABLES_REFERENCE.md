@@ -34,6 +34,24 @@ Set these in **Render → Your Web Service → Environment**.
 
 ## Vercel (Frontend – Next.js)
 
+### TradeXchange service availability policy
+
+Delivery & Recovery, Vehicle Inspection, Vehicle Finance and Warranty are core live CarMazium services. They are **not** staged features.
+
+| Variable | Normal production value | Emergency action |
+|----------|--------------------------|------------------|
+| `NEXT_PUBLIC_FEATURE_DELIVERY` | `true` | Set `false` to stop Delivery & Recovery customer access |
+| `NEXT_PUBLIC_FEATURE_INSPECTION` | `true` | Set `false` to stop Vehicle Inspection customer access |
+| `NEXT_PUBLIC_FEATURE_FINANCE_SERVICES` | `true` | Set `false` to stop Vehicle Finance customer access |
+| `NEXT_PUBLIC_FEATURE_WARRANTY` | `true` | Set `false` to stop Warranty customer access |
+
+An omitted variable intentionally defaults to **ON** so a missing Vercel value does not remove a core customer service. Managed Production and Preview environments should still declare all four as `true` so the intended state is visible in deployment configuration.
+
+Only the strings `true` and `false` are accepted when a value is supplied. A typo or any other value is treated as a build configuration error rather than silently changing service availability.
+
+The backend enforces the same rule on new API requests. Configure the same four variable names with matching values on the backend runtime (currently Fly.io) as well as Vercel. This prevents direct API calls from bypassing an emergency stop. Existing jobs and enquiries are intentionally not disabled by the switch.
+
+
 Set these in **Vercel → Project → Settings → Environment Variables**.
 
 | Variable | Required | You have? | Scope | Notes |

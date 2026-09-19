@@ -25,6 +25,7 @@ import {
     CreateJobDto, JobFromPurchaseDto, CancelJobDto, UpsertQuoteDto,
     ApplyCapabilityDto, ReviewCapabilityDto, ResolveDisputeDto, JOB_SERVICE_TYPES,
 } from './dto';
+import { assertServiceAcceptingNewRequests } from './service-availability';
 
 /** Days an OPEN job accepts quotes before it expires. */
 const JOB_OPEN_DAYS = 7;
@@ -229,6 +230,7 @@ export class ServicesService {
         if (!(JOB_SERVICE_TYPES as readonly ServiceType[]).includes(dto.serviceType)) {
             throw new BadRequestException(`${this.label(dto.serviceType)} is enquiry-based and does not take jobs yet.`);
         }
+        assertServiceAcceptingNewRequests(dto.serviceType);
         if (dto.serviceType === ServiceType.DELIVERY) {
             if (!dto.pickupPostcode || !dto.deliveryPostcode) {
                 throw new BadRequestException('Delivery jobs need a pickup and a delivery postcode.');
@@ -271,6 +273,7 @@ export class ServicesService {
     }
 
     async createJobFromPurchase(customerId: string, dto: JobFromPurchaseDto) {
+        assertServiceAcceptingNewRequests(ServiceType.DELIVERY);
         if (!dto.offerId && !dto.auctionId) {
             throw new BadRequestException('Provide an offerId or an auctionId.');
         }

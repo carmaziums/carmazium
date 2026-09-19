@@ -1,16 +1,16 @@
 "use client"
 
-import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, ArrowRight, BadgeCheck, CheckCircle, FileText, LayoutDashboard, ShieldCheck, Users } from "lucide-react"
 import { warrantyServiceEnabled } from "@/lib/featureFlags"
+import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
 import { ServiceLeadForm } from "@/components/services/ServiceLeadForm"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 
 export default function WarrantyServicePage() {
     const { user } = useAuth()
-    if (!warrantyServiceEnabled) notFound()
+    if (!warrantyServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Warranty" />
 
     const providerHref = user
         ? "/dashboard/partner"
