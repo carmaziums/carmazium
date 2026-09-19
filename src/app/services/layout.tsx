@@ -23,6 +23,10 @@ export const metadata: Metadata = {
         url: "/services",
         type: "website",
     },
+    twitter: {
+        title: "Vehicle Delivery, Inspection, Finance & Warranty Services UK | CarMazium",
+        description: "Access approved vehicle delivery, recovery, inspection, finance enquiry and warranty services through CarMazium TradeXchange.",
+    },
 }
 
 export default function ServicesLayout({ children }: { children: React.ReactNode }) {
