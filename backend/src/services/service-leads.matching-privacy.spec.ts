@@ -107,6 +107,7 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
         prisma.$transaction = jest.fn(async (work: any) =>
             typeof work === 'function' ? work(prisma) : Promise.all(work),
         );
+        prisma.$queryRaw = jest.fn().mockResolvedValue([]);
 
         notifications = { create: jest.fn().mockResolvedValue({}) };
         service = new ServiceLeadsService(prisma, notifications);
@@ -304,7 +305,7 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
     });
 
     it('automatically rematches still-open enquiries using AUTO_REMATCH', async () => {
-        prisma.serviceLead.findMany.mockResolvedValue([{ id: 'lead-1' }, { id: 'lead-2' }]);
+        prisma.$queryRaw.mockResolvedValue([{ id: 'lead-1' }, { id: 'lead-2' }]);
         const rematch = jest.spyOn(service, 'adminRematch')
             .mockResolvedValueOnce({ added: 1, recipientCount: 1, recipientLimit: MAX_LEAD_RECIPIENTS })
             .mockResolvedValueOnce({ added: 0, recipientCount: 5, recipientLimit: MAX_LEAD_RECIPIENTS });
@@ -314,6 +315,18 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
         expect(rematch).toHaveBeenNthCalledWith(1, 'lead-1', 'AUTO_REMATCH');
         expect(rematch).toHaveBeenNthCalledWith(2, 'lead-2', 'AUTO_REMATCH');
         expect(result).toEqual({ scanned: 2, leadsUpdated: 1, recipientsAdded: 1 });
+    });
+
+    it('queries only open enquiries that still have recipient capacity', async () => {
+        prisma.$queryRaw.mockResolvedValue([]);
+
+        await service.rematchOpenLeads(ServiceType.WARRANTY, 25);
+
+        const query = prisma.$queryRaw.mock.calls[0][0];
+        const rendered = String(query?.strings?.join('?') ?? query);
+        expect(rendered).toContain('SELECT COUNT(*)');
+        expect(rendered).toContain('service_lead_recipients');
+        expect(rendered).toContain('ORDER BY l."createdAt" ASC');
     });
 
     it('automatic rematch records AUTO_REMATCH on new recipient rows', async () => {
