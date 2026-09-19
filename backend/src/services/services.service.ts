@@ -459,7 +459,8 @@ export class ServicesService {
     async adminListCapabilities(
         input?: CapabilityStatus | { status?: CapabilityStatus; serviceType?: ServiceType; q?: string },
     ) {
-        const filters = typeof input === 'string' ? { status: input as CapabilityStatus } : (input ?? {});
+        const filters: { status?: CapabilityStatus; serviceType?: ServiceType; q?: string } =
+            typeof input === 'string' ? { status: input as CapabilityStatus } : (input ?? {});
         const { status, serviceType } = filters;
         const q = filters.q?.trim().slice(0, 100) || undefined;
 
@@ -1597,7 +1598,8 @@ export class ServicesService {
     async adminListJobs(
         input?: ServiceJobStatus | { status?: ServiceJobStatus; serviceType?: ServiceType; q?: string },
     ) {
-        const filters = typeof input === 'string' ? { status: input as ServiceJobStatus } : (input ?? {});
+        const filters: { status?: ServiceJobStatus; serviceType?: ServiceType; q?: string } =
+            typeof input === 'string' ? { status: input as ServiceJobStatus } : (input ?? {});
         const { status, serviceType } = filters;
         const q = filters.q?.trim().slice(0, 100) || undefined;
 
