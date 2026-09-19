@@ -8,7 +8,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
 import { ServicesService } from './services.service';
 import { ServiceLeadsService } from './service-leads.service';
-import { ReviewCapabilityDto, ResolveDisputeDto } from './dto';
+import { ReviewCapabilityDto } from './dto';
 
 @ApiTags('Admin — Trade Exchange services')
 @ApiCookieAuth()
@@ -23,9 +23,19 @@ export class AdminServicesController {
 
     @Get('capabilities')
     @ApiQuery({ name: 'status', enum: Object.values(CapabilityStatus), required: false })
-    @ApiOperation({ summary: 'Provider applications, oldest first' })
-    async capabilities(@Query('status') status?: string) {
-        return new StandardResponse(await this.services.adminListCapabilities(status as CapabilityStatus | undefined));
+    @ApiQuery({ name: 'serviceType', enum: Object.values(ServiceType), required: false })
+    @ApiQuery({ name: 'q', required: false, description: 'Business, provider or email search' })
+    @ApiOperation({ summary: 'Provider applications with operational search/filtering' })
+    async capabilities(
+        @Query('status') status?: string,
+        @Query('serviceType') serviceType?: string,
+        @Query('q') q?: string,
+    ) {
+        return new StandardResponse(await this.services.adminListCapabilities({
+            status: status as CapabilityStatus | undefined,
+            serviceType: serviceType as ServiceType | undefined,
+            q,
+        }));
     }
 
     @Patch('capabilities/:id')
@@ -42,14 +52,30 @@ export class AdminServicesController {
 
     @Get('jobs')
     @ApiQuery({ name: 'status', enum: Object.values(ServiceJobStatus), required: false })
-    async jobs(@Query('status') status?: string) {
-        return new StandardResponse(await this.services.adminListJobs(status as ServiceJobStatus | undefined));
+    @ApiQuery({ name: 'serviceType', enum: [ServiceType.DELIVERY, ServiceType.INSPECTION], required: false })
+    @ApiQuery({ name: 'q', required: false, description: 'Job title, customer, provider or email search' })
+    async jobs(
+        @Query('status') status?: string,
+        @Query('serviceType') serviceType?: string,
+        @Query('q') q?: string,
+    ) {
+        return new StandardResponse(await this.services.adminListJobs({
+            status: status as ServiceJobStatus | undefined,
+            serviceType: serviceType as ServiceType | undefined,
+            q,
+        }));
     }
 
-    @Post('jobs/:id/resolve')
-    @ApiOperation({ summary: 'Resolve a DISPUTED job: RELEASE to the provider or REFUND the customer' })
-    async resolve(@CurrentUser() admin: any, @Param('id') id: string, @Body() dto: ResolveDisputeDto) {
-        return new StandardResponse(await this.services.adminResolveDispute(admin.id, id, dto));
+    @Get('disputes')
+    @ApiQuery({ name: 'serviceType', enum: [ServiceType.DELIVERY, ServiceType.INSPECTION], required: false })
+    @ApiQuery({ name: 'q', required: false, description: 'Disputed job, customer, provider or email search' })
+    @ApiOperation({ summary: 'Disputed jobs for the authoritative operations settlement workflow' })
+    async disputes(@Query('serviceType') serviceType?: string, @Query('q') q?: string) {
+        return new StandardResponse(await this.services.adminListJobs({
+            status: ServiceJobStatus.DISPUTED,
+            serviceType: serviceType as ServiceType | undefined,
+            q,
+        }));
     }
 
     @Post('leads/:id/rematch')
@@ -61,13 +87,15 @@ export class AdminServicesController {
     @Get('leads')
     @ApiQuery({ name: 'serviceType', enum: [ServiceType.FINANCE, ServiceType.WARRANTY], required: false })
     @ApiQuery({ name: 'status', enum: ['OPEN', 'CLOSED', 'CANCELLED', 'EXPIRED'], required: false })
-    @ApiOperation({ summary: 'Finance and Warranty enquiry oversight' })
+    @ApiQuery({ name: 'q', required: false, description: 'Customer, email, registration or vehicle search' })
+    @ApiOperation({ summary: 'Finance and Warranty enquiry oversight with search/filtering' })
     async leadEnquiries(
         @Query('serviceType') serviceType?: string,
         @Query('status') status?: string,
+        @Query('q') q?: string,
     ) {
         return new StandardResponse(
-            await this.leads.adminList(serviceType as ServiceType | undefined, status),
+            await this.leads.adminList(serviceType as ServiceType | undefined, status, q),
         );
     }
 }
