@@ -22,6 +22,7 @@ export function requireUkPostcode(value: string | null | undefined, label: strin
 export function postcodeArea(value?: string | null): string | null {
     const normalised = normaliseUkPostcode(value);
     if (!normalised) return null;
+    if (normalised.startsWith('GIR ')) return 'GIR';
     return normalised.match(/^[A-Z]{1,2}/)?.[0] ?? null;
 }
 
