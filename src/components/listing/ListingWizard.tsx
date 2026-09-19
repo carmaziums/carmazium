@@ -8,7 +8,7 @@ import {
     Car, Camera, List, DollarSign, CheckCircle,
     ArrowRight, ArrowLeft, Loader2, Search,
     BadgeCheck, TrendingDown, Upload, Eye, X,
-    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle, ChevronDown, Lock, FileText, Activity, Gavel, Clock
+    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle, ChevronDown, Lock, FileText, Activity, Gavel, Clock, RotateCcw
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
@@ -565,6 +565,64 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             localStorage.setItem('carmazium_listing_draft_step', String(currentStep))
         }
     }, [formData, sellingMethod, currentStep])
+
+    const handleStartFresh = () => {
+        const confirmed = window.confirm(
+            'Start a fresh listing? This will clear all unsaved vehicle details, photos, pricing and auction settings from this form.'
+        )
+        if (!confirmed) return
+
+        // Clear every browser-side draft reference first so the reset cannot be
+        // restored on the next render or after a refresh.
+        localStorage.removeItem('carmazium_listing_draft')
+        localStorage.removeItem('carmazium_listing_draft_step')
+        localStorage.removeItem('carmazium_hpi_draft_id')
+        draftRestoreAttemptedRef.current = true
+
+        // Reset the listing itself and all wizard-only state. Existing server
+        // drafts are deliberately not deleted here; this action clears the
+        // current unsaved form without silently destroying a saved listing.
+        setFormData({ ...INITIAL_FORM, features: [], images: [], videoUrls: [], motHistory: [] })
+        setCurrentStep(1)
+        setSellingMethod(null)
+        setManualMakeEntry(false)
+        setManualModelEntry(false)
+        setManualVariantEntry(false)
+        setShowHpiModal(false)
+        setIsHpiUnlocked(false)
+        setExistingAuctionStatus(null)
+        setIsVerifyingHpiPayment(false)
+        setHpiVerifyError(null)
+        setIsProcessingPayment(false)
+        setDraftListingId(null)
+        setDamageImageCount(0)
+        setDamageRecords([])
+        setHasAttemptedNext(false)
+        setAuctionSchedule({
+            startTime: '',
+            reservePrice: '',
+            startingBid: '',
+            minIncrement: '100',
+            buyItNowPrice: '',
+        })
+        setVideoUrlInput('')
+        setVideoUrlError('')
+        setDepartedRelSelect('')
+        setDepartedRelOther('')
+        setNotOwnerRelSelect('')
+        setNotOwnerRelOther('')
+        setDvlaLoading(false)
+        setDvlaError(null)
+        setDvlaSuccess(false)
+        setValuation(null)
+        setValuationLoading(false)
+        setValuationError(null)
+        setSubmitError(null)
+
+        // Strip HPI/edit/query parameters so a stale URL cannot repopulate the
+        // newly-cleared form.
+        router.replace(window.location.pathname, { scroll: false })
+    }
 
 
     const isAuthenticated = !!user
@@ -1559,8 +1617,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 <HpiPaymentModal />
                 <PendingReviewModal open={!!pendingReview} listingTitle={pendingReview?.title} onContinue={() => pendingReview?.onContinue()} />
 
-                {/* Back link */}
-                <div className="mb-6 flex items-center">
+                {/* Wizard actions */}
+                <div className="mb-6 flex items-center justify-between gap-3">
                     <Button variant="ghost" className="text-[var(--text-muted)] hover:text-[var(--text-primary)] group px-2"
                         onClick={() => {
                             if (currentStep > 1) {
@@ -1570,9 +1628,21 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             }
                         }}
                     >
-                        <ArrowLeft className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform" /> 
+                        <ArrowLeft className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform" />
                         {currentStep > 1 ? "Previous Step" : "Exit"}
                     </Button>
+
+                    {!editId && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleStartFresh}
+                            className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary px-3 sm:px-4"
+                        >
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Start Fresh
+                        </Button>
+                    )}
                 </div>
 
                 <div className="text-center mb-10">
