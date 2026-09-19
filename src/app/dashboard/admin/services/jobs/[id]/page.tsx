@@ -12,10 +12,10 @@ import { formatPence, SERVICE_LABELS } from "@/lib/servicesApi"
 import {
     adminAddDisputeCaseEntry,
     adminGetJobDetail,
+    adminUploadDisputeCaseEntry,
     adminResolveDisputeWithCase,
     type AdminJobDetail,
 } from "@/lib/serviceOperationsApi"
-import { uploadImage } from "@/lib/supabase"
 
 const inputCls = "w-full rounded-xl border px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-primary)]"
 
@@ -49,12 +49,7 @@ export default function AdminServiceJobPage() {
         if (file.size > 10 * 1024 * 1024) { setError("Please keep each evidence file under 10 MB."); return }
         setBusy("upload"); setError(null)
         try {
-            const url = await uploadImage(file, "listings", `service-disputes/${id}`)
-            await adminAddDisputeCaseEntry(id, {
-                kind: file.type.startsWith("image/") ? "PHOTO" : "DOCUMENT",
-                label: file.name,
-                url,
-            })
+            await adminUploadDisputeCaseEntry(id, file, file.name)
             setFile(null)
             const input = document.getElementById("dispute-evidence") as HTMLInputElement | null
             if (input) input.value = ""
