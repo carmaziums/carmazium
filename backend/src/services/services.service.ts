@@ -274,63 +274,185 @@ export class ServicesService {
 
     async createJobFromPurchase(customerId: string, dto: JobFromPurchaseDto) {
         assertServiceAcceptingNewRequests(ServiceType.DELIVERY);
-        if (!dto.offerId && !dto.auctionId) {
-            throw new BadRequestException('Provide an offerId or an auctionId.');
+
+        const hasOffer = !!dto.offerId;
+        const hasAuction = !!dto.auctionId;
+        if (hasOffer === hasAuction) {
+            throw new BadRequestException('Provide exactly one purchase source: offerId or auctionId.');
         }
 
-        let listing: { id: string; title: string; seller: { postcode: string | null } | null } | null = null;
-        let vehicle: { registration?: string | null; make: string; model: string; year: number } | null = null;
+        let listing: any = null;
+        let vehicle: { registration?: string | null; make?: string | null; model?: string | null; year?: number | null } | null = null;
+        const sourceWhere = dto.offerId
+            ? { sourceOfferId: dto.offerId }
+            : { sourceAuctionId: dto.auctionId! };
 
         if (dto.offerId) {
             const offer = await this.prisma.offer.findUnique({
                 where: { id: dto.offerId },
-                include: { listing: { include: { seller: { select: { postcode: true } }, vehicle: true } } },
+                include: {
+                    listing: {
+                        include: {
+                            vehicle: true,
+                            sale: { select: { buyerId: true } },
+                            seller: {
+                                select: {
+                                    postcode: true,
+                                    location: true,
+                                    dealerProfile: {
+                                        select: {
+                                            businessAddress: true,
+                                            kyc: {
+                                                select: {
+                                                    tradingAddress: true,
+                                                    businessRegisteredAddress: true,
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
             });
             if (!offer) throw new NotFoundException('Offer not found');
             if (offer.buyerId !== customerId) throw new ForbiddenException('Not your purchase');
-            if (offer.status !== 'ACCEPTED') throw new BadRequestException('Only an accepted offer can be delivered.');
-            listing = { id: offer.listing.id, title: offer.listing.title, seller: offer.listing.seller };
-            vehicle = offer.listing.vehicle;
+            if (offer.status !== 'ACCEPTED') {
+                throw new BadRequestException('Only an accepted retail offer can create a delivery job.');
+            }
+            if (offer.listing.deletedAt || !['OFFER_ACCEPTED', 'SOLD'].includes(String(offer.listing.status))) {
+                throw new BadRequestException('This retail purchase is not in a delivery-eligible state.');
+            }
+            if (offer.listing.sale && offer.listing.sale.buyerId !== customerId) {
+                throw new ForbiddenException('This vehicle was sold to a different buyer.');
+            }
+
+            listing = offer.listing;
+            vehicle = {
+                registration: offer.listing.vehicle?.registration ?? offer.listing.vrm ?? null,
+                make: offer.listing.vehicle?.make ?? offer.listing.make ?? null,
+                model: offer.listing.vehicle?.model ?? offer.listing.model ?? null,
+                year: offer.listing.vehicle?.year ?? offer.listing.year ?? null,
+            };
         } else {
             const auction = await this.prisma.auction.findUnique({
                 where: { id: dto.auctionId! },
-                include: { listing: { include: { seller: { select: { postcode: true } }, vehicle: true } } },
+                include: {
+                    listing: {
+                        include: {
+                            vehicle: true,
+                            sale: { select: { buyerId: true } },
+                            seller: {
+                                select: {
+                                    postcode: true,
+                                    location: true,
+                                    dealerProfile: {
+                                        select: {
+                                            businessAddress: true,
+                                            kyc: {
+                                                select: {
+                                                    tradingAddress: true,
+                                                    businessRegisteredAddress: true,
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
             });
             if (!auction) throw new NotFoundException('Auction not found');
             if (auction.winnerId !== customerId) throw new ForbiddenException('Not your purchase');
-            listing = { id: auction.listing.id, title: auction.listing.title, seller: auction.listing.seller };
-            vehicle = auction.listing.vehicle;
+            if (auction.status !== 'ENDED' || auction.listing.status !== 'SOLD' || auction.listing.deletedAt) {
+                throw new BadRequestException('This auction purchase is not in a completed sale state.');
+            }
+            if (!auction.buyerFeePaid) {
+                throw new BadRequestException('Pay the auction buyer fee before arranging TradeXchange delivery.');
+            }
+            if (!auction.listing.sale || auction.listing.sale.buyerId !== customerId) {
+                throw new ForbiddenException('The auction sale record does not belong to this buyer.');
+            }
+
+            listing = auction.listing;
+            vehicle = {
+                registration: auction.listing.vehicle?.registration ?? auction.listing.vrm ?? null,
+                make: auction.listing.vehicle?.make ?? auction.listing.make ?? null,
+                model: auction.listing.vehicle?.model ?? auction.listing.model ?? null,
+                year: auction.listing.vehicle?.year ?? auction.listing.year ?? null,
+            };
         }
 
-        if (!listing?.seller?.postcode) {
+        const sellerPostcode = normPostcode(listing?.seller?.postcode);
+        if (!sellerPostcode) {
             throw new BadRequestException('The seller has no postcode on file — post a delivery job manually with the pickup address.');
         }
-        const src = listing;
 
-        return this.prisma.serviceJob.create({
-            data: {
+        const pickupAddress = [
+            listing?.seller?.dealerProfile?.kyc?.tradingAddress,
+            listing?.seller?.dealerProfile?.businessAddress,
+            listing?.seller?.dealerProfile?.kyc?.businessRegisteredAddress,
+            listing?.seller?.location,
+            listing?.location,
+        ].map((value: unknown) => typeof value === 'string' ? value.trim() : '')
+            .find((value: string) => value.length > 0) || null;
+
+        const existing = await this.prisma.serviceJob.findFirst({
+            where: {
                 customerId,
-                serviceType: ServiceType.DELIVERY,
-                title: `Deliver ${src.title}`.slice(0, 120),
-                pickupPostcode: normPostcode(src.seller!.postcode),
-                deliveryPostcode: normPostcode(dto.deliveryPostcode),
-                deliveryAddress: dto.deliveryAddress?.trim() || null,
-                requestedFor: dto.requestedFor ? new Date(dto.requestedFor) : null,
-                expiresAt: new Date(Date.now() + JOB_OPEN_DAYS * 86_400_000),
-                sourceOfferId: dto.offerId ?? null,
-                sourceAuctionId: dto.auctionId ?? null,
-                vehicles: {
-                    create: [{
-                        registration: vehicle?.registration ?? null,
-                        make: vehicle?.make ?? null,
-                        model: vehicle?.model ?? null,
-                        year: vehicle?.year ?? null,
-                        listingId: src.id,
-                    }],
-                },
+                ...sourceWhere,
+                status: { notIn: [ServiceJobStatus.CANCELLED, ServiceJobStatus.EXPIRED] },
             },
             include: { vehicles: true },
         });
+        if (existing) return existing;
+
+        try {
+            return await this.prisma.serviceJob.create({
+                data: {
+                    customerId,
+                    serviceType: ServiceType.DELIVERY,
+                    title: `Deliver ${listing.title}`.slice(0, 120),
+                    pickupPostcode: sellerPostcode,
+                    pickupAddress,
+                    deliveryPostcode: normPostcode(dto.deliveryPostcode),
+                    deliveryAddress: dto.deliveryAddress?.trim() || null,
+                    requestedFor: dto.requestedFor ? new Date(dto.requestedFor) : null,
+                    expiresAt: new Date(Date.now() + JOB_OPEN_DAYS * 86_400_000),
+                    sourceOfferId: dto.offerId ?? null,
+                    sourceAuctionId: dto.auctionId ?? null,
+                    vehicles: {
+                        create: [{
+                            registration: vehicle?.registration?.toUpperCase().replace(/\s+/g, '') || null,
+                            make: vehicle?.make?.trim() || null,
+                            model: vehicle?.model?.trim() || null,
+                            year: vehicle?.year ?? null,
+                            listingId: listing.id,
+                        }],
+                    },
+                },
+                include: { vehicles: true },
+            });
+        } catch (error) {
+            // The database has partial unique indexes for active purchase-linked
+            // delivery jobs. If two clicks arrive concurrently, the losing
+            // request returns the already-created job instead of creating a
+            // duplicate workflow.
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+                const raced = await this.prisma.serviceJob.findFirst({
+                    where: {
+                        customerId,
+                        ...sourceWhere,
+                        status: { notIn: [ServiceJobStatus.CANCELLED, ServiceJobStatus.EXPIRED] },
+                    },
+                    include: { vehicles: true },
+                });
+                if (raced) return raced;
+            }
+            throw error;
+        }
     }
 
     async myJobs(customerId: string) {
