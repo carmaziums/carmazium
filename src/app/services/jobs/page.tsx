@@ -1,11 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Loader2, Truck, Plus } from "lucide-react"
 import { RequireAuth } from "@/components/auth/RequireAuth"
-import { deliveryServiceEnabled, inspectionServiceEnabled } from "@/lib/featureFlags"
 import { getMyJobsPage, type ServiceJob } from "@/lib/servicesApi"
 import { JobListCard } from "@/components/services/JobBits"
 
@@ -104,8 +102,6 @@ function MyJobsList() {
 }
 
 export default function MyServiceJobsPage() {
-    if (!deliveryServiceEnabled && !inspectionServiceEnabled) notFound()
-
     return (
         <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
             <RequireAuth title="Sign in to see your jobs" message="Your posted jobs and their quotes live here.">
