@@ -14,7 +14,7 @@ import {
     Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import { inspectionServiceEnabled } from "@/lib/featureFlags"
+import { useTradeXchangeAvailability } from "@/hooks/useTradeXchangeAvailability"
 import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
 import { useAuth } from "@/context/AuthContext"
 
@@ -27,7 +27,12 @@ const STEPS = [
 
 export default function InspectionLandingPage() {
     const { user } = useAuth()
-    if (!inspectionServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Vehicle Inspection" />
+    const { availability, loading } = useTradeXchangeAvailability()
+
+    if (loading) {
+        return <div className="min-h-screen pt-32 text-center text-sm text-[var(--text-muted)]">Checking TradeXchange availability…</div>
+    }
+    if (!availability?.INSPECTION) return <ServiceTemporarilyUnavailable serviceName="Vehicle Inspection" />
 
     const providerHref = user
         ? "/dashboard/partner"
