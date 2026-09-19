@@ -754,15 +754,6 @@ export class ServiceLeadsService {
             });
         }
 
-        const currentRecipient = await this.prisma.serviceLeadRecipient.findUnique({
-            where: {
-                leadId_contractorId: {
-                    leadId,
-                    contractorId: profile.id,
-                },
-            },
-        });
-        if (currentRecipient) displayedRecipient = currentRecipient;
 
         // Deliberately construct the disclosure payload instead of spreading
         // the database row. This prevents future internal lead fields from
