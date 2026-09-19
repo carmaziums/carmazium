@@ -281,7 +281,7 @@ export default function ProfilePage() {
                 <section className="mb-12">
                     <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><Building2 className="text-primary" /> Partner Account</h3>
                     <div className="glass-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-5">
-                        <div><p className="font-bold">One business account, multiple services</p><p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Your approved Vehicle Dealer, Delivery & Recovery and Vehicle Inspection services appear automatically as badges on your public profile.</p></div>
+                        <div><p className="font-bold">One business account, multiple services</p><p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Your approved Vehicle Dealer, Delivery & Recovery, Vehicle Inspection, Vehicle Finance and Warranty services can live under the same Partner Account.</p></div>
                         <Link href="/dashboard/partner"><Button>Open Partner Dashboard</Button></Link>
                     </div>
                 </section>
@@ -338,7 +338,7 @@ export default function ProfilePage() {
                 <p className="mb-7" style={{ color: "var(--text-muted)" }}>Personal accounts are for individual buyers and sellers. Businesses use one Partner Account and add the services they need from the Partner Dashboard.</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {!isPersonal && <AccountCard icon={User} label="Personal Account" sub="Buy and sell vehicles as an individual" button="Switch to Personal Account" loading={loading} onClick={() => handleRoleElevation("BUYER")} />}
-                    {!isPartner && <AccountCard icon={Building2} label="Partner Account" sub="One business login with Vehicle Dealer, Delivery and Inspection add-ons" button="Create Partner Account" loading={loading} onClick={() => handleRoleElevation("DEALER")} />}
+                    {!isPartner && <AccountCard icon={Building2} label="Partner Account" sub="One business login with Dealer, Delivery, Inspection, Finance and Warranty add-ons" button="Create Partner Account" loading={loading} onClick={() => handleRoleElevation("DEALER")} />}
                 </div>
             </section>
         </div>
