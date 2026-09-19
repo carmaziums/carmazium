@@ -165,6 +165,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             ...(isPartnerOwner ? [{ href: "/dashboard/partner", label: "Partner Home", icon: Building2, section: "Business" }] : []),
             { href: "/dashboard/service", label: "Service Overview", icon: LayoutDashboard, section: "Services" },
             { href: "/dashboard/service/jobs", label: "Available Jobs", icon: Briefcase, section: "Services" },
+            { href: "/dashboard/service/leads", label: "Finance & Warranty Enquiries", icon: ClipboardList, section: "Services" },
             { href: "/dashboard/service/capabilities", label: "Service Areas", icon: ShieldCheck, section: "Services" },
             { href: "/dashboard/service/messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account" },
             { href: "/dashboard/service/settings", label: "Settings", icon: Settings, section: "Account" },
