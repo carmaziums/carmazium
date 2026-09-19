@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { CapabilityStatus, ServiceJobStatus, ServicePaymentStatus, ServiceQuoteStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PaymentsService } from '../payments/payments.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ServicesService } from './services.service';
+import { ServiceLeadsService } from './service-leads.service';
 
 /**
  * How long a customer may leave an accepted quote unpaid before the job is
@@ -23,6 +24,7 @@ export class ServicesLifecycleService {
         private readonly prisma: PrismaService,
         private readonly payments: PaymentsService,
         private readonly notifications: NotificationsService,
+        @Optional() private readonly leads?: ServiceLeadsService,
     ) { }
 
     @Cron('7 * * * *')
@@ -30,11 +32,12 @@ export class ServicesLifecycleService {
         try {
             const reopened = await this.expireUnpaidAcceptedJobs();
             const expired = await this.services.expireOpenJobs();
+            const expiredLeads = await this.leads?.expireOldLeads() ?? 0;
             const released = await this.services.autoConfirmCompleted();
             const verification = await this.maintainCapabilityVerification();
-            if (reopened || expired || released || verification.expired || verification.reminded) {
+            if (reopened || expired || expiredLeads || released || verification.expired || verification.reminded) {
                 this.logger.log(
-                    `Service jobs: reopened unpaid ${reopened}, expired ${expired}, auto-confirmed ${released}; provider verification: expired ${verification.expired}, reminders ${verification.reminded}`,
+                    `Service jobs: reopened unpaid ${reopened}, expired ${expired}, expired enquiries ${expiredLeads}, auto-confirmed ${released}; provider verification: expired ${verification.expired}, reminders ${verification.reminded}`,
                 );
             }
         } catch (e: any) {
