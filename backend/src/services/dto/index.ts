@@ -1,5 +1,5 @@
 import {
-    IsString, IsOptional, IsBoolean, IsInt, IsEnum, IsArray, IsUUID,
+    IsString, IsOptional, IsBoolean, IsInt, IsEnum, IsIn, IsArray, IsUUID,
     IsDateString, IsNotEmpty, Min, Max, MaxLength, ValidateNested, ArrayMinSize, ArrayMaxSize, Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -21,7 +21,7 @@ export class ServiceListQueryDto {
 
 export class ServiceJobFeedQueryDto extends ServiceListQueryDto {
     @ApiPropertyOptional({ enum: JOB_SERVICE_TYPES })
-    @IsOptional() @IsEnum(ServiceType)
+    @IsOptional() @IsIn(JOB_SERVICE_TYPES)
     serviceType?: ServiceType;
 }
 
@@ -148,7 +148,7 @@ export class UpdateJobMatchingDto {
 
     @ApiPropertyOptional({ description: 'UK postcode areas served for Delivery/Inspection jobs, e.g. B, CV, M, SW.' })
     @IsOptional() @IsArray() @ArrayMaxSize(64)
-    @IsString({ each: true }) @MaxLength(3, { each: true }) @Matches(/^[A-Za-z]{1,2}$/, { each: true })
+    @IsString({ each: true }) @MaxLength(3, { each: true }) @Matches(/^(?:GIR|[A-Za-z]{1,2})$/, { each: true })
     jobPostcodeAreas?: string[];
 }
 
@@ -159,7 +159,7 @@ export class UpdateLeadMatchingDto {
 
     @ApiPropertyOptional({ description: 'UK postcode areas, e.g. B, CV, M, SW. Ignored when nationwide is true.' })
     @IsOptional() @IsArray() @ArrayMaxSize(32)
-    @IsString({ each: true }) @MaxLength(3, { each: true }) @Matches(/^[A-Za-z]{1,3}$/, { each: true })
+    @IsString({ each: true }) @MaxLength(3, { each: true }) @Matches(/^(?:GIR|[A-Za-z]{1,2})$/, { each: true })
     leadPostcodeAreas?: string[];
 
     @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) @Max(500_000_00)
