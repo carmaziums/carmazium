@@ -1147,16 +1147,86 @@ export class ServicesService {
 
     // ── Jobs: contractor ───────────────────────────────────────────────────
 
-    async feed(contractorProfileId: string, approved: ServiceType[], serviceType?: ServiceType) {
+    async feedPage(
+        contractorProfileId: string,
+        approved: ServiceType[],
+        serviceType?: ServiceType,
+        options: { limit?: number; cursor?: string } = {},
+    ) {
         if (serviceType && !Object.values(ServiceType).includes(serviceType)) {
             throw new BadRequestException(`Unknown service type "${serviceType}"`);
         }
-        const types = serviceType ? approved.filter((t) => t === serviceType) : approved;
-        if (types.length === 0) return [];
+        const types = serviceType ? approved.filter((type) => type === serviceType) : approved;
+        if (types.length === 0) return { items: [], nextCursor: null };
+
+        const capabilities = await this.prisma.contractorCapability.findMany({
+            where: {
+                contractorId: contractorProfileId,
+                status: CapabilityStatus.APPROVED,
+                serviceType: { in: types },
+            },
+            select: {
+                serviceType: true,
+                jobNationwide: true,
+                jobPostcodeAreas: true,
+            },
+        });
+
+        const coverage = capabilities
+            .map((capability: any) => {
+                const legacyFixture =
+                    capability.jobNationwide === undefined
+                    && capability.jobPostcodeAreas === undefined;
+                if (legacyFixture || capability.jobNationwide) {
+                    return { serviceType: capability.serviceType };
+                }
+                const areas = (capability.jobPostcodeAreas ?? [])
+                    .map((area: string) => area.toUpperCase())
+                    .filter(Boolean);
+                return areas.length
+                    ? {
+                        serviceType: capability.serviceType,
+                        workPostcodeArea: { in: areas },
+                    }
+                    : null;
+            })
+            .filter(Boolean) as Prisma.ServiceJobWhereInput[];
+
+        if (coverage.length === 0) return { items: [], nextCursor: null };
+
+        const limit = boundedServiceLimit(options.limit);
+        const cursor = decodeServiceCursor(options.cursor);
+        const cursorDate = cursor ? new Date(cursor.at) : null;
+        const olderWithinPriority = cursorDate
+            ? {
+                OR: [
+                    { createdAt: { lt: cursorDate } },
+                    { createdAt: cursorDate, id: { lt: cursor!.id } },
+                ],
+            }
+            : null;
+        const cursorFilter: Prisma.ServiceJobWhereInput | null = cursorDate
+            ? cursor!.priority === true
+                ? {
+                    OR: [
+                        { isRecovery: true, ...olderWithinPriority },
+                        { isRecovery: false },
+                    ],
+                }
+                : { isRecovery: false, ...olderWithinPriority }
+            : null;
 
         const jobs = await this.prisma.serviceJob.findMany({
-            where: { status: ServiceJobStatus.OPEN, serviceType: { in: types }, expiresAt: { gt: new Date() } },
-            orderBy: [{ isRecovery: 'desc' }, { createdAt: 'desc' }],
+            where: {
+                status: ServiceJobStatus.OPEN,
+                expiresAt: { gt: new Date() },
+                AND: [
+                    { OR: coverage },
+                    ...(cursorFilter ? [cursorFilter] : []),
+                ],
+            },
+            orderBy: [{ isRecovery: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+            take: limit + 1,
             include: {
                 vehicles: true,
                 customer: { select: CUSTOMER_PUBLIC },
@@ -1164,16 +1234,57 @@ export class ServicesService {
                 _count: { select: { quotes: { where: { status: ServiceQuoteStatus.ACTIVE } } } },
             },
         });
-        return jobs.map((j) => this.redact(j, false));
+
+        const page = makeServicePage(jobs, limit, (job) => ({
+            at: job.createdAt.toISOString(),
+            id: job.id,
+            priority: job.isRecovery,
+        }));
+        return {
+            ...page,
+            items: page.items.map((job) => this.redact(job, false)),
+        };
     }
 
-    async assigned(contractorProfileId: string) {
+    /** Compatibility helper for internal/tests; HTTP feed uses cursor pages. */
+    async feed(contractorProfileId: string, approved: ServiceType[], serviceType?: ServiceType) {
+        return (await this.feedPage(contractorProfileId, approved, serviceType, { limit: 50 })).items;
+    }
+
+    async assignedPage(
+        contractorProfileId: string,
+        options: { limit?: number; cursor?: string } = {},
+    ) {
+        const limit = boundedServiceLimit(options.limit);
+        const cursor = decodeServiceCursor(options.cursor);
+        const cursorDate = cursor ? new Date(cursor.at) : null;
         const jobs = await this.prisma.serviceJob.findMany({
-            where: { contractorId: contractorProfileId },
-            orderBy: { updatedAt: 'desc' },
+            where: {
+                contractorId: contractorProfileId,
+                ...(cursorDate ? {
+                    OR: [
+                        { updatedAt: { lt: cursorDate } },
+                        { updatedAt: cursorDate, id: { lt: cursor!.id } },
+                    ],
+                } : {}),
+            },
+            orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+            take: limit + 1,
             include: { vehicles: true, customer: { select: CUSTOMER_PRIVATE }, payment: true },
         });
-        return jobs.map((job) => this.redact(job, this.contactUnlocked(job.payment?.status)));
+        const page = makeServicePage(jobs, limit, (job) => ({
+            at: job.updatedAt.toISOString(),
+            id: job.id,
+        }));
+        return {
+            ...page,
+            items: page.items.map((job) => this.redact(job, this.contactUnlocked(job.payment?.status))),
+        };
+    }
+
+    /** Compatibility helper for internal/tests; HTTP assigned list is paginated. */
+    async assigned(contractorProfileId: string) {
+        return (await this.assignedPage(contractorProfileId, { limit: 50 })).items;
     }
 
     async upsertQuote(contractorProfileId: string, approved: ServiceType[], userId: string, jobId: string, dto: UpsertQuoteDto) {
