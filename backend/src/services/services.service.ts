@@ -24,16 +24,27 @@ import { PaymentsService } from '../payments/payments.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
 import {
     CreateJobDto, JobFromPurchaseDto, CancelJobDto, UpsertQuoteDto,
-    ApplyCapabilityDto, UpdateLeadMatchingDto, ReviewCapabilityDto, ResolveDisputeDto, JOB_SERVICE_TYPES,
+    ApplyCapabilityDto, UpdateLeadMatchingDto, UpdateJobMatchingDto, ReviewCapabilityDto, ResolveDisputeDto, JOB_SERVICE_TYPES,
 } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
 import { assertCapabilityVerificationReady } from './capability-verification';
 import { TradeTeamService } from './trade-team.service';
+import { parseFutureRequestedFor, postcodeArea, requireUkPostcode } from './service-validation';
+import { boundedServiceLimit, decodeServiceCursor, makeServicePage } from './service-pagination';
 
 /** Days an OPEN job accepts quotes before it expires. */
 const JOB_OPEN_DAYS = 7;
 /** Hours after a contractor marks COMPLETED before the customer is assumed to agree. */
 const AUTO_CONFIRM_HOURS = 48;
+export const MAX_ACTIVE_SERVICE_JOBS_PER_CUSTOMER = 10;
+const ACTIVE_CUSTOMER_JOB_STATUSES: ServiceJobStatus[] = [
+    ServiceJobStatus.OPEN,
+    ServiceJobStatus.ACCEPTED,
+    ServiceJobStatus.PAID,
+    ServiceJobStatus.IN_PROGRESS,
+    ServiceJobStatus.COMPLETED,
+    ServiceJobStatus.DISPUTED,
+];
 
 /**
  * What a job looks like to whoever is asking. The customer's identity and
