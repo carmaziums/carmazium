@@ -374,21 +374,92 @@ export class ListingsService {
             }
         }
 
+        const hasInitialAuctionSchedule = [
+            createListingDto.auctionStartTime,
+            createListingDto.auctionReservePrice,
+            createListingDto.auctionMinIncrement,
+            createListingDto.auctionBuyItNowPrice,
+            createListingDto.auctionStartingBid,
+        ].some((value) => value !== undefined);
+
+        if (listingType !== 'AUCTION' && hasInitialAuctionSchedule) {
+            throw new BadRequestException('Auction schedule fields are only valid for AUCTION listings');
+        }
+
+        let initialAuctionCreate: {
+            startTime: Date;
+            endTime: Date;
+            reservePrice: number;
+            startingBid: number;
+            minIncrement: number;
+            buyItNowPrice: number | null;
+            status: 'SCHEDULED';
+        } | null = null;
+
+        if (listingType === 'AUCTION' && hasInitialAuctionSchedule) {
+            if (
+                !createListingDto.auctionStartTime
+                || createListingDto.auctionReservePrice === undefined
+                || createListingDto.auctionMinIncrement === undefined
+            ) {
+                throw new BadRequestException(
+                    'Initial auction creation requires start time, reserve price and minimum increment together',
+                );
+            }
+
+            if (originalImages.length < 10) {
+                throw new BadRequestException(
+                    `Auctions require at least 10 photos before scheduling. You have ${originalImages.length}.`,
+                );
+            }
+
+            const now = new Date();
+            const startTime = new Date(createListingDto.auctionStartTime);
+            if (
+                Number.isNaN(startTime.getTime())
+                || startTime.getTime() < now.getTime() - 60 * 1000
+            ) {
+                throw new BadRequestException('Start time cannot be in the past');
+            }
+
+            const marketValue = Number(createListingDto.price);
+            if (!Number.isFinite(marketValue) || marketValue <= 0) {
+                throw new BadRequestException(
+                    'A valid Estimated Market Value is required before this vehicle can be auctioned',
+                );
+            }
+
+            initialAuctionCreate = {
+                startTime,
+                endTime: new Date(startTime.getTime() + 24 * 60 * 60 * 1000),
+                reservePrice: createListingDto.auctionReservePrice,
+                startingBid: calculatePlatformOpeningBid(marketValue),
+                minIncrement: createListingDto.auctionMinIncrement,
+                buyItNowPrice: createListingDto.auctionBuyItNowPrice ?? null,
+                status: 'SCHEDULED',
+            };
+        }
+
         // Auctions are free to list; all classified listings require at minimum BASIC (£1)
         const rawBadgeTier = createListingDto.badgeTier ?? 'BASIC';
         const badgeTier = (rawBadgeTier === 'FREE' && listingType !== 'AUCTION') ? 'BASIC' : rawBadgeTier;
         const isPremium = badgeTier === 'PREMIUM';
 
         // Every new listing must pass admin review before it can go live — nothing
-        // is ever created directly as ACTIVE. Paid tiers start DRAFT (moved to
-        // PENDING_REVIEW once payment completes, see publishListing()/the Stripe
-        // webhook). FREE tier (auctions) has no payment step, so it goes straight
-        // to PENDING_REVIEW unless the caller explicitly asked to save as a DRAFT.
-        const listingStatus: ListingStatus = createListingDto.status === 'DRAFT'
+        // is ever created directly as ACTIVE. Retail paid tiers start DRAFT and
+        // auctions now also always start DRAFT, even when their Auction row is
+        // created atomically. publishListing() owns the readiness/HPI review gate.
+        // AUCTION creation always starts as DRAFT, even when the Auction row is
+        // created atomically below. Submission/readiness/HPI checks remain owned
+        // by publishListing(); the atomic create only guarantees structural
+        // integrity between Listing and Auction.
+        const listingStatus: ListingStatus = listingType === 'AUCTION'
             ? 'DRAFT'
-            : badgeTier !== 'FREE'
+            : createListingDto.status === 'DRAFT'
                 ? 'DRAFT'
-                : 'PENDING_REVIEW';
+                : badgeTier !== 'FREE'
+                    ? 'DRAFT'
+                    : 'PENDING_REVIEW';
 
         // Cat A and Cat B are total-loss / body-salvage write-offs that cannot be
         // re-registered. They may only be listed for auction (parts/scrapping).
@@ -484,6 +555,13 @@ export class ListingsService {
                 deliveryAvailable: createListingDto.deliveryAvailable ?? false,
                 deliveryPricePerMile: createListingDto.deliveryPricePerMile ?? null,
                 deliveryMaxMiles: createListingDto.deliveryMaxMiles ?? null,
+                // Prisma nested writes are atomic: when a brand-new auction is
+                // submitted with its schedule, either both rows commit or neither
+                // row exists. This removes the old POST /listings -> POST /auctions
+                // orphan window.
+                auction: initialAuctionCreate
+                    ? { create: initialAuctionCreate }
+                    : undefined,
             },
         });
 
@@ -499,10 +577,10 @@ export class ListingsService {
                 .catch(() => { /* silent */ });
         }
 
-        // FREE-tier (auction) listings have no payment step, so this create() call
-        // is the only signal that the seller has finished submitting — notify them
-        // it's now awaiting admin review. Paid tiers get this from publishListing()
-        // / the Stripe webhook once payment completes instead.
+        // A create() call alone never submits an auction for review. Auctions are
+        // DRAFT until publishListing() passes readiness/HPI checks. This branch is
+        // retained for any non-auction create flow that legitimately starts in
+        // PENDING_REVIEW.
         if (listingStatus === 'PENDING_REVIEW') {
             this.notifySubmittedForReview({ id: listing.id, title: listing.title, sellerId: userId ?? listing.sellerId }).catch(() => { });
         }

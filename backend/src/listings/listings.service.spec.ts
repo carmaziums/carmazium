@@ -45,7 +45,11 @@ describe('ListingsService', () => {
             $transaction: jest.fn(async (arg: any) => Array.isArray(arg) ? Promise.all(arg) : arg(prisma)),
         };
         sellers = { incrementListings: jest.fn(), incrementSales: jest.fn() };
-        const config = { get: jest.fn() };
+        const config = {
+            get: jest.fn((key: string) =>
+                key === 'SUPABASE_URL' ? 'https://test.supabase.co' : undefined,
+            ),
+        };
         scraper = { scrape: jest.fn() };
         const notifications = { create: jest.fn().mockResolvedValue(null) };
         const notificationsGateway = { sendNotification: jest.fn() };
@@ -63,6 +67,109 @@ describe('ListingsService', () => {
         }).compile();
 
         service = module.get<ListingsService>(ListingsService);
+    });
+
+    describe('atomic initial auction creation', () => {
+        const sellerId = '11111111-1111-4111-8111-111111111111';
+        const tenImages = Array.from(
+            { length: 10 },
+            (_, index) => `https://test.supabase.co/storage/v1/object/public/listings/${sellerId}/vehicle/${index}.jpg`,
+        );
+
+        const makeAuctionListing = (overrides: Record<string, any> = {}) => ({
+            title: 'BMW M3 Auction',
+            price: 10000,
+            mileage: 30000,
+            year: 2020,
+            vrm: 'AB12CDE',
+            images: tenImages,
+            listingType: 'AUCTION',
+            badgeTier: 'FREE',
+            ...overrides,
+        });
+
+        it('creates the Listing and Auction in one Prisma nested write and keeps the listing DRAFT', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.listing.create.mockResolvedValue({
+                id: 'listing-new',
+                title: 'BMW M3 Auction',
+                sellerId,
+                type: 'AUCTION',
+                status: 'DRAFT',
+            });
+
+            const start = new Date(Date.now() + 60_000);
+            await service.create(
+                makeAuctionListing({
+                    status: 'ACTIVE',
+                    auctionStartTime: start.toISOString(),
+                    auctionReservePrice: 9000,
+                    auctionMinIncrement: 100,
+                    auctionStartingBid: 9999,
+                    auctionBuyItNowPrice: 12000,
+                }) as any,
+                sellerId,
+            );
+
+            const createCall = prisma.listing.create.mock.calls[0][0];
+            expect(createCall.data.status).toBe('DRAFT');
+            expect(createCall.data.type).toBe('AUCTION');
+            expect(createCall.data.auction).toEqual({
+                create: expect.objectContaining({
+                    reservePrice: 9000,
+                    startingBid: 7000,
+                    minIncrement: 100,
+                    buyItNowPrice: 12000,
+                    status: 'SCHEDULED',
+                }),
+            });
+
+            const nestedAuction = createCall.data.auction.create;
+            expect(nestedAuction.startTime.getTime()).toBe(start.getTime());
+            expect(nestedAuction.endTime.getTime() - nestedAuction.startTime.getTime())
+                .toBe(24 * 60 * 60 * 1000);
+
+            // There must be no second standalone Auction create call. Prisma's
+            // nested Listing.create is the atomic boundary.
+            expect(prisma.auction.create).not.toHaveBeenCalled();
+        });
+
+        it('keeps an intentional pre-HPI AUCTION draft as DRAFT when no schedule is supplied', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.listing.create.mockResolvedValue({
+                id: 'listing-draft',
+                title: 'BMW M3 Auction',
+                sellerId,
+                type: 'AUCTION',
+                status: 'DRAFT',
+            });
+
+            await service.create(
+                makeAuctionListing({ status: 'ACTIVE' }) as any,
+                sellerId,
+            );
+
+            const createCall = prisma.listing.create.mock.calls[0][0];
+            expect(createCall.data.status).toBe('DRAFT');
+            expect(createCall.data.auction).toBeUndefined();
+        });
+
+        it('rejects a partial auction schedule instead of creating a half-configured listing', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+
+            await expect(
+                service.create(
+                    makeAuctionListing({
+                        auctionStartTime: new Date(Date.now() + 60_000).toISOString(),
+                        auctionReservePrice: 9000,
+                    }) as any,
+                    sellerId,
+                ),
+            ).rejects.toThrow(/requires start time, reserve price and minimum increment/i);
+
+            expect(prisma.listing.create).not.toHaveBeenCalled();
+            expect(prisma.auction.create).not.toHaveBeenCalled();
+        });
     });
 
     describe('generic listing update protection', () => {

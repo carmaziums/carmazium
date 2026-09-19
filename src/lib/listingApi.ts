@@ -15,6 +15,13 @@ export interface CreateListingRequest {
     vrm: string
     images: string[]
     listingType: 'AUCTION' | 'CLASSIFIED'
+    // Initial auction schedule. When supplied for a new AUCTION listing the
+    // backend creates Listing + Auction atomically in one Prisma nested write.
+    auctionStartTime?: string
+    auctionReservePrice?: number
+    auctionMinIncrement?: number
+    auctionBuyItNowPrice?: number
+    auctionStartingBid?: number
     // Offer price range (enables offer system)
     priceMin?: number
     priceMax?: number

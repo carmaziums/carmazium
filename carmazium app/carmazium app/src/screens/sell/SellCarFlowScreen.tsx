@@ -1509,39 +1509,66 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         // of this branch (auction scheduling / listing-fee payment /
         // publish) is unchanged either way.
         let newListingId: string | null | undefined;
+        let initialAuctionCreatedAtomically = false;
         if (hpiDraftListingId) {
           await apiClient(`/listings/${hpiDraftListingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
           newListingId = hpiDraftListingId;
         } else {
-          const res = await apiClient<{ success: boolean; data: { id: string } }>('/listings', { method: 'POST', body: JSON.stringify(payload) });
+          let createPayload: Record<string, any> = payload;
+          if (isAuction) {
+            const auctionStartTime = auctionStartMode === 'NOW'
+              ? new Date().toISOString()
+              : new Date(auctionStartDate).toISOString();
+
+            createPayload = {
+              ...payload,
+              auctionStartTime,
+              auctionReservePrice: parseFloat(reservePrice),
+              auctionMinIncrement: parseFloat(minIncrement),
+              auctionStartingBid: parseFloat(startingBid),
+              ...(buyItNowPrice.trim()
+                ? { auctionBuyItNowPrice: parseFloat(buyItNowPrice) }
+                : {}),
+            };
+            initialAuctionCreatedAtomically = true;
+          }
+
+          const res = await apiClient<{ success: boolean; data: { id: string } }>('/listings', {
+            method: 'POST',
+            body: JSON.stringify(createPayload),
+          });
           newListingId = res?.data?.id;
         }
 
         const damageSaved = newListingId ? await saveDamageRecords(newListingId) : true;
 
         if (isAuction && newListingId) {
-          // Auction listings: schedule the auction, then publish (no listing fee for auction tier)
-          const auctionPayload: Record<string, any> = {
-            listingId: newListingId,
-            reservePrice: parseFloat(reservePrice),
-            startingBid: parseFloat(startingBid),
-            minIncrement: parseFloat(minIncrement),
-            ...(buyItNowPrice.trim() ? { buyItNowPrice: parseFloat(buyItNowPrice) } : {}),
-          };
-          if (auctionStartMode === 'NOW') {
-            auctionPayload.startTime = new Date().toISOString();
-          } else {
-            auctionPayload.startTime = new Date(auctionStartDate).toISOString();
-          }
-          Object.keys(auctionPayload).forEach(k => auctionPayload[k] === undefined && delete auctionPayload[k]);
-          try {
-            await apiClient('/auctions', { method: 'POST', body: JSON.stringify(auctionPayload) });
-          } catch (auctionErr: any) {
-            Alert.alert(
-              'Listing created',
-              `Your listing was saved but the auction could not be scheduled: ${auctionErr.message || 'Unknown error'}. You can schedule the auction from your listings.`,
-            );
-            return;
+          // Brand-new auctions are already paired with their Auction row by the
+          // atomic POST /listings nested write. HPI-created drafts pre-exist, so
+          // only those still need the scheduling endpoint here.
+          if (!initialAuctionCreatedAtomically) {
+            const auctionPayload: Record<string, any> = {
+              listingId: newListingId,
+              reservePrice: parseFloat(reservePrice),
+              startingBid: parseFloat(startingBid),
+              minIncrement: parseFloat(minIncrement),
+              ...(buyItNowPrice.trim() ? { buyItNowPrice: parseFloat(buyItNowPrice) } : {}),
+            };
+            if (auctionStartMode === 'NOW') {
+              auctionPayload.startTime = new Date().toISOString();
+            } else {
+              auctionPayload.startTime = new Date(auctionStartDate).toISOString();
+            }
+            Object.keys(auctionPayload).forEach(k => auctionPayload[k] === undefined && delete auctionPayload[k]);
+            try {
+              await apiClient('/auctions', { method: 'POST', body: JSON.stringify(auctionPayload) });
+            } catch (auctionErr: any) {
+              Alert.alert(
+                'Listing created',
+                `Your listing was saved but the auction could not be scheduled: ${auctionErr.message || 'Unknown error'}. You can schedule the auction from your listings.`,
+              );
+              return;
+            }
           }
           // Publish auction listing (no fee — auctions are the FREE tier).
           // This used to swallow the failure entirely and announce "Auction
