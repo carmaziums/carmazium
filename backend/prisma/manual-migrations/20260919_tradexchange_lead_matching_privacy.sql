@@ -56,8 +56,8 @@ alter table public.service_leads
     alter column "customerId" drop not null,
     alter column "fullName" drop not null,
     alter column "email" drop not null,
-    add column if not exists "closedAt" timestamptz,
-    add column if not exists "anonymizedAt" timestamptz;
+    add column if not exists "closedAt" timestamp(3),
+    add column if not exists "anonymizedAt" timestamp(3);
 
 update public.service_leads
 set "closedAt" = coalesce("closedAt", "updatedAt")
@@ -68,10 +68,10 @@ create index if not exists service_leads_retention_idx
     on public.service_leads (status, "closedAt");
 
 alter table public.service_lead_recipients
-    add column if not exists "matchedAt" timestamptz not null default current_timestamp,
+    add column if not exists "matchedAt" timestamp(3) not null default current_timestamp,
     add column if not exists "matchSource" text not null default 'AUTO',
     add column if not exists "matchReason" text,
-    add column if not exists "contactDisclosedAt" timestamptz;
+    add column if not exists "contactDisclosedAt" timestamp(3);
 
 update public.service_lead_recipients
 set "matchedAt" = "createdAt"
