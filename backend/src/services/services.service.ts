@@ -6,6 +6,7 @@ import {
     BadRequestException,
     ConflictException,
     Optional,
+    ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -156,6 +157,65 @@ export class ServicesService {
             },
         });
         return capabilityVerificationIsCurrent(capability) ? capability : null;
+    }
+
+    private async assertProviderPayoutReadyForNewWork(contractorProfileId: string) {
+        const provider = await this.prisma.contractorProfile.findUnique({
+            where: { id: contractorProfileId },
+            select: {
+                user: {
+                    select: {
+                        stripeConnectAccountId: true,
+                    },
+                },
+            },
+        });
+        const accountId = provider?.user?.stripeConnectAccountId;
+        if (!accountId) {
+            throw new ForbiddenException(
+                'Complete Stripe Connect payout setup before taking new TradeXchange paid work.',
+            );
+        }
+
+        let readiness: { ready: boolean };
+        try {
+            readiness = await this.payments.refreshConnectAccountReadiness(accountId);
+        } catch (error: any) {
+            this.logger.warn(
+                `Unable to refresh Stripe Connect readiness for provider ${contractorProfileId}: ${error?.message}`,
+            );
+            throw new ServiceUnavailableException(
+                'CarMazium could not verify your payout account with Stripe. Please try again shortly.',
+            );
+        }
+        if (!readiness.ready) {
+            throw new ForbiddenException(
+                'Your Stripe Connect account is not currently ready for payouts. Complete any outstanding Stripe requirements before taking new work.',
+            );
+        }
+    }
+
+    private async eligibleProviderCountForJob(
+        serviceType: ServiceType,
+        workPostcodeArea: string | null,
+    ): Promise<number> {
+        return this.prisma.contractorCapability.count({
+            where: {
+                serviceType,
+                ...verifiedCapabilityWhere(new Date()),
+                contractor: {
+                    deletedAt: null,
+                    user: {
+                        stripeConnectAccountId: { not: null },
+                        stripeConnectOnboardingComplete: true,
+                    },
+                },
+                OR: [
+                    { jobNationwide: true },
+                    ...(workPostcodeArea ? [{ jobPostcodeAreas: { has: workPostcodeArea } }] : []),
+                ],
+            },
+        });
     }
 
     private async capabilityAllowsJob(
@@ -948,6 +1008,7 @@ export class ServicesService {
                 'That provider is no longer verified to take new TradeXchange work. Choose another active quote.',
             );
         }
+        await this.assertProviderPayoutReadyForNewWork(quote.contractorId);
 
         const { rate, platformFeePence, contractorPence } = this.split(quote.amountPence);
 
@@ -1370,6 +1431,7 @@ export class ServicesService {
         ))) {
             throw new ForbiddenException('This job is outside your approved TradeXchange service area.');
         }
+        await this.assertProviderPayoutReadyForNewWork(contractorProfileId);
         if (job.customerId === userId) throw new BadRequestException('You cannot quote on your own job.');
 
         const validUntil = dto.validUntil ? new Date(dto.validUntil) : null;
@@ -1553,9 +1615,14 @@ export class ServicesService {
             review = reviews[0] ?? null;
         }
 
+        const eligibleProviderCount = job.status === ServiceJobStatus.OPEN
+            ? await this.eligibleProviderCountForJob(job.serviceType, this.jobArea(job))
+            : null;
+
         return {
             ...shaped,
             review,
+            eligibleProviderCount,
             canReview: isCustomer && job.status === ServiceJobStatus.RELEASED && !review,
             viewerRole: isCustomer ? 'customer' : isAccepted ? 'contractor' : isAdmin ? 'admin' : 'bidder',
         };

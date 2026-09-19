@@ -2,12 +2,11 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useParams, useRouter, useSearchParams, notFound } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import {
     Loader2, ArrowLeft, Star, CheckCircle, AlertCircle, ShieldCheck, Phone, Mail, XCircle, Clock, Banknote, MessageSquare,
 } from "lucide-react"
 import { RequireAuth } from "@/components/auth/RequireAuth"
-import { deliveryServiceEnabled, inspectionServiceEnabled } from "@/lib/featureFlags"
 import { Button } from "@/components/ui/Button"
 import {
     getJob, acceptQuote, confirmCompletion, disputeJob, cancelJob, createServiceReview, formatPence,
@@ -33,7 +32,7 @@ function JobDetail() {
     const [reviewRating, setReviewRating] = React.useState(0)
     const [reviewComment, setReviewComment] = React.useState("")
     const [flash, setFlash] = React.useState<string | null>(
-        params.get("posted") ? "Job posted. Approved providers can now quote it — we will email you as prices come in."
+        params.get("posted") ? "Job posted. It will stay open for matching verified providers to quote — we will email you as prices come in."
             : params.get("paid") === "1" ? "Payment received. Your provider has been notified and their contact details are below."
                 : params.get("paid") === "0" ? "Checkout was cancelled. Your quote is still accepted — pay when you are ready."
                     : null,
@@ -164,7 +163,18 @@ function JobDetail() {
                             {activeQuotes.length === 0 ? (
                                 <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-10 text-center">
                                     <Clock size={28} className="mx-auto text-[var(--text-muted)] mb-3" />
-                                    <p className="text-sm text-[var(--text-muted)]">No quotes yet. Approved {isInspection ? "inspectors" : "transporters"} have been notified — prices will appear here as they come in.</p>
+                                    {job.eligibleProviderCount === 0 ? (
+                                        <>
+                                            <p className="text-sm font-bold">No verified {isInspection ? "inspectors" : "transporters"} currently match this job.</p>
+                                            <p className="text-sm text-[var(--text-muted)] mt-2">Your job remains open. If a provider becomes verified for this service and area before it expires, it will automatically appear in their available-jobs feed.</p>
+                                        </>
+                                    ) : (
+                                        <p className="text-sm text-[var(--text-muted)]">
+                                            No quotes yet. {job.eligibleProviderCount != null
+                                                ? `${job.eligibleProviderCount} verified ${isInspection ? "inspector" : "transporter"}${job.eligibleProviderCount === 1 ? "" : "s"} currently match this job.`
+                                                : `Matching verified ${isInspection ? "inspectors" : "transporters"} can quote while the job remains open.`}
+                                        </p>
+                                    )}
                                     <p className="text-xs text-[var(--text-muted)] mt-2">Open until {new Date(job.expiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}.</p>
                                 </div>
                             ) : (
@@ -343,8 +353,6 @@ function QuoteCard({ quote, cheapest, busy, onAccept }: { quote: ServiceQuote; c
 }
 
 export default function ServiceJobPage() {
-    if (!deliveryServiceEnabled && !inspectionServiceEnabled) notFound()
-
     return (
         <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
             <RequireAuth title="Sign in to view this job" message="Quotes and contact details are only shown to the account that posted the job.">

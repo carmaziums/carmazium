@@ -257,6 +257,7 @@ beforeAll(async () => {
                         refunds: { create: refundsCreate },
                         transfers: { create: transfersCreate },
                     }),
+                    refreshConnectAccountReadiness: async (accountId: string) => ({ ready: true, accountId }),
                 },
             },
             { provide: ConfigService, useValue: { get: (k: string) => (k === 'FRONTEND_URL' ? 'https://www.carmazium.com' : undefined) } },

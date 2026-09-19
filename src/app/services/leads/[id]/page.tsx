@@ -2,10 +2,9 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { notFound, useParams } from "next/navigation"
+import { useParams } from "next/navigation"
 import { ArrowLeft, Loader2, Star } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import { financeServiceEnabled, warrantyServiceEnabled } from "@/lib/featureFlags"
 import { closeServiceLead, formatPence, getServiceLead, SERVICE_LABELS, type ServiceLead } from "@/lib/servicesApi"
 
 export default function ServiceLeadDetailPage() {
@@ -14,8 +13,6 @@ export default function ServiceLeadDetailPage() {
     const [error, setError] = React.useState<string | null>(null)
     const [busy, setBusy] = React.useState(true)
     const [closing, setClosing] = React.useState(false)
-
-    if (!financeServiceEnabled && !warrantyServiceEnabled) notFound()
 
     const load = React.useCallback(() => {
         setBusy(true)
@@ -59,7 +56,7 @@ export default function ServiceLeadDetailPage() {
 
                 <h2 className="text-xl font-black font-heading mb-4">Provider responses</h2>
                 {!lead.responses?.length ? (
-                    <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-7 text-sm text-[var(--text-muted)]">No provider has replied yet. Approved matching providers can see this enquiry while it remains open.</div>
+                    <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-7 text-sm text-[var(--text-muted)]">{(lead.recipientCount ?? 0) === 0 ? "No approved provider is matched yet. CarMazium will keep checking for newly approved matching providers while this enquiry remains open." : "No provider has replied yet. Your matched providers can respond while this enquiry remains open."}</div>
                 ) : (
                     <div className="space-y-4">
                         {lead.responses.map((r, i) => (

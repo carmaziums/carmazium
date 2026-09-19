@@ -22,7 +22,10 @@ describe('TradeXchange payment hardening', () => {
             transfers: { create: jest.fn() },
             refunds: { create: jest.fn() },
         };
-        payments = { getStripeClient: jest.fn().mockResolvedValue(stripe) };
+        payments = {
+            getStripeClient: jest.fn().mockResolvedValue(stripe),
+            refreshConnectAccountReadiness: jest.fn().mockResolvedValue({ ready: true, accountId: 'acct_1' }),
+        };
         notifications = { create: jest.fn().mockResolvedValue({}) };
         email = { sendBrandedEmail: jest.fn().mockResolvedValue({ id: 'email' }) };
         config = {
