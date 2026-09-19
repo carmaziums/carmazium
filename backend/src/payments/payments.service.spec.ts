@@ -323,6 +323,55 @@ describe('PaymentsService — createPaymentSheet (F2: server-side amount, ignore
     });
 });
 
+describe('PaymentsService — handleWebhook checkout.session.completed (LISTING_FEE)', () => {
+    let service: PaymentsService;
+    let prisma: any;
+
+    beforeEach(async () => {
+        mockConstructEvent.mockReset();
+        prisma = buildPrismaMock();
+        const module: TestingModule = await buildModule(prisma);
+        service = module.get<PaymentsService>(PaymentsService);
+    });
+
+    it('records hosted Checkout payment but does not submit an incomplete listing', async () => {
+        prisma.listing.findUnique.mockResolvedValue(
+            readyRetailListing({ description: '' }),
+        );
+        mockConstructEvent.mockReturnValue({
+            type: 'checkout.session.completed',
+            data: {
+                object: {
+                    id: 'cs_mock',
+                    payment_intent: 'pi_checkout',
+                    metadata: {
+                        transactionId: 'txn-1',
+                        listingId: 'listing-1',
+                        userId: 'user-1',
+                        type: 'LISTING_FEE',
+                        badgeTier: 'BASIC',
+                    },
+                },
+            },
+        });
+
+        await service.handleWebhook(Buffer.from('{}'), 'sig');
+
+        expect(prisma.transaction.update).toHaveBeenCalledWith({
+            where: { id: 'txn-1' },
+            data: {
+                status: 'COMPLETED',
+                stripePaymentId: 'pi_checkout',
+            },
+        });
+        expect(prisma.listing.update).not.toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.objectContaining({ status: 'PENDING_REVIEW' }),
+            }),
+        );
+    });
+});
+
 describe('PaymentsService — handleWebhook payment_intent.succeeded (LISTING_FEE)', () => {
     let service: PaymentsService;
     let prisma: any;
