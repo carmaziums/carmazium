@@ -2,10 +2,8 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { notFound } from "next/navigation"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
-import { financeServiceEnabled, warrantyServiceEnabled } from "@/lib/featureFlags"
 import { getMyServiceLeadsPage, type ServiceLead, SERVICE_LABELS } from "@/lib/servicesApi"
 
 export default function MyServiceLeadsPage() {
@@ -15,8 +13,6 @@ export default function MyServiceLeadsPage() {
     const [busy, setBusy] = React.useState(true)
     const [nextCursor, setNextCursor] = React.useState<string | null>(null)
     const [loadingMore, setLoadingMore] = React.useState(false)
-
-    if (!financeServiceEnabled && !warrantyServiceEnabled) notFound()
 
     React.useEffect(() => {
         if (loading) return
