@@ -120,8 +120,13 @@ describe('ServiceLeadsService', () => {
         const result = await service.create('customer-1', {
             serviceType: ServiceType.FINANCE,
             consentToProviderContact: true,
+            vehicleRegistration: 'AB12 CDE',
+            vehicleValuePence: 1_500_000,
+            postcode: 'B1 1AA',
             depositPence: 100000,
             termMonths: 48,
+            monthlyBudgetPence: 35_000,
+            employmentStatus: 'Employed',
         } as any);
 
         expect(prisma.serviceLead.create).toHaveBeenCalledWith(expect.objectContaining({
