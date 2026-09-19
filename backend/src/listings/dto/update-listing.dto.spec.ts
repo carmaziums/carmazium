@@ -22,6 +22,11 @@ describe('UpdateListingDto protected fields', () => {
         ['status', 'ACTIVE'],
         ['listingType', 'AUCTION'],
         ['badgeTier', 'PREMIUM'],
+        ['auctionStartTime', new Date(Date.now() + 60_000).toISOString()],
+        ['auctionReservePrice', 9000],
+        ['auctionMinIncrement', 100],
+        ['auctionBuyItNowPrice', 12000],
+        ['auctionStartingBid', 7000],
     ])('rejects seller PATCH payloads containing protected field %s', async (field, value) => {
         await expect(
             transform({
