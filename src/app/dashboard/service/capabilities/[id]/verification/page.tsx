@@ -8,8 +8,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { getMyCapabilities, SERVICE_LABELS, type ContractorCapability } from "@/lib/servicesApi"
-import { addCapabilityAttachment, getCapabilityAttachments, type ServiceCaseEntry } from "@/lib/serviceOperationsApi"
-import { uploadImage } from "@/lib/supabase"
+import { getCapabilityAttachments, uploadCapabilityAttachment, type ServiceCaseEntry } from "@/lib/serviceOperationsApi"
 
 const inputCls = "w-full rounded-xl border px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-primary)]"
 
@@ -44,12 +43,7 @@ export default function ProviderVerificationPage() {
         if (file.size > 10 * 1024 * 1024) { setError("Please keep each document under 10 MB."); return }
         setBusy(true); setError(null)
         try {
-            const url = await uploadImage(file, "listings", `service-verification/${id}`)
-            await addCapabilityAttachment(id, {
-                kind: file.type.startsWith("image/") ? "PHOTO" : "DOCUMENT",
-                label: label.trim() || file.name,
-                url,
-            })
+            await uploadCapabilityAttachment(id, file, label.trim() || file.name)
             setFile(null); setLabel("")
             const input = document.getElementById("verification-file") as HTMLInputElement | null
             if (input) input.value = ""
