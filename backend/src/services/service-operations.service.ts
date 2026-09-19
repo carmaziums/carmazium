@@ -109,6 +109,14 @@ export class ServiceOperationsService {
         return text ? text.slice(0, max) : null;
     }
 
+    private parseOptionalDate(value: unknown, field: string): Date | null {
+        if (value === undefined || value === null || value === '') return null;
+        if (typeof value !== 'string') throw new BadRequestException(`${field} must be a date.`);
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) throw new BadRequestException(`${field} is invalid.`);
+        return date;
+    }
+
     private storageClient(): SupabaseClient {
         if (!this.supabase) {
             throw new ServiceUnavailableException('Private TradeXchange document storage is not configured.');
@@ -308,7 +316,7 @@ export class ServiceOperationsService {
         submittedById?: string,
     ) {
         const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
-            SELECT "id", "storagePath", "submittedById", "kind"
+            SELECT "id", "storagePath", "submittedById", "kind", "evidenceStatus"
             FROM "service_case_entries"
             WHERE "id" = ${entryId}
               AND "scope" = ${scope}
@@ -319,6 +327,9 @@ export class ServiceOperationsService {
         if (!entry) throw new NotFoundException('Document entry not found.');
         if (submittedById && entry.submittedById !== submittedById) {
             throw new ForbiddenException('You can only remove documents uploaded by your account.');
+        }
+        if (scope === 'CAPABILITY' && submittedById && entry.evidenceStatus && entry.evidenceStatus !== 'PENDING') {
+            throw new BadRequestException('Reviewed verification evidence is retained for audit and cannot be deleted by the provider.');
         }
         if (!entry.storagePath || (entry.kind !== 'DOCUMENT' && entry.kind !== 'PHOTO')) {
             throw new BadRequestException('Only stored document entries can be removed.');
@@ -357,24 +368,92 @@ export class ServiceOperationsService {
         return this.listEntries('CAPABILITY', capabilityId);
     }
 
+    async providerCapabilityVerification(userId: string, capabilityId: string) {
+        const capability = await this.ownedCapability(userId, capabilityId);
+        const [verification, attachments] = await Promise.all([
+            getCapabilityVerificationSummary(this.prisma, capabilityId),
+            this.listEntries('CAPABILITY', capabilityId),
+        ]);
+        return {
+            capabilityId,
+            serviceType: capability.serviceType,
+            verification,
+            attachments,
+        };
+    }
+
     async uploadProviderCapabilityDocument(
         userId: string,
         capabilityId: string,
         file: any,
-        label?: string,
+        input: CapabilityEvidenceUploadInput,
     ) {
-        await this.ownedCapability(userId, capabilityId);
+        const capability = await this.ownedCapability(userId, capabilityId);
+        const requirement = capabilityEvidenceRequirement(capability.serviceType, input?.evidenceType);
+        if (!requirement) {
+            throw new BadRequestException('Choose a verification evidence type required for this service.');
+        }
+
+        const validFrom = this.parseOptionalDate(input?.validFrom, 'Valid-from date');
+        const expiresAt = this.parseOptionalDate(input?.expiresAt, 'Expiry date');
+        if (requirement.expiryRequired && !expiresAt) {
+            throw new BadRequestException(`${requirement.title} requires an expiry date.`);
+        }
+        if (expiresAt && expiresAt <= new Date()) {
+            throw new BadRequestException('Verification evidence must be current and not already expired.');
+        }
+        if (validFrom && expiresAt && validFrom > expiresAt) {
+            throw new BadRequestException('Valid-from date cannot be after the expiry date.');
+        }
+
         const existing = await this.listEntries('CAPABILITY', capabilityId);
-        if (existing.filter((e) => e.kind === 'DOCUMENT' || e.kind === 'PHOTO').length >= 10) {
-            throw new BadRequestException('A maximum of 10 verification documents can be attached to one service application.');
+        if (existing.filter((e) => e.kind === 'DOCUMENT' || e.kind === 'PHOTO').length >= 30) {
+            throw new BadRequestException('A maximum of 30 verification evidence files can be retained on one service application.');
         }
         if (!file) throw new BadRequestException('Choose a document to upload.');
-        return this.uploadDocument('CAPABILITY', capabilityId, userId, file, label);
+
+        const entry = await this.uploadDocument(
+            'CAPABILITY',
+            capabilityId,
+            userId,
+            file,
+            input?.label,
+            {
+                type: input.evidenceType,
+                status: 'PENDING',
+                issuer: this.cleanText(input?.issuer, 160),
+                reference: this.cleanText(input?.reference, 160),
+                validFrom,
+                expiresAt,
+            },
+        );
+
+        if (capability.status !== CapabilityStatus.APPROVED) {
+            await this.prisma.contractorCapability.update({
+                where: { id: capabilityId },
+                data: {
+                    verificationStatus: 'IN_REVIEW',
+                    verificationCompletedAt: null,
+                    verificationExpiresAt: null,
+                    verificationReminder30SentAt: null,
+                    verificationReminder7SentAt: null,
+                },
+            });
+        }
+        return entry;
     }
 
     async deleteProviderCapabilityDocument(userId: string, capabilityId: string, entryId: string) {
-        await this.ownedCapability(userId, capabilityId);
-        return this.deleteStoredEntry('CAPABILITY', capabilityId, entryId, userId);
+        const capability = await this.ownedCapability(userId, capabilityId);
+        const result = await this.deleteStoredEntry('CAPABILITY', capabilityId, entryId, userId);
+        if (capability.status !== CapabilityStatus.APPROVED) {
+            const summary = await getCapabilityVerificationSummary(this.prisma, capabilityId);
+            await this.prisma.contractorCapability.update({
+                where: { id: capabilityId },
+                data: { verificationStatus: pendingVerificationStatus(summary.requirements) },
+            });
+        }
+        return result;
     }
 
     async adminCapabilityDetail(capabilityId: string) {
