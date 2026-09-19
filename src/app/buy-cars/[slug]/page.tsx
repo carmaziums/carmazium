@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { VehicleDetailsPageClient } from "./VehicleDetailsPageClient"
 import { VehicleDeliveryShortcut } from "./VehicleDeliveryShortcut"
 import { formatPrice } from "@/lib/listingApi"
-import { VehicleViewTracker } from "@/components/analytics/VehicleViewTracker"\nimport { serverFetchWithRetry } from "@/lib/serverFetchWithRetry"
+import { VehicleViewTracker } from "@/components/analytics/VehicleViewTracker"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 // Canonical SEO origin. The apex domain permanently redirects to www.
@@ -18,7 +18,7 @@ function isLikelyTestListingSlug(slug: string): boolean {
 
 async function getListingBySlug(slug: string) {
     try {
-        const res = await serverFetchWithRetry(`${API_BASE}/listings/${slug}`, 60)
+        const res = await fetch(`${API_BASE}/listings/${slug}`, { next: { revalidate: 60 } })
         if (!res.ok) return null
         const json = await res.json()
         return json.data ?? null
