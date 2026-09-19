@@ -795,17 +795,32 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     setCreateSubmitting(true);
     setCreateError(null);
     try {
-      await apiClient('/auctions', {
-        method: 'POST',
-        body: JSON.stringify({
-          listingId: selectedListing.id,
-          startTime: startDate.toISOString(),
-          reservePrice: reserve,
-          startingBid: starting,
-          minIncrement: increment,
-          ...(bin != null && !isNaN(bin) && bin > 0 && { buyItNowPrice: bin }),
-        }),
-      });
+      const auctionPayload = {
+        startTime: startDate.toISOString(),
+        reservePrice: reserve,
+        startingBid: starting,
+        minIncrement: increment,
+        ...(bin != null && !isNaN(bin) && bin > 0 && { buyItNowPrice: bin }),
+      };
+
+      if (selectedListing.status === 'ACTIVE' && selectedListing.type === 'CLASSIFIED') {
+        // Preserve the live retail listing and create the auction as its linked
+        // review-gated counterpart.
+        await apiClient(`/listings/${selectedListing.id}/also-auction`, {
+          method: 'POST',
+          body: JSON.stringify(auctionPayload),
+        });
+      } else {
+        // Reserve-not-met auctions return to DRAFT/CLASSIFIED and are rescheduled
+        // on their existing Listing/Auction pair by POST /auctions.
+        await apiClient('/auctions', {
+          method: 'POST',
+          body: JSON.stringify({
+            listingId: selectedListing.id,
+            ...auctionPayload,
+          }),
+        });
+      }
       haptics.success();
       setCreateModalVisible(false);
       resetCreateModal();
