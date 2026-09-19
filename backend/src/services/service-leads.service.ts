@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateServiceLeadDto, RespondToServiceLeadDto } from './service-leads.dto';
 import { ReviewCapabilityDto } from './dto';
+import { assertServiceAcceptingNewRequests } from './service-availability';
 
 const LEAD_TYPES = [ServiceType.FINANCE, ServiceType.WARRANTY] as const;
 
@@ -108,6 +109,7 @@ export class ServiceLeadsService {
 
     async create(customerId: string, dto: CreateServiceLeadDto) {
         this.assertLeadType(dto.serviceType);
+        assertServiceAcceptingNewRequests(dto.serviceType);
         if (!dto.consentToProviderContact) {
             throw new BadRequestException(
                 'Consent is required before CarMazium can share this enquiry with approved providers.',
