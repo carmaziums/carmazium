@@ -1018,7 +1018,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 }
 
                 localStorage.removeItem('carmazium_listing_draft')
-                localStorage.removeItem('carmazium_listing_draft_step')
+            localStorage.removeItem('carmazium_listing_draft_step')
                 localStorage.removeItem('carmazium_hpi_draft_id')
 
                 await ensureAuctionScheduled(finalListingId)
@@ -1128,7 +1128,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         trackListingSubmitted(payload, newListingId, 'published')
                         setFormData(INITIAL_FORM)
                         localStorage.removeItem('carmazium_listing_draft')
-                localStorage.removeItem('carmazium_listing_draft_step')
+                        localStorage.removeItem('carmazium_listing_draft_step')
                         setCurrentStep(1)
                         setSellingMethod(null)
                         router.push(response.data.slug ? `/buy-cars/${response.data.slug}` : '/dashboard/seller/listings')
@@ -1141,7 +1141,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             onContinue: () => {
                                 setFormData(INITIAL_FORM)
                                 localStorage.removeItem('carmazium_listing_draft')
-                localStorage.removeItem('carmazium_listing_draft_step')
+                        localStorage.removeItem('carmazium_listing_draft_step')
                                 setCurrentStep(1)
                                 setSellingMethod(null)
                                 router.push('/dashboard/seller/listings')
@@ -1166,7 +1166,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     onContinue: () => {
                         setFormData(INITIAL_FORM)
                         localStorage.removeItem('carmazium_listing_draft')
-                localStorage.removeItem('carmazium_listing_draft_step')
+                        localStorage.removeItem('carmazium_listing_draft_step')
                         setCurrentStep(1)
                         setSellingMethod(null)
                         router.push(payload.listingType === 'AUCTION' ? '/dashboard/seller/auctions' : '/dashboard/seller/listings')
