@@ -264,8 +264,7 @@ function SellerAuctionsPage() {
                 ...(formBinPrice ? { buyItNowPrice: Number(formBinPrice) } : {}),
             }
             await createAuction(dto)
-            const endDisplay = addHours(resolvedStartTime, 24)
-            setSuccessMsg(formStartImmediately ? `Auction is now live! It will run until ${endDisplay}.` : `Auction scheduled! It will run until ${endDisplay}.`)
+            setSuccessMsg('Auction submitted for review. Once approved, it will run for a full 24 hours.')
             setShowForm(false)
             setFormListingId(""); setFormStartTime(""); setFormStartImmediately(false); setFormReservePrice("")
             setFormStartingBid(""); setFormMinIncrement("100"); setFormBinPrice("")
