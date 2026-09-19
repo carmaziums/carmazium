@@ -8,10 +8,11 @@ primary_region = 'lhr'
   #
   # This used to run `prisma db push --accept-data-loss`, which drops any table
   # present in the database but absent from schema.prisma. The tradexchange_*
-  # tables (jobs, offers, payments, transactions, team members, provider
-  # accounts, service capabilities, lead recipients) live in Supabase and are
-  # not modelled here, so every deploy was one dependency check away from
-  # deleting them. The 2026-09-10 deploy is proof: it tried, and was stopped
+  # tables and migrations were historically split between Prisma and Supabase.
+  # Finance/Warranty service leads are now modelled in schema.prisma, but the
+  # wider production Prisma migration history is still incomplete, so enabling
+  # automatic schema reconciliation here would be unsafe. The 2026-09-10 deploy
+  # is proof: db push tried destructive cleanup and was stopped
   # only because an RLS policy on tradexchange_offers depended on the table.
   #
   # Schema changes are applied by hand against the database (see

@@ -12,62 +12,9 @@ import { ReviewCapabilityDto } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
 
 const LEAD_TYPES = [ServiceType.FINANCE, ServiceType.WARRANTY] as const;
+const LEAD_LIFETIME_MS = 14 * 24 * 60 * 60 * 1000;
 
 type LeadType = (typeof LEAD_TYPES)[number];
-
-type RawLead = {
-    id: string;
-    customerId: string;
-    serviceType: ServiceType;
-    status: string;
-    listingId: string | null;
-    vehicleRegistration: string | null;
-    vehicleMake: string | null;
-    vehicleModel: string | null;
-    vehicleYear: number | null;
-    vehicleMileage: number | null;
-    vehicleValuePence: number | null;
-    fullName: string;
-    email: string;
-    phone: string | null;
-    postcode: string | null;
-    summary: string | null;
-    depositPence: number | null;
-    termMonths: number | null;
-    monthlyBudgetPence: number | null;
-    employmentStatus: string | null;
-    annualIncomePence: number | null;
-    warrantyMonths: number | null;
-    warrantyLevel: string | null;
-    consentToProviderContact: boolean;
-    consentRecordedAt: Date | null;
-    expiresAt: Date;
-    createdAt: Date;
-    updatedAt: Date;
-    recipientCount?: number | bigint;
-    responseCount?: number | bigint;
-};
-
-type RawRecipient = {
-    id: string;
-    leadId: string;
-    contractorId: string;
-    status: string;
-    headline: string | null;
-    message: string | null;
-    productName: string | null;
-    indicativePricePence: number | null;
-    representativeApr: Prisma.Decimal | number | string | null;
-    termMonths: number | null;
-    viewedAt: Date | null;
-    respondedAt: Date | null;
-    createdAt: Date;
-    updatedAt: Date;
-    businessName?: string | null;
-    rating?: number | null;
-    totalReviews?: number | null;
-    serviceArea?: string | null;
-};
 
 @Injectable()
 export class ServiceLeadsService {
@@ -82,15 +29,7 @@ export class ServiceLeadsService {
         }
     }
 
-    private cleanLead<T extends RawLead>(lead: T) {
-        return {
-            ...lead,
-            recipientCount: lead.recipientCount === undefined ? undefined : Number(lead.recipientCount),
-            responseCount: lead.responseCount === undefined ? undefined : Number(lead.responseCount),
-        };
-    }
-
-    private cleanRecipient<T extends RawRecipient>(recipient: T) {
+    private cleanRecipient<T extends { representativeApr: Prisma.Decimal | number | string | null }>(recipient: T) {
         return {
             ...recipient,
             representativeApr: recipient.representativeApr === null || recipient.representativeApr === undefined
@@ -99,25 +38,47 @@ export class ServiceLeadsService {
         };
     }
 
+    private leadWithCounts<T extends {
+        _count: { recipients: number };
+        recipients: Array<unknown>;
+    }>(lead: T) {
+        const { _count, recipients, ...rest } = lead;
+        return {
+            ...rest,
+            recipientCount: _count.recipients,
+            responseCount: recipients.length,
+        };
+    }
+
     private async expireOldLeads() {
-        await this.prisma.$executeRaw(Prisma.sql`
-            UPDATE "service_leads"
-            SET "status" = 'EXPIRED', "updatedAt" = CURRENT_TIMESTAMP
-            WHERE "status" = 'OPEN' AND "expiresAt" <= CURRENT_TIMESTAMP
-        `);
+        const now = new Date();
+        await this.prisma.serviceLead.updateMany({
+            where: {
+                status: 'OPEN',
+                expiresAt: { lte: now },
+            },
+            data: {
+                status: 'EXPIRED',
+                updatedAt: now,
+            },
+        });
     }
 
     async create(customerId: string, dto: CreateServiceLeadDto) {
         this.assertLeadType(dto.serviceType);
         assertServiceAcceptingNewRequests(dto.serviceType);
+
         if (!dto.consentToProviderContact) {
             throw new BadRequestException(
                 'Consent is required before CarMazium can share this enquiry with approved providers.',
             );
         }
 
-        if (dto.serviceType === ServiceType.WARRANTY &&
-            !dto.vehicleRegistration && !(dto.vehicleMake && dto.vehicleModel)) {
+        if (
+            dto.serviceType === ServiceType.WARRANTY
+            && !dto.vehicleRegistration
+            && !(dto.vehicleMake && dto.vehicleModel)
+        ) {
             throw new BadRequestException('Warranty enquiries need a registration or vehicle make and model.');
         }
 
@@ -133,69 +94,71 @@ export class ServiceLeadsService {
         const postcode = normPostcode(dto.postcode) || normPostcode(customer.postcode);
         const registration = dto.vehicleRegistration?.toUpperCase().replace(/\s+/g, '') || null;
         const serviceType = dto.serviceType;
+        const now = new Date();
 
-        const lead = await this.prisma.$transaction(async (tx) => {
-            const rows = await tx.$queryRaw<RawLead[]>(Prisma.sql`
-                INSERT INTO "service_leads" (
-                    "customerId", "serviceType", "status", "listingId",
-                    "vehicleRegistration", "vehicleMake", "vehicleModel", "vehicleYear", "vehicleMileage", "vehicleValuePence",
-                    "fullName", "email", "phone", "postcode", "summary",
-                    "depositPence", "termMonths", "monthlyBudgetPence", "employmentStatus", "annualIncomePence",
-                    "warrantyMonths", "warrantyLevel", "consentToProviderContact", "consentRecordedAt",
-                    "expiresAt", "createdAt", "updatedAt"
-                ) VALUES (
-                    ${customerId}, CAST(${serviceType} AS service_type), 'OPEN', ${dto.listingId ?? null},
-                    ${registration}, ${dto.vehicleMake?.trim() || null}, ${dto.vehicleModel?.trim() || null}, ${dto.vehicleYear ?? null},
-                    ${dto.vehicleMileage ?? null}, ${dto.vehicleValuePence ?? null},
-                    ${fullName}, ${customer.email}, ${phone}, ${postcode}, ${dto.summary?.trim() || null},
-                    ${serviceType === ServiceType.FINANCE ? dto.depositPence ?? null : null},
-                    ${serviceType === ServiceType.FINANCE ? dto.termMonths ?? null : null},
-                    ${serviceType === ServiceType.FINANCE ? dto.monthlyBudgetPence ?? null : null},
-                    ${serviceType === ServiceType.FINANCE ? dto.employmentStatus?.trim() || null : null},
-                    ${serviceType === ServiceType.FINANCE ? dto.annualIncomePence ?? null : null},
-                    ${serviceType === ServiceType.WARRANTY ? dto.warrantyMonths ?? null : null},
-                    ${serviceType === ServiceType.WARRANTY ? dto.warrantyLevel?.trim() || null : null},
-                    TRUE, CURRENT_TIMESTAMP,
-                    CURRENT_TIMESTAMP + INTERVAL '14 days', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-                )
-                RETURNING *
-            `);
-            const created = rows[0];
-            if (!created) throw new Error('Lead insert returned no row');
+        const transaction = await this.prisma.$transaction(async (tx) => {
+            const matching = await tx.contractorCapability.findMany({
+                where: {
+                    serviceType,
+                    status: CapabilityStatus.APPROVED,
+                    contractor: { deletedAt: null },
+                },
+                select: {
+                    contractorId: true,
+                    contractor: { select: { userId: true } },
+                },
+            });
 
-            await tx.$executeRaw(Prisma.sql`
-                INSERT INTO "service_lead_recipients" (
-                    "id", "leadId", "contractorId", "status", "createdAt", "updatedAt"
-                )
-                SELECT gen_random_uuid()::text, ${created.id}, cc."contractorId", 'NEW', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-                FROM "contractor_capabilities" cc
-                JOIN "contractor_profiles" cp ON cp."id" = cc."contractorId"
-                WHERE cc."serviceType" = CAST(${serviceType} AS service_type)
-                  AND cc."status" = CAST('APPROVED' AS capability_status)
-                  AND cp."deletedAt" IS NULL
-                ON CONFLICT ("leadId", "contractorId") DO NOTHING
-            `);
+            const created = await tx.serviceLead.create({
+                data: {
+                    customerId,
+                    serviceType,
+                    status: 'OPEN',
+                    listingId: dto.listingId ?? null,
+                    vehicleRegistration: registration,
+                    vehicleMake: dto.vehicleMake?.trim() || null,
+                    vehicleModel: dto.vehicleModel?.trim() || null,
+                    vehicleYear: dto.vehicleYear ?? null,
+                    vehicleMileage: dto.vehicleMileage ?? null,
+                    vehicleValuePence: dto.vehicleValuePence ?? null,
+                    fullName,
+                    email: customer.email,
+                    phone,
+                    postcode,
+                    summary: dto.summary?.trim() || null,
+                    depositPence: serviceType === ServiceType.FINANCE ? dto.depositPence ?? null : null,
+                    termMonths: serviceType === ServiceType.FINANCE ? dto.termMonths ?? null : null,
+                    monthlyBudgetPence: serviceType === ServiceType.FINANCE ? dto.monthlyBudgetPence ?? null : null,
+                    employmentStatus: serviceType === ServiceType.FINANCE
+                        ? dto.employmentStatus?.trim() || null
+                        : null,
+                    annualIncomePence: serviceType === ServiceType.FINANCE ? dto.annualIncomePence ?? null : null,
+                    warrantyMonths: serviceType === ServiceType.WARRANTY ? dto.warrantyMonths ?? null : null,
+                    warrantyLevel: serviceType === ServiceType.WARRANTY ? dto.warrantyLevel?.trim() || null : null,
+                    consentToProviderContact: true,
+                    consentRecordedAt: now,
+                    expiresAt: new Date(now.getTime() + LEAD_LIFETIME_MS),
+                    recipients: matching.length
+                        ? {
+                            create: matching.map((provider) => ({
+                                contractorId: provider.contractorId,
+                                status: 'NEW',
+                            })),
+                        }
+                        : undefined,
+                },
+                include: {
+                    _count: { select: { recipients: true } },
+                },
+            });
 
-            const count = await tx.$queryRaw<{ count: bigint }[]>(Prisma.sql`
-                SELECT COUNT(*)::bigint AS count
-                FROM "service_lead_recipients"
-                WHERE "leadId" = ${created.id}
-            `);
-            return { ...created, recipientCount: count[0]?.count ?? 0n };
+            return { created, matching };
         });
 
-        // Best-effort in-app alert. The database transaction above is already
-        // complete, so a notification failure can never lose the enquiry.
-        const matching = await this.prisma.contractorCapability.findMany({
-            where: {
-                serviceType,
-                status: CapabilityStatus.APPROVED,
-                contractor: { deletedAt: null },
-            },
-            select: { contractor: { select: { userId: true } } },
-        });
-        await Promise.allSettled(matching.map((m) => this.notifications.create({
-            userId: m.contractor.userId,
+        const { _count, ...lead } = transaction.created;
+
+        await Promise.allSettled(transaction.matching.map((provider) => this.notifications.create({
+            userId: provider.contractor.userId,
             type: 'SERVICE_LEAD_NEW',
             title: serviceType === ServiceType.FINANCE ? 'New finance enquiry' : 'New warranty enquiry',
             message: 'A new matched CarMazium enquiry is available in your provider inbox.',
@@ -205,64 +168,106 @@ export class ServiceLeadsService {
             actionType: 'CREATED',
         })));
 
-        return this.cleanLead(lead);
+        return {
+            ...lead,
+            recipientCount: _count.recipients,
+        };
     }
 
     async myLeads(customerId: string) {
         await this.expireOldLeads();
-        const rows = await this.prisma.$queryRaw<RawLead[]>(Prisma.sql`
-            SELECT l.*,
-                (SELECT COUNT(*) FROM "service_lead_recipients" r WHERE r."leadId" = l."id") AS "recipientCount",
-                (SELECT COUNT(*) FROM "service_lead_recipients" r WHERE r."leadId" = l."id" AND r."status" = 'RESPONDED') AS "responseCount"
-            FROM "service_leads" l
-            WHERE l."customerId" = ${customerId}
-            ORDER BY l."createdAt" DESC
-        `);
-        return rows.map((r) => this.cleanLead(r));
+
+        const leads = await this.prisma.serviceLead.findMany({
+            where: { customerId },
+            orderBy: { createdAt: 'desc' },
+            include: {
+                _count: { select: { recipients: true } },
+                recipients: {
+                    where: { status: 'RESPONDED' },
+                    select: { id: true },
+                },
+            },
+        });
+
+        return leads.map((lead) => this.leadWithCounts(lead));
     }
 
     async customerLead(customerId: string, id: string) {
         await this.expireOldLeads();
-        const rows = await this.prisma.$queryRaw<RawLead[]>(Prisma.sql`
-            SELECT l.*,
-                (SELECT COUNT(*) FROM "service_lead_recipients" r WHERE r."leadId" = l."id") AS "recipientCount",
-                (SELECT COUNT(*) FROM "service_lead_recipients" r WHERE r."leadId" = l."id" AND r."status" = 'RESPONDED') AS "responseCount"
-            FROM "service_leads" l
-            WHERE l."id" = ${id} AND l."customerId" = ${customerId}
-            LIMIT 1
-        `);
-        const lead = rows[0];
+
+        const lead = await this.prisma.serviceLead.findFirst({
+            where: { id, customerId },
+            include: {
+                _count: { select: { recipients: true } },
+                recipients: {
+                    where: { status: 'RESPONDED' },
+                    orderBy: [
+                        { respondedAt: { sort: 'asc', nulls: 'last' } },
+                        { createdAt: 'asc' },
+                    ],
+                    include: {
+                        contractor: {
+                            select: {
+                                businessName: true,
+                                rating: true,
+                                totalReviews: true,
+                                serviceArea: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
         if (!lead) throw new NotFoundException('Enquiry not found');
 
-        const responses = await this.prisma.$queryRaw<RawRecipient[]>(Prisma.sql`
-            SELECT r.*, cp."businessName", cp."rating", cp."totalReviews", cp."serviceArea"
-            FROM "service_lead_recipients" r
-            JOIN "contractor_profiles" cp ON cp."id" = r."contractorId"
-            WHERE r."leadId" = ${id} AND r."status" = 'RESPONDED'
-            ORDER BY r."respondedAt" ASC NULLS LAST, r."createdAt" ASC
-        `);
-        return { ...this.cleanLead(lead), responses: responses.map((r) => this.cleanRecipient(r)) };
+        const responses = lead.recipients.map(({ contractor, ...recipient }) => this.cleanRecipient({
+            ...recipient,
+            businessName: contractor.businessName,
+            rating: contractor.rating,
+            totalReviews: contractor.totalReviews,
+            serviceArea: contractor.serviceArea,
+        }));
+
+        const { _count, recipients, ...base } = lead;
+        return {
+            ...base,
+            recipientCount: _count.recipients,
+            responseCount: recipients.length,
+            responses,
+        };
     }
 
     async close(customerId: string, id: string) {
-        const rows = await this.prisma.$queryRaw<RawLead[]>(Prisma.sql`
-            UPDATE "service_leads"
-            SET "status" = 'CLOSED', "updatedAt" = CURRENT_TIMESTAMP
-            WHERE "id" = ${id} AND "customerId" = ${customerId} AND "status" = 'OPEN'
-            RETURNING *
-        `);
-        if (!rows[0]) throw new BadRequestException('Only an open enquiry can be closed.');
-        await this.prisma.$executeRaw(Prisma.sql`
-            UPDATE "service_lead_recipients"
-            SET "status" = CASE WHEN "status" = 'RESPONDED' THEN 'RESPONDED' ELSE 'CLOSED' END,
-                "updatedAt" = CURRENT_TIMESTAMP
-            WHERE "leadId" = ${id}
-        `);
-        return this.cleanLead(rows[0]);
+        return this.prisma.$transaction(async (tx) => {
+            const result = await tx.serviceLead.updateMany({
+                where: {
+                    id,
+                    customerId,
+                    status: 'OPEN',
+                },
+                data: { status: 'CLOSED' },
+            });
+            if (result.count === 0) {
+                throw new BadRequestException('Only an open enquiry can be closed.');
+            }
+
+            await tx.serviceLeadRecipient.updateMany({
+                where: {
+                    leadId: id,
+                    status: { not: 'RESPONDED' },
+                },
+                data: { status: 'CLOSED' },
+            });
+
+            const lead = await tx.serviceLead.findUnique({ where: { id } });
+            if (!lead) throw new NotFoundException('Enquiry not found');
+            return lead;
+        });
     }
 
     private async providerProfile(userId: string, requestedType?: ServiceType) {
         if (requestedType) this.assertLeadType(requestedType);
+
         const profile = await this.prisma.contractorProfile.findUnique({
             where: { userId },
             include: {
@@ -277,6 +282,7 @@ export class ServiceLeadsService {
                 },
             },
         });
+
         if (!profile || profile.deletedAt || profile.capabilities.length === 0) {
             throw new ForbiddenException('You need an approved Finance or Warranty provider capability.');
         }
@@ -285,96 +291,133 @@ export class ServiceLeadsService {
 
     private async ensureRecipients(contractorId: string, types: ServiceType[]) {
         await this.expireOldLeads();
-        for (const type of types) {
-            this.assertLeadType(type);
-            await this.prisma.$executeRaw(Prisma.sql`
-                INSERT INTO "service_lead_recipients" (
-                    "id", "leadId", "contractorId", "status", "createdAt", "updatedAt"
-                )
-                SELECT gen_random_uuid()::text, l."id", ${contractorId}, 'NEW', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-                FROM "service_leads" l
-                WHERE l."serviceType" = CAST(${type} AS service_type)
-                  AND l."status" = 'OPEN'
-                  AND l."expiresAt" > CURRENT_TIMESTAMP
-                  AND l."consentToProviderContact" = TRUE
-                ON CONFLICT ("leadId", "contractorId") DO NOTHING
-            `);
-        }
+        types.forEach((type) => this.assertLeadType(type));
+
+        if (types.length === 0) return;
+
+        const openLeads = await this.prisma.serviceLead.findMany({
+            where: {
+                serviceType: { in: types },
+                status: 'OPEN',
+                expiresAt: { gt: new Date() },
+                consentToProviderContact: true,
+            },
+            select: { id: true },
+        });
+        if (openLeads.length === 0) return;
+
+        await this.prisma.serviceLeadRecipient.createMany({
+            data: openLeads.map((lead) => ({
+                leadId: lead.id,
+                contractorId,
+                status: 'NEW',
+            })),
+            skipDuplicates: true,
+        });
     }
 
     async inbox(userId: string, serviceType?: ServiceType) {
         const profile = await this.providerProfile(userId, serviceType);
-        const types = profile.capabilities.map((c) => c.serviceType);
+        const types = profile.capabilities.map((capability) => capability.serviceType);
         await this.ensureRecipients(profile.id, types);
 
-        const typeFilter = serviceType
-            ? Prisma.sql`AND l."serviceType" = CAST(${serviceType} AS service_type)`
-            : Prisma.empty;
-        const rows = await this.prisma.$queryRaw<Array<RawLead & RawRecipient>>(Prisma.sql`
-            SELECT l.*,
-                r."id" AS "recipientId", r."status" AS "recipientStatus",
-                r."headline", r."message", r."productName", r."indicativePricePence",
-                r."representativeApr", r."termMonths" AS "responseTermMonths",
-                r."viewedAt", r."respondedAt"
-            FROM "service_lead_recipients" r
-            JOIN "service_leads" l ON l."id" = r."leadId"
-            WHERE r."contractorId" = ${profile.id}
-              AND l."status" = 'OPEN'
-              AND l."expiresAt" > CURRENT_TIMESTAMP
-              ${typeFilter}
-            ORDER BY l."createdAt" DESC
-        `);
+        const now = new Date();
+        const recipients = await this.prisma.serviceLeadRecipient.findMany({
+            where: {
+                contractorId: profile.id,
+                lead: {
+                    status: 'OPEN',
+                    expiresAt: { gt: now },
+                    ...(serviceType ? { serviceType } : {}),
+                },
+            },
+            orderBy: { lead: { createdAt: 'desc' } },
+            include: { lead: true },
+        });
 
-        // Viewing the inbox is enough to mark unseen rows as VIEWED. This does
-        // not expose or alter the customer enquiry itself.
-        await this.prisma.$executeRaw(Prisma.sql`
-            UPDATE "service_lead_recipients"
-            SET "status" = 'VIEWED', "viewedAt" = COALESCE("viewedAt", CURRENT_TIMESTAMP), "updatedAt" = CURRENT_TIMESTAMP
-            WHERE "contractorId" = ${profile.id} AND "status" = 'NEW'
-        `);
+        await this.prisma.serviceLeadRecipient.updateMany({
+            where: {
+                contractorId: profile.id,
+                status: 'NEW',
+            },
+            data: {
+                status: 'VIEWED',
+                viewedAt: now,
+            },
+        });
 
-        return rows.map((r: any) => ({
-            ...this.cleanLead(r),
-            representativeApr: r.representativeApr == null ? null : Number(r.representativeApr),
+        return recipients.map(({ lead, ...recipient }) => ({
+            ...lead,
+            recipientId: recipient.id,
+            recipientStatus: recipient.status,
+            headline: recipient.headline,
+            message: recipient.message,
+            productName: recipient.productName,
+            indicativePricePence: recipient.indicativePricePence,
+            representativeApr: recipient.representativeApr == null ? null : Number(recipient.representativeApr),
+            responseTermMonths: recipient.termMonths,
+            viewedAt: recipient.viewedAt,
+            respondedAt: recipient.respondedAt,
         }));
     }
 
     async respond(userId: string, leadId: string, dto: RespondToServiceLeadDto) {
         const profile = await this.providerProfile(userId);
-        const leadRows = await this.prisma.$queryRaw<Pick<RawLead, 'id' | 'customerId' | 'serviceType' | 'status' | 'expiresAt'>[]>(Prisma.sql`
-            SELECT "id", "customerId", "serviceType", "status", "expiresAt"
-            FROM "service_leads"
-            WHERE "id" = ${leadId}
-            LIMIT 1
-        `);
-        const lead = leadRows[0];
+
+        const lead = await this.prisma.serviceLead.findUnique({
+            where: { id: leadId },
+            select: {
+                id: true,
+                customerId: true,
+                serviceType: true,
+                status: true,
+                expiresAt: true,
+            },
+        });
         if (!lead) throw new NotFoundException('Enquiry not found');
+
         this.assertLeadType(lead.serviceType);
         if (lead.status !== 'OPEN' || lead.expiresAt <= new Date()) {
             throw new BadRequestException('This enquiry is no longer open.');
         }
-        if (!profile.capabilities.some((c) => c.serviceType === lead.serviceType)) {
+        if (!profile.capabilities.some((capability) => capability.serviceType === lead.serviceType)) {
             throw new ForbiddenException('You are not approved for this type of enquiry.');
         }
+
         await this.ensureRecipients(profile.id, [lead.serviceType]);
 
-        const rows = await this.prisma.$queryRaw<RawRecipient[]>(Prisma.sql`
-            UPDATE "service_lead_recipients"
-            SET "status" = 'RESPONDED',
-                "headline" = ${dto.headline.trim()},
-                "message" = ${dto.message.trim()},
-                "productName" = ${dto.productName?.trim() || null},
-                "indicativePricePence" = ${dto.indicativePricePence ?? null},
-                "representativeApr" = ${dto.representativeApr ?? null},
-                "termMonths" = ${dto.termMonths ?? null},
-                "viewedAt" = COALESCE("viewedAt", CURRENT_TIMESTAMP),
-                "respondedAt" = CURRENT_TIMESTAMP,
-                "updatedAt" = CURRENT_TIMESTAMP
-            WHERE "leadId" = ${leadId} AND "contractorId" = ${profile.id}
-            RETURNING *
-        `);
-        const response = rows[0];
-        if (!response) throw new ForbiddenException('This enquiry was not matched to your provider account.');
+        const recipient = await this.prisma.serviceLeadRecipient.findUnique({
+            where: {
+                leadId_contractorId: {
+                    leadId,
+                    contractorId: profile.id,
+                },
+            },
+        });
+        if (!recipient) {
+            throw new ForbiddenException('This enquiry was not matched to your provider account.');
+        }
+
+        const now = new Date();
+        const response = await this.prisma.serviceLeadRecipient.update({
+            where: {
+                leadId_contractorId: {
+                    leadId,
+                    contractorId: profile.id,
+                },
+            },
+            data: {
+                status: 'RESPONDED',
+                headline: dto.headline.trim(),
+                message: dto.message.trim(),
+                productName: dto.productName?.trim() || null,
+                indicativePricePence: dto.indicativePricePence ?? null,
+                representativeApr: dto.representativeApr ?? null,
+                termMonths: dto.termMonths ?? null,
+                viewedAt: recipient.viewedAt ?? now,
+                respondedAt: now,
+            },
+        });
 
         await this.notifications.create({
             userId: lead.customerId,
@@ -438,20 +481,24 @@ export class ServiceLeadsService {
 
     async adminList(serviceType?: ServiceType, status?: string) {
         if (serviceType) this.assertLeadType(serviceType);
-        const typeFilter = serviceType
-            ? Prisma.sql`AND l."serviceType" = CAST(${serviceType} AS service_type)`
-            : Prisma.empty;
-        const statusFilter = status ? Prisma.sql`AND l."status" = ${status}` : Prisma.empty;
-        const rows = await this.prisma.$queryRaw<RawLead[]>(Prisma.sql`
-            SELECT l.*,
-                (SELECT COUNT(*) FROM "service_lead_recipients" r WHERE r."leadId" = l."id") AS "recipientCount",
-                (SELECT COUNT(*) FROM "service_lead_recipients" r WHERE r."leadId" = l."id" AND r."status" = 'RESPONDED') AS "responseCount"
-            FROM "service_leads" l
-            WHERE 1=1 ${typeFilter} ${statusFilter}
-            ORDER BY l."createdAt" DESC
-            LIMIT 250
-        `);
-        return rows.map((r) => this.cleanLead(r));
+
+        const leads = await this.prisma.serviceLead.findMany({
+            where: {
+                ...(serviceType ? { serviceType } : {}),
+                ...(status ? { status } : {}),
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 250,
+            include: {
+                _count: { select: { recipients: true } },
+                recipients: {
+                    where: { status: 'RESPONDED' },
+                    select: { id: true },
+                },
+            },
+        });
+
+        return leads.map((lead) => this.leadWithCounts(lead));
     }
 }
 

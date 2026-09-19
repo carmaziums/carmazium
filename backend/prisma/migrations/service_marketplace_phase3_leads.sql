@@ -1,4 +1,10 @@
 -- Trade Exchange service marketplace — Phase 3: Finance + Warranty leads
+-- HISTORICAL SUPABASE MIGRATION: applied to production on 2026-09-12.
+-- The canonical Prisma schema now models these tables, and the idempotent
+-- adoption migration lives at:
+--   20260919124500_adopt_service_leads/migration.sql
+-- Keep this file for deployment history; do not evolve the schema here.
+--
 --
 -- Additive only. Finance and Warranty are enquiry services: there is no
 -- CarMazium checkout, escrow, 9% fee or provider payout on these rows.
