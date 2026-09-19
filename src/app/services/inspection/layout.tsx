@@ -10,6 +10,10 @@ export const metadata: Metadata = {
         url: "/services/inspection",
         type: "website",
     },
+    twitter: {
+        title: "Vehicle Inspection Services UK | CarMazium",
+        description: "Request an independent vehicle inspection and compare fixed-price quotes from approved inspection providers through CarMazium TradeXchange.",
+    },
 }
 
 export default function InspectionLayout({ children }: { children: React.ReactNode }) {
