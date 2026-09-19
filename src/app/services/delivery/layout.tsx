@@ -10,6 +10,10 @@ export const metadata: Metadata = {
         url: "/services/delivery",
         type: "website",
     },
+    twitter: {
+        title: "Vehicle Delivery & Recovery UK | CarMazium",
+        description: "Post vehicle delivery or recovery work and compare fixed-price quotes from approved transport providers through CarMazium TradeXchange.",
+    },
 }
 
 export default function DeliveryLayout({ children }: { children: React.ReactNode }) {
