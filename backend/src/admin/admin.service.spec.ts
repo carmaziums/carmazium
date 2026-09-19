@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { AdminService } from './admin.service';
 
-describe('AdminService linked auction approval integrity', () => {
+describe('AdminService listing approval readiness', () => {
     const makeService = (listing: any) => {
         const prisma: any = {
             listing: {
@@ -28,13 +28,37 @@ describe('AdminService linked auction approval integrity', () => {
         return { service, prisma };
     };
 
-    const validAuction = {
+    const completeFields = {
+        createdAt: new Date('2026-09-19T01:00:00.000Z'),
+        images: Array.from({ length: 10 }, (_, i) => `image-${i}`),
+        vrm: 'AB12CDE',
+        make: 'BMW',
+        model: 'M3',
+        year: 2020,
+        mileage: 25000,
+        fuelType: 'PETROL',
+        transmission: 'AUTOMATIC',
+        bodyType: 'COUPE',
+        title: 'BMW M3 2020',
+        location: 'Birmingham',
+        owners: '1',
+        description: 'Well presented vehicle with full details.',
+        condition: 'GOOD',
+        stolenRecovered: false,
+        hasOutstandingFinance: false,
+        isLegalRegisteredKeeper: true,
+        isDepartedSale: false,
+    };
+
+    const validLinkedAuction = {
         id: 'auction-listing-1',
         sellerId: 'seller-1',
         type: 'AUCTION',
         status: 'PENDING_REVIEW',
         badgeTier: 'FREE',
         linkedListingId: 'retail-listing-1',
+        hpiReport: null,
+        ...completeFields,
         auction: {
             id: 'auction-1',
             status: 'SCHEDULED',
@@ -49,8 +73,48 @@ describe('AdminService linked auction approval integrity', () => {
             status: 'ACTIVE',
             linkedListingId: 'auction-listing-1',
             deletedAt: null,
+            hpiReport: { id: 'hpi-source-1' },
         },
     };
+
+    it('accepts linked-source HPI as satisfying the linked auction HPI gate', async () => {
+        const { service, prisma } = makeService(validLinkedAuction);
+        prisma.listing.update.mockResolvedValue({ id: 'auction-listing-1' });
+
+        await service.approveListing('auction-listing-1');
+
+        expect(prisma.listing.update).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: { id: 'auction-listing-1' },
+            }),
+        );
+    });
+
+    it('rejects an incomplete listing even if it is already PENDING_REVIEW', async () => {
+        const { service, prisma } = makeService({
+            ...validLinkedAuction,
+            images: [],
+        });
+
+        await expect(service.approveListing('auction-listing-1'))
+            .rejects.toThrow(/at least 10 photos/i);
+
+        expect(prisma.listing.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects a new standalone auction with no HPI request', async () => {
+        const { service, prisma } = makeService({
+            ...validLinkedAuction,
+            linkedListingId: null,
+            linkedListing: null,
+            hpiReport: null,
+        });
+
+        await expect(service.approveListing('auction-listing-1'))
+            .rejects.toThrow(/HPI/i);
+
+        expect(prisma.listing.update).not.toHaveBeenCalled();
+    });
 
     it.each([
         ['SOLD', 'auction-listing-1', null],
@@ -62,9 +126,9 @@ describe('AdminService linked auction approval integrity', () => {
         'refuses approval when linked retail source is invalid: status=%s reverseLink=%s deleted=%s',
         async (status, reverseLink, deletedAt) => {
             const listing = {
-                ...validAuction,
+                ...validLinkedAuction,
                 linkedListing: {
-                    ...validAuction.linkedListing,
+                    ...validLinkedAuction.linkedListing,
                     status,
                     linkedListingId: reverseLink,
                     deletedAt,
