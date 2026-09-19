@@ -224,6 +224,45 @@ export class PaymentsService {
         return this.getStripe();
     }
 
+    /**
+     * Whether a connected account can receive CarMazium's provider transfer.
+     *
+     * TradeXchange uses separate charges and transfers: the customer charge is
+     * created on CarMazium's platform account, so provider-side
+     * `charges_enabled` is not a prerequisite. We require a submitted account,
+     * payouts enabled, no currently-due verification blockers, and an active
+     * transfers capability when Stripe exposes that capability on the v1
+     * Account object.
+     */
+    private connectTransferReady(account: any): boolean {
+        if (!account || account.deleted || !account.details_submitted || !account.payouts_enabled) {
+            return false;
+        }
+        if (account.requirements?.currently_due?.length) return false;
+        const transfers = account.capabilities?.transfers;
+        return transfers === undefined || transfers === 'active';
+    }
+
+    /**
+     * Refresh Stripe Connect payout readiness from Stripe itself.
+     *
+     * The database flag is only a cache: Stripe can add requirements or disable
+     * payouts after onboarding. TradeXchange calls this before a provider takes
+     * new paid work so a stale webhook/cache cannot create an unpayable job.
+     */
+    async refreshConnectAccountReadiness(accountId: string): Promise<{ ready: boolean; accountId: string }> {
+        const stripe = await this.getStripe();
+        const account: any = await stripe.accounts.retrieve(accountId);
+        const ready = this.connectTransferReady(account);
+
+        await this.prisma.user.updateMany({
+            where: { stripeConnectAccountId: accountId },
+            data: { stripeConnectOnboardingComplete: ready },
+        });
+
+        return { ready, accountId };
+    }
+
     private async getStripe() {
         const Stripe = (await import('stripe')).default;
         return new Stripe(this.config.get<string>('STRIPE_SECRET_KEY')!, {
@@ -1026,13 +1065,8 @@ export class PaymentsService {
             // covering the case where they close the tab before our return_url fires.
             case 'account.updated': {
                 const account = event.data.object as any;
-                const isComplete = !!(
-                    account.details_submitted &&
-                    account.charges_enabled &&
-                    account.payouts_enabled &&
-                    (!account.requirements?.currently_due || account.requirements.currently_due.length === 0)
-                );
-                // Update in both directions — Stripe can re-add requirements after the fact
+                const isComplete = this.connectTransferReady(account);
+                // Update in both directions — Stripe can re-add requirements after the fact.
                 await this.prisma.user.updateMany({
                     where: { stripeConnectAccountId: account.id },
                     data: { stripeConnectOnboardingComplete: isComplete },

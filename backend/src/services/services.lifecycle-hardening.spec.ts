@@ -35,7 +35,7 @@ describe('TradeXchange paid-job lifecycle hardening', () => {
             prisma,
             { create: jest.fn().mockResolvedValue({}) } as any,
             { sendBrandedEmail: jest.fn().mockResolvedValue({}) } as any,
-            { getStripeClient: jest.fn().mockResolvedValue(stripe) } as any,
+            { getStripeClient: jest.fn().mockResolvedValue(stripe), refreshConnectAccountReadiness: jest.fn().mockResolvedValue({ ready: true, accountId: 'acct_1' }) } as any,
             { get: jest.fn().mockReturnValue('https://www.carmazium.com') } as any,
         );
     });

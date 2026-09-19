@@ -119,6 +119,8 @@ export interface ServiceJob {
   review?: ServiceReview | null;
   canReview?: boolean;
   _count?: { quotes: number; vehicles?: number };
+  /** Current verified paid-job providers matching this service/area. */
+  eligibleProviderCount?: number | null;
   viewerRole?: 'customer' | 'contractor' | 'admin' | 'bidder';
 }
 
