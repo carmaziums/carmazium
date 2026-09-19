@@ -186,12 +186,18 @@ export class ServiceOperationsService {
             SELECT
                 e."id", e."scope", e."entityId", e."submittedById", e."kind",
                 e."label", e."storagePath", e."note", e."createdAt",
+                e."evidenceType", e."evidenceStatus", e."evidenceIssuer",
+                e."evidenceReference", e."evidenceValidFrom", e."evidenceExpiresAt",
+                e."evidenceReviewedAt", e."evidenceReviewedById", e."evidenceReviewNote",
                 u."firstName" AS "submittedByFirstName",
                 u."lastName" AS "submittedByLastName",
                 u."email" AS "submittedByEmail",
-                u."role"::text AS "submittedByRole"
+                u."role"::text AS "submittedByRole",
+                reviewer."firstName" AS "evidenceReviewedByFirstName",
+                reviewer."lastName" AS "evidenceReviewedByLastName"
             FROM "service_case_entries" e
             LEFT JOIN "users" u ON u."id" = e."submittedById"
+            LEFT JOIN "users" reviewer ON reviewer."id" = e."evidenceReviewedById"
             WHERE e."scope" = ${scope} AND e."entityId" = ${entityId}
             ORDER BY e."createdAt" ASC
         `);
