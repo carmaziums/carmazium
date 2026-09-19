@@ -30,6 +30,7 @@ describe('ListingsService', () => {
                 count: jest.fn(),
                 aggregate: jest.fn(),
                 update: jest.fn(),
+                updateMany: jest.fn().mockResolvedValue({ count: 1 }),
                 create: jest.fn(),
             },
             sale: {
@@ -476,42 +477,122 @@ describe('ListingsService', () => {
             title: 'BMW M3',
             slug: 'bmw-m3',
             status: 'ACTIVE',
+            deletedAt: null,
             images: Array.from({ length: 10 }, (_, i) => `image-${i}`),
             videoUrls: [],
         };
 
-        it('normalises a legacy client starting bid to 70% of the retail/reference price', async () => {
+        beforeEach(() => {
             prisma.listing.findUnique.mockResolvedValue(baseSource);
-            prisma.listing.create.mockResolvedValue({ id: 'auction-listing-1', title: 'BMW M3', sellerId: 'seller-1' });
-            prisma.auction.create.mockResolvedValue({ id: 'auction-1' });
-            prisma.listing.update.mockResolvedValue({});
-
-            await service.alsoAuction('listing-1', 'seller-1', {
-                startTime: new Date(Date.now() + 60_000).toISOString(),
-                reservePrice: 9000,
-                startingBid: 9500,
-            });
-
-            expect(prisma.auction.create).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    data: expect.objectContaining({ startingBid: 7000 }),
-                }),
-            );
+            prisma.listing.updateMany.mockResolvedValue({ count: 1 });
+            prisma.listing.create.mockImplementation(async ({ data }: any) => ({
+                id: data.id,
+                title: data.title,
+                sellerId: data.sellerId,
+                status: data.status,
+                linkedListingId: data.linkedListingId,
+                auction: {
+                    id: 'auction-1',
+                    ...data.auction.create,
+                },
+            }));
         });
 
-        it('accepts a starting bid at exactly 70% of the retail listing price', async () => {
-            prisma.listing.findUnique.mockResolvedValue(baseSource);
-            prisma.listing.create = jest.fn().mockResolvedValue({ id: 'auction-listing-1' });
-            prisma.auction.create.mockResolvedValue({ id: 'auction-1' });
-            prisma.listing.update.mockResolvedValue({});
-
+        it('atomically claims the active retail source before creating the linked auction', async () => {
             const result = await service.alsoAuction('listing-1', 'seller-1', {
                 startTime: new Date(Date.now() + 60_000).toISOString(),
                 reservePrice: 9000,
-                startingBid: 7000,
+                startingBid: 9500,
+                minIncrement: 100,
+                buyItNowPrice: 12000,
             });
 
-            expect(result).toEqual({ linkedListingId: 'auction-listing-1', auctionId: 'auction-1' });
+            expect(prisma.listing.updateMany).toHaveBeenCalledWith({
+                where: {
+                    id: 'listing-1',
+                    sellerId: 'seller-1',
+                    type: 'CLASSIFIED',
+                    status: 'ACTIVE',
+                    linkedListingId: null,
+                    deletedAt: null,
+                },
+                data: { linkedListingId: expect.any(String) },
+            });
+
+            expect(prisma.listing.create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.objectContaining({
+                        type: 'AUCTION',
+                        status: 'PENDING_REVIEW',
+                        linkedListingId: 'listing-1',
+                        auction: {
+                            create: expect.objectContaining({
+                                status: 'SCHEDULED',
+                                startingBid: 7000,
+                                reservePrice: 9000,
+                                minIncrement: 100,
+                                buyItNowPrice: 12000,
+                            }),
+                        },
+                    }),
+                    include: { auction: true },
+                }),
+            );
+
+            expect(prisma.auction.create).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                linkedListingId: expect.any(String),
+                auctionId: 'auction-1',
+            });
+        });
+
+        it('rejects the second concurrent request when the retail source has already been claimed', async () => {
+            prisma.listing.updateMany.mockResolvedValue({ count: 0 });
+
+            await expect(
+                service.alsoAuction('listing-1', 'seller-1', {
+                    startTime: new Date(Date.now() + 60_000).toISOString(),
+                    reservePrice: 9000,
+                }),
+            ).rejects.toThrow(/changed while the auction was being created/i);
+
+            expect(prisma.listing.create).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            ['SOLD', null],
+            ['WITHDRAWN', null],
+            ['ACTIVE', 'existing-linked-listing'],
+        ])('rejects an ineligible source state %s / linked=%s inside the transaction', async (status, linkedListingId) => {
+            prisma.listing.findUnique.mockResolvedValue({
+                ...baseSource,
+                status,
+                linkedListingId,
+            });
+
+            await expect(
+                service.alsoAuction('listing-1', 'seller-1', {
+                    startTime: new Date(Date.now() + 60_000).toISOString(),
+                    reservePrice: 9000,
+                }),
+            ).rejects.toBeInstanceOf(BadRequestException);
+
+            expect(prisma.listing.updateMany).not.toHaveBeenCalled();
+            expect(prisma.listing.create).not.toHaveBeenCalled();
+        });
+
+        it('keeps the linked auction under review while its Auction row remains scheduled', async () => {
+            await service.alsoAuction('listing-1', 'seller-1', {
+                startTime: new Date(Date.now() + 60_000).toISOString(),
+                reservePrice: 9000,
+            });
+
+            const data = prisma.listing.create.mock.calls[0][0].data;
+            expect(data.status).toBe('PENDING_REVIEW');
+            expect(data.auction.create.status).toBe('SCHEDULED');
+            expect(data.auction.create.startingBid).toBe(7000);
+            expect(data.auction.create.endTime.getTime() - data.auction.create.startTime.getTime())
+                .toBe(24 * 60 * 60 * 1000);
         });
     });
 });
