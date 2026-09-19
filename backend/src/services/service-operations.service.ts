@@ -954,6 +954,7 @@ export class ServiceOperationsService {
                 include: { payment: true },
             });
             const claim = current?.payment?.stripeTransferId;
+            const expectedClaim = `claim:${input.outcome.toLowerCase()}:${job.payment.id}`;
             const recoveredSuccess =
                 input.outcome === 'RELEASE'
                     ? current?.status === ServiceJobStatus.RELEASED
@@ -962,7 +963,7 @@ export class ServiceOperationsService {
                         && current?.payment?.status === ServicePaymentStatus.REFUNDED;
             const status = recoveredSuccess
                 ? 'SUCCEEDED'
-                : typeof claim === 'string' && claim.startsWith('claim:')
+                : claim === expectedClaim
                     ? 'REQUIRES_RECONCILIATION'
                     : 'FAILED';
             const externalReference = recoveredSuccess
