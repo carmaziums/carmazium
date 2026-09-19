@@ -56,7 +56,7 @@ export default function ServiceLeadDetailPage() {
 
                 <h2 className="text-xl font-black font-heading mb-4">Provider responses</h2>
                 {!lead.responses?.length ? (
-                    <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-7 text-sm text-[var(--text-muted)]">No provider has replied yet. Approved matching providers can see this enquiry while it remains open.</div>
+                    <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-7 text-sm text-[var(--text-muted)]">{(lead.recipientCount ?? 0) === 0 ? "No approved provider is matched yet. CarMazium will keep checking for newly approved matching providers while this enquiry remains open." : "No provider has replied yet. Your matched providers can respond while this enquiry remains open."}</div>
                 ) : (
                     <div className="space-y-4">
                         {lead.responses.map((r, i) => (
