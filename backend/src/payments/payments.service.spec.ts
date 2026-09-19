@@ -73,6 +73,39 @@ function buildModule(prisma: any) {
     }).compile();
 }
 
+function readyRetailListing(overrides: Record<string, unknown> = {}) {
+    return {
+        id: 'listing-1',
+        title: 'BMW M3 2020',
+        price: 30000,
+        sellerId: 'user-1',
+        type: 'CLASSIFIED',
+        badgeTier: 'BASIC',
+        status: 'DRAFT',
+        deletedAt: null,
+        createdAt: new Date('2026-09-19T01:00:00.000Z'),
+        images: Array.from({ length: 10 }, (_, i) => `image-${i}`),
+        vrm: 'AB12CDE',
+        make: 'BMW',
+        model: 'M3',
+        year: 2020,
+        mileage: 25000,
+        fuelType: 'PETROL',
+        transmission: 'AUTOMATIC',
+        bodyType: 'COUPE',
+        location: 'Birmingham',
+        owners: '1',
+        description: 'Well presented vehicle with full details.',
+        condition: 'GOOD',
+        stolenRecovered: false,
+        hasOutstandingFinance: false,
+        isLegalRegisteredKeeper: true,
+        isDepartedSale: false,
+        hpiReport: { id: 'hpi-1' },
+        ...overrides,
+    };
+}
+
 describe('PaymentsService — createListingSession retail payment gate', () => {
     let service: PaymentsService;
     let prisma: any;
@@ -88,13 +121,7 @@ describe('PaymentsService — createListingSession retail payment gate', () => {
     });
 
     it('charges the persisted BASIC tier even if the browser asks for PREMIUM', async () => {
-        prisma.listing.findUnique.mockResolvedValue({
-            id: 'listing-1',
-            sellerId: 'user-1',
-            type: 'CLASSIFIED',
-            badgeTier: 'BASIC',
-            deletedAt: null,
-        });
+        prisma.listing.findUnique.mockResolvedValue(readyRetailListing());
 
         await service.createListingSession('PREMIUM', 'user-1', 'listing-1');
 
@@ -118,13 +145,7 @@ describe('PaymentsService — createListingSession retail payment gate', () => {
     });
 
     it('heals a legacy FREE retail listing to BASIC before checkout', async () => {
-        prisma.listing.findUnique.mockResolvedValue({
-            id: 'listing-1',
-            sellerId: 'user-1',
-            type: 'CLASSIFIED',
-            badgeTier: 'FREE',
-            deletedAt: null,
-        });
+        prisma.listing.findUnique.mockResolvedValue(readyRetailListing({ badgeTier: 'FREE' }));
 
         await service.createListingSession('BASIC', 'user-1', 'listing-1');
 
@@ -135,6 +156,32 @@ describe('PaymentsService — createListingSession retail payment gate', () => {
         expect(prisma.transaction.create).toHaveBeenCalledWith({
             data: expect.objectContaining({ amount: 1 }),
         });
+    });
+
+    it('rejects hosted checkout before charging when listing fields are incomplete', async () => {
+        prisma.listing.findUnique.mockResolvedValue(
+            readyRetailListing({ images: [] }),
+        );
+
+        await expect(
+            service.createListingSession('BASIC', 'user-1', 'listing-1'),
+        ).rejects.toThrow(/not ready for payment/i);
+
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
+        expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
+    });
+
+    it('rejects hosted checkout before charging when HPI has not been requested', async () => {
+        prisma.listing.findUnique.mockResolvedValue(
+            readyRetailListing({ hpiReport: null }),
+        );
+
+        await expect(
+            service.createListingSession('BASIC', 'user-1', 'listing-1'),
+        ).rejects.toThrow(/HPI/i);
+
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
+        expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
     });
 
     it('does not create retail checkout for an auction listing', async () => {
@@ -167,27 +214,13 @@ describe('PaymentsService — createPaymentSheet (LISTING_FEE)', () => {
         const module: TestingModule = await buildModule(prisma);
         service = module.get<PaymentsService>(PaymentsService);
 
-        prisma.listing.findUnique.mockResolvedValue({
-            id: 'listing-1',
-            title: 'BMW M3',
-            sellerId: 'user-1',
-            type: 'CLASSIFIED',
-            badgeTier: 'BASIC',
-            deletedAt: null,
-        });
+        prisma.listing.findUnique.mockResolvedValue(readyRetailListing());
         mockEphemeralKeysCreate.mockResolvedValue({ secret: 'ek_mock' });
         mockPaymentIntentsCreate.mockResolvedValue({ id: 'pi_mock', client_secret: 'pi_mock_secret' });
     });
 
     it('accepts type LISTING_FEE and includes the persisted badgeTier in PaymentIntent metadata', async () => {
-        prisma.listing.findUnique.mockResolvedValue({
-            id: 'listing-1',
-            title: 'BMW M3',
-            sellerId: 'user-1',
-            type: 'CLASSIFIED',
-            badgeTier: 'PREMIUM',
-            deletedAt: null,
-        });
+        prisma.listing.findUnique.mockResolvedValue(readyRetailListing({ badgeTier: 'PREMIUM' }));
         await service.createPaymentSheet('listing-1', 'user-1', 25, 'LISTING_FEE', 'gbp', 'PREMIUM');
 
         expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(
@@ -199,6 +232,19 @@ describe('PaymentsService — createPaymentSheet (LISTING_FEE)', () => {
                 }),
             }),
         );
+    });
+
+    it('rejects mobile listing-fee Payment Sheet before creating a PaymentIntent when incomplete', async () => {
+        prisma.listing.findUnique.mockResolvedValue(
+            readyRetailListing({ stolenRecovered: undefined }),
+        );
+
+        await expect(
+            service.createPaymentSheet('listing-1', 'user-1', 1, 'LISTING_FEE', 'gbp', 'BASIC'),
+        ).rejects.toThrow(/stolen\/recovered declaration/i);
+
+        expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
     });
 
     it('omits badgeTier from metadata for non-listing-fee payment types', async () => {
@@ -269,15 +315,7 @@ describe('PaymentsService — createPaymentSheet (F2: server-side amount, ignore
     });
 
     it('charges the real LISTING_FEES[badgeTier] amount regardless of a lower client-supplied amount', async () => {
-        prisma.listing.findUnique.mockResolvedValue({
-            id: 'listing-1',
-            title: 'BMW M3',
-            price: 30000,
-            sellerId: 'user-1',
-            type: 'CLASSIFIED',
-            badgeTier: 'PREMIUM',
-            deletedAt: null,
-        });
+        prisma.listing.findUnique.mockResolvedValue(readyRetailListing({ badgeTier: 'PREMIUM' }));
 
         await service.createPaymentSheet('listing-1', 'user-1', 1, 'LISTING_FEE', 'gbp', 'PREMIUM');
 
@@ -294,6 +332,7 @@ describe('PaymentsService — handleWebhook payment_intent.succeeded (LISTING_FE
         prisma = buildPrismaMock();
         const module: TestingModule = await buildModule(prisma);
         service = module.get<PaymentsService>(PaymentsService);
+        prisma.listing.findUnique.mockResolvedValue(readyRetailListing());
     });
 
     it('moves the listing to PENDING_REVIEW (not ACTIVE) when a PREMIUM LISTING_FEE PaymentIntent succeeds — featuring is deferred to admin approval', async () => {
@@ -320,6 +359,38 @@ describe('PaymentsService — handleWebhook payment_intent.succeeded (LISTING_FE
                 badgeTier: 'PREMIUM',
             }),
         });
+    });
+
+    it('records genuine payment but leaves an incomplete listing out of review', async () => {
+        prisma.listing.findUnique.mockResolvedValue(
+            readyRetailListing({ images: [] }),
+        );
+        mockConstructEvent.mockReturnValue({
+            type: 'payment_intent.succeeded',
+            data: {
+                object: {
+                    id: 'pi_mock',
+                    metadata: {
+                        transactionId: 'txn-1',
+                        listingId: 'listing-1',
+                        type: 'LISTING_FEE',
+                        badgeTier: 'BASIC',
+                    },
+                },
+            },
+        });
+
+        await service.handleWebhook(Buffer.from('{}'), 'sig');
+
+        expect(prisma.transaction.update).toHaveBeenCalledWith({
+            where: { id: 'txn-1' },
+            data: { status: 'COMPLETED', stripePaymentId: 'pi_mock' },
+        });
+        expect(prisma.listing.update).not.toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.objectContaining({ status: 'PENDING_REVIEW' }),
+            }),
+        );
     });
 
     it('moves a BASIC tier LISTING_FEE payment to PENDING_REVIEW the same way', async () => {
