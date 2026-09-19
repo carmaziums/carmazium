@@ -1,16 +1,16 @@
 "use client"
 
-import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, ArrowRight, BadgeCheck, Building2, CheckCircle, LayoutDashboard, ShieldCheck, Users } from "lucide-react"
 import { financeServiceEnabled } from "@/lib/featureFlags"
+import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
 import { ServiceLeadForm } from "@/components/services/ServiceLeadForm"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 
 export default function VehicleFinanceServicePage() {
     const { user } = useAuth()
-    if (!financeServiceEnabled) notFound()
+    if (!financeServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Vehicle Finance" />
 
     const providerHref = user
         ? "/dashboard/partner"
