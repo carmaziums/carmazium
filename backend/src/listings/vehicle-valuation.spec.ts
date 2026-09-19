@@ -67,6 +67,19 @@ describe('calculateVehicleValuation', () => {
         expect(result.mid).toBeLessThan(8000);
     });
 
+    it('does not let one cheap live advert create a misleadingly low seller floor', () => {
+        const result = calculateVehicleValuation(vehicle, [
+            { price: 10000, year: 2016, mileage: 46000, fuelType: 'PETROL', transmission: 'AUTOMATIC', kind: 'ACTIVE_ASK' },
+            { price: 8995, year: 2016, mileage: 47675, fuelType: 'PETROL', transmission: 'AUTOMATIC', kind: 'ACTIVE_ASK' },
+            { price: 7250, year: 2014, mileage: 30500, fuelType: 'PETROL', transmission: 'AUTOMATIC', kind: 'ACTIVE_ASK' },
+            { price: 3200, year: 2014, mileage: 60000, fuelType: 'PETROL', transmission: 'MANUAL', kind: 'ACTIVE_ASK' },
+        ]);
+
+        expect(result.low).toBeGreaterThanOrEqual(result.mid * 0.84);
+        expect(result.high).toBeLessThanOrEqual(result.mid * 1.16);
+        expect(result.retail.suggestedMinimum).toBeGreaterThanOrEqual(result.mid * 0.89);
+    });
+
     it('does not let an extreme active asking price dominate completed outcomes', () => {
         const result = calculateVehicleValuation(vehicle, [
             { price: 7000, year: 2019, mileage: 60000, kind: 'SALE' },
