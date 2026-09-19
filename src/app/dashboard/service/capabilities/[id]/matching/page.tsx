@@ -11,6 +11,7 @@ import {
     getMyCapabilities,
     SERVICE_LABELS,
     updateLeadMatching,
+    updateJobMatching,
     type ContractorCapability,
 } from "@/lib/servicesApi"
 
@@ -66,13 +67,17 @@ export default function LeadMatchingSettingsPage() {
         try {
             const mine = await getMyCapabilities()
             const cap = mine.capabilities.find((item) => item.id === id)
-            if (!cap || (cap.serviceType !== "FINANCE" && cap.serviceType !== "WARRANTY")) {
-                throw new Error("Finance or Warranty capability not found on your account.")
+            if (!cap) {
+                throw new Error("Service capability not found on your account.")
             }
             setCapability(cap)
             setForm({
-                nationwide: cap.leadNationwide,
-                postcodeAreas: cap.leadPostcodeAreas.join(", "),
+                nationwide: cap.serviceType === "FINANCE" || cap.serviceType === "WARRANTY"
+                    ? cap.leadNationwide
+                    : cap.jobNationwide,
+                postcodeAreas: (cap.serviceType === "FINANCE" || cap.serviceType === "WARRANTY"
+                    ? cap.leadPostcodeAreas
+                    : cap.jobPostcodeAreas).join(", "),
                 minValue: cap.leadMinVehicleValuePence != null ? String(cap.leadMinVehicleValuePence / 100) : "",
                 maxValue: cap.leadMaxVehicleValuePence != null ? String(cap.leadMaxVehicleValuePence / 100) : "",
                 minYear: cap.leadMinVehicleYear != null ? String(cap.leadMinVehicleYear) : "",
@@ -113,23 +118,28 @@ export default function LeadMatchingSettingsPage() {
         setSaved(false)
         setError(null)
         try {
-            const updated = await updateLeadMatching(capability.id, {
-                leadNationwide: form.nationwide,
-                leadPostcodeAreas: areas,
-                leadMinVehicleValuePence: poundsToPence(form.minValue),
-                leadMaxVehicleValuePence: poundsToPence(form.maxValue),
-                leadMinVehicleYear: numberOrUndefined(form.minYear),
-                leadMaxVehicleMileage: numberOrUndefined(form.maxMileage),
-                ...(capability.serviceType === "FINANCE" ? {
-                    leadMinAnnualIncomePence: poundsToPence(form.minIncome),
-                    leadFinanceTermMinMonths: numberOrUndefined(form.financeTermMin),
-                    leadFinanceTermMaxMonths: numberOrUndefined(form.financeTermMax),
-                } : {
-                    leadWarrantyLevels: form.warrantyLevels.split(",").map((value) => value.trim()).filter(Boolean),
-                    leadWarrantyMinMonths: numberOrUndefined(form.warrantyMin),
-                    leadWarrantyMaxMonths: numberOrUndefined(form.warrantyMax),
-                }),
-            })
+            const updated = capability.serviceType === "FINANCE" || capability.serviceType === "WARRANTY"
+                ? await updateLeadMatching(capability.id, {
+                    leadNationwide: form.nationwide,
+                    leadPostcodeAreas: areas,
+                    leadMinVehicleValuePence: poundsToPence(form.minValue),
+                    leadMaxVehicleValuePence: poundsToPence(form.maxValue),
+                    leadMinVehicleYear: numberOrUndefined(form.minYear),
+                    leadMaxVehicleMileage: numberOrUndefined(form.maxMileage),
+                    ...(capability.serviceType === "FINANCE" ? {
+                        leadMinAnnualIncomePence: poundsToPence(form.minIncome),
+                        leadFinanceTermMinMonths: numberOrUndefined(form.financeTermMin),
+                        leadFinanceTermMaxMonths: numberOrUndefined(form.financeTermMax),
+                    } : {
+                        leadWarrantyLevels: form.warrantyLevels.split(",").map((value) => value.trim()).filter(Boolean),
+                        leadWarrantyMinMonths: numberOrUndefined(form.warrantyMin),
+                        leadWarrantyMaxMonths: numberOrUndefined(form.warrantyMax),
+                    }),
+                })
+                : await updateJobMatching(capability.id, {
+                    jobNationwide: form.nationwide,
+                    jobPostcodeAreas: areas,
+                })
             setCapability(updated)
             setSaved(true)
             await load()
@@ -153,9 +163,9 @@ export default function LeadMatchingSettingsPage() {
                         <Link href="/dashboard/service/capabilities" className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-primary mb-5">
                             <ArrowLeft size={14} /> Service add-ons
                         </Link>
-                        <h1 className="text-3xl font-bold font-heading">Lead matching settings</h1>
+                        <h1 className="text-3xl font-bold font-heading">Matching settings</h1>
                         <p className="text-sm text-[var(--text-muted)] mt-2">
-                            {capability ? SERVICE_LABELS[capability.serviceType] : "Finance / Warranty"} · CarMazium only shares enquiries that match these rules.
+                            {capability ? SERVICE_LABELS[capability.serviceType] : "TradeXchange service"} · CarMazium only shows work that matches these rules.
                         </p>
                     </div>
 
@@ -167,11 +177,18 @@ export default function LeadMatchingSettingsPage() {
                         <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 space-y-5">
                             <div>
                                 <h2 className="font-heading font-bold text-lg">Service area</h2>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">Use UK postcode areas such as B, CV, M, SW or choose nationwide. A full customer postcode is not exposed in the inbox summary.</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                    Use UK postcode areas such as B, CV, M, SW or choose nationwide.{" "}
+                                    {capability.serviceType === "FINANCE" || capability.serviceType === "WARRANTY"
+                                        ? "A full customer postcode is not exposed in the inbox summary."
+                                        : capability.serviceType === "DELIVERY"
+                                            ? "Delivery work is matched by the pickup postcode area."
+                                            : "Inspection work is matched by the vehicle location postcode area."}
+                                </p>
                             </div>
                             <label className="flex items-start gap-3 rounded-xl border border-[var(--border-default)] p-4 cursor-pointer">
                                 <input type="checkbox" checked={form.nationwide} onChange={e => set("nationwide", e.target.checked)} className="mt-1"/>
-                                <span><span className="font-bold text-sm">Nationwide</span><span className="block text-xs text-[var(--text-muted)] mt-1">Consider enquiries from any UK postcode area.</span></span>
+                                <span><span className="font-bold text-sm">Nationwide</span><span className="block text-xs text-[var(--text-muted)] mt-1">Consider work from any UK postcode area.</span></span>
                             </label>
                             {!form.nationwide && <div>
                                 <label className={labelCls}>Postcode areas</label>
@@ -179,7 +196,7 @@ export default function LeadMatchingSettingsPage() {
                             </div>}
                         </section>
 
-                        <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
+                        {(capability.serviceType === "FINANCE" || capability.serviceType === "WARRANTY") && <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
                             <h2 className="font-heading font-bold text-lg mb-5">Vehicle eligibility</h2>
                             <div className="grid sm:grid-cols-2 gap-4">
                                 <MoneyInput label="Minimum vehicle value" value={form.minValue} onChange={v => set("minValue", v)} />
@@ -188,7 +205,7 @@ export default function LeadMatchingSettingsPage() {
                                 <NumberInput label="Maximum mileage" value={form.maxMileage} onChange={v => set("maxMileage", v)} min={0} />
                             </div>
                             <p className="text-xs text-[var(--text-muted)] mt-4">Leave a field blank when you do not need that eligibility restriction. If you set a rule and the customer did not supply that information, the enquiry will not be matched to you.</p>
-                        </section>
+                        </section>}
 
                         {capability.serviceType === "FINANCE" ? (
                             <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
@@ -200,7 +217,7 @@ export default function LeadMatchingSettingsPage() {
                                     <NumberInput label="Maximum finance term" value={form.financeTermMax} onChange={v => set("financeTermMax", v)} min={1} max={120} suffix="months" />
                                 </div>
                             </section>
-                        ) : (
+                        ) : capability.serviceType === "WARRANTY" ? (
                             <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
                                 <h2 className="font-heading font-bold text-lg mb-5">Warranty eligibility</h2>
                                 <div className="grid sm:grid-cols-2 gap-4">
@@ -213,10 +230,12 @@ export default function LeadMatchingSettingsPage() {
                                     </div>
                                 </div>
                             </section>
-                        )}
+                        ) : null}
 
                         <section className="rounded-2xl border border-primary/25 bg-primary/5 p-5 text-sm">
-                            CarMazium sends each enquiry to no more than five matched approved providers. New providers do not automatically receive older enquiries; an administrator must explicitly rematch an open enquiry.
+                            {capability.serviceType === "FINANCE" || capability.serviceType === "WARRANTY"
+                                ? "CarMazium sends each enquiry to no more than five matched approved providers. New providers do not automatically receive older enquiries; an administrator must explicitly rematch an open enquiry."
+                                : "Only open jobs inside this coverage are shown in your TradeXchange feed and can be quoted. Changing coverage does not remove jobs already assigned to your business."}
                         </section>
 
                         <div className="flex justify-end">
