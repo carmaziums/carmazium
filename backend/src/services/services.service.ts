@@ -581,7 +581,12 @@ export class ServicesService {
 
             const jobPaid = await tx.serviceJob.updateMany({
                 where: { id: jobId, status: ServiceJobStatus.ACCEPTED },
-                data: { status: ServiceJobStatus.PAID },
+                data: {
+                    status: ServiceJobStatus.PAID,
+                    startedAt: null,
+                    completedAt: null,
+                    confirmedAt: null,
+                },
             });
             if (jobPaid.count !== 1) {
                 throw new ConflictException('The service job state changed while payment was being recorded.');
@@ -612,8 +617,13 @@ export class ServicesService {
 
     async confirmCompletion(customerId: string, jobId: string) {
         const job = await this.ownJob(customerId, jobId);
-        if (job.status !== ServiceJobStatus.COMPLETED) {
-            throw new BadRequestException('The provider has not marked this job complete yet.');
+        if (
+            job.status !== ServiceJobStatus.COMPLETED ||
+            !job.startedAt ||
+            !job.completedAt ||
+            job.completedAt < job.startedAt
+        ) {
+            throw new BadRequestException('The provider has not completed the required job lifecycle yet.');
         }
         return this.release(jobId, 'customer confirmed');
     }
@@ -738,11 +748,26 @@ export class ServicesService {
 
     async startJob(contractorProfileId: string, jobId: string) {
         const job = await this.assignedJob(contractorProfileId, jobId);
-        if (job.status !== ServiceJobStatus.PAID) throw new BadRequestException('The job must be paid before it starts.');
+        if (
+            job.status !== ServiceJobStatus.PAID ||
+            job.startedAt ||
+            job.completedAt ||
+            job.confirmedAt
+        ) {
+            throw new BadRequestException('This paid job is not in a clean state to start.');
+        }
 
+        const startedAt = new Date();
         const started = await this.prisma.serviceJob.updateMany({
-            where: { id: jobId, contractorId: contractorProfileId, status: ServiceJobStatus.PAID },
-            data: { status: ServiceJobStatus.IN_PROGRESS, startedAt: new Date() },
+            where: {
+                id: jobId,
+                contractorId: contractorProfileId,
+                status: ServiceJobStatus.PAID,
+                startedAt: null,
+                completedAt: null,
+                confirmedAt: null,
+            },
+            data: { status: ServiceJobStatus.IN_PROGRESS, startedAt },
         });
         if (started.count !== 1) {
             throw new ConflictException('The job state changed before it could be started.');
@@ -755,14 +780,30 @@ export class ServicesService {
 
     async completeJob(contractorProfileId: string, jobId: string) {
         const job = await this.assignedJob(contractorProfileId, jobId);
-        const completable: ServiceJobStatus[] = [ServiceJobStatus.IN_PROGRESS, ServiceJobStatus.PAID];
-        if (!completable.includes(job.status)) {
-            throw new BadRequestException('This job cannot be marked complete from its current state.');
+        if (
+            job.status !== ServiceJobStatus.IN_PROGRESS ||
+            !job.startedAt ||
+            job.completedAt ||
+            job.confirmedAt
+        ) {
+            throw new BadRequestException('Start this job before marking it complete.');
+        }
+
+        const completedAt = new Date();
+        if (completedAt < job.startedAt) {
+            throw new ConflictException('The job completion time cannot be before its start time.');
         }
 
         const completed = await this.prisma.serviceJob.updateMany({
-            where: { id: jobId, contractorId: contractorProfileId, status: { in: completable } },
-            data: { status: ServiceJobStatus.COMPLETED, completedAt: new Date() },
+            where: {
+                id: jobId,
+                contractorId: contractorProfileId,
+                status: ServiceJobStatus.IN_PROGRESS,
+                startedAt: job.startedAt,
+                completedAt: null,
+                confirmedAt: null,
+            },
+            data: { status: ServiceJobStatus.COMPLETED, completedAt },
         });
         if (completed.count !== 1) {
             throw new ConflictException('The job state changed before it could be marked complete.');
@@ -970,7 +1011,12 @@ export class ServicesService {
     async autoConfirmCompleted(): Promise<number> {
         const cutoff = new Date(Date.now() - AUTO_CONFIRM_HOURS * 3_600_000);
         const due = await this.prisma.serviceJob.findMany({
-            where: { status: ServiceJobStatus.COMPLETED, completedAt: { lt: cutoff } },
+            where: {
+                status: ServiceJobStatus.COMPLETED,
+                startedAt: { not: null },
+                completedAt: { lt: cutoff },
+                confirmedAt: null,
+            },
             select: { id: true },
         });
         let released = 0;
@@ -994,6 +1040,12 @@ export class ServicesService {
         if (job.payment.status !== ServicePaymentStatus.PAID) throw new BadRequestException('Payment is not in a releasable state.');
         if (job.status !== ServiceJobStatus.COMPLETED && job.status !== ServiceJobStatus.DISPUTED) {
             throw new BadRequestException('This job is not in a releasable state.');
+        }
+        if (
+            job.status === ServiceJobStatus.COMPLETED &&
+            (!job.startedAt || !job.completedAt || job.completedAt < job.startedAt)
+        ) {
+            throw new ConflictException('Completed job lifecycle timestamps are invalid; payout is blocked.');
         }
 
         const account = job.contractor.user.stripeConnectAccountId;
