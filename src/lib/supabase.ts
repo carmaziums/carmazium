@@ -193,7 +193,7 @@ export async function uploadImage(
     if (bucket === 'listings') {
         const userId = await getAuthenticatedUserId();
         if (!userId) {
-            throw new Error('Please sign in before uploading vehicle photos.');
+            throw new Error('Please sign in before uploading files.');
         }
         effectiveFolder = `${userId}/${effectiveFolder || 'vehicle'}`;
     }
@@ -251,6 +251,19 @@ export async function deleteImage(
     const objectPath = decodeURIComponent(cleanUrl.slice(markerIndex + marker.length));
     if (!objectPath || objectPath.includes('..')) {
         throw new Error('Invalid storage object path.');
+    }
+
+    if (bucket === 'listings') {
+        const userId = await getAuthenticatedUserId();
+        if (!userId) {
+            throw new Error('Please sign in before deleting vehicle photos.');
+        }
+
+        const [ownerSegment, categorySegment] = objectPath.split('/');
+        const deletableVehicleFolders = new Set(['vehicle', 'exterior', 'interior', 'damage']);
+        if (ownerSegment !== userId || !categorySegment || !deletableVehicleFolders.has(categorySegment)) {
+            throw new Error('Only your own vehicle photos can be deleted from this device.');
+        }
     }
 
     const { error } = await supabase.storage.from(bucket).remove([objectPath]);
