@@ -694,12 +694,17 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           knownAuctions.filter(a => a.status === 'ENDED').map(a => a.listingId),
         );
 
-        const eligible = items.filter(l =>
-          l.type === 'CLASSIFIED' &&
-          (l.status === 'ACTIVE' || (l.status === 'DRAFT' && revertedListingIds.has(l.id))) &&
-          !busyListingIds.has(l.id) &&
-          !l.linkedListingId
-        );
+        const eligible = items.filter(l => {
+          if (busyListingIds.has(l.id)) return false;
+          const isFreshRetailSource =
+            l.type === 'CLASSIFIED' &&
+            l.status === 'ACTIVE' &&
+            !l.linkedListingId;
+          const isEndedAuctionDraft =
+            l.status === 'DRAFT' &&
+            revertedListingIds.has(l.id);
+          return isFreshRetailSource || isEndedAuctionDraft;
+        });
         setEligibleListings(eligible);
         if (presetListingId) {
           const match = eligible.find(l => l.id === presetListingId);
