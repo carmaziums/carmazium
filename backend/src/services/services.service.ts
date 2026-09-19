@@ -547,42 +547,48 @@ export class ServicesService {
             throw new BadRequestException(`${this.label(dto.serviceType)} is enquiry-based and does not take jobs yet.`);
         }
         assertServiceAcceptingNewRequests(dto.serviceType);
+
+        const requestedFor = parseFutureRequestedFor(dto.requestedFor);
+        let pickupPostcode: string | null = null;
+        let deliveryPostcode: string | null = null;
+        let servicePostcode: string | null = null;
+
         if (dto.serviceType === ServiceType.DELIVERY) {
-            if (!dto.pickupPostcode || !dto.deliveryPostcode) {
-                throw new BadRequestException('Delivery jobs need a pickup and a delivery postcode.');
-            }
-        } else if (!dto.servicePostcode) {
-            throw new BadRequestException('Inspection jobs need the postcode where the vehicle is.');
+            pickupPostcode = requireUkPostcode(dto.pickupPostcode, 'Pickup postcode');
+            deliveryPostcode = requireUkPostcode(dto.deliveryPostcode, 'Delivery postcode');
+        } else {
+            servicePostcode = requireUkPostcode(dto.servicePostcode, 'Inspection postcode');
         }
 
-        const job = await this.prisma.serviceJob.create({
+        const workPostcodeArea = postcodeArea(
+            dto.serviceType === ServiceType.DELIVERY ? pickupPostcode : servicePostcode,
+        );
+        if (!workPostcodeArea) {
+            throw new BadRequestException('Unable to determine the UK postcode area for this job.');
+        }
+
+        const vehicles = await this.prepareManualJobVehicles(customerId, dto.serviceType, dto.vehicles);
+
+        const job = await this.withActiveJobSlot(customerId, async (tx) => tx.serviceJob.create({
             data: {
                 customerId,
                 serviceType: dto.serviceType,
                 isRecovery: dto.serviceType === ServiceType.DELIVERY && !!dto.isRecovery,
                 title: dto.title.trim(),
                 description: dto.description?.trim() || null,
-                pickupPostcode: normPostcode(dto.pickupPostcode),
+                pickupPostcode,
                 pickupAddress: dto.pickupAddress?.trim() || null,
-                deliveryPostcode: normPostcode(dto.deliveryPostcode),
+                deliveryPostcode,
                 deliveryAddress: dto.deliveryAddress?.trim() || null,
-                servicePostcode: normPostcode(dto.servicePostcode),
+                servicePostcode,
                 serviceAddress: dto.serviceAddress?.trim() || null,
-                requestedFor: dto.requestedFor ? new Date(dto.requestedFor) : null,
+                workPostcodeArea,
+                requestedFor,
                 expiresAt: new Date(Date.now() + JOB_OPEN_DAYS * 86_400_000),
-                vehicles: {
-                    create: dto.vehicles.map((v) => ({
-                        registration: v.registration?.toUpperCase().replace(/\s+/g, '') || null,
-                        make: v.make?.trim() || null,
-                        model: v.model?.trim() || null,
-                        year: v.year ?? null,
-                        notes: v.notes?.trim() || null,
-                        listingId: v.listingId ?? null,
-                    })),
-                },
+                vehicles: { create: vehicles },
             },
             include: { vehicles: true },
-        });
+        }));
 
         this.logger.log(`Service job ${job.id} (${job.serviceType}) posted by ${customerId}`);
         return job;
