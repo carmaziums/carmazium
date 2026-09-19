@@ -27,7 +27,11 @@ import {
     ApplyCapabilityDto, UpdateLeadMatchingDto, UpdateJobMatchingDto, ReviewCapabilityDto, ResolveDisputeDto, CreateServiceReviewDto, JOB_SERVICE_TYPES,
 } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
-import { assertCapabilityVerificationReady } from './capability-verification';
+import {
+    assertCapabilityVerificationReady,
+    capabilityVerificationIsCurrent,
+    verifiedCapabilityWhere,
+} from './capability-verification';
 import { TradeTeamService } from './trade-team.service';
 import { parseFutureRequestedFor, postcodeArea, requireUkPostcode } from './service-validation';
 import { boundedServiceLimit, decodeServiceCursor, makeServicePage } from './service-pagination';
@@ -132,11 +136,10 @@ export class ServicesService {
         return run(this.prisma as any);
     }
 
-    private async capabilityAllowsJob(
+    private async currentNewWorkCapability(
         contractorProfileId: string,
         serviceType: ServiceType,
-        workPostcodeArea: string | null,
-    ): Promise<boolean> {
+    ) {
         const capability = await this.prisma.contractorCapability.findUnique({
             where: {
                 contractorId_serviceType: {
@@ -146,14 +149,26 @@ export class ServicesService {
             },
             select: {
                 status: true,
+                verificationStatus: true,
+                verificationExpiresAt: true,
                 jobNationwide: true,
                 jobPostcodeAreas: true,
             },
         });
-        if (!capability || capability.status !== CapabilityStatus.APPROVED) return false;
+        return capabilityVerificationIsCurrent(capability) ? capability : null;
+    }
 
-        // Compatibility with isolated pre-Block-8 test fixtures. Production
-        // rows always have these non-null columns once the migration is live.
+    private async capabilityAllowsJob(
+        contractorProfileId: string,
+        serviceType: ServiceType,
+        workPostcodeArea: string | null,
+    ): Promise<boolean> {
+        const capability = await this.currentNewWorkCapability(contractorProfileId, serviceType);
+        if (!capability) return false;
+
+        // Compatibility for the older in-memory test harness only. Production
+        // rows have these columns after Block 8, but missing coverage fields must
+        // never bypass the verification gate above.
         if (
             (capability as any).jobNationwide === undefined
             && (capability as any).jobPostcodeAreas === undefined
@@ -928,6 +943,11 @@ export class ServicesService {
         if (quote.validUntil && quote.validUntil <= now) {
             throw new BadRequestException('That quote has expired. Ask the provider to re-quote.');
         }
+        if (!(await this.currentNewWorkCapability(quote.contractorId, job.serviceType))) {
+            throw new BadRequestException(
+                'That provider is no longer verified to take new TradeXchange work. Choose another active quote.',
+            );
+        }
 
         const { rate, platformFeePence, contractorPence } = this.split(quote.amountPence);
 
@@ -1207,8 +1227,8 @@ export class ServicesService {
         const capabilities = await this.prisma.contractorCapability.findMany({
             where: {
                 contractorId: contractorProfileId,
-                status: CapabilityStatus.APPROVED,
                 serviceType: { in: types },
+                ...verifiedCapabilityWhere(new Date()),
             },
             select: {
                 serviceType: true,

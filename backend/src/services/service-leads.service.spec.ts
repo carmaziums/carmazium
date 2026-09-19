@@ -133,6 +133,14 @@ describe('ServiceLeadsService', () => {
             employmentStatus: 'Employed',
         } as any);
 
+        expect(prisma.contractorCapability.findMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: expect.objectContaining({
+                serviceType: ServiceType.FINANCE,
+                status: CapabilityStatus.APPROVED,
+                verificationStatus: 'VERIFIED',
+                verificationExpiresAt: { gt: expect.any(Date) },
+            }),
+        }));
         expect(prisma.serviceLead.create).toHaveBeenCalledWith(expect.objectContaining({
             data: expect.objectContaining({
                 customerId: 'customer-1',
@@ -338,6 +346,19 @@ describe('ServiceLeadsService', () => {
 
         const detail = await service.providerLead('provider-1', 'lead-1');
 
+        expect(prisma.contractorProfile.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+            where: { userId: 'provider-1' },
+            include: expect.objectContaining({
+                capabilities: expect.objectContaining({
+                    where: expect.objectContaining({
+                        status: CapabilityStatus.APPROVED,
+                        verificationStatus: 'VERIFIED',
+                        verificationExpiresAt: { gt: expect.any(Date) },
+                        serviceType: ServiceType.FINANCE,
+                    }),
+                }),
+            }),
+        }));
         expect(detail).toMatchObject({
             id: 'lead-1',
             fullName: 'Buyer One',

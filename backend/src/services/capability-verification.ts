@@ -24,6 +24,38 @@ export type CapabilityVerificationStatus =
     | 'REVERIFICATION_REQUIRED'
     | 'REJECTED';
 
+/**
+ * Authoritative runtime gate for taking NEW TradeXchange work.
+ *
+ * Admin approval alone is not enough: the evidence-backed verification must
+ * still be VERIFIED and inside its validity window. Existing job lifecycle
+ * access is intentionally handled separately so an expiry cannot strand work
+ * that was already accepted and paid.
+ */
+export function verifiedCapabilityWhere(now = new Date()): Prisma.ContractorCapabilityWhereInput {
+    return {
+        status: CapabilityStatus.APPROVED,
+        verificationStatus: 'VERIFIED',
+        verificationExpiresAt: { gt: now },
+    };
+}
+
+export function capabilityVerificationIsCurrent(
+    capability: {
+        status: CapabilityStatus;
+        verificationStatus?: string | null;
+        verificationExpiresAt?: Date | string | null;
+    } | null | undefined,
+    now = new Date(),
+): boolean {
+    if (!capability || capability.status !== CapabilityStatus.APPROVED) return false;
+    if (capability.verificationStatus !== 'VERIFIED' || !capability.verificationExpiresAt) return false;
+    const expiresAt = capability.verificationExpiresAt instanceof Date
+        ? capability.verificationExpiresAt
+        : new Date(capability.verificationExpiresAt);
+    return !Number.isNaN(expiresAt.getTime()) && expiresAt > now;
+}
+
 export interface CapabilityVerificationRequirement {
     type: CapabilityEvidenceType;
     title: string;
