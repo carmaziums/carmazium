@@ -596,11 +596,19 @@ export class ServiceLeadsService {
         return profile;
     }
 
-    async inbox(userId: string, serviceType?: ServiceType) {
+    async inbox(
+        userId: string,
+        serviceType?: ServiceType,
+        options: { limit?: number; cursor?: string } = {},
+    ) {
         const profile = await this.providerProfile(userId, serviceType);
         await this.expireOldLeads();
 
+        const limit = boundedServiceLimit(options.limit);
+        const cursor = decodeServiceCursor(options.cursor);
+        const cursorDate = cursor ? new Date(cursor.at) : null;
         const now = new Date();
+
         const recipients = await this.prisma.serviceLeadRecipient.findMany({
             where: {
                 contractorId: profile.id,
@@ -608,13 +616,23 @@ export class ServiceLeadsService {
                     status: 'OPEN',
                     expiresAt: { gt: now },
                     ...(serviceType ? { serviceType } : {}),
+                    ...(cursorDate ? {
+                        OR: [
+                            { createdAt: { lt: cursorDate } },
+                            { createdAt: cursorDate, id: { lt: cursor!.id } },
+                        ],
+                    } : {}),
                 },
             },
-            orderBy: { lead: { createdAt: 'desc' } },
+            orderBy: [
+                { lead: { createdAt: 'desc' } },
+                { leadId: 'desc' },
+            ],
+            take: limit + 1,
             include: { lead: true },
         });
 
-        return recipients.map(({ lead, ...recipient }) => ({
+        const mapped = recipients.map(({ lead, ...recipient }) => ({
             id: lead.id,
             serviceType: lead.serviceType,
             status: lead.status,
@@ -624,10 +642,9 @@ export class ServiceLeadsService {
             vehicleYear: lead.vehicleYear,
             vehicleMileage: lead.vehicleMileage,
             vehicleValuePence: lead.vehicleValuePence,
-            // Inbox only needs a broad routing area. Full postcode/contact and
-            // financial-employment detail are disclosed only after the matched
-            // provider deliberately opens this enquiry.
-            postcode: postcodeArea(lead.postcode),
+            // Inbox only needs the broad UK postcode area. Contact details and
+            // sensitive finance fields are disclosed only after deliberate open.
+            postcode: validatedPostcodeArea(lead.postcode),
             depositPence: lead.serviceType === ServiceType.FINANCE ? lead.depositPence : null,
             termMonths: lead.serviceType === ServiceType.FINANCE ? lead.termMonths : null,
             monthlyBudgetPence: lead.serviceType === ServiceType.FINANCE ? lead.monthlyBudgetPence : null,
@@ -648,6 +665,12 @@ export class ServiceLeadsService {
             viewedAt: recipient.viewedAt,
             respondedAt: recipient.respondedAt,
         }));
+
+        const page = makeServicePage(mapped, limit, (row) => ({
+            at: row.createdAt.toISOString(),
+            id: row.id,
+        }));
+        return page;
     }
 
     async providerLead(userId: string, leadId: string) {
@@ -677,10 +700,7 @@ export class ServiceLeadsService {
         }
 
         const now = new Date();
-        const recipientStatus = recipient.status === 'NEW' ? 'VIEWED' : recipient.status;
-        const viewedAt = recipient.viewedAt ?? now;
-        const contactDisclosedAt = recipient.contactDisclosedAt ?? now;
-        if (recipient.status === 'NEW' || !recipient.contactDisclosedAt) {
+        if (recipient.status === 'NEW' || !recipient.viewedAt || !recipient.contactDisclosedAt) {
             await this.prisma.serviceLeadRecipient.update({
                 where: {
                     leadId_contractorId: {
@@ -689,11 +709,22 @@ export class ServiceLeadsService {
                     },
                 },
                 data: {
-                    status: recipientStatus,
-                    viewedAt,
-                    contactDisclosedAt,
+                    ...(recipient.status === 'NEW' ? { status: 'VIEWED' } : {}),
+                    ...(recipient.viewedAt ? {} : { viewedAt: now }),
+                    ...(recipient.contactDisclosedAt ? {} : { contactDisclosedAt: now }),
                 },
             });
+        }
+        const displayedRecipient = await this.prisma.serviceLeadRecipient.findUnique({
+            where: {
+                leadId_contractorId: {
+                    leadId,
+                    contractorId: profile.id,
+                },
+            },
+        });
+        if (!displayedRecipient) {
+            throw new ForbiddenException('This enquiry is no longer matched to your provider account.');
         }
 
         // Deliberately construct the disclosure payload instead of spreading
@@ -723,20 +754,20 @@ export class ServiceLeadsService {
             warrantyLevel: lead.serviceType === ServiceType.WARRANTY ? lead.warrantyLevel : null,
             expiresAt: lead.expiresAt,
             createdAt: lead.createdAt,
-            recipientId: recipient.id,
-            recipientStatus,
-            headline: recipient.headline,
-            message: recipient.message,
-            productName: recipient.productName,
-            indicativePricePence: recipient.indicativePricePence,
-            representativeApr: recipient.representativeApr == null ? null : Number(recipient.representativeApr),
-            responseTermMonths: recipient.termMonths,
-            matchedAt: recipient.matchedAt,
-            matchSource: recipient.matchSource,
-            matchReason: recipient.matchReason,
-            viewedAt,
-            contactDisclosedAt,
-            respondedAt: recipient.respondedAt,
+            recipientId: displayedRecipient.id,
+            recipientStatus: displayedRecipient.status,
+            headline: displayedRecipient.headline,
+            message: displayedRecipient.message,
+            productName: displayedRecipient.productName,
+            indicativePricePence: displayedRecipient.indicativePricePence,
+            representativeApr: displayedRecipient.representativeApr == null ? null : Number(displayedRecipient.representativeApr),
+            responseTermMonths: displayedRecipient.termMonths,
+            matchedAt: displayedRecipient.matchedAt,
+            matchSource: displayedRecipient.matchSource,
+            matchReason: displayedRecipient.matchReason,
+            viewedAt: displayedRecipient.viewedAt,
+            contactDisclosedAt: displayedRecipient.contactDisclosedAt,
+            respondedAt: displayedRecipient.respondedAt,
         };
     }
 
@@ -807,7 +838,6 @@ export class ServiceLeadsService {
                 termMonths: lead.serviceType === ServiceType.FINANCE
                     ? dto.termMonths ?? null
                     : null,
-                viewedAt: recipient.viewedAt ?? now,
                 respondedAt: now,
             },
         });
@@ -1000,17 +1030,4 @@ export class ServiceLeadsService {
 
         return leads.map((lead) => this.leadWithCounts(lead));
     }
-}
-
-function postcodeArea(value?: string | null): string | null {
-    const compact = value?.trim().toUpperCase().replace(/\s+/g, '');
-    if (!compact) return null;
-    const match = compact.match(/^([A-Z]{1,3})(?=\d)/);
-    return match?.[1] ?? null;
-}
-
-function normPostcode(value?: string | null): string | null {
-    const p = value?.trim().toUpperCase().replace(/\s+/g, '');
-    if (!p) return null;
-    return p.length > 3 ? `${p.slice(0, -3)} ${p.slice(-3)}` : p;
 }
