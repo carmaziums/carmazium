@@ -163,7 +163,11 @@ describe('ServicesService TradeXchange hardening regressions', () => {
                         serviceType: ServiceType.DELIVERY,
                     },
                 },
-                select: { status: true },
+                select: {
+                    status: true,
+                    jobNationwide: true,
+                    jobPostcodeAreas: true,
+                },
             });
         });
 
