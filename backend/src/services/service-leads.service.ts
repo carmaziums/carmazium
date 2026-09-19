@@ -425,7 +425,7 @@ export class ServiceLeadsService {
                     customerId,
                     status: 'OPEN',
                 },
-                data: { status: 'CLOSED' },
+                data: { status: 'CLOSED', closedAt: new Date() },
             });
             if (result.count === 0) {
                 throw new BadRequestException('Only an open enquiry can be closed.');
