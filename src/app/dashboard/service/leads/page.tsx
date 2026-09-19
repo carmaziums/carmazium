@@ -5,7 +5,7 @@ import Link from "next/link"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
-import { formatPence, getLeadInbox, SERVICE_LABELS, type ServiceLead } from "@/lib/servicesApi"
+import { formatPence, getLeadInboxPage, SERVICE_LABELS, type ServiceLead } from "@/lib/servicesApi"
 
 const inputCls = "w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2.5 text-sm outline-none focus:border-primary"
 
@@ -29,12 +29,14 @@ export default function ProviderLeadInboxPage() {
     const [leads, setLeads] = React.useState<ServiceLead[]>([])
     const [error, setError] = React.useState<string | null>(null)
     const [loading, setLoading] = React.useState(true)
+    const [nextCursor, setNextCursor] = React.useState<string | null>(null)
+    const [loadingMore, setLoadingMore] = React.useState(false)
 
     const load = React.useCallback(() => {
         setLoading(true)
         setError(null)
-        getLeadInbox(type || undefined)
-            .then(setLeads)
+        getLeadInboxPage(type || undefined)
+            .then(page => { setLeads(page.items); setNextCursor(page.nextCursor) })
             .catch(e => setError(e?.message || "Could not load matched enquiries"))
             .finally(() => setLoading(false))
     }, [type])
@@ -42,6 +44,20 @@ export default function ProviderLeadInboxPage() {
     React.useEffect(() => {
         if (user) load()
     }, [user, load])
+
+    const loadMore = async () => {
+        if (!nextCursor || loadingMore) return
+        setLoadingMore(true)
+        try {
+            const page = await getLeadInboxPage(type || undefined, nextCursor)
+            setLeads(current => [...current, ...page.items])
+            setNextCursor(page.nextCursor)
+        } catch (e: any) {
+            setError(e?.message || "Could not load more matched enquiries")
+        } finally {
+            setLoadingMore(false)
+        }
+    }
 
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`.trim()
@@ -119,7 +135,7 @@ export default function ProviderLeadInboxPage() {
 
                                         <div className="shrink-0 flex md:flex-col md:items-end items-center justify-between gap-3">
                                             <span className="inline-block text-[10px] font-black uppercase tracking-widest border border-[var(--border-default)] px-2.5 py-1 rounded-full">
-                                                {lead.recipientStatus || "VIEWED"}
+                                                {lead.recipientStatus || "NEW"}
                                             </span>
                                             <Link
                                                 href={`/dashboard/service/leads/${lead.id}`}
@@ -133,6 +149,12 @@ export default function ProviderLeadInboxPage() {
                             )
                         })}
                     </div>
+                    {nextCursor && <div className="flex justify-center mt-8">
+                        <button type="button" onClick={loadMore} disabled={loadingMore}
+                            className="rounded-xl border border-[var(--border-default)] px-5 py-2.5 text-sm font-bold hover:border-primary disabled:opacity-50">
+                            {loadingMore ? "Loading…" : "Load more enquiries"}
+                        </button>
+                    </div>}
                 </main>
             </div>
         </div>
