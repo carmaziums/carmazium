@@ -33,9 +33,9 @@ alter table public.service_jobs
 create unique index if not exists service_jobs_active_source_offer_uidx
     on public.service_jobs ("sourceOfferId")
     where "sourceOfferId" is not null
-      and "status"::text not in ('CANCELLED', 'EXPIRED');
+      and "status" not in ('CANCELLED', 'EXPIRED');
 
 create unique index if not exists service_jobs_active_source_auction_uidx
     on public.service_jobs ("sourceAuctionId")
     where "sourceAuctionId" is not null
-      and "status"::text not in ('CANCELLED', 'EXPIRED');
+      and "status" not in ('CANCELLED', 'EXPIRED');
