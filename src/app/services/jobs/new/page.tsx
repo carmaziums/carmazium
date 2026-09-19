@@ -1,12 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { notFound } from "next/navigation"
 import { ArrowLeft, ArrowRight, ClipboardCheck, Truck } from "lucide-react"
 import { deliveryServiceEnabled, inspectionServiceEnabled } from "@/lib/featureFlags"
+import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
 
 export default function NewServiceJobPage() {
-    if (!deliveryServiceEnabled && !inspectionServiceEnabled) notFound()
+    if (!deliveryServiceEnabled && !inspectionServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Delivery & Inspection jobs" />
 
     const jobTypes = [
         {
