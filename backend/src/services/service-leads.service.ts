@@ -11,7 +11,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CreateServiceLeadDto, RespondToServiceLeadDto } from './service-leads.dto';
 import { ReviewCapabilityDto } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
-import { assertCapabilityVerificationReady } from './capability-verification';
+import { assertCapabilityVerificationReady, verifiedCapabilityWhere } from './capability-verification';
 import { normaliseUkPostcode, postcodeArea as validatedPostcodeArea } from './service-validation';
 import { boundedServiceLimit, decodeServiceCursor, makeServicePage } from './service-pagination';
 
@@ -209,7 +209,7 @@ export class ServiceLeadsService {
         const candidates = await db.contractorCapability.findMany({
             where: {
                 serviceType: lead.serviceType,
-                status: CapabilityStatus.APPROVED,
+                ...verifiedCapabilityWhere(new Date()),
                 contractor: {
                     deletedAt: null,
                     ...(excludeContractorIds.length ? { id: { notIn: excludeContractorIds } } : {}),
@@ -601,7 +601,7 @@ export class ServiceLeadsService {
             include: {
                 capabilities: {
                     where: {
-                        status: CapabilityStatus.APPROVED,
+                        ...verifiedCapabilityWhere(new Date()),
                         serviceType: requestedType
                             ? requestedType
                             : { in: [ServiceType.FINANCE, ServiceType.WARRANTY] },
