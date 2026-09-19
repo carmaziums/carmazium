@@ -980,15 +980,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
         try {
             const priceAsking = parseFloat(formData.priceAsking)
+            const isAuctionListing = formData.listingType === 'AUCTION'
             const priceMin = formData.priceMin ? parseFloat(formData.priceMin) : priceAsking
-            const priceMax = priceAsking // Default to asking price
+            const priceMax = priceAsking // Retail asking-price ceiling
             const displayPrice = priceAsking
 
             const payload: CreateListingRequest = {
                 title: formData.title,
+                // For auctions this single price field is the seller's Estimated
+                // Market Value / guide price. Retail-only offer bounds are omitted.
                 price: displayPrice,
-                priceMin,
-                priceMax,
+                ...(!isAuctionListing ? { priceMin, priceMax } : {}),
                 mileage: parseInt(formData.mileage),
                 year: parseInt(formData.year),
                 vrm: formData.vrm,
@@ -1195,8 +1197,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 })
             } else {
                 // Brand-new auctions carry their schedule in this same POST /listings
-                // request. The backend performs a Prisma nested write, so a failed
-                // Auction create rolls back the Listing too. Existing/HPI drafts
+                // request. The backend creates Listing + Auction explicitly inside
+                // one Prisma transaction, so a failed Auction create rolls back
+                // the Listing too. Existing/HPI drafts
                 // still use ensureAuctionScheduled() above because their Listing
                 // row already exists.
                 const initialAuctionFields = formData.listingType === 'AUCTION'
@@ -3463,16 +3466,24 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             <SummarySection title="Pricing" onEdit={() => goToStep(3)}>
                                 <div className="flex flex-col gap-3">
-                                    <div className="grid grid-cols-2 gap-3">
+                                    {isAuction ? (
                                         <div>
-                                            <p className="text-[10px] text-[var(--text-muted)] uppercase mb-0.5">{isAuction ? 'Guide Price' : 'Lower'}</p>
-                                            <p className="text-[var(--text-primary)] font-bold text-lg tabular-nums">{isAuction ? '—' : formData.priceMin ? formatPrice(formData.priceMin) : '—'}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[10px] text-primary uppercase font-bold mb-0.5">{isAuction ? 'Guide Price' : 'Asking Price'}</p>
+                                            <p className="text-[10px] text-primary uppercase font-bold mb-0.5">Estimated Market Value</p>
                                             <p className="text-[var(--text-primary)] font-black text-2xl tabular-nums">{formatPrice(formData.priceAsking)}</p>
+                                            <p className="text-[10px] text-[var(--text-muted)] mt-1">Internal guide value used to calculate the 70% opening bid.</p>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <p className="text-[10px] text-[var(--text-muted)] uppercase mb-0.5">Lower</p>
+                                                <p className="text-[var(--text-primary)] font-bold text-lg tabular-nums">{formData.priceMin ? formatPrice(formData.priceMin) : '—'}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-[10px] text-primary uppercase font-bold mb-0.5">Asking Price</p>
+                                                <p className="text-[var(--text-primary)] font-black text-2xl tabular-nums">{formatPrice(formData.priceAsking)}</p>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className="flex items-center gap-2 mt-1">
                                         {formData.badgeTier === 'FREE' && formData.listingType === 'AUCTION' && (
