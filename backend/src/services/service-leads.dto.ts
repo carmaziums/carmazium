@@ -2,6 +2,7 @@ import {
     IsBoolean,
     IsEnum,
     IsInt,
+    IsIn,
     IsNumber,
     IsOptional,
     IsString,
@@ -26,13 +27,13 @@ export class ServiceLeadListQueryDto {
 
 export class ServiceLeadInboxQueryDto extends ServiceLeadListQueryDto {
     @ApiPropertyOptional({ enum: [ServiceType.FINANCE, ServiceType.WARRANTY] })
-    @IsOptional() @IsEnum(ServiceType)
+    @IsOptional() @IsIn([ServiceType.FINANCE, ServiceType.WARRANTY])
     serviceType?: ServiceType;
 }
 
 export class CreateServiceLeadDto {
     @ApiProperty({ enum: [ServiceType.FINANCE, ServiceType.WARRANTY] })
-    @IsEnum(ServiceType)
+    @IsIn([ServiceType.FINANCE, ServiceType.WARRANTY])
     serviceType: ServiceType;
 
     @ApiPropertyOptional({ description: 'Optional CarMazium listing connected to the enquiry' })
