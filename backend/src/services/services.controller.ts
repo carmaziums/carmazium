@@ -128,12 +128,13 @@ export class ServicesController {
     @UseGuards(ContractorGuard)
     @ApiOperation({ summary: 'Jobs assigned to the provider business and visible to the caller’s role' })
     async assigned(@Req() req: any, @Query() page: ServiceListQueryDto) {
-        const result = await this.services.assignedPage(req.contractorProfileId, page);
-        const allowed = new Set<ServiceType>(req.approvedServiceTypes ?? []);
-        return new StandardResponse({
-            ...result,
-            items: result.items.filter((job: any) => allowed.has(job.serviceType)),
-        });
+        return new StandardResponse(
+            await this.services.assignedPage(
+                req.contractorProfileId,
+                req.approvedServiceTypes ?? [],
+                page,
+            ),
+        );
     }
 
     @Put('jobs/:id/quote')
