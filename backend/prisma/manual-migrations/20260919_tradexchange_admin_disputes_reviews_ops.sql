@@ -213,7 +213,7 @@ begin
 
     return null;
 end;
-$;
+$$;
 
 drop trigger if exists service_reviews_refresh_rating on public.service_reviews;
 create trigger service_reviews_refresh_rating
