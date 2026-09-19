@@ -349,16 +349,75 @@ export class ServiceLeadsService {
         return recipients.map(({ lead, ...recipient }) => ({
             ...lead,
             recipientId: recipient.id,
-            recipientStatus: recipient.status,
+            recipientStatus: recipient.status === 'NEW' ? 'VIEWED' : recipient.status,
             headline: recipient.headline,
             message: recipient.message,
             productName: recipient.productName,
             indicativePricePence: recipient.indicativePricePence,
             representativeApr: recipient.representativeApr == null ? null : Number(recipient.representativeApr),
             responseTermMonths: recipient.termMonths,
-            viewedAt: recipient.viewedAt,
+            viewedAt: recipient.viewedAt ?? (recipient.status === 'NEW' ? now : null),
             respondedAt: recipient.respondedAt,
         }));
+    }
+
+    async providerLead(userId: string, leadId: string) {
+        await this.expireOldLeads();
+
+        const lead = await this.prisma.serviceLead.findUnique({
+            where: { id: leadId },
+        });
+        if (!lead) throw new NotFoundException('Enquiry not found');
+
+        this.assertLeadType(lead.serviceType);
+        if (lead.status !== 'OPEN' || lead.expiresAt <= new Date()) {
+            throw new BadRequestException('This enquiry is no longer open.');
+        }
+
+        const profile = await this.providerProfile(userId, lead.serviceType);
+        await this.ensureRecipients(profile.id, [lead.serviceType]);
+
+        const recipient = await this.prisma.serviceLeadRecipient.findUnique({
+            where: {
+                leadId_contractorId: {
+                    leadId,
+                    contractorId: profile.id,
+                },
+            },
+        });
+        if (!recipient) {
+            throw new ForbiddenException('This enquiry was not matched to your provider account.');
+        }
+
+        const now = new Date();
+        if (recipient.status === 'NEW') {
+            await this.prisma.serviceLeadRecipient.update({
+                where: {
+                    leadId_contractorId: {
+                        leadId,
+                        contractorId: profile.id,
+                    },
+                },
+                data: {
+                    status: 'VIEWED',
+                    viewedAt: recipient.viewedAt ?? now,
+                },
+            });
+        }
+
+        return {
+            ...lead,
+            recipientId: recipient.id,
+            recipientStatus: recipient.status === 'NEW' ? 'VIEWED' : recipient.status,
+            headline: recipient.headline,
+            message: recipient.message,
+            productName: recipient.productName,
+            indicativePricePence: recipient.indicativePricePence,
+            representativeApr: recipient.representativeApr == null ? null : Number(recipient.representativeApr),
+            responseTermMonths: recipient.termMonths,
+            viewedAt: recipient.viewedAt ?? (recipient.status === 'NEW' ? now : null),
+            respondedAt: recipient.respondedAt,
+        };
     }
 
     async respond(userId: string, leadId: string, dto: RespondToServiceLeadDto) {
@@ -382,6 +441,18 @@ export class ServiceLeadsService {
         }
         if (!profile.capabilities.some((capability) => capability.serviceType === lead.serviceType)) {
             throw new ForbiddenException('You are not approved for this type of enquiry.');
+        }
+
+        const headline = dto.headline.trim();
+        const message = dto.message.trim();
+        if (!headline || !message) {
+            throw new BadRequestException('A response needs both a headline and message.');
+        }
+        if (
+            lead.serviceType === ServiceType.WARRANTY
+            && (dto.representativeApr !== undefined || dto.termMonths !== undefined)
+        ) {
+            throw new BadRequestException('APR and finance term fields are only valid for Finance responses.');
         }
 
         await this.ensureRecipients(profile.id, [lead.serviceType]);
@@ -408,12 +479,16 @@ export class ServiceLeadsService {
             },
             data: {
                 status: 'RESPONDED',
-                headline: dto.headline.trim(),
-                message: dto.message.trim(),
+                headline,
+                message,
                 productName: dto.productName?.trim() || null,
                 indicativePricePence: dto.indicativePricePence ?? null,
-                representativeApr: dto.representativeApr ?? null,
-                termMonths: dto.termMonths ?? null,
+                representativeApr: lead.serviceType === ServiceType.FINANCE
+                    ? dto.representativeApr ?? null
+                    : null,
+                termMonths: lead.serviceType === ServiceType.FINANCE
+                    ? dto.termMonths ?? null
+                    : null,
                 viewedAt: recipient.viewedAt ?? now,
                 respondedAt: now,
             },
