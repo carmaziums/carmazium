@@ -152,6 +152,31 @@ describe('ServiceLeadsService', () => {
         }));
     });
 
+    it('does not approve FINANCE until its verification evidence is complete', async () => {
+        prisma.contractorCapability.findUnique.mockResolvedValue({
+            id: 'cap-1',
+            serviceType: ServiceType.FINANCE,
+            leadNationwide: true,
+            leadPostcodeAreas: [],
+            verificationStatus: 'IN_REVIEW',
+            verificationCompletedAt: null,
+            verificationExpiresAt: null,
+            contractor: {
+                userId: 'provider-1',
+                user: { id: 'provider-1' },
+            },
+        });
+        prisma.$queryRaw.mockResolvedValue([]);
+
+        await expect(service.reviewLeadCapability(
+            'admin-1',
+            'cap-1',
+            { status: CapabilityStatus.APPROVED } as any,
+        )).rejects.toBeInstanceOf(BadRequestException);
+
+        expect(prisma.contractorCapability.update).not.toHaveBeenCalled();
+    });
+
     it('allows admin approval of FINANCE without requiring Stripe Connect', async () => {
         prisma.contractorCapability.findUnique.mockResolvedValue({
             id: 'cap-1',
