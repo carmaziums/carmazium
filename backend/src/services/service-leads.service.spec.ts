@@ -155,6 +155,8 @@ describe('ServiceLeadsService', () => {
         prisma.contractorCapability.findUnique.mockResolvedValue({
             id: 'cap-1',
             serviceType: ServiceType.FINANCE,
+            leadNationwide: true,
+            leadPostcodeAreas: [],
             contractor: {
                 userId: 'provider-1',
                 user: {
