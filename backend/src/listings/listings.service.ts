@@ -519,7 +519,7 @@ export class ListingsService {
             }
 
             const created = await tx.listing.create({
-                data: data: {
+                data: {
                 title: createListingDto.title,
                 price: createListingDto.price,
                 priceMin: createListingDto.priceMin ?? null,
