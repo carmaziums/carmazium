@@ -49,6 +49,8 @@ An omitted variable intentionally defaults to **ON** so a missing Vercel value d
 
 Only the strings `true` and `false` are accepted when a value is supplied. A typo or any other value is treated as a build configuration error rather than silently changing service availability.
 
+The backend enforces the same rule on new API requests. Configure the same four variable names with matching values on the backend runtime (currently Fly.io) as well as Vercel. This prevents direct API calls from bypassing an emergency stop. Existing jobs and enquiries are intentionally not disabled by the switch.
+
 
 Set these in **Vercel → Project → Settings → Environment Variables**.
 
