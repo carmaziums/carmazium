@@ -26,6 +26,7 @@ import {
     ApplyCapabilityDto, UpdateLeadMatchingDto, ReviewCapabilityDto, ResolveDisputeDto, JOB_SERVICE_TYPES,
 } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
+import { assertCapabilityVerificationReady } from './capability-verification';
 
 /** Days an OPEN job accepts quotes before it expires. */
 const JOB_OPEN_DAYS = 7;
@@ -125,7 +126,20 @@ export class ServicesService {
         const capability = await this.prisma.contractorCapability.upsert({
             where: { contractorId_serviceType: { contractorId: profile.id, serviceType: dto.serviceType } },
             create: { contractorId: profile.id, serviceType: dto.serviceType },
-            update: { status: CapabilityStatus.PENDING, appliedAt: new Date(), reviewedAt: null, reviewedById: null, reviewNote: null },
+            update: {
+                status: CapabilityStatus.PENDING,
+                appliedAt: new Date(),
+                reviewedAt: null,
+                reviewedById: null,
+                reviewNote: null,
+                verificationCompletedAt: null,
+                verificationExpiresAt: null,
+                verificationReminder30SentAt: null,
+                verificationReminder7SentAt: null,
+                ...(existing?.verificationStatus === 'VERIFIED'
+                    ? { verificationStatus: 'IN_REVIEW' }
+                    : {}),
+            },
         });
 
         await this.notifyAdmins(
@@ -265,6 +279,7 @@ export class ServicesService {
         });
         if (!cap) throw new NotFoundException('Application not found');
 
+        let verification: Awaited<ReturnType<typeof assertCapabilityVerificationReady>> | null = null;
         if (dto.status === CapabilityStatus.APPROVED) {
             const u = cap.contractor.user;
             if (!u.stripeConnectAccountId || !u.stripeConnectOnboardingComplete) {
@@ -272,11 +287,29 @@ export class ServicesService {
                     'This provider has not completed Stripe Connect onboarding. Approve once payouts are enabled.',
                 );
             }
+            verification = await assertCapabilityVerificationReady(this.prisma, id, cap.serviceType);
         }
 
+        const now = new Date();
         const updated = await this.prisma.contractorCapability.update({
             where: { id },
-            data: { status: dto.status, reviewedAt: new Date(), reviewedById: adminId, reviewNote: dto.reviewNote ?? null },
+            data: {
+                status: dto.status,
+                reviewedAt: now,
+                reviewedById: adminId,
+                reviewNote: dto.reviewNote ?? null,
+                ...(dto.status === CapabilityStatus.APPROVED && verification?.recommendedExpiresAt
+                    ? {
+                        verificationStatus: 'VERIFIED',
+                        verificationCompletedAt: now,
+                        verificationExpiresAt: verification.recommendedExpiresAt,
+                        verificationReminder30SentAt: null,
+                        verificationReminder7SentAt: null,
+                    }
+                    : dto.status === CapabilityStatus.REJECTED
+                        ? { verificationStatus: 'REJECTED' }
+                        : {}),
+            },
         });
 
         const u = cap.contractor.user;
