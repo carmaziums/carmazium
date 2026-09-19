@@ -2,9 +2,13 @@ import {
     BadRequestException,
     ForbiddenException,
     Injectable,
+    Logger,
     NotFoundException,
+    ServiceUnavailableException,
 } from '@nestjs/common';
 import { CapabilityStatus, Prisma, ServiceJobStatus } from '@prisma/client';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ServicesService } from './services.service';
 
@@ -14,16 +18,67 @@ export type ServiceCaseEntryKind = 'DOCUMENT' | 'PHOTO' | 'NOTE' | 'RESOLUTION';
 export interface ServiceCaseEntryInput {
     kind?: ServiceCaseEntryKind;
     label?: string;
-    url?: string;
     note?: string;
+}
+
+export const TRADEXCHANGE_DOCUMENT_BUCKET = 'tradexchange-documents';
+export const TRADEXCHANGE_DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+export const TRADEXCHANGE_DOCUMENT_MIME_TYPES = [
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+] as const;
+
+type TradeXchangeDocumentMime = typeof TRADEXCHANGE_DOCUMENT_MIME_TYPES[number];
+
+export function hasExpectedTradeXchangeDocumentSignature(
+    bytes: Uint8Array,
+    mime: TradeXchangeDocumentMime,
+): boolean {
+    if (mime === 'application/pdf') {
+        return bytes.length >= 5 &&
+            String.fromCharCode(...bytes.slice(0, 5)) === '%PDF-';
+    }
+    if (mime === 'image/jpeg') {
+        return bytes.length >= 3 &&
+            bytes[0] === 0xff &&
+            bytes[1] === 0xd8 &&
+            bytes[2] === 0xff;
+    }
+    if (mime === 'image/png') {
+        const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+        return bytes.length >= signature.length &&
+            signature.every((value, index) => bytes[index] === value);
+    }
+    if (mime === 'image/webp') {
+        return bytes.length >= 12 &&
+            String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF' &&
+            String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP';
+    }
+    return false;
 }
 
 @Injectable()
 export class ServiceOperationsService {
+    private readonly logger = new Logger(ServiceOperationsService.name);
+    private readonly supabase: SupabaseClient | null;
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly services: ServicesService,
-    ) { }
+    ) {
+        const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+        if (!url || !serviceKey) {
+            this.logger.error('Private TradeXchange documents require SUPABASE_URL and SUPABASE_SERVICE_KEY.');
+            this.supabase = null;
+            return;
+        }
+        this.supabase = createClient(url, serviceKey, {
+            auth: { persistSession: false, autoRefreshToken: false },
+        });
+    }
 
     private cleanText(value: unknown, max = 1000): string | null {
         if (typeof value !== 'string') return null;
@@ -31,26 +86,83 @@ export class ServiceOperationsService {
         return text ? text.slice(0, max) : null;
     }
 
-    private cleanUrl(value: unknown): string | null {
-        const raw = this.cleanText(value, 1500);
-        if (!raw) return null;
-        let parsed: URL;
-        try {
-            parsed = new URL(raw);
-        } catch {
-            throw new BadRequestException('Attachment URL is invalid.');
+    private storageClient(): SupabaseClient {
+        if (!this.supabase) {
+            throw new ServiceUnavailableException('Private TradeXchange document storage is not configured.');
         }
-        if (parsed.protocol !== 'https:') {
-            throw new BadRequestException('Attachment URL must use HTTPS.');
+        return this.supabase;
+    }
+
+    private extensionForMime(mime: TradeXchangeDocumentMime): string {
+        if (mime === 'application/pdf') return 'pdf';
+        if (mime === 'image/png') return 'png';
+        if (mime === 'image/webp') return 'webp';
+        return 'jpg';
+    }
+
+    private validateDocumentFile(file: any): TradeXchangeDocumentMime {
+        const name = typeof file?.originalname === 'string' ? file.originalname.trim() : '';
+        const mime = typeof file?.mimetype === 'string' ? file.mimetype.toLowerCase() : '';
+        const size = Number(file?.size || 0);
+        const buffer: Buffer | undefined = file?.buffer;
+
+        if (!name || name.length > 255) {
+            throw new BadRequestException('Document name is invalid.');
         }
-        return parsed.toString();
+        if (!TRADEXCHANGE_DOCUMENT_MIME_TYPES.includes(mime as TradeXchangeDocumentMime)) {
+            throw new BadRequestException('Only PDF, JPEG, PNG and WebP documents are allowed.');
+        }
+        if (!Number.isInteger(size) || size < 1 || size > TRADEXCHANGE_DOCUMENT_MAX_BYTES) {
+            throw new BadRequestException('Documents must be 10 MB or smaller.');
+        }
+        if (!buffer || buffer.length !== size) {
+            throw new BadRequestException('Uploaded document data is incomplete.');
+        }
+
+        const allowedMime = mime as TradeXchangeDocumentMime;
+        const expectedExtension = this.extensionForMime(allowedMime);
+        const suppliedExtension = name.includes('.') ? name.split('.').pop()!.toLowerCase() : '';
+        const extensionMatches = allowedMime === 'image/jpeg'
+            ? suppliedExtension === 'jpg' || suppliedExtension === 'jpeg'
+            : suppliedExtension === expectedExtension;
+        if (!extensionMatches) {
+            throw new BadRequestException('Document extension does not match its file type.');
+        }
+
+        if (!hasExpectedTradeXchangeDocumentSignature(
+            new Uint8Array(buffer.subarray(0, 16)),
+            allowedMime,
+        )) {
+            throw new BadRequestException('Uploaded file content does not match its declared type.');
+        }
+        return allowedMime;
+    }
+
+    private async signStoragePath(path: string): Promise<string | null> {
+        const { data, error } = await this.storageClient()
+            .storage
+            .from(TRADEXCHANGE_DOCUMENT_BUCKET)
+            .createSignedUrl(path, 10 * 60);
+        if (error || !data?.signedUrl) {
+            this.logger.warn(`Could not sign private TradeXchange document ${path}: ${error?.message || 'missing URL'}`);
+            return null;
+        }
+        return data.signedUrl;
+    }
+
+    private async hydrateEntry(entry: any) {
+        const { storagePath, ...safeEntry } = entry;
+        return {
+            ...safeEntry,
+            url: storagePath ? await this.signStoragePath(storagePath) : null,
+        };
     }
 
     private async listEntries(scope: ServiceCaseScope, entityId: string) {
-        return this.prisma.$queryRaw<any[]>(Prisma.sql`
+        const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
             SELECT
                 e."id", e."scope", e."entityId", e."submittedById", e."kind",
-                e."label", e."url", e."note", e."createdAt",
+                e."label", e."storagePath", e."note", e."createdAt",
                 u."firstName" AS "submittedByFirstName",
                 u."lastName" AS "submittedByLastName",
                 u."email" AS "submittedByEmail",
@@ -60,6 +172,7 @@ export class ServiceOperationsService {
             WHERE e."scope" = ${scope} AND e."entityId" = ${entityId}
             ORDER BY e."createdAt" ASC
         `);
+        return Promise.all(rows.map((entry) => this.hydrateEntry(entry)));
     }
 
     private async insertEntry(
@@ -68,28 +181,112 @@ export class ServiceOperationsService {
         submittedById: string,
         input: ServiceCaseEntryInput,
         allowedKinds: readonly ServiceCaseEntryKind[],
+        storagePath: string | null = null,
     ) {
+        const rawInput = input as ServiceCaseEntryInput & { url?: unknown; storagePath?: unknown };
+        if (rawInput.url != null || rawInput.storagePath != null) {
+            throw new BadRequestException('External attachment URLs and client-supplied storage paths are not accepted.');
+        }
+
         const kind = (input.kind ?? 'DOCUMENT') as ServiceCaseEntryKind;
         if (!allowedKinds.includes(kind)) throw new BadRequestException('Unsupported case entry type.');
 
         const label = this.cleanText(input.label, 160);
-        const url = this.cleanUrl(input.url);
         const note = this.cleanText(input.note, 4000);
-        if (!url && !note) throw new BadRequestException('Add a file or a note.');
-        if ((kind === 'DOCUMENT' || kind === 'PHOTO') && !url) {
+        if (!storagePath && !note) throw new BadRequestException('Add a file or a note.');
+        if ((kind === 'DOCUMENT' || kind === 'PHOTO') && !storagePath) {
             throw new BadRequestException('This entry requires an uploaded file.');
         }
 
         const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
             INSERT INTO "service_case_entries" (
-                "id", "scope", "entityId", "submittedById", "kind", "label", "url", "note", "createdAt"
+                "id", "scope", "entityId", "submittedById", "kind", "label",
+                "storagePath", "url", "note", "createdAt"
             ) VALUES (
-                gen_random_uuid()::text, ${scope}, ${entityId}, ${submittedById}, ${kind},
-                ${label}, ${url}, ${note}, CURRENT_TIMESTAMP
+                gen_random_uuid()::text, ${scope}, ${entityId}, ${submittedById}, ${kind}, ${label},
+                ${storagePath}, NULL, ${note}, CURRENT_TIMESTAMP
             )
             RETURNING *
         `);
         return rows[0];
+    }
+
+    private async uploadDocument(
+        scope: ServiceCaseScope,
+        entityId: string,
+        submittedById: string,
+        file: any,
+        label?: string,
+    ) {
+        const mime = this.validateDocumentFile(file);
+        const kind: ServiceCaseEntryKind = mime === 'application/pdf' ? 'DOCUMENT' : 'PHOTO';
+        const scopeFolder = scope === 'CAPABILITY' ? 'capabilities' : 'disputes';
+        const path = `${scopeFolder}/${entityId}/${submittedById}/${randomUUID()}.${this.extensionForMime(mime)}`;
+        const bucket = this.storageClient().storage.from(TRADEXCHANGE_DOCUMENT_BUCKET);
+
+        const { error } = await bucket.upload(path, file.buffer, {
+            contentType: mime,
+            cacheControl: '0',
+            upsert: false,
+        });
+        if (error) {
+            this.logger.error(`Could not upload private TradeXchange document for ${submittedById}: ${error.message}`);
+            throw new ServiceUnavailableException('Could not store the document securely.');
+        }
+
+        try {
+            const entry = await this.insertEntry(
+                scope,
+                entityId,
+                submittedById,
+                { kind, label: this.cleanText(label, 160) || file.originalname },
+                [kind],
+                path,
+            );
+            return this.hydrateEntry(entry);
+        } catch (error) {
+            await bucket.remove([path]).catch(() => undefined);
+            throw error;
+        }
+    }
+
+    private async deleteStoredEntry(
+        scope: ServiceCaseScope,
+        entityId: string,
+        entryId: string,
+        submittedById?: string,
+    ) {
+        const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+            SELECT "id", "storagePath", "submittedById", "kind"
+            FROM "service_case_entries"
+            WHERE "id" = ${entryId}
+              AND "scope" = ${scope}
+              AND "entityId" = ${entityId}
+            LIMIT 1
+        `);
+        const entry = rows[0];
+        if (!entry) throw new NotFoundException('Document entry not found.');
+        if (submittedById && entry.submittedById !== submittedById) {
+            throw new ForbiddenException('You can only remove documents uploaded by your account.');
+        }
+        if (!entry.storagePath || (entry.kind !== 'DOCUMENT' && entry.kind !== 'PHOTO')) {
+            throw new BadRequestException('Only stored document entries can be removed.');
+        }
+
+        const { error } = await this.storageClient()
+            .storage
+            .from(TRADEXCHANGE_DOCUMENT_BUCKET)
+            .remove([entry.storagePath]);
+        if (error) {
+            this.logger.error(`Could not remove private TradeXchange document ${entry.storagePath}: ${error.message}`);
+            throw new ServiceUnavailableException('Could not remove the stored document.');
+        }
+
+        await this.prisma.$executeRaw(Prisma.sql`
+            DELETE FROM "service_case_entries"
+            WHERE "id" = ${entryId} AND "scope" = ${scope} AND "entityId" = ${entityId}
+        `);
+        return { deleted: true };
     }
 
     private async ownedCapability(userId: string, capabilityId: string) {
@@ -109,13 +306,24 @@ export class ServiceOperationsService {
         return this.listEntries('CAPABILITY', capabilityId);
     }
 
-    async addProviderCapabilityEntry(userId: string, capabilityId: string, input: ServiceCaseEntryInput) {
+    async uploadProviderCapabilityDocument(
+        userId: string,
+        capabilityId: string,
+        file: any,
+        label?: string,
+    ) {
         await this.ownedCapability(userId, capabilityId);
         const existing = await this.listEntries('CAPABILITY', capabilityId);
         if (existing.filter((e) => e.kind === 'DOCUMENT' || e.kind === 'PHOTO').length >= 10) {
             throw new BadRequestException('A maximum of 10 verification documents can be attached to one service application.');
         }
-        return this.insertEntry('CAPABILITY', capabilityId, userId, input, ['DOCUMENT', 'PHOTO']);
+        if (!file) throw new BadRequestException('Choose a document to upload.');
+        return this.uploadDocument('CAPABILITY', capabilityId, userId, file, label);
+    }
+
+    async deleteProviderCapabilityDocument(userId: string, capabilityId: string, entryId: string) {
+        await this.ownedCapability(userId, capabilityId);
+        return this.deleteStoredEntry('CAPABILITY', capabilityId, entryId, userId);
     }
 
     async adminCapabilityDetail(capabilityId: string) {
@@ -238,7 +446,29 @@ export class ServiceOperationsService {
         if (job.status !== ServiceJobStatus.DISPUTED) {
             throw new BadRequestException('Case notes and evidence can only be added while the job is disputed.');
         }
-        return this.insertEntry('DISPUTE', jobId, adminId, input, ['DOCUMENT', 'PHOTO', 'NOTE']);
+        return this.insertEntry('DISPUTE', jobId, adminId, input, ['NOTE']);
+    }
+
+    async adminUploadDisputeDocument(adminId: string, jobId: string, file: any, label?: string) {
+        const job = await this.prisma.serviceJob.findUnique({
+            where: { id: jobId },
+            select: { status: true },
+        });
+        if (!job) throw new NotFoundException('Service job not found.');
+        if (job.status !== ServiceJobStatus.DISPUTED) {
+            throw new BadRequestException('Evidence can only be added while the job is disputed.');
+        }
+        if (!file) throw new BadRequestException('Choose an evidence file to upload.');
+        return this.uploadDocument('DISPUTE', jobId, adminId, file, label);
+    }
+
+    async adminDeleteDisputeDocument(jobId: string, entryId: string) {
+        const job = await this.prisma.serviceJob.findUnique({
+            where: { id: jobId },
+            select: { status: true },
+        });
+        if (!job) throw new NotFoundException('Service job not found.');
+        return this.deleteStoredEntry('DISPUTE', jobId, entryId);
     }
 
     async adminResolveDispute(
