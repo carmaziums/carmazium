@@ -486,7 +486,7 @@ describe('Delivery & Recovery — end to end', () => {
     it('confirming before completion is refused', async () => {
         // (state is COMPLETED now, so this checks the guard on a fresh OPEN job)
         const other = await svc.createJob(CUSTOMER.id, { serviceType: 'DELIVERY', title: 'other', pickupPostcode: 'A1 1AA', deliveryPostcode: 'B2 2BB', vehicles: [{ make: 'x', model: 'y' }] } as any);
-        await expect(svc.confirmCompletion(CUSTOMER.id, other.id)).rejects.toThrow(/not marked/);
+        await expect(svc.confirmCompletion(CUSTOMER.id, other.id)).rejects.toThrow(/required job lifecycle/);
     });
 
     it('the customer confirms: exactly the contractor share is transferred, once', async () => {
@@ -577,8 +577,11 @@ describe('Delivery & Recovery — end to end', () => {
         await svc.acceptQuote(CUSTOMER.id, done.id, q.id);
         const pay = db.one('servicePayment', { jobId: done.id })!;
         await svc.markPaid(done.id, pay.id, 'pi_a');
+        await svc.startJob(kentProfileId, done.id);
         await svc.completeJob(kentProfileId, done.id);
-        db.one('serviceJob', { id: done.id })!.completedAt = new Date(Date.now() - 49 * 3_600_000);
+        const doneJob = db.one('serviceJob', { id: done.id })!;
+        doneJob.startedAt = new Date(Date.now() - 50 * 3_600_000);
+        doneJob.completedAt = new Date(Date.now() - 49 * 3_600_000);
 
         transfersCreate.mockResolvedValueOnce({ id: 'tr_auto' });
         expect(await svc.autoConfirmCompleted()).toBe(1);

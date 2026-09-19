@@ -179,14 +179,19 @@ export default function ContractorJobPage() {
                                 {isMine && (job.status === "PAID" || job.status === "IN_PROGRESS") && (
                                     <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 space-y-3">
                                         {job.status === "PAID" && (
-                                            <Button className="w-full" disabled={busy === "start"} onClick={() => run("start", () => startJob(job.id), "Marked as started.")}>
-                                                {busy === "start" ? <Loader2 className="animate-spin" size={16} /> : <><Play size={16} className="mr-2" /> Start job</>}
+                                            <>
+                                                <Button className="w-full" disabled={busy === "start"} onClick={() => run("start", () => startJob(job.id), "Marked as started.")}>
+                                                    {busy === "start" ? <Loader2 className="animate-spin" size={16} /> : <><Play size={16} className="mr-2" /> Start job</>}
+                                                </Button>
+                                                <p className="text-[11px] text-[var(--text-muted)] text-center">The job must be started before it can be marked complete.</p>
+                                            </>
+                                        )}
+                                        {job.status === "IN_PROGRESS" && (
+                                            <Button className="w-full" disabled={busy === "complete"}
+                                                onClick={() => { if (confirm("Mark this job complete? The customer will be asked to confirm, and your payout releases on confirmation or after 48 hours.")) run("complete", () => completeJob(job.id), "Marked complete. Payout releases when the customer confirms, or in 48 hours.") }}>
+                                                {busy === "complete" ? <Loader2 className="animate-spin" size={16} /> : <><Flag size={16} className="mr-2" /> Mark complete</>}
                                             </Button>
                                         )}
-                                        <Button className="w-full" variant={job.status === "PAID" ? "outline" : undefined} disabled={busy === "complete"}
-                                            onClick={() => { if (confirm("Mark this job complete? The customer will be asked to confirm, and your payout releases on confirmation or after 48 hours.")) run("complete", () => completeJob(job.id), "Marked complete. Payout releases when the customer confirms, or in 48 hours.") }}>
-                                            {busy === "complete" ? <Loader2 className="animate-spin" size={16} /> : <><Flag size={16} className="mr-2" /> Mark complete</>}
-                                        </Button>
                                     </div>
                                 )}
 
