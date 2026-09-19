@@ -108,17 +108,13 @@ export default function ProviderLeadInboxPage() {
                                             </p>
                                             <h2 className="font-heading font-bold text-lg">{vehicle}</h2>
                                             <p className="text-sm text-[var(--text-muted)]">
-                                                {lead.fullName} · {lead.postcode || "Postcode not supplied"}
+                                                {lead.postcode ? `Postcode area ${lead.postcode}` : "Nationwide / postcode not supplied"}
                                                 {lead.vehicleValuePence != null ? ` · Vehicle value ${formatPence(lead.vehicleValuePence)}` : ""}
                                             </p>
                                             {requirements && (
                                                 <p className="text-sm font-semibold">{requirements}</p>
                                             )}
-                                            {lead.summary && (
-                                                <p className="text-sm text-[var(--text-muted)] line-clamp-2 whitespace-pre-wrap">
-                                                    {lead.summary}
-                                                </p>
-                                            )}
+                                            <p className="text-xs text-[var(--text-muted)]">Open this matched enquiry to reveal the consented customer contact and full eligibility detail.</p>
                                         </div>
 
                                         <div className="shrink-0 flex md:flex-col md:items-end items-center justify-between gap-3">
