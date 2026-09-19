@@ -663,7 +663,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             set("priceAsking", String(valuation.auction.marketValue))
             setAuctionSchedule(prev => ({
                 ...prev,
-                reservePrice: prev.reservePrice || String(valuation.auction.suggestedReserve),
+                reservePrice: String(valuation.auction.suggestedReserve),
             }))
             return
         }
