@@ -112,7 +112,7 @@ describe('AdminService listing approval readiness', () => {
         prisma.listing.update.mockResolvedValue({ id: 'auction-listing-1' });
 
         await expect(service.approveListing('auction-listing-1'))
-            .resolves.toBeUndefined();
+            .resolves.toEqual({ id: 'auction-listing-1' });
 
         expect(prisma.listing.update).toHaveBeenCalled();
     });
