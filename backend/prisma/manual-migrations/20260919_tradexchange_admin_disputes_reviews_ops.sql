@@ -101,3 +101,117 @@ drop trigger if exists contractor_capabilities_status_history on public.contract
 create trigger contractor_capabilities_status_history
 after insert or update of status on public.contractor_capabilities
 for each row execute function public.tradexchange_record_capability_status_history();
+
+create table if not exists public.service_reviews (
+    id text primary key default gen_random_uuid()::text,
+    "jobId" text not null unique references public.service_jobs(id) on delete restrict,
+    "customerId" text not null references public.users(id) on delete restrict,
+    "contractorId" text not null references public.contractor_profiles(id) on delete restrict,
+    rating smallint not null check (rating between 1 and 5),
+    comment text,
+    "createdAt" timestamptz not null default now(),
+    "updatedAt" timestamptz not null default now()
+);
+
+create index if not exists service_reviews_contractor_created_idx
+    on public.service_reviews ("contractorId", "createdAt" desc);
+create index if not exists service_reviews_customer_created_idx
+    on public.service_reviews ("customerId", "createdAt" desc);
+
+alter table public.service_reviews enable row level security;
+revoke all on table public.service_reviews from anon, authenticated;
+
+create or replace function public.tradexchange_validate_service_review()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+    j record;
+    payment_status service_payment_status;
+begin
+    select "customerId", "contractorId", status
+      into j
+      from public.service_jobs
+     where id = new."jobId";
+
+    if not found then
+        raise exception 'Service job not found for review';
+    end if;
+    if j.status <> 'RELEASED'::service_job_status then
+        raise exception 'Only released service jobs can be reviewed';
+    end if;
+    if j."customerId" <> new."customerId" then
+        raise exception 'Review customer does not match service job';
+    end if;
+    if j."contractorId" is null or j."contractorId" <> new."contractorId" then
+        raise exception 'Review provider does not match service job';
+    end if;
+
+    select status into payment_status
+      from public.service_payments
+     where "jobId" = new."jobId";
+
+    if payment_status is distinct from 'RELEASED'::service_payment_status then
+        raise exception 'Only financially released service jobs can be reviewed';
+    end if;
+
+    return new;
+end;
+$$;
+
+drop trigger if exists service_reviews_validate on public.service_reviews;
+create trigger service_reviews_validate
+before insert or update on public.service_reviews
+for each row execute function public.tradexchange_validate_service_review();
+
+create or replace function public.tradexchange_refresh_contractor_rating()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+    target_contractor text;
+begin
+    target_contractor := coalesce(new."contractorId", old."contractorId");
+
+    update public.contractor_profiles cp
+       set rating = coalesce((
+               select round(avg(r.rating)::numeric, 2)::double precision
+               from public.service_reviews r
+               where r."contractorId" = target_contractor
+           ), 0),
+           "totalReviews" = (
+               select count(*)::integer
+               from public.service_reviews r
+               where r."contractorId" = target_contractor
+           ),
+           "updatedAt" = now()
+     where cp.id = target_contractor;
+
+    if tg_op = 'UPDATE' and old."contractorId" is distinct from new."contractorId" then
+        update public.contractor_profiles cp
+           set rating = coalesce((
+                   select round(avg(r.rating)::numeric, 2)::double precision
+                   from public.service_reviews r
+                   where r."contractorId" = old."contractorId"
+               ), 0),
+               "totalReviews" = (
+                   select count(*)::integer
+                   from public.service_reviews r
+                   where r."contractorId" = old."contractorId"
+               ),
+               "updatedAt" = now()
+         where cp.id = old."contractorId";
+    end if;
+
+    return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists service_reviews_refresh_rating on public.service_reviews;
+create trigger service_reviews_refresh_rating
+after insert or update or delete on public.service_reviews
+for each row execute function public.tradexchange_refresh_contractor_rating();
