@@ -12,11 +12,14 @@ import { CreateServiceLeadDto, RespondToServiceLeadDto } from './service-leads.d
 import { ReviewCapabilityDto } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
 import { assertCapabilityVerificationReady } from './capability-verification';
+import { normaliseUkPostcode, postcodeArea as validatedPostcodeArea } from './service-validation';
+import { boundedServiceLimit, decodeServiceCursor, makeServicePage } from './service-pagination';
 
 const LEAD_TYPES = [ServiceType.FINANCE, ServiceType.WARRANTY] as const;
 const LEAD_LIFETIME_MS = 14 * 24 * 60 * 60 * 1000;
 export const MAX_LEAD_RECIPIENTS = 5;
 export const LEAD_RETENTION_DAYS = 90;
+export const MAX_ACTIVE_SERVICE_LEADS_PER_CUSTOMER = 5;
 
 type LeadType = (typeof LEAD_TYPES)[number];
 
@@ -54,19 +57,27 @@ export class ServiceLeadsService {
         };
     }
 
-    private async expireOldLeads() {
+    async expireOldLeads(): Promise<number> {
         const now = new Date();
-        return this.prisma.serviceLead.updateMany({
-            where: {
-                status: 'OPEN',
-                expiresAt: { lte: now },
-            },
-            data: {
-                status: 'EXPIRED',
-                closedAt: now,
-                updatedAt: now,
-            },
+        const stale = await this.prisma.serviceLead.findMany({
+            where: { status: 'OPEN', expiresAt: { lte: now } },
+            select: { id: true },
+            take: 500,
         });
+        if (stale.length === 0) return 0;
+
+        const ids = stale.map((lead) => lead.id);
+        await this.prisma.$transaction([
+            this.prisma.serviceLead.updateMany({
+                where: { id: { in: ids }, status: 'OPEN', expiresAt: { lte: now } },
+                data: { status: 'EXPIRED', closedAt: now, updatedAt: now },
+            }),
+            this.prisma.serviceLeadRecipient.updateMany({
+                where: { leadId: { in: ids }, status: { in: ['NEW', 'VIEWED'] } },
+                data: { status: 'CLOSED', updatedAt: now },
+            }),
+        ]);
+        return ids.length;
     }
 
     private async anonymizeRetainedLeads() {
