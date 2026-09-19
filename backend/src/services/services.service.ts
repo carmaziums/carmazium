@@ -23,7 +23,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
 import {
     CreateJobDto, JobFromPurchaseDto, CancelJobDto, UpsertQuoteDto,
-    ApplyCapabilityDto, ReviewCapabilityDto, ResolveDisputeDto, JOB_SERVICE_TYPES,
+    ApplyCapabilityDto, UpdateLeadMatchingDto, ReviewCapabilityDto, ResolveDisputeDto, JOB_SERVICE_TYPES,
 } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
 
@@ -157,6 +157,81 @@ export class ServicesService {
                 complete: !!user?.stripeConnectOnboardingComplete,
             },
         };
+    }
+
+    async updateLeadMatching(userId: string, capabilityId: string, dto: UpdateLeadMatchingDto) {
+        const capability = await this.prisma.contractorCapability.findFirst({
+            where: {
+                id: capabilityId,
+                contractor: { userId, deletedAt: null },
+            },
+            select: { id: true, serviceType: true },
+        });
+        if (!capability) throw new NotFoundException('Service capability not found on your account.');
+        if (![ServiceType.FINANCE, ServiceType.WARRANTY].includes(capability.serviceType)) {
+            throw new BadRequestException('Lead matching settings apply only to Finance and Warranty capabilities.');
+        }
+
+        const postcodeAreas = [...new Set((dto.leadPostcodeAreas ?? [])
+            .map((area) => area.trim().toUpperCase())
+            .filter(Boolean))];
+
+        if (!dto.leadNationwide && postcodeAreas.length === 0) {
+            throw new BadRequestException('Choose nationwide coverage or at least one UK postcode area.');
+        }
+        if (
+            dto.leadMinVehicleValuePence !== undefined
+            && dto.leadMaxVehicleValuePence !== undefined
+            && dto.leadMinVehicleValuePence > dto.leadMaxVehicleValuePence
+        ) {
+            throw new BadRequestException('Minimum vehicle value cannot exceed maximum vehicle value.');
+        }
+
+        if (capability.serviceType === ServiceType.FINANCE) {
+            if (
+                dto.leadFinanceTermMinMonths !== undefined
+                && dto.leadFinanceTermMaxMonths !== undefined
+                && dto.leadFinanceTermMinMonths > dto.leadFinanceTermMaxMonths
+            ) {
+                throw new BadRequestException('Minimum finance term cannot exceed maximum finance term.');
+            }
+        } else if (
+            dto.leadWarrantyMinMonths !== undefined
+            && dto.leadWarrantyMaxMonths !== undefined
+            && dto.leadWarrantyMinMonths > dto.leadWarrantyMaxMonths
+        ) {
+            throw new BadRequestException('Minimum warranty term cannot exceed maximum warranty term.');
+        }
+
+        return this.prisma.contractorCapability.update({
+            where: { id: capability.id },
+            data: {
+                leadNationwide: dto.leadNationwide,
+                leadPostcodeAreas: dto.leadNationwide ? [] : postcodeAreas,
+                leadMinVehicleValuePence: dto.leadMinVehicleValuePence ?? null,
+                leadMaxVehicleValuePence: dto.leadMaxVehicleValuePence ?? null,
+                leadMinVehicleYear: dto.leadMinVehicleYear ?? null,
+                leadMaxVehicleMileage: dto.leadMaxVehicleMileage ?? null,
+                leadMinAnnualIncomePence: capability.serviceType === ServiceType.FINANCE
+                    ? dto.leadMinAnnualIncomePence ?? null
+                    : null,
+                leadFinanceTermMinMonths: capability.serviceType === ServiceType.FINANCE
+                    ? dto.leadFinanceTermMinMonths ?? null
+                    : null,
+                leadFinanceTermMaxMonths: capability.serviceType === ServiceType.FINANCE
+                    ? dto.leadFinanceTermMaxMonths ?? null
+                    : null,
+                leadWarrantyLevels: capability.serviceType === ServiceType.WARRANTY
+                    ? [...new Set((dto.leadWarrantyLevels ?? []).map((level) => level.trim()).filter(Boolean))]
+                    : [],
+                leadWarrantyMinMonths: capability.serviceType === ServiceType.WARRANTY
+                    ? dto.leadWarrantyMinMonths ?? null
+                    : null,
+                leadWarrantyMaxMonths: capability.serviceType === ServiceType.WARRANTY
+                    ? dto.leadWarrantyMaxMonths ?? null
+                    : null,
+            },
+        });
     }
 
     async adminListCapabilities(status?: CapabilityStatus) {
