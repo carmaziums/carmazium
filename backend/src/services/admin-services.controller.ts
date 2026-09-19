@@ -52,6 +52,12 @@ export class AdminServicesController {
         return new StandardResponse(await this.services.adminResolveDispute(admin.id, id, dto));
     }
 
+    @Post('leads/:id/rematch')
+    @ApiOperation({ summary: 'Explicitly rematch one open Finance/Warranty enquiry to newly eligible providers, up to the recipient cap' })
+    async rematchLead(@Param('id') id: string) {
+        return new StandardResponse(await this.leads.adminRematch(id));
+    }
+
     @Get('leads')
     @ApiQuery({ name: 'serviceType', enum: [ServiceType.FINANCE, ServiceType.WARRANTY], required: false })
     @ApiQuery({ name: 'status', enum: ['OPEN', 'CLOSED', 'CANCELLED', 'EXPIRED'], required: false })
