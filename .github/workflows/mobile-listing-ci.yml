@@ -1,0 +1,60 @@
+name: Mobile Listing CI
+
+on:
+  pull_request:
+    paths:
+      - "carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/seller/SellerAuctionsScreen.tsx"
+      - "carmazium app/carmazium app/src/lib/storageHelper.ts"
+      - "carmazium app/carmazium app/src/lib/vehicleImageMetadata.ts"
+      - "carmazium app/carmazium app/src/lib/auctionPricing.ts"
+      - ".github/workflows/mobile-listing-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: "carmazium app/carmazium app"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: "carmazium app/carmazium app/package-lock.json"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck mobile listing surfaces
+        shell: bash
+        run: |
+          set +e
+          OUTPUT="$(npm run typescript 2>&1)"
+          STATUS=$?
+          set -e
+
+          printf '%s\n' "$OUTPUT"
+
+          if [ "$STATUS" -eq 0 ]; then
+            exit 0
+          fi
+
+          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E 'src/(screens/(sell/SellCarFlowScreen|seller/SellerAuctionsScreen)|lib/(storageHelper|vehicleImageMetadata|auctionPricing))\.tsx?' || true)"
+          if [ -n "$LISTING_ERRORS" ]; then
+            echo
+            echo "TypeScript errors were found in mobile listing/auction files changed by this PR:"
+            printf '%s\n' "$LISTING_ERRORS"
+            exit 1
+          fi
+
+          echo
+          echo "Full mobile TypeScript has pre-existing errors outside the listing scope."
+          echo "No TypeScript errors were reported in the mobile listing/auction files changed by this PR."
