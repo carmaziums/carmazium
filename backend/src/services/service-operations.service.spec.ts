@@ -12,7 +12,7 @@ describe('ServiceOperationsService', () => {
 
     beforeEach(() => {
         prisma = {
-            contractorCapability: { findUnique: jest.fn() },
+            contractorCapability: { findUnique: jest.fn(), update: jest.fn().mockResolvedValue({}) },
             serviceJob: { findUnique: jest.fn() },
             $queryRaw: jest.fn(),
             $executeRaw: jest.fn().mockResolvedValue(0),
@@ -31,11 +31,16 @@ describe('ServiceOperationsService', () => {
     it('does not let one provider upload to another provider application', async () => {
         prisma.contractorCapability.findUnique.mockResolvedValue({
             id: 'cap-1',
+            serviceType: 'DELIVERY',
+            status: 'PENDING',
             contractor: { userId: 'owner-1' },
         });
 
         await expect(
-            service.uploadProviderCapabilityDocument('other-user', 'cap-1', pdf, 'Insurance'),
+            service.uploadProviderCapabilityDocument('other-user', 'cap-1', pdf, {
+                evidenceType: 'DELIVERY_BUSINESS_INSURANCE',
+                expiresAt: '2027-01-01',
+            }),
         ).rejects.toBeInstanceOf(ForbiddenException);
 
         expect(prisma.$queryRaw).not.toHaveBeenCalled();
@@ -75,6 +80,8 @@ describe('ServiceOperationsService', () => {
     it('uploads an owning provider document only to the private bucket and returns a signed URL', async () => {
         prisma.contractorCapability.findUnique.mockResolvedValue({
             id: 'cap-1',
+            serviceType: 'DELIVERY',
+            status: 'PENDING',
             contractor: { userId: 'owner-1' },
         });
         prisma.$queryRaw
@@ -99,7 +106,13 @@ describe('ServiceOperationsService', () => {
             'owner-1',
             'cap-1',
             pdf,
-            'Goods in transit insurance',
+            {
+                evidenceType: 'DELIVERY_GOODS_IN_TRANSIT',
+                label: 'Goods in transit insurance',
+                issuer: 'Example Insurer',
+                reference: 'GIT-1',
+                expiresAt: '2027-01-01',
+            },
         );
 
         expect(from).toHaveBeenCalledWith(TRADEXCHANGE_DOCUMENT_BUCKET);
@@ -109,6 +122,58 @@ describe('ServiceOperationsService', () => {
             expect.objectContaining({ contentType: 'application/pdf', upsert: false }),
         );
         expect(result.url).toBe('https://signed.example/private-file');
+    });
+
+    it('rejects a capability evidence type that does not belong to the service', async () => {
+        prisma.contractorCapability.findUnique.mockResolvedValue({
+            id: 'cap-1',
+            serviceType: 'INSPECTION',
+            status: 'PENDING',
+            contractor: { userId: 'owner-1' },
+        });
+
+        await expect(service.uploadProviderCapabilityDocument(
+            'owner-1',
+            'cap-1',
+            pdf,
+            { evidenceType: 'DELIVERY_GOODS_IN_TRANSIT', expiresAt: '2027-01-01' },
+        )).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('requires an expiry date for insurance evidence', async () => {
+        prisma.contractorCapability.findUnique.mockResolvedValue({
+            id: 'cap-1',
+            serviceType: 'DELIVERY',
+            status: 'PENDING',
+            contractor: { userId: 'owner-1' },
+        });
+
+        await expect(service.uploadProviderCapabilityDocument(
+            'owner-1',
+            'cap-1',
+            pdf,
+            { evidenceType: 'DELIVERY_BUSINESS_INSURANCE' },
+        )).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('does not allow a provider to delete reviewed verification evidence', async () => {
+        prisma.contractorCapability.findUnique.mockResolvedValue({
+            id: 'cap-1',
+            serviceType: 'DELIVERY',
+            status: 'PENDING',
+            contractor: { userId: 'owner-1' },
+        });
+        prisma.$queryRaw.mockResolvedValueOnce([{
+            id: 'entry-1',
+            storagePath: 'capabilities/cap-1/owner-1/file.pdf',
+            submittedById: 'owner-1',
+            kind: 'DOCUMENT',
+            evidenceStatus: 'APPROVED',
+        }]);
+
+        await expect(
+            service.deleteProviderCapabilityDocument('owner-1', 'cap-1', 'entry-1'),
+        ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('rejects any client-supplied external attachment URL', async () => {
