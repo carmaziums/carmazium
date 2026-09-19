@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -13,6 +14,7 @@ import {
     type CapabilityEvidenceUploadInput,
     type ServiceCaseEntryInput,
 } from './service-operations.service';
+import { ResolveDisputeDto } from './dto';
 
 @ApiTags('Trade Exchange provider verification')
 @ApiCookieAuth()
@@ -63,7 +65,7 @@ export class ServiceOperationsController {
 @ApiTags('Admin — Trade Exchange operations')
 @ApiCookieAuth()
 @Controller('admin/services/operations')
-@UseGuards(SessionAuthGuard, RolesGuard)
+@UseGuards(SessionAuthGuard, RolesGuard, ThrottlerGuard)
 @Roles(UserRole.ADMIN)
 export class AdminServiceOperationsController {
     constructor(private readonly operations: ServiceOperationsService) { }
@@ -133,11 +135,12 @@ export class AdminServiceOperationsController {
     }
 
     @Post('jobs/:id/resolve')
-    @ApiOperation({ summary: 'Resolve a disputed service job and persist the admin decision in the case history' })
+    @Throttle({ default: { limit: 5, ttl: 60_000 } })
+    @ApiOperation({ summary: 'Resolve a disputed service job through the audited settlement workflow' })
     async resolve(
         @CurrentUser() admin: any,
         @Param('id') id: string,
-        @Body() body: { outcome: 'RELEASE' | 'REFUND'; note?: string },
+        @Body() body: ResolveDisputeDto,
     ) {
         return new StandardResponse(await this.operations.adminResolveDispute(admin.id, id, body));
     }
