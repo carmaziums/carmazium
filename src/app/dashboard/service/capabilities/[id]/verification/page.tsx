@@ -73,7 +73,7 @@ export default function ProviderVerificationPage() {
             <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 space-y-4">
                 <div><h2 className="font-heading font-bold text-lg">Add verification document</h2><p className="text-xs text-[var(--text-muted)] mt-1">PDF, JPG, PNG or WEBP. Maximum 10 files per service application.</p></div>
                 <input className={inputCls} value={label} onChange={e => setLabel(e.target.value)} placeholder="Document label, e.g. Goods in transit insurance" maxLength={160}/>
-                <input id="verification-file" className={inputCls} type="file" accept="image/*,application/pdf" onChange={e => setFile(e.target.files?.[0] ?? null)}/>
+                <input id="verification-file" className={inputCls} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={e => setFile(e.target.files?.[0] ?? null)}/>
                 <Button onClick={upload} disabled={busy || !file}>{busy ? <Loader2 size={16} className="animate-spin mr-2"/> : <Upload size={16} className="mr-2"/>}Upload document</Button>
             </section>
 
