@@ -63,12 +63,18 @@ class LeadStore {
                         if (where.contractor?.deletedAt === null && profile?.deletedAt) return false;
                         return true;
                     })
-                    .map((cap) => ({
-                        contractorId: cap.contractorId,
-                        contractor: {
-                            userId: store.profiles.find((p) => p.id === cap.contractorId)?.userId,
-                        },
-                    })),
+                    .map((cap) => {
+                        const profile = store.profiles.find((p) => p.id === cap.contractorId);
+                        return {
+                            ...clone(cap),
+                            contractorId: cap.contractorId,
+                            contractor: {
+                                userId: profile?.userId,
+                                rating: profile?.rating ?? 0,
+                                totalReviews: profile?.totalReviews ?? 0,
+                            },
+                        };
+                    }),
                 findUnique: async ({ where }: any) => {
                     const cap = store.capabilities.find((row) => row.id === where.id);
                     return cap ? clone(cap) : null;
@@ -120,6 +126,10 @@ class LeadStore {
                             leadId: lead.id,
                             contractorId: input.contractorId,
                             status: input.status ?? 'NEW',
+                            matchedAt: input.matchedAt ?? new Date(),
+                            matchSource: input.matchSource ?? 'AUTO',
+                            matchReason: input.matchReason ?? null,
+                            contactDisclosedAt: null,
                             headline: null,
                             message: null,
                             productName: null,
@@ -234,6 +244,10 @@ class LeadStore {
                         store.recipients.push({
                             id: store.id('recipient'),
                             status: 'NEW',
+                            matchedAt: input.matchedAt ?? new Date(),
+                            matchSource: input.matchSource ?? 'AUTO',
+                            matchReason: input.matchReason ?? null,
+                            contactDisclosedAt: null,
                             headline: null,
                             message: null,
                             productName: null,
@@ -343,12 +357,20 @@ function buildJourney() {
             contractorId: 'finance-profile',
             serviceType: ServiceType.FINANCE,
             status: CapabilityStatus.APPROVED,
+            reviewedAt: new Date(),
+            leadNationwide: true,
+            leadPostcodeAreas: [],
+            leadWarrantyLevels: [],
         },
         {
             id: 'warranty-cap',
             contractorId: 'warranty-profile',
             serviceType: ServiceType.WARRANTY,
             status: CapabilityStatus.APPROVED,
+            reviewedAt: new Date(),
+            leadNationwide: true,
+            leadPostcodeAreas: [],
+            leadWarrantyLevels: [],
         },
     );
 
@@ -391,7 +413,7 @@ describe('Finance enquiry — end to end', () => {
         expect(inbox[0]).toMatchObject({
             id: lead.id,
             serviceType: ServiceType.FINANCE,
-            recipientStatus: 'VIEWED',
+            recipientStatus: 'NEW',
         });
 
         await expect(

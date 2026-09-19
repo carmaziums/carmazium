@@ -1773,6 +1773,23 @@ model ContractorCapability {
   reviewedAt   DateTime?
   reviewedById String?
   reviewNote   String? /// shown to the contractor on rejection/suspension
+
+  // Finance/Warranty lead matching. These settings are ignored by paid
+  // Delivery/Inspection jobs. A lead is only shared when its service area and
+  // every configured eligibility rule match.
+  leadNationwide             Boolean  @default(false)
+  leadPostcodeAreas          String[] @default([])
+  leadMinVehicleValuePence   Int?
+  leadMaxVehicleValuePence   Int?
+  leadMinVehicleYear         Int?
+  leadMaxVehicleMileage      Int?
+  leadMinAnnualIncomePence   Int?
+  leadFinanceTermMinMonths   Int?
+  leadFinanceTermMaxMonths   Int?
+  leadWarrantyLevels         String[] @default([])
+  leadWarrantyMinMonths      Int?
+  leadWarrantyMaxMonths      Int?
+
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
@@ -1789,7 +1806,7 @@ model ContractorCapability {
 /// blocked by RLS; the Nest backend is the authorization boundary.
 model ServiceLead {
   id                       String      @id(map: "service_leads_pkey") @default(dbgenerated("(gen_random_uuid())::text"))
-  customerId               String
+  customerId               String?
   serviceType              ServiceType
   status                   String      @default("OPEN")
   listingId                String?
@@ -1799,8 +1816,8 @@ model ServiceLead {
   vehicleYear              Int?
   vehicleMileage           Int?
   vehicleValuePence        Int?
-  fullName                 String
-  email                    String
+  fullName                 String?
+  email                    String?
   phone                    String?
   postcode                 String?
   summary                  String?
@@ -1814,16 +1831,19 @@ model ServiceLead {
   consentToProviderContact Boolean     @default(false)
   consentRecordedAt        DateTime?   @db.Timestamp(3)
   expiresAt                DateTime    @default(dbgenerated("(CURRENT_TIMESTAMP + '14 days'::interval)")) @db.Timestamp(3)
+  closedAt                 DateTime?   @db.Timestamp(3)
+  anonymizedAt             DateTime?   @db.Timestamp(3)
   createdAt                DateTime    @default(now()) @db.Timestamp(3)
   updatedAt                DateTime    @default(now()) @updatedAt @db.Timestamp(3)
 
-  customer   User                   @relation("ServiceLeadCustomer", fields: [customerId], references: [id], onDelete: Cascade, map: "service_leads_customerId_fkey")
+  customer   User?                  @relation("ServiceLeadCustomer", fields: [customerId], references: [id], onDelete: Cascade, map: "service_leads_customerId_fkey")
   listing    Listing?               @relation(fields: [listingId], references: [id], onDelete: SetNull, map: "service_leads_listingId_fkey")
   recipients ServiceLeadRecipient[]
 
   @@index([customerId, status, createdAt(sort: Desc)], map: "service_leads_customer_status_idx")
   @@index([serviceType, status, createdAt(sort: Desc)], map: "service_leads_type_status_idx")
   @@index([status, expiresAt], map: "service_leads_expiry_idx")
+  @@index([status, closedAt], map: "service_leads_retention_idx")
   @@map("service_leads")
 }
 
@@ -1840,7 +1860,11 @@ model ServiceLeadRecipient {
   indicativePricePence Int?
   representativeApr    Decimal? @db.Decimal(6, 3)
   termMonths           Int?
+  matchedAt            DateTime @default(now()) @db.Timestamp(3)
+  matchSource          String   @default("AUTO")
+  matchReason          String?
   viewedAt             DateTime? @db.Timestamp(3)
+  contactDisclosedAt   DateTime? @db.Timestamp(3)
   respondedAt          DateTime? @db.Timestamp(3)
   createdAt            DateTime @default(now()) @db.Timestamp(3)
   updatedAt            DateTime @default(now()) @updatedAt @db.Timestamp(3)

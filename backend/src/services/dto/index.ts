@@ -1,6 +1,6 @@
 import {
     IsString, IsOptional, IsBoolean, IsInt, IsEnum, IsArray, IsUUID,
-    IsDateString, IsNotEmpty, Min, Max, MaxLength, ValidateNested, ArrayMinSize, ArrayMaxSize,
+    IsDateString, IsNotEmpty, Min, Max, MaxLength, ValidateNested, ArrayMinSize, ArrayMaxSize, Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -123,6 +123,44 @@ export class ApplyCapabilityDto {
     @ApiPropertyOptional({ description: 'e.g. "Kent and East Sussex"' })
     @IsOptional() @IsString() @MaxLength(200)
     serviceArea?: string;
+}
+
+export class UpdateLeadMatchingDto {
+    @ApiProperty()
+    @IsBoolean()
+    leadNationwide: boolean;
+
+    @ApiPropertyOptional({ description: 'UK postcode areas, e.g. B, CV, M, SW. Ignored when nationwide is true.' })
+    @IsOptional() @IsArray() @ArrayMaxSize(32)
+    @IsString({ each: true }) @MaxLength(3, { each: true }) @Matches(/^[A-Za-z]{1,3}$/, { each: true })
+    leadPostcodeAreas?: string[];
+
+    @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) @Max(500_000_00)
+    leadMinVehicleValuePence?: number;
+    @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) @Max(500_000_00)
+    leadMaxVehicleValuePence?: number;
+    @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1900) @Max(2100)
+    leadMinVehicleYear?: number;
+    @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) @Max(2_000_000)
+    leadMaxVehicleMileage?: number;
+
+    // Finance-only matching
+    @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) @Max(10_000_000_00)
+    leadMinAnnualIncomePence?: number;
+    @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) @Max(120)
+    leadFinanceTermMinMonths?: number;
+    @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) @Max(120)
+    leadFinanceTermMaxMonths?: number;
+
+    // Warranty-only matching
+    @ApiPropertyOptional({ description: 'Requested cover levels this provider serves.' })
+    @IsOptional() @IsArray() @ArrayMaxSize(8)
+    @IsString({ each: true }) @MaxLength(80, { each: true })
+    leadWarrantyLevels?: string[];
+    @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) @Max(84)
+    leadWarrantyMinMonths?: number;
+    @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) @Max(84)
+    leadWarrantyMaxMonths?: number;
 }
 
 export class ReviewCapabilityDto {

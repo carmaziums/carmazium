@@ -49,7 +49,11 @@ export interface AdminLeadRecipient {
   indicativePricePence: number | null;
   representativeApr: number | null;
   termMonths: number | null;
+  matchedAt?: string | null;
+  matchSource?: string | null;
+  matchReason?: string | null;
   viewedAt: string | null;
+  contactDisclosedAt?: string | null;
   respondedAt: string | null;
   createdAt: string;
   businessName: string | null;

@@ -5,6 +5,7 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { CapabilityStatus, Prisma, ServiceType } from '@prisma/client';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateServiceLeadDto, RespondToServiceLeadDto } from './service-leads.dto';
@@ -13,6 +14,8 @@ import { assertServiceAcceptingNewRequests } from './service-availability';
 
 const LEAD_TYPES = [ServiceType.FINANCE, ServiceType.WARRANTY] as const;
 const LEAD_LIFETIME_MS = 14 * 24 * 60 * 60 * 1000;
+export const MAX_LEAD_RECIPIENTS = 5;
+export const LEAD_RETENTION_DAYS = 90;
 
 type LeadType = (typeof LEAD_TYPES)[number];
 
@@ -52,16 +55,189 @@ export class ServiceLeadsService {
 
     private async expireOldLeads() {
         const now = new Date();
-        await this.prisma.serviceLead.updateMany({
+        return this.prisma.serviceLead.updateMany({
             where: {
                 status: 'OPEN',
                 expiresAt: { lte: now },
             },
             data: {
                 status: 'EXPIRED',
+                closedAt: now,
                 updatedAt: now,
             },
         });
+    }
+
+    private async anonymizeRetainedLeads() {
+        const cutoff = new Date(Date.now() - LEAD_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+        const stale = await this.prisma.serviceLead.findMany({
+            where: {
+                status: { in: ['CLOSED', 'EXPIRED'] },
+                closedAt: { lte: cutoff },
+                anonymizedAt: null,
+            },
+            select: { id: true },
+            take: 500,
+        });
+        if (stale.length === 0) return 0;
+
+        const ids = stale.map((lead) => lead.id);
+        const now = new Date();
+        await this.prisma.$transaction([
+            this.prisma.serviceLeadRecipient.updateMany({
+                where: { leadId: { in: ids } },
+                data: {
+                    headline: null,
+                    message: null,
+                },
+            }),
+            this.prisma.serviceLead.updateMany({
+                where: { id: { in: ids }, anonymizedAt: null },
+                data: {
+                    customerId: null,
+                    listingId: null,
+                    vehicleRegistration: null,
+                    fullName: null,
+                    email: null,
+                    phone: null,
+                    postcode: null,
+                    summary: null,
+                    employmentStatus: null,
+                    annualIncomePence: null,
+                    consentToProviderContact: false,
+                    consentRecordedAt: null,
+                    anonymizedAt: now,
+                    updatedAt: now,
+                },
+            }),
+        ]);
+        return ids.length;
+    }
+
+    @Cron('23 3 * * *')
+    async privacyMaintenance() {
+        await this.expireOldLeads();
+        return this.anonymizeRetainedLeads();
+    }
+
+    private providerMatchReason(
+        candidate: any,
+        lead: {
+            postcode: string | null;
+            vehicleValuePence: number | null;
+            vehicleYear: number | null;
+            vehicleMileage: number | null;
+            annualIncomePence: number | null;
+            termMonths: number | null;
+            warrantyMonths: number | null;
+            warrantyLevel: string | null;
+            serviceType: ServiceType;
+        },
+    ): string | null {
+        const area = postcodeArea(lead.postcode);
+        const areas = (candidate.leadPostcodeAreas ?? []).map((value: string) => value.toUpperCase());
+        if (!candidate.leadNationwide) {
+            if (!area || !areas.includes(area)) return null;
+        }
+
+        const requiredNumber = (rule: number | null | undefined, value: number | null, compare: (a: number, b: number) => boolean) =>
+            rule == null || (value != null && compare(value, rule));
+
+        if (!requiredNumber(candidate.leadMinVehicleValuePence, lead.vehicleValuePence, (value, min) => value >= min)) return null;
+        if (!requiredNumber(candidate.leadMaxVehicleValuePence, lead.vehicleValuePence, (value, max) => value <= max)) return null;
+        if (!requiredNumber(candidate.leadMinVehicleYear, lead.vehicleYear, (value, min) => value >= min)) return null;
+        if (!requiredNumber(candidate.leadMaxVehicleMileage, lead.vehicleMileage, (value, max) => value <= max)) return null;
+
+        if (lead.serviceType === ServiceType.FINANCE) {
+            if (!requiredNumber(candidate.leadMinAnnualIncomePence, lead.annualIncomePence, (value, min) => value >= min)) return null;
+            if (!requiredNumber(candidate.leadFinanceTermMinMonths, lead.termMonths, (value, min) => value >= min)) return null;
+            if (!requiredNumber(candidate.leadFinanceTermMaxMonths, lead.termMonths, (value, max) => value <= max)) return null;
+        }
+
+        if (lead.serviceType === ServiceType.WARRANTY) {
+            const levels = (candidate.leadWarrantyLevels ?? [])
+                .map((value: string) => value.trim().toLowerCase())
+                .filter(Boolean);
+            if (levels.length > 0 && (!lead.warrantyLevel || !levels.includes(lead.warrantyLevel.trim().toLowerCase()))) {
+                return null;
+            }
+            if (!requiredNumber(candidate.leadWarrantyMinMonths, lead.warrantyMonths, (value, min) => value >= min)) return null;
+            if (!requiredNumber(candidate.leadWarrantyMaxMonths, lead.warrantyMonths, (value, max) => value <= max)) return null;
+        }
+
+        return candidate.leadNationwide
+            ? 'Nationwide coverage and configured eligibility matched'
+            : `Postcode area ${area} and configured eligibility matched`;
+    }
+
+    private async matchingProviders(
+        db: any,
+        lead: {
+            serviceType: ServiceType;
+            postcode: string | null;
+            vehicleValuePence: number | null;
+            vehicleYear: number | null;
+            vehicleMileage: number | null;
+            annualIncomePence: number | null;
+            termMonths: number | null;
+            warrantyMonths: number | null;
+            warrantyLevel: string | null;
+        },
+        excludeContractorIds: string[] = [],
+        limit = MAX_LEAD_RECIPIENTS,
+    ) {
+        this.assertLeadType(lead.serviceType);
+        if (limit <= 0) return [];
+
+        const candidates = await db.contractorCapability.findMany({
+            where: {
+                serviceType: lead.serviceType,
+                status: CapabilityStatus.APPROVED,
+                contractor: {
+                    deletedAt: null,
+                    ...(excludeContractorIds.length ? { id: { notIn: excludeContractorIds } } : {}),
+                },
+            },
+            select: {
+                contractorId: true,
+                reviewedAt: true,
+                leadNationwide: true,
+                leadPostcodeAreas: true,
+                leadMinVehicleValuePence: true,
+                leadMaxVehicleValuePence: true,
+                leadMinVehicleYear: true,
+                leadMaxVehicleMileage: true,
+                leadMinAnnualIncomePence: true,
+                leadFinanceTermMinMonths: true,
+                leadFinanceTermMaxMonths: true,
+                leadWarrantyLevels: true,
+                leadWarrantyMinMonths: true,
+                leadWarrantyMaxMonths: true,
+                contractor: {
+                    select: {
+                        userId: true,
+                        rating: true,
+                        totalReviews: true,
+                    },
+                },
+            },
+        });
+
+        const matched = candidates
+            .map((candidate: any) => ({
+                ...candidate,
+                matchReason: this.providerMatchReason(candidate, lead),
+                areaSpecific: !candidate.leadNationwide,
+            }))
+            .filter((candidate: any) => candidate.matchReason)
+            .sort((a: any, b: any) =>
+                Number(b.areaSpecific) - Number(a.areaSpecific)
+                || (b.contractor.rating ?? 0) - (a.contractor.rating ?? 0)
+                || (b.contractor.totalReviews ?? 0) - (a.contractor.totalReviews ?? 0)
+                || String(a.contractorId).localeCompare(String(b.contractorId)),
+            );
+
+        return matched.slice(0, limit);
     }
 
     async create(customerId: string, dto: CreateServiceLeadDto) {
@@ -95,19 +271,20 @@ export class ServiceLeadsService {
         const registration = dto.vehicleRegistration?.toUpperCase().replace(/\s+/g, '') || null;
         const serviceType = dto.serviceType;
         const now = new Date();
+        const leadMatchInput = {
+            serviceType,
+            postcode,
+            vehicleValuePence: dto.vehicleValuePence ?? null,
+            vehicleYear: dto.vehicleYear ?? null,
+            vehicleMileage: dto.vehicleMileage ?? null,
+            annualIncomePence: serviceType === ServiceType.FINANCE ? dto.annualIncomePence ?? null : null,
+            termMonths: serviceType === ServiceType.FINANCE ? dto.termMonths ?? null : null,
+            warrantyMonths: serviceType === ServiceType.WARRANTY ? dto.warrantyMonths ?? null : null,
+            warrantyLevel: serviceType === ServiceType.WARRANTY ? dto.warrantyLevel?.trim() || null : null,
+        };
 
         const transaction = await this.prisma.$transaction(async (tx) => {
-            const matching = await tx.contractorCapability.findMany({
-                where: {
-                    serviceType,
-                    status: CapabilityStatus.APPROVED,
-                    contractor: { deletedAt: null },
-                },
-                select: {
-                    contractorId: true,
-                    contractor: { select: { userId: true } },
-                },
-            });
+            const matching = await this.matchingProviders(tx, leadMatchInput);
 
             const created = await tx.serviceLead.create({
                 data: {
@@ -140,9 +317,12 @@ export class ServiceLeadsService {
                     expiresAt: new Date(now.getTime() + LEAD_LIFETIME_MS),
                     recipients: matching.length
                         ? {
-                            create: matching.map((provider) => ({
+                            create: matching.map((provider: any) => ({
                                 contractorId: provider.contractorId,
                                 status: 'NEW',
+                                matchedAt: now,
+                                matchSource: 'AUTO',
+                                matchReason: provider.matchReason,
                             })),
                         }
                         : undefined,
@@ -245,7 +425,7 @@ export class ServiceLeadsService {
                     customerId,
                     status: 'OPEN',
                 },
-                data: { status: 'CLOSED' },
+                data: { status: 'CLOSED', closedAt: new Date() },
             });
             if (result.count === 0) {
                 throw new BadRequestException('Only an open enquiry can be closed.');
@@ -289,37 +469,9 @@ export class ServiceLeadsService {
         return profile;
     }
 
-    private async ensureRecipients(contractorId: string, types: ServiceType[]) {
-        await this.expireOldLeads();
-        types.forEach((type) => this.assertLeadType(type));
-
-        if (types.length === 0) return;
-
-        const openLeads = await this.prisma.serviceLead.findMany({
-            where: {
-                serviceType: { in: types },
-                status: 'OPEN',
-                expiresAt: { gt: new Date() },
-                consentToProviderContact: true,
-            },
-            select: { id: true },
-        });
-        if (openLeads.length === 0) return;
-
-        await this.prisma.serviceLeadRecipient.createMany({
-            data: openLeads.map((lead) => ({
-                leadId: lead.id,
-                contractorId,
-                status: 'NEW',
-            })),
-            skipDuplicates: true,
-        });
-    }
-
     async inbox(userId: string, serviceType?: ServiceType) {
         const profile = await this.providerProfile(userId, serviceType);
-        const types = profile.capabilities.map((capability) => capability.serviceType);
-        await this.ensureRecipients(profile.id, types);
+        await this.expireOldLeads();
 
         const now = new Date();
         const recipients = await this.prisma.serviceLeadRecipient.findMany({
@@ -335,28 +487,38 @@ export class ServiceLeadsService {
             include: { lead: true },
         });
 
-        await this.prisma.serviceLeadRecipient.updateMany({
-            where: {
-                contractorId: profile.id,
-                status: 'NEW',
-            },
-            data: {
-                status: 'VIEWED',
-                viewedAt: now,
-            },
-        });
-
         return recipients.map(({ lead, ...recipient }) => ({
-            ...lead,
+            id: lead.id,
+            serviceType: lead.serviceType,
+            status: lead.status,
+            vehicleRegistration: lead.vehicleRegistration,
+            vehicleMake: lead.vehicleMake,
+            vehicleModel: lead.vehicleModel,
+            vehicleYear: lead.vehicleYear,
+            vehicleMileage: lead.vehicleMileage,
+            vehicleValuePence: lead.vehicleValuePence,
+            // Inbox only needs a broad routing area. Full postcode/contact and
+            // financial-employment detail are disclosed only after the matched
+            // provider deliberately opens this enquiry.
+            postcode: postcodeArea(lead.postcode),
+            depositPence: lead.serviceType === ServiceType.FINANCE ? lead.depositPence : null,
+            termMonths: lead.serviceType === ServiceType.FINANCE ? lead.termMonths : null,
+            monthlyBudgetPence: lead.serviceType === ServiceType.FINANCE ? lead.monthlyBudgetPence : null,
+            warrantyMonths: lead.serviceType === ServiceType.WARRANTY ? lead.warrantyMonths : null,
+            warrantyLevel: lead.serviceType === ServiceType.WARRANTY ? lead.warrantyLevel : null,
+            expiresAt: lead.expiresAt,
+            createdAt: lead.createdAt,
             recipientId: recipient.id,
-            recipientStatus: recipient.status === 'NEW' ? 'VIEWED' : recipient.status,
+            recipientStatus: recipient.status,
             headline: recipient.headline,
             message: recipient.message,
             productName: recipient.productName,
             indicativePricePence: recipient.indicativePricePence,
             representativeApr: recipient.representativeApr == null ? null : Number(recipient.representativeApr),
             responseTermMonths: recipient.termMonths,
-            viewedAt: recipient.viewedAt ?? (recipient.status === 'NEW' ? now : null),
+            matchedAt: recipient.matchedAt,
+            matchSource: recipient.matchSource,
+            viewedAt: recipient.viewedAt,
             respondedAt: recipient.respondedAt,
         }));
     }
@@ -370,13 +532,11 @@ export class ServiceLeadsService {
         if (!lead) throw new NotFoundException('Enquiry not found');
 
         this.assertLeadType(lead.serviceType);
-        if (lead.status !== 'OPEN' || lead.expiresAt <= new Date()) {
+        if (lead.status !== 'OPEN' || lead.expiresAt <= new Date() || lead.anonymizedAt) {
             throw new BadRequestException('This enquiry is no longer open.');
         }
 
         const profile = await this.providerProfile(userId, lead.serviceType);
-        await this.ensureRecipients(profile.id, [lead.serviceType]);
-
         const recipient = await this.prisma.serviceLeadRecipient.findUnique({
             where: {
                 leadId_contractorId: {
@@ -390,7 +550,10 @@ export class ServiceLeadsService {
         }
 
         const now = new Date();
-        if (recipient.status === 'NEW') {
+        const recipientStatus = recipient.status === 'NEW' ? 'VIEWED' : recipient.status;
+        const viewedAt = recipient.viewedAt ?? now;
+        const contactDisclosedAt = recipient.contactDisclosedAt ?? now;
+        if (recipient.status === 'NEW' || !recipient.contactDisclosedAt) {
             await this.prisma.serviceLeadRecipient.update({
                 where: {
                     leadId_contractorId: {
@@ -399,23 +562,53 @@ export class ServiceLeadsService {
                     },
                 },
                 data: {
-                    status: 'VIEWED',
-                    viewedAt: recipient.viewedAt ?? now,
+                    status: recipientStatus,
+                    viewedAt,
+                    contactDisclosedAt,
                 },
             });
         }
 
+        // Deliberately construct the disclosure payload instead of spreading
+        // the database row. This prevents future internal lead fields from
+        // becoming provider-visible by accident.
         return {
-            ...lead,
+            id: lead.id,
+            serviceType: lead.serviceType,
+            status: lead.status,
+            fullName: lead.fullName,
+            email: lead.email,
+            phone: lead.phone,
+            postcode: lead.postcode,
+            vehicleRegistration: lead.vehicleRegistration,
+            vehicleMake: lead.vehicleMake,
+            vehicleModel: lead.vehicleModel,
+            vehicleYear: lead.vehicleYear,
+            vehicleMileage: lead.vehicleMileage,
+            vehicleValuePence: lead.vehicleValuePence,
+            summary: lead.summary,
+            depositPence: lead.serviceType === ServiceType.FINANCE ? lead.depositPence : null,
+            termMonths: lead.serviceType === ServiceType.FINANCE ? lead.termMonths : null,
+            monthlyBudgetPence: lead.serviceType === ServiceType.FINANCE ? lead.monthlyBudgetPence : null,
+            employmentStatus: lead.serviceType === ServiceType.FINANCE ? lead.employmentStatus : null,
+            annualIncomePence: lead.serviceType === ServiceType.FINANCE ? lead.annualIncomePence : null,
+            warrantyMonths: lead.serviceType === ServiceType.WARRANTY ? lead.warrantyMonths : null,
+            warrantyLevel: lead.serviceType === ServiceType.WARRANTY ? lead.warrantyLevel : null,
+            expiresAt: lead.expiresAt,
+            createdAt: lead.createdAt,
             recipientId: recipient.id,
-            recipientStatus: recipient.status === 'NEW' ? 'VIEWED' : recipient.status,
+            recipientStatus,
             headline: recipient.headline,
             message: recipient.message,
             productName: recipient.productName,
             indicativePricePence: recipient.indicativePricePence,
             representativeApr: recipient.representativeApr == null ? null : Number(recipient.representativeApr),
             responseTermMonths: recipient.termMonths,
-            viewedAt: recipient.viewedAt ?? (recipient.status === 'NEW' ? now : null),
+            matchedAt: recipient.matchedAt,
+            matchSource: recipient.matchSource,
+            matchReason: recipient.matchReason,
+            viewedAt,
+            contactDisclosedAt,
             respondedAt: recipient.respondedAt,
         };
     }
@@ -455,8 +648,6 @@ export class ServiceLeadsService {
             throw new BadRequestException('APR and finance term fields are only valid for Finance responses.');
         }
 
-        await this.ensureRecipients(profile.id, [lead.serviceType]);
-
         const recipient = await this.prisma.serviceLeadRecipient.findUnique({
             where: {
                 leadId_contractorId: {
@@ -494,6 +685,10 @@ export class ServiceLeadsService {
             },
         });
 
+        if (!lead.customerId) {
+            throw new BadRequestException('This enquiry has been anonymised and can no longer receive responses.');
+        }
+
         await this.notifications.create({
             userId: lead.customerId,
             type: 'SERVICE_LEAD_RESPONSE',
@@ -527,6 +722,16 @@ export class ServiceLeadsService {
         if (!cap) throw new NotFoundException('Application not found');
         this.assertLeadType(cap.serviceType);
 
+        if (
+            dto.status === CapabilityStatus.APPROVED
+            && !cap.leadNationwide
+            && (cap.leadPostcodeAreas?.length ?? 0) === 0
+        ) {
+            throw new BadRequestException(
+                'Configure nationwide coverage or at least one postcode area before approving this lead capability.',
+            );
+        }
+
         const updated = await this.prisma.contractorCapability.update({
             where: { id },
             data: {
@@ -554,6 +759,87 @@ export class ServiceLeadsService {
         return updated;
     }
 
+    async adminRematch(leadId: string) {
+        await this.expireOldLeads();
+
+        const result = await this.prisma.$transaction(async (tx) => {
+            const lead = await tx.serviceLead.findUnique({
+                where: { id: leadId },
+                include: {
+                    recipients: {
+                        select: { contractorId: true },
+                    },
+                },
+            });
+            if (!lead) throw new NotFoundException('Enquiry not found');
+            this.assertLeadType(lead.serviceType);
+            if (
+                lead.status !== 'OPEN'
+                || lead.expiresAt <= new Date()
+                || lead.anonymizedAt
+                || !lead.consentToProviderContact
+            ) {
+                throw new BadRequestException('Only an open, consented enquiry can be rematched.');
+            }
+
+            const existingIds = lead.recipients.map((recipient) => recipient.contractorId);
+            const slots = MAX_LEAD_RECIPIENTS - existingIds.length;
+            if (slots <= 0) {
+                return { lead, matching: [] as any[], total: existingIds.length };
+            }
+
+            const matching = await this.matchingProviders(tx, {
+                serviceType: lead.serviceType,
+                postcode: lead.postcode,
+                vehicleValuePence: lead.vehicleValuePence,
+                vehicleYear: lead.vehicleYear,
+                vehicleMileage: lead.vehicleMileage,
+                annualIncomePence: lead.annualIncomePence,
+                termMonths: lead.termMonths,
+                warrantyMonths: lead.warrantyMonths,
+                warrantyLevel: lead.warrantyLevel,
+            }, existingIds, slots);
+
+            if (matching.length) {
+                const now = new Date();
+                await tx.serviceLeadRecipient.createMany({
+                    data: matching.map((provider: any) => ({
+                        leadId: lead.id,
+                        contractorId: provider.contractorId,
+                        status: 'NEW',
+                        matchedAt: now,
+                        matchSource: 'ADMIN_REMATCH',
+                        matchReason: provider.matchReason,
+                    })),
+                    skipDuplicates: true,
+                });
+            }
+
+            return {
+                lead,
+                matching,
+                total: Math.min(MAX_LEAD_RECIPIENTS, existingIds.length + matching.length),
+            };
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+        await Promise.allSettled(result.matching.map((provider: any) => this.notifications.create({
+            userId: provider.contractor.userId,
+            type: 'SERVICE_LEAD_NEW',
+            title: result.lead.serviceType === ServiceType.FINANCE ? 'New finance enquiry' : 'New warranty enquiry',
+            message: 'A CarMazium administrator matched a relevant enquiry to your provider account.',
+            link: '/dashboard/service/leads',
+            entityType: 'ServiceLead',
+            entityId: result.lead.id,
+            actionType: 'ADMIN_REMATCH',
+        })));
+
+        return {
+            added: result.matching.length,
+            recipientCount: result.total,
+            recipientLimit: MAX_LEAD_RECIPIENTS,
+        };
+    }
+
     async adminList(serviceType?: ServiceType, status?: string) {
         if (serviceType) this.assertLeadType(serviceType);
 
@@ -575,6 +861,13 @@ export class ServiceLeadsService {
 
         return leads.map((lead) => this.leadWithCounts(lead));
     }
+}
+
+function postcodeArea(value?: string | null): string | null {
+    const compact = value?.trim().toUpperCase().replace(/\s+/g, '');
+    if (!compact) return null;
+    const match = compact.match(/^([A-Z]{1,3})(?=\d)/);
+    return match?.[1] ?? null;
 }
 
 function normPostcode(value?: string | null): string | null {

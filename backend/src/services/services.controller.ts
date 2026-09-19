@@ -1,5 +1,5 @@
 import {
-    Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Req, HttpCode, HttpStatus,
+    Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, Req, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiCookieAuth, ApiQuery } from '@nestjs/swagger';
 import { ServiceType } from '@prisma/client';
@@ -13,6 +13,7 @@ import { ACCEPTED_PAYMENT_TIMEOUT_MINUTES } from './services-lifecycle.service';
 import { serviceAvailabilitySnapshot } from './service-availability';
 import {
     CreateJobDto, JobFromPurchaseDto, CancelJobDto, UpsertQuoteDto, ApplyCapabilityDto,
+    UpdateLeadMatchingDto,
 } from './dto';
 
 /** The TradeXchange paid-job commercial split is fixed: 9% CarMazium / 91% provider business. */
@@ -60,6 +61,16 @@ export class ServicesController {
     @ApiOperation({ summary: 'My provider profile, applications and Stripe Connect state' })
     async myCapabilities(@CurrentUser() user: any) {
         return new StandardResponse(await this.services.myCapabilities(user.id));
+    }
+
+    @Patch('capabilities/:id/lead-matching')
+    @ApiOperation({ summary: 'Configure Finance/Warranty lead matching coverage and eligibility' })
+    async updateLeadMatching(
+        @CurrentUser() user: any,
+        @Param('id') id: string,
+        @Body() dto: UpdateLeadMatchingDto,
+    ) {
+        return new StandardResponse(await this.services.updateLeadMatching(user.id, id, dto));
     }
 
     // ── Customer ───────────────────────────────────────────────────────────

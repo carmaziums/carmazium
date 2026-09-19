@@ -70,7 +70,7 @@ export interface ServicePayment {
 
 export interface ServiceJob {
   id: string;
-  customerId: string;
+  customerId?: string | null;
   serviceType: ServiceType;
   isRecovery: boolean;
   status: ServiceJobStatus;
@@ -117,6 +117,18 @@ export interface ContractorCapability {
   appliedAt: string;
   reviewedAt: string | null;
   reviewNote: string | null;
+  leadNationwide: boolean;
+  leadPostcodeAreas: string[];
+  leadMinVehicleValuePence: number | null;
+  leadMaxVehicleValuePence: number | null;
+  leadMinVehicleYear: number | null;
+  leadMaxVehicleMileage: number | null;
+  leadMinAnnualIncomePence: number | null;
+  leadFinanceTermMinMonths: number | null;
+  leadFinanceTermMaxMonths: number | null;
+  leadWarrantyLevels: string[];
+  leadWarrantyMinMonths: number | null;
+  leadWarrantyMaxMonths: number | null;
   contractor?: ContractorSummary & {
     user: { id: string; firstName: string | null; lastName: string | null; email: string; stripeConnectAccountId: string | null; stripeConnectOnboardingComplete: boolean };
   };
@@ -145,6 +157,10 @@ export interface ServiceLeadResponse {
   totalReviews?: number | null;
   serviceArea?: string | null;
   respondedAt?: string | null;
+  matchedAt?: string | null;
+  matchSource?: 'AUTO' | 'ADMIN_REMATCH' | string;
+  matchReason?: string | null;
+  contactDisclosedAt?: string | null;
 }
 
 export interface ServiceLead {
@@ -159,8 +175,8 @@ export interface ServiceLead {
   vehicleYear: number | null;
   vehicleMileage: number | null;
   vehicleValuePence: number | null;
-  fullName: string;
-  email: string;
+  fullName?: string | null;
+  email?: string | null;
   phone: string | null;
   postcode: string | null;
   summary: string | null;
@@ -250,6 +266,27 @@ export async function applyCapability(input: { serviceType: ServiceType; busines
 }
 export async function getMyCapabilities(): Promise<MyCapabilities> {
   const r = await apiClient<{ data: MyCapabilities }>('/services/capabilities/my'); return r.data;
+}
+export interface LeadMatchingInput {
+  leadNationwide: boolean;
+  leadPostcodeAreas?: string[];
+  leadMinVehicleValuePence?: number;
+  leadMaxVehicleValuePence?: number;
+  leadMinVehicleYear?: number;
+  leadMaxVehicleMileage?: number;
+  leadMinAnnualIncomePence?: number;
+  leadFinanceTermMinMonths?: number;
+  leadFinanceTermMaxMonths?: number;
+  leadWarrantyLevels?: string[];
+  leadWarrantyMinMonths?: number;
+  leadWarrantyMaxMonths?: number;
+}
+export async function updateLeadMatching(id: string, input: LeadMatchingInput): Promise<ContractorCapability> {
+  const r = await apiClient<{ data: ContractorCapability }>(`/services/capabilities/${id}/lead-matching`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+  return r.data;
 }
 export async function getJobFeed(serviceType?: ServiceType): Promise<ServiceJob[]> {
   const q = serviceType ? `?serviceType=${serviceType}` : '';
@@ -341,6 +378,10 @@ export async function adminGetJobs(status?: ServiceJobStatus): Promise<ServiceJo
 }
 export async function adminResolveDispute(id: string, input: { outcome: 'RELEASE' | 'REFUND'; note?: string }): Promise<void> {
   await apiClient(`/admin/services/jobs/${id}/resolve`, { method: 'POST', body: JSON.stringify(input) });
+}
+export async function adminRematchServiceLead(id: string): Promise<{ added: number; recipientCount: number; recipientLimit: number }> {
+  const r = await apiClient<{ data: { added: number; recipientCount: number; recipientLimit: number } }>(`/admin/services/leads/${id}/rematch`, { method: 'POST' });
+  return r.data;
 }
 export async function adminGetServiceLeads(serviceType?: 'FINANCE' | 'WARRANTY', status?: ServiceLeadStatus): Promise<ServiceLead[]> {
   const q = new URLSearchParams();
