@@ -844,63 +844,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         }
     }
 
-    const validateStep = (): boolean => {
-        switch (currentStep) {
-            case 1: {
-                const baseValid = !!(
-                    formData.vrm &&
-                    formData.make &&
-                    formData.model &&
-                    formData.year &&
-                    formData.mileage &&
-                    formData.fuelType &&
-                    formData.transmission &&
-                    formData.bodyType &&
-                    formData.title &&
-                    formData.title.length >= 5 &&
-                    formData.location &&
-                    formData.owners &&
-                    formData.description.trim() &&
-                    formData.condition
-                )
-                const isKeeperOrExplained = formData.isLegalRegisteredKeeper === true
-                    || (formData.isLegalRegisteredKeeper === false && (formData.notOwnerRelationship ?? '').trim() !== '')
-                const declarationsValid = formData.writeOffCategory !== '' && formData.stolenRecovered !== null && formData.hasOutstandingFinance !== null && isKeeperOrExplained && formData.declarationAcknowledged
-                // Cat A/B are total-loss write-offs — only allowed for auction listings
-                if ((formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') && formData.listingType !== 'AUCTION') return false
-                // Departed sale relationship is required when isDepartedSale is checked
-                if (formData.isDepartedSale) {
-                    const rel = (formData.departedRelationship ?? '').trim()
-                    if (!rel) return false
-                }
-                return baseValid && declarationsValid
-            }
-            case 2: return formData.images.length >= 10
-            case 3: {
-                const pMin = parseFloat(formData.priceMin)
-                const pAsk = parseFloat(formData.priceAsking)
-                if (!formData.priceAsking || isNaN(pAsk) || pAsk <= 0) return false
-                if (formData.priceMin && !isNaN(pMin) && pMin > pAsk) return false
-                return true
-            }
-            case 4: {
-                if (!isAuction) return true // review step for CLASSIFIED — no validation
-                if (!auctionSchedule.startTime && auctionSchedule.startTime !== 'NOW') return false
-                if (auctionSchedule.startTime !== 'NOW') {
-                    const startMs = new Date(auctionSchedule.startTime).getTime()
-                    if (startMs < Date.now() - 60 * 1000) return false // only reject if more than 1 min in past
-                }
-                if (!auctionSchedule.reservePrice || parseFloat(auctionSchedule.reservePrice) <= 0) return false
-                if (!auctionSchedule.startingBid || parseFloat(auctionSchedule.startingBid) <= 0) return false
-                if (!auctionSchedule.minIncrement || parseFloat(auctionSchedule.minIncrement) <= 0) return false
-                return true
-            }
-            default: return true
-        }
-    }
+    const validateStep = (): boolean => getStepValidationError() === null
 
     const handleNext = () => {
         if (!validateStep()) {
+            const validationError = getStepValidationError()
             setHasAttemptedNext(true)
             // Where sellers get stuck is as useful as where they drop —
             // a step failing validation repeatedly is a UX problem.
@@ -908,8 +856,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 listing_type: listingTypeLabel(formData.listingType),
                 step: currentStep,
                 step_name: WIZARD_STEPS.find(s => s.id === currentStep)?.title ?? String(currentStep),
+                validation_error: validationError ?? 'unknown',
             })
-            alert(getStepValidationError() ?? "Please complete the required information before proceeding.")
+            if (currentStep === 1 && !formData.condition) {
+                window.setTimeout(() => {
+                    document.getElementById('vehicle-condition-field')?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                    })
+                }, 50)
+            }
+            alert(validationError ?? "Please complete the required information before proceeding.")
             return
         }
         setHasAttemptedNext(false)
@@ -2031,6 +1988,39 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             ))}
                                         </div>
                                     </div>
+                                    {/* Vehicle Condition */}
+                                    <div id="vehicle-condition-field" className={`space-y-2 md:col-span-2 rounded-xl p-3 border ${hasAttemptedNext && !formData.condition ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Vehicle Condition *</label>
+                                        <p className="text-xs text-[var(--text-secondary)]">Choose the condition that best describes the vehicle today. This helps make the valuation more accurate.</p>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                            {([
+                                                { value: "EXCELLENT", label: "Excellent", help: "Very clean, minimal wear" },
+                                                { value: "GOOD", label: "Good", help: "Normal age-related wear" },
+                                                { value: "FAIR", label: "Fair", help: "Noticeable wear or defects" },
+                                                { value: "POOR", label: "Poor", help: "Significant faults or damage" },
+                                            ] as const).map((opt) => {
+                                                const active = formData.condition === opt.value
+                                                return (
+                                                    <button
+                                                        key={opt.value}
+                                                        type="button"
+                                                        onClick={() => set("condition", opt.value)}
+                                                        className={`p-3 rounded-xl border text-left transition-all ${active
+                                                            ? "border-primary bg-primary/10 text-primary"
+                                                            : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
+                                                        }`}
+                                                    >
+                                                        <span className="block text-sm font-bold">{opt.label}</span>
+                                                        <span className="block text-[10px] leading-snug mt-0.5 opacity-75">{opt.help}</span>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                        {hasAttemptedNext && !formData.condition && (
+                                            <p className="text-xs text-red-400 font-medium">Vehicle condition is required.</p>
+                                        )}
+                                    </div>
+
                                     {/* Service History */}
                                     <div className="space-y-2 md:col-span-2">
                                         <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Service History</label>
@@ -2101,7 +2091,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {/* Body Type (not for motorcycles) */}
                             {formData.vehicleType !== 'MOTORCYCLE' && (
                                 <div className="space-y-3">
-                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Body Type</label>
+                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Body Type *</label>
                                     <div className="grid grid-cols-3 md:grid-cols-5 gap-2.5">
                                         {BODY_TYPE_KEYS.map((key) => {
                                             const Icon = BODY_TYPE_ICONS[key]
@@ -2484,7 +2474,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <Input placeholder="e.g. BMW M4 Competition 2023" value={formData.title} onChange={(e) => set("title", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.title ? 'border-red-500' : ''}`} />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Description</label>
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Description *</label>
                                 <Textarea
                                     placeholder="Describe service history, any extras, reason for selling..."
                                     value={formData.description}
@@ -2867,6 +2857,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {hpiVerifyError && (
                                 <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
                                     <AlertTriangle size={14} className="shrink-0" /> {hpiVerifyError}
+                                </div>
+                            )}
+
+                            {hasAttemptedNext && getStepValidationError() && (
+                                <div
+                                    role="alert"
+                                    className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200"
+                                >
+                                    <p className="font-bold">Please complete the following before continuing:</p>
+                                    <p className="mt-1 leading-relaxed">{getStepValidationError()}</p>
                                 </div>
                             )}
 
