@@ -952,6 +952,42 @@ describe('ChatService — conversation context and authorization', () => {
         );
     });
 
+    it('does not auto-join service-job websocket rooms when provider staff lacks canView', async () => {
+        prisma.chatRoom.findMany.mockResolvedValue([]);
+        tradeTeamService.tryResolveActor.mockResolvedValue({
+            contractorProfileId: 'contractor-1',
+            allowedServiceTypes: ['DELIVERY'],
+            isStaff: true,
+            canView: false,
+            canChat: false,
+        });
+
+        await service.getUserRoomIds(otherBuyerId);
+
+        const query = prisma.chatRoom.findMany.mock.calls.at(-1)[0];
+        expect(query.where.OR).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ context: ChatContext.SERVICE_JOB }),
+        ]));
+    });
+
+    it('does not expose service-job presence partners when provider staff lacks canView', async () => {
+        prisma.chatRoom.findMany.mockResolvedValue([]);
+        tradeTeamService.tryResolveActor.mockResolvedValue({
+            contractorProfileId: 'contractor-1',
+            allowedServiceTypes: ['DELIVERY'],
+            isStaff: true,
+            canView: false,
+            canChat: false,
+        });
+
+        await service.getUserPresencePartnerIds(otherBuyerId);
+
+        const query = prisma.chatRoom.findMany.mock.calls.at(-1)[0];
+        expect(query.where.OR).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ context: ChatContext.SERVICE_JOB }),
+        ]));
+    });
+
     it('batches unread counts for non-dispute rooms instead of counting once per room', async () => {
         prisma.chatRoom.findMany.mockResolvedValue([
             {
