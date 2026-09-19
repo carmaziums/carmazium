@@ -34,10 +34,16 @@ export class ScraperService {
 
     detectPlatform(url: string): 'AUTOTRADER' | 'CARGURUS' | 'CARWOW' | 'UNKNOWN' {
         try {
-            const { hostname } = new URL(url);
-            if (hostname.includes('autotrader.co.uk')) return 'AUTOTRADER';
-            if (hostname.includes('cargurus.co.uk')) return 'CARGURUS';
-            if (hostname.includes('carwow.co.uk')) return 'CARWOW';
+            const parsed = new URL(url);
+            if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return 'UNKNOWN';
+
+            const hostname = parsed.hostname.toLowerCase().replace(/\.$/, '');
+            const belongsTo = (domain: string) =>
+                hostname === domain || hostname.endsWith(`.${domain}`);
+
+            if (belongsTo('autotrader.co.uk')) return 'AUTOTRADER';
+            if (belongsTo('cargurus.co.uk')) return 'CARGURUS';
+            if (belongsTo('carwow.co.uk')) return 'CARWOW';
         } catch {}
         return 'UNKNOWN';
     }
@@ -81,6 +87,10 @@ export class ScraperService {
         try {
             const { data } = await axios.get(url, {
                 timeout: 15000,
+                // Never follow a marketplace page redirect from the CarMazium
+                // network. A redirect could otherwise turn a trusted marketplace
+                // URL into a request to an unrelated/private destination.
+                maxRedirects: 0,
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
