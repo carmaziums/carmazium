@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
     IsBoolean,
     IsInt,
@@ -69,6 +69,7 @@ export class VehicleValuationDto {
     @MaxLength(20)
     writeOffCategory?: string;
 
+    @Transform(({ value }) => value === true || value === 'true')
     @IsBoolean()
     @IsOptional()
     isImported?: boolean;
