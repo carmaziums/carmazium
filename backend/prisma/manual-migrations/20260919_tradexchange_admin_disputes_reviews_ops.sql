@@ -215,3 +215,68 @@ drop trigger if exists service_reviews_refresh_rating on public.service_reviews;
 create trigger service_reviews_refresh_rating
 after insert or update or delete on public.service_reviews
 for each row execute function public.tradexchange_refresh_contractor_rating();
+
+create table if not exists public.service_payment_audit_events (
+    id text primary key default gen_random_uuid()::text,
+    "paymentId" text not null references public.service_payments(id) on delete restrict,
+    "jobId" text not null references public.service_jobs(id) on delete restrict,
+    "fromStatus" service_payment_status,
+    "toStatus" service_payment_status not null,
+    "stripeTransferId" text,
+    "stripePaymentIntentId" text,
+    "createdAt" timestamptz not null default now()
+);
+
+create index if not exists service_payment_audit_events_job_created_idx
+    on public.service_payment_audit_events ("jobId", "createdAt" desc);
+create index if not exists service_payment_audit_events_payment_created_idx
+    on public.service_payment_audit_events ("paymentId", "createdAt" desc);
+
+alter table public.service_payment_audit_events enable row level security;
+revoke all on table public.service_payment_audit_events from anon, authenticated;
+
+insert into public.service_payment_audit_events
+    ("paymentId", "jobId", "fromStatus", "toStatus", "stripeTransferId", "stripePaymentIntentId", "createdAt")
+select
+    p.id,
+    p."jobId",
+    null,
+    p.status,
+    p."stripeTransferId",
+    p."stripePaymentIntentId",
+    coalesce(p."releasedAt", p."refundedAt", p."paidAt", p."createdAt")
+from public.service_payments p
+where p.status in ('RELEASED'::service_payment_status, 'REFUNDED'::service_payment_status)
+  and not exists (
+      select 1 from public.service_payment_audit_events a
+      where a."paymentId" = p.id and a."toStatus" = p.status
+  );
+
+create or replace function public.tradexchange_record_payment_audit()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+    if new.status is distinct from old.status then
+        insert into public.service_payment_audit_events
+            ("paymentId", "jobId", "fromStatus", "toStatus", "stripeTransferId", "stripePaymentIntentId", "createdAt")
+        values (
+            new.id,
+            new."jobId",
+            old.status,
+            new.status,
+            new."stripeTransferId",
+            new."stripePaymentIntentId",
+            now()
+        );
+    end if;
+    return new;
+end;
+$$;
+
+drop trigger if exists service_payments_audit_status on public.service_payments;
+create trigger service_payments_audit_status
+after update of status on public.service_payments
+for each row execute function public.tradexchange_record_payment_audit();
