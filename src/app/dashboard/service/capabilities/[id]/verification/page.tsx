@@ -3,24 +3,43 @@
 import * as React from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { AlertCircle, ArrowLeft, FileText, Loader2, ShieldCheck, Upload } from "lucide-react"
+import { AlertCircle, ArrowLeft, CheckCircle, FileText, Loader2, ShieldCheck, Trash2, Upload, XCircle } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { getMyCapabilities, SERVICE_LABELS, type ContractorCapability } from "@/lib/servicesApi"
-import { getCapabilityAttachments, uploadCapabilityAttachment, type ServiceCaseEntry } from "@/lib/serviceOperationsApi"
+import {
+    deleteCapabilityAttachment,
+    getCapabilityVerification,
+    uploadCapabilityAttachment,
+    type CapabilityEvidenceType,
+    type CapabilityVerificationDetail,
+    type ServiceCaseEntry,
+} from "@/lib/serviceOperationsApi"
 
 const inputCls = "w-full rounded-xl border px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-primary)]"
+const labelCls = "block text-[11px] font-extrabold uppercase tracking-widest text-[var(--text-muted)] mb-2"
+
+function stateClass(state: string) {
+    if (state === "SATISFIED" || state === "APPROVED" || state === "VERIFIED" || state === "READY") return "text-emerald-500 border-emerald-500/30 bg-emerald-500/5"
+    if (state === "REJECTED") return "text-red-500 border-red-500/30 bg-red-500/5"
+    return "text-amber-500 border-amber-500/30 bg-amber-500/5"
+}
 
 export default function ProviderVerificationPage() {
     const { id } = useParams<{ id: string }>()
     const { user, profile } = useAuth()
     const [capability, setCapability] = React.useState<ContractorCapability | null>(null)
-    const [entries, setEntries] = React.useState<ServiceCaseEntry[] | null>(null)
-    const [label, setLabel] = React.useState("")
+    const [detail, setDetail] = React.useState<CapabilityVerificationDetail | null>(null)
+    const [evidenceType, setEvidenceType] = React.useState<CapabilityEvidenceType | "">("")
+    const [issuer, setIssuer] = React.useState("")
+    const [reference, setReference] = React.useState("")
+    const [validFrom, setValidFrom] = React.useState("")
+    const [expiresAt, setExpiresAt] = React.useState("")
     const [file, setFile] = React.useState<File | null>(null)
     const [busy, setBusy] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
+    const [notice, setNotice] = React.useState<string | null>(null)
 
     const load = React.useCallback(async () => {
         if (!id) return
