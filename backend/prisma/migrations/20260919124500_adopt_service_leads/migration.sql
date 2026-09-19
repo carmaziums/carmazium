@@ -82,27 +82,72 @@ CREATE TABLE IF NOT EXISTS public.service_lead_recipients (
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-DO $$
+DO $
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'service_leads_type_check') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'service_leads_pkey'
+      AND conrelid = 'public.service_leads'::regclass
+  ) THEN
+    ALTER TABLE public.service_leads
+      ADD CONSTRAINT service_leads_pkey PRIMARY KEY ("id");
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'service_leads_customerId_fkey'
+      AND conrelid = 'public.service_leads'::regclass
+  ) THEN
+    ALTER TABLE public.service_leads
+      ADD CONSTRAINT "service_leads_customerId_fkey"
+      FOREIGN KEY ("customerId") REFERENCES public.users("id") ON DELETE CASCADE;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'service_leads_listingId_fkey'
+      AND conrelid = 'public.service_leads'::regclass
+  ) THEN
+    ALTER TABLE public.service_leads
+      ADD CONSTRAINT "service_leads_listingId_fkey"
+      FOREIGN KEY ("listingId") REFERENCES public.listings("id") ON DELETE SET NULL;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'service_leads_type_check'
+      AND conrelid = 'public.service_leads'::regclass
+  ) THEN
     ALTER TABLE public.service_leads
       ADD CONSTRAINT service_leads_type_check
       CHECK ("serviceType"::text IN ('FINANCE', 'WARRANTY'));
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'service_leads_status_check') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'service_leads_status_check'
+      AND conrelid = 'public.service_leads'::regclass
+  ) THEN
     ALTER TABLE public.service_leads
       ADD CONSTRAINT service_leads_status_check
       CHECK ("status" IN ('OPEN', 'CLOSED', 'CANCELLED', 'EXPIRED'));
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'service_leads_vehicle_year_check') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'service_leads_vehicle_year_check'
+      AND conrelid = 'public.service_leads'::regclass
+  ) THEN
     ALTER TABLE public.service_leads
       ADD CONSTRAINT service_leads_vehicle_year_check
       CHECK ("vehicleYear" IS NULL OR "vehicleYear" BETWEEN 1900 AND 2100);
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'service_leads_nonnegative_check') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'service_leads_nonnegative_check'
+      AND conrelid = 'public.service_leads'::regclass
+  ) THEN
     ALTER TABLE public.service_leads
       ADD CONSTRAINT service_leads_nonnegative_check
       CHECK (
@@ -114,25 +159,70 @@ BEGIN
       );
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'service_lead_recipients_status_check') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'service_lead_recipients_pkey'
+      AND conrelid = 'public.service_lead_recipients'::regclass
+  ) THEN
+    ALTER TABLE public.service_lead_recipients
+      ADD CONSTRAINT service_lead_recipients_pkey PRIMARY KEY ("id");
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'service_lead_recipients_leadId_fkey'
+      AND conrelid = 'public.service_lead_recipients'::regclass
+  ) THEN
+    ALTER TABLE public.service_lead_recipients
+      ADD CONSTRAINT "service_lead_recipients_leadId_fkey"
+      FOREIGN KEY ("leadId") REFERENCES public.service_leads("id") ON DELETE CASCADE;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'service_lead_recipients_contractorId_fkey'
+      AND conrelid = 'public.service_lead_recipients'::regclass
+  ) THEN
+    ALTER TABLE public.service_lead_recipients
+      ADD CONSTRAINT "service_lead_recipients_contractorId_fkey"
+      FOREIGN KEY ("contractorId") REFERENCES public.contractor_profiles("id") ON DELETE CASCADE;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'service_lead_recipients_status_check'
+      AND conrelid = 'public.service_lead_recipients'::regclass
+  ) THEN
     ALTER TABLE public.service_lead_recipients
       ADD CONSTRAINT service_lead_recipients_status_check
       CHECK ("status" IN ('NEW', 'VIEWED', 'RESPONDED', 'DECLINED', 'CLOSED'));
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'service_lead_recipients_price_check') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'service_lead_recipients_price_check'
+      AND conrelid = 'public.service_lead_recipients'::regclass
+  ) THEN
     ALTER TABLE public.service_lead_recipients
       ADD CONSTRAINT service_lead_recipients_price_check
       CHECK ("indicativePricePence" IS NULL OR "indicativePricePence" >= 0);
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'service_lead_recipients_apr_check') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'service_lead_recipients_apr_check'
+      AND conrelid = 'public.service_lead_recipients'::regclass
+  ) THEN
     ALTER TABLE public.service_lead_recipients
       ADD CONSTRAINT service_lead_recipients_apr_check
       CHECK ("representativeApr" IS NULL OR ("representativeApr" >= 0 AND "representativeApr" <= 100));
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'service_lead_recipients_unique') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'service_lead_recipients_unique'
+      AND conrelid = 'public.service_lead_recipients'::regclass
+  ) THEN
     ALTER TABLE public.service_lead_recipients
       ADD CONSTRAINT service_lead_recipients_unique UNIQUE ("leadId", "contractorId");
   END IF;
