@@ -164,9 +164,10 @@ export default function CapabilitiesPage() {
                                             {cap?.reviewNote && (cap.status === "REJECTED" || cap.status === "SUSPENDED") && <p className="text-xs text-red-500 mt-2">{cap.reviewNote}</p>}
                                             {cap && <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2">
                                                 <Link href={`/dashboard/service/capabilities/${cap.id}/verification`} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"><FileText size={13} /> Verification documents</Link>
-                                                {(type === "FINANCE" || type === "WARRANTY") && <Link href={`/dashboard/service/capabilities/${cap.id}/matching`} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">Lead matching settings</Link>}
+                                                <Link href={`/dashboard/service/capabilities/${cap.id}/matching`} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">Matching settings</Link>
                                             </div>}
-                                            {(type === "FINANCE" || type === "WARRANTY") && cap && !cap.leadNationwide && cap.leadPostcodeAreas.length === 0 && <p className="text-[11px] text-amber-500 mt-2">Configure matching coverage before this service can be approved.</p>}
+                                            {cap && (type === "FINANCE" || type === "WARRANTY") && !cap.leadNationwide && cap.leadPostcodeAreas.length === 0 && <p className="text-[11px] text-amber-500 mt-2">Configure matching coverage before this service can receive enquiries.</p>}
+                                            {cap && (type === "DELIVERY" || type === "INSPECTION") && !cap.jobNationwide && cap.jobPostcodeAreas.length === 0 && <p className="text-[11px] text-amber-500 mt-2">Configure job coverage before this service can see or quote open work.</p>}
                                         </div>
                                         {canApply
                                             ? <Button size="sm" variant="outline" disabled={busy === type} onClick={() => apply(type)} className="shrink-0">{busy === type ? <Loader2 className="animate-spin" size={14} /> : <>{cap ? "Apply again" : "Add service"} <ArrowRight size={14} className="ml-1" /></>}</Button>

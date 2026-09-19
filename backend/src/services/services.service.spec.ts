@@ -82,6 +82,7 @@ function matches(row: Row, where: Row | undefined): boolean {
     if (!where) return true;
     return Object.entries(where).every(([k, v]) => {
         if (k === 'OR') return (v as Row[]).some((w) => matches(row, w));
+        if (k === 'AND') return (v as Row[]).every((w) => matches(row, w));
         // compound unique: { contractorId_serviceType: { contractorId, serviceType } }
         if (k.includes('_') && v && typeof v === 'object' && !Array.isArray(v) && !(v instanceof Date) && k.split('_').every((f) => f in v)) {
             return matches(row, v);

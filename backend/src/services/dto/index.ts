@@ -1,5 +1,5 @@
 import {
-    IsString, IsOptional, IsBoolean, IsInt, IsEnum, IsArray, IsUUID,
+    IsString, IsOptional, IsBoolean, IsInt, IsEnum, IsIn, IsArray, IsUUID,
     IsDateString, IsNotEmpty, Min, Max, MaxLength, ValidateNested, ArrayMinSize, ArrayMaxSize, Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -8,6 +8,22 @@ import { ServiceType, CapabilityStatus } from '@prisma/client';
 
 /** Service areas with a job flow. FINANCE and WARRANTY are enquiry-based (phase 3). */
 export const JOB_SERVICE_TYPES = [ServiceType.DELIVERY, ServiceType.INSPECTION] as const;
+
+export class ServiceListQueryDto {
+    @ApiPropertyOptional({ minimum: 1, maximum: 50, default: 20 })
+    @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(50)
+    limit?: number;
+
+    @ApiPropertyOptional({ description: 'Opaque cursor returned by the previous page' })
+    @IsOptional() @IsString() @MaxLength(500)
+    cursor?: string;
+}
+
+export class ServiceJobFeedQueryDto extends ServiceListQueryDto {
+    @ApiPropertyOptional({ enum: JOB_SERVICE_TYPES })
+    @IsOptional() @IsIn(JOB_SERVICE_TYPES)
+    serviceType?: ServiceType;
+}
 
 export class JobVehicleDto {
     @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(10)
@@ -125,6 +141,17 @@ export class ApplyCapabilityDto {
     serviceArea?: string;
 }
 
+export class UpdateJobMatchingDto {
+    @ApiProperty()
+    @IsBoolean()
+    jobNationwide: boolean;
+
+    @ApiPropertyOptional({ description: 'UK postcode areas served for Delivery/Inspection jobs, e.g. B, CV, M, SW.' })
+    @IsOptional() @IsArray() @ArrayMaxSize(64)
+    @IsString({ each: true }) @MaxLength(3, { each: true }) @Matches(/^(?:GIR|[A-Za-z]{1,2})$/, { each: true })
+    jobPostcodeAreas?: string[];
+}
+
 export class UpdateLeadMatchingDto {
     @ApiProperty()
     @IsBoolean()
@@ -132,7 +159,7 @@ export class UpdateLeadMatchingDto {
 
     @ApiPropertyOptional({ description: 'UK postcode areas, e.g. B, CV, M, SW. Ignored when nationwide is true.' })
     @IsOptional() @IsArray() @ArrayMaxSize(32)
-    @IsString({ each: true }) @MaxLength(3, { each: true }) @Matches(/^[A-Za-z]{1,3}$/, { each: true })
+    @IsString({ each: true }) @MaxLength(3, { each: true }) @Matches(/^(?:GIR|[A-Za-z]{1,2})$/, { each: true })
     leadPostcodeAreas?: string[];
 
     @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) @Max(500_000_00)

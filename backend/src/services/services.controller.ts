@@ -3,6 +3,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiCookieAuth, ApiQuery } from '@nestjs/swagger';
 import { ServiceType } from '@prisma/client';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
@@ -13,7 +14,7 @@ import { ACCEPTED_PAYMENT_TIMEOUT_MINUTES } from './services-lifecycle.service';
 import { serviceAvailabilitySnapshot } from './service-availability';
 import {
     CreateJobDto, JobFromPurchaseDto, CancelJobDto, UpsertQuoteDto, ApplyCapabilityDto,
-    UpdateLeadMatchingDto,
+    UpdateLeadMatchingDto, UpdateJobMatchingDto, ServiceListQueryDto, ServiceJobFeedQueryDto,
 } from './dto';
 
 /** The TradeXchange paid-job commercial split is fixed: 9% CarMazium / 91% provider business. */
@@ -29,7 +30,7 @@ const SERVICE_PLATFORM_FEE_RATE = 0.09;
 @ApiTags('TradeXchange services')
 @ApiCookieAuth()
 @Controller('services')
-@UseGuards(SessionAuthGuard)
+@UseGuards(SessionAuthGuard, ThrottlerGuard)
 export class ServicesController {
     constructor(
         private readonly services: ServicesService,
@@ -73,9 +74,20 @@ export class ServicesController {
         return new StandardResponse(await this.services.updateLeadMatching(user.id, id, dto));
     }
 
+    @Patch('capabilities/:id/job-matching')
+    @ApiOperation({ summary: 'Configure Delivery/Inspection UK postcode coverage' })
+    async updateJobMatching(
+        @CurrentUser() user: any,
+        @Param('id') id: string,
+        @Body() dto: UpdateJobMatchingDto,
+    ) {
+        return new StandardResponse(await this.services.updateJobMatching(user.id, id, dto));
+    }
+
     // ── Customer ───────────────────────────────────────────────────────────
 
     @Post('jobs')
+    @Throttle({ default: { limit: 10, ttl: 60_000 } })
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Post a job — any signed-in account' })
     async create(@CurrentUser() user: any, @Body() dto: CreateJobDto) {
@@ -83,6 +95,7 @@ export class ServicesController {
     }
 
     @Post('jobs/from-purchase')
+    @Throttle({ default: { limit: 10, ttl: 60_000 } })
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Post a delivery job pre-filled from a won auction or accepted offer' })
     async fromPurchase(@CurrentUser() user: any, @Body() dto: JobFromPurchaseDto) {
@@ -91,22 +104,22 @@ export class ServicesController {
 
     @Get('jobs/my')
     @ApiOperation({ summary: 'Jobs the caller posted' })
-    async myJobs(@CurrentUser() user: any) {
-        return new StandardResponse(await this.services.myJobs(user.id));
+    async myJobs(@CurrentUser() user: any, @Query() page: ServiceListQueryDto) {
+        return new StandardResponse(await this.services.myJobsPage(user.id, page));
     }
 
     // ── Provider / authorised dealership team ─────────────────────────────
 
     @Get('jobs/feed')
     @UseGuards(ContractorGuard)
-    @ApiQuery({ name: 'serviceType', enum: Object.values(ServiceType), required: false })
-    @ApiOperation({ summary: 'Open jobs in approved service areas (customer identity redacted)' })
-    async feed(@Req() req: any, @Query('serviceType') serviceType?: string) {
+    @ApiOperation({ summary: 'Open jobs in approved service and postcode areas (cursor paginated)' })
+    async feed(@Req() req: any, @Query() query: ServiceJobFeedQueryDto) {
         return new StandardResponse(
-            await this.services.feed(
+            await this.services.feedPage(
                 req.contractorProfileId,
                 req.approvedServiceTypes,
-                serviceType as ServiceType | undefined,
+                query.serviceType,
+                query,
             ),
         );
     }
@@ -114,14 +127,19 @@ export class ServicesController {
     @Get('jobs/assigned')
     @UseGuards(ContractorGuard)
     @ApiOperation({ summary: 'Jobs assigned to the provider business and visible to the caller’s role' })
-    async assigned(@Req() req: any) {
-        const jobs = await this.services.assigned(req.contractorProfileId);
-        const allowed = new Set<ServiceType>(req.approvedServiceTypes ?? []);
-        return new StandardResponse(jobs.filter((job: any) => allowed.has(job.serviceType)));
+    async assigned(@Req() req: any, @Query() page: ServiceListQueryDto) {
+        return new StandardResponse(
+            await this.services.assignedPage(
+                req.contractorProfileId,
+                req.approvedServiceTypes ?? [],
+                page,
+            ),
+        );
     }
 
     @Put('jobs/:id/quote')
     @UseGuards(ContractorGuard)
+    @Throttle({ default: { limit: 20, ttl: 60_000 } })
     @ApiOperation({ summary: 'Create or update a quote on behalf of the provider business' })
     async quote(@Req() req: any, @CurrentUser() user: any, @Param('id') id: string, @Body() dto: UpsertQuoteDto) {
         if (req.tradeActor) await this.tradeTeam.assertJobPermission(req.tradeActor, id, 'quote');

@@ -13,12 +13,13 @@ describe('ServiceLeadsService', () => {
             contractorProfile: { findUnique: jest.fn() },
             contractorCapability: {
                 findUnique: jest.fn(),
-                findMany: jest.fn(),
+                findMany: jest.fn().mockResolvedValue([]),
                 update: jest.fn(),
             },
             serviceLead: {
                 create: jest.fn(),
-                findMany: jest.fn(),
+                count: jest.fn().mockResolvedValue(0),
+                findMany: jest.fn().mockResolvedValue([]),
                 findFirst: jest.fn(),
                 findUnique: jest.fn(),
                 updateMany: jest.fn().mockResolvedValue({ count: 0 }),
@@ -30,7 +31,10 @@ describe('ServiceLeadsService', () => {
                 update: jest.fn(),
                 updateMany: jest.fn(),
             },
-            $transaction: jest.fn(async (callback: any) => callback(prisma)),
+            $transaction: jest.fn(async (work: any) =>
+                typeof work === 'function' ? work(prisma) : Promise.all(work),
+            ),
+            $executeRaw: jest.fn().mockResolvedValue(1),
             $queryRaw: jest.fn().mockResolvedValue([]),
         };
         notifications = { create: jest.fn().mockResolvedValue({}) };
@@ -120,8 +124,13 @@ describe('ServiceLeadsService', () => {
         const result = await service.create('customer-1', {
             serviceType: ServiceType.FINANCE,
             consentToProviderContact: true,
+            vehicleRegistration: 'AB12 CDE',
+            vehicleValuePence: 1_500_000,
+            postcode: 'B1 1AA',
             depositPence: 100000,
             termMonths: 48,
+            monthlyBudgetPence: 35_000,
+            employmentStatus: 'Employed',
         } as any);
 
         expect(prisma.serviceLead.create).toHaveBeenCalledWith(expect.objectContaining({
@@ -150,6 +159,49 @@ describe('ServiceLeadsService', () => {
             userId: 'provider-user-1',
             entityId: 'lead-1',
         }));
+    });
+
+    it('rejects a Finance enquiry that lacks the minimum underwriting context', async () => {
+        prisma.user.findUnique.mockResolvedValue({
+            email: 'buyer@example.com',
+            firstName: 'Buyer',
+            lastName: 'One',
+            phone: '07000000000',
+            postcode: 'B1 1AA',
+        });
+
+        await expect(service.create('customer-1', {
+            serviceType: ServiceType.FINANCE,
+            vehicleRegistration: 'AB12 CDE',
+            vehicleValuePence: 1_500_000,
+            postcode: 'B1 1AA',
+            termMonths: 48,
+            consentToProviderContact: true,
+        } as any)).rejects.toBeInstanceOf(BadRequestException);
+
+        expect(prisma.serviceLead.create).not.toHaveBeenCalled();
+    });
+
+    it('enforces the five-active-enquiry limit inside the create transaction', async () => {
+        prisma.user.findUnique.mockResolvedValue({
+            email: 'buyer@example.com',
+            firstName: 'Buyer',
+            lastName: 'One',
+            phone: '07000000000',
+            postcode: 'B1 1AA',
+        });
+        prisma.serviceLead.count.mockResolvedValue(5);
+
+        await expect(service.create('customer-1', {
+            serviceType: ServiceType.WARRANTY,
+            vehicleRegistration: 'AB12 CDE',
+            warrantyMonths: 12,
+            warrantyLevel: 'Comprehensive',
+            consentToProviderContact: true,
+        } as any)).rejects.toBeInstanceOf(BadRequestException);
+
+        expect(prisma.$executeRaw).toHaveBeenCalled();
+        expect(prisma.serviceLead.create).not.toHaveBeenCalled();
     });
 
     it('does not approve FINANCE until its verification evidence is complete', async () => {
@@ -324,6 +376,59 @@ describe('ServiceLeadsService', () => {
         await expect(service.providerLead('warranty-user', 'lead-1'))
             .rejects.toBeInstanceOf(ForbiddenException);
         expect(prisma.serviceLeadRecipient.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('expires stale enquiries and closes NEW/VIEWED recipient rows together', async () => {
+        prisma.serviceLead.findMany.mockResolvedValue([{ id: 'lead-expired' }]);
+        prisma.serviceLead.updateMany.mockResolvedValue({ count: 1 });
+        prisma.serviceLeadRecipient.updateMany.mockResolvedValue({ count: 2 });
+
+        const expired = await service.expireOldLeads();
+
+        expect(expired).toBe(1);
+        expect(prisma.serviceLead.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: expect.objectContaining({ id: 'lead-expired', status: 'OPEN' }),
+            data: expect.objectContaining({ status: 'EXPIRED', closedAt: expect.any(Date) }),
+        }));
+        expect(prisma.serviceLeadRecipient.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: {
+                leadId: 'lead-expired',
+                status: { in: ['NEW', 'VIEWED'] },
+            },
+            data: expect.objectContaining({ status: 'CLOSED' }),
+        }));
+    });
+
+    it('does not claim an enquiry was viewed when a provider responds without opening its detail', async () => {
+        prisma.contractorProfile.findUnique.mockResolvedValue({
+            id: 'finance-profile',
+            businessName: 'Finance Co',
+            deletedAt: null,
+            capabilities: [{ serviceType: ServiceType.FINANCE }],
+        });
+        prisma.serviceLead.findUnique.mockResolvedValue({
+            id: 'lead-1',
+            customerId: 'customer-1',
+            serviceType: ServiceType.FINANCE,
+            status: 'OPEN',
+            expiresAt: new Date(Date.now() + 60_000),
+        });
+        prisma.serviceLeadRecipient.findUnique.mockResolvedValue({
+            id: 'recipient-1',
+            status: 'NEW',
+            viewedAt: null,
+        });
+        prisma.serviceLeadRecipient.update.mockResolvedValue({ id: 'recipient-1', status: 'RESPONDED' });
+
+        await service.respond('finance-user', 'lead-1', {
+            headline: 'Indicative option',
+            message: 'We can discuss this with you.',
+        } as any);
+
+        const data = prisma.serviceLeadRecipient.update.mock.calls[0][0].data;
+        expect(data.status).toBe('RESPONDED');
+        expect(data.respondedAt).toBeInstanceOf(Date);
+        expect(data).not.toHaveProperty('viewedAt');
     });
 
     it('rejects finance-only response fields on Warranty enquiries', async () => {

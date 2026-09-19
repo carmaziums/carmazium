@@ -24,16 +24,27 @@ import { PaymentsService } from '../payments/payments.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
 import {
     CreateJobDto, JobFromPurchaseDto, CancelJobDto, UpsertQuoteDto,
-    ApplyCapabilityDto, UpdateLeadMatchingDto, ReviewCapabilityDto, ResolveDisputeDto, JOB_SERVICE_TYPES,
+    ApplyCapabilityDto, UpdateLeadMatchingDto, UpdateJobMatchingDto, ReviewCapabilityDto, ResolveDisputeDto, JOB_SERVICE_TYPES,
 } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
 import { assertCapabilityVerificationReady } from './capability-verification';
 import { TradeTeamService } from './trade-team.service';
+import { parseFutureRequestedFor, postcodeArea, requireUkPostcode } from './service-validation';
+import { boundedServiceLimit, decodeServiceCursor, makeServicePage } from './service-pagination';
 
 /** Days an OPEN job accepts quotes before it expires. */
 const JOB_OPEN_DAYS = 7;
 /** Hours after a contractor marks COMPLETED before the customer is assumed to agree. */
 const AUTO_CONFIRM_HOURS = 48;
+export const MAX_ACTIVE_SERVICE_JOBS_PER_CUSTOMER = 10;
+const ACTIVE_CUSTOMER_JOB_STATUSES: ServiceJobStatus[] = [
+    ServiceJobStatus.OPEN,
+    ServiceJobStatus.ACCEPTED,
+    ServiceJobStatus.PAID,
+    ServiceJobStatus.IN_PROGRESS,
+    ServiceJobStatus.COMPLETED,
+    ServiceJobStatus.DISPUTED,
+];
 
 /**
  * What a job looks like to whoever is asking. The customer's identity and
@@ -85,6 +96,171 @@ export class ServicesService {
 
     private frontendUrl(): string {
         return resolveFrontendUrl(this.config.get<string>('FRONTEND_URL'));
+    }
+
+    private async withActiveJobSlot<T>(
+        customerId: string,
+        work: (tx: any) => Promise<T>,
+    ): Promise<T> {
+        const run = async (tx: any) => {
+            // Serialize creates per customer so simultaneous requests cannot
+            // both observe a free slot and bypass the active-job limit.
+            if (typeof tx.$executeRaw === 'function') {
+                await tx.$executeRaw(Prisma.sql`
+                    SELECT pg_advisory_xact_lock(hashtextextended(${`service-job:${customerId}`}, 0))
+                `);
+            }
+            const activeCount = typeof tx.serviceJob.count === 'function'
+                ? await tx.serviceJob.count({
+                    where: {
+                        customerId,
+                        status: { in: ACTIVE_CUSTOMER_JOB_STATUSES },
+                    },
+                })
+                : 0;
+            if (activeCount >= MAX_ACTIVE_SERVICE_JOBS_PER_CUSTOMER) {
+                throw new BadRequestException(
+                    `You can have up to ${MAX_ACTIVE_SERVICE_JOBS_PER_CUSTOMER} active Delivery/Inspection jobs at one time. Finish or close an existing job before posting another.`,
+                );
+            }
+            return work(tx);
+        };
+
+        if (typeof (this.prisma as any).$transaction === 'function') {
+            return (this.prisma as any).$transaction(run);
+        }
+        return run(this.prisma as any);
+    }
+
+    private async capabilityAllowsJob(
+        contractorProfileId: string,
+        serviceType: ServiceType,
+        workPostcodeArea: string | null,
+    ): Promise<boolean> {
+        const capability = await this.prisma.contractorCapability.findUnique({
+            where: {
+                contractorId_serviceType: {
+                    contractorId: contractorProfileId,
+                    serviceType,
+                },
+            },
+            select: {
+                status: true,
+                jobNationwide: true,
+                jobPostcodeAreas: true,
+            },
+        });
+        if (!capability || capability.status !== CapabilityStatus.APPROVED) return false;
+
+        // Compatibility with isolated pre-Block-8 test fixtures. Production
+        // rows always have these non-null columns once the migration is live.
+        if (
+            (capability as any).jobNationwide === undefined
+            && (capability as any).jobPostcodeAreas === undefined
+        ) {
+            return true;
+        }
+
+        if (capability.jobNationwide) return true;
+        if (!workPostcodeArea) return false;
+        return (capability.jobPostcodeAreas ?? [])
+            .map((area) => area.toUpperCase())
+            .includes(workPostcodeArea.toUpperCase());
+    }
+
+    private jobArea(job: {
+        workPostcodeArea?: string | null;
+        serviceType: ServiceType;
+        pickupPostcode?: string | null;
+        servicePostcode?: string | null;
+    }): string | null {
+        return job.workPostcodeArea
+            ?? postcodeArea(
+                job.serviceType === ServiceType.DELIVERY
+                    ? job.pickupPostcode
+                    : job.servicePostcode,
+            );
+    }
+
+    private async prepareManualJobVehicles(
+        customerId: string,
+        serviceType: ServiceType,
+        vehicles: CreateJobDto['vehicles'],
+    ) {
+        const listingIds = vehicles
+            .map((vehicle) => vehicle.listingId)
+            .filter((id): id is string => !!id);
+        if (new Set(listingIds).size !== listingIds.length) {
+            throw new BadRequestException('The same CarMazium listing cannot be linked twice to one service job.');
+        }
+
+        const listings = listingIds.length
+            ? await this.prisma.listing.findMany({
+                where: { id: { in: listingIds }, deletedAt: null },
+                include: {
+                    vehicle: true,
+                    sale: { select: { buyerId: true } },
+                    auction: { select: { winnerId: true } },
+                    offers: {
+                        where: { status: 'ACCEPTED' },
+                        select: { buyerId: true },
+                    },
+                },
+            })
+            : [];
+        if (listings.length !== listingIds.length) {
+            throw new BadRequestException('One or more linked CarMazium listings are unavailable.');
+        }
+
+        const byId = new Map(listings.map((listing) => [listing.id, listing]));
+        return vehicles.map((vehicle) => {
+            if (!vehicle.listingId) {
+                return {
+                    registration: vehicle.registration?.toUpperCase().replace(/\s+/g, '') || null,
+                    make: vehicle.make?.trim() || null,
+                    model: vehicle.model?.trim() || null,
+                    year: vehicle.year ?? null,
+                    notes: vehicle.notes?.trim() || null,
+                    listingId: null,
+                };
+            }
+
+            const listing: any = byId.get(vehicle.listingId);
+            const related =
+                listing.sellerId === customerId
+                || listing.sale?.buyerId === customerId
+                || listing.auction?.winnerId === customerId
+                || listing.offers.some((offer: any) => offer.buyerId === customerId);
+
+            if (serviceType === ServiceType.DELIVERY && !related) {
+                throw new ForbiddenException(
+                    'A manually linked Delivery vehicle must be a listing connected to your account. For an unrelated vehicle, post it without a listing link.',
+                );
+            }
+            if (
+                serviceType === ServiceType.INSPECTION
+                && !related
+                && String(listing.status) !== 'ACTIVE'
+            ) {
+                throw new ForbiddenException(
+                    'An Inspection can link either an active public listing or a vehicle connected to your account.',
+                );
+            }
+
+            return {
+                registration: (
+                    listing.vehicle?.registration
+                    ?? listing.vrm
+                    ?? vehicle.registration
+                    ?? ''
+                ).toUpperCase().replace(/\s+/g, '') || null,
+                make: listing.vehicle?.make?.trim() || listing.make?.trim() || vehicle.make?.trim() || null,
+                model: listing.vehicle?.model?.trim() || listing.model?.trim() || vehicle.model?.trim() || null,
+                year: listing.vehicle?.year ?? listing.year ?? vehicle.year ?? null,
+                notes: vehicle.notes?.trim() || null,
+                listingId: listing.id,
+            };
+        });
     }
 
     // ── Capabilities ───────────────────────────────────────────────────────
@@ -174,6 +350,35 @@ export class ServicesService {
                 complete: !!user?.stripeConnectOnboardingComplete,
             },
         };
+    }
+
+    async updateJobMatching(userId: string, capabilityId: string, dto: UpdateJobMatchingDto) {
+        const capability = await this.prisma.contractorCapability.findFirst({
+            where: {
+                id: capabilityId,
+                contractor: { userId, deletedAt: null },
+            },
+            select: { id: true, serviceType: true },
+        });
+        if (!capability) throw new NotFoundException('Service capability not found on your account.');
+        if (![ServiceType.DELIVERY, ServiceType.INSPECTION].includes(capability.serviceType)) {
+            throw new BadRequestException('Job matching settings apply only to Delivery/Recovery and Inspection capabilities.');
+        }
+
+        const postcodeAreas = [...new Set((dto.jobPostcodeAreas ?? [])
+            .map((area) => area.trim().toUpperCase())
+            .filter(Boolean))];
+        if (!dto.jobNationwide && postcodeAreas.length === 0) {
+            throw new BadRequestException('Choose nationwide coverage or at least one UK postcode area.');
+        }
+
+        return this.prisma.contractorCapability.update({
+            where: { id: capability.id },
+            data: {
+                jobNationwide: dto.jobNationwide,
+                jobPostcodeAreas: dto.jobNationwide ? [] : postcodeAreas,
+            },
+        });
     }
 
     async updateLeadMatching(userId: string, capabilityId: string, dto: UpdateLeadMatchingDto) {
@@ -284,6 +489,16 @@ export class ServicesService {
 
         let verification: Awaited<ReturnType<typeof assertCapabilityVerificationReady>> | null = null;
         if (dto.status === CapabilityStatus.APPROVED) {
+            if (
+                [ServiceType.DELIVERY, ServiceType.INSPECTION].includes(cap.serviceType)
+                && (cap as any).jobNationwide === false
+                && Array.isArray((cap as any).jobPostcodeAreas)
+                && (cap as any).jobPostcodeAreas.length === 0
+            ) {
+                throw new BadRequestException(
+                    'Configure nationwide coverage or at least one UK postcode area before approving this paid-job capability.',
+                );
+            }
             const u = cap.contractor.user;
             if (!u.stripeConnectAccountId || !u.stripeConnectOnboardingComplete) {
                 throw new BadRequestException(
@@ -342,42 +557,48 @@ export class ServicesService {
             throw new BadRequestException(`${this.label(dto.serviceType)} is enquiry-based and does not take jobs yet.`);
         }
         assertServiceAcceptingNewRequests(dto.serviceType);
+
+        const requestedFor = parseFutureRequestedFor(dto.requestedFor);
+        let pickupPostcode: string | null = null;
+        let deliveryPostcode: string | null = null;
+        let servicePostcode: string | null = null;
+
         if (dto.serviceType === ServiceType.DELIVERY) {
-            if (!dto.pickupPostcode || !dto.deliveryPostcode) {
-                throw new BadRequestException('Delivery jobs need a pickup and a delivery postcode.');
-            }
-        } else if (!dto.servicePostcode) {
-            throw new BadRequestException('Inspection jobs need the postcode where the vehicle is.');
+            pickupPostcode = requireUkPostcode(dto.pickupPostcode, 'Pickup postcode');
+            deliveryPostcode = requireUkPostcode(dto.deliveryPostcode, 'Delivery postcode');
+        } else {
+            servicePostcode = requireUkPostcode(dto.servicePostcode, 'Inspection postcode');
         }
 
-        const job = await this.prisma.serviceJob.create({
+        const workPostcodeArea = postcodeArea(
+            dto.serviceType === ServiceType.DELIVERY ? pickupPostcode : servicePostcode,
+        );
+        if (!workPostcodeArea) {
+            throw new BadRequestException('Unable to determine the UK postcode area for this job.');
+        }
+
+        const vehicles = await this.prepareManualJobVehicles(customerId, dto.serviceType, dto.vehicles);
+
+        const job = await this.withActiveJobSlot(customerId, async (tx) => tx.serviceJob.create({
             data: {
                 customerId,
                 serviceType: dto.serviceType,
                 isRecovery: dto.serviceType === ServiceType.DELIVERY && !!dto.isRecovery,
                 title: dto.title.trim(),
                 description: dto.description?.trim() || null,
-                pickupPostcode: normPostcode(dto.pickupPostcode),
+                pickupPostcode,
                 pickupAddress: dto.pickupAddress?.trim() || null,
-                deliveryPostcode: normPostcode(dto.deliveryPostcode),
+                deliveryPostcode,
                 deliveryAddress: dto.deliveryAddress?.trim() || null,
-                servicePostcode: normPostcode(dto.servicePostcode),
+                servicePostcode,
                 serviceAddress: dto.serviceAddress?.trim() || null,
-                requestedFor: dto.requestedFor ? new Date(dto.requestedFor) : null,
+                workPostcodeArea,
+                requestedFor,
                 expiresAt: new Date(Date.now() + JOB_OPEN_DAYS * 86_400_000),
-                vehicles: {
-                    create: dto.vehicles.map((v) => ({
-                        registration: v.registration?.toUpperCase().replace(/\s+/g, '') || null,
-                        make: v.make?.trim() || null,
-                        model: v.model?.trim() || null,
-                        year: v.year ?? null,
-                        notes: v.notes?.trim() || null,
-                        listingId: v.listingId ?? null,
-                    })),
-                },
+                vehicles: { create: vehicles },
             },
             include: { vehicles: true },
-        });
+        }));
 
         this.logger.log(`Service job ${job.id} (${job.serviceType}) posted by ${customerId}`);
         return job;
@@ -496,9 +717,19 @@ export class ServicesService {
             };
         }
 
-        const sellerPostcode = normPostcode(listing?.seller?.postcode);
-        if (!sellerPostcode) {
-            throw new BadRequestException('The seller has no postcode on file — post a delivery job manually with the pickup address.');
+        let sellerPostcode: string;
+        try {
+            sellerPostcode = requireUkPostcode(listing?.seller?.postcode, 'Seller postcode');
+        } catch {
+            throw new BadRequestException(
+                'The seller has no valid UK postcode on file — post a delivery job manually with the pickup address.',
+            );
+        }
+        const deliveryPostcode = requireUkPostcode(dto.deliveryPostcode, 'Delivery postcode');
+        const requestedFor = parseFutureRequestedFor(dto.requestedFor);
+        const workPostcodeArea = postcodeArea(sellerPostcode);
+        if (!workPostcodeArea) {
+            throw new BadRequestException('Unable to determine the seller postcode area for delivery matching.');
         }
 
         const pickupAddress = [
@@ -521,16 +752,17 @@ export class ServicesService {
         if (existing) return existing;
 
         try {
-            return await this.prisma.serviceJob.create({
+            return await this.withActiveJobSlot(customerId, async (tx) => tx.serviceJob.create({
                 data: {
                     customerId,
                     serviceType: ServiceType.DELIVERY,
                     title: `Deliver ${listing.title}`.slice(0, 120),
                     pickupPostcode: sellerPostcode,
                     pickupAddress,
-                    deliveryPostcode: normPostcode(dto.deliveryPostcode),
+                    deliveryPostcode,
                     deliveryAddress: dto.deliveryAddress?.trim() || null,
-                    requestedFor: dto.requestedFor ? new Date(dto.requestedFor) : null,
+                    workPostcodeArea,
+                    requestedFor,
                     expiresAt: new Date(Date.now() + JOB_OPEN_DAYS * 86_400_000),
                     sourceOfferId: dto.offerId ?? null,
                     sourceAuctionId: dto.auctionId ?? null,
@@ -545,7 +777,7 @@ export class ServicesService {
                     },
                 },
                 include: { vehicles: true },
-            });
+            }));
         } catch (error) {
             // The database has partial unique indexes for active purchase-linked
             // delivery jobs. If two clicks arrive concurrently, the losing
@@ -566,16 +798,40 @@ export class ServicesService {
         }
     }
 
-    async myJobs(customerId: string) {
-        return this.prisma.serviceJob.findMany({
-            where: { customerId },
-            orderBy: { createdAt: 'desc' },
+    async myJobsPage(
+        customerId: string,
+        options: { limit?: number; cursor?: string } = {},
+    ) {
+        const limit = boundedServiceLimit(options.limit);
+        const cursor = decodeServiceCursor(options.cursor);
+        const cursorDate = cursor ? new Date(cursor.at) : null;
+        const jobs = await this.prisma.serviceJob.findMany({
+            where: {
+                customerId,
+                ...(cursorDate ? {
+                    OR: [
+                        { createdAt: { lt: cursorDate } },
+                        { createdAt: cursorDate, id: { lt: cursor!.id } },
+                    ],
+                } : {}),
+            },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            take: limit + 1,
             include: {
                 vehicles: true,
                 contractor: { select: CONTRACTOR_PUBLIC },
                 _count: { select: { quotes: { where: { status: ServiceQuoteStatus.ACTIVE } } } },
             },
         });
+        return makeServicePage(jobs, limit, (job) => ({
+            at: job.createdAt.toISOString(),
+            id: job.id,
+        }));
+    }
+
+    /** Compatibility helper for internal/tests; HTTP routes use cursor pages. */
+    async myJobs(customerId: string) {
+        return (await this.myJobsPage(customerId, { limit: 50 })).items;
     }
 
     async cancelJob(customerId: string, jobId: string, dto: CancelJobDto) {
@@ -901,16 +1157,86 @@ export class ServicesService {
 
     // ── Jobs: contractor ───────────────────────────────────────────────────
 
-    async feed(contractorProfileId: string, approved: ServiceType[], serviceType?: ServiceType) {
+    async feedPage(
+        contractorProfileId: string,
+        approved: ServiceType[],
+        serviceType?: ServiceType,
+        options: { limit?: number; cursor?: string } = {},
+    ) {
         if (serviceType && !Object.values(ServiceType).includes(serviceType)) {
             throw new BadRequestException(`Unknown service type "${serviceType}"`);
         }
-        const types = serviceType ? approved.filter((t) => t === serviceType) : approved;
-        if (types.length === 0) return [];
+        const types = serviceType ? approved.filter((type) => type === serviceType) : approved;
+        if (types.length === 0) return { items: [], nextCursor: null };
+
+        const capabilities = await this.prisma.contractorCapability.findMany({
+            where: {
+                contractorId: contractorProfileId,
+                status: CapabilityStatus.APPROVED,
+                serviceType: { in: types },
+            },
+            select: {
+                serviceType: true,
+                jobNationwide: true,
+                jobPostcodeAreas: true,
+            },
+        });
+
+        const coverage = capabilities
+            .map((capability: any) => {
+                const legacyFixture =
+                    capability.jobNationwide === undefined
+                    && capability.jobPostcodeAreas === undefined;
+                if (legacyFixture || capability.jobNationwide) {
+                    return { serviceType: capability.serviceType };
+                }
+                const areas = (capability.jobPostcodeAreas ?? [])
+                    .map((area: string) => area.toUpperCase())
+                    .filter(Boolean);
+                return areas.length
+                    ? {
+                        serviceType: capability.serviceType,
+                        workPostcodeArea: { in: areas },
+                    }
+                    : null;
+            })
+            .filter(Boolean) as Prisma.ServiceJobWhereInput[];
+
+        if (coverage.length === 0) return { items: [], nextCursor: null };
+
+        const limit = boundedServiceLimit(options.limit);
+        const cursor = decodeServiceCursor(options.cursor);
+        const cursorDate = cursor ? new Date(cursor.at) : null;
+        const olderWithinPriority = cursorDate
+            ? {
+                OR: [
+                    { createdAt: { lt: cursorDate } },
+                    { createdAt: cursorDate, id: { lt: cursor!.id } },
+                ],
+            }
+            : null;
+        const cursorFilter: Prisma.ServiceJobWhereInput | null = cursorDate
+            ? cursor!.priority === true
+                ? {
+                    OR: [
+                        { isRecovery: true, ...olderWithinPriority },
+                        { isRecovery: false },
+                    ],
+                }
+                : { isRecovery: false, ...olderWithinPriority }
+            : null;
 
         const jobs = await this.prisma.serviceJob.findMany({
-            where: { status: ServiceJobStatus.OPEN, serviceType: { in: types }, expiresAt: { gt: new Date() } },
-            orderBy: [{ isRecovery: 'desc' }, { createdAt: 'desc' }],
+            where: {
+                status: ServiceJobStatus.OPEN,
+                expiresAt: { gt: new Date() },
+                AND: [
+                    { OR: coverage },
+                    ...(cursorFilter ? [cursorFilter] : []),
+                ],
+            },
+            orderBy: [{ isRecovery: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+            take: limit + 1,
             include: {
                 vehicles: true,
                 customer: { select: CUSTOMER_PUBLIC },
@@ -918,16 +1244,59 @@ export class ServicesService {
                 _count: { select: { quotes: { where: { status: ServiceQuoteStatus.ACTIVE } } } },
             },
         });
-        return jobs.map((j) => this.redact(j, false));
+
+        const page = makeServicePage(jobs, limit, (job) => ({
+            at: job.createdAt.toISOString(),
+            id: job.id,
+            priority: job.isRecovery,
+        }));
+        return {
+            ...page,
+            items: page.items.map((job) => this.redact(job, false)),
+        };
     }
 
-    async assigned(contractorProfileId: string) {
+    /** Compatibility helper for internal/tests; HTTP feed uses cursor pages. */
+    async feed(contractorProfileId: string, approved: ServiceType[], serviceType?: ServiceType) {
+        return (await this.feedPage(contractorProfileId, approved, serviceType, { limit: 50 })).items;
+    }
+
+    async assignedPage(
+        contractorProfileId: string,
+        approved: ServiceType[],
+        options: { limit?: number; cursor?: string } = {},
+    ) {
+        const limit = boundedServiceLimit(options.limit);
+        const cursor = decodeServiceCursor(options.cursor);
+        const cursorDate = cursor ? new Date(cursor.at) : null;
         const jobs = await this.prisma.serviceJob.findMany({
-            where: { contractorId: contractorProfileId },
-            orderBy: { updatedAt: 'desc' },
+            where: {
+                contractorId: contractorProfileId,
+                serviceType: { in: approved },
+                ...(cursorDate ? {
+                    OR: [
+                        { updatedAt: { lt: cursorDate } },
+                        { updatedAt: cursorDate, id: { lt: cursor!.id } },
+                    ],
+                } : {}),
+            },
+            orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+            take: limit + 1,
             include: { vehicles: true, customer: { select: CUSTOMER_PRIVATE }, payment: true },
         });
-        return jobs.map((job) => this.redact(job, this.contactUnlocked(job.payment?.status)));
+        const page = makeServicePage(jobs, limit, (job) => ({
+            at: job.updatedAt.toISOString(),
+            id: job.id,
+        }));
+        return {
+            ...page,
+            items: page.items.map((job) => this.redact(job, this.contactUnlocked(job.payment?.status))),
+        };
+    }
+
+    /** Compatibility helper for internal/tests; HTTP assigned list is paginated. */
+    async assigned(contractorProfileId: string, approved: ServiceType[] = JOB_SERVICE_TYPES as unknown as ServiceType[]) {
+        return (await this.assignedPage(contractorProfileId, approved, { limit: 50 })).items;
     }
 
     async upsertQuote(contractorProfileId: string, approved: ServiceType[], userId: string, jobId: string, dto: UpsertQuoteDto) {
@@ -938,6 +1307,13 @@ export class ServicesService {
         }
         if (!approved.includes(job.serviceType)) {
             throw new ForbiddenException(`You are not approved for ${this.label(job.serviceType)} jobs.`);
+        }
+        if (!(await this.capabilityAllowsJob(
+            contractorProfileId,
+            job.serviceType,
+            this.jobArea(job),
+        ))) {
+            throw new ForbiddenException('This job is outside your approved TradeXchange service area.');
         }
         if (job.customerId === userId) throw new BadRequestException('You cannot quote on your own job.');
 
@@ -1086,16 +1462,11 @@ export class ServicesService {
         const hasQuoted = !!viewer.contractorProfileId && job.quotes.some((q) => q.contractorId === viewer.contractorProfileId);
         let isEligible = false;
         if (viewer.contractorProfileId && job.status === ServiceJobStatus.OPEN) {
-            const capability = await this.prisma.contractorCapability.findUnique({
-                where: {
-                    contractorId_serviceType: {
-                        contractorId: viewer.contractorProfileId,
-                        serviceType: job.serviceType,
-                    },
-                },
-                select: { status: true },
-            });
-            isEligible = capability?.status === CapabilityStatus.APPROVED;
+            isEligible = await this.capabilityAllowsJob(
+                viewer.contractorProfileId,
+                job.serviceType,
+                this.jobArea(job),
+            );
         }
 
         if (!isCustomer && !isAdmin && !isAccepted && !hasQuoted && !isEligible) {

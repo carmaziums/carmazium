@@ -126,6 +126,7 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
             postcode: 'B1 1AA',
             annualIncomePence: 3_600_000,
             termMonths: 48,
+            employmentStatus: 'Employed',
             consentToProviderContact: true,
         } as any);
 
@@ -147,10 +148,12 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
 
         await service.create('customer-1', {
             serviceType: ServiceType.FINANCE,
+            vehicleRegistration: 'AB12 CDE',
             postcode: 'B1 1AA',
             vehicleValuePence: 1_500_000,
             annualIncomePence: 3_600_000,
             termMonths: 48,
+            employmentStatus: 'Employed',
             consentToProviderContact: true,
         } as any);
 

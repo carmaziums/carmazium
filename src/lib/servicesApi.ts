@@ -122,6 +122,8 @@ export interface ContractorCapability {
   verificationExpiresAt: string | null;
   verificationReminder30SentAt: string | null;
   verificationReminder7SentAt: string | null;
+  jobNationwide: boolean;
+  jobPostcodeAreas: string[];
   leadNationwide: boolean;
   leadPostcodeAreas: string[];
   leadMinVehicleValuePence: number | null;
@@ -207,6 +209,11 @@ export interface ServiceLead {
   responses?: ServiceLeadResponse[];
 }
 
+export interface CursorPage<T> {
+  items: T[];
+  nextCursor: string | null;
+}
+
 export const formatPence = (p: number) =>
   `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -247,8 +254,14 @@ export async function createJobFromPurchase(input: PurchaseDeliverySource & {
   const r = await apiClient<{ data: ServiceJob }>('/services/jobs/from-purchase', { method: 'POST', body: JSON.stringify(input) });
   return r.data;
 }
+export async function getMyJobsPage(cursor?: string, limit = 20): Promise<CursorPage<ServiceJob>> {
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (cursor) q.set('cursor', cursor);
+  const r = await apiClient<{ data: CursorPage<ServiceJob> }>(`/services/jobs/my?${q.toString()}`);
+  return r.data;
+}
 export async function getMyJobs(): Promise<ServiceJob[]> {
-  const r = await apiClient<{ data: ServiceJob[] }>('/services/jobs/my'); return r.data;
+  return (await getMyJobsPage()).items;
 }
 export async function getJob(id: string): Promise<ServiceJob> {
   const r = await apiClient<{ data: ServiceJob }>(`/services/jobs/${id}`); return r.data;
@@ -286,6 +299,18 @@ export interface LeadMatchingInput {
   leadWarrantyMinMonths?: number;
   leadWarrantyMaxMonths?: number;
 }
+export interface JobMatchingInput {
+  jobNationwide: boolean;
+  jobPostcodeAreas?: string[];
+}
+export async function updateJobMatching(id: string, input: JobMatchingInput): Promise<ContractorCapability> {
+  const r = await apiClient<{ data: ContractorCapability }>(`/services/capabilities/${id}/job-matching`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+  return r.data;
+}
+
 export async function updateLeadMatching(id: string, input: LeadMatchingInput): Promise<ContractorCapability> {
   const r = await apiClient<{ data: ContractorCapability }>(`/services/capabilities/${id}/lead-matching`, {
     method: 'PATCH',
@@ -293,12 +318,28 @@ export async function updateLeadMatching(id: string, input: LeadMatchingInput): 
   });
   return r.data;
 }
+export async function getJobFeedPage(
+  serviceType?: ServiceType,
+  cursor?: string,
+  limit = 20,
+): Promise<CursorPage<ServiceJob>> {
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (serviceType) q.set('serviceType', serviceType);
+  if (cursor) q.set('cursor', cursor);
+  const r = await apiClient<{ data: CursorPage<ServiceJob> }>(`/services/jobs/feed?${q.toString()}`);
+  return r.data;
+}
 export async function getJobFeed(serviceType?: ServiceType): Promise<ServiceJob[]> {
-  const q = serviceType ? `?serviceType=${serviceType}` : '';
-  const r = await apiClient<{ data: ServiceJob[] }>(`/services/jobs/feed${q}`); return r.data;
+  return (await getJobFeedPage(serviceType)).items;
+}
+export async function getAssignedJobsPage(cursor?: string, limit = 20): Promise<CursorPage<ServiceJob>> {
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (cursor) q.set('cursor', cursor);
+  const r = await apiClient<{ data: CursorPage<ServiceJob> }>(`/services/jobs/assigned?${q.toString()}`);
+  return r.data;
 }
 export async function getAssignedJobs(): Promise<ServiceJob[]> {
-  const r = await apiClient<{ data: ServiceJob[] }>('/services/jobs/assigned'); return r.data;
+  return (await getAssignedJobsPage()).items;
 }
 export async function upsertQuote(jobId: string, input: { amountPence: number; message?: string; validUntil?: string }): Promise<ServiceQuote> {
   const r = await apiClient<{ data: ServiceQuote }>(`/services/jobs/${jobId}/quote`, { method: 'PUT', body: JSON.stringify(input) }); return r.data;
@@ -332,8 +373,14 @@ export interface CreateServiceLeadInput {
 export async function createServiceLead(input: CreateServiceLeadInput): Promise<ServiceLead> {
   const r = await apiClient<{ data: ServiceLead }>('/services/leads', { method: 'POST', body: JSON.stringify(input) }); return r.data;
 }
+export async function getMyServiceLeadsPage(cursor?: string, limit = 20): Promise<CursorPage<ServiceLead>> {
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (cursor) q.set('cursor', cursor);
+  const r = await apiClient<{ data: CursorPage<ServiceLead> }>(`/services/leads/my?${q.toString()}`);
+  return r.data;
+}
 export async function getMyServiceLeads(): Promise<ServiceLead[]> {
-  const r = await apiClient<{ data: ServiceLead[] }>('/services/leads/my'); return r.data;
+  return (await getMyServiceLeadsPage()).items;
 }
 export async function getServiceLead(id: string): Promise<ServiceLead> {
   const r = await apiClient<{ data: ServiceLead }>(`/services/leads/${id}`); return r.data;
@@ -341,9 +388,19 @@ export async function getServiceLead(id: string): Promise<ServiceLead> {
 export async function closeServiceLead(id: string): Promise<ServiceLead> {
   const r = await apiClient<{ data: ServiceLead }>(`/services/leads/${id}/close`, { method: 'POST' }); return r.data;
 }
+export async function getLeadInboxPage(
+  serviceType?: 'FINANCE' | 'WARRANTY',
+  cursor?: string,
+  limit = 20,
+): Promise<CursorPage<ServiceLead>> {
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (serviceType) q.set('serviceType', serviceType);
+  if (cursor) q.set('cursor', cursor);
+  const r = await apiClient<{ data: CursorPage<ServiceLead> }>(`/services/leads/inbox?${q.toString()}`);
+  return r.data;
+}
 export async function getLeadInbox(serviceType?: 'FINANCE' | 'WARRANTY'): Promise<ServiceLead[]> {
-  const q = serviceType ? `?serviceType=${serviceType}` : '';
-  const r = await apiClient<{ data: ServiceLead[] }>(`/services/leads/inbox${q}`); return r.data;
+  return (await getLeadInboxPage(serviceType)).items;
 }
 export async function getProviderServiceLead(id: string): Promise<ServiceLead> {
   const r = await apiClient<{ data: ServiceLead }>(`/services/leads/inbox/${id}`); return r.data;

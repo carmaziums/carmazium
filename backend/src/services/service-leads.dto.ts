@@ -11,7 +11,24 @@ import {
     Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import { ServiceType } from '@prisma/client';
+
+export class ServiceLeadListQueryDto {
+    @ApiPropertyOptional({ minimum: 1, maximum: 50, default: 20 })
+    @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(50)
+    limit?: number;
+
+    @ApiPropertyOptional({ description: 'Opaque cursor returned by the previous page' })
+    @IsOptional() @IsString() @MaxLength(500)
+    cursor?: string;
+}
+
+export class ServiceLeadInboxQueryDto extends ServiceLeadListQueryDto {
+    @ApiPropertyOptional({ enum: [ServiceType.FINANCE, ServiceType.WARRANTY] })
+    @IsOptional() @IsEnum(ServiceType)
+    serviceType?: ServiceType;
+}
 
 export class CreateServiceLeadDto {
     @ApiProperty({ enum: [ServiceType.FINANCE, ServiceType.WARRANTY] })

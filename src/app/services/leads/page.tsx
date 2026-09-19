@@ -6,21 +6,40 @@ import { notFound } from "next/navigation"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { financeServiceEnabled, warrantyServiceEnabled } from "@/lib/featureFlags"
-import { getMyServiceLeads, type ServiceLead, SERVICE_LABELS } from "@/lib/servicesApi"
+import { getMyServiceLeadsPage, type ServiceLead, SERVICE_LABELS } from "@/lib/servicesApi"
 
 export default function MyServiceLeadsPage() {
     const { user, loading } = useAuth()
     const [leads, setLeads] = React.useState<ServiceLead[]>([])
     const [error, setError] = React.useState<string | null>(null)
     const [busy, setBusy] = React.useState(true)
+    const [nextCursor, setNextCursor] = React.useState<string | null>(null)
+    const [loadingMore, setLoadingMore] = React.useState(false)
 
     if (!financeServiceEnabled && !warrantyServiceEnabled) notFound()
 
     React.useEffect(() => {
         if (loading) return
         if (!user) { setBusy(false); return }
-        getMyServiceLeads().then(setLeads).catch(e => setError(e?.message || "Could not load enquiries")).finally(() => setBusy(false))
+        getMyServiceLeadsPage()
+            .then(page => { setLeads(page.items); setNextCursor(page.nextCursor) })
+            .catch(e => setError(e?.message || "Could not load enquiries"))
+            .finally(() => setBusy(false))
     }, [user, loading])
+
+    const loadMore = async () => {
+        if (!nextCursor || loadingMore) return
+        setLoadingMore(true)
+        try {
+            const page = await getMyServiceLeadsPage(nextCursor)
+            setLeads(current => [...current, ...page.items])
+            setNextCursor(page.nextCursor)
+        } catch (e: any) {
+            setError(e?.message || "Could not load more enquiries")
+        } finally {
+            setLoadingMore(false)
+        }
+    }
 
     return (
         <div className="min-h-screen pt-24 pb-20">
@@ -49,6 +68,12 @@ export default function MyServiceLeadsPage() {
                         </Link>
                     ))}
                 </div>
+                {nextCursor && <div className="flex justify-center mt-8">
+                    <button type="button" onClick={loadMore} disabled={loadingMore}
+                        className="rounded-xl border border-[var(--border-default)] px-5 py-2.5 text-sm font-bold hover:border-primary disabled:opacity-50">
+                        {loadingMore ? "Loading…" : "Load more enquiries"}
+                    </button>
+                </div>}
             </main>
         </div>
     )
