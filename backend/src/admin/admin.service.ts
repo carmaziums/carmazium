@@ -11,6 +11,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { SellersService } from '../sellers/sellers.service';
 import { AuctionsService } from '../auctions/auctions.service';
 import { buildListingActivationData } from '../listings/listing-activation';
+import { getListingSubmissionReadiness } from '../listings/listing-readiness';
 
 @Injectable()
 export class AdminService {
@@ -502,6 +503,7 @@ export class AdminService {
             where: { id },
             include: {
                 auction: true,
+                hpiReport: { select: { id: true } },
                 linkedListing: {
                     select: {
                         id: true,
@@ -510,6 +512,7 @@ export class AdminService {
                         status: true,
                         linkedListingId: true,
                         deletedAt: true,
+                        hpiReport: { select: { id: true } },
                     },
                 },
             },
@@ -519,6 +522,27 @@ export class AdminService {
         }
         if (listing.status !== 'PENDING_REVIEW') {
             throw new BadRequestException('Only listings awaiting review can be approved');
+        }
+
+        const readiness = getListingSubmissionReadiness(listing, {
+            hasRequiredHpi: Boolean(
+                listing.hpiReport
+                || (
+                    listing.type === 'AUCTION'
+                    && listing.linkedListingId
+                    && listing.linkedListing?.hpiReport
+                )
+            ),
+        });
+        if (readiness.missingFields.length > 0) {
+            throw new BadRequestException(
+                `Listing is incomplete and cannot be approved. Missing: ${readiness.missingFields.join(', ')}.`,
+            );
+        }
+        if (readiness.missingHpi) {
+            throw new BadRequestException(
+                'This listing requires a CarMazium vehicle history (HPI) report request before approval.',
+            );
         }
 
         // AUCTION listings are not valid without their Auction row. Keeping this
