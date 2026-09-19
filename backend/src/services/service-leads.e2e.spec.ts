@@ -391,11 +391,30 @@ describe('Finance enquiry — end to end', () => {
         expect(inbox[0]).toMatchObject({
             id: lead.id,
             serviceType: ServiceType.FINANCE,
-            recipientStatus: 'NEW',
+            recipientStatus: 'VIEWED',
         });
 
         await expect(
             service.inbox('warranty-user', ServiceType.FINANCE),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+
+        const providerDetail = await service.providerLead('finance-user', lead.id);
+        expect(providerDetail).toMatchObject({
+            fullName: 'Cara Customer',
+            email: 'customer@example.com',
+            phone: '07000000001',
+            postcode: 'B1 1AA',
+            vehicleRegistration: 'AB12CDE',
+            depositPence: 200_000,
+            termMonths: 48,
+            monthlyBudgetPence: 35_000,
+            employmentStatus: 'Employed',
+            annualIncomePence: 3_600_000,
+            recipientStatus: 'VIEWED',
+        });
+
+        await expect(
+            service.providerLead('warranty-user', lead.id),
         ).rejects.toBeInstanceOf(ForbiddenException);
 
         const response = await service.respond('finance-user', lead.id, {
@@ -467,6 +486,24 @@ describe('Warranty enquiry — end to end', () => {
         await expect(
             service.inbox('finance-user', ServiceType.WARRANTY),
         ).rejects.toBeInstanceOf(ForbiddenException);
+
+        const providerDetail = await service.providerLead('warranty-user', lead.id);
+        expect(providerDetail).toMatchObject({
+            fullName: 'Cara Customer',
+            email: 'customer@example.com',
+            vehicleRegistration: 'WX19ABC',
+            warrantyMonths: 24,
+            warrantyLevel: 'Comprehensive',
+            summary: 'Looking for engine, gearbox and electrical cover.',
+            recipientStatus: 'VIEWED',
+        });
+
+        await expect(service.respond('warranty-user', lead.id, {
+            headline: 'Invalid warranty response',
+            message: 'This must not accept finance-only terms.',
+            representativeApr: 9.9,
+            termMonths: 48,
+        } as any)).rejects.toThrow('only valid for Finance responses');
 
         const response = await service.respond('warranty-user', lead.id, {
             headline: '24-month comprehensive cover',
