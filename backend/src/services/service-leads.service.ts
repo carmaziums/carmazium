@@ -953,10 +953,14 @@ export class ServiceLeadsService {
             actionType: dto.status,
         }).catch(() => null);
 
+        if (approved) {
+            await this.rematchOpenLeads(cap.serviceType).catch(() => null);
+        }
+
         return updated;
     }
 
-    async adminRematch(leadId: string) {
+    async adminRematch(leadId: string, matchSource: 'ADMIN_REMATCH' | 'AUTO_REMATCH' = 'ADMIN_REMATCH') {
         await this.expireOldLeads();
 
         const result = await this.prisma.$transaction(async (tx) => {
@@ -1005,7 +1009,7 @@ export class ServiceLeadsService {
                         contractorId: provider.contractorId,
                         status: 'NEW',
                         matchedAt: now,
-                        matchSource: 'ADMIN_REMATCH',
+                        matchSource,
                         matchReason: provider.matchReason,
                     })),
                     skipDuplicates: true,
@@ -1023,11 +1027,13 @@ export class ServiceLeadsService {
             userId: provider.contractor.userId,
             type: 'SERVICE_LEAD_NEW',
             title: result.lead.serviceType === ServiceType.FINANCE ? 'New finance enquiry' : 'New warranty enquiry',
-            message: 'A CarMazium administrator matched a relevant enquiry to your provider account.',
+            message: matchSource === 'AUTO_REMATCH'
+                ? 'A relevant open CarMazium enquiry has been matched to your provider account.'
+                : 'A CarMazium administrator matched a relevant enquiry to your provider account.',
             link: '/dashboard/service/leads',
             entityType: 'ServiceLead',
             entityId: result.lead.id,
-            actionType: 'ADMIN_REMATCH',
+            actionType: matchSource,
         })));
 
         return {
@@ -1035,6 +1041,49 @@ export class ServiceLeadsService {
             recipientCount: result.total,
             recipientLimit: MAX_LEAD_RECIPIENTS,
         };
+    }
+
+    /**
+     * Revisit still-open, consented enquiries so newly approved providers or
+     * updated matching coverage can receive work that was posted before they
+     * became eligible. The unique lead/provider constraint keeps this
+     * idempotent and every lead still caps at MAX_LEAD_RECIPIENTS.
+     */
+    async rematchOpenLeads(serviceType?: ServiceType, limit = 250) {
+        if (serviceType) this.assertLeadType(serviceType);
+        const now = new Date();
+        const leads = await this.prisma.serviceLead.findMany({
+            where: {
+                status: 'OPEN',
+                expiresAt: { gt: now },
+                anonymizedAt: null,
+                consentToProviderContact: true,
+                ...(serviceType ? { serviceType } : { serviceType: { in: [...LEAD_TYPES] } }),
+            },
+            select: { id: true },
+            orderBy: { createdAt: 'asc' },
+            take: Math.min(Math.max(limit, 1), 500),
+        });
+
+        let recipientsAdded = 0;
+        let leadsUpdated = 0;
+        for (const lead of leads) {
+            try {
+                const result = await this.adminRematch(lead.id, 'AUTO_REMATCH');
+                if (result.added > 0) {
+                    recipientsAdded += result.added;
+                    leadsUpdated += 1;
+                }
+            } catch (error: any) {
+                // A lead can close/expire between the list and its serializable
+                // rematch transaction. That race is harmless; the next hourly
+                // lifecycle pass will revisit remaining open enquiries.
+                if (!(error instanceof BadRequestException || error instanceof NotFoundException)) {
+                    throw error;
+                }
+            }
+        }
+        return { scanned: leads.length, leadsUpdated, recipientsAdded };
     }
 
     async adminList(serviceType?: ServiceType, status?: string, query?: string) {
