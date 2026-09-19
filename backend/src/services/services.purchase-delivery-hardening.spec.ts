@@ -79,7 +79,7 @@ describe('TradeXchange purchase-to-delivery integrity', () => {
             prisma,
             { create: jest.fn().mockResolvedValue({}) } as any,
             { sendBrandedEmail: jest.fn().mockResolvedValue({}) } as any,
-            { getStripeClient: jest.fn() } as any,
+            { getStripeClient: jest.fn(), refreshConnectAccountReadiness: jest.fn().mockResolvedValue({ ready: true, accountId: 'acct_1' }) } as any,
             { get: jest.fn().mockReturnValue('https://www.carmazium.com') } as any,
         );
     });
