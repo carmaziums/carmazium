@@ -785,6 +785,9 @@ describe('AuctionsService — final lifecycle consistency', () => {
             chatRoom: {
                 upsert: jest.fn(),
             },
+            user: {
+                findUnique: jest.fn().mockResolvedValue(null),
+            },
             $transaction: jest.fn(async (arg: any) =>
                 typeof arg === 'function' ? arg(prisma) : Promise.all(arg)
             ),
@@ -803,7 +806,12 @@ describe('AuctionsService — final lifecycle consistency', () => {
                 { provide: NotificationsService, useValue: notificationsService },
                 { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
                 { provide: AuctionGateway, useValue: auctionGateway },
-                { provide: EmailService, useValue: {} },
+                {
+                    provide: EmailService,
+                    useValue: {
+                        sendAuctionReserveNotMetEmail: jest.fn().mockResolvedValue(undefined),
+                    },
+                },
             ],
         }).compile();
 
