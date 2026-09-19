@@ -15,9 +15,8 @@ import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
 import { Auction, Prisma } from '@prisma/client';
-import { calculatePlatformOpeningBid } from './auction-pricing';
+import { AUCTION_DURATION_MS, calculatePlatformOpeningBid } from './auction-pricing';
 
-const AUCTION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 const ANTI_SNIPE_MINUTES = 3;
 // Grace window a declared winner has to pay the £125 buyer fee before the win
 // auto-reverts — see UnpaidAuctionFeeExpiryService.
