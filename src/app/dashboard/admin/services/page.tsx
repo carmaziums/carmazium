@@ -36,11 +36,13 @@ function AdminServices() {
         const paidService = serviceFilter === "DELIVERY" || serviceFilter === "INSPECTION" ? serviceFilter : undefined
         const leadService = serviceFilter === "FINANCE" || serviceFilter === "WARRANTY" ? serviceFilter : undefined
         try {
+            const paidOnlyMismatch = serviceFilter === "FINANCE" || serviceFilter === "WARRANTY"
+            const leadOnlyMismatch = serviceFilter === "DELIVERY" || serviceFilter === "INSPECTION"
             const [nextCaps, nextJobs, nextDisputes, nextLeads] = await Promise.all([
                 adminGetCapabilities({ serviceType: capabilityService, q }),
-                adminGetJobs({ serviceType: paidService, q }),
-                adminGetDisputes({ serviceType: paidService, q }),
-                adminGetServiceLeads(leadService, undefined, q),
+                paidOnlyMismatch ? Promise.resolve([] as ServiceJob[]) : adminGetJobs({ serviceType: paidService, q }),
+                paidOnlyMismatch ? Promise.resolve([] as ServiceJob[]) : adminGetDisputes({ serviceType: paidService, q }),
+                leadOnlyMismatch ? Promise.resolve([] as ServiceLead[]) : adminGetServiceLeads(leadService, undefined, q),
             ])
             setCaps(nextCaps)
             setJobs(nextJobs)
