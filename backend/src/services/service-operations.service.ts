@@ -572,27 +572,38 @@ export class ServiceOperationsService {
         });
 
         const summary = await getCapabilityVerificationSummary(this.prisma, capabilityId);
-        const nextVerificationStatus = capability.status === CapabilityStatus.APPROVED
-            ? 'VERIFIED'
-            : pendingVerificationStatus(summary.requirements);
+        const approvedAndReady = capability.status === CapabilityStatus.APPROVED
+            && summary.ready
+            && !!summary.recommendedExpiresAt;
 
         await this.prisma.contractorCapability.update({
             where: { id: capabilityId },
-            data: capability.status === CapabilityStatus.APPROVED && summary.ready && summary.recommendedExpiresAt
+            data: approvedAndReady
                 ? {
-                    verificationStatus: nextVerificationStatus,
+                    verificationStatus: 'VERIFIED',
                     verificationCompletedAt: now,
                     verificationExpiresAt: summary.recommendedExpiresAt,
                     verificationReminder30SentAt: null,
                     verificationReminder7SentAt: null,
                 }
-                : {
-                    verificationStatus: nextVerificationStatus,
-                    verificationCompletedAt: null,
-                    verificationExpiresAt: null,
-                    verificationReminder30SentAt: null,
-                    verificationReminder7SentAt: null,
-                },
+                : capability.status === CapabilityStatus.APPROVED
+                    ? {
+                        status: CapabilityStatus.PENDING,
+                        appliedAt: now,
+                        verificationStatus: 'REVERIFICATION_REQUIRED',
+                        verificationCompletedAt: null,
+                        verificationExpiresAt: null,
+                        verificationReminder30SentAt: null,
+                        verificationReminder7SentAt: null,
+                        reviewNote: 'Verification evidence is no longer sufficient. Re-verification is required before taking new work.',
+                    }
+                    : {
+                        verificationStatus: pendingVerificationStatus(summary.requirements),
+                        verificationCompletedAt: null,
+                        verificationExpiresAt: null,
+                        verificationReminder30SentAt: null,
+                        verificationReminder7SentAt: null,
+                    },
         });
 
         return {
