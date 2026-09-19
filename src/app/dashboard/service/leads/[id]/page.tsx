@@ -180,7 +180,7 @@ export default function ProviderLeadDetailPage() {
                                 </div>
                             )}
                             {success && (
-                                <div className="mb-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-600">
+                                <div role="status" aria-live="polite" className="mb-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-600">
                                     {success}
                                 </div>
                             )}
