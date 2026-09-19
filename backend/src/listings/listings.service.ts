@@ -35,7 +35,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { buildListingActivationData } from './listing-activation';
 import { brandAdminSeller, brandListingSeller } from './admin-seller-branding';
-import { calculatePlatformOpeningBid } from '../auctions/auction-pricing';
+import { AUCTION_DURATION_MS, calculatePlatformOpeningBid } from '../auctions/auction-pricing';
 import {
     downloadExternalImage,
     ImportedListingPlatform,
@@ -493,7 +493,7 @@ export class ListingsService {
 
             initialAuctionCreate = {
                 startTime,
-                endTime: new Date(startTime.getTime() + 24 * 60 * 60 * 1000),
+                endTime: new Date(startTime.getTime() + AUCTION_DURATION_MS),
                 reservePrice: createListingDto.auctionReservePrice,
                 startingBid: calculatePlatformOpeningBid(marketValue),
                 minIncrement: createListingDto.auctionMinIncrement,
@@ -604,7 +604,7 @@ export class ListingsService {
                 badgeTier,
                 // Premium tier → auto-activate featured boost (28 days)
                 isFeatured: isPremium,
-                featuredUntil: isPremium ? new Date(Date.now() + 28 * 24 * 60 * 60 * 1000) : null,
+                featuredUntil: isPremium ? new Date(Date.now() + 28 * AUCTION_DURATION_MS) : null,
                 // Seller
                 sellerId: userId ?? null,
                 // Vehicle type & import status
@@ -1333,7 +1333,7 @@ export class ListingsService {
                     data: {
                         status: 'SCHEDULED',
                         startTime,
-                        endTime: new Date(startTime.getTime() + 24 * 60 * 60 * 1000),
+                        endTime: new Date(startTime.getTime() + AUCTION_DURATION_MS),
                     },
                 });
             } else if (auction.status !== 'SCHEDULED' && listing.status !== 'ACTIVE' && listing.status !== 'PENDING_REVIEW') {
@@ -1740,7 +1740,7 @@ export class ListingsService {
         if (Number.isNaN(startTime.getTime()) || startTime.getTime() < Date.now() - 60_000) {
             throw new BadRequestException('Invalid or past startTime');
         }
-        const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000);
+        const endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
         const auctionListingId = randomUUID();
 
         const result = await this.prisma.$transaction(async (tx) => {
