@@ -162,7 +162,11 @@ export default function CapabilitiesPage() {
                                             <p className="text-xs text-[var(--text-muted)] mt-1">{blurb}</p>
                                             {payout && !data.stripeConnect.complete && <p className="text-[11px] text-amber-500 mt-2">Stripe Connect must be completed before admin can approve this paid-job service.</p>}
                                             {cap?.reviewNote && (cap.status === "REJECTED" || cap.status === "SUSPENDED") && <p className="text-xs text-red-500 mt-2">{cap.reviewNote}</p>}
-                                            {cap && <Link href={`/dashboard/service/capabilities/${cap.id}/verification`} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline mt-2"><FileText size={13} /> Verification documents</Link>}
+                                            {cap && <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2">
+                                                <Link href={`/dashboard/service/capabilities/${cap.id}/verification`} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"><FileText size={13} /> Verification documents</Link>
+                                                {(type === "FINANCE" || type === "WARRANTY") && <Link href={`/dashboard/service/capabilities/${cap.id}/matching`} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">Lead matching settings</Link>}
+                                            </div>}
+                                            {(type === "FINANCE" || type === "WARRANTY") && cap && !cap.leadNationwide && cap.leadPostcodeAreas.length === 0 && <p className="text-[11px] text-amber-500 mt-2">Configure matching coverage before this service can be approved.</p>}
                                         </div>
                                         {canApply
                                             ? <Button size="sm" variant="outline" disabled={busy === type} onClick={() => apply(type)} className="shrink-0">{busy === type ? <Loader2 className="animate-spin" size={14} /> : <>{cap ? "Apply again" : "Add service"} <ArrowRight size={14} className="ml-1" /></>}</Button>
