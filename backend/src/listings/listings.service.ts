@@ -27,6 +27,7 @@ import {
     ListingStatus,
 } from '@prisma/client';
 import { randomBytes, randomUUID } from 'crypto';
+import { createClient } from '@supabase/supabase-js';
 import { SellersService } from '../sellers/sellers.service';
 import { ScraperService } from '../scraper/scraper.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -34,6 +35,10 @@ import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { buildListingActivationData } from './listing-activation';
 import { brandAdminSeller, brandListingSeller } from './admin-seller-branding';
 import { calculatePlatformOpeningBid } from '../auctions/auction-pricing';
+import {
+    downloadExternalImage,
+    ImportedListingPlatform,
+} from './external-image-import';
 
 // ─── Enum mappers ─────────────────────────────────────────────────────────────
 
@@ -225,38 +230,96 @@ export class ListingsService {
         return missing;
     }
 
+    private getImportImageAllowedHosts(): string[] {
+        return (this.config.get<string>('IMPORT_IMAGE_HOST_ALLOWLIST') ?? '')
+            .split(',')
+            .map((host) => host.trim().toLowerCase())
+            .filter(Boolean);
+    }
+
     /**
-     * Re-hosts external images to Supabase Storage
+     * Download one image from a supported marketplace through the hardened
+     * importer and write it into the seller's CarMazium-owned Storage namespace.
+     *
+     * External URLs are never returned as a fallback: callers either receive a
+     * CarMazium Storage URL or null.
      */
-    private async rehostImage(url: string): Promise<string> {
-        if (!url || url.includes('supabase.co')) return url;
+    private async rehostImportedImage(
+        url: string,
+        userId: string,
+        platform: ImportedListingPlatform,
+    ): Promise<string | null> {
+        const supabaseUrl = this.config.get<string>('SUPABASE_URL')
+            || this.config.get<string>('NEXT_PUBLIC_SUPABASE_URL');
+        const serviceRoleKey = this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY')
+            || this.config.get<string>('SUPABASE_SERVICE_KEY');
+
+        // Do not fetch remote content if we cannot safely persist it afterward.
+        if (!supabaseUrl || !serviceRoleKey) {
+            this.logger.warn('Skipping imported image: secure Storage credentials are not configured');
+            return null;
+        }
 
         try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
-            const buffer = await response.arrayBuffer();
-            
-            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-            const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-            
-            if (!supabaseUrl || !supabaseKey) return url;
+            const downloaded = await downloadExternalImage(url, platform, {
+                maxBytes: 8 * 1024 * 1024,
+                timeoutMs: 8_000,
+                maxRedirects: 3,
+                extraAllowedHosts: this.getImportImageAllowedHosts(),
+            });
 
-            const { createClient } = require('@supabase/supabase-js');
-            const supabase = createClient(supabaseUrl, supabaseKey);
+            const storage = createClient(supabaseUrl, serviceRoleKey, {
+                auth: {
+                    persistSession: false,
+                    autoRefreshToken: false,
+                },
+            });
 
-            const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
-            
-            const { error } = await supabase.storage
+            const objectPath = `${userId}/vehicle/import-${randomUUID()}.${downloaded.extension}`;
+            const { error } = await storage.storage
                 .from('listings')
-                .upload(fileName, buffer, { contentType: response.headers.get('content-type') || 'image/jpeg' });
-            
+                .upload(objectPath, downloaded.buffer, {
+                    contentType: downloaded.mimeType,
+                    upsert: false,
+                });
+
             if (error) throw error;
-            
-            return `${supabaseUrl}/storage/v1/object/public/listings/${fileName}`;
-        } catch (err) {
-            console.error('Failed to re-host image:', err);
-            return url; // Fallback to original URL
+
+            return storage.storage.from('listings').getPublicUrl(objectPath).data.publicUrl;
+        } catch (error: any) {
+            this.logger.warn(`Rejected/failed imported image ${url}: ${error?.message || error}`);
+            return null;
         }
+    }
+
+    /**
+     * Keep import memory/connections bounded. At most three external images are
+     * downloaded at once, each with its own byte and time limit.
+     */
+    private async rehostImportedImages(
+        urls: string[],
+        userId: string,
+        platform: ImportedListingPlatform,
+    ): Promise<string[]> {
+        const inputs = [...new Set(urls.filter(Boolean))].slice(0, 20);
+        if (inputs.length === 0) return [];
+
+        const results: Array<string | null> = new Array(inputs.length).fill(null);
+        let cursor = 0;
+
+        const worker = async () => {
+            while (true) {
+                const index = cursor++;
+                if (index >= inputs.length) return;
+                results[index] = await this.rehostImportedImage(inputs[index], userId, platform);
+            }
+        };
+
+        await Promise.all(
+            Array.from({ length: Math.min(3, inputs.length) }, () => worker()),
+        );
+
+        return results.filter((value): value is string => Boolean(value));
     }
 
     /**
@@ -423,16 +486,6 @@ export class ListingsService {
                 deliveryMaxMiles: createListingDto.deliveryMaxMiles ?? null,
             },
         });
-
-        // Re-host images in background — non-blocking so the endpoint returns immediately
-        if (originalImages.length > 0) {
-            Promise.all(originalImages.map(img => this.rehostImage(img)))
-                .then(hostedUrls => this.prisma.listing.update({
-                    where: { id: listing.id },
-                    data: { images: hostedUrls },
-                }))
-                .catch(err => console.warn(`Image re-host failed for listing ${listing.id}: ${err?.message}`));
-        }
 
         // Geocode location in background — non-blocking
         if (createListingDto.location) {
@@ -2124,7 +2177,10 @@ export class ListingsService {
             data: {
                 title,
                 price: overrides.price,
-                images: scraped.images,
+                // Never persist third-party URLs. Imported photos are added only
+                // after the hardened downloader has copied verified image bytes
+                // into CarMazium-owned Storage.
+                images: [],
                 type: 'CLASSIFIED',
                 status: 'DRAFT',
                 slug,
@@ -2150,14 +2206,29 @@ export class ListingsService {
             } as any,
         });
 
-        // Re-host external CDN images to Supabase in the background so they don't expire
-        if (scraped.images.length > 0) {
-            Promise.all(scraped.images.map(img => this.rehostImage(img)))
-                .then(hostedUrls => this.prisma.listing.update({
-                    where: { id: listing.id },
-                    data: { images: hostedUrls },
-                }))
-                .catch(err => console.warn(`Import image re-host failed for listing ${listing.id}: ${err?.message}`));
+        // External marketplace URLs never become Listing.images. The background
+        // importer writes only validated CarMazium Storage URLs.
+        if (
+            scraped.images.length > 0
+            && (scraped.platform === 'AUTOTRADER'
+                || scraped.platform === 'CARGURUS'
+                || scraped.platform === 'CARWOW')
+        ) {
+            void this.rehostImportedImages(
+                scraped.images,
+                userId,
+                scraped.platform as ImportedListingPlatform,
+            )
+                .then((hostedUrls) => {
+                    if (hostedUrls.length === 0) return;
+                    return this.prisma.listing.update({
+                        where: { id: listing.id },
+                        data: { images: hostedUrls },
+                    });
+                })
+                .catch((err) => this.logger.warn(
+                    `Import image re-host failed for listing ${listing.id}: ${err?.message || err}`,
+                ));
         }
 
         return listing;
