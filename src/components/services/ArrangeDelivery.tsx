@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { Truck, Loader2, ArrowRight } from "lucide-react"
-import { createJobFromPurchase } from "@/lib/servicesApi"
+import { createJobFromPurchase, type PurchaseDeliverySource } from "@/lib/servicesApi"
 import { deliveryServiceEnabled } from "@/lib/featureFlags"
 
 /**
@@ -16,7 +16,7 @@ import { deliveryServiceEnabled } from "@/lib/featureFlags"
  * that one is the seller driving it over for a per-mile fee; this one is the
  * open market of approved transporters.
  */
-export function ArrangeDelivery({ offerId, auctionId, compact = false }: { offerId?: string; auctionId?: string; compact?: boolean }) {
+export function ArrangeDelivery({ compact = false, ...source }: PurchaseDeliverySource & { compact?: boolean }) {
     const router = useRouter()
     const [open, setOpen] = React.useState(false)
     const [postcode, setPostcode] = React.useState("")
@@ -28,7 +28,7 @@ export function ArrangeDelivery({ offerId, auctionId, compact = false }: { offer
         if (!postcode.trim()) return setError("Enter the delivery postcode")
         setBusy(true); setError(null)
         try {
-            const job = await createJobFromPurchase({ offerId, auctionId, deliveryPostcode: postcode.trim() })
+            const job = await createJobFromPurchase({ ...source, deliveryPostcode: postcode.trim() })
             router.push(`/services/jobs/${job.id}?posted=1`)
         } catch (err: any) {
             setError(err?.message || "Could not create the delivery job")
