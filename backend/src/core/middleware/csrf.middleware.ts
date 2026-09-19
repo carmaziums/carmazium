@@ -30,11 +30,6 @@ export class CsrfMiddleware implements NestMiddleware {
             '/payments/hpi-checkout',
             '/payments/listing-checkout',
             '/payments/checkout',
-            // Read-only public valuation request. POST is used because the
-            // vehicle profile is structured and should not be encoded into a
-            // long public URL; the handler performs no state mutation.
-            '/api/listings/valuation',
-            '/listings/valuation',
             '/pricing/estimate',
             '/analytics/event',
             '/analytics/email',
