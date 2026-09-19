@@ -5,6 +5,7 @@ import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { EmailModule } from '../email/email.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { ServicesService } from './services.service';
 import { ServicesController } from './services.controller';
 import { ServiceLeadsController } from './service-leads.controller';
@@ -25,7 +26,18 @@ import { TradeTeamController } from './trade-team.controller';
  * deliberately create no Stripe payment.
  */
 @Module({
-    imports: [PrismaModule, ConfigModule, AuthModule, NotificationsModule, EmailModule, PaymentsModule],
+    imports: [
+        PrismaModule,
+        ConfigModule,
+        AuthModule,
+        NotificationsModule,
+        EmailModule,
+        PaymentsModule,
+        // Local provider scope makes @UseGuards(ThrottlerGuard) on the
+        // TradeXchange controllers effective without rate-limiting unrelated
+        // CarMazium modules globally.
+        ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    ],
     controllers: [
         ServicesController,
         ServiceLeadsController,
