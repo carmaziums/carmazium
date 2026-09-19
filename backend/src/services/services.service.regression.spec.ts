@@ -115,6 +115,7 @@ describe('ServicesService TradeXchange hardening regressions', () => {
                 updateMany: jest.fn().mockResolvedValue({ count: 1 }),
             },
             contractorCapability: {
+                count: jest.fn().mockResolvedValue(1),
                 findUnique: jest.fn().mockResolvedValue({
                     status: CapabilityStatus.APPROVED,
                     verificationStatus: 'VERIFIED',
@@ -148,6 +149,7 @@ describe('ServicesService TradeXchange hardening regressions', () => {
         };
         payments = {
             getStripeClient: jest.fn().mockResolvedValue(stripe),
+            refreshConnectAccountReadiness: jest.fn().mockResolvedValue({ ready: true, accountId: 'acct_1' }),
             issueSellerPayout: jest.fn(),
         };
         config = {
