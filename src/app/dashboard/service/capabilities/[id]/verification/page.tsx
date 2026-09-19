@@ -45,30 +45,60 @@ export default function ProviderVerificationPage() {
         if (!id) return
         setError(null)
         try {
-            const [mine, attachments] = await Promise.all([getMyCapabilities(), getCapabilityAttachments(id)])
+            const [mine, verification] = await Promise.all([getMyCapabilities(), getCapabilityVerification(id)])
             const cap = mine.capabilities.find(c => c.id === id)
             if (!cap) throw new Error("This service application was not found on your account.")
             setCapability(cap)
-            setEntries(attachments)
+            setDetail(verification)
+            setEvidenceType(current => {
+                if (current && verification.verification.requirements.some(r => r.type === current)) return current
+                const next = verification.verification.requirements.find(r => r.state !== "SATISFIED")
+                    ?? verification.verification.requirements[0]
+                return next?.type ?? ""
+            })
         } catch (e: any) {
-            setError(e?.message || "Could not load verification documents")
+            setError(e?.message || "Could not load provider verification")
         }
     }, [id])
 
     React.useEffect(() => { if (user) load() }, [user, load])
 
+    const selectedRequirement = detail?.verification.requirements.find(r => r.type === evidenceType)
+
     const upload = async () => {
         if (!file) { setError("Choose an image or PDF first."); return }
+        if (!evidenceType) { setError("Choose the evidence requirement this document supports."); return }
         if (file.size > 10 * 1024 * 1024) { setError("Please keep each document under 10 MB."); return }
-        setBusy(true); setError(null)
+        if (selectedRequirement?.expiryRequired && !expiresAt) { setError(selectedRequirement.title + " requires an expiry date."); return }
+        setBusy(true); setError(null); setNotice(null)
         try {
-            await uploadCapabilityAttachment(id, file, label.trim() || file.name)
-            setFile(null); setLabel("")
+            await uploadCapabilityAttachment(id, file, {
+                evidenceType,
+                label: selectedRequirement?.title || file.name,
+                issuer: issuer.trim() || undefined,
+                reference: reference.trim() || undefined,
+                validFrom: validFrom || undefined,
+                expiresAt: expiresAt || undefined,
+            })
+            setFile(null); setIssuer(""); setReference(""); setValidFrom(""); setExpiresAt("")
             const input = document.getElementById("verification-file") as HTMLInputElement | null
             if (input) input.value = ""
+            setNotice("Evidence uploaded for admin review.")
             await load()
         } catch (e: any) {
             setError(e?.message || "Could not upload this document")
+        } finally { setBusy(false) }
+    }
+
+    const remove = async (entry: ServiceCaseEntry) => {
+        if (entry.evidenceStatus !== "PENDING") return
+        setBusy(true); setError(null); setNotice(null)
+        try {
+            await deleteCapabilityAttachment(id, entry.id)
+            setNotice("Pending evidence removed.")
+            await load()
+        } catch (e: any) {
+            setError(e?.message || "Could not remove this evidence")
         } finally { setBusy(false) }
     }
 
