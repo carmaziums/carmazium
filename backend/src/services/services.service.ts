@@ -1253,6 +1253,7 @@ export class ServicesService {
 
     async assignedPage(
         contractorProfileId: string,
+        approved: ServiceType[],
         options: { limit?: number; cursor?: string } = {},
     ) {
         const limit = boundedServiceLimit(options.limit);
@@ -1261,6 +1262,7 @@ export class ServicesService {
         const jobs = await this.prisma.serviceJob.findMany({
             where: {
                 contractorId: contractorProfileId,
+                serviceType: { in: approved },
                 ...(cursorDate ? {
                     OR: [
                         { updatedAt: { lt: cursorDate } },
@@ -1283,8 +1285,8 @@ export class ServicesService {
     }
 
     /** Compatibility helper for internal/tests; HTTP assigned list is paginated. */
-    async assigned(contractorProfileId: string) {
-        return (await this.assignedPage(contractorProfileId, { limit: 50 })).items;
+    async assigned(contractorProfileId: string, approved: ServiceType[] = JOB_SERVICE_TYPES as unknown as ServiceType[]) {
+        return (await this.assignedPage(contractorProfileId, approved, { limit: 50 })).items;
     }
 
     async upsertQuote(contractorProfileId: string, approved: ServiceType[], userId: string, jobId: string, dto: UpsertQuoteDto) {
