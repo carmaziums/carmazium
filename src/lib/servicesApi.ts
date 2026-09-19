@@ -303,9 +303,27 @@ export async function getLeadInbox(serviceType?: 'FINANCE' | 'WARRANTY'): Promis
   const q = serviceType ? `?serviceType=${serviceType}` : '';
   const r = await apiClient<{ data: ServiceLead[] }>(`/services/leads/inbox${q}`); return r.data;
 }
-export async function respondToServiceLead(id: string, input: {
-  headline: string; message: string; productName?: string; indicativePricePence?: number; representativeApr?: number; termMonths?: number;
-}): Promise<ServiceLeadResponse> {
+export async function getProviderServiceLead(id: string): Promise<ServiceLead> {
+  const r = await apiClient<{ data: ServiceLead }>(`/services/leads/inbox/${id}`); return r.data;
+}
+type LeadResponseCommon = {
+  headline: string;
+  message: string;
+  productName?: string;
+  indicativePricePence?: number;
+};
+export type FinanceLeadResponseInput = LeadResponseCommon & {
+  representativeApr?: number;
+  termMonths?: number;
+};
+export type WarrantyLeadResponseInput = LeadResponseCommon & {
+  representativeApr?: never;
+  termMonths?: never;
+};
+export async function respondToServiceLead(
+  id: string,
+  input: FinanceLeadResponseInput | WarrantyLeadResponseInput,
+): Promise<ServiceLeadResponse> {
   const r = await apiClient<{ data: ServiceLeadResponse }>(`/services/leads/${id}/respond`, { method: 'PUT', body: JSON.stringify(input) }); return r.data;
 }
 

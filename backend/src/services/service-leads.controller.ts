@@ -37,6 +37,12 @@ export class ServiceLeadsController {
         );
     }
 
+    @Get('leads/inbox/:id')
+    @ApiOperation({ summary: 'Open one matched Finance/Warranty enquiry in the provider dashboard' })
+    async providerLead(@CurrentUser() user: any, @Param('id') id: string) {
+        return new StandardResponse(await this.leads.providerLead(user.id, id));
+    }
+
     @Put('leads/:id/respond')
     @ApiOperation({ summary: 'Respond to a matched Finance/Warranty enquiry — no CarMazium payment is created' })
     async respond(

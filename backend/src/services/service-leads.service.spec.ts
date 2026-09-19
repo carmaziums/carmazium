@@ -175,4 +175,140 @@ describe('ServiceLeadsService', () => {
         });
         await expect(service.inbox('provider-1')).rejects.toBeInstanceOf(ForbiddenException);
     });
+
+    it('shows a matched provider the full consented lead detail and marks NEW as VIEWED', async () => {
+        const expiresAt = new Date(Date.now() + 60_000);
+        prisma.serviceLead.findUnique.mockResolvedValue({
+            id: 'lead-1',
+            customerId: 'customer-1',
+            serviceType: ServiceType.FINANCE,
+            status: 'OPEN',
+            fullName: 'Buyer One',
+            email: 'buyer@example.com',
+            phone: '07000000000',
+            postcode: 'B1 1AA',
+            vehicleRegistration: 'AB12CDE',
+            vehicleMake: 'BMW',
+            vehicleModel: '320d',
+            vehicleYear: 2019,
+            vehicleMileage: 55_000,
+            vehicleValuePence: 1_500_000,
+            depositPence: 200_000,
+            termMonths: 48,
+            monthlyBudgetPence: 35_000,
+            employmentStatus: 'Employed',
+            annualIncomePence: 3_600_000,
+            warrantyMonths: null,
+            warrantyLevel: null,
+            summary: 'Looking for a competitive option.',
+            expiresAt,
+        });
+        prisma.contractorProfile.findUnique.mockResolvedValue({
+            id: 'provider-profile-1',
+            deletedAt: null,
+            capabilities: [{ serviceType: ServiceType.FINANCE }],
+        });
+        prisma.serviceLead.findMany.mockResolvedValue([]);
+        prisma.serviceLeadRecipient.findUnique.mockResolvedValue({
+            id: 'recipient-1',
+            leadId: 'lead-1',
+            contractorId: 'provider-profile-1',
+            status: 'NEW',
+            headline: null,
+            message: null,
+            productName: null,
+            indicativePricePence: null,
+            representativeApr: null,
+            termMonths: null,
+            viewedAt: null,
+            respondedAt: null,
+        });
+        prisma.serviceLeadRecipient.update.mockResolvedValue({});
+
+        const detail = await service.providerLead('provider-1', 'lead-1');
+
+        expect(detail).toMatchObject({
+            id: 'lead-1',
+            fullName: 'Buyer One',
+            email: 'buyer@example.com',
+            phone: '07000000000',
+            depositPence: 200_000,
+            monthlyBudgetPence: 35_000,
+            employmentStatus: 'Employed',
+            annualIncomePence: 3_600_000,
+            recipientStatus: 'VIEWED',
+        });
+        expect(prisma.serviceLeadRecipient.update).toHaveBeenCalledWith(expect.objectContaining({
+            where: {
+                leadId_contractorId: {
+                    leadId: 'lead-1',
+                    contractorId: 'provider-profile-1',
+                },
+            },
+            data: expect.objectContaining({ status: 'VIEWED' }),
+        }));
+    });
+
+    it('does not expose provider detail when the caller lacks the matching approved capability', async () => {
+        prisma.serviceLead.findUnique.mockResolvedValue({
+            id: 'lead-1',
+            serviceType: ServiceType.FINANCE,
+            status: 'OPEN',
+            expiresAt: new Date(Date.now() + 60_000),
+        });
+        prisma.contractorProfile.findUnique.mockResolvedValue({
+            id: 'warranty-profile',
+            deletedAt: null,
+            capabilities: [],
+        });
+
+        await expect(service.providerLead('warranty-user', 'lead-1'))
+            .rejects.toBeInstanceOf(ForbiddenException);
+        expect(prisma.serviceLeadRecipient.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('rejects finance-only response fields on Warranty enquiries', async () => {
+        prisma.contractorProfile.findUnique.mockResolvedValue({
+            id: 'warranty-profile',
+            businessName: 'Warranty Co',
+            deletedAt: null,
+            capabilities: [{ serviceType: ServiceType.WARRANTY }],
+        });
+        prisma.serviceLead.findUnique.mockResolvedValue({
+            id: 'lead-1',
+            customerId: 'customer-1',
+            serviceType: ServiceType.WARRANTY,
+            status: 'OPEN',
+            expiresAt: new Date(Date.now() + 60_000),
+        });
+
+        await expect(service.respond('warranty-user', 'lead-1', {
+            headline: 'Warranty option',
+            message: 'Cover available.',
+            representativeApr: 7.9,
+        } as any)).rejects.toBeInstanceOf(BadRequestException);
+
+        expect(prisma.serviceLeadRecipient.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects whitespace-only provider responses in the backend', async () => {
+        prisma.contractorProfile.findUnique.mockResolvedValue({
+            id: 'finance-profile',
+            businessName: 'Finance Co',
+            deletedAt: null,
+            capabilities: [{ serviceType: ServiceType.FINANCE }],
+        });
+        prisma.serviceLead.findUnique.mockResolvedValue({
+            id: 'lead-1',
+            customerId: 'customer-1',
+            serviceType: ServiceType.FINANCE,
+            status: 'OPEN',
+            expiresAt: new Date(Date.now() + 60_000),
+        });
+
+        await expect(service.respond('finance-user', 'lead-1', {
+            headline: '   ',
+            message: '   ',
+        } as any)).rejects.toBeInstanceOf(BadRequestException);
+    });
 });
