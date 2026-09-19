@@ -788,16 +788,40 @@ export class ServicesService {
         }
     }
 
-    async myJobs(customerId: string) {
-        return this.prisma.serviceJob.findMany({
-            where: { customerId },
-            orderBy: { createdAt: 'desc' },
+    async myJobsPage(
+        customerId: string,
+        options: { limit?: number; cursor?: string } = {},
+    ) {
+        const limit = boundedServiceLimit(options.limit);
+        const cursor = decodeServiceCursor(options.cursor);
+        const cursorDate = cursor ? new Date(cursor.at) : null;
+        const jobs = await this.prisma.serviceJob.findMany({
+            where: {
+                customerId,
+                ...(cursorDate ? {
+                    OR: [
+                        { createdAt: { lt: cursorDate } },
+                        { createdAt: cursorDate, id: { lt: cursor!.id } },
+                    ],
+                } : {}),
+            },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            take: limit + 1,
             include: {
                 vehicles: true,
                 contractor: { select: CONTRACTOR_PUBLIC },
                 _count: { select: { quotes: { where: { status: ServiceQuoteStatus.ACTIVE } } } },
             },
         });
+        return makeServicePage(jobs, limit, (job) => ({
+            at: job.createdAt.toISOString(),
+            id: job.id,
+        }));
+    }
+
+    /** Compatibility helper for internal/tests; HTTP routes use cursor pages. */
+    async myJobs(customerId: string) {
+        return (await this.myJobsPage(customerId, { limit: 50 })).items;
     }
 
     async cancelJob(customerId: string, jobId: string, dto: CancelJobDto) {
