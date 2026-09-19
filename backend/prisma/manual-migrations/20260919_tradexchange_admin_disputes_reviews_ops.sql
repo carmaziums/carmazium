@@ -175,7 +175,11 @@ as $$
 declare
     target_contractor text;
 begin
-    target_contractor := coalesce(new."contractorId", old."contractorId");
+    if tg_op = 'DELETE' then
+        target_contractor := old."contractorId";
+    else
+        target_contractor := new."contractorId";
+    end if;
 
     update public.contractor_profiles cp
        set rating = coalesce((
@@ -215,6 +219,22 @@ drop trigger if exists service_reviews_refresh_rating on public.service_reviews;
 create trigger service_reviews_refresh_rating
 after insert or update or delete on public.service_reviews
 for each row execute function public.tradexchange_refresh_contractor_rating();
+
+-- From Block 9 onward, the displayed contractor rating is derived only from
+-- verified TradeXchange service_reviews. This also removes any legacy/manual
+-- counters that do not have a released-job review behind them.
+update public.contractor_profiles cp
+set rating = coalesce((
+        select round(avg(r.rating)::numeric, 2)::double precision
+        from public.service_reviews r
+        where r."contractorId" = cp.id
+    ), 0),
+    "totalReviews" = (
+        select count(*)::integer
+        from public.service_reviews r
+        where r."contractorId" = cp.id
+    ),
+    "updatedAt" = now();
 
 create table if not exists public.service_payment_audit_events (
     id text primary key default gen_random_uuid()::text,
