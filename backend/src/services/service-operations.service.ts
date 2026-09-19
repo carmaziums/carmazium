@@ -211,6 +211,14 @@ export class ServiceOperationsService {
         input: ServiceCaseEntryInput,
         allowedKinds: readonly ServiceCaseEntryKind[],
         storagePath: string | null = null,
+        evidence?: {
+            type: CapabilityEvidenceType;
+            status: CapabilityEvidenceStatus;
+            issuer: string | null;
+            reference: string | null;
+            validFrom: Date | null;
+            expiresAt: Date | null;
+        },
     ) {
         const rawInput = input as ServiceCaseEntryInput & { url?: unknown; storagePath?: unknown };
         if (rawInput.url != null || rawInput.storagePath != null) {
@@ -230,10 +238,15 @@ export class ServiceOperationsService {
         const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
             INSERT INTO "service_case_entries" (
                 "id", "scope", "entityId", "submittedById", "kind", "label",
-                "storagePath", "url", "note", "createdAt"
+                "storagePath", "url", "note",
+                "evidenceType", "evidenceStatus", "evidenceIssuer", "evidenceReference",
+                "evidenceValidFrom", "evidenceExpiresAt", "createdAt"
             ) VALUES (
                 gen_random_uuid()::text, ${scope}, ${entityId}, ${submittedById}, ${kind}, ${label},
-                ${storagePath}, NULL, ${note}, CURRENT_TIMESTAMP
+                ${storagePath}, NULL, ${note},
+                ${evidence?.type ?? null}, ${evidence?.status ?? null},
+                ${evidence?.issuer ?? null}, ${evidence?.reference ?? null},
+                ${evidence?.validFrom ?? null}, ${evidence?.expiresAt ?? null}, CURRENT_TIMESTAMP
             )
             RETURNING *
         `);
@@ -246,6 +259,14 @@ export class ServiceOperationsService {
         submittedById: string,
         file: any,
         label?: string,
+        evidence?: {
+            type: CapabilityEvidenceType;
+            status: CapabilityEvidenceStatus;
+            issuer: string | null;
+            reference: string | null;
+            validFrom: Date | null;
+            expiresAt: Date | null;
+        },
     ) {
         const mime = this.validateDocumentFile(file);
         const kind: ServiceCaseEntryKind = mime === 'application/pdf' ? 'DOCUMENT' : 'PHOTO';
@@ -271,6 +292,7 @@ export class ServiceOperationsService {
                 { kind, label: this.cleanText(label, 160) || file.originalname },
                 [kind],
                 path,
+                evidence,
             );
             return this.hydrateEntry(entry);
         } catch (error) {
