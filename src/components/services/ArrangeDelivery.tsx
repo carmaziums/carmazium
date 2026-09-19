@@ -4,7 +4,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { Truck, Loader2, ArrowRight } from "lucide-react"
 import { createJobFromPurchase, type PurchaseDeliverySource } from "@/lib/servicesApi"
-import { deliveryServiceEnabled } from "@/lib/featureFlags"
+import { useTradeXchangeAvailability } from "@/hooks/useTradeXchangeAvailability"
 
 /**
  * "Arrange delivery" for a car the user has just bought. Posts a pre-filled
@@ -18,6 +18,7 @@ import { deliveryServiceEnabled } from "@/lib/featureFlags"
  */
 export function ArrangeDelivery({ compact = false, ...source }: PurchaseDeliverySource & { compact?: boolean }) {
     const router = useRouter()
+    const { availability, loading: availabilityLoading } = useTradeXchangeAvailability()
     const [open, setOpen] = React.useState(false)
     const [postcode, setPostcode] = React.useState("")
     const [busy, setBusy] = React.useState(false)
@@ -36,9 +37,9 @@ export function ArrangeDelivery({ compact = false, ...source }: PurchaseDelivery
         }
     }
 
-    // Nothing to offer while the service is off. Placed after the hooks so the
-    // hook order stays stable regardless of the flag.
-    if (!deliveryServiceEnabled) return null
+    // Nothing to offer until the backend confirms Delivery is live. Placed
+    // after the hooks so hook order remains stable.
+    if (availabilityLoading || !availability?.DELIVERY) return null
 
     if (!open) {
         return (
