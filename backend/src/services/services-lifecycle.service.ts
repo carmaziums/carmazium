@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { ServiceJobStatus, ServicePaymentStatus, ServiceQuoteStatus } from '@prisma/client';
+import { CapabilityStatus, ServiceJobStatus, ServicePaymentStatus, ServiceQuoteStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PaymentsService } from '../payments/payments.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -31,12 +31,134 @@ export class ServicesLifecycleService {
             const reopened = await this.expireUnpaidAcceptedJobs();
             const expired = await this.services.expireOpenJobs();
             const released = await this.services.autoConfirmCompleted();
-            if (reopened || expired || released) {
-                this.logger.log(`Service jobs: reopened unpaid ${reopened}, expired ${expired}, auto-confirmed ${released}`);
+            const verification = await this.maintainCapabilityVerification();
+            if (reopened || expired || released || verification.expired || verification.reminded) {
+                this.logger.log(
+                    `Service jobs: reopened unpaid ${reopened}, expired ${expired}, auto-confirmed ${released}; provider verification: expired ${verification.expired}, reminders ${verification.reminded}`,
+                );
             }
         } catch (e: any) {
             this.logger.error(`Lifecycle tick failed: ${e?.message}`);
         }
+    }
+
+    async maintainCapabilityVerification(): Promise<{ expired: number; reminded: number }> {
+        const now = new Date();
+        const sevenDays = new Date(now.getTime() + 7 * 86_400_000);
+        const thirtyDays = new Date(now.getTime() + 30 * 86_400_000);
+
+        const capabilities = await this.prisma.contractorCapability.findMany({
+            where: {
+                status: CapabilityStatus.APPROVED,
+                verificationStatus: 'VERIFIED',
+                verificationExpiresAt: { not: null, lte: thirtyDays },
+            },
+            include: {
+                contractor: {
+                    select: {
+                        user: { select: { id: true } },
+                    },
+                },
+            },
+        });
+
+        let expired = 0;
+        let reminded = 0;
+
+        for (const capability of capabilities) {
+            const expiresAt = capability.verificationExpiresAt;
+            if (!expiresAt) continue;
+
+            if (expiresAt <= now) {
+                const result = await this.prisma.contractorCapability.updateMany({
+                    where: {
+                        id: capability.id,
+                        status: CapabilityStatus.APPROVED,
+                        verificationStatus: 'VERIFIED',
+                        verificationExpiresAt: { lte: now },
+                    },
+                    data: {
+                        status: CapabilityStatus.PENDING,
+                        appliedAt: now,
+                        verificationStatus: 'REVERIFICATION_REQUIRED',
+                        verificationCompletedAt: null,
+                        verificationReminder30SentAt: null,
+                        verificationReminder7SentAt: null,
+                        reviewNote: 'Provider verification expired. Upload current evidence for re-verification.',
+                    },
+                });
+                if (result.count === 1) {
+                    expired++;
+                    await this.notifications.create({
+                        userId: capability.contractor.user.id,
+                        type: 'SERVICE_CAPABILITY_REVERIFICATION_REQUIRED',
+                        title: 'Provider re-verification required',
+                        message: 'Your CarMazium service-provider verification has expired. Upload current evidence before taking new TradeXchange work.',
+                        link: `/dashboard/service/capabilities/${capability.id}/verification`,
+                        entityType: 'ContractorCapability',
+                        entityId: capability.id,
+                        actionType: 'REVERIFICATION_REQUIRED',
+                    }).catch(() => null);
+                }
+                continue;
+            }
+
+            if (expiresAt <= sevenDays && !capability.verificationReminder7SentAt) {
+                const result = await this.prisma.contractorCapability.updateMany({
+                    where: {
+                        id: capability.id,
+                        status: CapabilityStatus.APPROVED,
+                        verificationStatus: 'VERIFIED',
+                        verificationReminder7SentAt: null,
+                    },
+                    data: {
+                        verificationReminder7SentAt: now,
+                        verificationReminder30SentAt: capability.verificationReminder30SentAt ?? now,
+                    },
+                });
+                if (result.count === 1) {
+                    reminded++;
+                    await this.notifications.create({
+                        userId: capability.contractor.user.id,
+                        type: 'SERVICE_CAPABILITY_VERIFICATION_EXPIRING',
+                        title: 'Provider verification expires in 7 days',
+                        message: 'Upload renewed verification evidence now to avoid losing access to new TradeXchange work.',
+                        link: `/dashboard/service/capabilities/${capability.id}/verification`,
+                        entityType: 'ContractorCapability',
+                        entityId: capability.id,
+                        actionType: 'VERIFICATION_EXPIRING_7_DAYS',
+                    }).catch(() => null);
+                }
+                continue;
+            }
+
+            if (expiresAt <= thirtyDays && !capability.verificationReminder30SentAt) {
+                const result = await this.prisma.contractorCapability.updateMany({
+                    where: {
+                        id: capability.id,
+                        status: CapabilityStatus.APPROVED,
+                        verificationStatus: 'VERIFIED',
+                        verificationReminder30SentAt: null,
+                    },
+                    data: { verificationReminder30SentAt: now },
+                });
+                if (result.count === 1) {
+                    reminded++;
+                    await this.notifications.create({
+                        userId: capability.contractor.user.id,
+                        type: 'SERVICE_CAPABILITY_VERIFICATION_EXPIRING',
+                        title: 'Provider verification expires in 30 days',
+                        message: 'Review your verification evidence and upload any renewed documents before expiry.',
+                        link: `/dashboard/service/capabilities/${capability.id}/verification`,
+                        entityType: 'ContractorCapability',
+                        entityId: capability.id,
+                        actionType: 'VERIFICATION_EXPIRING_30_DAYS',
+                    }).catch(() => null);
+                }
+            }
+        }
+
+        return { expired, reminded };
     }
 
     /**
