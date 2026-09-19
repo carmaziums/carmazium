@@ -7,7 +7,7 @@ import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { createJob } from "@/lib/servicesApi"
-import { inspectionServiceEnabled } from "@/lib/featureFlags"
+import { useTradeXchangeAvailability } from "@/hooks/useTradeXchangeAvailability"
 import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
 import { useSessionDraft } from "@/hooks/useSessionDraft"
 
@@ -21,6 +21,7 @@ const EMPTY_FORM = {
 export default function NewInspectionPage() {
     const router = useRouter()
     const { user, loading } = useAuth()
+    const { availability, loading: availabilityLoading } = useTradeXchangeAvailability()
     const [busy, setBusy] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const { value: form, setValue: setForm, clearDraft } = useSessionDraft(
@@ -28,7 +29,8 @@ export default function NewInspectionPage() {
         EMPTY_FORM,
     )
 
-    if (!inspectionServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Vehicle Inspection" />
+    if (availabilityLoading) return <div className="min-h-screen pt-32 text-center text-sm text-[var(--text-muted)]">Checking TradeXchange availability…</div>
+    if (!availability?.INSPECTION) return <ServiceTemporarilyUnavailable serviceName="Vehicle Inspection" />
 
     const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }))
 
