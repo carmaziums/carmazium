@@ -1774,6 +1774,15 @@ model ContractorCapability {
   reviewedById String?
   reviewNote   String? /// shown to the contractor on rejection/suspension
 
+  // Provider verification. Approval is allowed only when the service-specific
+  // evidence checklist is complete and current. Every approval is capped at a
+  // 12-month re-verification window, or an earlier evidence expiry date.
+  verificationStatus          String    @default("NOT_SUBMITTED")
+  verificationCompletedAt     DateTime?
+  verificationExpiresAt       DateTime?
+  verificationReminder30SentAt DateTime?
+  verificationReminder7SentAt  DateTime?
+
   // Finance/Warranty lead matching. These settings are ignored by paid
   // Delivery/Inspection jobs. A lead is only shared when its service area and
   // every configured eligibility rule match.
