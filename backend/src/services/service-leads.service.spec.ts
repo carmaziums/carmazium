@@ -83,7 +83,20 @@ describe('ServiceLeadsService', () => {
         prisma.contractorCapability.findMany.mockResolvedValue([
             {
                 contractorId: 'provider-profile-1',
-                contractor: { userId: 'provider-user-1' },
+                reviewedAt: new Date(),
+                leadNationwide: true,
+                leadPostcodeAreas: [],
+                leadMinVehicleValuePence: null,
+                leadMaxVehicleValuePence: null,
+                leadMinVehicleYear: null,
+                leadMaxVehicleMileage: null,
+                leadMinAnnualIncomePence: null,
+                leadFinanceTermMinMonths: null,
+                leadFinanceTermMaxMonths: null,
+                leadWarrantyLevels: [],
+                leadWarrantyMinMonths: null,
+                leadWarrantyMaxMonths: null,
+                contractor: { userId: 'provider-user-1', rating: 0, totalReviews: 0 },
             },
         ]);
         prisma.serviceLead.create.mockResolvedValue({
@@ -118,10 +131,12 @@ describe('ServiceLeadsService', () => {
                 termMonths: 48,
                 consentToProviderContact: true,
                 recipients: {
-                    create: [{
+                    create: [expect.objectContaining({
                         contractorId: 'provider-profile-1',
                         status: 'NEW',
-                    }],
+                        matchSource: 'AUTO',
+                        matchReason: expect.stringContaining('Nationwide'),
+                    })],
                 },
             }),
             include: { _count: { select: { recipients: true } } },
