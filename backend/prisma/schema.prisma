@@ -413,6 +413,7 @@ model User {
   serviceJobsAsCustomer     ServiceJob[]           @relation("ServiceJobCustomer")
   serviceQuotesSubmitted    ServiceQuote[]         @relation("ServiceQuoteSubmitter")
   servicePaymentsAsCustomer ServicePayment[]       @relation("ServicePaymentCustomer")
+  serviceLeadsAsCustomer    ServiceLead[]           @relation("ServiceLeadCustomer")
   capabilityReviews         ContractorCapability[] @relation("CapabilityReviewer")
 
   @@index([role])
@@ -626,8 +627,9 @@ model ContractorProfile {
   // Trade Exchange service marketplace
   capabilities    ContractorCapability[]
   serviceJobs     ServiceJob[]
-  serviceQuotes   ServiceQuote[]
-  servicePayments ServicePayment[]
+  serviceQuotes         ServiceQuote[]
+  servicePayments       ServicePayment[]
+  serviceLeadRecipients ServiceLeadRecipient[]
 
   @@index([userId])
   @@map("contractor_profiles")
@@ -808,6 +810,7 @@ model Listing {
   hpiReport           HpiReport?
   deliveryRequests    DeliveryRequest[]
   serviceJobVehicles  ServiceJobVehicle[]
+  serviceLeads        ServiceLead[]
   disputes            DisputeCase[]
 
   @@index([sellerId])
@@ -1779,6 +1782,76 @@ model ContractorCapability {
   @@unique([contractorId, serviceType])
   @@index([serviceType, status])
   @@map("contractor_capabilities")
+}
+
+/// A Finance or Warranty enquiry submitted by a customer. These rows contain
+/// customer contact and financial-preference data, so direct public access stays
+/// blocked by RLS; the Nest backend is the authorization boundary.
+model ServiceLead {
+  id                       String      @id(map: "service_leads_pkey") @default(dbgenerated("(gen_random_uuid())::text"))
+  customerId               String
+  serviceType              ServiceType
+  status                   String      @default("OPEN")
+  listingId                String?
+  vehicleRegistration      String?
+  vehicleMake              String?
+  vehicleModel             String?
+  vehicleYear              Int?
+  vehicleMileage           Int?
+  vehicleValuePence        Int?
+  fullName                 String
+  email                    String
+  phone                    String?
+  postcode                 String?
+  summary                  String?
+  depositPence             Int?
+  termMonths               Int?
+  monthlyBudgetPence       Int?
+  employmentStatus         String?
+  annualIncomePence        Int?
+  warrantyMonths           Int?
+  warrantyLevel            String?
+  consentToProviderContact Boolean     @default(false)
+  consentRecordedAt        DateTime?   @db.Timestamp(3)
+  expiresAt                DateTime    @default(dbgenerated("(CURRENT_TIMESTAMP + '14 days'::interval)")) @db.Timestamp(3)
+  createdAt                DateTime    @default(now()) @db.Timestamp(3)
+  updatedAt                DateTime    @default(now()) @updatedAt @db.Timestamp(3)
+
+  customer   User                   @relation("ServiceLeadCustomer", fields: [customerId], references: [id], onDelete: Cascade, map: "service_leads_customerId_fkey")
+  listing    Listing?               @relation(fields: [listingId], references: [id], onDelete: SetNull, map: "service_leads_listingId_fkey")
+  recipients ServiceLeadRecipient[]
+
+  @@index([customerId, status, createdAt(sort: Desc)], map: "service_leads_customer_status_idx")
+  @@index([serviceType, status, createdAt(sort: Desc)], map: "service_leads_type_status_idx")
+  @@index([status, expiresAt], map: "service_leads_expiry_idx")
+  @@map("service_leads")
+}
+
+/// One approved provider matched to a Finance/Warranty enquiry. A recipient row
+/// also stores that provider's response when they choose to reply.
+model ServiceLeadRecipient {
+  id                   String   @id(map: "service_lead_recipients_pkey") @default(dbgenerated("(gen_random_uuid())::text"))
+  leadId               String
+  contractorId         String
+  status               String   @default("NEW")
+  headline             String?
+  message              String?
+  productName          String?
+  indicativePricePence Int?
+  representativeApr    Decimal? @db.Decimal(6, 3)
+  termMonths           Int?
+  viewedAt             DateTime? @db.Timestamp(3)
+  respondedAt          DateTime? @db.Timestamp(3)
+  createdAt            DateTime @default(now()) @db.Timestamp(3)
+  updatedAt            DateTime @default(now()) @updatedAt @db.Timestamp(3)
+
+  lead       ServiceLead       @relation(fields: [leadId], references: [id], onDelete: Cascade, map: "service_lead_recipients_leadId_fkey")
+  contractor ContractorProfile @relation(fields: [contractorId], references: [id], onDelete: Cascade, map: "service_lead_recipients_contractorId_fkey")
+
+  @@unique([leadId, contractorId], map: "service_lead_recipients_unique")
+  @@index([contractorId, status, createdAt(sort: Desc)], map: "service_lead_recipients_contractor_status_idx")
+  @@index([leadId, createdAt], map: "service_lead_recipients_lead_idx")
+  @@map("service_lead_recipients")
 }
 
 /// A piece of work a customer wants done. Any signed-in user can post one.
