@@ -648,8 +648,6 @@ export class ServiceLeadsService {
             throw new BadRequestException('APR and finance term fields are only valid for Finance responses.');
         }
 
-        await this.ensureRecipients(profile.id, [lead.serviceType]);
-
         const recipient = await this.prisma.serviceLeadRecipient.findUnique({
             where: {
                 leadId_contractorId: {
@@ -686,6 +684,10 @@ export class ServiceLeadsService {
                 respondedAt: now,
             },
         });
+
+        if (!lead.customerId) {
+            throw new BadRequestException('This enquiry has been anonymised and can no longer receive responses.');
+        }
 
         await this.notifications.create({
             userId: lead.customerId,
