@@ -810,7 +810,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       setCreateModalVisible(false);
       resetCreateModal();
       await fetchAuctions(true);
-      Alert.alert('Auction Scheduled!', 'Your auction has been created and will start at the scheduled time.');
+      Alert.alert(
+        'Auction Submitted for Review',
+        'Your auction has been scheduled and sent for review. Once approved, it will run for a full 24 hours.',
+      );
     } catch (err: any) {
       setCreateError(err?.message ?? 'Could not create auction. Please try again.');
     } finally {
