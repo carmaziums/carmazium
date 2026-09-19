@@ -821,15 +821,22 @@ export class ListingsService {
                 deliveryAvailable: createListingDto.deliveryAvailable ?? false,
                 deliveryPricePerMile: createListingDto.deliveryPricePerMile ?? null,
                 deliveryMaxMiles: createListingDto.deliveryMaxMiles ?? null,
-                // Prisma nested writes are atomic: when a brand-new auction is
-                // submitted with its schedule, either both rows commit or neither
-                // row exists. This removes the old POST /listings -> POST /auctions
-                // orphan window.
-                auction: initialAuctionCreate
-                    ? { create: initialAuctionCreate }
-                    : undefined,
             },
             });
+
+            // Keep initial auction creation atomic, but create the Auction row
+            // explicitly inside this same transaction rather than relying on a
+            // nested relation write. This is easier to diagnose in production
+            // and uses the same proven create path as AuctionsService.
+            if (initialAuctionCreate) {
+                await tx.auction.create({
+                    data: {
+                        listingId: created.id,
+                        ...initialAuctionCreate,
+                    },
+                });
+            }
+
             return { listing: created, created: true };
         });
 
