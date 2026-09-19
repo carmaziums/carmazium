@@ -18,7 +18,7 @@ import { IconButton } from '../../components/IconButton';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
-import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
+import { convertAndCompress, deletePublicStorageObject, uploadToStorage } from '../../lib/storageHelper';
 import { useSellWizardStore } from '../../lib/sellWizardStore';
 import { haptics } from '../../lib/haptics';
 import { useStripe } from '@stripe/stripe-react-native';
@@ -30,6 +30,11 @@ import { CAR_MAKES, getModelsForMake } from '../../data/carData';
 import { BottomSheet } from '../../components/BottomSheet';
 import * as Location from 'expo-location';
 import { getAuctionOpeningBid, getAuctionReserveGuide } from '../../lib/auctionPricing';
+import {
+  encodeVehicleImageCategory,
+  parseVehicleImageMetadata,
+  type VehicleImageCategory,
+} from '../../lib/vehicleImageMetadata';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -632,6 +637,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [videoUrls, setVideoUrls] = useState<string[]>([]);
   const [videoInput, setVideoInput] = useState('');
 
+  // URLs already referenced by a saved/HPI draft listing are staged for
+  // deletion: remove them from the form first, then the nightly orphan cleanup
+  // deletes the physical object only after the listing PATCH no longer references it.
+  const backendReferencedPhotoSourcesRef = useRef<Set<string>>(new Set());
+  const newlyUploadedPhotoSourcesRef = useRef<Set<string>>(new Set());
+
   // ── Step 3 — Pricing ──
   const [priceMin, setPriceMin] = useState('');
   const [priceAsking, setPriceAsking] = useState('');
@@ -812,10 +823,24 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         // Editing an already-published listing implies the declaration was
         // already made and accepted at initial publish time.
         setDeclAcknowledged(true);
-        // The three photo tabs (Exterior/Interior/Damage) are flattened into one
-        // `images` array server-side with no category preserved — put everything
-        // under Exterior so nothing is lost; the seller can still remove/re-add.
-        if (l.images?.length) setExteriorImages(l.images);
+        if (l.images?.length) {
+          const nextExterior: string[] = [];
+          const nextInterior: string[] = [];
+          const nextDamage: string[] = [];
+
+          l.images.forEach((imageUrl: string) => {
+            const metadata = parseVehicleImageMetadata(imageUrl);
+            if (metadata.src) backendReferencedPhotoSourcesRef.current.add(metadata.src);
+
+            if (metadata.category === 'INTERIOR') nextInterior.push(imageUrl);
+            else if (metadata.category === 'DAMAGE') nextDamage.push(imageUrl);
+            else nextExterior.push(imageUrl); // legacy/UNASSIGNED defaults safely to Exterior
+          });
+
+          setExteriorImages(nextExterior);
+          setInteriorImages(nextInterior);
+          setDamageImages(nextDamage);
+        }
         if (l.videoUrls?.length) setVideoUrls(l.videoUrls);
         if (l.priceMin != null) setPriceMin(String(l.priceMin));
         setPriceAsking(l.price != null ? String(l.price) : '');
@@ -943,7 +968,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     return !!fieldError('priceAsking') || !!fieldError('priceMin');
   };
 
-  const allImages = [...exteriorImages, ...interiorImages, ...damageImages];
+  const allImages = [
+    ...exteriorImages.map(url => encodeVehicleImageCategory(url, 'EXTERIOR')),
+    ...interiorImages.map(url => encodeVehicleImageCategory(url, 'INTERIOR')),
+    ...damageImages.map(url => encodeVehicleImageCategory(url, 'DAMAGE')),
+  ];
 
   // Step 2 (Media) is not field-validated like 1 and 3 — its only rule is the
   // photo minimum, which is a count, not a touched field. Same shape as the
@@ -1121,7 +1150,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const filename = `${userId}/${category}/${Date.now()}-${index}.jpg`;
     const url = await uploadToStorage(jpegUri, 'listings', filename, 'image/jpeg');
     setUploadProgress(prev => ({ ...prev, [id]: 100 }));
-    return url;
+    const categoryValue = category.toUpperCase() as VehicleImageCategory;
+    const encodedUrl = encodeVehicleImageCategory(url, categoryValue);
+    const source = parseVehicleImageMetadata(encodedUrl).src;
+    if (source) newlyUploadedPhotoSourcesRef.current.add(source);
+    return encodedUrl;
   }
 
   async function handlePickPhoto() {
@@ -1156,10 +1189,46 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     }
   }
 
-  function removePhoto(tab: string, uri: string) {
+  async function removePhoto(tab: string, uri: string) {
+    const source = parseVehicleImageMetadata(uri).src;
+
+    // A photo already referenced by an existing/HPI draft listing must not be
+    // physically deleted before PATCH succeeds. Removing it from state stages
+    // the deletion; the backend cleanup removes it after it becomes unreferenced.
+    if (
+      source
+      && newlyUploadedPhotoSourcesRef.current.has(source)
+      && !backendReferencedPhotoSourcesRef.current.has(source)
+    ) {
+      try {
+        await deletePublicStorageObject(source, 'listings');
+        newlyUploadedPhotoSourcesRef.current.delete(source);
+      } catch (error) {
+        // Do not trap the seller in the editor because cleanup can safely retry
+        // an unreferenced upload after the 24h grace period.
+        console.warn('Could not immediately delete unsaved photo:', error);
+      }
+    }
+
     if (tab === 'Exterior') setExteriorImages(p => p.filter(x => x !== uri));
     else if (tab === 'Interior') setInteriorImages(p => p.filter(x => x !== uri));
     else setDamageImages(p => p.filter(x => x !== uri));
+  }
+
+  function movePhoto(tab: string, from: number, to: number) {
+    if (from === to || from < 0 || to < 0) return;
+
+    const move = (items: string[]) => {
+      if (from >= items.length || to >= items.length) return items;
+      const next = [...items];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    };
+
+    if (tab === 'Exterior') setExteriorImages(move);
+    else if (tab === 'Interior') setInteriorImages(move);
+    else setDamageImages(move);
   }
 
   function handleAddVideoUrl() {
@@ -1324,7 +1393,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             mileage: parseInt(mileage) || 0,
             year: parseInt(year) || new Date().getFullYear(),
             vrm,
-            images: exteriorImages,
+            images: allImages,
             listingType,
             make: make || undefined,
             model: model || undefined,
@@ -1336,6 +1405,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         listingId = draft?.data?.id ?? null;
         if (!listingId) throw new Error('Could not save a draft listing to run the check against.');
         setHpiDraftListingId(listingId);
+        allImages.forEach(imageUrl => {
+          const source = parseVehicleImageMetadata(imageUrl).src;
+          if (source) backendReferencedPhotoSourcesRef.current.add(source);
+        });
       }
 
       const paid = await triggerHpiPayment(listingId, vrm);
@@ -2392,7 +2465,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                     <Ionicons name="camera-outline" size={28} color={Colors.iconMuted} />
                     <Text style={s.uploadZoneTitle}>Add {photoTab} Photos</Text>
                     <Text style={s.uploadZoneHint}>Tap to select from gallery · Max 50 photos</Text>
-                    <Text style={s.uploadZoneFormats}>JPEG, PNG, WebP · Max 5MB per file</Text>
+                    <Text style={s.uploadZoneFormats}>JPEG, PNG, WebP, HEIC · auto-converted to JPEG</Text>
                   </>
               }
             </TouchableOpacity>
@@ -2410,7 +2483,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                     return (
                       <View key={uri} style={s.photoThumb}>
                         <ExpoImage
-                          source={{ uri }}
+                          source={{ uri: parseVehicleImageMetadata(uri).src }}
                           style={s.photoThumbImg}
                           contentFit="cover"
                           transition={200}
@@ -2422,8 +2495,37 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                             <View style={[s.photoProgressFill, { width: `${progress}%` as any }]} />
                           </View>
                         )}
-                        {i === 0 && <View style={s.coverBadge}><Text style={s.coverBadgeText}>COVER</Text></View>}
-                        <IconButton style={s.photoRemoveBtn} icon={<Ionicons name="close" size={10} color={Colors.white} />} onPress={() => removePhoto(photoTab, uri)} accessibilityLabel="Remove photo" />
+                        {parseVehicleImageMetadata(uri).src === parseVehicleImageMetadata(allImages[0]).src && (
+                          <View style={s.coverBadge}><Text style={s.coverBadgeText}>COVER</Text></View>
+                        )}
+                        <View style={{ position: 'absolute', left: 4, bottom: 4, flexDirection: 'row', gap: 3 }}>
+                          <TouchableOpacity
+                            disabled={i === 0}
+                            onPress={() => movePhoto(photoTab, i, i - 1)}
+                            style={{ backgroundColor: 'rgba(0,0,0,0.72)', borderRadius: 6, padding: 4, opacity: i === 0 ? 0.35 : 1 }}
+                            accessibilityLabel="Move photo earlier"
+                          >
+                            <Ionicons name="chevron-back" size={12} color={Colors.white} />
+                          </TouchableOpacity>
+                          {photoTab === 'Exterior' && i > 0 && (
+                            <TouchableOpacity
+                              onPress={() => movePhoto(photoTab, i, 0)}
+                              style={{ backgroundColor: 'rgba(0,0,0,0.72)', borderRadius: 6, padding: 4 }}
+                              accessibilityLabel="Make cover photo"
+                            >
+                              <Ionicons name="star" size={12} color={Colors.white} />
+                            </TouchableOpacity>
+                          )}
+                          <TouchableOpacity
+                            disabled={i === tabImages.length - 1}
+                            onPress={() => movePhoto(photoTab, i, i + 1)}
+                            style={{ backgroundColor: 'rgba(0,0,0,0.72)', borderRadius: 6, padding: 4, opacity: i === tabImages.length - 1 ? 0.35 : 1 }}
+                            accessibilityLabel="Move photo later"
+                          >
+                            <Ionicons name="chevron-forward" size={12} color={Colors.white} />
+                          </TouchableOpacity>
+                        </View>
+                        <IconButton style={s.photoRemoveBtn} icon={<Ionicons name="close" size={10} color={Colors.white} />} onPress={() => void removePhoto(photoTab, uri)} accessibilityLabel="Remove photo" />
                       </View>
                     );
                   })}
