@@ -589,3 +589,136 @@ describe('Delivery & Recovery — end to end', () => {
         ); // £80 less 9%
     });
 });
+
+
+describe('Vehicle Inspection — end to end', () => {
+    let inspectionJobId: string;
+    let inspectionQuoteId: string;
+    let providerProfileId: string;
+
+    it('approves the existing Partner provider for Vehicle Inspection', async () => {
+        providerProfileId = db.one('contractorProfile', { userId: TRUCKER.id })!.id;
+
+        const cap = await svc.applyCapability(TRUCKER.id, {
+            serviceType: 'INSPECTION',
+            businessName: 'Kent Vehicle Transport',
+            serviceArea: 'South East',
+        } as any);
+
+        expect(cap.status).toBe('PENDING');
+
+        const approved = await svc.adminReviewCapability(
+            ADMIN.id,
+            cap.id,
+            { status: 'APPROVED' } as any,
+        );
+        expect(approved.status).toBe('APPROVED');
+    });
+
+    it('requires an inspection postcode and creates an Inspection job without delivery route fields', async () => {
+        await expect(svc.createJob(CUSTOMER.id, {
+            serviceType: 'INSPECTION',
+            title: 'Pre-purchase inspection',
+            vehicles: [{ registration: 'IN66SPC' }],
+        } as any)).rejects.toThrow(/postcode/i);
+
+        const job = await svc.createJob(CUSTOMER.id, {
+            serviceType: 'INSPECTION',
+            title: 'Pre-purchase inspection',
+            description: 'Check bodywork, engine, brakes and diagnostic faults.',
+            servicePostcode: ' b12  8ab ',
+            serviceAddress: '25 Test Lane',
+            vehicles: [{ registration: 'in66 spc', make: 'BMW', model: '320d', year: 2019 }],
+        } as any);
+
+        inspectionJobId = job.id;
+        expect(job).toMatchObject({
+            serviceType: 'INSPECTION',
+            status: 'OPEN',
+            servicePostcode: 'B12 8AB',
+            serviceAddress: '25 Test Lane',
+            pickupPostcode: null,
+            deliveryPostcode: null,
+        });
+        expect(job.vehicles[0].registration).toBe('IN66SPC');
+    });
+
+    it('shows the Inspection job only to a provider approved for Inspection and keeps the street address private', async () => {
+        const feed = await svc.feed(providerProfileId, ['INSPECTION'] as any, 'INSPECTION' as any);
+        const job = feed.find((row) => row.id === inspectionJobId);
+
+        expect(job).toBeDefined();
+        expect(job!.servicePostcode).toBe('B12 8AB');
+        expect(job!.serviceAddress).toBeNull();
+
+        const deliveryOnlyFeed = await svc.feed(providerProfileId, ['DELIVERY'] as any, 'INSPECTION' as any);
+        expect(deliveryOnlyFeed).toEqual([]);
+    });
+
+    it('quotes, accepts and freezes the same 9% / 91% split used by Delivery', async () => {
+        const quote = await svc.upsertQuote(
+            providerProfileId,
+            ['INSPECTION'] as any,
+            TRUCKER.id,
+            inspectionJobId,
+            { amountPence: 12500, message: 'Full inspection with diagnostic scan.' } as any,
+        );
+        inspectionQuoteId = quote.id;
+
+        sessionsCreate.mockResolvedValueOnce({
+            id: 'cs_inspection',
+            url: 'https://checkout.stripe.com/cs_inspection',
+        });
+
+        const accepted = await svc.acceptQuote(CUSTOMER.id, inspectionJobId, inspectionQuoteId);
+        expect(accepted.checkoutUrl).toBe('https://checkout.stripe.com/cs_inspection');
+
+        const job = db.one('serviceJob', { id: inspectionJobId })!;
+        const payment = db.one('servicePayment', { jobId: inspectionJobId })!;
+
+        expect(job).toMatchObject({
+            status: 'ACCEPTED',
+            agreedAmountPence: 12500,
+            platformFeePence: 1125,
+            contractorAmountPence: 11375,
+        });
+        expect(payment).toMatchObject({
+            grossPence: 12500,
+            platformFeePence: 1125,
+            contractorPence: 11375,
+            status: 'PENDING',
+        });
+    });
+
+    it('moves from paid to started to completed and releases only the 91% provider share', async () => {
+        const payment = db.one('servicePayment', { jobId: inspectionJobId })!;
+
+        await svc.markPaid(inspectionJobId, payment.id, 'pi_inspection');
+        expect(db.one('serviceJob', { id: inspectionJobId })!.status).toBe('PAID');
+
+        const providerView = await svc.getJob({
+            userId: TRUCKER.id,
+            role: 'CONTRACTOR' as any,
+            contractorProfileId: providerProfileId,
+        }, inspectionJobId);
+        expect(providerView.serviceAddress).toBe('25 Test Lane');
+        expect((providerView as any).customer.phone).toBe(CUSTOMER.phone);
+
+        await svc.startJob(providerProfileId, inspectionJobId);
+        expect(db.one('serviceJob', { id: inspectionJobId })!.status).toBe('IN_PROGRESS');
+
+        await svc.completeJob(providerProfileId, inspectionJobId);
+        expect(db.one('serviceJob', { id: inspectionJobId })!.status).toBe('COMPLETED');
+
+        transfersCreate.mockResolvedValueOnce({ id: 'tr_inspection' });
+        const released = await svc.confirmCompletion(CUSTOMER.id, inspectionJobId);
+
+        expect(released).toEqual({ success: true, transferId: 'tr_inspection' });
+        expect(transfersCreate).toHaveBeenLastCalledWith(
+            { amount: 11375, currency: 'gbp', destination: 'acct_kent' },
+            { idempotencyKey: `service-job-release-${payment.id}` },
+        );
+        expect(db.one('serviceJob', { id: inspectionJobId })!.status).toBe('RELEASED');
+        expect(payment.status).toBe('RELEASED');
+    });
+});

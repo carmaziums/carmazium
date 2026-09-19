@@ -517,3 +517,72 @@ describe('PaymentsService — createCheckoutSession (F6: server-side amount, sam
         );
     });
 });
+
+
+describe('PaymentsService — TradeXchange SERVICE_JOB webhook', () => {
+    let service: PaymentsService;
+    let prisma: any;
+
+    beforeEach(async () => {
+        mockConstructEvent.mockReset();
+        prisma = buildPrismaMock();
+        const module: TestingModule = await buildModule(prisma);
+        service = module.get<PaymentsService>(PaymentsService);
+    });
+
+    it('hands a completed service checkout to ServicesService with the exact job, payment and PaymentIntent ids', async () => {
+        const markServiceJobPaid = jest
+            .spyOn(service as any, 'markServiceJobPaid')
+            .mockResolvedValue(undefined);
+
+        mockConstructEvent.mockReturnValue({
+            type: 'checkout.session.completed',
+            data: {
+                object: {
+                    id: 'cs_service_1',
+                    payment_intent: 'pi_service_1',
+                    metadata: {
+                        type: 'SERVICE_JOB',
+                        jobId: 'job-1',
+                        paymentId: 'payment-1',
+                        userId: 'customer-1',
+                    },
+                },
+            },
+        });
+
+        await service.handleWebhook(Buffer.from('{}'), 'sig');
+
+        expect(markServiceJobPaid).toHaveBeenCalledTimes(1);
+        expect(markServiceJobPaid).toHaveBeenCalledWith(
+            'job-1',
+            'payment-1',
+            'pi_service_1',
+        );
+    });
+
+    it('propagates a service payment transition failure so Stripe can retry the webhook', async () => {
+        jest
+            .spyOn(service as any, 'markServiceJobPaid')
+            .mockRejectedValue(new Error('temporary database failure'));
+
+        mockConstructEvent.mockReturnValue({
+            type: 'checkout.session.completed',
+            data: {
+                object: {
+                    id: 'cs_service_retry',
+                    payment_intent: 'pi_service_retry',
+                    metadata: {
+                        type: 'SERVICE_JOB',
+                        jobId: 'job-retry',
+                        paymentId: 'payment-retry',
+                    },
+                },
+            },
+        });
+
+        await expect(
+            service.handleWebhook(Buffer.from('{}'), 'sig'),
+        ).rejects.toThrow('temporary database failure');
+    });
+});
