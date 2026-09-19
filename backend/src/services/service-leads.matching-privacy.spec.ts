@@ -261,7 +261,8 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
         }));
         expect(detail).not.toHaveProperty('customerId');
         expect(detail).not.toHaveProperty('consentRecordedAt');
-        expect(prisma.serviceLeadRecipient.update).toHaveBeenCalledWith(expect.objectContaining({
+        expect(prisma.serviceLeadRecipient.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: { id: 'recipient-1', status: 'NEW' },
             data: expect.objectContaining({
                 status: 'VIEWED',
                 viewedAt: expect.any(Date),
