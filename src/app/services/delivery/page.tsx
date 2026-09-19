@@ -16,7 +16,7 @@ import {
     Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import { deliveryServiceEnabled } from "@/lib/featureFlags"
+import { useTradeXchangeAvailability } from "@/hooks/useTradeXchangeAvailability"
 import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
 import { useAuth } from "@/context/AuthContext"
 
@@ -29,7 +29,12 @@ const STEPS = [
 
 export default function DeliveryLandingPage() {
     const { user } = useAuth()
-    if (!deliveryServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Delivery & Recovery" />
+    const { availability, loading } = useTradeXchangeAvailability()
+
+    if (loading) {
+        return <div className="min-h-screen pt-32 text-center text-sm text-[var(--text-muted)]">Checking TradeXchange availability…</div>
+    }
+    if (!availability?.DELIVERY) return <ServiceTemporarilyUnavailable serviceName="Delivery & Recovery" />
 
     const providerHref = user
         ? "/dashboard/partner"
