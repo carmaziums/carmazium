@@ -5,6 +5,7 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { CapabilityStatus, Prisma, ServiceType } from '@prisma/client';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateServiceLeadDto, RespondToServiceLeadDto } from './service-leads.dto';
@@ -13,6 +14,8 @@ import { assertServiceAcceptingNewRequests } from './service-availability';
 
 const LEAD_TYPES = [ServiceType.FINANCE, ServiceType.WARRANTY] as const;
 const LEAD_LIFETIME_MS = 14 * 24 * 60 * 60 * 1000;
+export const MAX_LEAD_RECIPIENTS = 5;
+export const LEAD_RETENTION_DAYS = 90;
 
 type LeadType = (typeof LEAD_TYPES)[number];
 
@@ -52,16 +55,189 @@ export class ServiceLeadsService {
 
     private async expireOldLeads() {
         const now = new Date();
-        await this.prisma.serviceLead.updateMany({
+        return this.prisma.serviceLead.updateMany({
             where: {
                 status: 'OPEN',
                 expiresAt: { lte: now },
             },
             data: {
                 status: 'EXPIRED',
+                closedAt: now,
                 updatedAt: now,
             },
         });
+    }
+
+    private async anonymizeRetainedLeads() {
+        const cutoff = new Date(Date.now() - LEAD_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+        const stale = await this.prisma.serviceLead.findMany({
+            where: {
+                status: { in: ['CLOSED', 'EXPIRED'] },
+                closedAt: { lte: cutoff },
+                anonymizedAt: null,
+            },
+            select: { id: true },
+            take: 500,
+        });
+        if (stale.length === 0) return 0;
+
+        const ids = stale.map((lead) => lead.id);
+        const now = new Date();
+        await this.prisma.$transaction([
+            this.prisma.serviceLeadRecipient.updateMany({
+                where: { leadId: { in: ids } },
+                data: {
+                    headline: null,
+                    message: null,
+                },
+            }),
+            this.prisma.serviceLead.updateMany({
+                where: { id: { in: ids }, anonymizedAt: null },
+                data: {
+                    customerId: null,
+                    listingId: null,
+                    vehicleRegistration: null,
+                    fullName: null,
+                    email: null,
+                    phone: null,
+                    postcode: null,
+                    summary: null,
+                    employmentStatus: null,
+                    annualIncomePence: null,
+                    consentToProviderContact: false,
+                    consentRecordedAt: null,
+                    anonymizedAt: now,
+                    updatedAt: now,
+                },
+            }),
+        ]);
+        return ids.length;
+    }
+
+    @Cron('23 3 * * *')
+    async privacyMaintenance() {
+        await this.expireOldLeads();
+        return this.anonymizeRetainedLeads();
+    }
+
+    private providerMatchReason(
+        candidate: any,
+        lead: {
+            postcode: string | null;
+            vehicleValuePence: number | null;
+            vehicleYear: number | null;
+            vehicleMileage: number | null;
+            annualIncomePence: number | null;
+            termMonths: number | null;
+            warrantyMonths: number | null;
+            warrantyLevel: string | null;
+            serviceType: ServiceType;
+        },
+    ): string | null {
+        const area = postcodeArea(lead.postcode);
+        const areas = (candidate.leadPostcodeAreas ?? []).map((value: string) => value.toUpperCase());
+        if (!candidate.leadNationwide) {
+            if (!area || !areas.includes(area)) return null;
+        }
+
+        const requiredNumber = (rule: number | null | undefined, value: number | null, compare: (a: number, b: number) => boolean) =>
+            rule == null || (value != null && compare(value, rule));
+
+        if (!requiredNumber(candidate.leadMinVehicleValuePence, lead.vehicleValuePence, (value, min) => value >= min)) return null;
+        if (!requiredNumber(candidate.leadMaxVehicleValuePence, lead.vehicleValuePence, (value, max) => value <= max)) return null;
+        if (!requiredNumber(candidate.leadMinVehicleYear, lead.vehicleYear, (value, min) => value >= min)) return null;
+        if (!requiredNumber(candidate.leadMaxVehicleMileage, lead.vehicleMileage, (value, max) => value <= max)) return null;
+
+        if (lead.serviceType === ServiceType.FINANCE) {
+            if (!requiredNumber(candidate.leadMinAnnualIncomePence, lead.annualIncomePence, (value, min) => value >= min)) return null;
+            if (!requiredNumber(candidate.leadFinanceTermMinMonths, lead.termMonths, (value, min) => value >= min)) return null;
+            if (!requiredNumber(candidate.leadFinanceTermMaxMonths, lead.termMonths, (value, max) => value <= max)) return null;
+        }
+
+        if (lead.serviceType === ServiceType.WARRANTY) {
+            const levels = (candidate.leadWarrantyLevels ?? [])
+                .map((value: string) => value.trim().toLowerCase())
+                .filter(Boolean);
+            if (levels.length > 0 && (!lead.warrantyLevel || !levels.includes(lead.warrantyLevel.trim().toLowerCase()))) {
+                return null;
+            }
+            if (!requiredNumber(candidate.leadWarrantyMinMonths, lead.warrantyMonths, (value, min) => value >= min)) return null;
+            if (!requiredNumber(candidate.leadWarrantyMaxMonths, lead.warrantyMonths, (value, max) => value <= max)) return null;
+        }
+
+        return candidate.leadNationwide
+            ? 'Nationwide coverage and configured eligibility matched'
+            : `Postcode area ${area} and configured eligibility matched`;
+    }
+
+    private async matchingProviders(
+        db: any,
+        lead: {
+            serviceType: ServiceType;
+            postcode: string | null;
+            vehicleValuePence: number | null;
+            vehicleYear: number | null;
+            vehicleMileage: number | null;
+            annualIncomePence: number | null;
+            termMonths: number | null;
+            warrantyMonths: number | null;
+            warrantyLevel: string | null;
+        },
+        excludeContractorIds: string[] = [],
+        limit = MAX_LEAD_RECIPIENTS,
+    ) {
+        this.assertLeadType(lead.serviceType);
+        if (limit <= 0) return [];
+
+        const candidates = await db.contractorCapability.findMany({
+            where: {
+                serviceType: lead.serviceType,
+                status: CapabilityStatus.APPROVED,
+                contractor: {
+                    deletedAt: null,
+                    ...(excludeContractorIds.length ? { id: { notIn: excludeContractorIds } } : {}),
+                },
+            },
+            select: {
+                contractorId: true,
+                reviewedAt: true,
+                leadNationwide: true,
+                leadPostcodeAreas: true,
+                leadMinVehicleValuePence: true,
+                leadMaxVehicleValuePence: true,
+                leadMinVehicleYear: true,
+                leadMaxVehicleMileage: true,
+                leadMinAnnualIncomePence: true,
+                leadFinanceTermMinMonths: true,
+                leadFinanceTermMaxMonths: true,
+                leadWarrantyLevels: true,
+                leadWarrantyMinMonths: true,
+                leadWarrantyMaxMonths: true,
+                contractor: {
+                    select: {
+                        userId: true,
+                        rating: true,
+                        totalReviews: true,
+                    },
+                },
+            },
+        });
+
+        const matched = candidates
+            .map((candidate: any) => ({
+                ...candidate,
+                matchReason: this.providerMatchReason(candidate, lead),
+                areaSpecific: !candidate.leadNationwide,
+            }))
+            .filter((candidate: any) => candidate.matchReason)
+            .sort((a: any, b: any) =>
+                Number(b.areaSpecific) - Number(a.areaSpecific)
+                || (b.contractor.rating ?? 0) - (a.contractor.rating ?? 0)
+                || (b.contractor.totalReviews ?? 0) - (a.contractor.totalReviews ?? 0)
+                || String(a.contractorId).localeCompare(String(b.contractorId)),
+            );
+
+        return matched.slice(0, limit);
     }
 
     async create(customerId: string, dto: CreateServiceLeadDto) {
