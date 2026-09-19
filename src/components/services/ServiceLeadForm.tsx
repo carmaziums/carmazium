@@ -35,8 +35,19 @@ export function ServiceLeadForm({ type }: { type: "FINANCE" | "WARRANTY" }) {
             return
         }
         if (!consent) return setError("Please confirm that approved providers may contact you about this enquiry.")
-        if (type === "WARRANTY" && !form.registration.trim() && !(form.make.trim() && form.model.trim())) {
+        if (!form.registration.trim() && !(form.make.trim() && form.model.trim())) {
             return setError("Enter the registration or vehicle make and model.")
+        }
+        if (type === "FINANCE") {
+            if (!form.postcode.trim()) return setError("Enter the UK postcode for this finance enquiry.")
+            if (!form.value.trim() || Number(form.value) <= 0) return setError("Enter the approximate vehicle value.")
+            if (!form.term) return setError("Choose a preferred finance term.")
+            if (!form.employmentStatus.trim()) return setError("Select your employment status.")
+            const budget = Number(form.monthlyBudget || 0)
+            const income = Number(form.annualIncome || 0)
+            if (budget <= 0 && income <= 0) {
+                return setError("Enter either your monthly budget or annual income.")
+            }
         }
         setBusy(true); setError(null)
         try {
