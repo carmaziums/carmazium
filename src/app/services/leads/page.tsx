@@ -42,7 +42,7 @@ export default function MyServiceLeadsPage() {
                                 <div>
                                     <p className="text-xs font-black uppercase tracking-widest text-primary mb-1">{SERVICE_LABELS[lead.serviceType]}</p>
                                     <h2 className="font-heading font-bold text-lg">{[lead.vehicleRegistration, lead.vehicleMake, lead.vehicleModel].filter(Boolean).join(" · ") || "Vehicle enquiry"}</h2>
-                                    <p className="text-sm text-[var(--text-muted)] mt-2">{lead.responseCount ?? 0} provider response{(lead.responseCount ?? 0) === 1 ? "" : "s"} · Submitted {new Date(lead.createdAt).toLocaleDateString("en-GB")}</p>
+                                    <p className="text-sm text-[var(--text-muted)] mt-2">Shared with {lead.recipientCount ?? 0} matched provider{(lead.recipientCount ?? 0) === 1 ? "" : "s"} · {lead.responseCount ?? 0} response{(lead.responseCount ?? 0) === 1 ? "" : "s"} · Submitted {new Date(lead.createdAt).toLocaleDateString("en-GB")}</p>
                                 </div>
                                 <div className="flex items-center gap-3"><span className="text-[10px] font-black uppercase tracking-widest border border-[var(--border-default)] px-2.5 py-1 rounded-full">{lead.status}</span><ArrowRight size={17} className="text-primary" /></div>
                             </div>
