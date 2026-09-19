@@ -20,6 +20,7 @@ describe('ListingsService', () => {
     let service: ListingsService;
     let prisma: any;
     let sellers: any;
+    let scraper: any;
 
     beforeEach(async () => {
         prisma = {
@@ -45,7 +46,7 @@ describe('ListingsService', () => {
         };
         sellers = { incrementListings: jest.fn(), incrementSales: jest.fn() };
         const config = { get: jest.fn() };
-        const scraper = {};
+        scraper = { scrape: jest.fn() };
         const notifications = { create: jest.fn().mockResolvedValue(null) };
         const notificationsGateway = { sendNotification: jest.fn() };
 
@@ -307,6 +308,54 @@ describe('ListingsService', () => {
                 data: { status: 'PENDING_REVIEW', rejectionReason: null },
             });
             expect(prisma.transaction.findMany).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('external listing import image isolation', () => {
+        it('never persists third-party image URLs on the imported Listing row', async () => {
+            scraper.scrape.mockResolvedValue({
+                platform: 'AUTOTRADER',
+                originalUrl: 'https://www.autotrader.co.uk/car-details/123',
+                title: 'Imported BMW 3 Series',
+                images: [
+                    'https://m.atcdn.co.uk/a/media/w1024/example.jpg',
+                ],
+            });
+            prisma.listing.create.mockImplementation(async ({ data }: any) => ({
+                id: 'imported-listing-1',
+                ...data,
+            }));
+
+            const result = await service.importFromUrl(
+                'https://www.autotrader.co.uk/car-details/123',
+                'seller-1',
+                {
+                    price: 12000,
+                    vrm: 'AB12CDE',
+                    badgeTier: 'BASIC',
+                },
+            );
+
+            expect(prisma.listing.create).toHaveBeenCalledWith({
+                data: expect.objectContaining({
+                    sellerId: 'seller-1',
+                    images: [],
+                    importedSource: 'AUTOTRADER',
+                }),
+            });
+            expect(result.images).toEqual([]);
+
+            // Secure Storage credentials are intentionally absent in this unit
+            // test, so the background importer must fail closed rather than
+            // writing the original third-party URL back into the listing.
+            await new Promise((resolve) => setImmediate(resolve));
+            expect(prisma.listing.update).not.toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: {
+                        images: ['https://m.atcdn.co.uk/a/media/w1024/example.jpg'],
+                    },
+                }),
+            );
         });
     });
 
