@@ -469,37 +469,9 @@ export class ServiceLeadsService {
         return profile;
     }
 
-    private async ensureRecipients(contractorId: string, types: ServiceType[]) {
-        await this.expireOldLeads();
-        types.forEach((type) => this.assertLeadType(type));
-
-        if (types.length === 0) return;
-
-        const openLeads = await this.prisma.serviceLead.findMany({
-            where: {
-                serviceType: { in: types },
-                status: 'OPEN',
-                expiresAt: { gt: new Date() },
-                consentToProviderContact: true,
-            },
-            select: { id: true },
-        });
-        if (openLeads.length === 0) return;
-
-        await this.prisma.serviceLeadRecipient.createMany({
-            data: openLeads.map((lead) => ({
-                leadId: lead.id,
-                contractorId,
-                status: 'NEW',
-            })),
-            skipDuplicates: true,
-        });
-    }
-
     async inbox(userId: string, serviceType?: ServiceType) {
         const profile = await this.providerProfile(userId, serviceType);
-        const types = profile.capabilities.map((capability) => capability.serviceType);
-        await this.ensureRecipients(profile.id, types);
+        await this.expireOldLeads();
 
         const now = new Date();
         const recipients = await this.prisma.serviceLeadRecipient.findMany({
@@ -515,28 +487,38 @@ export class ServiceLeadsService {
             include: { lead: true },
         });
 
-        await this.prisma.serviceLeadRecipient.updateMany({
-            where: {
-                contractorId: profile.id,
-                status: 'NEW',
-            },
-            data: {
-                status: 'VIEWED',
-                viewedAt: now,
-            },
-        });
-
         return recipients.map(({ lead, ...recipient }) => ({
-            ...lead,
+            id: lead.id,
+            serviceType: lead.serviceType,
+            status: lead.status,
+            vehicleRegistration: lead.vehicleRegistration,
+            vehicleMake: lead.vehicleMake,
+            vehicleModel: lead.vehicleModel,
+            vehicleYear: lead.vehicleYear,
+            vehicleMileage: lead.vehicleMileage,
+            vehicleValuePence: lead.vehicleValuePence,
+            // Inbox only needs a broad routing area. Full postcode/contact and
+            // financial-employment detail are disclosed only after the matched
+            // provider deliberately opens this enquiry.
+            postcode: postcodeArea(lead.postcode),
+            depositPence: lead.serviceType === ServiceType.FINANCE ? lead.depositPence : null,
+            termMonths: lead.serviceType === ServiceType.FINANCE ? lead.termMonths : null,
+            monthlyBudgetPence: lead.serviceType === ServiceType.FINANCE ? lead.monthlyBudgetPence : null,
+            warrantyMonths: lead.serviceType === ServiceType.WARRANTY ? lead.warrantyMonths : null,
+            warrantyLevel: lead.serviceType === ServiceType.WARRANTY ? lead.warrantyLevel : null,
+            expiresAt: lead.expiresAt,
+            createdAt: lead.createdAt,
             recipientId: recipient.id,
-            recipientStatus: recipient.status === 'NEW' ? 'VIEWED' : recipient.status,
+            recipientStatus: recipient.status,
             headline: recipient.headline,
             message: recipient.message,
             productName: recipient.productName,
             indicativePricePence: recipient.indicativePricePence,
             representativeApr: recipient.representativeApr == null ? null : Number(recipient.representativeApr),
             responseTermMonths: recipient.termMonths,
-            viewedAt: recipient.viewedAt ?? (recipient.status === 'NEW' ? now : null),
+            matchedAt: recipient.matchedAt,
+            matchSource: recipient.matchSource,
+            viewedAt: recipient.viewedAt,
             respondedAt: recipient.respondedAt,
         }));
     }
