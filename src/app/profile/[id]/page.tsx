@@ -3,7 +3,7 @@ import Link from "next/link"
 import { BadgeCheck, Building2, CalendarDays, MapPin, ShieldCheck, Star } from "lucide-react"
 import { ProfileReviewForm } from "@/components/profile/ProfileReviewForm"
 import { ServiceBadgePill } from "@/components/profile/ServiceBadgePill"
-import { profileImageStyle, type ProfileImageFit } from "@/lib/profileImagePresentation"
+import { profileImageStyle, type ProfileImageFit } from "@/lib/profileImagePresentation"\nimport { serverFetchWithRetry } from "@/lib/serverFetchWithRetry"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
 
@@ -55,7 +55,7 @@ type GivenReview = {
 
 async function getProfile(id: string): Promise<PublicProfile | null> {
     try {
-        const response = await fetch(`${API_BASE}/profiles/${id}`, { next: { revalidate: 60 } })
+        const response = await serverFetchWithRetry(`${API_BASE}/profiles/${id}`, { next: { revalidate: 60 } })
         if (response.status === 404) return null
         if (!response.ok) return null
         const json = await response.json()
@@ -67,7 +67,7 @@ async function getProfile(id: string): Promise<PublicProfile | null> {
 
 async function getReceivedReviews(id: string): Promise<{ data: ReceivedReview[]; total: number }> {
     try {
-        const response = await fetch(`${API_BASE}/profiles/${id}/reviews?limit=20`, { next: { revalidate: 60 } })
+        const response = await serverFetchWithRetry(`${API_BASE}/profiles/${id}/reviews?limit=20`, { next: { revalidate: 60 } })
         if (!response.ok) return { data: [], total: 0 }
         const json = await response.json()
         return json.data ?? { data: [], total: 0 }
@@ -78,7 +78,7 @@ async function getReceivedReviews(id: string): Promise<{ data: ReceivedReview[];
 
 async function getGivenReviews(id: string): Promise<{ data: GivenReview[]; total: number }> {
     try {
-        const response = await fetch(`${API_BASE}/profiles/${id}/reviews/given?limit=20`, { next: { revalidate: 60 } })
+        const response = await serverFetchWithRetry(`${API_BASE}/profiles/${id}/reviews/given?limit=20`, { next: { revalidate: 60 } })
         if (!response.ok) return { data: [], total: 0 }
         const json = await response.json()
         return json.data ?? { data: [], total: 0 }
