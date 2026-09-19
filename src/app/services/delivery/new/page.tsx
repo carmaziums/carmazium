@@ -1,10 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { useRouter, notFound } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Truck, Plus, Trash2, Loader2, AlertCircle, ArrowRight, CheckCircle } from "lucide-react"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { deliveryServiceEnabled } from "@/lib/featureFlags"
+import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
 import { Button } from "@/components/ui/Button"
 import { createJob, type JobVehicle } from "@/lib/servicesApi"
 
@@ -246,7 +247,7 @@ function NewDeliveryJobForm() {
 }
 
 export default function NewDeliveryJobPage() {
-    if (!deliveryServiceEnabled) notFound()
+    if (!deliveryServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Delivery & Recovery" />
 
     return (
         <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
