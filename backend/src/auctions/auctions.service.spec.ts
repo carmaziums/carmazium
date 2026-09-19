@@ -460,6 +460,8 @@ describe('AuctionsService — create', () => {
                     isDepartedSale: false,
                 }),
                 update: jest.fn(),
+                updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+                findMany: jest.fn().mockResolvedValue([]),
             },
             auction: {
                 findUnique: jest.fn().mockResolvedValue(null),
@@ -472,7 +474,9 @@ describe('AuctionsService — create', () => {
             hpiReport: {
                 findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }),
             },
-            $transaction: jest.fn(async (operations: any[]) => Promise.all(operations)),
+            $transaction: jest.fn(async (arg: any) =>
+                typeof arg === 'function' ? arg(prisma) : Promise.all(arg)
+            ),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -655,6 +659,80 @@ describe('AuctionsService — create', () => {
                 data: expect.objectContaining({ status: 'SCHEDULED' }),
             }),
         );
+    });
+
+    it('relinks one legacy failed-auction clone to its still-active retail sibling before restarting', async () => {
+        const revertedRetailDraft = {
+            id: 'listing-1',
+            sellerId: 'seller-1',
+            deletedAt: null,
+            createdAt: new Date('2026-09-19T01:00:00.000Z'),
+            status: 'DRAFT',
+            type: 'CLASSIFIED',
+            price: 10000,
+            title: 'BMW M3 2022',
+            images: Array.from({ length: 10 }, (_, i) => `image-${i}`),
+            vrm: 'AB12 CDE',
+            make: 'BMW',
+            model: 'M3',
+            year: 2022,
+            mileage: 30000,
+            fuelType: 'PETROL',
+            transmission: 'AUTOMATIC',
+            bodyType: 'COUPE',
+            location: 'Birmingham',
+            owners: '1',
+            description: 'Well presented vehicle with full details.',
+            condition: 'GOOD',
+            stolenRecovered: false,
+            hasOutstandingFinance: false,
+            isLegalRegisteredKeeper: true,
+            isDepartedSale: false,
+            linkedListingId: null,
+        };
+        prisma.listing.findUnique.mockResolvedValue(revertedRetailDraft);
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1',
+            listingId: 'listing-1',
+            status: 'ENDED',
+            deletedAt: null,
+            winnerId: null,
+        });
+        prisma.listing.findMany.mockResolvedValue([{
+            id: 'retail-1',
+            sellerId: 'seller-1',
+            deletedAt: null,
+            status: 'ACTIVE',
+            type: 'CLASSIFIED',
+            vrm: 'AB12CDE',
+            linkedListingId: null,
+            hpiReport: { id: 'retail-hpi' },
+        }]);
+        prisma.hpiReport.findUnique.mockResolvedValue(null);
+        prisma.auction.update.mockResolvedValue({ id: 'auction-1', status: 'SCHEDULED' });
+
+        await service.create(makeDto(), 'seller-1');
+
+        expect(prisma.listing.updateMany).toHaveBeenCalledWith({
+            where: {
+                id: 'retail-1',
+                sellerId: 'seller-1',
+                type: 'CLASSIFIED',
+                status: 'ACTIVE',
+                deletedAt: null,
+                linkedListingId: null,
+            },
+            data: { linkedListingId: 'listing-1' },
+        });
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'listing-1' },
+            data: {
+                status: 'PENDING_REVIEW',
+                rejectionReason: null,
+                type: 'AUCTION',
+                linkedListingId: 'retail-1',
+            },
+        });
     });
 
     it('still rejects an arbitrary CLASSIFIED draft that was not reverted from an ended auction', async () => {
