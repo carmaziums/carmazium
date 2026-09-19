@@ -16,6 +16,7 @@ import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
 import { Auction, Prisma } from '@prisma/client';
 import { AUCTION_DURATION_MS, calculatePlatformOpeningBid } from './auction-pricing';
+import { getListingSubmissionReadiness } from '../listings/listing-readiness';
 
 const ANTI_SNIPE_MINUTES = 3;
 // Grace window a declared winner has to pay the £125 buyer fee before the win
@@ -43,8 +44,7 @@ export class AuctionsService {
         const now = new Date();
         const startTime = new Date(createAuctionDto.startTime);
 
-        // Allow immediate start (startTime in the past or very near future is treated as 'now')
-        // Only reject if startTime is more than 1 minute in the past (clock skew tolerance)
+        // Allow immediate start with a small clock-skew tolerance.
         if (Number.isNaN(startTime.getTime()) || startTime.getTime() < now.getTime() - 60 * 1000) {
             throw new BadRequestException('Start time cannot be in the past');
         }
@@ -64,14 +64,55 @@ export class AuctionsService {
         if (listing.status === 'SOLD') {
             throw new BadRequestException('This listing has already been sold');
         }
-        if (listing.type !== 'AUCTION') {
+
+        const existing = await this.prisma.auction.findUnique({
+            where: { listingId: createAuctionDto.listingId },
+        });
+
+        // Reserve-not-met auctions intentionally return the vehicle to a DRAFT
+        // CLASSIFIED inventory state so the seller can choose retail instead.
+        // The Re-auction action reuses that same Listing/Auction pair; allow only
+        // that proven ended/cancelled-auction case and atomically switch it back
+        // to AUCTION. Arbitrary retail drafts must still use the linked-auction flow.
+        const isReauctionableRetailDraft = (
+            listing.type === 'CLASSIFIED'
+            && listing.status === 'DRAFT'
+            && !!existing
+            && !existing.deletedAt
+            && ['ENDED', 'CANCELLED'].includes(existing.status)
+            && !existing.winnerId
+        );
+
+        if (listing.type !== 'AUCTION' && !isReauctionableRetailDraft) {
             throw new BadRequestException(
                 'This endpoint only schedules an AUCTION listing. Use the linked-auction flow to auction a retail listing.',
             );
         }
-        if ((listing.images?.length ?? 0) < 10) {
+
+        if (existing && !existing.deletedAt && existing.status !== 'ENDED' && existing.status !== 'CANCELLED') {
+            throw new BadRequestException('An auction already exists for this listing');
+        }
+
+        // This endpoint is a submission path used by the seller auction dashboards
+        // and by HPI-created drafts. It must enforce exactly the same readiness
+        // contract as POST /listings/:id/publish before it can move a listing into
+        // the admin queue; otherwise calling POST /auctions directly bypasses HPI,
+        // declarations and the full vehicle-completeness gate.
+        const hpiReport = await this.prisma.hpiReport.findUnique({
+            where: { listingId: listing.id },
+            select: { id: true },
+        });
+        const readiness = getListingSubmissionReadiness(listing, {
+            hasRequiredHpi: Boolean(hpiReport),
+        });
+        if (readiness.missingFields.length > 0) {
             throw new BadRequestException(
-                `Auctions require at least 10 photos before scheduling. You have ${listing.images?.length ?? 0}.`,
+                `Listing is not ready to submit. Missing: ${readiness.missingFields.join(', ')}.`,
+            );
+        }
+        if (readiness.missingHpi) {
+            throw new BadRequestException(
+                'A CarMazium vehicle history (HPI) report must be requested before this auction can be submitted.',
             );
         }
 
@@ -85,20 +126,13 @@ export class AuctionsService {
         }
         const platformStartingBid = calculatePlatformOpeningBid(marketValue);
 
-        const existing = await this.prisma.auction.findUnique({
-            where: { listingId: createAuctionDto.listingId },
-        });
-
-        if (existing && !existing.deletedAt && existing.status !== 'ENDED' && existing.status !== 'CANCELLED') {
-            throw new BadRequestException('An auction already exists for this listing');
-        }
-
         const needsReview = listing.status !== 'PENDING_REVIEW';
         const listingUpdate = this.prisma.listing.update({
             where: { id: createAuctionDto.listingId },
             data: {
                 status: 'PENDING_REVIEW',
                 rejectionReason: null,
+                ...(isReauctionableRetailDraft ? { type: 'AUCTION' as const } : {}),
             },
         });
 
