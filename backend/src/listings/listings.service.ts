@@ -162,6 +162,112 @@ export class ListingsService {
         return (vrm ?? '').replace(/\s+/g, '').trim().toUpperCase();
     }
 
+    /**
+     * Serialize listing creation for one seller + normalized VRM across every
+     * backend instance. The existing pre-create lookup alone is race-prone:
+     * two requests can both observe "no listing" before either insert commits.
+     */
+    private async lockVehicleCreation(
+        tx: any,
+        userId: string,
+        normalizedVrm: string,
+    ): Promise<void> {
+        await tx.$queryRaw`
+            SELECT pg_advisory_xact_lock(
+                hashtext(${userId}),
+                hashtext(${normalizedVrm})
+            )
+        `;
+    }
+
+    private async findCurrentListingsForVrm(
+        db: any,
+        userId: string,
+        normalizedVrm: string,
+    ): Promise<Array<{
+        id: string;
+        vrm: string | null;
+        type: ListingType;
+        status: ListingStatus;
+        title: string;
+        price: any;
+        year: number | null;
+        mileage: number | null;
+        linkedListingId: string | null;
+        importedFromUrl: string | null;
+    }>> {
+        const candidates = await db.listing.findMany({
+            where: {
+                sellerId: userId,
+                deletedAt: null,
+                status: { not: 'SOLD' },
+            },
+            select: {
+                id: true,
+                vrm: true,
+                type: true,
+                status: true,
+                title: true,
+                price: true,
+                year: true,
+                mileage: true,
+                linkedListingId: true,
+                importedFromUrl: true,
+            },
+            orderBy: { updatedAt: 'desc' },
+        });
+
+        return candidates.filter(
+            (candidate: { vrm: string | null }) => this.normalizeVrm(candidate.vrm) === normalizedVrm,
+        );
+    }
+
+    /**
+     * Resolve an existing same-vehicle row while holding the seller+VRM lock.
+     * Only an exact retry signature is idempotently reused. A different draft
+     * is surfaced as a conflict so fresh input can never be silently replaced
+     * by stale listing data.
+     */
+    private async resolveExistingCreate(
+        db: any,
+        userId: string,
+        normalizedVrm: string,
+        requested: {
+            type: ListingType;
+            title: string;
+            price: number;
+            year?: number | null;
+            mileage?: number | null;
+            importedFromUrl?: string | null;
+        },
+    ): Promise<Listing | null> {
+        const matches = await this.findCurrentListingsForVrm(db, userId, normalizedVrm);
+        if (matches.length === 0) return null;
+
+        const reusable = matches.find((candidate) =>
+            candidate.type === requested.type
+            && ['DRAFT', 'REJECTED'].includes(candidate.status)
+            && !candidate.linkedListingId
+            && candidate.title.trim() === requested.title.trim()
+            && Number(candidate.price) === Number(requested.price)
+            && (requested.year === undefined || candidate.year === requested.year)
+            && (requested.mileage === undefined || candidate.mileage === requested.mileage)
+            && (
+                requested.importedFromUrl === undefined
+                || candidate.importedFromUrl === requested.importedFromUrl
+            )
+        );
+
+        if (reusable) {
+            return db.listing.findUnique({ where: { id: reusable.id } });
+        }
+
+        const existing = matches[0];
+        throw new BadRequestException(
+            `This vehicle already has an existing ${existing.type.toLowerCase()} listing (${existing.status.toLowerCase()}). Open that listing instead of creating a duplicate.`,
+        );
+    }
+
     private assertListingImageUrls(imageUrls: string[], userId?: string): void {
         if (imageUrls.length > 100) {
             throw new BadRequestException('A maximum of 100 listing photos is allowed');
@@ -330,28 +436,6 @@ export class ListingsService {
 
         const listingType: ListingType = createListingDto.listingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED';
 
-        // Prevent double-submit/retry races from creating multiple unsold
-        // records for the same seller and VRM. Retail+auction dual-channel
-        // listings use the explicit linked-listing endpoints instead.
-        if (userId && normalizedVrm) {
-            const existingForSeller = await this.prisma.listing.findMany({
-                where: {
-                    sellerId: userId,
-                    deletedAt: null,
-                    status: { not: 'SOLD' },
-                },
-                select: { id: true, vrm: true, type: true, status: true },
-            });
-            const duplicate = existingForSeller.find(
-                candidate => this.normalizeVrm(candidate.vrm) === normalizedVrm,
-            );
-            if (duplicate) {
-                throw new BadRequestException(
-                    `This vehicle already has an existing ${duplicate.type.toLowerCase()} listing (${duplicate.status.toLowerCase()}). Open that listing instead of creating a duplicate.`,
-                );
-            }
-        }
-
         const hasInitialAuctionSchedule = [
             createListingDto.auctionStartTime,
             createListingDto.auctionReservePrice,
@@ -448,9 +532,31 @@ export class ListingsService {
             );
         }
 
-        // Create the listing with validated CarMazium storage URLs.
-        const listing = await this.prisma.listing.create({
-            data: {
+        // Create under a seller+VRM transaction lock. This makes retries safe
+        // across multiple Fly instances instead of relying on a race-prone
+        // pre-insert lookup.
+        const createResult = await this.prisma.$transaction(async (tx) => {
+            if (userId && normalizedVrm) {
+                await this.lockVehicleCreation(tx, userId, normalizedVrm);
+                const existing = await this.resolveExistingCreate(
+                    tx,
+                    userId,
+                    normalizedVrm,
+                    {
+                        type: listingType,
+                        title: createListingDto.title,
+                        price: createListingDto.price,
+                        year: createListingDto.year,
+                        mileage: createListingDto.mileage,
+                    },
+                );
+                if (existing) {
+                    return { listing: existing, created: false };
+                }
+            }
+
+            const created = await tx.listing.create({
+                data: {
                 title: createListingDto.title,
                 price: createListingDto.price,
                 priceMin: createListingDto.priceMin ?? null,
@@ -541,7 +647,14 @@ export class ListingsService {
                     ? { create: initialAuctionCreate }
                     : undefined,
             },
+            });
+            return { listing: created, created: true };
         });
+
+        const listing = createResult.listing;
+        if (!createResult.created) {
+            return listing;
+        }
 
         // Geocode location in background — non-blocking
         if (createListingDto.location) {
@@ -1508,80 +1621,109 @@ export class ListingsService {
         userId: string,
         dto: { price: number; badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM' },
     ): Promise<{ linkedListingId: string }> {
-        const source = await this.findById(listingId);
-        if (source.sellerId !== userId) throw new ForbiddenException('You do not own this listing');
-        if (source.type !== 'AUCTION') throw new BadRequestException('Source listing must be of type AUCTION');
+        const newListingId = randomUUID();
 
-        // Idempotency: if a linked listing already exists, check its state
-        const existingLinkedId = (source as any).linkedListingId as string | null;
-        if (existingLinkedId) {
-            const existingLinked = await this.prisma.listing.findUnique({
-                where: { id: existingLinkedId },
-                select: { id: true, status: true },
+        return this.prisma.$transaction(async (tx) => {
+            let source = await tx.listing.findUnique({
+                where: { id: listingId },
             });
-            if (existingLinked?.status === 'ACTIVE') {
-                // Already paid and active — return it so frontend can redirect to pay again if needed
-                return { linkedListingId: existingLinkedId };
+            if (!source || source.deletedAt) throw new NotFoundException('Listing not found');
+            if (source.sellerId !== userId) throw new ForbiddenException('You do not own this listing');
+            if (source.type !== 'AUCTION') throw new BadRequestException('Source listing must be of type AUCTION');
+
+            // A repeated request must resume the existing linked retail DRAFT,
+            // not delete it and create a fresh listing/payment target.
+            if (source.linkedListingId) {
+                const existingLinked = await tx.listing.findUnique({
+                    where: { id: source.linkedListingId },
+                    select: { id: true, deletedAt: true },
+                });
+                if (existingLinked && !existingLinked.deletedAt) {
+                    return { linkedListingId: existingLinked.id };
+                }
+
+                // Heal only a stale pointer to a missing/soft-deleted row.
+                await tx.listing.updateMany({
+                    where: {
+                        id: listingId,
+                        linkedListingId: source.linkedListingId,
+                    },
+                    data: { linkedListingId: null },
+                });
+                source = { ...source, linkedListingId: null };
             }
-            // DRAFT + no completed payment — clean up the stale draft so we can start fresh
-            if (existingLinked) {
-                await this.prisma.listing.update({ where: { id: listingId }, data: { linkedListingId: null } as any });
-                await this.prisma.listing.delete({ where: { id: existingLinked.id } });
+
+            const claimed = await tx.listing.updateMany({
+                where: {
+                    id: listingId,
+                    sellerId: userId,
+                    type: 'AUCTION',
+                    linkedListingId: null,
+                    deletedAt: null,
+                },
+                data: { linkedListingId: newListingId },
+            });
+
+            if (claimed.count !== 1) {
+                const refreshed = await tx.listing.findUnique({
+                    where: { id: listingId },
+                    select: { linkedListingId: true },
+                });
+                if (refreshed?.linkedListingId) {
+                    return { linkedListingId: refreshed.linkedListingId };
+                }
+                throw new BadRequestException(
+                    'The auction listing changed while the retail listing was being created. Refresh and try again.',
+                );
             }
-        }
 
-        const slug = this.generateSlug(source.title);
+            const slug = this.generateSlug(source.title);
+            await tx.listing.create({
+                data: {
+                    id: newListingId,
+                    title: source.title,
+                    price: dto.price,
+                    images: source.images,
+                    videoUrls: source.videoUrls,
+                    type: 'CLASSIFIED',
+                    status: 'DRAFT',
+                    description: source.description,
+                    slug,
+                    make: source.make, model: source.model, year: source.year, mileage: source.mileage,
+                    vrm: source.vrm, vin: source.vin,
+                    fuelType: source.fuelType, transmission: source.transmission,
+                    color: source.color, doors: source.doors, seats: source.seats,
+                    engineSize: source.engineSize, bhp: source.bhp, bodyType: source.bodyType,
+                    features: source.features ?? undefined,
+                    location: source.location, latitude: source.latitude, longitude: source.longitude,
+                    condition: source.condition, ulezCompliant: source.ulezCompliant,
+                    euroStandard: source.euroStandard, co2Emissions: source.co2Emissions,
+                    motStatus: source.motStatus, taxStatus: source.taxStatus,
+                    motExpiryDate: source.motExpiryDate, taxDueDate: source.taxDueDate,
+                    markedForExport: source.markedForExport,
+                    monthOfFirstRegistration: source.monthOfFirstRegistration,
+                    wheelplan: source.wheelplan, typeApproval: source.typeApproval,
+                    variant: source.variant, driveType: source.driveType,
+                    numberOfKeys: source.numberOfKeys, serviceHistory: source.serviceHistory,
+                    owners: source.owners, torqueNm: source.torqueNm,
+                    topSpeedMph: source.topSpeedMph, zeroTo60Mph: source.zeroTo60Mph,
+                    combinedMpg: source.combinedMpg, extraUrbanMpg: source.extraUrbanMpg,
+                    exteriorGrade: source.exteriorGrade,
+                    bannerLabel: source.bannerLabel,
+                    badgeTier: dto.badgeTier,
+                    sellerId: userId,
+                    vehicleType: source.vehicleType,
+                    isImported: source.isImported,
+                    stolenRecovered: source.stolenRecovered,
+                    hasOutstandingFinance: source.hasOutstandingFinance,
+                    isLegalRegisteredKeeper: source.isLegalRegisteredKeeper,
+                    writeOffCategory: source.writeOffCategory,
+                    linkedListingId: listingId,
+                } as any,
+            });
 
-        const newListing = await this.prisma.listing.create({
-            data: {
-                title: source.title,
-                price: dto.price,
-                images: source.images,
-                videoUrls: source.videoUrls,
-                type: 'CLASSIFIED',
-                status: 'DRAFT',
-                description: source.description,
-                slug,
-                make: source.make, model: source.model, year: source.year, mileage: source.mileage,
-                vrm: source.vrm, vin: source.vin,
-                fuelType: source.fuelType, transmission: source.transmission,
-                color: source.color, doors: source.doors, seats: source.seats,
-                engineSize: source.engineSize, bhp: source.bhp, bodyType: source.bodyType,
-                features: source.features ?? undefined,
-                location: source.location, latitude: source.latitude, longitude: source.longitude,
-                condition: source.condition, ulezCompliant: source.ulezCompliant,
-                euroStandard: source.euroStandard, co2Emissions: source.co2Emissions,
-                motStatus: source.motStatus, taxStatus: source.taxStatus,
-                motExpiryDate: source.motExpiryDate, taxDueDate: source.taxDueDate,
-                markedForExport: source.markedForExport,
-                monthOfFirstRegistration: source.monthOfFirstRegistration,
-                wheelplan: source.wheelplan, typeApproval: source.typeApproval,
-                variant: source.variant, driveType: source.driveType,
-                numberOfKeys: source.numberOfKeys, serviceHistory: source.serviceHistory,
-                owners: source.owners, torqueNm: source.torqueNm,
-                topSpeedMph: source.topSpeedMph, zeroTo60Mph: source.zeroTo60Mph,
-                combinedMpg: source.combinedMpg, extraUrbanMpg: source.extraUrbanMpg,
-                exteriorGrade: source.exteriorGrade,
-                bannerLabel: source.bannerLabel,
-                badgeTier: dto.badgeTier,
-                sellerId: userId,
-                vehicleType: source.vehicleType,
-                isImported: source.isImported,
-                stolenRecovered: source.stolenRecovered,
-                hasOutstandingFinance: source.hasOutstandingFinance,
-                isLegalRegisteredKeeper: source.isLegalRegisteredKeeper,
-                writeOffCategory: source.writeOffCategory,
-                linkedListingId: listingId,
-            } as any,
+            return { linkedListingId: newListingId };
         });
-
-        // Link the source AUCTION listing back to the new retail listing
-        await this.prisma.listing.update({
-            where: { id: listingId },
-            data: { linkedListingId: newListing.id } as any,
-        });
-
-        return { linkedListingId: newListing.id };
     }
 
     /**
@@ -2299,39 +2441,68 @@ export class ListingsService {
         };
 
         const badgeTier = overrides.badgeTier ?? 'BASIC';
+        const normalizedVrm = this.normalizeVrm(overrides.vrm);
 
-        const listing = await this.prisma.listing.create({
-            data: {
-                title,
-                price: overrides.price,
-                // Never persist third-party URLs. Imported photos are added only
-                // after the hardened downloader has copied verified image bytes
-                // into CarMazium-owned Storage.
-                images: [],
-                type: 'CLASSIFIED',
-                status: 'DRAFT',
-                slug,
-                description: scraped.description ?? null,
-                make: scraped.make ?? null,
-                model: scraped.model ?? null,
-                year: scraped.year ?? null,
-                mileage: scraped.mileage ?? null,
-                vrm: overrides.vrm,
-                vin: scraped.vin ?? null,
-                fuelType: scraped.fuelType ? (fuelMap[scraped.fuelType] ?? null) : null,
-                transmission: scraped.transmission ? (transMap[scraped.transmission] ?? null) : null,
-                color: scraped.color ?? null,
-                doors: scraped.doors ?? null,
-                engineSize: scraped.engineSize ?? null,
-                bhp: scraped.bhp ?? null,
-                bodyType: scraped.bodyType ? (bodyMap[scraped.bodyType] ?? null) : null,
-                location: scraped.location ?? null,
-                badgeTier,
-                sellerId: userId,
-                importedFromUrl: scraped.originalUrl,
-                importedSource: scraped.platform,
-            } as any,
+        const importResult = await this.prisma.$transaction(async (tx) => {
+            if (normalizedVrm) {
+                await this.lockVehicleCreation(tx, userId, normalizedVrm);
+                const existing = await this.resolveExistingCreate(
+                    tx,
+                    userId,
+                    normalizedVrm,
+                    {
+                        type: 'CLASSIFIED',
+                        title,
+                        price: overrides.price,
+                        year: scraped.year ?? null,
+                        mileage: scraped.mileage ?? null,
+                        importedFromUrl: scraped.originalUrl ?? url,
+                    },
+                );
+                if (existing) {
+                    return { listing: existing, created: false };
+                }
+            }
+
+            const created = await tx.listing.create({
+                data: {
+                    title,
+                    price: overrides.price,
+                    // Never persist third-party URLs. Imported photos are added only
+                    // after the hardened downloader has copied verified image bytes
+                    // into CarMazium-owned Storage.
+                    images: [],
+                    type: 'CLASSIFIED',
+                    status: 'DRAFT',
+                    slug,
+                    description: scraped.description ?? null,
+                    make: scraped.make ?? null,
+                    model: scraped.model ?? null,
+                    year: scraped.year ?? null,
+                    mileage: scraped.mileage ?? null,
+                    vrm: normalizedVrm || null,
+                    vin: scraped.vin ?? null,
+                    fuelType: scraped.fuelType ? (fuelMap[scraped.fuelType] ?? null) : null,
+                    transmission: scraped.transmission ? (transMap[scraped.transmission] ?? null) : null,
+                    color: scraped.color ?? null,
+                    doors: scraped.doors ?? null,
+                    engineSize: scraped.engineSize ?? null,
+                    bhp: scraped.bhp ?? null,
+                    bodyType: scraped.bodyType ? (bodyMap[scraped.bodyType] ?? null) : null,
+                    location: scraped.location ?? null,
+                    badgeTier,
+                    sellerId: userId,
+                    importedFromUrl: scraped.originalUrl,
+                    importedSource: scraped.platform,
+                } as any,
+            });
+            return { listing: created, created: true };
         });
+
+        const listing = importResult.listing;
+        if (!importResult.created) {
+            return listing;
+        }
 
         // External marketplace URLs never become Listing.images. The background
         // importer writes only validated CarMazium Storage URLs.
