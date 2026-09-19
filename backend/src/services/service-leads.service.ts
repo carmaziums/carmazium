@@ -261,6 +261,13 @@ export class ServiceLeadsService {
                 'Consent is required before CarMazium can share this enquiry with approved providers.',
             );
         }
+        if (
+            !dto.listingId
+            && !dto.vehicleRegistration?.trim()
+            && !(dto.vehicleMake?.trim() && dto.vehicleModel?.trim())
+        ) {
+            throw new BadRequestException('Enquiries need a registration or vehicle make and model.');
+        }
 
         const customer = await this.prisma.user.findUnique({
             where: { id: customerId },
@@ -714,6 +721,12 @@ export class ServiceLeadsService {
         }
 
         const now = new Date();
+        const displayedRecipient = {
+            ...recipient,
+            status: recipient.status === 'NEW' ? 'VIEWED' : recipient.status,
+            viewedAt: recipient.viewedAt ?? now,
+            contactDisclosedAt: recipient.contactDisclosedAt ?? now,
+        };
         if (recipient.status === 'NEW' || !recipient.viewedAt || !recipient.contactDisclosedAt) {
             await this.prisma.serviceLeadRecipient.update({
                 where: {
@@ -728,17 +741,6 @@ export class ServiceLeadsService {
                     ...(recipient.contactDisclosedAt ? {} : { contactDisclosedAt: now }),
                 },
             });
-        }
-        const displayedRecipient = await this.prisma.serviceLeadRecipient.findUnique({
-            where: {
-                leadId_contractorId: {
-                    leadId,
-                    contractorId: profile.id,
-                },
-            },
-        });
-        if (!displayedRecipient) {
-            throw new ForbiddenException('This enquiry is no longer matched to your provider account.');
         }
 
         // Deliberately construct the disclosure payload instead of spreading
