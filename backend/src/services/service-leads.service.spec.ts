@@ -13,7 +13,7 @@ describe('ServiceLeadsService', () => {
             contractorProfile: { findUnique: jest.fn() },
             contractorCapability: {
                 findUnique: jest.fn(),
-                findMany: jest.fn(),
+                findMany: jest.fn().mockResolvedValue([]),
                 update: jest.fn(),
             },
             serviceLead: {
