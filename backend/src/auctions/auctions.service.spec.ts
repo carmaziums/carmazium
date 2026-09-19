@@ -765,6 +765,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
         prisma = {
             auction: {
                 findUnique: jest.fn(),
+                findMany: jest.fn().mockResolvedValue([]),
                 update: jest.fn().mockResolvedValue({ id: 'auction-1' }),
             },
             listing: {
@@ -775,9 +776,11 @@ describe('AuctionsService — final lifecycle consistency', () => {
             },
             sale: {
                 create: jest.fn(),
+                deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
             },
             sellerProfile: {
                 upsert: jest.fn(),
+                update: jest.fn().mockResolvedValue({}),
             },
             chatRoom: {
                 upsert: jest.fn(),
@@ -888,6 +891,65 @@ describe('AuctionsService — final lifecycle consistency', () => {
         )).rejects.toThrow(/past/i);
 
         expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
+    it('restores the retail channel when a linked auction winner never pays the buyer fee', async () => {
+        prisma.auction.findMany.mockResolvedValue([{
+            id: 'auction-1',
+            winnerId: 'buyer-1',
+            buyerFeePaid: false,
+            wonAt: new Date(Date.now() - 80 * 60 * 60 * 1000),
+            listing: {
+                id: 'auction-listing-1',
+                title: 'BMW M3 2022',
+                sellerId: 'seller-1',
+                linkedListingId: 'retail-1',
+            },
+        }]);
+
+        await service.revertUnpaidWins();
+
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'auction-listing-1' },
+            data: expect.objectContaining({
+                status: 'DRAFT',
+                linkedListingId: null,
+                deletedAt: expect.any(Date),
+            }),
+        });
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'retail-1' },
+            data: {
+                status: 'ACTIVE',
+                linkedListingId: null,
+            },
+        });
+    });
+
+    it('returns a standalone unpaid-win vehicle to a retail draft instead of leaving an ACTIVE listing behind a cancelled auction', async () => {
+        prisma.auction.findMany.mockResolvedValue([{
+            id: 'auction-1',
+            winnerId: 'buyer-1',
+            buyerFeePaid: false,
+            wonAt: new Date(Date.now() - 80 * 60 * 60 * 1000),
+            listing: {
+                id: 'listing-1',
+                title: 'BMW M3 2022',
+                sellerId: 'seller-1',
+                linkedListingId: null,
+            },
+        }]);
+
+        await service.revertUnpaidWins();
+
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'listing-1' },
+            data: {
+                status: 'DRAFT',
+                type: 'CLASSIFIED',
+                linkedListingId: null,
+            },
+        });
     });
 
     it('keeps edited scheduled auctions at exactly 24 hours and persists Buy It Now', async () => {
