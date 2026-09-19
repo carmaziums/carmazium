@@ -707,9 +707,19 @@ export class ServicesService {
             };
         }
 
-        const sellerPostcode = normPostcode(listing?.seller?.postcode);
-        if (!sellerPostcode) {
-            throw new BadRequestException('The seller has no postcode on file — post a delivery job manually with the pickup address.');
+        let sellerPostcode: string;
+        try {
+            sellerPostcode = requireUkPostcode(listing?.seller?.postcode, 'Seller postcode');
+        } catch {
+            throw new BadRequestException(
+                'The seller has no valid UK postcode on file — post a delivery job manually with the pickup address.',
+            );
+        }
+        const deliveryPostcode = requireUkPostcode(dto.deliveryPostcode, 'Delivery postcode');
+        const requestedFor = parseFutureRequestedFor(dto.requestedFor);
+        const workPostcodeArea = postcodeArea(sellerPostcode);
+        if (!workPostcodeArea) {
+            throw new BadRequestException('Unable to determine the seller postcode area for delivery matching.');
         }
 
         const pickupAddress = [
@@ -732,16 +742,17 @@ export class ServicesService {
         if (existing) return existing;
 
         try {
-            return await this.prisma.serviceJob.create({
+            return await this.withActiveJobSlot(customerId, async (tx) => tx.serviceJob.create({
                 data: {
                     customerId,
                     serviceType: ServiceType.DELIVERY,
                     title: `Deliver ${listing.title}`.slice(0, 120),
                     pickupPostcode: sellerPostcode,
                     pickupAddress,
-                    deliveryPostcode: normPostcode(dto.deliveryPostcode),
+                    deliveryPostcode,
                     deliveryAddress: dto.deliveryAddress?.trim() || null,
-                    requestedFor: dto.requestedFor ? new Date(dto.requestedFor) : null,
+                    workPostcodeArea,
+                    requestedFor,
                     expiresAt: new Date(Date.now() + JOB_OPEN_DAYS * 86_400_000),
                     sourceOfferId: dto.offerId ?? null,
                     sourceAuctionId: dto.auctionId ?? null,
@@ -756,7 +767,7 @@ export class ServicesService {
                     },
                 },
                 include: { vehicles: true },
-            });
+            }));
         } catch (error) {
             // The database has partial unique indexes for active purchase-linked
             // delivery jobs. If two clicks arrive concurrently, the losing
