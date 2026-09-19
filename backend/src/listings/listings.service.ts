@@ -357,11 +357,16 @@ export class ListingsService {
         userId: string,
         normalizedVrm: string,
     ): Promise<void> {
+        // pg_advisory_xact_lock() returns PostgreSQL `void`. Prisma cannot
+        // deserialize a raw-query column of type void and turns an otherwise
+        // successful lock into a 500. Cast the lock result to text so Prisma
+        // receives a supported scalar while the transaction-scoped lock keeps
+        // exactly the same semantics.
         await tx.$queryRaw`
             SELECT pg_advisory_xact_lock(
                 hashtext(${userId}),
                 hashtext(${normalizedVrm})
-            )
+            )::text AS lock_result
         `;
     }
 

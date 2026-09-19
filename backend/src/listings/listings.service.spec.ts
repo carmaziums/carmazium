@@ -45,7 +45,9 @@ describe('ListingsService', () => {
             transaction: { findMany: jest.fn() },
             hpiReport: { findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }) },
             auction: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
-            $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
+            // The production query casts pg_advisory_xact_lock(void) to text
+            // because Prisma cannot deserialize PostgreSQL void columns.
+            $queryRaw: jest.fn().mockResolvedValue([{ lock_result: '' }]),
             $transaction: jest.fn(async (arg: any) => Array.isArray(arg) ? Promise.all(arg) : arg(prisma)),
         };
         sellers = { incrementListings: jest.fn(), incrementSales: jest.fn() };
@@ -222,6 +224,9 @@ describe('ListingsService', () => {
             const result = await service.create(payload as any, sellerId);
 
             expect(prisma.$queryRaw).toHaveBeenCalled();
+            const advisorySql = prisma.$queryRaw.mock.calls[0][0].join('');
+            expect(advisorySql).toContain('pg_advisory_xact_lock');
+            expect(advisorySql).toContain('::text AS lock_result');
             expect(prisma.listing.create).not.toHaveBeenCalled();
             expect(result).toBe(existing);
         });
