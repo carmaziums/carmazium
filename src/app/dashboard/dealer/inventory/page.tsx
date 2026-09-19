@@ -14,46 +14,12 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
-import { publishListing, createListingCheckoutSession, alsoListRetail, createListingCheckout } from "@/lib/listingApi"
+import { alsoListRetail } from "@/lib/listingApi"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { BulkImportModal } from "@/components/dealer/BulkImportModal"
 import { ImportListingModal } from "@/components/features/ImportListingModal"
 import { ExternalLink } from "lucide-react"
-
-// ─── Completeness helper ────────────────────────────────────────────────────
-
-const REQUIRED_FIELDS = [
-    { key: 'images',       label: 'At least 10 photos', check: (l: any) => Array.isArray(l.images) && l.images.length >= 10 },
-    { key: 'make',         label: 'Make',               check: (l: any) => !!l.make },
-    { key: 'model',        label: 'Model',              check: (l: any) => !!l.model },
-    { key: 'fuelType',     label: 'Fuel Type',          check: (l: any) => !!l.fuelType },
-    { key: 'transmission', label: 'Transmission',       check: (l: any) => !!l.transmission },
-    { key: 'bodyType',     label: 'Body Type',          check: (l: any) => !!l.bodyType },
-    { key: 'location',     label: 'Location',           check: (l: any) => !!l.location?.trim() },
-    { key: 'owners',       label: 'Previous Keepers',   check: (l: any) => !!l.owners?.trim() },
-    { key: 'description',  label: 'Description',        check: (l: any) => !!l.description?.trim() },
-    { key: 'condition',    label: 'Condition',          check: (l: any) => !!l.condition },
-    { key: 'stolenRecovered', label: 'Stolen/Recovered Declaration', check: (l: any) => l.stolenRecovered !== null && l.stolenRecovered !== undefined },
-    { key: 'hasOutstandingFinance', label: 'Finance Declaration', check: (l: any) => l.hasOutstandingFinance !== null && l.hasOutstandingFinance !== undefined },
-    {
-        key: 'keeper',
-        label: 'Registered Keeper Declaration',
-        check: (l: any) => l.isLegalRegisteredKeeper === true || (l.isLegalRegisteredKeeper === false && !!l.notOwnerRelationship?.trim()),
-    },
-]
-
-function getListingCompleteness(listing: any) {
-    const missing = REQUIRED_FIELDS.filter(f => !f.check(listing)).map(f => f.label)
-    const complete = REQUIRED_FIELDS.length - missing.length
-    return {
-        isComplete: missing.length === 0,
-        missing,
-        complete,
-        total: REQUIRED_FIELDS.length,
-        percent: Math.round((complete / REQUIRED_FIELDS.length) * 100),
-    }
-}
 
 // ─── Status colours ─────────────────────────────────────────────────────────
 
@@ -107,10 +73,6 @@ export default function DealerInventoryPage() {
     // or click any of its items was to scroll the whole page down first. Now
     // computed at click time from the button's actual position.
     const [dropdownOpensUp, setDropdownOpensUp] = React.useState(false)
-    const [publishing,        setPublishing]        = React.useState<string | null>(null)
-    // Plan modal
-    const [planSelectListing, setPlanSelectListing] = React.useState<any | null>(null)
-    const [planModalError,    setPlanModalError]    = React.useState<string[] | null>(null)
     // Also-list-retail modal (for AUCTION listings)
     const [alsoRetailListing, setAlsoRetailListing] = React.useState<any | null>(null)
     const [alsoRetailPrice,   setAlsoRetailPrice]   = React.useState("")
@@ -142,38 +104,12 @@ export default function DealerInventoryPage() {
         }
     }
 
-    // Green tick → always open the plan modal. Completeness is checked inside.
+    // Dealer drafts use the same full ListingWizard as every other seller flow.
+    // Do not duplicate completeness/HPI/payment decisions in inventory: the
+    // wizard and authoritative backend readiness gate own those decisions.
     function handlePublish(listing: any) {
-        setPlanModalError(null)
-        setPlanSelectListing(listing)
-    }
-
-    function closePlanModal() {
-        setPlanSelectListing(null)
-        setPlanModalError(null)
-    }
-
-    async function handlePlanConfirm(tier: 'BASIC' | 'STANDARD' | 'PREMIUM') {
-        if (!planSelectListing) return
-
-        // Gate: must be complete before any money or activation happens
-        const { isComplete, missing } = getListingCompleteness(planSelectListing)
-        if (!isComplete) {
-            setPlanModalError(missing)
-            return
-        }
-
-        const listing = planSelectListing
-        closePlanModal()
-        try {
-            setPublishing(listing.id)
-            const checkout = await createListingCheckoutSession(listing.id, tier)
-            window.location.href = checkout.url
-        } catch (err: any) {
-            alert('Failed to publish: ' + err.message)
-        } finally {
-            setPublishing(null)
-        }
+        const slug = listing.slug ? `&editSlug=${encodeURIComponent(listing.slug)}` : ''
+        router.push(`/dashboard/dealer/add-listing?editId=${listing.id}${slug}`)
     }
 
     async function deleteListing(id: string) {
@@ -216,9 +152,16 @@ export default function DealerInventoryPage() {
         setAlsoRetailLoading(true)
         setAlsoRetailError(null)
         try {
-            const { linkedListingId } = await alsoListRetail(alsoRetailListing.id, parseFloat(alsoRetailPrice), alsoRetailTier)
-            const { url } = await createListingCheckout(linkedListingId, alsoRetailTier)
-            window.location.href = url
+            const { linkedListingId } = await alsoListRetail(
+                alsoRetailListing.id,
+                parseFloat(alsoRetailPrice),
+                alsoRetailTier,
+            )
+            // The linked retail record is intentionally only a DRAFT here.
+            // Continue in ListingWizard so photos, declarations, HPI, tier and
+            // payment all pass through the same submission architecture.
+            setAlsoRetailListing(null)
+            router.push(`/dashboard/dealer/add-listing?editId=${linkedListingId}`)
         } catch (err: any) {
             setAlsoRetailError(err.message ?? 'Failed to create retail listing')
         } finally {
@@ -321,7 +264,6 @@ export default function DealerInventoryPage() {
                                     <p className="text-[var(--text-muted)] font-bold text-sm">No vehicles found</p>
                                 </div>
                             ) : filteredListings.map((listing: any) => {
-                                const comp = listing.status === 'DRAFT' ? getListingCompleteness(listing) : null
                                 const isMenuOpen = activeDropdown === listing.id
                                 return (
                                     <div key={listing.id} className="p-4">
@@ -345,7 +287,6 @@ export default function DealerInventoryPage() {
                                                 {listing.status === 'REJECTED' && listing.rejectionReason && (
                                                     <p className="text-xs text-red-400 mt-1">{listing.rejectionReason}</p>
                                                 )}
-                                                {comp && !comp.isComplete && <p className="text-xs text-amber-400 font-bold mt-1">{comp.complete}/{comp.total} fields complete</p>}
                                             </div>
                                         </div>
 
@@ -355,11 +296,10 @@ export default function DealerInventoryPage() {
                                             {listing.status === 'DRAFT' ? (
                                                 <button
                                                     onClick={() => handlePublish(listing)}
-                                                    disabled={publishing === listing.id}
-                                                    className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-sm disabled:opacity-60"
+                                                    className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-sm"
                                                 >
-                                                    {publishing === listing.id ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                                                    Publish
+                                                    <Upload size={16} />
+                                                    Complete & Publish
                                                 </button>
                                             ) : listing.status === 'SOLD' ? (
                                                 <button
@@ -380,7 +320,7 @@ export default function DealerInventoryPage() {
                                                 </button>
                                             )}
                                             <Link
-                                                href={`/dashboard/dealer/add-listing?id=${listing.id}`}
+                                                href={`/dashboard/dealer/add-listing?editId=${listing.id}&editSlug=${encodeURIComponent(listing.slug)}`}
                                                 className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl border border-[var(--border-default)] font-bold text-sm hover:bg-white/5"
                                             >
                                                 <Pencil size={16} /> Edit
@@ -484,7 +424,6 @@ export default function DealerInventoryPage() {
                                         </tr>
                                     ) : (
                                         filteredListings.map((listing: any) => {
-                                            const comp = listing.status === 'DRAFT' ? getListingCompleteness(listing) : null
                                             return (
                                                 <tr key={listing.id} className="group hover:bg-white/[0.02] transition-colors relative">
                                                     {/* Vehicle Showcase */}
@@ -535,23 +474,6 @@ export default function DealerInventoryPage() {
                                                             {listing.status === 'REJECTED' && listing.rejectionReason && (
                                                                 <p className="text-[10px] text-red-400 max-w-[160px] text-center">{listing.rejectionReason}</p>
                                                             )}
-                                                            {comp && (
-                                                                <div
-                                                                    title={comp.isComplete ? 'Listing complete — ready to publish' : `Missing: ${comp.missing.join(', ')}`}
-                                                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border cursor-default ${
-                                                                        comp.isComplete
-                                                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                                            : comp.percent >= 60
-                                                                                ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                                                                : 'bg-red-500/10 text-red-400 border-red-500/20'
-                                                                    }`}
-                                                                >
-                                                                    {comp.isComplete
-                                                                        ? <><CheckCircle2 size={8} /> Ready</>
-                                                                        : <><AlertTriangle size={8} /> {comp.complete}/{comp.total}</>
-                                                                    }
-                                                                </div>
-                                                            )}
                                                         </div>
                                                     </td>
 
@@ -584,13 +506,10 @@ export default function DealerInventoryPage() {
                                                                     size="sm"
                                                                     title="Publish Listing"
                                                                     onClick={() => handlePublish(listing)}
-                                                                    disabled={publishing === listing.id}
+                                                                    title="Complete & publish in full listing wizard"
                                                                     className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20"
                                                                 >
-                                                                    {publishing === listing.id
-                                                                        ? <Loader2 size={16} className="animate-spin" />
-                                                                        : <CheckCircle2 size={16} />
-                                                                    }
+                                                                    <CheckCircle2 size={16} />
                                                                 </Button>
                                                             )}
 
@@ -832,146 +751,12 @@ export default function DealerInventoryPage() {
                             disabled={alsoRetailLoading || !alsoRetailPrice}
                             className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                         >
-                            {alsoRetailLoading ? <><Loader2 size={14} className="animate-spin" /> Creating…</> : <><Tag size={14} /> Create & Pay</>}
+                            {alsoRetailLoading ? <><Loader2 size={14} className="animate-spin" /> Creating…</> : <><Tag size={14} /> Create Draft & Complete</>}
                         </button>
                     </div>
                 </div>
             )}
 
-            {/* ─── Plan Selection Modal ──────────────────────────────────────── */}
-            {planSelectListing && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-                    <div className="relative w-full max-w-lg bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl p-6 shadow-2xl">
-                        <button
-                            onClick={closePlanModal}
-                            className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-white/10 text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors"
-                        >
-                            <X size={18} />
-                        </button>
-
-                        <h2 className="text-lg font-black  font-heading uppercase tracking-tight mb-1">
-                            Choose a Listing Plan
-                        </h2>
-                        <p className="text-xs text-[var(--text-muted)] mb-4">
-                            Select a tier for <span className="text-[var(--text-secondary)] font-semibold">{planSelectListing.title || `${planSelectListing.make} ${planSelectListing.model}`}</span>
-                        </p>
-
-                        {/* Completeness status */}
-                        {(() => {
-                            const comp = getListingCompleteness(planSelectListing)
-                            return (
-                                <div className={`mb-5 p-3 rounded-xl border ${comp.isComplete ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className={`text-xs font-black uppercase tracking-widest ${comp.isComplete ? 'text-emerald-400' : 'text-amber-400'}`}>
-                                            Listing completeness — {comp.complete}/{comp.total} required fields
-                                        </span>
-                                        <span className={`text-xs font-black ${comp.isComplete ? 'text-emerald-400' : 'text-amber-400'}`}>{comp.percent}%</span>
-                                    </div>
-                                    <div className="w-full h-1.5 bg-[var(--bg-card)] rounded-full overflow-hidden mb-2">
-                                        <div
-                                            className={`h-full rounded-full transition-all ${comp.isComplete ? 'bg-emerald-500' : comp.percent >= 60 ? 'bg-amber-500' : 'bg-red-500'}`}
-                                            style={{ width: `${comp.percent}%` }}
-                                        />
-                                    </div>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {REQUIRED_FIELDS.map(f => {
-                                            const has = f.check(planSelectListing)
-                                            return (
-                                                <span key={f.key} className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-bold ${has ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
-                                                    {has ? <CheckCircle2 size={8} /> : <X size={8} />}
-                                                    {f.label}
-                                                </span>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-                            )
-                        })()}
-
-                        {/* Inline error when dealer clicks a plan but listing is incomplete */}
-                        {planModalError && (
-                            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
-                                <div className="flex items-start gap-2 mb-3">
-                                    <AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5" />
-                                    <div>
-                                        <p className="text-sm font-bold text-red-300 mb-1">Listing not ready to publish</p>
-                                        <p className="text-xs text-red-200/70">
-                                            The following required details are missing. Complete your listing first so buyers have the information they need to trust this vehicle.
-                                        </p>
-                                    </div>
-                                </div>
-                                <ul className="mb-3 space-y-1 pl-6">
-                                    {planModalError.map(field => (
-                                        <li key={field} className="text-xs text-red-300 flex items-center gap-1.5">
-                                            <span className="w-1 h-1 rounded-full bg-red-400 shrink-0" />
-                                            {field}
-                                        </li>
-                                    ))}
-                                </ul>
-                                <button
-                                    onClick={() => {
-                                        closePlanModal()
-                                        router.push(`/dashboard/dealer/add-listing?editId=${planSelectListing.id}&editSlug=${encodeURIComponent(planSelectListing.slug)}&returnPublish=true`)
-                                    }}
-                                    className="flex items-center gap-1.5 text-xs font-bold text-white bg-red-600/80 hover:bg-red-600 px-4 py-2 rounded-lg transition-colors"
-                                >
-                                    Complete Listing <ChevronRight size={13} />
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Plan cards */}
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                            {/* BASIC */}
-                            <button
-                                onClick={() => handlePlanConfirm('BASIC')}
-                                className="flex flex-col p-4 rounded-xl border border-[var(--border-default)] bg-white/[0.02] hover:border-white/25 hover:bg-[var(--bg-card)] transition-all text-left"
-                            >
-                                <p className="font-bold text-sm mb-1">Basic</p>
-                                <p className="text-2xl font-black  mb-3">£1</p>
-                                <ul className="space-y-1 text-[11px] text-[var(--text-muted)]">
-                                    <li className="flex items-center gap-1.5"><CheckCircle2 size={11} className="text-emerald-400" /> Basic listing</li>
-                                    <li className="flex items-center gap-1.5"><CheckCircle2 size={11} className="text-emerald-400" /> Offer system</li>
-                                    <li className="flex items-center gap-1.5 text-gray-600"><X size={11} /> No trust badges</li>
-                                </ul>
-                            </button>
-
-                            {/* STANDARD */}
-                            <button
-                                onClick={() => handlePlanConfirm('STANDARD')}
-                                className="relative flex flex-col p-4 rounded-xl border border-blue-500/30 bg-blue-500/5 hover:border-blue-500/60 hover:bg-blue-500/10 transition-all text-left"
-                            >
-                                <p className="text-blue-400 font-bold text-sm mb-1 flex items-center gap-1"><Shield size={12} /> Standard</p>
-                                <p className="text-2xl font-black  mb-3">£10</p>
-                                <ul className="space-y-1 text-[11px] text-[var(--text-muted)]">
-                                    <li className="flex items-center gap-1.5"><BadgeCheck size={11} className="text-blue-400" /> VIN Report badge</li>
-                                    <li className="flex items-center gap-1.5"><BadgeCheck size={11} className="text-blue-400" /> Verified Seller badge</li>
-                                    <li className="flex items-center gap-1.5 text-gray-600"><X size={11} /> No featured boost</li>
-                                </ul>
-                            </button>
-                        </div>
-
-                        {/* PREMIUM */}
-                        <button
-                            onClick={() => handlePlanConfirm('PREMIUM')}
-                            className="relative w-full flex items-center gap-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:border-amber-500/60 hover:bg-amber-500/10 transition-all text-left"
-                        >
-                            <span className="absolute -top-2.5 left-4 text-xs bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-3 py-0.5 rounded-full flex items-center gap-1">
-                                <Star size={9} /> Best Value
-                            </span>
-                            <div className="flex-1">
-                                <p className="text-amber-400 font-bold text-sm flex items-center gap-1"><Star size={12} /> Premium</p>
-                                <p className="text-lg font-black">£25</p>
-                            </div>
-                            <ul className="space-y-1 text-[11px] text-[var(--text-muted)]">
-                                <li className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Featured boost (28 days)</li>
-                                <li className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Priority in search results</li>
-                                <li className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Featured badge</li>
-                            </ul>
-                        </button>
-                    </div>
-                </div>
-            )}
         </div>
     )
 }
