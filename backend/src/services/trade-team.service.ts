@@ -368,6 +368,7 @@ export class TradeTeamService {
 
     async listTeam(ownerUserId: string) {
         const dealer = await this.ownerDealer(ownerUserId);
+        const provider = await this.syncBusinessIdentity(dealer);
         const permissions = await this.prisma.$queryRaw<PermissionRow[]>(Prisma.sql`
             SELECT * FROM "trade_service_team_permissions"
             WHERE "dealerProfileId" = ${dealer.id}
@@ -380,43 +381,84 @@ export class TradeTeamService {
                 connected: !!dealer.user.stripeConnectAccountId,
                 complete: !!dealer.user.stripeConnectOnboardingComplete,
             },
-            capabilities: dealer.user.contractorProfile?.capabilities ?? [],
+            capabilities: provider?.capabilities ?? [],
             permissions,
             payoutPolicy: 'Customers pay CarMazium. CarMazium deducts 9%; the remaining 91% is paid only to the business Stripe Connect account.',
         };
     }
 
-    async setPermissions(ownerUserId: string, input: TradeTeamPermissionInput) {
+    async setPermissions(ownerUserId: string, dto: UpdateTradeTeamPermissionsDto) {
+        const input = this.strictPermissionInput(dto);
         const dealer = await this.ownerDealer(ownerUserId);
-        const email = this.normaliseEmail(input.email);
-        if (!email || !email.includes('@')) throw new BadRequestException('A valid team member email is required.');
-        if ((input.canQuote || input.canManage || input.canComplete) && !input.deliveryEnabled && !input.inspectionEnabled) {
+        await this.syncBusinessIdentity(dealer);
+
+        const email = input.email;
+        if (!email) throw new BadRequestException('A valid team member email is required.');
+        if (
+            (input.canView || input.canChat || input.canQuote || input.canManage || input.canComplete)
+            && !input.deliveryEnabled
+            && !input.inspectionEnabled
+        ) {
             throw new BadRequestException('Select Delivery/Recovery or Vehicle Inspection before granting job permissions.');
         }
+        if (
+            (input.canChat || input.canQuote || input.canManage || input.canComplete)
+            && !input.canView
+        ) {
+            throw new BadRequestException('Chat, bidding, management and completion permissions require View job access.');
+        }
 
-        const active = dealer.staff.some((s) => this.normaliseEmail(s.user.email) === email);
+        const activeMember = dealer.staff.find((s) => this.normaliseEmail(s.user.email) === email);
         const pending = dealer.invites.some((i) => this.normaliseEmail(i.email) === email && i.expiresAt > new Date());
-        if (!active && !pending) {
+        if (!activeMember && !pending) {
             throw new ForbiddenException('TradeXchange permissions can only be granted to active staff or a pending dealership invitation.');
         }
 
-        const rows = await this.prisma.$queryRaw<PermissionRow[]>(Prisma.sql`
-            INSERT INTO "trade_service_team_permissions" (
-                "id", "dealerProfileId", "email", "deliveryEnabled", "inspectionEnabled",
-                "canQuote", "canManage", "canComplete", "createdAt", "updatedAt"
-            ) VALUES (
-                gen_random_uuid()::text, ${dealer.id}, ${email}, ${!!input.deliveryEnabled}, ${!!input.inspectionEnabled},
-                ${!!input.canQuote}, ${!!input.canManage}, ${!!input.canComplete}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-            )
-            ON CONFLICT ("dealerProfileId", "email") DO UPDATE SET
-                "deliveryEnabled" = EXCLUDED."deliveryEnabled",
-                "inspectionEnabled" = EXCLUDED."inspectionEnabled",
-                "canQuote" = EXCLUDED."canQuote",
-                "canManage" = EXCLUDED."canManage",
-                "canComplete" = EXCLUDED."canComplete",
-                "updatedAt" = CURRENT_TIMESTAMP
-            RETURNING *
-        `);
+        let rows: PermissionRow[] = [];
+        if (activeMember) {
+            rows = await this.prisma.$queryRaw<PermissionRow[]>(Prisma.sql`
+                UPDATE "trade_service_team_permissions"
+                SET
+                    "email" = ${email},
+                    "deliveryEnabled" = ${input.deliveryEnabled},
+                    "inspectionEnabled" = ${input.inspectionEnabled},
+                    "canView" = ${input.canView},
+                    "canChat" = ${input.canChat},
+                    "canQuote" = ${input.canQuote},
+                    "canManage" = ${input.canManage},
+                    "canComplete" = ${input.canComplete},
+                    "updatedAt" = CURRENT_TIMESTAMP
+                WHERE "dealerProfileId" = ${dealer.id}
+                  AND "staffUserId" = ${activeMember.user.id}
+                RETURNING *
+            `);
+        }
+
+        if (!rows.length) {
+            rows = await this.prisma.$queryRaw<PermissionRow[]>(Prisma.sql`
+                INSERT INTO "trade_service_team_permissions" (
+                    "id", "dealerProfileId", "staffUserId", "email",
+                    "deliveryEnabled", "inspectionEnabled", "canView", "canChat",
+                    "canQuote", "canManage", "canComplete", "createdAt", "updatedAt"
+                ) VALUES (
+                    gen_random_uuid()::text, ${dealer.id}, ${activeMember?.user.id ?? null}, ${email},
+                    ${input.deliveryEnabled}, ${input.inspectionEnabled}, ${input.canView}, ${input.canChat},
+                    ${input.canQuote}, ${input.canManage}, ${input.canComplete}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                )
+                ON CONFLICT ("dealerProfileId", "email") DO UPDATE SET
+                    "staffUserId" = COALESCE(EXCLUDED."staffUserId", "trade_service_team_permissions"."staffUserId"),
+                    "deliveryEnabled" = EXCLUDED."deliveryEnabled",
+                    "inspectionEnabled" = EXCLUDED."inspectionEnabled",
+                    "canView" = EXCLUDED."canView",
+                    "canChat" = EXCLUDED."canChat",
+                    "canQuote" = EXCLUDED."canQuote",
+                    "canManage" = EXCLUDED."canManage",
+                    "canComplete" = EXCLUDED."canComplete",
+                    "updatedAt" = CURRENT_TIMESTAMP
+                RETURNING *
+            `);
+        }
+
         return rows[0];
     }
 
@@ -431,6 +473,7 @@ export class TradeTeamService {
             throw new BadRequestException('This service cannot be added to a Partner Account.');
         }
         const dealer = await this.ownerDealer(ownerUserId);
+        await this.syncBusinessIdentity(dealer);
         const profile = await this.prisma.contractorProfile.upsert({
             where: { userId: ownerUserId },
             create: {
