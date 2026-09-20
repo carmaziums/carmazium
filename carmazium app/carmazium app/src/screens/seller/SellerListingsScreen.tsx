@@ -333,7 +333,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       // listings use the fixed £1 payment; auctions remain free to sellers.
       setActionLoading(true);
       try {
-        const first = await apiClient<{ success: boolean; data: { activated: boolean; requiresPayment?: boolean } }>(
+        const first = await apiClient<{ success: boolean; data: { activated: boolean; requiresPayment?: boolean; pendingReview?: boolean } }>(
           `/listings/${listing.id}/publish`,
           { method: 'POST' },
         );
@@ -341,6 +341,13 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         if (first?.data?.activated) {
           haptics.success();
           setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'ACTIVE' } : l));
+          return;
+        }
+
+        if (first?.data?.pendingReview) {
+          haptics.success();
+          setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'PENDING_REVIEW' } : l));
+          Alert.alert('Submitted for review', 'Your listing will go live after our team approves it.');
           return;
         }
 
@@ -357,14 +364,17 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             return;
           }
           haptics.success();
-          const second = await apiClient<{ success: boolean; data: { activated: boolean } }>(
+          const second = await apiClient<{ success: boolean; data: { activated: boolean; pendingReview?: boolean } }>(
             `/listings/${listing.id}/publish`,
             { method: 'POST' },
           );
           if (second?.data?.activated) {
             setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'ACTIVE' } : l));
+          } else if (second?.data?.pendingReview) {
+            setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'PENDING_REVIEW' } : l));
+            Alert.alert('Submitted for review', 'Payment succeeded. Your listing will go live after our team approves it.');
           } else {
-            Alert.alert('Almost there!', 'Payment succeeded but the listing could not be activated automatically. Pull to refresh in a moment.');
+            Alert.alert('Payment received', 'Your payment succeeded, but the listing has not entered review yet. Publish it again from My Listings; you will not be charged twice.');
           }
         }
       } catch (err: any) {
