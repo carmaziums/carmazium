@@ -112,7 +112,7 @@ const PLANS: PlanCard[] = [
       { label: 'HPI vehicle-history report included', included: true },
       { label: 'Premium listing badge and presentation', included: true },
       { label: 'Advertised until sold', included: true },
-      { label: 'Featured Boost available separately', included: true },
+      { label: 'Featured Boost included for 28 days', included: true },
     ],
   },
 ];
@@ -141,7 +141,7 @@ const ADD_ONS: AddOn[] = [
   {
     id: 'boost',
     title: 'Featured Boost',
-    subtitle: 'Pin your listing to the homepage carousel and top of search results. Renewable at any time.',
+    subtitle: '£25 for 28 days when bought separately. Premium already includes the first 28-day Featured Boost.',
     price: `£${PRICING.featuredBoost.price}`,
     meta: `${PRICING.featuredBoost.durationDays} days`,
     icon: 'flash-outline',
