@@ -176,9 +176,9 @@ const BADGES = [
   },
   {
     id: 'PREMIUM' as const, label: 'Premium', price: '£25',
-    sub: 'Premium package',
+    sub: 'HPI + 28-day Featured Boost included',
     listingType: 'CLASSIFIED' as const,
-    features: ['Everything in Standard, including HPI', 'Premium listing badge and presentation', 'Featured Boost available separately'],
+    features: ['Everything in Standard, including HPI', 'Premium listing badge and presentation', 'Featured Boost included for 28 days'],
     negative: [],
     accent: Colors.warning,
   },

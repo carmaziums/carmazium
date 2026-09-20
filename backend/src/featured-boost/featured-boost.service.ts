@@ -120,15 +120,31 @@ export class FeaturedBoostService {
      * Returns the active boost for a listing (if any).
      */
     async getBoostStatus(listingId: string) {
-        const boost = await this.prisma.featuredBoost.findFirst({
-            where: { listingId, isActive: true },
-            orderBy: { createdAt: 'desc' },
-        });
+        const [boost, listing] = await Promise.all([
+            this.prisma.featuredBoost.findFirst({
+                where: { listingId, isActive: true },
+                orderBy: { createdAt: 'desc' },
+            }),
+            this.prisma.listing.findUnique({
+                where: { id: listingId },
+                select: { isFeatured: true, featuredUntil: true },
+            }),
+        ]);
+
+        // Premium's included first 28-day boost is stored directly on the
+        // listing when it goes live rather than requiring a second payment row.
+        const expiresAt = boost?.expiresAt ?? listing?.featuredUntil ?? null;
+        const isFeatured = !!boost || !!(
+            listing?.isFeatured
+            && expiresAt
+            && expiresAt > new Date()
+        );
+
         return {
-            isFeatured: !!boost,
-            expiresAt: boost?.expiresAt ?? null,
-            daysRemaining: boost
-                ? Math.max(0, Math.ceil((boost.expiresAt.getTime() - Date.now()) / 86_400_000))
+            isFeatured,
+            expiresAt: isFeatured ? expiresAt : null,
+            daysRemaining: isFeatured && expiresAt
+                ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 86_400_000))
                 : 0,
         };
     }
@@ -161,9 +177,9 @@ export class FeaturedBoostService {
             ]);
         }
 
-        // Some listings become featured directly at creation time or via the
-        // listing-fee payment webhook (PREMIUM badge tier) rather than through
-        // a FeaturedBoost row, so they're invisible to the sweep above. Catch
+        // Premium listings receive their included 28-day boost when they are
+        // approved and activated, without a separate FeaturedBoost payment row.
+        // Catch
         // any listing whose featuredUntil has passed regardless of how it was
         // set, so isFeatured never goes stale.
         const staleListings = await this.prisma.listing.updateMany({

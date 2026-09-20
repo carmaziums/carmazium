@@ -100,10 +100,10 @@ const PLANS: PlanCard[] = [
   {
     id: 'premium',
     title: 'Premium',
-    subtitle: 'Premium retail package',
+    subtitle: 'HPI + 28-day Featured Boost included',
     price: `£${PRICING.listing.premium.price}`,
     period: 'one-off',
-    badge: 'MOST POPULAR',
+    badge: 'BEST VALUE',
     accentColor: Colors.accent,
     accentBg: Colors.accentAlpha10,
     accentBorder: Colors.accentAlpha25,
@@ -112,7 +112,7 @@ const PLANS: PlanCard[] = [
       { label: 'HPI vehicle-history report included', included: true },
       { label: 'Premium listing badge and presentation', included: true },
       { label: 'Advertised until sold', included: true },
-      { label: 'Featured Boost available separately', included: true },
+      { label: 'Featured Boost included for 28 days', included: true },
     ],
   },
 ];
@@ -141,7 +141,7 @@ const ADD_ONS: AddOn[] = [
   {
     id: 'boost',
     title: 'Featured Boost',
-    subtitle: 'Pin your listing to the homepage carousel and top of search results. Renewable at any time.',
+    subtitle: '£25 for 28 days when bought separately. Premium already includes the first 28-day Featured Boost.',
     price: `£${PRICING.featuredBoost.price}`,
     meta: `${PRICING.featuredBoost.durationDays} days`,
     icon: 'flash-outline',
@@ -185,7 +185,7 @@ export const PricingScreen: React.FC = () => {
           <Text style={styles.introHeading}>Simple, honest pricing</Text>
           <Text style={styles.introSub}>
             List your car for free at auction, or choose Basic £1, Standard £10
-            with HPI included, or Premium £25. Retail buyers pay no CarMazium buyer fee.
+            with HPI included, or Premium £25 with HPI and a 28-day Featured Boost. Retail buyers pay no CarMazium buyer fee.
           </Text>
         </View>
 

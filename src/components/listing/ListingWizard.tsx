@@ -3065,7 +3065,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <p className="text-xs text-[var(--text-muted)] mb-4">
                                     {isAuction
                                         ? "You chose to list this vehicle for auction."
-                                        : "Choose Basic £1, Standard £10 with HPI included, or Premium £25. Featured Boost is a separate optional add-on."}
+                                        : "Choose Basic £1, Standard £10 with HPI included, or Premium £25 with HPI and a 28-day Featured Boost included."}
                                 </p>
 
                                 <div className={`grid grid-cols-1 gap-3 ${isAuction ? 'md:grid-cols-1 max-w-sm' : 'md:grid-cols-3'}`}>
@@ -3145,7 +3145,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
                                                     <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Standard, including HPI</li>
                                                     <li className="flex items-center gap-1.5"><Star size={12} className="text-amber-400" /> Premium listing badge and presentation</li>
-                                                    <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured Boost available separately</li>
+                                                    <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured Boost included for 28 days</li>
                                                 </ul>
                                             </button>
                                         </>
@@ -3584,7 +3584,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         )}
                                         {formData.badgeTier === 'PREMIUM' && (
                                             <>
-                                                <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-md flex items-center gap-1"><Star size={10} /> Premium — £25</span>
+                                                <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-md flex items-center gap-1"><Star size={10} /> Premium — £25 · HPI + 28-day Boost</span>
                                                 <span className="text-xs bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-md">HPI Included</span>
                                                 <span className="text-xs bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-md">Verified</span>
                                             </>
