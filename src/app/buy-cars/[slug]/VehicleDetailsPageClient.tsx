@@ -31,6 +31,38 @@ import { BlurredPhone } from '@/components/shared/BlurredPhone'
 import { trackMetaEvent } from '@/components/analytics/MetaPixel'
 import { SellerVerificationBadge } from "@/components/listing/SellerVerificationBadge"
 import { parseVehicleImagePresentation } from "@/lib/vehicleImagePresentation"
+import { deliveryServiceEnabled } from "@/lib/featureFlags"
+
+function VehicleDeliveryInlineCta({ listing }: { listing: Pick<Listing, 'id' | 'title' | 'status' | 'vrm' | 'make' | 'model' | 'year' | 'location'> }) {
+    if (!deliveryServiceEnabled || String(listing.status) !== 'ACTIVE') return null
+
+    const params = new URLSearchParams({
+        listingId: listing.id,
+        vehicleTitle: listing.title,
+    })
+    if (listing.vrm) params.set('registration', listing.vrm)
+    if (listing.make) params.set('make', listing.make)
+    if (listing.model) params.set('model', listing.model)
+    if (listing.year) params.set('year', String(listing.year))
+    if (listing.location) params.set('pickup', listing.location)
+
+    return (
+        <Link
+            href={`/services/delivery/new?${params.toString()}`}
+            className="mt-4 flex w-full items-center gap-3 rounded-xl border border-primary/25 bg-primary/[0.05] p-3.5 text-left transition-all hover:border-primary/45 hover:bg-primary/[0.09]"
+            aria-label={`Get ${listing.title} delivered`}
+        >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-sm">
+                <Truck size={19} />
+            </span>
+            <span className="min-w-0 flex-1">
+                <span className="block text-sm font-black text-[var(--text-primary)]">Get this car delivered</span>
+                <span className="mt-0.5 block text-[11px] leading-4 text-[var(--text-muted)]">Post a delivery job and compare provider quotes</span>
+            </span>
+            <ArrowRight size={17} className="shrink-0 text-primary" />
+        </Link>
+    )
+}
 
 // ─── Offer Status Chip ───────────────────────────────────────────────────────
 // viewerRole: 'buyer' = the person who made the offer
@@ -990,6 +1022,8 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                             </>
                                         )}
                                     </div>
+
+                                    <VehicleDeliveryInlineCta listing={listing} />
                                 </div>
                                 <div className="bg-[var(--bg-card)] p-4 flex items-center justify-center gap-2 text-[var(--text-muted)] text-xs">
                                     <MapPin size={14} />
@@ -1506,6 +1540,8 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                                 </div>
                                             )
                                         })()}
+
+                                        <VehicleDeliveryInlineCta listing={listing} />
                                     </>
                                 )}
                             </div>
