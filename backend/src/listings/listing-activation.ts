@@ -1,29 +1,18 @@
 /**
- * The field changes that take a listing live.
+ * Field changes that take a listing live.
  *
- * Shared by AdminService.approveListing (an admin approving someone else's
- * listing) and ListingsService.publishListing (an admin publishing their own,
- * which skips review entirely).
+ * Public listing pricing no longer grants featured placement. Retail is £1
+ * one-off and Auction is free; Featured Boost is a separate optional add-on.
  *
- * It exists because going ACTIVE is more than setting a status: PREMIUM
- * listings also get `isFeatured` and a 28-day `featuredUntil` window, which is
- * the entire benefit of that tier. A second activation path that set only
- * `status: 'ACTIVE'` would silently publish PREMIUM listings without the
- * feature placement their tier is supposed to buy — a bug nobody would notice
- * until someone asked why an admin's premium listing wasn't showing up
- * featured. One definition, so the two paths cannot disagree.
+ * Keep the badgeTier parameter for call-site compatibility while legacy rows
+ * are being normalized, but never derive featured status from it.
  */
-export const FEATURED_WINDOW_DAYS = 28;
-
-export function buildListingActivationData(badgeTier: string | null | undefined) {
-    const isPremium = badgeTier === 'PREMIUM';
+export function buildListingActivationData(_badgeTier: string | null | undefined) {
     return {
         status: 'ACTIVE' as const,
         rejectionReason: null,
         reviewedAt: new Date(),
-        isFeatured: isPremium,
-        featuredUntil: isPremium
-            ? new Date(Date.now() + FEATURED_WINDOW_DAYS * 24 * 60 * 60 * 1000)
-            : null,
+        isFeatured: false,
+        featuredUntil: null,
     };
 }
