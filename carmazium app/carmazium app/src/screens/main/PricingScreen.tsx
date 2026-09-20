@@ -204,7 +204,7 @@ export const PricingScreen: React.FC = () => {
             <View style={styles.planHeader}>
               <View style={[styles.planIconWrap, { backgroundColor: plan.accentBg }]}>
                 <Ionicons
-                  name={plan.id === 'auction' ? 'hammer-outline' : 'pricetag-outline'}
+                  name={plan.id.startsWith('auction') ? 'hammer-outline' : 'pricetag-outline'}
                   size={20}
                   color={plan.accentColor}
                 />
@@ -280,8 +280,8 @@ export const PricingScreen: React.FC = () => {
             <Ionicons name="business-outline" size={20} color={Colors.accent} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.dealerPromptTitle}>Need to list multiple vehicles?</Text>
-            <Text style={styles.dealerPromptSub}>Dealers get a dashboard with CRM, inventory management, and analytics.</Text>
+            <Text style={styles.dealerPromptTitle}>Running an automotive business?</Text>
+            <Text style={styles.dealerPromptSub}>Use one Partner Account for business tools, inventory management, CRM and analytics.</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
