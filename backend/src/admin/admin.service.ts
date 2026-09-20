@@ -462,9 +462,13 @@ export class AdminService {
         // Media
         if (dto.images !== undefined) data.images = dto.images;
         if (dto.videoUrls !== undefined) data.videoUrls = dto.videoUrls;
-        // Type / badge tier
+        // Type / pricing marker. Legacy STANDARD/PREMIUM package values are
+        // retired: Auction is FREE and Retail is BASIC (£1).
         if (dto.listingType !== undefined) data.type = dto.listingType;
-        if (dto.badgeTier !== undefined) data.badgeTier = dto.badgeTier;
+        if (dto.listingType !== undefined || dto.badgeTier !== undefined) {
+            const nextType = dto.listingType ?? listing.type;
+            data.badgeTier = nextType === 'AUCTION' ? 'FREE' : 'BASIC';
+        }
 
         const updated = await this.prisma.listing.update({ where: { id }, data });
 
