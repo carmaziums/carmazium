@@ -5,6 +5,13 @@ on:
     paths:
       - "carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx"
       - "carmazium app/carmazium app/src/screens/seller/SellerAuctionsScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/seller/SellerListingsScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/main/PricingScreen.tsx"
+      - "carmazium app/carmazium app/src/components/ImportListingModal.tsx"
+      - "carmazium app/carmazium app/src/hooks/useListingFeePayment.ts"
+      - "carmazium app/carmazium app/src/constants/pricing.ts"
+      - "carmazium app/carmazium app/src/lib/listingsApi.ts"
+      - "carmazium app/carmazium app/src/lib/paymentsApi.ts"
       - "carmazium app/carmazium app/src/lib/storageHelper.ts"
       - "carmazium app/carmazium app/src/lib/vehicleImageMetadata.ts"
       - "carmazium app/carmazium app/src/lib/auctionPricing.ts"
@@ -47,7 +54,7 @@ jobs:
             exit 0
           fi
 
-          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E 'src/(screens/(sell/SellCarFlowScreen|seller/SellerAuctionsScreen)|lib/(storageHelper|vehicleImageMetadata|auctionPricing))\.tsx?' || true)"
+          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E 'src/(screens/(sell/SellCarFlowScreen|seller/(SellerAuctionsScreen|SellerListingsScreen)|main/PricingScreen)|components/ImportListingModal|hooks/useListingFeePayment|constants/pricing|lib/(listingsApi|paymentsApi|storageHelper|vehicleImageMetadata|auctionPricing))\.tsx?' || true)"
           if [ -n "$LISTING_ERRORS" ]; then
             echo
             echo "TypeScript errors were found in mobile listing/auction files changed by this PR:"

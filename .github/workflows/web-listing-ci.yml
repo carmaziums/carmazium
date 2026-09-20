@@ -4,8 +4,13 @@ on:
   pull_request:
     paths:
       - "src/components/listing/**"
+      - "src/components/features/ImportListingModal.tsx"
+      - "src/components/dashboard/ListingEditModal.tsx"
+      - "src/app/pricing/**"
       - "src/app/dashboard/seller/auctions/**"
+      - "src/app/dashboard/dealer/inventory/**"
       - "src/lib/listingApi.ts"
+      - "src/lib/pricingConfig.ts"
       - "src/lib/auctionApi.ts"
       - "src/lib/auctionPricing.ts"
       - ".github/workflows/web-listing-ci.yml"
@@ -44,7 +49,7 @@ jobs:
             exit 0
           fi
 
-          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(components/listing/|app/dashboard/seller/auctions/|lib/(listingApi|auctionApi|auctionPricing)\.ts)' || true)"
+          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(components/(listing/|features/ImportListingModal\.tsx|dashboard/ListingEditModal\.tsx)|app/(pricing/|dashboard/(seller/auctions/|dealer/inventory/))|lib/(listingApi|pricingConfig|auctionApi|auctionPricing)\.ts)' || true)"
 
           if [ -n "$LISTING_ERRORS" ]; then
             echo

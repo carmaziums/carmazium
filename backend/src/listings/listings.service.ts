@@ -692,10 +692,9 @@ export class ListingsService {
             };
         }
 
-        // Auctions are free to list; all classified listings require at minimum BASIC (£1)
-        const rawBadgeTier = createListingDto.badgeTier ?? 'BASIC';
-        const badgeTier = (rawBadgeTier === 'FREE' && listingType !== 'AUCTION') ? 'BASIC' : rawBadgeTier;
-        const isPremium = badgeTier === 'PREMIUM';
+        // Public pricing has exactly two listing products: free Auction and
+        // £1 Retail. Never trust a client-supplied legacy STANDARD/PREMIUM tier.
+        const badgeTier = listingType === 'AUCTION' ? 'FREE' : 'BASIC';
 
         // Every new listing must pass admin review before it can go live — nothing
         // is ever created directly as ACTIVE. Retail paid tiers start DRAFT and
@@ -787,11 +786,11 @@ export class ListingsService {
                 monthOfFirstRegistration: createListingDto.monthOfFirstRegistration ?? null,
                 wheelplan: createListingDto.wheelplan ?? null,
                 typeApproval: createListingDto.typeApproval ?? null,
-                // Phase 7: Badge tier
+                // Pricing marker only: FREE for Auction, BASIC for £1 Retail.
+                // Featured placement is now a separate optional add-on.
                 badgeTier,
-                // Premium tier → auto-activate featured boost (28 days)
-                isFeatured: isPremium,
-                featuredUntil: isPremium ? new Date(Date.now() + 28 * AUCTION_DURATION_MS) : null,
+                isFeatured: false,
+                featuredUntil: null,
                 // Seller
                 sellerId: userId ?? null,
                 // Vehicle type & import status
@@ -1517,12 +1516,16 @@ export class ListingsService {
             }
         }
 
-        // FREE is only valid for auctions. Heal legacy/stale retail drafts before
-        // any status/payment decision so retail can never inherit the auction tier.
+        // New public retail listings are BASIC (£1), while already-created
+        // STANDARD/PREMIUM rows may represent a genuine legacy paid entitlement.
+        // Preserve those historical rows here; all new creation/checkout paths
+        // normalize to BASIC so retired packages cannot be newly purchased.
         const effectiveBadgeTier =
-            listing.type === 'CLASSIFIED' && listing.badgeTier === 'FREE'
-                ? 'BASIC'
-                : listing.badgeTier;
+            listing.type === 'AUCTION'
+                ? 'FREE'
+                : (listing.badgeTier === 'STANDARD' || listing.badgeTier === 'PREMIUM')
+                    ? listing.badgeTier
+                    : 'BASIC';
 
         if (effectiveBadgeTier !== listing.badgeTier) {
             await this.prisma.listing.update({
@@ -1548,10 +1551,8 @@ export class ListingsService {
             throw new BadRequestException('Only DRAFT or REJECTED listings can be submitted for review');
         }
 
-        // Admins list at any tier without being charged. The tier they picked is
-        // kept as-is (it drives badge display and search placement) — only the
-        // payment step is skipped, so an admin listing is indistinguishable from
-        // a paid one apart from the missing transaction.
+        // Admin-created listings skip the seller listing fee. Pricing is still
+        // normalized to FREE for Auction or BASIC for Retail.
         //
         // Enforced here rather than in the wizard on purpose: the frontend calls
         // publishListing() first and only redirects to Stripe when this returns
@@ -1568,11 +1569,8 @@ export class ListingsService {
         // approving their own listing is a formality, and the review pipeline
         // exists to check other people's submissions.
         //
-        // Uses the same activation shape as AdminService.approveListing rather
-        // than just setting status: 'ACTIVE', because going live also grants
-        // PREMIUM listings their 28-day featured window. Setting the status
-        // alone would publish an admin's PREMIUM listing without the placement
-        // that tier is supposed to buy.
+        // Uses the same activation shape as AdminService.approveListing so all
+        // activation paths clear stale legacy package-feature flags consistently.
         //
         // No approval email or notification is sent: those tell a seller that
         // someone reviewed their listing, and here nobody did.
@@ -1793,7 +1791,7 @@ export class ListingsService {
     async alsoListRetail(
         listingId: string,
         userId: string,
-        dto: { price: number; badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM' },
+        dto: { price: number; badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM' },
     ): Promise<{ linkedListingId: string }> {
         const newListingId = randomUUID();
 
@@ -1884,7 +1882,7 @@ export class ListingsService {
                     combinedMpg: source.combinedMpg, extraUrbanMpg: source.extraUrbanMpg,
                     exteriorGrade: source.exteriorGrade,
                     bannerLabel: source.bannerLabel,
-                    badgeTier: dto.badgeTier,
+                    badgeTier: 'BASIC',
                     sellerId: userId,
                     vehicleType: source.vehicleType,
                     isImported: source.isImported,
@@ -2605,7 +2603,7 @@ export class ListingsService {
             STATION_WAGON: 'STATION_WAGON', MPV: 'MPV', VAN: 'VAN',
         };
 
-        const badgeTier = overrides.badgeTier ?? 'BASIC';
+        const badgeTier = 'BASIC'; // Fixed £1 retail product; ignore legacy package input.
         const normalizedVrm = this.normalizeVrm(overrides.vrm);
 
         const importResult = await this.prisma.$transaction(async (tx) => {

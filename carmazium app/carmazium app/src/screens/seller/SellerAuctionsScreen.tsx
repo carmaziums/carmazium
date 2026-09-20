@@ -182,7 +182,6 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   // Also List for Sale modal
   const [alsoRetailAuction, setAlsoRetailAuction] = useState<AuctionItem | null>(null);
   const [retailPrice, setRetailPrice] = useState('');
-  const [retailTier, setRetailTier] = useState<'BASIC' | 'STANDARD' | 'PREMIUM'>('BASIC');
   const [retailSubmitting, setRetailSubmitting] = useState(false);
   const [retailError, setRetailError] = useState<string | null>(null);
 
@@ -407,8 +406,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             text: 'Also List for Sale',
             onPress: () => {
               setRetailPrice('');
-              setRetailTier('BASIC');
-              setRetailError(null);
+                      setRetailError(null);
               setAlsoRetailAuction(item);
             },
           },
@@ -498,16 +496,16 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     setRetailSubmitting(true);
     setRetailError(null);
     try {
-      const res = await alsoListRetail(alsoRetailAuction.listingId, price, retailTier);
+      const res = await alsoListRetail(alsoRetailAuction.listingId, price);
 
-      // Trigger Stripe payment for the listing fee
+      // Trigger the fixed £1 retail listing payment.
       try {
         const sheet = await createPaymentSheet({
           listingId: res.linkedListingId,
-          amount: retailTier === 'BASIC' ? 1 : retailTier === 'STANDARD' ? 10 : 25,
+          amount: 1,
           type: 'LISTING_FEE',
           currency: 'gbp',
-          badgeTier: retailTier,
+          badgeTier: 'BASIC',
         });
         const { error: initError } = await initPaymentSheet({
           merchantDisplayName: 'Carmazium',
@@ -1299,27 +1297,17 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           />
         </View>
 
-        {/* Plan selection */}
-        <Text style={[styles.retailFieldLabel, { marginTop: 18 }]}>LISTING PLAN</Text>
-        <View style={{ gap: 8, marginTop: 4 }}>
-          {([
-            { tier: 'BASIC' as const, label: 'Basic', price: 1, accent: Colors.white },
-            { tier: 'STANDARD' as const, label: 'Standard', price: 10, accent: Colors.infoBlue },
-            { tier: 'PREMIUM' as const, label: 'Premium', price: 25, accent: Colors.warning },
-          ]).map(plan => (
-            <TouchableOpacity
-              key={plan.tier}
-              style={[styles.retailPlanCard, retailTier === plan.tier && { borderColor: plan.accent, backgroundColor: `${plan.accent}10` }]}
-              onPress={() => setRetailTier(plan.tier)}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.retailPlanRadio, retailTier === plan.tier && { backgroundColor: plan.accent, borderColor: plan.accent }]}>
-                {retailTier === plan.tier && <Ionicons name="checkmark" size={11} color={Colors.white} />}
-              </View>
-              <Text style={[styles.retailPlanLabel, { color: plan.accent }]}>{plan.label}</Text>
-              <Text style={[styles.retailPlanPrice, { color: plan.accent }]}>£{plan.price}</Text>
-            </TouchableOpacity>
-          ))}
+        {/* Fixed retail listing fee */}
+        <Text style={[styles.retailFieldLabel, { marginTop: 18 }]}>LISTING FEE</Text>
+        <View style={[styles.retailPlanCard, { marginTop: 4, borderColor: Colors.accent, backgroundColor: Colors.accentAlpha10 }]}>
+          <View style={[styles.retailPlanRadio, { backgroundColor: Colors.accent, borderColor: Colors.accent }]}>
+            <Ionicons name="checkmark" size={11} color={Colors.white} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.retailPlanLabel, { color: Colors.accent }]}>Retail Listing</Text>
+            <Text style={styles.retailModalSub}>One-off · advertised until sold</Text>
+          </View>
+          <Text style={[styles.retailPlanPrice, { color: Colors.accent }]}>£1</Text>
         </View>
 
         {retailError && (
