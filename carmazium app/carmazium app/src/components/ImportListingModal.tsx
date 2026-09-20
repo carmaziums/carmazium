@@ -59,7 +59,7 @@ const PLANS: Array<{
     price: 10,
     sub: 'Most popular',
     accent: Colors.infoBlue,
-    features: ['Verified badge', 'Priority in search', 'VIN Report badge'],
+    features: ['HPI vehicle-history report included', 'Standard package badge'],
   },
   {
     tier: 'PREMIUM',
@@ -67,7 +67,7 @@ const PLANS: Array<{
     price: 25,
     sub: 'Best value',
     accent: Colors.warning,
-    features: ['Everything in Standard', 'Featured boost (28 days)', 'HPI check included'],
+    features: ['Everything in Standard, including HPI', 'Premium listing badge and presentation', 'Featured Boost available separately'],
   },
 ];
 
