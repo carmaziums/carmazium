@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 import { VehicleDetailsPageClient } from "./VehicleDetailsPageClient"
-import { VehicleDeliveryShortcut } from "./VehicleDeliveryShortcut"
 import { formatPrice } from "@/lib/listingApi"
 import { VehicleViewTracker } from "@/components/analytics/VehicleViewTracker"
 
@@ -124,7 +123,6 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
                         price={initialListing.price}
                         listingType={initialListing.listingType}
                     />
-                    <VehicleDeliveryShortcut listing={initialListing} />
                 </>
             )}
             <VehicleDetailsPageClient params={params} initialListing={initialListing} />
