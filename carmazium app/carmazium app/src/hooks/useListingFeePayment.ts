@@ -2,7 +2,11 @@ import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../lib/paymentsApi';
 import { Colors } from '../constants/colors';
 
-const RETAIL_LISTING_FEE = 1;
+const LISTING_FEES: Record<'BASIC' | 'STANDARD' | 'PREMIUM', number> = {
+  BASIC: 1,
+  STANDARD: 10,
+  PREMIUM: 25,
+};
 
 // Shared with SellCarFlowScreen.tsx's own inline copy of this flow (new-listing
 // publish) — extracted here so SellerListingsScreen (publishing an existing
@@ -13,9 +17,10 @@ export function useListingFeePayment() {
 
   async function triggerListingFeePayment(
     listingId: string,
-    _tier: 'BASIC' | 'STANDARD' | 'PREMIUM' = 'BASIC',
+    tier: 'BASIC' | 'STANDARD' | 'PREMIUM',
   ): Promise<boolean> {
-    const sheet = await createPaymentSheet({ listingId, amount: RETAIL_LISTING_FEE, type: 'LISTING_FEE', currency: 'gbp', badgeTier: 'BASIC' });
+    const amount = LISTING_FEES[tier];
+    const sheet = await createPaymentSheet({ listingId, amount, type: 'LISTING_FEE', currency: 'gbp', badgeTier: tier });
     const { error: initError } = await initPaymentSheet({
       merchantDisplayName: 'Carmazium',
       customerId: sheet.customerId,
