@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#08192f"/><stop offset=".5" stop-color="#0c2846"/><stop offset="1" stop-color="#123f5f"/></linearGradient></defs>
+<rect width="1200" height="600" fill="url(#g)"/>
+<text x="150" y="112" fill="#fff" font-family="Arial" font-size="54" font-weight="800">CarMazium Auction vs Retail</text>
+<text x="150" y="176" fill="#56b3ff" font-family="Arial" font-size="46" font-weight="800">Which Route Should Sellers Choose?</text>
+<g transform="translate(150 260)" font-family="Arial">
+<rect width="390" height="210" rx="28" fill="#0c5da5" opacity=".42" stroke="#69b9ff"/>
+<text x="32" y="47" fill="#fff" font-size="28" font-weight="800">AUCTION</text>
+<text x="32" y="86" fill="#d8ebf8" font-size="18">£0 seller listing fee</text>
+<text x="32" y="118" fill="#d8ebf8" font-size="18">24-hour live auction</text>
+<text x="32" y="150" fill="#d8ebf8" font-size="18">Verified traders bid</text>
+<text x="32" y="182" fill="#9fe0b1" font-size="18">£100 qualifying seller reward</text>
+</g>
+<circle cx="600" cy="365" r="52" fill="#fff"/><text x="600" y="378" text-anchor="middle" fill="#0c2846" font-family="Arial" font-size="30" font-weight="800">VS</text>
+<g transform="translate(660 260)" font-family="Arial">
+<rect width="390" height="210" rx="28" fill="#147a4b" opacity=".42" stroke="#70d39a"/>
+<text x="32" y="47" fill="#fff" font-size="28" font-weight="800">RETAIL</text>
+<text x="32" y="86" fill="#e0f4e8" font-size="18">Basic from £1</text>
+<text x="32" y="118" fill="#e0f4e8" font-size="18">Advertised until sold</text>
+<text x="32" y="150" fill="#e0f4e8" font-size="18">Buyers can make offers</text>
+<text x="32" y="182" fill="#a9e4bd" font-size="18">No CarMazium retail buyer fee</text>
+</g>
+<text x="150" y="535" fill="#fff" font-family="Arial" font-size="25" font-weight="800">CarMazium</text>
+</svg>
