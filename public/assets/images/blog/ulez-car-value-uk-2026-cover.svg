@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
+<title id="title">Does ULEZ Compliance Affect a Car's Value? UK Guide 2026</title>
+<desc id="desc">CarMazium editorial cover showing a generic unbranded vehicle, a clean-air-zone symbol, and resale-value guidance for UK drivers.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#06152a"/>
+    <stop offset="0.55" stop-color="#0b2947"/>
+    <stop offset="1" stop-color="#123f5e"/>
+  </linearGradient>
+  <linearGradient id="road" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#2a3d50"/>
+    <stop offset="1" stop-color="#101a26"/>
+  </linearGradient>
+  <linearGradient id="car" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#97a7b5"/>
+    <stop offset="0.45" stop-color="#506172"/>
+    <stop offset="1" stop-color="#202d39"/>
+  </linearGradient>
+  <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#8ec7e8"/>
+    <stop offset="1" stop-color="#1c3d56"/>
+  </linearGradient>
+  <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%">
+    <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#000" flood-opacity=".35"/>
+  </filter>
+</defs>
+
+<rect width="1200" height="600" fill="url(#bg)"/>
+<circle cx="1000" cy="95" r="190" fill="#39b7ff" opacity=".08"/>
+<circle cx="1040" cy="430" r="220" fill="#3fd27a" opacity=".05"/>
+
+<!-- abstract UK city skyline -->
+<g opacity=".22" fill="#9bb2c5">
+  <rect x="0" y="320" width="80" height="105"/>
+  <rect x="92" y="285" width="60" height="140"/>
+  <rect x="165" y="300" width="42" height="125"/>
+  <rect x="220" y="245" width="70" height="180"/>
+  <rect x="305" y="330" width="55" height="95"/>
+  <rect x="380" y="265" width="62" height="160"/>
+  <rect x="460" y="305" width="46" height="120"/>
+  <rect x="525" y="230" width="70" height="195"/>
+  <rect x="610" y="292" width="54" height="133"/>
+  <rect x="680" y="250" width="75" height="175"/>
+  <rect x="775" y="320" width="55" height="105"/>
+  <rect x="850" y="275" width="70" height="150"/>
+  <rect x="940" y="240" width="58" height="185"/>
+  <rect x="1015" y="300" width="68" height="125"/>
+  <rect x="1100" y="260" width="70" height="165"/>
+</g>
+
+<path d="M0 435 C250 405 480 420 690 392 C895 365 1035 385 1200 360 L1200 600 L0 600 Z" fill="url(#road)"/>
+<path d="M0 438 C260 404 470 419 700 390 C905 363 1040 380 1200 356" fill="none" stroke="#6f879b" stroke-width="2" opacity=".4"/>
+
+<!-- SAFE AREA: x 170–1030, y 85–515 -->
+<g transform="translate(170 100)">
+  <text x="0" y="0" fill="#f7fbff" font-family="Arial,Helvetica,sans-serif" font-size="54" font-weight="800" letter-spacing="-1">Does ULEZ Compliance</text>
+  <text x="0" y="64" fill="#59b5ff" font-family="Arial,Helvetica,sans-serif" font-size="54" font-weight="800" letter-spacing="-1">Affect a Car's Value?</text>
+  <rect x="0" y="91" width="78" height="4" rx="2" fill="#2fa8ff"/>
+  <text x="96" y="104" fill="#c8d8e6" font-family="Arial,Helvetica,sans-serif" font-size="19" font-weight="700" letter-spacing="4">UK GUIDE 2026</text>
+</g>
+
+<!-- informational panel -->
+<g transform="translate(170 290)">
+  <rect x="0" y="0" width="350" height="160" rx="24" fill="#ffffff" opacity=".08" stroke="#9bc7e7" stroke-opacity=".2"/>
+  <circle cx="54" cy="54" r="33" fill="#1dad62"/>
+  <path d="M40 55 C50 39 65 34 78 38 C73 55 64 65 47 69 C47 60 51 52 61 44" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="104" y="42" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="800">COMPLIANCE CAN CHANGE</text>
+  <text x="104" y="66" fill="#61b9ff" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="800">BUYER DEMAND</text>
+  <text x="28" y="112" fill="#bcd0df" font-family="Arial,Helvetica,sans-serif" font-size="14">Petrol: typically Euro 4+</text>
+  <text x="28" y="136" fill="#bcd0df" font-family="Arial,Helvetica,sans-serif" font-size="14">Diesel: typically Euro 6+</text>
+</g>
+
+<!-- Clean air sign -->
+<g transform="translate(900 290)">
+  <rect x="0" y="0" width="130" height="156" rx="18" fill="#0d633d" stroke="#b8e8cc" stroke-width="2"/>
+  <circle cx="65" cy="48" r="27" fill="#1b8d55" stroke="#ddffea" stroke-width="2"/>
+  <path d="M50 50 C58 38 72 34 81 39 C77 52 68 61 54 63 C54 55 58 49 67 42" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>
+  <text x="65" y="95" text-anchor="middle" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="800">CLEAN AIR</text>
+  <text x="65" y="116" text-anchor="middle" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="800">ZONE</text>
+  <text x="65" y="140" text-anchor="middle" fill="#bdebd0" font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="700">CHECK BEFORE YOU SELL</text>
+</g>
+
+<!-- Generic unbranded vehicle -->
+<g transform="translate(545 315)" filter="url(#shadow)">
+  <ellipse cx="190" cy="145" rx="195" ry="24" fill="#020609" opacity=".55"/>
+  <path d="M28 98 C51 66 89 48 134 41 L238 33 C285 35 326 48 358 73 L393 100 C407 111 413 126 409 139 L398 158 L15 158 L8 137 C6 122 13 109 28 98 Z" fill="url(#car)" stroke="#b5c3ce" stroke-width="2"/>
+  <path d="M111 50 C146 40 199 39 246 40 C278 42 306 51 331 70 L350 88 L96 88 C96 72 100 59 111 50 Z" fill="url(#glass)" stroke="#a7bac8" stroke-width="2"/>
+  <path d="M224 41 L231 87" stroke="#d2dde5" stroke-width="2" opacity=".45"/>
+  <path d="M28 112 C70 101 103 96 143 95" fill="none" stroke="#e7eef3" stroke-width="3" opacity=".45"/>
+  <path d="M348 94 C376 100 395 108 405 119" fill="none" stroke="#e7eef3" stroke-width="3" opacity=".5"/>
+  <rect x="362" y="108" width="31" height="9" rx="4" fill="#c5e6f9"/>
+  <rect x="21" y="110" width="27" height="8" rx="4" fill="#c5e6f9"/>
+  <path d="M42 137 H380" stroke="#18232d" stroke-width="5" opacity=".82"/>
+  <circle cx="89" cy="158" r="43" fill="#0f151b" stroke="#9faeb9" stroke-width="4"/>
+  <circle cx="89" cy="158" r="21" fill="#50606d" stroke="#c1ccd5" stroke-width="3"/>
+  <circle cx="321" cy="158" r="43" fill="#0f151b" stroke="#9faeb9" stroke-width="4"/>
+  <circle cx="321" cy="158" r="21" fill="#50606d" stroke="#c1ccd5" stroke-width="3"/>
+</g>
+
+<g transform="translate(170 510)">
+  <text x="0" y="0" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="800">CarMazium</text>
+  <rect x="0" y="12" width="78" height="3" rx="1.5" fill="#2fa8ff"/>
+  <text x="860" y="0" text-anchor="end" fill="#9db4c6" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="700" letter-spacing="2">CURRENT UK RULES • RESALE INSIGHT • SELLER ADVICE</text>
+</g>
+</svg>
