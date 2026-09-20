@@ -4,6 +4,7 @@ const mockCustomersCreate = jest.fn();
 const mockEphemeralKeysCreate = jest.fn();
 const mockConstructEvent = jest.fn();
 const mockCheckoutSessionsCreate = jest.fn();
+const mockHpiCreatePendingReport = jest.fn();
 
 jest.mock('stripe', () => {
     const MockStripe = jest.fn().mockImplementation(() => ({
@@ -65,7 +66,7 @@ function buildModule(prisma: any) {
             PaymentsService,
             { provide: PrismaService, useValue: prisma },
             { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('sk_test_mock') } },
-            { provide: HpiService, useValue: { createPendingReport: jest.fn() } },
+            { provide: HpiService, useValue: { createPendingReport: mockHpiCreatePendingReport } },
             { provide: NotificationsService, useValue: { create: jest.fn().mockResolvedValue(null) } },
             { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
             { provide: EmailService, useValue: {} },
@@ -329,6 +330,7 @@ describe('PaymentsService — handleWebhook checkout.session.completed (LISTING_
 
     beforeEach(async () => {
         mockConstructEvent.mockReset();
+        mockHpiCreatePendingReport.mockReset();
         prisma = buildPrismaMock();
         const module: TestingModule = await buildModule(prisma);
         service = module.get<PaymentsService>(PaymentsService);
@@ -408,6 +410,29 @@ describe('PaymentsService — handleWebhook payment_intent.succeeded (LISTING_FE
                 badgeTier: 'PREMIUM',
             }),
         });
+    });
+
+    it('creates the included HPI request when a STANDARD listing fee succeeds', async () => {
+        prisma.listing.findUnique.mockResolvedValue(
+            readyRetailListing({ badgeTier: 'STANDARD' }),
+        );
+        mockConstructEvent.mockReturnValue({
+            type: 'payment_intent.succeeded',
+            data: {
+                object: {
+                    id: 'pi_standard',
+                    metadata: { transactionId: 'txn-standard', listingId: 'listing-1', type: 'LISTING_FEE', badgeTier: 'STANDARD' },
+                },
+            },
+        });
+
+        await service.handleWebhook(Buffer.from('{}'), 'sig');
+
+        expect(mockHpiCreatePendingReport).toHaveBeenCalledWith(
+            'listing-1',
+            'AB12CDE',
+            'txn-standard',
+        );
     });
 
     it('records genuine payment but leaves an incomplete listing out of review', async () => {
