@@ -329,11 +329,15 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     }
 
     if (key === 'publish') {
-      // Publishing goes through the authoritative backend gate first. Retail
-      // listings use the fixed £1 payment; auctions remain free to sellers.
+      // Was a bare PATCH /status — the same status field the backend's own
+      // /publish endpoint gates on LISTING_FEE payment, so this let sellers
+      // publish paid-tier (BASIC/STANDARD/PREMIUM) listings for free (mobile-audit.md
+      // critical finding). Now mirrors SellCarFlowScreen.tsx's own publish flow:
+      // call /publish first, and only if it reports requiresPayment, run the
+      // real Stripe Payment Sheet before calling /publish again to activate.
       setActionLoading(true);
       try {
-        const first = await apiClient<{ success: boolean; data: { activated: boolean; requiresPayment?: boolean; pendingReview?: boolean } }>(
+        const first = await apiClient<{ success: boolean; data: { activated: boolean; requiresPayment?: boolean } }>(
           `/listings/${listing.id}/publish`,
           { method: 'POST' },
         );
@@ -344,17 +348,11 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           return;
         }
 
-        if (first?.data?.pendingReview) {
-          haptics.success();
-          setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'PENDING_REVIEW' } : l));
-          Alert.alert('Submitted for review', 'Your listing will go live after our team approves it.');
-          return;
-        }
-
         if (first?.data?.requiresPayment) {
+          const tier = ((listing.badgeTier as 'BASIC' | 'STANDARD' | 'PREMIUM') || 'BASIC');
           let paid = false;
           try {
-            paid = await triggerListingFeePayment(listing.id, 'BASIC');
+            paid = await triggerListingFeePayment(listing.id, tier);
           } catch (payErr: any) {
             Alert.alert('Payment Failed', payErr.message || 'Could not process payment.');
             return;
@@ -364,17 +362,14 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             return;
           }
           haptics.success();
-          const second = await apiClient<{ success: boolean; data: { activated: boolean; pendingReview?: boolean } }>(
+          const second = await apiClient<{ success: boolean; data: { activated: boolean } }>(
             `/listings/${listing.id}/publish`,
             { method: 'POST' },
           );
           if (second?.data?.activated) {
             setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'ACTIVE' } : l));
-          } else if (second?.data?.pendingReview) {
-            setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'PENDING_REVIEW' } : l));
-            Alert.alert('Submitted for review', 'Payment succeeded. Your listing will go live after our team approves it.');
           } else {
-            Alert.alert('Payment received', 'Your payment succeeded, but the listing has not entered review yet. Publish it again from My Listings; you will not be charged twice.');
+            Alert.alert('Almost there!', 'Payment succeeded but the listing could not be activated automatically. Pull to refresh in a moment.');
           }
         }
       } catch (err: any) {
