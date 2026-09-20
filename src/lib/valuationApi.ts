@@ -101,6 +101,14 @@ const clamp = (value: number, min: number, max: number) =>
 const normalise = (value?: string | null) =>
     (value ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
 
+function transmissionFamily(value?: string | null): 'MANUAL' | 'AUTO' | null {
+    const normalized = normalise(value)
+    if (!normalized) return null
+    if (normalized === 'MANUAL') return 'MANUAL'
+    if (['AUTOMATIC', 'AUTO', 'CVT', 'SEMIAUTOMATIC', 'SEMIAUTO'].includes(normalized)) return 'AUTO'
+    return null
+}
+
 function roundMoney(value: number): number {
     const safe = Math.max(500, value)
     const step = safe < 10000 ? 50 : 100
@@ -150,6 +158,11 @@ function modelFallbackMid(request: VehicleValuationRequest): number {
     const mileageDeltaThousands = (request.mileage - expectedMileage) / 1000
     value *= clamp(1 - mileageDeltaThousands * 0.0035, 0.72, 1.15)
     value *= profileFactor(request)
+
+    const transmission = transmissionFamily(request.transmission)
+    if (transmission === 'AUTO') value *= 1.04
+    if (transmission === 'MANUAL') value *= 0.96
+
     return Math.max(500, value)
 }
 
@@ -248,10 +261,19 @@ async function getBrowserFallbackValuation(
             // reduce its influence instead by nudging it toward the conservative
             // side before it enters the median pool.
             if (targetFuel && normalise(row.fuelType) && normalise(row.fuelType) !== targetFuel) value *= 0.96
-            if (targetTransmission && normalise(row.transmission) && normalise(row.transmission) !== targetTransmission) value *= 0.97
 
-            // Active asks already embody their own condition. Apply only the
-            // target's extra risk adjustments here, and keep the range wide.
+            const rowTransmission = normalise(row.transmission)
+            if (targetTransmission && rowTransmission && rowTransmission !== targetTransmission) {
+                const targetFamily = transmissionFamily(request.transmission)
+                const compFamily = transmissionFamily(row.transmission)
+                if (targetFamily && compFamily && targetFamily !== compFamily) {
+                    value *= targetFamily === 'AUTO' ? 1.07 : 0.93
+                }
+            }
+
+            // Public fallback data is live asking-price evidence, not an
+            // achieved transaction price, so keep the estimate conservative.
+            value *= 0.96
             value *= profileFactor(request)
             return value
         })

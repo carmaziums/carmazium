@@ -80,6 +80,41 @@ describe('calculateVehicleValuation', () => {
         expect(result.retail.suggestedMinimum).toBeGreaterThanOrEqual(result.mid * 0.89);
     });
 
+    it('prices automatic and manual cars differently when gearbox evidence differs', () => {
+        const automatic = calculateVehicleValuation(
+            { ...vehicle, transmission: 'AUTOMATIC' },
+            [
+                { price: 8200, year: 2019, mileage: 60000, fuelType: 'DIESEL', transmission: 'AUTOMATIC', kind: 'SALE' },
+                { price: 8000, year: 2019, mileage: 62000, fuelType: 'DIESEL', transmission: 'AUTOMATIC', kind: 'ACCEPTED_OFFER' },
+                { price: 7900, year: 2018, mileage: 65000, fuelType: 'DIESEL', transmission: 'AUTOMATIC', kind: 'ACTIVE_ASK' },
+            ],
+        );
+
+        const manual = calculateVehicleValuation(
+            { ...vehicle, transmission: 'MANUAL' },
+            [
+                { price: 8200, year: 2019, mileage: 60000, fuelType: 'DIESEL', transmission: 'AUTOMATIC', kind: 'SALE' },
+                { price: 8000, year: 2019, mileage: 62000, fuelType: 'DIESEL', transmission: 'AUTOMATIC', kind: 'ACCEPTED_OFFER' },
+                { price: 7900, year: 2018, mileage: 65000, fuelType: 'DIESEL', transmission: 'AUTOMATIC', kind: 'ACTIVE_ASK' },
+            ],
+        );
+
+        expect(automatic.mid).toBeGreaterThan(manual.mid);
+    });
+
+    it('uses a modest transmission adjustment even when no comparables exist', () => {
+        const automatic = calculateVehicleValuation(
+            { ...vehicle, transmission: 'AUTOMATIC' },
+            [],
+        );
+        const manual = calculateVehicleValuation(
+            { ...vehicle, transmission: 'MANUAL' },
+            [],
+        );
+
+        expect(automatic.mid).toBeGreaterThan(manual.mid);
+    });
+
     it('does not let an extreme active asking price dominate completed outcomes', () => {
         const result = calculateVehicleValuation(vehicle, [
             { price: 7000, year: 2019, mileage: 60000, kind: 'SALE' },

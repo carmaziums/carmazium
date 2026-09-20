@@ -216,6 +216,20 @@ export class ListingsService {
             });
         }
 
+        // If we have enough same-transmission vehicles, value the target
+        // primarily against those. This prevents automatic asking prices from
+        // inflating a manual valuation (and vice versa). Sparse cases still
+        // retain the wider pool and are normalised in the valuation engine.
+        if (dto.transmission) {
+            const targetTransmission = String(dto.transmission).toUpperCase();
+            const sameTransmissionRows = rows.filter(
+                (row) => row.transmission && String(row.transmission).toUpperCase() === targetTransmission,
+            );
+            if (sameTransmissionRows.length >= 3) {
+                rows = sameTransmissionRows;
+            }
+        }
+
         const comparables: VehicleValuationComparable[] = [];
 
         for (const row of rows) {

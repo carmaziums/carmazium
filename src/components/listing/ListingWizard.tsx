@@ -643,7 +643,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         !!formData.model &&
         Number(formData.year) >= 1950 &&
         formData.mileage !== '' &&
-        Number(formData.mileage) >= 0
+        Number(formData.mileage) >= 0 &&
+        !!formData.transmission
 
     React.useEffect(() => {
         if (!valuationReady) {
