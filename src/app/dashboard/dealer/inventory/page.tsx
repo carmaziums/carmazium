@@ -361,7 +361,7 @@ export default function DealerInventoryPage() {
                                                 )}
                                                 {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && !(listing as any).linkedListing && (
                                                     <button
-                                                        onClick={() => { setAlsoRetailListing(listing); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
+                                                        onClick={() => { setAlsoRetailListing(listing); setAlsoRetailPrice(""); setAlsoRetailError(null) }}
                                                         className="w-full min-h-[46px] flex items-center gap-2.5 px-3 rounded-xl text-blue-400 bg-blue-500/5 font-bold text-sm"
                                                     >
                                                         <Tag size={16} /> Also list for retail
@@ -539,7 +539,7 @@ export default function DealerInventoryPage() {
                                                                     {/* Dual-channel: AUCTION listing → add retail listing */}
                                                                     {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && !(listing as any).linkedListing && (
                                                                         <button
-                                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAlsoRetailListing(listing); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
+                                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAlsoRetailListing(listing); setAlsoRetailPrice(""); setAlsoRetailError(null) }}
                                                                             className="flex items-center gap-2 px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 transition-colors w-full text-left"
                                                                         >
                                                                             <Tag size={14} /> Also List for Retail
