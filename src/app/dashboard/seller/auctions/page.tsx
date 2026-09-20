@@ -153,6 +153,7 @@ function SellerAuctionsPage() {
     // Also-list-retail for auction listings
     const [alsoRetailAuction, setAlsoRetailAuction] = React.useState<Auction | null>(null)
     const [alsoRetailPrice,   setAlsoRetailPrice]   = React.useState("")
+    const [alsoRetailTier,    setAlsoRetailTier]    = React.useState<'BASIC' | 'STANDARD' | 'PREMIUM'>('BASIC')
     const [alsoRetailLoading, setAlsoRetailLoading] = React.useState(false)
     const [alsoRetailError,   setAlsoRetailError]   = React.useState<string | null>(null)
     // Digest — custom tags & self-rating on your own auction
@@ -328,8 +329,8 @@ function SellerAuctionsPage() {
         setAlsoRetailLoading(true)
         setAlsoRetailError(null)
         try {
-            const { linkedListingId } = await alsoListRetail(alsoRetailAuction.listingId, parseFloat(alsoRetailPrice))
-            const { url } = await createListingCheckout(linkedListingId, 'BASIC')
+            const { linkedListingId } = await alsoListRetail(alsoRetailAuction.listingId, parseFloat(alsoRetailPrice), alsoRetailTier)
+            const { url } = await createListingCheckout(linkedListingId, alsoRetailTier)
             window.location.href = url
         } catch (err: any) {
             setAlsoRetailError(err.message ?? 'Failed to create retail listing')
@@ -776,7 +777,7 @@ function SellerAuctionsPage() {
                                             )}
                                             {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && !(auction.listing as any).linkedListing && (
                                                 <button
-                                                    onClick={() => { setAlsoRetailAuction(auction); setAlsoRetailPrice(""); setAlsoRetailError(null) }}
+                                                    onClick={() => { setAlsoRetailAuction(auction); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
                                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-transparent text-[var(--text-muted)] border border-[var(--border-default)] text-xs font-bold hover:text-blue-400 hover:border-blue-500/30 transition-colors"
                                                 >
                                                     <Tag size={13} /> Also Retail
@@ -786,7 +787,7 @@ function SellerAuctionsPage() {
                                                 <button
                                                     onClick={async () => {
                                                         const linked = (auction.listing as any).linkedListing
-                                                        const { url } = await createListingCheckout(linked.id, 'BASIC')
+                                                        const { url } = await createListingCheckout(linked.id, linked.badgeTier || 'BASIC')
                                                         window.location.href = url
                                                     }}
                                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold hover:bg-amber-500/20 transition-colors"
@@ -954,7 +955,7 @@ function SellerAuctionsPage() {
                                                         )}
                                                         {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && !(auction.listing as any).linkedListing && (
                                                             <button
-                                                                onClick={() => { setAlsoRetailAuction(auction); setAlsoRetailPrice(""); setAlsoRetailError(null) }}
+                                                                onClick={() => { setAlsoRetailAuction(auction); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
                                                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-transparent text-[var(--text-muted)] border border-[var(--border-default)] text-xs font-bold hover:text-blue-400 hover:border-blue-500/30 transition-colors"
                                                             >
                                                                 <Tag size={13} /> Also Retail
@@ -964,7 +965,7 @@ function SellerAuctionsPage() {
                                                             <button
                                                                 onClick={async () => {
                                                                     const linked = (auction.listing as any).linkedListing
-                                                                    const { url } = await createListingCheckout(linked.id, 'BASIC')
+                                                                    const { url } = await createListingCheckout(linked.id, linked.badgeTier || 'BASIC')
                                                                     window.location.href = url
                                                                 }}
                                                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold hover:bg-amber-500/20 transition-colors"
@@ -1204,13 +1205,18 @@ function SellerAuctionsPage() {
                                 className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 h-10 text-sm focus:outline-none focus:border-primary/50"
                             />
                         </div>
-                        <div className="rounded-xl border border-primary/25 bg-primary/5 p-3">
-                            <div className="flex items-center justify-between gap-3">
-                                <div>
-                                    <p className="text-xs font-bold text-[var(--text-primary)]">Retail listing fee</p>
-                                    <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">One-off payment · advertised until sold</p>
-                                </div>
-                                <p className="text-xl font-black text-primary">£1</p>
+                        <div>
+                            <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">Listing Plan</label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {([['BASIC', '£1'], ['STANDARD', '£10'], ['PREMIUM', '£25']] as const).map(([tier, price]) => (
+                                    <button
+                                        key={tier}
+                                        onClick={() => setAlsoRetailTier(tier)}
+                                        className={`py-2.5 rounded-xl border text-xs font-bold transition-all ${alsoRetailTier === tier ? 'bg-primary/15 border-primary/40 text-primary' : 'bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
+                                    >
+                                        {tier}<br /><span className="text-xs font-normal">{price}</span>
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     </div>
