@@ -9,7 +9,7 @@ export const PRICING = {
   listing: {
     basic: { price: 1, label: 'Basic' },
     standard: { price: 10, label: 'Standard' },
-    premium: { price: 25, label: 'Premium' },
+    premium: { price: 25, label: 'Premium', includesHpi: true, includesFeaturedBoost: true },
   },
   hpiReport: {
     price: 9.99,
