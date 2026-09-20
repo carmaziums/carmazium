@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import {
+    ArrowRight,
     BadgeCheck,
     CheckCircle,
     ChevronDown,
@@ -8,6 +9,7 @@ import {
     HelpCircle,
     Lock,
     Shield,
+    ShoppingBag,
     Sparkles,
     Zap,
 } from "lucide-react"
@@ -18,7 +20,7 @@ import { PageHero } from "@/components/layout/PageHero"
 
 export const metadata: Metadata = {
     title: "Pricing",
-    description: "Simple CarMazium pricing: auction listings are free for sellers, retail listings are £1 one-off until sold, and retail buyers pay no CarMazium buyer fee.",
+    description: "Simple consumer pricing from CarMazium: sell by auction for free, advertise in retail for £1 one-off until sold, or buy a retail car with no CarMazium buyer fee.",
 }
 
 const FAQS = [
@@ -28,11 +30,7 @@ const FAQS = [
     },
     {
         q: "How much does it cost to put my car into auction?",
-        a: "Nothing. Auction listings are free for sellers. Only verified Traders can bid in CarMazium auctions.",
-    },
-    {
-        q: "What is the auction buyer fee?",
-        a: `The winning verified Trader pays a £${PRICING.marketplace.auction.buyerFee} one-off CarMazium buyer fee after winning the auction. The vehicle purchase price itself is paid directly to the seller.`,
+        a: "Nothing. Auction listings are free for sellers. Verified motor traders compete for the vehicle.",
     },
     {
         q: "Does CarMazium charge retail buyers?",
@@ -40,7 +38,7 @@ const FAQS = [
     },
     {
         q: "Does CarMazium handle the vehicle purchase money?",
-        a: "No. For both auction and retail sales, the buyer pays the seller directly. CarMazium only collects its own applicable platform fees and optional add-on charges.",
+        a: "No. Buyers pay sellers directly for the vehicle. CarMazium only collects its own applicable platform fees and optional add-on charges.",
     },
     {
         q: "Is an HPI check compulsory?",
@@ -75,59 +73,36 @@ export default function PricingPage() {
     return (
         <main className="min-h-screen pb-24 pt-20">
             <PageHero
-                eyebrow={<><Sparkles size={14} /> Transparent pricing</>}
-                title="Auction FREE. Retail £1."
+                eyebrow={<><Sparkles size={14} /> Simple customer pricing</>}
+                title="Sell for FREE at auction or £1 in retail."
                 description={
                     <p>
-                        Simple pricing with no retail package ladder: sellers list in auction for free or advertise in retail for £1 one-off until sold.
+                        Clear pricing for people selling or buying a car. Motor-trade auction pricing is kept separately for verified Traders and Partner Accounts.
                     </p>
                 }
                 compact
             />
 
             <section className="container mx-auto px-5 py-16 md:py-20">
-                <div className="mx-auto grid max-w-7xl items-stretch gap-5 md:grid-cols-2 xl:grid-cols-4">
+                <div className="mx-auto grid max-w-6xl items-stretch gap-5 md:grid-cols-3">
                     <article className="flex h-full flex-col rounded-2xl border border-orange-500/30 bg-gradient-to-b from-orange-500/[0.08] to-[var(--bg-card)] p-7 shadow-[var(--shadow-card)]">
                         <div className="min-h-[150px] border-b border-[var(--border-default)] pb-6">
                             <div className="mb-3 flex items-center gap-2 text-orange-600 dark:text-orange-400">
                                 <Gavel size={16} />
-                                <p className="text-xs font-black uppercase tracking-[0.14em]">Auction seller</p>
+                                <p className="text-xs font-black uppercase tracking-[0.14em]">Sell by auction</p>
                             </div>
                             <div className="text-4xl font-black tracking-tight">Free</div>
                             <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">£0 seller listing fee</p>
                         </div>
                         <ul className="my-6 flex-1 space-y-3">
                             <li className={featureItemClass}><CheckCircle size={15} className="mt-0.5 shrink-0 text-orange-500" /> {auction.durationHours}-hour live auction</li>
-                            <li className={featureItemClass}><CheckCircle size={15} className="mt-0.5 shrink-0 text-orange-500" /> Verified Traders compete for the vehicle</li>
+                            <li className={featureItemClass}><CheckCircle size={15} className="mt-0.5 shrink-0 text-orange-500" /> Verified motor traders compete for your car</li>
                             <li className={featureItemClass}><CheckCircle size={15} className="mt-0.5 shrink-0 text-orange-500" /> Live bidding and anti-snipe protection</li>
                             <li className={featureItemClass}><CheckCircle size={15} className="mt-0.5 shrink-0 text-orange-500" /> No seller listing fee</li>
                             <li className={featureItemClass}><CheckCircle size={15} className="mt-0.5 shrink-0 text-orange-500" /> £{auction.sellerReward} seller reward after successful approved handover</li>
                         </ul>
                         <Button asChild className="mt-auto w-full">
                             <Link href="/sell">Start Free Auction</Link>
-                        </Button>
-                    </article>
-
-                    <article className="flex h-full flex-col rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-7 shadow-[var(--shadow-card)]">
-                        <div className="min-h-[150px] border-b border-[var(--border-default)] pb-6">
-                            <div className="mb-3 flex items-center gap-2 text-[var(--text-muted)]">
-                                <Lock size={15} />
-                                <p className="text-xs font-black uppercase tracking-[0.14em]">Winning Trader</p>
-                            </div>
-                            <div className="flex items-end gap-2">
-                                <span className="text-4xl font-black tracking-tight">£{auction.buyerFee}</span>
-                                <span className="mb-1 text-xs text-[var(--text-muted)]">one-off</span>
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Auction buyer fee only after winning</p>
-                        </div>
-                        <ul className="my-6 flex-1 space-y-3">
-                            <li className={featureItemClass}><CheckCircle size={15} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" /> Only the winning verified Trader pays</li>
-                            <li className={featureItemClass}><CheckCircle size={15} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" /> Seller contact and deal details unlock after the fee</li>
-                            <li className={featureItemClass}><CheckCircle size={15} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" /> Vehicle price is paid directly to the seller</li>
-                            <li className={featureItemClass}><CheckCircle size={15} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" /> CarMazium does not hold the vehicle purchase funds</li>
-                        </ul>
-                        <Button asChild className="mt-auto w-full">
-                            <Link href="/auctions/browse">Browse Auctions</Link>
                         </Button>
                     </article>
 
@@ -157,7 +132,10 @@ export default function PricingPage() {
 
                     <article className="flex h-full flex-col rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-7 shadow-[var(--shadow-card)]">
                         <div className="min-h-[150px] border-b border-[var(--border-default)] pb-6">
-                            <p className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-[var(--text-muted)]">Retail buyer</p>
+                            <div className="mb-3 flex items-center gap-2 text-[var(--text-muted)]">
+                                <ShoppingBag size={16} />
+                                <p className="text-xs font-black uppercase tracking-[0.14em]">Buying a retail car</p>
+                            </div>
                             <div className="text-4xl font-black tracking-tight">Free</div>
                             <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">£0 CarMazium retail buyer fee</p>
                         </div>
@@ -179,52 +157,54 @@ export default function PricingPage() {
                 <div className="mx-auto max-w-6xl">
                     <div className="mb-8 text-center">
                         <p className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-primary">At a glance</p>
-                        <h2 className="text-2xl font-black md:text-3xl">Simple Fee Comparison</h2>
+                        <h2 className="text-2xl font-black md:text-3xl">Customer Fee Comparison</h2>
                     </div>
                     <div className="overflow-x-auto rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-[var(--shadow-card)]">
-                        <table className="w-full min-w-[720px] border-collapse text-sm">
+                        <table className="w-full min-w-[760px] border-collapse text-sm">
                             <thead className="bg-[var(--bg-input)]">
                                 <tr className="border-b-2 border-[var(--border-default)]">
-                                    <th scope="col" className="w-1/2 px-6 py-4 text-left text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">Fee / Rule</th>
-                                    <th scope="col" className="px-4 py-4 text-center text-xs font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">Auction</th>
-                                    <th scope="col" className="bg-primary/[0.06] px-4 py-4 text-center text-xs font-black uppercase tracking-wider text-primary">Retail</th>
+                                    <th scope="col" className="w-1/3 px-6 py-4 text-left text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">Fee / Rule</th>
+                                    <th scope="col" className="px-4 py-4 text-center text-xs font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">Auction seller</th>
+                                    <th scope="col" className="bg-primary/[0.06] px-4 py-4 text-center text-xs font-black uppercase tracking-wider text-primary">Retail seller</th>
+                                    <th scope="col" className="px-4 py-4 text-center text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Retail buyer</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[var(--border-default)]">
                                 <tr>
-                                    <th scope="row" className="px-6 py-4 text-left font-semibold text-[var(--text-secondary)]">Seller listing fee</th>
+                                    <th scope="row" className="px-6 py-4 text-left font-semibold text-[var(--text-secondary)]">CarMazium fee</th>
                                     <td className="px-4 py-4 text-center font-black">Free</td>
                                     <td className="bg-primary/[0.035] px-4 py-4 text-center font-black">£{retail.sellerListingFee} one-off</td>
+                                    <td className="px-4 py-4 text-center font-black">Free</td>
                                 </tr>
                                 <tr className="bg-[var(--bg-input)]/35">
-                                    <th scope="row" className="px-6 py-4 text-left font-semibold text-[var(--text-secondary)]">Buyer fee</th>
-                                    <td className="px-4 py-4 text-center">£{auction.buyerFee}, winning Trader only</td>
-                                    <td className="bg-primary/[0.035] px-4 py-4 text-center">Free</td>
-                                </tr>
-                                <tr>
-                                    <th scope="row" className="px-6 py-4 text-left font-semibold text-[var(--text-secondary)]">Duration</th>
-                                    <td className="px-4 py-4 text-center">{auction.durationHours} hours</td>
+                                    <th scope="row" className="px-6 py-4 text-left font-semibold text-[var(--text-secondary)]">Duration / access</th>
+                                    <td className="px-4 py-4 text-center">{auction.durationHours}-hour auction</td>
                                     <td className="bg-primary/[0.035] px-4 py-4 text-center">{retail.durationLabel}</td>
-                                </tr>
-                                <tr className="bg-[var(--bg-input)]/35">
-                                    <th scope="row" className="px-6 py-4 text-left font-semibold text-[var(--text-secondary)]">Who can bid / buy?</th>
-                                    <td className="px-4 py-4 text-center">Verified Traders bid</td>
-                                    <td className="bg-primary/[0.035] px-4 py-4 text-center">Retail buyers</td>
+                                    <td className="px-4 py-4 text-center">Browse and buy retail cars</td>
                                 </tr>
                                 <tr>
+                                    <th scope="row" className="px-6 py-4 text-left font-semibold text-[var(--text-secondary)]">Who you deal with</th>
+                                    <td className="px-4 py-4 text-center">Verified motor traders bid</td>
+                                    <td className="bg-primary/[0.035] px-4 py-4 text-center">Retail marketplace buyers</td>
+                                    <td className="px-4 py-4 text-center">Vehicle seller</td>
+                                </tr>
+                                <tr className="bg-[var(--bg-input)]/35">
                                     <th scope="row" className="px-6 py-4 text-left font-semibold text-[var(--text-secondary)]">Vehicle purchase funds</th>
                                     <td className="px-4 py-4 text-center">Buyer pays seller directly</td>
                                     <td className="bg-primary/[0.035] px-4 py-4 text-center">Buyer pays seller directly</td>
+                                    <td className="px-4 py-4 text-center">Buyer pays seller directly</td>
                                 </tr>
-                                <tr className="bg-[var(--bg-input)]/35">
+                                <tr>
                                     <th scope="row" className="px-6 py-4 text-left font-semibold text-[var(--text-secondary)]">HPI check</th>
                                     <td className="px-4 py-4 text-center">Optional</td>
                                     <td className="bg-primary/[0.035] px-4 py-4 text-center">Optional</td>
+                                    <td className="px-4 py-4 text-center">—</td>
                                 </tr>
-                                <tr>
+                                <tr className="bg-[var(--bg-input)]/35">
                                     <th scope="row" className="px-6 py-4 text-left font-semibold text-[var(--text-secondary)]">Seller reward</th>
                                     <td className="px-4 py-4 text-center">£{auction.sellerReward} after approved handover</td>
                                     <td className="bg-primary/[0.035] px-4 py-4 text-center">—</td>
+                                    <td className="px-4 py-4 text-center">—</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -283,12 +263,19 @@ export default function PricingPage() {
                         <div className="max-w-2xl">
                             <div className="mb-3 flex items-center gap-2 text-primary">
                                 <BadgeCheck size={20} />
-                                <span className="text-xs font-black uppercase tracking-[0.14em]">Partner Account</span>
+                                <span className="text-xs font-black uppercase tracking-[0.14em]">Motor Trade & Partner Accounts</span>
                             </div>
-                            <h2 className="text-2xl font-black">Running an automotive business?</h2>
-                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Use one Partner Account for your business, with Vehicle Dealer and other approved capabilities available from the same business dashboard.</p>
+                            <h2 className="text-2xl font-black">Are you a motor trader or automotive business?</h2>
+                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
+                                Trader auction fees and business-account information are shown separately, so customer pricing stays simple and relevant.
+                            </p>
                         </div>
-                        <div className="shrink-0"><DealerCtaButton /></div>
+                        <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
+                            <Button asChild variant="outline" size="lg">
+                                <Link href="/pricing/traders">View Trader Pricing <ArrowRight size={16} /></Link>
+                            </Button>
+                            <DealerCtaButton />
+                        </div>
                     </div>
                 </div>
             </section>
