@@ -74,16 +74,22 @@ function mirrorToMeta(type: string, payload: Record<string, unknown>): void {
             return
         case SELLER_FUNNEL.LISTING_STARTED:
             if (!isAdmin) {
-                // The live seller TOFU campaign already optimises for Meta's
-                // standard Lead event. Make a genuine seller listing-start the
-                // canonical Lead signal, while retaining the custom event for
-                // funnel reporting and future campaign options.
-                trackMetaEvent("Lead", compact({ ...payload, content_category: "seller_listing_start" }))
+                // Listing start is useful funnel telemetry, but it is too early
+                // to be Meta's optimisation conversion. Keep it as a custom
+                // event so reporting can measure drop-off without training the
+                // seller campaign on people who merely open the wizard.
                 trackMetaEvent("SellerStartListing", compact(payload))
             }
             return
         case SELLER_FUNNEL.LISTING_SUBMITTED:
-            if (!isAdmin) trackMetaEvent("SellerCompleteListing", compact(payload))
+            if (!isAdmin) {
+                // Meta's standard Lead now means a seller actually completed
+                // the listing wizard. This covers both free auctions and retail
+                // listings, so the TOFU campaign optimises for a meaningful
+                // seller outcome instead of a cheap listing-start micro-event.
+                trackMetaEvent("Lead", compact({ ...payload, content_category: "seller_listing_submitted" }))
+                trackMetaEvent("SellerCompleteListing", compact(payload))
+            }
             return
         case SELLER_FUNNEL.AUCTION_SUBMITTED:
             if (!isAdmin) trackMetaEvent("AuctionListingCreated", compact(payload))

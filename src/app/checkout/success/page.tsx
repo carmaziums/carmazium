@@ -65,18 +65,11 @@ function CheckoutSuccessContent() {
                     trackedSessionId.current = sessionId
                     const value = data.amountTotal != null ? data.amountTotal / 100 : undefined
                     const currency = data.currency?.toUpperCase() ?? "GBP"
-                    trackMetaEvent("Purchase", {
-                        value,
-                        currency,
-                        content_type: "product",
-                        content_ids: data.metadata?.listingId ? [data.metadata.listingId] : undefined,
-                        content_name: data.metadata?.type,
-                    })
                     // Generic purchase is retained for GA4/GTM reporting, but
-                    // it is deliberately NOT a Google Ads conversion. Different
-                    // Stripe payment types must never share one Ads action.
-                    // transaction_id is the Stripe session so GA4 can dedupe
-                    // if the customer refreshes the success page.
+                    // Meta's standard Purchase event is reserved for the paid
+                    // retail listing fee. Buyer commissions, verification fees
+                    // and deposits must not contaminate seller-acquisition
+                    // optimisation.
                     trackEvent('purchase', {
                         transaction_id: sessionId,
                         value,
@@ -84,8 +77,15 @@ function CheckoutSuccessContent() {
                         fee_type: data.metadata?.type,
                         listing_id: data.metadata?.listingId,
                     })
-                    // Fee-specific events own Google Ads conversion labels.
+                    // Fee-specific events own advertising conversion semantics.
                     if (data.metadata?.type === 'LISTING_FEE') {
+                        trackMetaEvent("Purchase", {
+                            value,
+                            currency,
+                            content_type: "product",
+                            content_ids: data.metadata?.listingId ? [data.metadata.listingId] : undefined,
+                            content_name: "LISTING_FEE",
+                        })
                         trackEvent(SELLER_FUNNEL.LISTING_FEE_PAID, {
                             transaction_id: sessionId,
                             value,
@@ -94,11 +94,24 @@ function CheckoutSuccessContent() {
                             listing_id: data.metadata?.listingId,
                         })
                     } else if (data.metadata?.type === 'COMMISSION') {
+                        trackMetaEvent("AuctionBuyerFeePaid", {
+                            value,
+                            currency,
+                            content_ids: data.metadata?.listingId ? [data.metadata.listingId] : undefined,
+                        })
                         trackEvent('auction_buyer_fee_paid', {
                             transaction_id: sessionId,
                             value,
                             currency,
                             listing_id: data.metadata?.listingId,
+                        })
+                    } else if (data.metadata?.type === 'KYC_VERIFICATION') {
+                        trackMetaEvent("KycVerificationPaid", { value, currency })
+                    } else if (data.metadata?.type === 'DEPOSIT') {
+                        trackMetaEvent("VehicleDepositPaid", {
+                            value,
+                            currency,
+                            content_ids: data.metadata?.listingId ? [data.metadata.listingId] : undefined,
                         })
                     }
                 }
