@@ -184,8 +184,8 @@ export const PricingScreen: React.FC = () => {
         <View style={styles.introSection}>
           <Text style={styles.introHeading}>Simple, honest pricing</Text>
           <Text style={styles.introSub}>
-            List your car for free at auction, or pay a one-off fee for a retail
-            listing. No subscriptions. No surprises.
+            List your car for free at auction, or choose Basic £1, Standard £10
+            with HPI included, or Premium £25. Retail buyers pay no CarMazium buyer fee.
           </Text>
         </View>
 
@@ -288,8 +288,8 @@ export const PricingScreen: React.FC = () => {
             <Ionicons name="business-outline" size={20} color={Colors.accent} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.dealerPromptTitle}>Need to list multiple vehicles?</Text>
-            <Text style={styles.dealerPromptSub}>Dealers get a dashboard with CRM, inventory management, and analytics.</Text>
+            <Text style={styles.dealerPromptTitle}>Motor trader or automotive business?</Text>
+            <Text style={styles.dealerPromptSub}>Use a Partner Account for verified business tools and auction access.</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
@@ -298,7 +298,7 @@ export const PricingScreen: React.FC = () => {
         <View style={styles.footerNote}>
           <Ionicons name="information-circle-outline" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={styles.footerNoteText}>
-            All payments are handled via Stripe and shown in GBP. CarMazium never stores your card details.
+            Retail buyers pay no CarMazium buyer fee. Vehicle sale money is paid directly between buyer and seller; CarMazium does not hold it.
           </Text>
         </View>
 
