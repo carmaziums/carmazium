@@ -532,7 +532,7 @@ export class PaymentsService {
      * badgeTier remains in the public method signature for compatibility with
      * older web/mobile clients, but it can no longer change the amount charged.
      */
-    async createListingSession(_badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM', userId: string, listingId: string) {
+    async createListingSession(_badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM' | undefined, userId: string, listingId: string) {
         const [actor, readiness] = await Promise.all([
             this.prisma.user.findUnique({
                 where: { id: userId },
