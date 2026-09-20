@@ -695,7 +695,6 @@ export class ListingsService {
         // Auctions are free to list; all classified listings require at minimum BASIC (£1)
         const rawBadgeTier = createListingDto.badgeTier ?? 'BASIC';
         const badgeTier = (rawBadgeTier === 'FREE' && listingType !== 'AUCTION') ? 'BASIC' : rawBadgeTier;
-        const isPremium = badgeTier === 'PREMIUM';
 
         // Every new listing must pass admin review before it can go live — nothing
         // is ever created directly as ACTIVE. Retail paid tiers start DRAFT and
@@ -787,11 +786,11 @@ export class ListingsService {
                 monthOfFirstRegistration: createListingDto.monthOfFirstRegistration ?? null,
                 wheelplan: createListingDto.wheelplan ?? null,
                 typeApproval: createListingDto.typeApproval ?? null,
-                // Phase 7: Badge tier
+                // Retail package tier. Featured Boost is a separate paid add-on
+                // and must never be inferred from PREMIUM.
                 badgeTier,
-                // Premium tier → auto-activate featured boost (28 days)
-                isFeatured: isPremium,
-                featuredUntil: isPremium ? new Date(Date.now() + 28 * AUCTION_DURATION_MS) : null,
+                isFeatured: false,
+                featuredUntil: null,
                 // Seller
                 sellerId: userId ?? null,
                 // Vehicle type & import status
@@ -1548,10 +1547,8 @@ export class ListingsService {
             throw new BadRequestException('Only DRAFT or REJECTED listings can be submitted for review');
         }
 
-        // Admins list at any tier without being charged. The tier they picked is
-        // kept as-is (it drives badge display and search placement) — only the
-        // payment step is skipped, so an admin listing is indistinguishable from
-        // a paid one apart from the missing transaction.
+        // Admins can create any retail package tier without being charged.
+        // Featured placement is still separate and is not granted by PREMIUM.
         //
         // Enforced here rather than in the wizard on purpose: the frontend calls
         // publishListing() first and only redirects to Stripe when this returns
@@ -1568,11 +1565,9 @@ export class ListingsService {
         // approving their own listing is a formality, and the review pipeline
         // exists to check other people's submissions.
         //
-        // Uses the same activation shape as AdminService.approveListing rather
-        // than just setting status: 'ACTIVE', because going live also grants
-        // PREMIUM listings their 28-day featured window. Setting the status
-        // alone would publish an admin's PREMIUM listing without the placement
-        // that tier is supposed to buy.
+        // Uses the same activation shape as AdminService.approveListing so all
+        // activation paths clear stale featured state consistently. Featured
+        // Boost is handled separately from the retail package tier.
         //
         // No approval email or notification is sent: those tell a seller that
         // someone reviewed their listing, and here nobody did.
