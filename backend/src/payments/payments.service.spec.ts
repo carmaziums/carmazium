@@ -384,7 +384,7 @@ describe('PaymentsService — handleWebhook payment_intent.succeeded (LISTING_FE
         prisma.listing.findUnique.mockResolvedValue(readyRetailListing());
     });
 
-    it('normalizes legacy PREMIUM webhook metadata to BASIC before moving the listing to PENDING_REVIEW', async () => {
+    it('ignores mismatched PREMIUM webhook metadata when the persisted listing is BASIC', async () => {
         mockConstructEvent.mockReturnValue({
             type: 'payment_intent.succeeded',
             data: {
@@ -406,6 +406,31 @@ describe('PaymentsService — handleWebhook payment_intent.succeeded (LISTING_FE
             data: expect.objectContaining({
                 status: 'PENDING_REVIEW',
                 badgeTier: 'BASIC',
+            }),
+        });
+    });
+
+    it('preserves a matching legacy PREMIUM entitlement when its delayed webhook arrives', async () => {
+        prisma.listing.findUnique.mockResolvedValue(
+            readyRetailListing({ badgeTier: 'PREMIUM' }),
+        );
+        mockConstructEvent.mockReturnValue({
+            type: 'payment_intent.succeeded',
+            data: {
+                object: {
+                    id: 'pi_legacy_premium',
+                    metadata: { transactionId: 'txn-legacy', listingId: 'listing-1', type: 'LISTING_FEE', badgeTier: 'PREMIUM' },
+                },
+            },
+        });
+
+        await service.handleWebhook(Buffer.from('{}'), 'sig');
+
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'listing-1' },
+            data: expect.objectContaining({
+                status: 'PENDING_REVIEW',
+                badgeTier: 'PREMIUM',
             }),
         });
     });
