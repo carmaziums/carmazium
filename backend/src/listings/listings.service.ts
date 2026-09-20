@@ -1516,9 +1516,16 @@ export class ListingsService {
             }
         }
 
-        // Normalize all legacy package values before payment/review decisions.
-        // Auction is FREE; Retail is BASIC (£1). STANDARD/PREMIUM are retired.
-        const effectiveBadgeTier = listing.type === 'AUCTION' ? 'FREE' : 'BASIC';
+        // New public retail listings are BASIC (£1), while already-created
+        // STANDARD/PREMIUM rows may represent a genuine legacy paid entitlement.
+        // Preserve those historical rows here; all new creation/checkout paths
+        // normalize to BASIC so retired packages cannot be newly purchased.
+        const effectiveBadgeTier =
+            listing.type === 'AUCTION'
+                ? 'FREE'
+                : (listing.badgeTier === 'STANDARD' || listing.badgeTier === 'PREMIUM')
+                    ? listing.badgeTier
+                    : 'BASIC';
 
         if (effectiveBadgeTier !== listing.badgeTier) {
             await this.prisma.listing.update({
