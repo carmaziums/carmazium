@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600">
+<rect width="1200" height="600" fill="#0b213a"/>
+<text x="150" y="130" fill="white" font-family="Arial" font-size="58" font-weight="700">Do Worn Tyres Affect</text>
+<text x="150" y="200" fill="#4eafff" font-family="Arial" font-size="58" font-weight="700">a Car's Value?</text>
+<text x="150" y="245" fill="#d0deea" font-family="Arial" font-size="22" letter-spacing="5">UK GUIDE 2026</text>
+<circle cx="890" cy="320" r="110" fill="#11181f" stroke="#38b66b" stroke-width="12"/>
+<path d="M830 240v160M865 225v190M900 225v190M935 240v160" stroke="#77838c" stroke-width="16"/>
+<circle cx="1040" cy="320" r="110" fill="#22272b" stroke="#ef4b4b" stroke-width="12"/>
+<path d="M990 245v150M1025 250v140M1060 255v130" stroke="#555d63" stroke-width="10"/>
+<path d="M980 410l120-180" stroke="#ef4b4b" stroke-width="14"/>
+<text x="150" y="500" fill="white" font-family="Arial" font-size="30" font-weight="700">CarMazium</text>
+<text x="150" y="545" fill="#aac0d2" font-family="Arial" font-size="18">TYRE SAFETY • BUYER CONFIDENCE • RESALE VALUE</text>
+</svg>
