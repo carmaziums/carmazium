@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 const FAQS = [
     {
         q: "What retail listing packages can I choose?",
-        a: `Basic is £${PRICING.listing.basic.price}, Standard is £${PRICING.listing.standard.price} and includes an HPI vehicle-history report, and Premium is £${PRICING.listing.premium.price} and includes the Standard package benefits.`,
+        a: `Basic is £${PRICING.listing.basic.price}, Standard is £${PRICING.listing.standard.price} and includes an HPI vehicle-history report, and Premium is £${PRICING.listing.premium.price} and includes the Standard package benefits plus a 28-day Featured Boost.`,
     },
     {
         q: "How much does it cost to put my car into auction?",
@@ -179,7 +179,7 @@ export default function PricingPage() {
                     <article className="group relative flex h-full flex-col rounded-[24px] border border-amber-400/60 bg-gradient-to-b from-amber-50/90 via-[var(--bg-card)] to-[var(--bg-card)] p-6 shadow-[0_16px_42px_rgba(245,158,11,0.12)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_50px_rgba(245,158,11,0.18)] dark:from-amber-500/[0.07]">
                         <div className="absolute -top-3.5 right-5">
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-amber-500/20">
-                                <Star size={12} className="fill-white" /> Best Value
+                                <Star size={12} className="fill-white" /> Best Value · HPI + Boost
                             </span>
                         </div>
                         <div className="border-b border-amber-500/20 pb-6">
@@ -199,7 +199,7 @@ export default function PricingPage() {
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-amber-500" /> Everything in Standard</li>
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-amber-500" /> HPI report included</li>
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-amber-500" /> Premium listing badge and presentation</li>
-                            <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-amber-500" /> Featured Boost is a separate add-on</li>
+                            <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-amber-500" /> Featured Boost included for 28 days</li>
                         </ul>
                         <Button asChild className={redCta}>
                             <Link href="/sell">Choose Premium <ArrowRight size={17} /></Link>
@@ -232,7 +232,7 @@ export default function PricingPage() {
                     <div className="mx-auto max-w-5xl">
                         <div className="mb-9 text-center">
                             <h2 className="text-2xl font-black md:text-3xl">Optional Add-Ons</h2>
-                            <p className="mt-2 text-sm text-[var(--text-muted)]">These are separate from the retail package price unless specifically included above.</p>
+                            <p className="mt-2 text-sm text-[var(--text-muted)]">Optional extras for Auction, Basic and Standard; Premium already includes HPI and the first 28-day Featured Boost.</p>
                         </div>
                         <div className="grid gap-5 md:grid-cols-2">
                             <article className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-7 shadow-sm">
@@ -250,7 +250,7 @@ export default function PricingPage() {
                                     <div>
                                         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500"><Zap size={20} /></div>
                                         <h3 className="font-black">Featured Boost</h3>
-                                        <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Separate optional boost. It is not included automatically with Premium.</p>
+                                        <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">£25 for 28 days when purchased separately. Premium already includes the first 28-day Featured Boost.</p>
                                     </div>
                                     <div className="text-right"><span className="text-xl font-black">£{PRICING.featuredBoost.price}</span><p className="text-[10px] font-bold uppercase text-[var(--text-muted)]">{PRICING.featuredBoost.durationDays} days</p></div>
                                 </div>
