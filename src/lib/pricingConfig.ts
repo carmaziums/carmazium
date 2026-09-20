@@ -1,17 +1,18 @@
 /**
  * Shared frontend pricing constants.
  *
- * Keep these values aligned with the backend payment services:
- *   - backend/src/payments/payments.service.ts
- *   - backend/src/featured-boost/featured-boost.service.ts
- *
- * The public pricing proposition is:
- *   - Auction seller listing fee: £0
- *   - Auction winning buyer fee: £125
+ * Public customer pricing:
+ *   - Auction seller listing: FREE
  *   - Successful auction seller reward: £100 after approved handover
- *   - Retail seller listing fee: £1 one-off, until sold
+ *   - Retail packages: Basic £1 / Standard £10 / Premium £25
+ *   - Standard includes an HPI vehicle-history report
+ *   - Premium includes the Standard package benefits, including HPI
  *   - Retail buyer fee: £0
- *   - HPI and Featured Boost are optional add-ons
+ *   - HPI remains optional: sellers can choose Basic without HPI or add one separately
+ *   - Featured Boost is a separate optional £25 / 28-day add-on
+ *
+ * Trader auction-buyer pricing is deliberately shown on the separate
+ * /pricing/traders page rather than the customer pricing page.
  */
 export const PRICING = {
     marketplace: {
@@ -28,21 +29,33 @@ export const PRICING = {
         },
     },
 
-    /**
-     * Compatibility values still referenced by the current listing checkout flow.
-     * Do not use Standard/Premium as public pricing-page packages.
-     */
     listing: {
-        basic: { price: 1, label: 'Basic', description: '£1 one-off' },
-        standard: { price: 10, label: 'Standard', description: '£10 one-off' },
-        premium: { price: 25, label: 'Premium', description: '£25 one-off' },
+        basic: {
+            price: 1,
+            label: 'Basic',
+            description: '£1 one-off · advertised until sold',
+            includesHpi: false,
+        },
+        standard: {
+            price: 10,
+            label: 'Standard',
+            description: '£10 one-off · HPI report included',
+            includesHpi: true,
+        },
+        premium: {
+            price: 25,
+            label: 'Premium',
+            description: '£25 one-off · includes Standard benefits',
+            includesHpi: true,
+        },
     },
 
     hpiReport: {
         price: 9.99,
         label: 'HPI Check',
-        description: 'Optional — one per listing',
+        description: 'Optional add-on for eligible listings',
     },
+
     featuredBoost: {
         price: 25,
         durationDays: 28,
