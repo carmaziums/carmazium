@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/Button"
 
 export const metadata: Metadata = {
     title: "Pricing",
-    description: "CarMazium customer pricing: free auction listings, Basic £1, Standard £10 with HPI included, Premium £25, and no retail buyer fee.",
+    description: "CarMazium customer pricing: free auction listings, Basic £1, Standard £10 with HPI, Premium £25 with HPI and a 28-day Featured Boost, and no retail buyer fee.",
 }
 
 const FAQS = [
@@ -193,7 +193,7 @@ export default function PricingPage() {
                                 <span className="text-5xl font-black tracking-tight">£{PRICING.listing.premium.price}</span>
                                 <span className="mb-1.5 text-sm text-[var(--text-muted)]">one-off</span>
                             </div>
-                            <p className="mt-2 text-sm text-[var(--text-muted)]">Premium package</p>
+                            <p className="mt-2 text-sm text-[var(--text-muted)]">HPI + 28-day Featured Boost included</p>
                         </div>
                         <ul className="my-6 flex-1 space-y-3.5">
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-amber-500" /> Everything in Standard</li>
