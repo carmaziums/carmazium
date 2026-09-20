@@ -113,6 +113,14 @@ function normalizeText(value?: string | null): string {
     return (value ?? '').trim().toUpperCase();
 }
 
+function transmissionFamily(value?: string | null): 'MANUAL' | 'AUTO' | null {
+    const normalized = normalizeText(value).replace(/[^A-Z]/g, '');
+    if (!normalized) return null;
+    if (normalized === 'MANUAL') return 'MANUAL';
+    if (['AUTOMATIC', 'AUTO', 'CVT', 'SEMIAUTOMATIC', 'SEMIAUTO'].includes(normalized)) return 'AUTO';
+    return null;
+}
+
 function fallbackMid(input: VehicleValuationInput): number {
     const currentYear = new Date().getFullYear();
     const age = Math.max(0, currentYear - input.year);
@@ -126,6 +134,13 @@ function fallbackMid(input: VehicleValuationInput): number {
     const mileageDeltaThousands = (input.mileage - expectedMileage) / 1000;
     const mileageFactor = clamp(1 - mileageDeltaThousands * 0.0035, 0.72, 1.15);
     value *= mileageFactor;
+
+    // Transmission materially affects used-car values. When no same-model
+    // marketplace evidence exists, use a deliberately modest fallback
+    // adjustment rather than treating manual and automatic cars identically.
+    const transmission = transmissionFamily(input.transmission);
+    if (transmission === 'AUTO') value *= 1.04;
+    if (transmission === 'MANUAL') value *= 0.96;
 
     return Math.max(500, value);
 }
@@ -188,7 +203,12 @@ function normalizeComparable(
         comparable.kind === 'ACCEPTED_OFFER' ? 0.95 :
         comparable.kind === 'AUCTION_RESULT' ? 0.85 :
         comparable.kind === 'SALE' ? 0.75 :
-        0.30;
+        0.25;
+
+    // Live adverts are asking prices, not achieved prices. Apply a small
+    // conservative adjustment so an optimistic seller advert does not become
+    // the valuation itself.
+    if (comparable.kind === 'ACTIVE_ASK') value *= 0.96;
 
     // Normalise the comparable's known condition/history profile to the target
     // vehicle instead of applying a blanket target discount afterwards. This
@@ -209,7 +229,21 @@ function normalizeComparable(
     const targetTransmission = normalizeText(input.transmission);
     const compTransmission = normalizeText(comparable.transmission);
     if (targetTransmission && compTransmission) {
-        weight *= targetTransmission === compTransmission ? 1.10 : 0.82;
+        if (targetTransmission === compTransmission) {
+            weight *= 1.18;
+        } else {
+            // A mismatched gearbox should not merely get a lower statistical
+            // weight; its price also needs normalising toward the target car.
+            // Auto/CVT/semi-auto cars receive a modest premium over manual in
+            // the sparse-data fallback, while exact same-transmission evidence
+            // remains strongly preferred.
+            const targetFamily = transmissionFamily(targetTransmission);
+            const compFamily = transmissionFamily(compTransmission);
+            if (targetFamily && compFamily && targetFamily !== compFamily) {
+                value *= targetFamily === 'AUTO' ? 1.07 : 0.93;
+            }
+            weight *= 0.60;
+        }
     }
 
     const targetVariant = normalizeText(input.variant);
