@@ -120,7 +120,7 @@ describe('PaymentsService — createListingSession retail payment gate', () => {
         mockCheckoutSessionsCreate.mockResolvedValue({ id: 'cs_mock', url: 'https://checkout.stripe.test/session' });
     });
 
-    it('charges the fixed £1 retail fee even if the browser asks for PREMIUM', async () => {
+    it('charges the persisted BASIC tier even if the browser asks for PREMIUM', async () => {
         prisma.listing.findUnique.mockResolvedValue(readyRetailListing());
 
         await service.createListingSession('PREMIUM', 'user-1', 'listing-1');
@@ -129,7 +129,7 @@ describe('PaymentsService — createListingSession retail payment gate', () => {
             data: expect.objectContaining({
                 listingId: 'listing-1',
                 amount: 1,
-                description: 'Retail Listing Fee',
+                description: 'BASIC Listing Fee',
             }),
         });
         expect(mockCheckoutSessionsCreate).toHaveBeenCalledWith(
@@ -219,16 +219,16 @@ describe('PaymentsService — createPaymentSheet (LISTING_FEE)', () => {
         mockPaymentIntentsCreate.mockResolvedValue({ id: 'pi_mock', client_secret: 'pi_mock_secret' });
     });
 
-    it('normalizes a legacy PREMIUM retail listing to BASIC and charges £1 in PaymentIntent', async () => {
+    it('accepts type LISTING_FEE and includes the persisted badgeTier in PaymentIntent metadata', async () => {
         prisma.listing.findUnique.mockResolvedValue(readyRetailListing({ badgeTier: 'PREMIUM' }));
         await service.createPaymentSheet('listing-1', 'user-1', 25, 'LISTING_FEE', 'gbp', 'PREMIUM');
 
         expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(
             expect.objectContaining({
-                amount: 100,
+                amount: 2500,
                 metadata: expect.objectContaining({
                     type: 'LISTING_FEE',
-                    badgeTier: 'BASIC',
+                    badgeTier: 'PREMIUM',
                 }),
             }),
         );
@@ -254,7 +254,7 @@ describe('PaymentsService — createPaymentSheet (LISTING_FEE)', () => {
         expect(callArg.metadata.badgeTier).toBeUndefined();
     });
 
-    it('uses the fixed BASIC retail marker when the mobile client omits badgeTier', async () => {
+    it('uses the persisted retail tier when the mobile client omits badgeTier', async () => {
         await service.createPaymentSheet('listing-1', 'user-1', 25, 'LISTING_FEE', 'gbp', undefined);
 
         expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(
@@ -314,12 +314,12 @@ describe('PaymentsService — createPaymentSheet (F2: server-side amount, ignore
         expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(expect.objectContaining({ amount: 12500 }));
     });
 
-    it('charges the fixed £1 retail fee regardless of a legacy PREMIUM client value', async () => {
+    it('charges the real LISTING_FEES[badgeTier] amount regardless of a lower client-supplied amount', async () => {
         prisma.listing.findUnique.mockResolvedValue(readyRetailListing({ badgeTier: 'PREMIUM' }));
 
         await service.createPaymentSheet('listing-1', 'user-1', 1, 'LISTING_FEE', 'gbp', 'PREMIUM');
 
-        expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(expect.objectContaining({ amount: 100 })); // fixed £1 retail fee
+        expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(expect.objectContaining({ amount: 2500 })); // £25 PREMIUM fee, not the client's £1
     });
 });
 
@@ -384,7 +384,7 @@ describe('PaymentsService — handleWebhook payment_intent.succeeded (LISTING_FE
         prisma.listing.findUnique.mockResolvedValue(readyRetailListing());
     });
 
-    it('ignores mismatched PREMIUM webhook metadata when the persisted listing is BASIC', async () => {
+    it('moves the listing to PENDING_REVIEW (not ACTIVE) when a PREMIUM LISTING_FEE PaymentIntent succeeds — featuring is deferred to admin approval', async () => {
         mockConstructEvent.mockReturnValue({
             type: 'payment_intent.succeeded',
             data: {
@@ -401,31 +401,6 @@ describe('PaymentsService — handleWebhook payment_intent.succeeded (LISTING_FE
             where: { id: 'txn-1' },
             data: { status: 'COMPLETED', stripePaymentId: 'pi_mock' },
         });
-        expect(prisma.listing.update).toHaveBeenCalledWith({
-            where: { id: 'listing-1' },
-            data: expect.objectContaining({
-                status: 'PENDING_REVIEW',
-                badgeTier: 'BASIC',
-            }),
-        });
-    });
-
-    it('preserves a matching legacy PREMIUM entitlement when its delayed webhook arrives', async () => {
-        prisma.listing.findUnique.mockResolvedValue(
-            readyRetailListing({ badgeTier: 'PREMIUM' }),
-        );
-        mockConstructEvent.mockReturnValue({
-            type: 'payment_intent.succeeded',
-            data: {
-                object: {
-                    id: 'pi_legacy_premium',
-                    metadata: { transactionId: 'txn-legacy', listingId: 'listing-1', type: 'LISTING_FEE', badgeTier: 'PREMIUM' },
-                },
-            },
-        });
-
-        await service.handleWebhook(Buffer.from('{}'), 'sig');
-
         expect(prisma.listing.update).toHaveBeenCalledWith({
             where: { id: 'listing-1' },
             data: expect.objectContaining({
