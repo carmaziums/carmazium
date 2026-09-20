@@ -61,3 +61,6 @@ jobs:
           echo
           echo "The full web TypeScript project has pre-existing errors outside the listing scope."
           echo "No TypeScript errors were reported in web listing/auction files covered by this workflow."
+
+      - name: Build web app
+        run: npm run build
