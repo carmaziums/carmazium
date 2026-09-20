@@ -104,7 +104,7 @@ export class PaymentsController {
     @ApiCookieAuth()
     @ApiOperation({ summary: 'Create a Stripe Checkout Session for Listing Fee' })
     async createListingCheckout(
-        @Body('badgeTier') badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM' | undefined,
+        @Body('badgeTier') badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM',
         @Body('listingId') listingId: string,
         @CurrentUser() user: any,
     ) {
