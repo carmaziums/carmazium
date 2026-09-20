@@ -76,6 +76,7 @@ export default function DealerInventoryPage() {
     // Also-list-retail modal (for AUCTION listings)
     const [alsoRetailListing, setAlsoRetailListing] = React.useState<any | null>(null)
     const [alsoRetailPrice,   setAlsoRetailPrice]   = React.useState("")
+    const [alsoRetailTier,    setAlsoRetailTier]    = React.useState<'BASIC' | 'STANDARD' | 'PREMIUM'>('BASIC')
     const [alsoRetailLoading, setAlsoRetailLoading] = React.useState(false)
     const [alsoRetailError,   setAlsoRetailError]   = React.useState<string | null>(null)
     // Mark-as-sold modal
@@ -154,10 +155,11 @@ export default function DealerInventoryPage() {
             const { linkedListingId } = await alsoListRetail(
                 alsoRetailListing.id,
                 parseFloat(alsoRetailPrice),
+                alsoRetailTier,
             )
             // The linked retail record is intentionally only a DRAFT here.
-            // Continue in ListingWizard so photos, declarations and the fixed £1
-            // retail payment all pass through the same submission architecture.
+            // Continue in ListingWizard so photos, declarations, HPI, tier and
+            // payment all pass through the same submission architecture.
             setAlsoRetailListing(null)
             router.push(`/dashboard/dealer/add-listing?editId=${linkedListingId}`)
         } catch (err: any) {
@@ -361,7 +363,7 @@ export default function DealerInventoryPage() {
                                                 )}
                                                 {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && !(listing as any).linkedListing && (
                                                     <button
-                                                        onClick={() => { setAlsoRetailListing(listing); setAlsoRetailPrice(""); setAlsoRetailError(null) }}
+                                                        onClick={() => { setAlsoRetailListing(listing); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
                                                         className="w-full min-h-[46px] flex items-center gap-2.5 px-3 rounded-xl text-blue-400 bg-blue-500/5 font-bold text-sm"
                                                     >
                                                         <Tag size={16} /> Also list for retail
@@ -539,7 +541,7 @@ export default function DealerInventoryPage() {
                                                                     {/* Dual-channel: AUCTION listing → add retail listing */}
                                                                     {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && !(listing as any).linkedListing && (
                                                                         <button
-                                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAlsoRetailListing(listing); setAlsoRetailPrice(""); setAlsoRetailError(null) }}
+                                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAlsoRetailListing(listing); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
                                                                             className="flex items-center gap-2 px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 transition-colors w-full text-left"
                                                                         >
                                                                             <Tag size={14} /> Also List for Retail
@@ -723,13 +725,18 @@ export default function DealerInventoryPage() {
                                     className="bg-[var(--bg-input)] border-[var(--border-default)] h-10"
                                 />
                             </div>
-                            <div className="rounded-xl border border-primary/25 bg-primary/5 p-3">
-                                <div className="flex items-center justify-between gap-3">
-                                    <div>
-                                        <p className="text-xs font-bold text-[var(--text-primary)]">Retail listing fee</p>
-                                        <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">One-off payment · advertised until sold</p>
-                                    </div>
-                                    <p className="text-xl font-black text-primary">£1</p>
+                            <div>
+                                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">Listing Plan</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {([['BASIC', '£1'], ['STANDARD', '£10'], ['PREMIUM', '£25']] as const).map(([tier, price]) => (
+                                        <button
+                                            key={tier}
+                                            onClick={() => setAlsoRetailTier(tier)}
+                                            className={`py-2.5 rounded-xl border text-xs font-bold transition-all ${alsoRetailTier === tier ? 'bg-primary/15 border-primary/40 text-primary' : 'bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
+                                        >
+                                            {tier}<br /><span className="text-xs font-normal">{price}</span>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
                         </div>
