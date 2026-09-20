@@ -1,6 +1,6 @@
 "use client"
 
-import { Activity, AlertTriangle, CheckCircle, Loader2 } from "lucide-react"
+import { Activity, AlertTriangle, CheckCircle, ChevronDown, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { formatPrice } from "@/lib/listingApi"
 import type { VehicleValuation } from "@/lib/valuationApi"
@@ -30,7 +30,7 @@ export function VehicleValuationCard({
                 <Loader2 size={18} className="animate-spin text-blue-400 shrink-0" />
                 <div>
                     <p className="text-sm font-bold text-[var(--text-primary)]">Calculating your CarMazium estimate</p>
-                    <p className="text-xs text-[var(--text-muted)]">Checking similar CarMazium vehicles and completed transaction signals.</p>
+                    <p className="text-xs text-[var(--text-muted)]">Checking similar vehicles, including year, mileage, transmission and other vehicle details.</p>
                 </div>
             </div>
         )
@@ -52,84 +52,92 @@ export function VehicleValuationCard({
 
     const confidenceClass =
         valuation.confidence === "HIGH"
-            ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
+            ? "text-emerald-600 border-emerald-500/30 bg-emerald-500/10 dark:text-emerald-400"
             : valuation.confidence === "MEDIUM"
-                ? "text-amber-300 border-amber-500/30 bg-amber-500/10"
-                : "text-orange-300 border-orange-500/30 bg-orange-500/10"
+                ? "text-amber-600 border-amber-500/30 bg-amber-500/10 dark:text-amber-300"
+                : "text-orange-600 border-orange-500/30 bg-orange-500/10 dark:text-orange-300"
+
+    const primaryValue =
+        mode === "auction"
+            ? valuation.auction.marketValue
+            : valuation.retail.suggestedAsking
 
     return (
-        <div className="rounded-2xl border border-blue-500/25 bg-gradient-to-br from-blue-500/10 via-[var(--bg-card)] to-[var(--bg-card)] p-5 md:p-6 relative overflow-hidden">
-            <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+        <div className="relative overflow-hidden rounded-2xl border border-blue-500/25 bg-gradient-to-br from-blue-500/10 via-[var(--bg-card)] to-[var(--bg-card)] p-5 md:p-6">
+            <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-blue-500/10 blur-3xl" />
             <div className="relative z-10">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-                            <Activity size={17} className="text-blue-400" />
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10">
+                            <Activity size={18} className="text-blue-500" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-400">CarMazium Estimated Value</p>
-                            <p className="text-xs text-[var(--text-muted)] mt-1">
-                                {valuation.source === "CARMAZIUM_MARKET"
-                                    ? "Based on CarMazium marketplace evidence"
-                                    : "Early vehicle-profile estimate while our comparable-sales dataset grows"}
+                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-500">
+                                {mode === "auction" ? "CarMazium Estimated Market Value" : "CarMazium Estimated Retail Value"}
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--text-muted)]">
+                                Includes vehicle age, mileage, transmission and available CarMazium market evidence
                             </p>
                         </div>
                     </div>
-                    <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${confidenceClass}`}>
+                    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${confidenceClass}`}>
                         {valuation.confidence} confidence
                     </span>
                 </div>
 
-                <div className={`mt-5 grid gap-3 ${compact ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
-                    <div className="rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] p-4">
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Estimated range</p>
-                        <p className="mt-1 text-lg md:text-xl font-black tabular-nums">
-                            {formatPrice(valuation.low)}–{formatPrice(valuation.high)}
-                        </p>
-                    </div>
-                    <div className="rounded-xl bg-[var(--bg-input)] border border-blue-500/20 p-4">
-                        <p className="text-[10px] uppercase tracking-wider text-blue-400 font-bold">
-                            {mode === "auction" ? "Market value" : "Suggested asking"}
-                        </p>
-                        <p className="mt-1 text-xl md:text-2xl font-black text-[var(--text-primary)] tabular-nums">
-                            {formatPrice(mode === "auction" ? valuation.auction.marketValue : valuation.retail.suggestedAsking)}
-                        </p>
-                    </div>
-                    {!compact && mode === "retail" && (
-                        <div className="rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] p-4">
-                            <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Suggested offer floor</p>
-                            <p className="mt-1 text-lg md:text-xl font-black tabular-nums">{formatPrice(valuation.retail.suggestedMinimum)}</p>
-                        </div>
-                    )}
-                    {!compact && mode === "auction" && (
-                        <div className="rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] p-4">
-                            <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Suggested reserve</p>
-                            <p className="mt-1 text-lg md:text-xl font-black tabular-nums">{formatPrice(valuation.auction.suggestedReserve)}</p>
-                            <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                                Guide {formatPrice(valuation.auction.reserveLow)}–{formatPrice(valuation.auction.reserveHigh)}
-                            </p>
-                        </div>
-                    )}
+                <div className="mt-5 rounded-2xl border border-blue-500/20 bg-[var(--bg-input)] p-5 md:p-6">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                        {mode === "auction" ? "Estimated market value" : "Estimated retail value"}
+                    </p>
+                    <p className="mt-2 text-3xl font-black tabular-nums text-[var(--text-primary)] md:text-4xl">
+                        {formatPrice(primaryValue)}
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
+                        One guide price to help you set your listing. You remain in control of the final asking price or auction reserve.
+                    </p>
                 </div>
 
-                {!compact && mode === "auction" && (
-                    <div className="mt-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 flex items-center justify-between gap-3">
-                        <span className="text-xs text-[var(--text-muted)]">Automatic opening bid at 70% of estimated market value</span>
-                        <strong className="text-sm text-emerald-400 tabular-nums">{formatPrice(valuation.auction.openingBid)}</strong>
-                    </div>
-                )}
-
                 {!compact && (
-                    <p className="mt-4 text-xs leading-relaxed text-[var(--text-muted)]">{valuation.explanation}</p>
+                    <details className="group mt-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)]">
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-xs font-bold text-[var(--text-secondary)]">
+                            <span>View valuation details</span>
+                            <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
+                        </summary>
+                        <div className="border-t border-[var(--border-default)] px-4 py-4 text-xs text-[var(--text-muted)]">
+                            <div className="flex items-center justify-between gap-4">
+                                <span>Likely market range</span>
+                                <strong className="text-[var(--text-primary)] tabular-nums">
+                                    {formatPrice(valuation.low)}–{formatPrice(valuation.high)}
+                                </strong>
+                            </div>
+                            {mode === "auction" && (
+                                <>
+                                    <div className="mt-3 flex items-center justify-between gap-4">
+                                        <span>Suggested reserve</span>
+                                        <strong className="text-[var(--text-primary)] tabular-nums">
+                                            {formatPrice(valuation.auction.suggestedReserve)}
+                                        </strong>
+                                    </div>
+                                    <div className="mt-3 flex items-center justify-between gap-4">
+                                        <span>Automatic opening bid</span>
+                                        <strong className="text-[var(--text-primary)] tabular-nums">
+                                            {formatPrice(valuation.auction.openingBid)}
+                                        </strong>
+                                    </div>
+                                </>
+                            )}
+                            <p className="mt-4 leading-relaxed">{valuation.explanation}</p>
+                        </div>
+                    </details>
                 )}
 
-                <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[10px] leading-relaxed text-[var(--text-muted)]">
-                        Guide only. Actual sale price depends on condition, specification, demand and buyer inspection.
+                        Guide only. Actual sale price depends on exact specification, condition, demand and buyer inspection.
                     </p>
-                    <Button type="button" onClick={onApply} className="shrink-0 h-10 px-4 gap-2">
+                    <Button type="button" onClick={onApply} className="h-10 shrink-0 gap-2 px-4">
                         <CheckCircle size={15} />
-                        {mode === "auction" ? "Use this valuation" : "Use suggested prices"}
+                        Use this value
                     </Button>
                 </div>
             </div>
