@@ -417,10 +417,10 @@ export class ListingsController {
     async alsoListRetail(
         @Param('id') id: string,
         @Body('price') price: number,
-        @Body('badgeTier') badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM',
+        @Body('badgeTier') badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM' | undefined,
         @CurrentUser() user: any,
     ) {
-        if (!price || !badgeTier) throw new BadRequestException('price and badgeTier are required');
+        if (!price) throw new BadRequestException('price is required');
         const result = await this.listingsService.alsoListRetail(id, user.id, { price, badgeTier });
         return new StandardResponse(result);
     }
