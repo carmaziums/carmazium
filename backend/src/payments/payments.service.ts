@@ -64,10 +64,21 @@ export class PaymentsService {
     ): Promise<boolean> {
         const readiness = await this.getListingFeeReadiness(listingId);
 
-        // The retail product now has one server-authoritative £1 package. Old
-        // Stripe sessions can still contain STANDARD/PREMIUM metadata, so never
-        // allow delayed webhooks to resurrect those retired tiers.
-        const retailBadgeTier = readiness.listing.type === 'CLASSIFIED' ? 'BASIC' : 'FREE';
+        // New retail checkouts are always BASIC (£1). A delayed webhook from
+        // the former package model can still legitimately carry STANDARD or
+        // PREMIUM metadata; preserve it only when the persisted listing already
+        // has that same legacy tier. This honors an already-purchased entitlement
+        // without allowing retired tiers to be newly selected by clients.
+        const legacyPaidTier =
+            _legacyBadgeTier
+            && (_legacyBadgeTier === 'STANDARD' || _legacyBadgeTier === 'PREMIUM')
+            && readiness.listing.badgeTier === _legacyBadgeTier
+                ? _legacyBadgeTier
+                : null;
+        const retailBadgeTier =
+            readiness.listing.type === 'CLASSIFIED'
+                ? (legacyPaidTier ?? 'BASIC')
+                : 'FREE';
 
         if (!readiness.ready) {
             if (readiness.listing.badgeTier !== retailBadgeTier) {
