@@ -27,14 +27,26 @@ const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID?.trim()
  * actions are configured and verified, remove these fallbacks and rely only on
  * environment variables.
  *
- * Keep overlapping funnel steps out of Primary bidding goals. For example,
- * `listing_fee_paid` is a subset of `purchase`, and
- * `auction_submitted_for_review` is a subset of `listing_submitted`.
+ * Keep overlapping funnel steps out of Primary bidding goals. In particular,
+ * `purchase` is intentionally NOT mapped to a Google Ads label because it is
+ * a cross-platform analytics event used for several different Stripe payment
+ * types. Fee-specific events own the Ads conversion labels.
  */
+const LISTING_FEE_CONVERSION_LABEL =
+    process.env.NEXT_PUBLIC_GADS_LABEL_LISTING_FEE_PAID?.trim()
+    || process.env.NEXT_PUBLIC_GADS_LABEL_PURCHASE?.trim()
+    || 'KyfHCLLQ1eocEN6N4qNE'
+
 const CONVERSION_LABELS: Record<string, string | undefined> = {
-    purchase: process.env.NEXT_PUBLIC_GADS_LABEL_PURCHASE?.trim() || 'KyfHCLLQ1eocEN6N4qNE',
+    // IMPORTANT: the retail listing-fee action must only fire after a
+    // LISTING_FEE Stripe checkout clears. Do not attach this label to the
+    // generic `purchase` analytics event because that event also represents
+    // auction buyer fees, KYC fees and deposits.
+    listing_fee_paid: LISTING_FEE_CONVERSION_LABEL,
     listing_submitted:
         process.env.NEXT_PUBLIC_GADS_LABEL_LISTING_SUBMITTED?.trim() || 'uD94CLXQ1eocEN6N4qNE',
+    // Ready for a dedicated Google Ads action once its label is configured.
+    auction_buyer_fee_paid: process.env.NEXT_PUBLIC_GADS_LABEL_AUCTION_BUYER_FEE?.trim(),
     valuation_requested: process.env.NEXT_PUBLIC_GADS_LABEL_VALUATION?.trim(),
 }
 
