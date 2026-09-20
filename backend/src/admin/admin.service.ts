@@ -462,10 +462,14 @@ export class AdminService {
         // Media
         if (dto.images !== undefined) data.images = dto.images;
         if (dto.videoUrls !== undefined) data.videoUrls = dto.videoUrls;
-        // Type / pricing marker. Legacy STANDARD/PREMIUM package values are
-        // retired: Auction is FREE and Retail is BASIC (£1).
+        // Type / pricing marker. Legacy STANDARD/PREMIUM rows may represent
+        // already-paid historical packages, so preserve them on unrelated admin
+        // edits. If type/pricing is actually changed, normalize to the current
+        // public products: Auction = FREE, Retail = BASIC (£1).
         if (dto.listingType !== undefined) data.type = dto.listingType;
-        if (dto.listingType !== undefined || dto.badgeTier !== undefined) {
+        const typeChanged = dto.listingType !== undefined && dto.listingType !== listing.type;
+        const badgeChanged = dto.badgeTier !== undefined && dto.badgeTier !== listing.badgeTier;
+        if (typeChanged || badgeChanged) {
             const nextType = dto.listingType ?? listing.type;
             data.badgeTier = nextType === 'AUCTION' ? 'FREE' : 'BASIC';
         }
