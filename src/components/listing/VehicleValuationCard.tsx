@@ -1,6 +1,6 @@
 "use client"
 
-import { Activity, AlertTriangle, CheckCircle, ChevronDown, Loader2 } from "lucide-react"
+import { Activity, AlertTriangle, CheckCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { formatPrice } from "@/lib/listingApi"
 import type { VehicleValuation } from "@/lib/valuationApi"
@@ -93,43 +93,11 @@ export function VehicleValuationCard({
                         {formatPrice(primaryValue)}
                     </p>
                     <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
-                        One guide price to help you set your listing. You remain in control of the final asking price or auction reserve.
+                        One clear guide price to help you set your listing. You remain in control of the final asking price or auction reserve.
                     </p>
                 </div>
 
-                {!compact && (
-                    <details className="group mt-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)]">
-                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-xs font-bold text-[var(--text-secondary)]">
-                            <span>View valuation details</span>
-                            <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
-                        </summary>
-                        <div className="border-t border-[var(--border-default)] px-4 py-4 text-xs text-[var(--text-muted)]">
-                            <div className="flex items-center justify-between gap-4">
-                                <span>Likely market range</span>
-                                <strong className="text-[var(--text-primary)] tabular-nums">
-                                    {formatPrice(valuation.low)}–{formatPrice(valuation.high)}
-                                </strong>
-                            </div>
-                            {mode === "auction" && (
-                                <>
-                                    <div className="mt-3 flex items-center justify-between gap-4">
-                                        <span>Suggested reserve</span>
-                                        <strong className="text-[var(--text-primary)] tabular-nums">
-                                            {formatPrice(valuation.auction.suggestedReserve)}
-                                        </strong>
-                                    </div>
-                                    <div className="mt-3 flex items-center justify-between gap-4">
-                                        <span>Automatic opening bid</span>
-                                        <strong className="text-[var(--text-primary)] tabular-nums">
-                                            {formatPrice(valuation.auction.openingBid)}
-                                        </strong>
-                                    </div>
-                                </>
-                            )}
-                            <p className="mt-4 leading-relaxed">{valuation.explanation}</p>
-                        </div>
-                    </details>
-                )}
+
 
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[10px] leading-relaxed text-[var(--text-muted)]">
