@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08192f"/><stop offset="1" stop-color="#123f5f"/></linearGradient></defs>
+<rect width="1200" height="600" fill="url(#g)"/>
+<text x="150" y="105" fill="#fff" font-family="Arial" font-size="52" font-weight="800">Which CarMazium Retail Package</text>
+<text x="150" y="164" fill="#58b5ff" font-family="Arial" font-size="48" font-weight="800">Is Right for You?</text>
+<text x="150" y="205" fill="#c7d8e5" font-family="Arial" font-size="18" letter-spacing="3">BASIC £1 • STANDARD £10 • PREMIUM £25</text>
+<g transform="translate(150 270)" font-family="Arial">
+<rect width="280" height="210" rx="24" fill="#fff" opacity=".09" stroke="#8ebfe2"/>
+<text x="30" y="45" fill="#fff" font-size="25" font-weight="800">BASIC</text>
+<text x="30" y="94" fill="#58b5ff" font-size="44" font-weight="800">£1</text>
+<text x="30" y="135" fill="#d8e7f2" font-size="16">Advertised until sold</text>
+<text x="30" y="163" fill="#d8e7f2" font-size="16">HPI optional</text>
+<text x="30" y="190" fill="#d8e7f2" font-size="16">Boost optional</text>
+<rect x="310" width="280" height="210" rx="24" fill="#0c5da5" opacity=".43" stroke="#69b9ff"/>
+<text x="340" y="45" fill="#fff" font-size="25" font-weight="800">STANDARD</text>
+<text x="340" y="94" fill="#58b5ff" font-size="44" font-weight="800">£10</text>
+<text x="340" y="135" fill="#d8e7f2" font-size="16">Everything in Basic</text>
+<text x="340" y="163" fill="#d8e7f2" font-size="16">HPI included</text>
+<text x="340" y="190" fill="#d8e7f2" font-size="16">Standard badge</text>
+<rect x="620" width="280" height="210" rx="24" fill="#147a4b" opacity=".43" stroke="#70d39a"/>
+<text x="650" y="45" fill="#fff" font-size="25" font-weight="800">PREMIUM</text>
+<text x="650" y="94" fill="#9fe0b1" font-size="44" font-weight="800">£25</text>
+<text x="650" y="135" fill="#dff3e6" font-size="16">HPI included</text>
+<text x="650" y="163" fill="#dff3e6" font-size="16">28-day Featured Boost</text>
+<text x="650" y="190" fill="#dff3e6" font-size="16">Premium presentation</text>
+</g>
+<text x="150" y="535" fill="#fff" font-family="Arial" font-size="24" font-weight="800">CarMazium</text>
+</svg>
