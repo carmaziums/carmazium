@@ -72,10 +72,11 @@ function CheckoutSuccessContent() {
                         content_ids: data.metadata?.listingId ? [data.metadata.listingId] : undefined,
                         content_name: data.metadata?.type,
                     })
-                    // Generic purchase for GTM — one trigger covers every fee
-                    // type, with `fee_type` to split them in reporting.
+                    // Generic purchase is retained for GA4/GTM reporting, but
+                    // it is deliberately NOT a Google Ads conversion. Different
+                    // Stripe payment types must never share one Ads action.
                     // transaction_id is the Stripe session so GA4 can dedupe
-                    // if the seller refreshes the success page.
+                    // if the customer refreshes the success page.
                     trackEvent('purchase', {
                         transaction_id: sessionId,
                         value,
@@ -83,13 +84,20 @@ function CheckoutSuccessContent() {
                         fee_type: data.metadata?.type,
                         listing_id: data.metadata?.listingId,
                     })
-                    // Seller funnel terminal step: the retail listing fee cleared.
+                    // Fee-specific events own Google Ads conversion labels.
                     if (data.metadata?.type === 'LISTING_FEE') {
                         trackEvent(SELLER_FUNNEL.LISTING_FEE_PAID, {
                             transaction_id: sessionId,
                             value,
                             currency,
                             listing_type: 'retail',
+                            listing_id: data.metadata?.listingId,
+                        })
+                    } else if (data.metadata?.type === 'COMMISSION') {
+                        trackEvent('auction_buyer_fee_paid', {
+                            transaction_id: sessionId,
+                            value,
+                            currency,
                             listing_id: data.metadata?.listingId,
                         })
                     }
