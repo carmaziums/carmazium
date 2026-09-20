@@ -329,12 +329,8 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     }
 
     if (key === 'publish') {
-      // Was a bare PATCH /status — the same status field the backend's own
-      // /publish endpoint gates on LISTING_FEE payment, so this let sellers
-      // publish paid-tier (BASIC/STANDARD/PREMIUM) listings for free (mobile-audit.md
-      // critical finding). Now mirrors SellCarFlowScreen.tsx's own publish flow:
-      // call /publish first, and only if it reports requiresPayment, run the
-      // real Stripe Payment Sheet before calling /publish again to activate.
+      // Publishing goes through the authoritative backend gate first. Retail
+      // listings use the fixed £1 payment; auctions remain free to sellers.
       setActionLoading(true);
       try {
         const first = await apiClient<{ success: boolean; data: { activated: boolean; requiresPayment?: boolean } }>(
@@ -349,10 +345,9 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         }
 
         if (first?.data?.requiresPayment) {
-          const tier = ((listing.badgeTier as 'BASIC' | 'STANDARD' | 'PREMIUM') || 'BASIC');
           let paid = false;
           try {
-            paid = await triggerListingFeePayment(listing.id, tier);
+            paid = await triggerListingFeePayment(listing.id, 'BASIC');
           } catch (payErr: any) {
             Alert.alert('Payment Failed', payErr.message || 'Could not process payment.');
             return;
