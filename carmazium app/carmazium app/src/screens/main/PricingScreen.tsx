@@ -55,7 +55,7 @@ const PLANS: PlanCard[] = [
     accentBorder: Colors.warningAlpha25,
     features: [
       { label: 'Live bidding marketplace', included: true },
-      { label: 'Open to all buyers', included: true },
+      { label: 'Verified Traders can bid', included: true },
       { label: '24-hour auction duration', included: true },
       { label: 'Anti-snipe protection', included: true },
       { label: 'Real-time bid feed', included: true },
@@ -65,7 +65,7 @@ const PLANS: PlanCard[] = [
   {
     id: 'basic',
     title: 'Basic',
-    subtitle: 'Standard listing, quick to list',
+    subtitle: '£1 one-off · advertised until sold',
     price: `£${PRICING.listing.basic.price}`,
     period: 'one-off',
     accentColor: Colors.textSecondary,
@@ -73,24 +73,17 @@ const PLANS: PlanCard[] = [
     accentBorder: Colors.whiteAlpha15,
     features: [
       { label: 'Public marketplace listing', included: true },
-      { label: 'Up to 20 photos', included: true },
       { label: 'Offer & negotiation system', included: true },
       { label: 'Direct buyer chat', included: true },
       { label: 'DVLA auto-fill', included: true },
-      // Featured Boost has no tier restriction server-side (POST
-      // /featured-boost/:listingId only checks ownership + not-already-
-      // featured) — web's pricing page lists this as included on all three
-      // tiers including Basic; mobile omitted it here entirely, implying
-      // (incorrectly) that Basic-tier listings couldn't be boosted.
-      { label: 'Featured boost eligible', included: true },
+      { label: 'Featured Boost available separately', included: true },
       { label: 'Performance analytics', included: true },
-      { label: 'Priority placement', included: false },
     ],
   },
   {
     id: 'standard',
     title: 'Standard',
-    subtitle: '60-day listing, more reach',
+    subtitle: 'HPI vehicle-history report included',
     price: `£${PRICING.listing.standard.price}`,
     period: 'one-off',
     accentColor: Colors.infoBlue,
@@ -98,18 +91,16 @@ const PLANS: PlanCard[] = [
     accentBorder: Colors.infoBlueAlpha25,
     features: [
       { label: 'Everything in Basic', included: true },
-      { label: 'Up to 50 photos', included: true },
-      { label: 'Performance analytics', included: true },
-      { label: 'Featured boost eligible', included: true },
-      { label: '60-day listing duration', included: true },
-      { label: 'Priority search placement', included: false },
-      { label: 'Free HPI included', included: false },
+      { label: 'HPI vehicle-history report included', included: true },
+      { label: 'Standard package badge', included: true },
+      { label: 'Advertised until sold', included: true },
+      { label: 'Featured Boost available separately', included: true },
     ],
   },
   {
     id: 'premium',
     title: 'Premium',
-    subtitle: 'Advertise until sold, maximum exposure',
+    subtitle: 'Premium retail package',
     price: `£${PRICING.listing.premium.price}`,
     period: 'one-off',
     badge: 'MOST POPULAR',
@@ -118,12 +109,10 @@ const PLANS: PlanCard[] = [
     accentBorder: Colors.accentAlpha25,
     features: [
       { label: 'Everything in Standard', included: true },
-      { label: 'Up to 100 photos', included: true },
-      { label: 'Priority search placement', included: true },
-      { label: 'HPI Verified badge included', included: true },
-      { label: 'Advertise until sold', included: true },
-      { label: 'Featured boost eligible', included: true },
-      { label: 'Full analytics: views, enquiries, offers & earnings', included: true },
+      { label: 'HPI vehicle-history report included', included: true },
+      { label: 'Premium listing badge and presentation', included: true },
+      { label: 'Advertised until sold', included: true },
+      { label: 'Featured Boost available separately', included: true },
     ],
   },
 ];
@@ -143,7 +132,7 @@ const ADD_ONS: AddOn[] = [
   {
     id: 'hpi',
     title: 'HPI Vehicle Check',
-    subtitle: 'Outstanding finance, write-off history, mileage anomalies, stolen records, and plate changes. Adds a verified badge to your listing.',
+    subtitle: 'Optional for Auction and Basic Retail. Standard and Premium Retail already include the HPI report.',
     price: `£${PRICING.hpiReport.price}`,
     icon: 'shield-checkmark-outline',
     accentColor: Colors.success,
