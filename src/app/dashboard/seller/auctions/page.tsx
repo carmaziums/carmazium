@@ -776,7 +776,7 @@ function SellerAuctionsPage() {
                                             )}
                                             {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && !(auction.listing as any).linkedListing && (
                                                 <button
-                                                    onClick={() => { setAlsoRetailAuction(auction); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
+                                                    onClick={() => { setAlsoRetailAuction(auction); setAlsoRetailPrice(""); setAlsoRetailError(null) }}
                                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-transparent text-[var(--text-muted)] border border-[var(--border-default)] text-xs font-bold hover:text-blue-400 hover:border-blue-500/30 transition-colors"
                                                 >
                                                     <Tag size={13} /> Also Retail
@@ -954,7 +954,7 @@ function SellerAuctionsPage() {
                                                         )}
                                                         {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && !(auction.listing as any).linkedListing && (
                                                             <button
-                                                                onClick={() => { setAlsoRetailAuction(auction); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
+                                                                onClick={() => { setAlsoRetailAuction(auction); setAlsoRetailPrice(""); setAlsoRetailError(null) }}
                                                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-transparent text-[var(--text-muted)] border border-[var(--border-default)] text-xs font-bold hover:text-blue-400 hover:border-blue-500/30 transition-colors"
                                                             >
                                                                 <Tag size={13} /> Also Retail
