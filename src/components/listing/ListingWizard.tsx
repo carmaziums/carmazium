@@ -3065,7 +3065,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <p className="text-xs text-[var(--text-muted)] mb-4">
                                     {isAuction
                                         ? "You chose to list this vehicle for auction."
-                                        : "Boost buyer confidence with trust badges on your listing. Badges increase buyer engagement and sell rates."}
+                                        : "Choose Basic £1, Standard £10 with HPI included, or Premium £25. Featured Boost is a separate optional add-on."}
                                 </p>
 
                                 <div className={`grid grid-cols-1 gap-3 ${isAuction ? 'md:grid-cols-1 max-w-sm' : 'md:grid-cols-3'}`}>
@@ -3084,12 +3084,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
                                                 <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Open bidding</li>
                                                 <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> 24-hour auction</li>
-                                                <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Anyone can bid</li>
+                                                <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Verified Traders can bid</li>
                                                 <li className="flex items-center gap-1.5 text-[var(--text-secondary)]"><X size={12} /> No trust badges</li>
                                             </ul>
                                             <div className="flex items-start gap-1.5 mt-3 pt-3 border-t border-[var(--border-default)]">
                                                 <Lock size={10} className="text-amber-500/70 shrink-0 mt-0.5" />
-                                                <p className="text-[10px] text-amber-500/70 leading-tight">Only verified dealers can list for auction</p>
+                                                <p className="text-[10px] text-amber-500/70 leading-tight">Sellers can list for auction; only verified Traders can bid</p>
                                             </div>
                                         </button>
                                     ) : (
@@ -3125,7 +3125,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 <p className="text-2xl font-black text-[var(--text-primary)] mb-3">£10</p>
                                                 <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
                                                     <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Basic</li>
-                                                    <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> VIN Report badge</li>
+                                                    <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> HPI vehicle-history report included</li>
                                                     <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> Verified Seller badge</li>
                                                 </ul>
                                             </button>
@@ -3143,16 +3143,29 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 <p className="text-amber-400 font-bold text-sm mb-1 mt-1 flex items-center gap-1"><Star size={14} /> Premium</p>
                                                 <p className="text-2xl font-black text-[var(--text-primary)] mb-3">£25</p>
                                                 <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
-                                                    <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Standard</li>
-                                                    <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured boost (28 days)</li>
-                                                    <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Priority in search results</li>
-                                                    <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured badge on listing</li>
+                                                    <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Standard, including HPI</li>
+                                                    <li className="flex items-center gap-1.5"><Star size={12} className="text-amber-400" /> Premium listing badge and presentation</li>
+                                                    <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured Boost available separately</li>
                                                 </ul>
                                             </button>
                                         </>
                                     )}
                                 </div>
 
+                                {!isAuction && formData.vrm && formData.badgeTier === 'BASIC' && (
+                                    <HpiBaitSection
+                                        isUnlocked={isHpiUnlocked}
+                                        onUnlock={() => setShowHpiModal(true)}
+                                    />
+                                )}
+                                {!isAuction && (formData.badgeTier === 'STANDARD' || formData.badgeTier === 'PREMIUM') && (
+                                    <div className="mt-4 rounded-xl border border-blue-500/25 bg-blue-500/10 p-4 text-sm text-blue-200">
+                                        <div className="flex items-center gap-2 font-bold">
+                                            <BadgeCheck size={16} /> HPI report included with this package
+                                        </div>
+                                        <p className="mt-1 text-xs text-[var(--text-muted)]">No separate HPI payment is required. The report request is created automatically when the listing package payment succeeds.</p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* ── Attention Label ─────────────────────────────────── */}
@@ -3565,16 +3578,15 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         {formData.badgeTier === 'STANDARD' && (
                                             <>
                                                 <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-md flex items-center gap-1"><BadgeCheck size={10} /> Standard — £10</span>
-                                                <span className="text-xs bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-md">VIN Report</span>
+                                                <span className="text-xs bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-md">HPI Included</span>
                                                 <span className="text-xs bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-md">Verified</span>
                                             </>
                                         )}
                                         {formData.badgeTier === 'PREMIUM' && (
                                             <>
                                                 <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-md flex items-center gap-1"><Star size={10} /> Premium — £25</span>
-                                                <span className="text-xs bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-md">VIN Report</span>
+                                                <span className="text-xs bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-md">HPI Included</span>
                                                 <span className="text-xs bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-md">Verified</span>
-                                                <span className="text-xs bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-md">Featured</span>
                                             </>
                                         )}
                                     </div>
