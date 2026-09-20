@@ -786,8 +786,9 @@ export class ListingsService {
                 monthOfFirstRegistration: createListingDto.monthOfFirstRegistration ?? null,
                 wheelplan: createListingDto.wheelplan ?? null,
                 typeApproval: createListingDto.typeApproval ?? null,
-                // Retail package tier. Featured Boost is a separate paid add-on
-                // and must never be inferred from PREMIUM.
+                // Retail package tier. PREMIUM receives its included 28-day
+                // Featured Boost only when the listing is approved and goes live,
+                // so draft/review time never consumes the customer's boost.
                 badgeTier,
                 isFeatured: false,
                 featuredUntil: null,
@@ -1548,7 +1549,7 @@ export class ListingsService {
         }
 
         // Admins can create any retail package tier without being charged.
-        // Featured placement is still separate and is not granted by PREMIUM.
+        // PREMIUM receives the same included 28-day boost when activated.
         //
         // Enforced here rather than in the wizard on purpose: the frontend calls
         // publishListing() first and only redirects to Stripe when this returns
@@ -1565,9 +1566,8 @@ export class ListingsService {
         // approving their own listing is a formality, and the review pipeline
         // exists to check other people's submissions.
         //
-        // Uses the same activation shape as AdminService.approveListing so all
-        // activation paths clear stale featured state consistently. Featured
-        // Boost is handled separately from the retail package tier.
+        // Uses the same activation shape as AdminService.approveListing so
+        // PREMIUM starts its included 28-day Featured Boost at go-live.
         //
         // No approval email or notification is sent: those tell a seller that
         // someone reviewed their listing, and here nobody did.
