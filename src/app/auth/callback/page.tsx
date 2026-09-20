@@ -8,7 +8,6 @@ import { Loader2 } from "lucide-react"
 import { trackMetaEvent } from "@/components/analytics/MetaPixel"
 import { trackGa4Event } from "@/components/analytics/GoogleAnalytics"
 import { pushToDataLayer } from "@/lib/gtm"
-import { trackSignupConversion } from "@/lib/googleAds"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev";
 
@@ -266,7 +265,6 @@ function AuthCallbackContent() {
               trackMetaEvent("DealerRegistration", registrationParams)
             }
 
-            trackSignupConversion(user.id, user.email)
           }
         } catch {
           // A malformed/failed sync response must never break sign-in. Missing
