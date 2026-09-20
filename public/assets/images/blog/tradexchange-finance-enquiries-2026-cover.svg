@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-label="Vehicle Finance Enquiries on TradeXchange">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#061426"/><stop offset="1" stop-color="#133956"/></linearGradient>
+  <linearGradient id="car" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a6b4c0"/><stop offset=".55" stop-color="#596a78"/><stop offset="1" stop-color="#25313b"/></linearGradient>
+</defs>
+<rect width="1200" height="600" fill="url(#bg)"/>
+<circle cx="1010" cy="120" r="210" fill="#7f7cff" opacity=".09"/>
+<circle cx="1060" cy="470" r="230" fill="#7f7cff" opacity=".05"/>
+<text x="155" y="105" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="56" font-weight="800">Vehicle Finance Enquiries</text>
+<text x="155" y="170" fill="#7f7cff" font-family="Arial,Helvetica,sans-serif" font-size="50" font-weight="800">on TradeXchange</text>
+<rect x="155" y="198" width="86" height="4" rx="2" fill="#7f7cff"/>
+<text x="155" y="235" fill="#b8cad9" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="700" letter-spacing="3">MATCHED PROVIDERS • UK GUIDE 2026</text>
+<g transform="translate(155 300)" font-family="Arial,Helvetica,sans-serif">
+  <circle cx="22" cy="15" r="9" fill="#7f7cff"/><text x="52" y="22" fill="#e9f2f8" font-size="19">Submit vehicle & finance details</text>
+  <circle cx="22" cy="69" r="9" fill="#7f7cff"/><text x="52" y="76" fill="#e9f2f8" font-size="19">Matched approved providers respond</text>
+  <circle cx="22" cy="123" r="9" fill="#7f7cff"/><text x="52" y="130" fill="#e9f2f8" font-size="19">Provider sets eligibility and terms</text>
+</g>
+<!-- generic unbranded vehicle/service visual -->
+<g transform="translate(705 285)">
+  <ellipse cx="170" cy="170" rx="178" ry="25" fill="#020609" opacity=".5"/>
+  <path d="M28 110 C55 76 92 58 132 50 L225 43 C270 44 306 58 337 84 L370 110 C383 121 387 137 383 150 L373 168 L14 168 L8 146 C6 132 14 119 28 110 Z" fill="url(#car)" stroke="#b9c7d2" stroke-width="2"/>
+  <path d="M108 59 C145 48 188 48 231 50 C262 51 286 60 309 78 L329 95 L96 95 C96 79 100 67 108 59 Z" fill="#31546e" stroke="#a5bac9" stroke-width="2"/>
+  <circle cx="86" cy="168" r="42" fill="#0f151b" stroke="#a3b1bc" stroke-width="4"/><circle cx="86" cy="168" r="19" fill="#55636e"/>
+  <circle cx="301" cy="168" r="42" fill="#0f151b" stroke="#a3b1bc" stroke-width="4"/><circle cx="301" cy="168" r="19" fill="#55636e"/>
+  <rect x="342" y="118" width="30" height="9" rx="4" fill="#c7e7f7"/>
+</g>
+<text x="155" y="530" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="800">Trade<tspan fill="#2fa8ff">X</tspan>change</text>
+<text x="1040" y="530" text-anchor="end" fill="#91a9bb" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="700" letter-spacing="2">BY CARMAZIUM</text>
+</svg>
