@@ -43,18 +43,38 @@ export class PaymentsService {
     }
 
     private assertListingFeeReady(
-        readiness: { missingFields: string[]; missingHpi: boolean },
+        readiness: { missingFields: string[] },
     ): void {
         if (readiness.missingFields.length > 0) {
             throw new BadRequestException(
                 `Listing is not ready for payment. Missing: ${readiness.missingFields.join(', ')}.`,
             );
         }
-        if (readiness.missingHpi) {
-            throw new BadRequestException(
-                'A CarMazium vehicle history (HPI) report must be requested before paying the listing fee.',
-            );
-        }
+    }
+
+    /**
+     * Standard includes the HPI report. Premium includes Standard benefits, so
+     * it includes HPI as well. The HPI row is idempotent and only registers the
+     * report request; an admin can prepare/attach it afterwards.
+     */
+    private async ensureIncludedHpiForTier(
+        listingId: string,
+        badgeTier: string | undefined,
+        transactionId?: string,
+    ): Promise<void> {
+        if (badgeTier !== 'STANDARD' && badgeTier !== 'PREMIUM') return;
+
+        const listing = await this.prisma.listing.findUnique({
+            where: { id: listingId },
+            select: { vrm: true },
+        });
+        if (!listing) return;
+
+        await this.hpiService.createPendingReport(
+            listingId,
+            listing.vrm || '',
+            transactionId,
+        );
     }
 
     /**
@@ -78,10 +98,7 @@ export class PaymentsService {
             }
 
             this.logger.warn(
-                `Paid listing ${listingId} remains out of review because submission requirements are incomplete: ${[
-                    ...readiness.missingFields,
-                    ...(readiness.missingHpi ? ['HPI report request'] : []),
-                ].join(', ')}`,
+                `Paid listing ${listingId} remains out of review because submission requirements are incomplete: ${readiness.missingFields.join(', ')}`,
             );
             return false;
         }
@@ -923,11 +940,18 @@ export class PaymentsService {
                 if (type === 'LISTING_FEE' && listingId) {
                     // Payment is recorded above regardless. Submission is a
                     // separate decision and must pass the same authoritative
-                    // completeness + HPI gate as every other path.
+                    // completeness gate as every other path. HPI is optional.
                     await this.submitPaidListingIfReady(
                         listingId,
                         session.metadata.badgeTier,
                     );
+                    await this.ensureIncludedHpiForTier(
+                        listingId,
+                        session.metadata.badgeTier,
+                        transactionId,
+                    ).catch(err => {
+                        console.error('Failed to register included HPI report after listing payment:', err);
+                    });
                 }
 
                 if (type === 'HPI_REPORT') {
@@ -985,6 +1009,13 @@ export class PaymentsService {
 
                 if (type === 'LISTING_FEE' && listingId) {
                     await this.submitPaidListingIfReady(listingId, badgeTier);
+                    await this.ensureIncludedHpiForTier(
+                        listingId,
+                        badgeTier,
+                        transactionId,
+                    ).catch(err => {
+                        console.error('Failed to register included HPI report after Payment Sheet listing payment:', err);
+                    });
                 }
 
                 if (type === 'DEPOSIT' && listingId) {
