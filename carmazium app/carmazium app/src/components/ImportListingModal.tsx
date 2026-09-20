@@ -23,6 +23,7 @@ import { haptics } from '../lib/haptics';
 import { previewImport, importFromUrl, type ScrapedListingPreview } from '../lib/listingsApi';
 import { KeyboardStickyView } from './KeyboardStickyView';
 import { createPaymentSheet } from '../lib/paymentsApi';
+import { apiClient } from '../lib/apiClient';
 
 import { IconButton } from './IconButton';
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -160,10 +161,27 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
         if (presentError.code !== 'Canceled') throw new Error(presentError.message);
         return; // user cancelled — stay on step 3
       }
+      const publish = await apiClient<{
+        success: boolean;
+        data: { activated: boolean; pendingReview?: boolean; requiresPayment?: boolean };
+      }>(`/listings/${importedId}/publish`, { method: 'POST' });
+
       haptics.success();
-      Alert.alert('Listing Published!', 'Your imported listing is now live.', [
-        { text: 'Done', onPress: onClose },
-      ]);
+      if (publish?.data?.activated) {
+        Alert.alert('Listing Published!', 'Your imported listing is now live.', [
+          { text: 'Done', onPress: onClose },
+        ]);
+      } else if (publish?.data?.pendingReview) {
+        Alert.alert('Submitted for review', 'Payment succeeded. Your listing will go live after our team approves it.', [
+          { text: 'Done', onPress: onClose },
+        ]);
+      } else {
+        Alert.alert(
+          'Payment received',
+          'Your payment succeeded, but the listing has not entered review yet. Open My Listings and publish it again; you will not be charged twice.',
+          [{ text: 'Done', onPress: onClose }],
+        );
+      }
     } catch (err: any) {
       Alert.alert('Payment failed', err?.message ?? 'Could not process payment.');
     } finally {
