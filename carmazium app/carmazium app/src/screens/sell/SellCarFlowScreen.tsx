@@ -154,17 +154,33 @@ const BADGES = [
     id: 'FREE' as const, label: 'Auction', price: 'Free',
     sub: '£0 seller listing fee',
     listingType: 'AUCTION' as const,
-    features: ['24-hour live auction', 'Verified Traders can bid', '£100 seller reward after successful approved handover'],
-    negative: [],
+    features: ['Open bidding', '24-hour auction', 'Verified traders can bid'],
+    negative: ['No trust badges'],
     accent: Colors.lightOrange_f97316,
   },
   {
-    id: 'BASIC' as const, label: 'Retail Listing', price: '£1',
-    sub: 'One-off · advertised until sold',
+    id: 'BASIC' as const, label: 'Basic', price: '£1',
+    sub: 'Standard listing',
     listingType: 'CLASSIFIED' as const,
-    features: ['Public marketplace listing', 'Offers and buyer chat', 'HPI and Featured Boost are optional'],
+    features: ['Standard listing', 'Offer range system'],
+    negative: ['No trust badges', 'No featured boost'],
+    accent: Colors.white,
+  },
+  {
+    id: 'STANDARD' as const, label: 'Standard', price: '£10',
+    sub: 'Most popular',
+    listingType: 'CLASSIFIED' as const,
+    features: ['Everything in Basic', 'VIN Report badge', 'Verified Seller badge'],
+    negative: ['No featured boost'],
+    accent: Colors.infoBlue,
+  },
+  {
+    id: 'PREMIUM' as const, label: 'Premium', price: '£25',
+    sub: 'Best value',
+    listingType: 'CLASSIFIED' as const,
+    features: ['Everything in Standard', 'Featured boost (28 days)', 'Priority in search results', 'Featured badge on listing'],
     negative: [],
-    accent: Colors.accent,
+    accent: Colors.warning,
   },
 ];
 
@@ -832,9 +848,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           if (l.deliveryMaxMiles != null) setDeliveryMaxMiles(String(l.deliveryMaxMiles));
           if (l.deliveryPricePerMile != null) setDeliveryPricePerMile(String(l.deliveryPricePerMile));
         }
-        const loadedIsAuction = l.linkedListing?.type === 'AUCTION' || (l as any).type === 'AUCTION';
-        setListingType(loadedIsAuction ? 'AUCTION' : 'CLASSIFIED');
-        setBadgeTier(loadedIsAuction ? 'FREE' : 'BASIC');
+        if (l.badgeTier && l.badgeTier !== 'FREE') setBadgeTier(l.badgeTier);
+        if (l.linkedListing?.type === 'AUCTION' || (l as any).type === 'AUCTION') setListingType('AUCTION');
 
         // Load existing damage records (separate endpoint, not part of /listings).
         try {
@@ -1303,8 +1318,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // ─── Listing Fee Payment ──────────────────────────────────────────────────────
 
-  async function triggerListingFeePayment(listingId: string, _tier: 'BASIC' | 'STANDARD' | 'PREMIUM' = 'BASIC'): Promise<boolean> {
-    const sheet = await createPaymentSheet({ listingId, amount: 1, type: 'LISTING_FEE', currency: 'gbp', badgeTier: 'BASIC' });
+  async function triggerListingFeePayment(listingId: string, tier: 'BASIC' | 'STANDARD' | 'PREMIUM'): Promise<boolean> {
+    const amounts: Record<string, number> = { BASIC: 1, STANDARD: 10, PREMIUM: 25 };
+    const amount = amounts[tier];
+    const sheet = await createPaymentSheet({ listingId, amount, type: 'LISTING_FEE', currency: 'gbp', badgeTier: tier });
     const { error: initError } = await initPaymentSheet({
       merchantDisplayName: 'Carmazium',
       customerId: sheet.customerId,
@@ -1395,7 +1412,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             make: make || undefined,
             model: model || undefined,
             status: 'DRAFT',
-            badgeTier: listingType === 'AUCTION' ? 'FREE' : 'BASIC',
+            badgeTier,
             vehicleType,
           }),
         });
@@ -1502,7 +1519,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           deliveryMaxMiles: deliveryMaxMiles ? parseFloat(deliveryMaxMiles) : undefined,
           deliveryPricePerMile: deliveryPricePerMile ? parseFloat(deliveryPricePerMile) : undefined,
         }),
-        badgeTier: listingType === 'AUCTION' ? 'FREE' : 'BASIC',
+        badgeTier,
         listingType,
         // DVLA fields
         motStatus, taxStatus, motExpiryDate: motExpiry, taxDueDate: taxDue,
@@ -1709,7 +1726,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           if (first?.data?.requiresPayment) {
             let paid = false;
             try {
-              paid = await triggerListingFeePayment(newListingId, 'BASIC');
+              paid = await triggerListingFeePayment(newListingId, badgeTier as 'BASIC' | 'STANDARD' | 'PREMIUM');
             } catch (payErr: any) {
               Alert.alert('Payment Failed', payErr.message || 'Could not process payment.');
               return;
@@ -2798,8 +2815,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           )}
         </SectionBox>
 
-        {/* Listing Method — the selected method now determines the fixed public
-            listing price: Auction = FREE, Retail = £1 one-off. */}
+        {/* Listing Method — tapping a pricing tier used to silently flip
+            listingType as a side effect (setListingType(badge.listingType)
+            in the tier card's onPress below), so choosing "Premium" from a
+            Retail mindset could silently switch you to a completely
+            different flow with no explicit choice ever made. This is now
+            the one place listingType changes; tier cards only set badgeTier. */}
         <SectionBox title="Listing Method">
           <Text style={s.fieldHint}>
             Choose how you want to sell — a fixed-price retail listing, or a live auction.
@@ -2828,12 +2849,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </View>
         </SectionBox>
 
-        {/* Fixed listing fee — one product per listing method. */}
-        <SectionBox title="Listing Fee">
+        {/* Seller Badges — only the tiers relevant to the listing method
+            chosen above (Auction's Free tier vs Classified's Basic/Standard/
+            Premium tiers were never really alternatives to each other). */}
+        <SectionBox title="Seller Badges">
           <Text style={s.fieldHint}>
-            {listingType === 'AUCTION'
-              ? 'Auction listings are free for sellers. Only verified Traders can bid.'
-              : 'Retail listings cost £1 once and remain advertised until sold.'}
+            Boost buyer confidence with trust badges on your listing. Badges increase buyer engagement and sell rates.
           </Text>
           <View style={{ gap: 10, marginTop: 8 }}>
             {BADGES.filter(badge => (badge.listingType === 'AUCTION') === (listingType === 'AUCTION')).map(badge => {
@@ -2848,14 +2869,22 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   onPress={() => setBadgeTier(badge.id)}
                   activeOpacity={0.8}
                 >
+                  {badge.id === 'STANDARD' && (
+                    <View style={[s.badgePopular, { backgroundColor: Colors.infoBlue }]}><Text style={s.badgePopularText}>Standard</Text></View>
+                  )}
+                  {badge.id === 'PREMIUM' && (
+                    <View style={[s.badgePopular, { backgroundColor: Colors.warning }]}>
+                      <Text style={[s.badgePopularText, { color: Colors.black }]}>Best Value</Text>
+                    </View>
+                  )}
                   {active && (
                     <View style={[s.badgeSelected, { backgroundColor: badge.accent }]}>
-                      <Text style={s.badgeSelectedText}>Selected</Text>
+                      <Text style={[s.badgeSelectedText, badge.id === 'PREMIUM' && { color: Colors.black }]}>Selected</Text>
                     </View>
                   )}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <View style={[s.radioCircle, active && { backgroundColor: badge.accent, borderColor: badge.accent }]}>
-                      {active && <Ionicons name="checkmark" size={12} color={Colors.white} />}
+                      {active && <Ionicons name="checkmark" size={12} color={badge.id === 'PREMIUM' ? Colors.black : Colors.white} />}
                     </View>
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -3149,7 +3178,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </View>
           {badge && (
             <View style={{ marginTop: 8 }}>
-              <Text style={s.reviewCellLabel}>LISTING FEE</Text>
+              <Text style={s.reviewCellLabel}>BADGE</Text>
               <Text style={[s.reviewCellValue, { color: badge.accent }]}>{badge.label} — {badge.price}</Text>
             </View>
           )}
