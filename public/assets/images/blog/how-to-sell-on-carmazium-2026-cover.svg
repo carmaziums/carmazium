@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07172d"/><stop offset="1" stop-color="#123f69"/></linearGradient></defs>
+<rect width="1200" height="600" fill="url(#g)"/>
+<circle cx="960" cy="300" r="190" fill="#2f9cff" opacity=".12"/>
+<text x="150" y="120" fill="#fff" font-family="Arial" font-size="60" font-weight="800">How to Sell Your Car</text>
+<text x="150" y="192" fill="#59b4ff" font-family="Arial" font-size="60" font-weight="800">on CarMazium</text>
+<text x="150" y="238" fill="#cbd8e5" font-family="Arial" font-size="20" letter-spacing="4">STEP-BY-STEP UK GUIDE 2026</text>
+<g transform="translate(150 305)" font-family="Arial">
+<circle cx="45" cy="45" r="42" fill="#1976d2"/><text x="45" y="54" text-anchor="middle" fill="#fff" font-size="28" font-weight="700">1</text>
+<text x="100" y="38" fill="#fff" font-size="18" font-weight="700">Choose Auction or Retail</text><text x="100" y="65" fill="#a9bfd1" font-size="15">£0 auction • retail from £1</text>
+<circle cx="45" cy="140" r="42" fill="#1976d2"/><text x="45" y="149" text-anchor="middle" fill="#fff" font-size="28" font-weight="700">2</text>
+<text x="100" y="133" fill="#fff" font-size="18" font-weight="700">Build an Accurate Listing</text><text x="100" y="160" fill="#a9bfd1" font-size="15">Details • photos • price or reserve</text>
+</g>
+<g transform="translate(680 300)" font-family="Arial">
+<rect width="360" height="170" rx="26" fill="#fff" opacity=".08" stroke="#75bfff"/>
+<text x="32" y="52" fill="#fff" font-size="21" font-weight="800">SELLER ROUTES</text>
+<text x="32" y="90" fill="#62bdff" font-size="18" font-weight="700">AUCTION — FREE TO LIST</text>
+<text x="32" y="122" fill="#9de3b2" font-size="18" font-weight="700">RETAIL — FROM £1</text>
+<text x="32" y="151" fill="#bdd0df" font-size="14">Buyer pays you directly</text>
+</g>
+<text x="150" y="535" fill="#fff" font-family="Arial" font-size="25" font-weight="800">CarMazium</text>
+</svg>
