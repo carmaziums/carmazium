@@ -1269,12 +1269,10 @@ export async function createHpiCheckoutSession(vrm: string, listingId: string): 
 /**
  * Payments: Create Listing Checkout Session
  */
-export async function createListingCheckoutSession(listingId: string, _badgeTier?: string): Promise<{ url: string }> {
+export async function createListingCheckoutSession(listingId: string, badgeTier: string): Promise<{ url: string }> {
     const data = await apiClient<{ data: { url: string } }>('/payments/listing-checkout', {
         method: 'POST',
-        // Retail pricing is fixed at £1. Keep badgeTier for backwards-compatible
-        // API metadata, but never let a caller select a paid package.
-        body: JSON.stringify({ listingId, badgeTier: 'BASIC' }),
+        body: JSON.stringify({ listingId, badgeTier }),
     })
     return data.data
 }
@@ -1317,11 +1315,11 @@ export async function getDamageRecords(listingId: string): Promise<any[]> {
 export async function alsoListRetail(
     listingId: string,
     price: number,
-    _badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM',
+    badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM',
 ): Promise<{ linkedListingId: string }> {
     const data = await apiClient<{ data: { linkedListingId: string } }>(`/listings/${listingId}/also-list-retail`, {
         method: 'POST',
-        body: JSON.stringify({ price, badgeTier: 'BASIC' }),
+        body: JSON.stringify({ price, badgeTier }),
     })
     return data.data
 }
@@ -1339,11 +1337,11 @@ export async function alsoAuction(
 
 export async function createListingCheckout(
     listingId: string,
-    _badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM',
+    badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM',
 ): Promise<{ url: string }> {
     const data = await apiClient<{ data: { url: string } }>(`/payments/listing-checkout`, {
         method: 'POST',
-        body: JSON.stringify({ listingId, badgeTier: 'BASIC' }),
+        body: JSON.stringify({ listingId, badgeTier }),
     })
     return data.data
 }
