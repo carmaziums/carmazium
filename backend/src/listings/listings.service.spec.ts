@@ -179,6 +179,70 @@ describe('ListingsService', () => {
         });
     });
 
+    describe('fixed public pricing normalization', () => {
+        const sellerId = '11111111-1111-4111-8111-111111111111';
+        const images = Array.from(
+            { length: 10 },
+            (_, index) => `https://test.supabase.co/storage/v1/object/public/listings/${sellerId}/vehicle/${index}.jpg`,
+        );
+
+        it('normalizes a legacy PREMIUM retail request to BASIC with no automatic featured placement', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.listing.create.mockResolvedValue({
+                id: 'retail-fixed-price',
+                sellerId,
+                type: 'CLASSIFIED',
+                status: 'DRAFT',
+            });
+
+            await service.create({
+                title: 'BMW M3 Retail',
+                price: 12000,
+                mileage: 30000,
+                year: 2020,
+                vrm: 'AB12CDE',
+                images,
+                listingType: 'CLASSIFIED',
+                badgeTier: 'PREMIUM',
+                status: 'ACTIVE',
+            } as any, sellerId);
+
+            const createCall = prisma.listing.create.mock.calls[0][0];
+            expect(createCall.data.badgeTier).toBe('BASIC');
+            expect(createCall.data.isFeatured).toBe(false);
+            expect(createCall.data.featuredUntil).toBeNull();
+            expect(createCall.data.status).toBe('DRAFT');
+        });
+
+        it('normalizes any auction package input to FREE', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.listing.create.mockResolvedValue({
+                id: 'auction-fixed-price',
+                sellerId,
+                type: 'AUCTION',
+                status: 'DRAFT',
+            });
+
+            await service.create({
+                title: 'BMW M3 Auction',
+                price: 12000,
+                mileage: 30000,
+                year: 2020,
+                vrm: 'AB12CDE',
+                images,
+                listingType: 'AUCTION',
+                badgeTier: 'PREMIUM',
+                status: 'ACTIVE',
+            } as any, sellerId);
+
+            const createCall = prisma.listing.create.mock.calls[0][0];
+            expect(createCall.data.badgeTier).toBe('FREE');
+            expect(createCall.data.isFeatured).toBe(false);
+            expect(createCall.data.featuredUntil).toBeNull();
+            expect(createCall.data.status).toBe('DRAFT');
+        });
+    });
+
     describe('listing creation idempotency', () => {
         const sellerId = '11111111-1111-4111-8111-111111111111';
         const images = Array.from(
