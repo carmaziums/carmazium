@@ -1791,7 +1791,7 @@ export class ListingsService {
     async alsoListRetail(
         listingId: string,
         userId: string,
-        dto: { price: number; badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM' },
+        dto: { price: number; badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM' },
     ): Promise<{ linkedListingId: string }> {
         const newListingId = randomUUID();
 
