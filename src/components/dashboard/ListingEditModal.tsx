@@ -26,6 +26,7 @@ const WRITE_OFF_CATEGORIES = ['NONE', 'CAT_S', 'CAT_N', 'CAT_A', 'CAT_B']
 const VEHICLE_TYPES = ['CAR', 'HGV', 'MOTORCYCLE']
 const EURO_STANDARDS = ['EURO_4', 'EURO_5', 'EURO_6', 'EURO_6D']
 const LISTING_TYPES = ['CLASSIFIED', 'AUCTION']
+const BADGE_TIERS = ['FREE', 'BASIC', 'STANDARD', 'PREMIUM']
 
 const EDIT_NUMERIC_FIELDS = [
     'price', 'priceMin', 'priceMax', 'year', 'mileage', 'doors', 'seats',
@@ -75,7 +76,7 @@ const SECTIONS = [
     },
     { key: 'meta', label: 'Listing Meta', icon: MapPinned, fields: ['location', 'vehicleType', 'isImported', 'bannerLabel', 'features'] },
     { key: 'delivery', label: 'Delivery', icon: Truck, fields: ['deliveryAvailable', 'deliveryPricePerMile', 'deliveryMaxMiles'] },
-    { key: 'typeBadge', label: 'Type & Pricing', icon: Layers, fields: ['listingType', 'videoUrls'] },
+    { key: 'typeBadge', label: 'Type & Badge', icon: Layers, fields: ['listingType', 'badgeTier', 'videoUrls'] },
     { key: 'auction', label: 'Auction Schedule', icon: Gavel, fields: ['reservePrice', 'startingBid', 'minIncrement', 'buyItNowPrice', 'startTime'], auctionOnly: true },
     { key: 'photos', label: 'Photos', icon: ImageIcon, fields: [] },
     { key: 'description', label: 'Description', icon: AlignLeft, fields: ['description'] },
@@ -235,7 +236,7 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                     deliveryPricePerMile: str(l.deliveryPricePerMile),
                     deliveryMaxMiles: str(l.deliveryMaxMiles),
                     listingType: l.type || '',
-                    badgeTier: l.badgeTier || (l.type === 'AUCTION' ? 'FREE' : 'BASIC'),
+                    badgeTier: l.badgeTier || '',
                     videoUrls: Array.isArray(l.videoUrls) ? l.videoUrls.join(', ') : '',
                     reservePrice: str(l.auction?.reservePrice),
                     startingBid: str(l.auction?.startingBid),
@@ -661,12 +662,7 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                                 {active.key === 'typeBadge' && (
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                         <Field label="Listing Type" value={editForm.listingType} onChange={set('listingType')} type="select" options={LISTING_TYPES} />
-                                        <div>
-                                            <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Pricing</label>
-                                            <div className="mt-1.5 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2.5 text-sm font-semibold">
-                                                {editForm.listingType === 'AUCTION' ? 'Auction — FREE to seller' : 'Retail — £1 one-off until sold'}
-                                            </div>
-                                        </div>
+                                        <Field label="Badge Tier" value={editForm.badgeTier} onChange={set('badgeTier')} type="select" options={BADGE_TIERS} />
                                         <Field label="Video URLs (comma-separated)" value={editForm.videoUrls} onChange={set('videoUrls')} span />
                                     </div>
                                 )}

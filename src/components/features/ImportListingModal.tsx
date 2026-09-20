@@ -1,10 +1,52 @@
 "use client"
 
 import React, { useState } from "react"
-import { X, Link2, Loader2, CheckCircle, AlertTriangle, ExternalLink, Image as ImageIcon } from "lucide-react"
+import { X, Link2, Loader2, CheckCircle, AlertTriangle, ExternalLink, Image as ImageIcon, Zap, Shield, Star } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { previewImport, importFromUrl, createListingCheckout, type ScrapedListingPreview } from "@/lib/listingApi"
+import { previewImport, importFromUrl, updateListing, createListingCheckout, type ScrapedListingPreview } from "@/lib/listingApi"
+
+// ─── Plan definitions ────────────────────────────────────────────────────────
+
+const PLANS = [
+    {
+        tier: 'BASIC' as const,
+        label: 'Basic',
+        price: 1,
+        icon: Zap,
+        colour: 'blue',
+        features: ['Listed on CarMazium', 'Buyer enquiries', 'Standard visibility'],
+    },
+    {
+        tier: 'STANDARD' as const,
+        label: 'Standard',
+        price: 10,
+        icon: Shield,
+        colour: 'violet',
+        features: ['Everything in Basic', 'Verified badge', 'Priority in search results', 'VIN report included'],
+        popular: true,
+    },
+    {
+        tier: 'PREMIUM' as const,
+        label: 'Premium',
+        price: 25,
+        icon: Star,
+        colour: 'amber',
+        features: ['Everything in Standard, including HPI', 'Premium listing badge and presentation', 'Featured Boost available separately'],
+    },
+]
+
+const PLAN_RING: Record<string, string> = {
+    BASIC: 'border-blue-500 bg-blue-500/10',
+    STANDARD: 'border-violet-500 bg-violet-500/10',
+    PREMIUM: 'border-amber-500 bg-amber-500/10',
+}
+
+const PLAN_ICON_COLOUR: Record<string, string> = {
+    BASIC: 'text-blue-400',
+    STANDARD: 'text-violet-400',
+    PREMIUM: 'text-amber-400',
+}
 
 const PLATFORM_LABELS: Record<string, string> = {
     CARGURUS: 'CarGurus',
@@ -42,6 +84,8 @@ export function ImportListingModal({ onClose, onImported }: Props) {
 
     // Done step
     const [importedListingId, setImportedListingId] = useState<string | null>(null)
+    const [selectedTier, setSelectedTier] = useState<'BASIC' | 'STANDARD' | 'PREMIUM'>('BASIC')
+    const [tierUpdating, setTierUpdating] = useState(false)
 
     // Shared
     const [loading, setLoading] = useState(false)
@@ -90,12 +134,27 @@ export function ImportListingModal({ onClose, onImported }: Props) {
         }
     }
 
+    // Update the listing's badgeTier on the server whenever the user changes
+    // their selection — so "Do it later" always defers at the correct price.
+    const handleSelectTier = async (tier: 'BASIC' | 'STANDARD' | 'PREMIUM') => {
+        setSelectedTier(tier)
+        if (!importedListingId) return
+        setTierUpdating(true)
+        try {
+            await updateListing(importedListingId, { badgeTier: tier })
+        } catch {
+            // Non-fatal — the checkout will carry the correct tier in session metadata
+        } finally {
+            setTierUpdating(false)
+        }
+    }
+
     const handleActivate = async () => {
         if (!importedListingId) return
         setCheckoutLoading(true)
         setError(null)
         try {
-            const { url: checkoutUrl } = await createListingCheckout(importedListingId, 'BASIC')
+            const { url: checkoutUrl } = await createListingCheckout(importedListingId, selectedTier)
             window.location.href = checkoutUrl
         } catch (e: any) {
             setError(e.message ?? "Failed to start checkout.")
@@ -106,7 +165,7 @@ export function ImportListingModal({ onClose, onImported }: Props) {
     const stepLabels: Record<Step, string> = {
         url: 'Paste a link from AutoTrader, CarGurus, or CarWow',
         preview: 'Review extracted data',
-        done: 'Retail listing fee',
+        done: 'Choose your listing plan',
     }
 
     // ── Render ────────────────────────────────────────────────────────────────
@@ -172,7 +231,7 @@ export function ImportListingModal({ onClose, onImported }: Props) {
                                     ))}
                                 </div>
                                 <p className="text-xs text-[var(--text-muted)]">
-                                    We&apos;ll extract vehicle details automatically. You can review and edit everything before saving the draft.
+                                    We&apos;ll extract vehicle details automatically. You can review and edit everything before choosing a plan.
                                 </p>
                             </div>
 
@@ -284,13 +343,13 @@ export function ImportListingModal({ onClose, onImported }: Props) {
                                 <Button onClick={handleImport} disabled={loading || !price || !vrm || !title} className="flex-1 shadow-neon">
                                     {loading
                                         ? <><Loader2 size={16} className="animate-spin mr-2" />Saving…</>
-                                        : 'Save & Continue →'}
+                                        : 'Save & Choose Plan →'}
                                 </Button>
                             </div>
                         </>
                     )}
 
-                    {/* ── Step 3: Fixed retail listing fee ── */}
+                    {/* ── Step 3: Plan selection ── */}
                     {step === 'done' && (
                         <div className="space-y-5">
                             <div className="flex items-center gap-3">
@@ -299,35 +358,60 @@ export function ImportListingModal({ onClose, onImported }: Props) {
                                 </div>
                                 <div>
                                     <p className="text-sm font-semibold">Listing saved as draft</p>
-                                    <p className="text-xs text-[var(--text-muted)]">Complete the one-off £1 retail listing payment when you are ready to submit it.</p>
+                                    <p className="text-xs text-[var(--text-muted)]">Now pick a plan to make it live. You can change this later from your inventory.</p>
                                 </div>
                             </div>
 
-                            <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div>
-                                        <p className="text-sm font-bold text-[var(--text-primary)]">Retail Listing</p>
-                                        <p className="mt-1 text-xs text-[var(--text-muted)]">One simple listing price. No Basic, Standard or Premium packages.</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-2xl font-black text-[var(--text-primary)]">£1</p>
-                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">one-off</p>
-                                    </div>
-                                </div>
-                                <ul className="mt-4 space-y-2 text-xs text-[var(--text-secondary)]">
-                                    <li className="flex items-center gap-2"><CheckCircle size={12} className="text-emerald-400" /> Advertised until sold</li>
-                                    <li className="flex items-center gap-2"><CheckCircle size={12} className="text-emerald-400" /> Offers, negotiation and buyer chat</li>
-                                    <li className="flex items-center gap-2"><CheckCircle size={12} className="text-emerald-400" /> HPI and Featured Boost remain optional</li>
-                                </ul>
+                            {/* Plan cards */}
+                            <div className="grid grid-cols-1 gap-3">
+                                {PLANS.map(plan => {
+                                    const Icon = plan.icon
+                                    const isSelected = selectedTier === plan.tier
+                                    return (
+                                        <button
+                                            key={plan.tier}
+                                            onClick={() => handleSelectTier(plan.tier)}
+                                            className={`relative w-full text-left rounded-xl border p-4 transition-all ${
+                                                isSelected
+                                                    ? `${PLAN_RING[plan.tier]} ring-1 ring-inset ring-white/5`
+                                                    : 'border-[var(--border-default)] bg-[var(--bg-input)] hover:border-primary/30'
+                                            }`}
+                                        >
+                                            {plan.popular && (
+                                                <span className="absolute -top-2.5 right-4 text-[10px] font-black uppercase tracking-widest bg-violet-600 text-white px-2.5 py-0.5 rounded-full">
+                                                    Most Popular
+                                                </span>
+                                            )}
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <Icon size={16} className={PLAN_ICON_COLOUR[plan.tier]} />
+                                                    <span className="font-bold text-[var(--text-primary)] text-sm">{plan.label}</span>
+                                                </div>
+                                                <div className="flex items-baseline gap-0.5">
+                                                    <span className="text-xl font-black">£{plan.price}</span>
+                                                    <span className="text-xs text-[var(--text-muted)]">one-time</span>
+                                                </div>
+                                            </div>
+                                            <ul className="space-y-1">
+                                                {plan.features.map(f => (
+                                                    <li key={f} className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                                                        <CheckCircle size={11} className={PLAN_ICON_COLOUR[plan.tier]} />
+                                                        {f}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </button>
+                                    )
+                                })}
                             </div>
 
                             {error && <ErrorBox message={error} />}
 
                             <div className="flex flex-col gap-3 pt-1">
-                                <Button onClick={handleActivate} disabled={checkoutLoading} className="w-full shadow-neon">
+                                <Button onClick={handleActivate} disabled={checkoutLoading || tierUpdating} className="w-full shadow-neon">
                                     {checkoutLoading
                                         ? <><Loader2 size={16} className="animate-spin mr-2" />Redirecting to payment…</>
-                                        : <>Pay £1 & Submit Listing <ExternalLink size={14} className="ml-2" /></>}
+                                        : <>Activate for £{PLANS.find(p => p.tier === selectedTier)?.price} <ExternalLink size={14} className="ml-2" /></>}
                                 </Button>
                                 <Button variant="outline" onClick={onClose} className="border-[var(--border-default)] text-[var(--text-muted)] text-sm">
                                     Do it later — listing saved in My Inventory

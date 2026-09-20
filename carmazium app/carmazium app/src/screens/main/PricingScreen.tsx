@@ -45,67 +45,74 @@ interface PlanCard {
 
 const PLANS: PlanCard[] = [
   {
-    id: 'auction-seller',
-    title: 'Auction Seller',
-    subtitle: `${PRICING.marketplace.auction.durationHours}-hour live auction`,
+    id: 'auction',
+    title: 'Auction',
+    subtitle: '24-hour live open auction',
     price: 'Free',
     period: '',
     accentColor: Colors.warning,
     accentBg: Colors.warningAlpha10,
     accentBorder: Colors.warningAlpha25,
     features: [
-      { label: '£0 seller listing fee', included: true },
-      { label: 'Only verified Traders can bid', included: true },
-      { label: 'Live bidding and anti-snipe protection', included: true },
-      { label: `£${PRICING.marketplace.auction.sellerReward} seller reward after successful approved handover`, included: true },
+      { label: 'Live bidding marketplace', included: true },
+      { label: 'Verified Traders can bid', included: true },
+      { label: '24-hour auction duration', included: true },
+      { label: 'Anti-snipe protection', included: true },
+      { label: 'Real-time bid feed', included: true },
+      { label: 'Post-auction seller chat', included: true },
     ],
   },
   {
-    id: 'auction-buyer',
-    title: 'Winning Trader',
-    subtitle: 'Auction buyer fee after winning',
-    price: `£${PRICING.marketplace.auction.buyerFee}`,
+    id: 'basic',
+    title: 'Basic',
+    subtitle: '£1 one-off · advertised until sold',
+    price: `£${PRICING.listing.basic.price}`,
+    period: 'one-off',
+    accentColor: Colors.textSecondary,
+    accentBg: Colors.whiteAlpha06,
+    accentBorder: Colors.whiteAlpha15,
+    features: [
+      { label: 'Public marketplace listing', included: true },
+      { label: 'Offer & negotiation system', included: true },
+      { label: 'Direct buyer chat', included: true },
+      { label: 'DVLA auto-fill', included: true },
+      { label: 'Featured Boost available separately', included: true },
+      { label: 'Performance analytics', included: true },
+    ],
+  },
+  {
+    id: 'standard',
+    title: 'Standard',
+    subtitle: 'HPI vehicle-history report included',
+    price: `£${PRICING.listing.standard.price}`,
     period: 'one-off',
     accentColor: Colors.infoBlue,
     accentBg: Colors.infoBlueAlpha10,
     accentBorder: Colors.infoBlueAlpha25,
     features: [
-      { label: 'Only the winning verified Trader pays', included: true },
-      { label: 'Seller contact and deal details unlock after the fee', included: true },
-      { label: 'Vehicle price is paid directly to the seller', included: true },
-      { label: 'CarMazium does not hold the vehicle purchase funds', included: true },
+      { label: 'Everything in Basic', included: true },
+      { label: 'HPI vehicle-history report included', included: true },
+      { label: 'Standard package badge', included: true },
+      { label: 'Advertised until sold', included: true },
+      { label: 'Featured Boost available separately', included: true },
     ],
   },
   {
-    id: 'retail-seller',
-    title: 'Retail Seller',
-    subtitle: 'Advertise until sold',
-    price: `£${PRICING.marketplace.retail.sellerListingFee}`,
+    id: 'premium',
+    title: 'Premium',
+    subtitle: 'Premium retail package',
+    price: `£${PRICING.listing.premium.price}`,
     period: 'one-off',
+    badge: 'MOST POPULAR',
     accentColor: Colors.accent,
     accentBg: Colors.accentAlpha10,
     accentBorder: Colors.accentAlpha25,
     features: [
-      { label: 'One simple listing price — no package upgrades', included: true },
+      { label: 'Everything in Standard', included: true },
+      { label: 'HPI vehicle-history report included', included: true },
+      { label: 'Premium listing badge and presentation', included: true },
       { label: 'Advertised until sold', included: true },
-      { label: 'Offers, negotiation and buyer chat', included: true },
-      { label: 'HPI and Featured Boost are optional', included: true },
-    ],
-  },
-  {
-    id: 'retail-buyer',
-    title: 'Retail Buyer',
-    subtitle: 'No CarMazium retail buyer fee',
-    price: 'Free',
-    period: '',
-    accentColor: Colors.success,
-    accentBg: Colors.successAlpha10,
-    accentBorder: Colors.successAlpha25,
-    features: [
-      { label: 'Browse retail vehicles', included: true },
-      { label: 'Make offers and negotiate', included: true },
-      { label: 'Chat with the seller', included: true },
-      { label: 'Pay the seller directly for the vehicle', included: true },
+      { label: 'Featured Boost available separately', included: true },
     ],
   },
 ];
@@ -125,7 +132,7 @@ const ADD_ONS: AddOn[] = [
   {
     id: 'hpi',
     title: 'HPI Vehicle Check',
-    subtitle: 'Outstanding finance, write-off history, mileage anomalies, stolen records, and plate changes. Adds a verified badge to your listing.',
+    subtitle: 'Optional for Auction and Basic Retail. Standard and Premium Retail already include the HPI report.',
     price: `£${PRICING.hpiReport.price}`,
     icon: 'shield-checkmark-outline',
     accentColor: Colors.success,
@@ -177,7 +184,8 @@ export const PricingScreen: React.FC = () => {
         <View style={styles.introSection}>
           <Text style={styles.introHeading}>Simple, honest pricing</Text>
           <Text style={styles.introSub}>
-            Auction listings are free for sellers. Retail listings cost £1 one-off and stay advertised until sold.
+            List your car for free at auction, or choose Basic £1, Standard £10
+            with HPI included, or Premium £25. Retail buyers pay no CarMazium buyer fee.
           </Text>
         </View>
 
@@ -204,7 +212,7 @@ export const PricingScreen: React.FC = () => {
             <View style={styles.planHeader}>
               <View style={[styles.planIconWrap, { backgroundColor: plan.accentBg }]}>
                 <Ionicons
-                  name={plan.id.startsWith('auction') ? 'hammer-outline' : 'pricetag-outline'}
+                  name={plan.id === 'auction' ? 'hammer-outline' : 'pricetag-outline'}
                   size={20}
                   color={plan.accentColor}
                 />
@@ -249,7 +257,7 @@ export const PricingScreen: React.FC = () => {
         {/* ── Add-ons ── */}
         <View style={styles.sectionHeadingWrap}>
           <Text style={styles.sectionHeading}>Optional add-ons</Text>
-          <Text style={styles.sectionSub}>Optional extras — they do not change the core free-auction or £1-retail listing price.</Text>
+          <Text style={styles.sectionSub}>Enhance any listing at any time — buy once, apply instantly.</Text>
         </View>
 
         {ADD_ONS.map((addon) => (
@@ -280,8 +288,8 @@ export const PricingScreen: React.FC = () => {
             <Ionicons name="business-outline" size={20} color={Colors.accent} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.dealerPromptTitle}>Running an automotive business?</Text>
-            <Text style={styles.dealerPromptSub}>Use one Partner Account for business tools, inventory management, CRM and analytics.</Text>
+            <Text style={styles.dealerPromptTitle}>Motor trader or automotive business?</Text>
+            <Text style={styles.dealerPromptSub}>Use a Partner Account for verified business tools and auction access.</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
@@ -290,7 +298,7 @@ export const PricingScreen: React.FC = () => {
         <View style={styles.footerNote}>
           <Ionicons name="information-circle-outline" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={styles.footerNoteText}>
-            Platform fees and optional add-ons are handled securely in GBP. Vehicle purchase money is paid directly between buyer and seller.
+            Retail buyers pay no CarMazium buyer fee. Vehicle sale money is paid directly between buyer and seller; CarMazium does not hold it.
           </Text>
         </View>
 

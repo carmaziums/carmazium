@@ -53,6 +53,31 @@ export class PaymentsService {
     }
 
     /**
+     * Standard includes the HPI report. Premium includes Standard benefits, so
+     * it includes HPI as well. The HPI row is idempotent and only registers the
+     * report request; an admin can prepare/attach it afterwards.
+     */
+    private async ensureIncludedHpiForTier(
+        listingId: string,
+        badgeTier: string | undefined,
+        transactionId?: string,
+    ): Promise<void> {
+        if (badgeTier !== 'STANDARD' && badgeTier !== 'PREMIUM') return;
+
+        const listing = await this.prisma.listing.findUnique({
+            where: { id: listingId },
+            select: { vrm: true },
+        });
+        if (!listing) return;
+
+        await this.hpiService.createPendingReport(
+            listingId,
+            listing.vrm || '',
+            transactionId,
+        );
+    }
+
+    /**
      * A Stripe success proves money was paid, not that the listing is currently
      * fit for review. Old/in-flight sessions are therefore revalidated here.
      * Payment remains COMPLETED either way; an incomplete listing stays editable
@@ -60,31 +85,15 @@ export class PaymentsService {
      */
     private async submitPaidListingIfReady(
         listingId: string,
-        _legacyBadgeTier?: string,
+        badgeTier?: string,
     ): Promise<boolean> {
         const readiness = await this.getListingFeeReadiness(listingId);
 
-        // New retail checkouts are always BASIC (£1). A delayed webhook from
-        // the former package model can still legitimately carry STANDARD or
-        // PREMIUM metadata; preserve it only when the persisted listing already
-        // has that same legacy tier. This honors an already-purchased entitlement
-        // without allowing retired tiers to be newly selected by clients.
-        const legacyPaidTier =
-            _legacyBadgeTier
-            && (_legacyBadgeTier === 'STANDARD' || _legacyBadgeTier === 'PREMIUM')
-            && readiness.listing.badgeTier === _legacyBadgeTier
-                ? _legacyBadgeTier
-                : null;
-        const retailBadgeTier =
-            readiness.listing.type === 'CLASSIFIED'
-                ? (legacyPaidTier ?? 'BASIC')
-                : 'FREE';
-
         if (!readiness.ready) {
-            if (readiness.listing.badgeTier !== retailBadgeTier) {
+            if (badgeTier && ['BASIC', 'STANDARD', 'PREMIUM'].includes(badgeTier)) {
                 await this.prisma.listing.update({
                     where: { id: listingId },
-                    data: { badgeTier: retailBadgeTier },
+                    data: { badgeTier: badgeTier as any },
                 });
             }
 
@@ -103,13 +112,17 @@ export class PaymentsService {
             return false;
         }
 
+        const updateData: Record<string, unknown> = {
+            status: 'PENDING_REVIEW',
+            rejectionReason: null,
+        };
+        if (badgeTier && ['BASIC', 'STANDARD', 'PREMIUM'].includes(badgeTier)) {
+            updateData.badgeTier = badgeTier;
+        }
+
         await this.prisma.listing.update({
             where: { id: listingId },
-            data: {
-                status: 'PENDING_REVIEW',
-                rejectionReason: null,
-                badgeTier: retailBadgeTier,
-            } as any,
+            data: updateData as any,
         });
 
         if (readiness.listing.status !== 'PENDING_REVIEW') {
@@ -187,7 +200,11 @@ export class PaymentsService {
 
     // Prices in GBP
     private readonly HPI_REPORT_PRICE = 9.99;
-    private readonly RETAIL_LISTING_FEE = 1.00;
+    private readonly LISTING_FEES = {
+        BASIC: 1.00,  // £1 one-off
+        STANDARD: 10.00,
+        PREMIUM: 25.00,
+    };
     private readonly BOOST_PRICE = 25.00;
     // £500 refundable deposit — matches the web checkout page's DEPOSIT_AMOUNT
     // constant (src/app/checkout/page.tsx). Not listing-dependent.
@@ -527,12 +544,11 @@ export class PaymentsService {
     }
 
     /**
-     * Create a Stripe Checkout Session for the fixed £1 retail listing fee.
-     *
-     * badgeTier remains in the public method signature for compatibility with
-     * older web/mobile clients, but it can no longer change the amount charged.
+     * Create a Stripe Checkout Session for a Listing Badge Fee.
      */
-    async createListingSession(_badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM' | undefined, userId: string, listingId: string) {
+    async createListingSession(badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM', userId: string, listingId: string) {
+        // Never trust the browser to decide whether a retail listing is free or
+        // which paid tier should be charged. The persisted listing is authoritative.
         const [actor, readiness] = await Promise.all([
             this.prisma.user.findUnique({
                 where: { id: userId },
@@ -556,17 +572,31 @@ export class PaymentsService {
 
         this.assertListingFeeReady(readiness);
 
-        if (listing.badgeTier !== 'BASIC') {
+        // Heal legacy FREE retail drafts and always charge using the server-side tier.
+        const persistedTier =
+            listing.badgeTier === 'FREE' ? 'BASIC' : listing.badgeTier;
+        if (!(persistedTier in this.LISTING_FEES)) {
+            throw new BadRequestException('Retail listing tier must be BASIC, STANDARD, or PREMIUM');
+        }
+        const chargeTier = persistedTier as 'BASIC' | 'STANDARD' | 'PREMIUM';
+
+        if (listing.badgeTier !== chargeTier) {
             await this.prisma.listing.update({
                 where: { id: listingId },
-                data: { badgeTier: 'BASIC' },
+                data: { badgeTier: chargeTier },
             });
+        }
+        if (badgeTier !== chargeTier) {
+            this.logger.warn(
+                `Listing checkout tier mismatch for ${listingId}: client=${badgeTier}, persisted=${chargeTier}; charging persisted tier.`,
+            );
         }
 
         const stripe = await this.getStripe();
         const baseUrl = resolveFrontendUrl(this.config.get<string>('FRONTEND_URL'));
-        const amount = this.RETAIL_LISTING_FEE;
+        const amount = this.LISTING_FEES[chargeTier];
 
+        // Create a pending transaction record
         const transaction = await this.prisma.transaction.create({
             data: {
                 userId,
@@ -574,7 +604,7 @@ export class PaymentsService {
                 amount,
                 type: 'LISTING_FEE' as any,
                 status: 'PENDING',
-                description: 'Retail Listing Fee',
+                description: `${chargeTier} Listing Fee`,
             },
         });
 
@@ -585,8 +615,8 @@ export class PaymentsService {
                     price_data: {
                         currency: 'gbp',
                         product_data: {
-                            name: 'CarMazium Retail Listing',
-                            description: '£1 one-off listing fee — advertised until sold',
+                            name: `CarMazium ${chargeTier} Listing`,
+                            description: `Professional listing fee for your vehicle`,
                         },
                         unit_amount: Math.round(amount * 100),
                     },
@@ -597,7 +627,7 @@ export class PaymentsService {
                 transactionId: transaction.id,
                 userId,
                 listingId,
-                badgeTier: 'BASIC',
+                badgeTier: chargeTier,
                 type: 'LISTING_FEE',
             },
             success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -611,7 +641,6 @@ export class PaymentsService {
 
         return { url: session.url };
     }
-
     /**
      * Create a Stripe PaymentIntent + EphemeralKey for the React Native Payment Sheet.
      * Returns clientSecret, ephemeralKey, customerId, and a transactionId for tracking.
@@ -656,16 +685,21 @@ export class PaymentsService {
                 const listingFeeReadiness = await this.getListingFeeReadiness(listingId);
                 this.assertListingFeeReady(listingFeeReadiness);
 
-                // Mobile clients cannot select a higher-priced package. Normalize
-                // every retail listing to BASIC and charge the fixed £1 fee.
-                badgeTier = 'BASIC';
-                if (listing.badgeTier !== 'BASIC') {
+                // Mobile Payment Sheet follows the same server-authoritative rule
+                // as hosted Checkout: the saved listing tier determines the charge.
+                // Heal any legacy FREE retail draft to BASIC (£1).
+                const persistedTier = listing.badgeTier === 'FREE' ? 'BASIC' : listing.badgeTier;
+                if (!(persistedTier in this.LISTING_FEES)) {
+                    throw new BadRequestException('Retail listing tier must be BASIC, STANDARD, or PREMIUM');
+                }
+                badgeTier = persistedTier as 'BASIC' | 'STANDARD' | 'PREMIUM';
+                if (listing.badgeTier !== badgeTier) {
                     await this.prisma.listing.update({
                         where: { id: listingId },
-                        data: { badgeTier: 'BASIC' },
+                        data: { badgeTier },
                     });
                 }
-                amount = this.RETAIL_LISTING_FEE;
+                amount = this.LISTING_FEES[badgeTier];
                 break;
             }
             case 'COMMISSION':
@@ -716,7 +750,7 @@ export class PaymentsService {
             DEPOSIT: `Refundable deposit for ${listing.title}`,
             FULL_PAYMENT: `Full payment for ${listing.title}`,
             COMMISSION: `Auction buyer fee — ${listing.title}`,
-            LISTING_FEE: `Retail Listing Fee — ${listing.title}`,
+            LISTING_FEE: `${badgeTier ?? ''} Listing Fee — ${listing.title}`.trim(),
             HPI_REPORT: `Comprehensive HPI Report for ${vrm}`,
         };
 
@@ -743,8 +777,8 @@ export class PaymentsService {
                 listingId,
                 userId,
                 type,
-                // Retained for compatibility with existing webhook metadata. Retail
-                // listing fee payments are always normalized to BASIC (£1).
+                // Only present for LISTING_FEE — the payment_intent.succeeded webhook
+                // handler needs this to know which tier to activate the listing at.
                 ...(badgeTier ? { badgeTier } : {}),
                 // Only present for HPI_REPORT — the webhook needs this to know
                 // which VRM to run the check against.
@@ -906,11 +940,18 @@ export class PaymentsService {
                 if (type === 'LISTING_FEE' && listingId) {
                     // Payment is recorded above regardless. Submission is a
                     // separate decision and must pass the same authoritative
-                    // completeness gate as every other path.
+                    // completeness gate as every other path. HPI is optional.
                     await this.submitPaidListingIfReady(
                         listingId,
                         session.metadata.badgeTier,
                     );
+                    await this.ensureIncludedHpiForTier(
+                        listingId,
+                        session.metadata.badgeTier,
+                        transactionId,
+                    ).catch(err => {
+                        console.error('Failed to register included HPI report after listing payment:', err);
+                    });
                 }
 
                 if (type === 'HPI_REPORT') {
@@ -968,6 +1009,13 @@ export class PaymentsService {
 
                 if (type === 'LISTING_FEE' && listingId) {
                     await this.submitPaidListingIfReady(listingId, badgeTier);
+                    await this.ensureIncludedHpiForTier(
+                        listingId,
+                        badgeTier,
+                        transactionId,
+                    ).catch(err => {
+                        console.error('Failed to register included HPI report after Payment Sheet listing payment:', err);
+                    });
                 }
 
                 if (type === 'DEPOSIT' && listingId) {

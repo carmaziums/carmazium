@@ -398,7 +398,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     priceMin: l.priceMin ? String(l.priceMin) : '',
                     priceAsking: l.price ? String(l.price) : '',
                     status: l.status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT',
-                    badgeTier: l.type === 'AUCTION' ? 'FREE' : 'BASIC',
+                    badgeTier: l.badgeTier || 'BASIC',
                     // Fields missing from original prefill
                     vin: l.vin || '',
                     vehicleType: l.vehicleType || 'CAR',
@@ -1080,7 +1080,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 monthOfFirstRegistration: formData.monthOfFirstRegistration || undefined,
                 wheelplan: formData.wheelplan || undefined,
                 typeApproval: formData.typeApproval || undefined,
-                badgeTier: formData.listingType === 'AUCTION' ? 'FREE' : 'BASIC',
+                badgeTier: (formData.listingType === 'CLASSIFIED' && formData.badgeTier === 'FREE') ? 'BASIC' : formData.badgeTier,
                 status: formData.status,
                 vehicleType: formData.vehicleType as VehicleTypeValue,
                 isImported: formData.isImported,
@@ -1465,7 +1465,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                          make: formData.make || undefined,
                                          model: formData.model || undefined,
                                          status: 'DRAFT',
-                                         badgeTier: formData.listingType === 'AUCTION' ? 'FREE' : 'BASIC',
+                                         badgeTier: (formData.listingType === 'CLASSIFIED' && formData.badgeTier === 'FREE') ? 'BASIC' : formData.badgeTier,
                                          vehicleType: formData.vehicleType,
                                      })
                                      listingId = draft.data.id
@@ -1553,7 +1553,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     {/* Bidding notice */}
                                     <div className="flex items-start gap-2 mb-5 px-3 py-2.5 rounded-lg border text-xs bg-orange-500/5 border-orange-500/20 text-orange-300/80">
                                         <Shield size={12} className="shrink-0 mt-0.5" />
-                                        <span>Only <strong>verified Traders</strong> can bid. Open to all registered sellers to list.</span>
+                                        <span>Only <strong>verified dealers</strong> can bid. Open to all registered sellers to list.</span>
                                     </div>
                                     <ul className="space-y-2.5 mb-6 text-[var(--text-secondary)] flex-1">
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="shrink-0 text-orange-400" /> Free to list</li>
@@ -1581,7 +1581,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <h2 className="text-2xl font-bold mb-2 font-heading">Retail Listing</h2>
                                     <p className="text-[var(--text-muted)] mb-6 text-sm">Set your asking price and let buyers submit offers. You choose who to accept.</p>
                                     <ul className="space-y-2.5 mb-6 text-[var(--text-secondary)] flex-1">
-                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> £1 one-off — advertised until sold</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Starting from £1</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> DVLA-verified vehicle data</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Instant estimated valuation</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Reach thousands of buyers</li>
@@ -3048,11 +3048,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 )
                             })()}
 
-                            {/* ── Listing fee summary ─────────────────────────────── */}
+                            {/* ── Badge Plan Cards ───────────────────────────────── */}
                             <div className="pt-2">
                                 <div className="flex items-start justify-between gap-3 mb-3">
                                     <h3 className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-2">
-                                        <Shield size={16} className="text-primary" /> {isAuction ? "Auction Listing" : "Retail Listing"}
+                                        <Shield size={16} className="text-primary" /> {isAuction ? "Auction Listing" : "Seller Badges"}
                                     </h3>
                                     <button
                                         type="button"
@@ -3064,37 +3064,106 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </div>
                                 <p className="text-xs text-[var(--text-muted)] mb-4">
                                     {isAuction
-                                        ? "Auction listings are free for sellers. Only verified Traders can bid."
-                                        : "One simple retail price: £1 once, with the advert staying live until the vehicle is sold."}
+                                        ? "You chose to list this vehicle for auction."
+                                        : "Choose Basic £1, Standard £10 with HPI included, or Premium £25. Featured Boost is a separate optional add-on."}
                                 </p>
 
-                                {isAuction ? (
-                                    <div className="max-w-sm rounded-xl border border-orange-500 bg-orange-500/10 ring-1 ring-orange-500/50 p-4">
-                                        <span className="float-right text-[10px] bg-orange-500 text-white font-bold px-2 py-0.5 rounded-full">Selected</span>
-                                        <p className="text-orange-400 font-bold text-sm mb-1 flex items-center gap-1"><Gavel size={14} /> Auction</p>
-                                        <div className="mb-3">
-                                            <p className="text-2xl font-black">Free</p>
-                                            <p className="text-[10px] text-orange-400/70 font-semibold">£0 seller listing fee</p>
+                                <div className={`grid grid-cols-1 gap-3 ${isAuction ? 'md:grid-cols-1 max-w-sm' : 'md:grid-cols-3'}`}>
+                                    {isAuction ? (
+                                        /* Auction — listing type already chosen on the landing screen; this only confirms badgeTier */
+                                        <button type="button"
+                                            onClick={() => set('badgeTier', 'FREE')}
+                                            className="relative rounded-xl border p-4 text-left transition-all border-orange-500 bg-orange-500/10 ring-1 ring-orange-500/50"
+                                        >
+                                            <span className="absolute top-2 right-2 text-[10px] bg-orange-500 text-white font-bold px-2 py-0.5 rounded-full">Selected</span>
+                                            <p className="text-orange-400 font-bold text-sm mb-1 flex items-center gap-1"><Gavel size={14} /> Auction</p>
+                                            <div className="mb-3">
+                                                <p className="text-2xl font-black">Free</p>
+                                                <p className="text-[10px] text-orange-400/70 font-semibold">£0 seller listing fee</p>
+                                            </div>
+                                            <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
+                                                <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Open bidding</li>
+                                                <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> 24-hour auction</li>
+                                                <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Verified Traders can bid</li>
+                                                <li className="flex items-center gap-1.5 text-[var(--text-secondary)]"><X size={12} /> No trust badges</li>
+                                            </ul>
+                                            <div className="flex items-start gap-1.5 mt-3 pt-3 border-t border-[var(--border-default)]">
+                                                <Lock size={10} className="text-amber-500/70 shrink-0 mt-0.5" />
+                                                <p className="text-[10px] text-amber-500/70 leading-tight">Sellers can list for auction; only verified Traders can bid</p>
+                                            </div>
+                                        </button>
+                                    ) : (
+                                        <>
+                                            {/* Basic */}
+                                            <button type="button"
+                                                onClick={() => set('badgeTier', 'BASIC')}
+                                                className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'BASIC'
+                                                    ? 'border-primary bg-primary/10 ring-1 ring-primary/50'
+                                                    : 'border-[var(--border-default)] bg-white/[0.02] hover:border-primary/30'
+                                                    }`}
+                                            >
+                                                {formData.badgeTier === 'BASIC' && <span className="absolute top-2 right-2 text-[10px] bg-primary text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
+                                                <p className="text-[var(--text-primary)] font-bold text-sm mb-1">Basic</p>
+                                                <p className="text-2xl font-black text-[var(--text-primary)] mb-3">£1</p>
+                                                <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
+                                                    <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Standard listing</li>
+                                                    <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Offer range system</li>
+                                                    <li className="flex items-center gap-1.5 text-[var(--text-secondary)]"><X size={12} /> No trust badges</li>
+                                                </ul>
+                                            </button>
+
+                                            {/* Standard */}
+                                            <button type="button"
+                                                onClick={() => set('badgeTier', 'STANDARD')}
+                                                className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'STANDARD'
+                                                    ? 'border-blue-500 bg-blue-500/10 ring-1 ring-blue-500/50'
+                                                    : 'border-[var(--border-default)] bg-white/[0.02] hover:border-primary/30'
+                                                    }`}
+                                            >
+                                                {formData.badgeTier === 'STANDARD' && <span className="absolute top-2 right-2 text-[10px] bg-blue-500 text-white font-bold px-2 py-0.5 rounded-full">Selected</span>}
+                                                <p className="text-blue-400 font-bold text-sm mb-1 flex items-center gap-1"><Shield size={14} /> Standard</p>
+                                                <p className="text-2xl font-black text-[var(--text-primary)] mb-3">£10</p>
+                                                <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
+                                                    <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Basic</li>
+                                                    <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> HPI vehicle-history report included</li>
+                                                    <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> Verified Seller badge</li>
+                                                </ul>
+                                            </button>
+
+                                            {/* Premium */}
+                                            <button type="button"
+                                                onClick={() => set('badgeTier', 'PREMIUM')}
+                                                className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'PREMIUM'
+                                                    ? 'border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/50'
+                                                    : 'border-[var(--border-default)] bg-white/[0.02] hover:border-primary/30'
+                                                    }`}
+                                            >
+                                                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-3 py-0.5 rounded-full flex items-center gap-1"><Sparkles size={10} /> Best Value</span>
+                                                {formData.badgeTier === 'PREMIUM' && <span className="absolute top-2 right-2 text-[10px] bg-amber-500 text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
+                                                <p className="text-amber-400 font-bold text-sm mb-1 mt-1 flex items-center gap-1"><Star size={14} /> Premium</p>
+                                                <p className="text-2xl font-black text-[var(--text-primary)] mb-3">£25</p>
+                                                <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
+                                                    <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Standard, including HPI</li>
+                                                    <li className="flex items-center gap-1.5"><Star size={12} className="text-amber-400" /> Premium listing badge and presentation</li>
+                                                    <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured Boost available separately</li>
+                                                </ul>
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+
+                                {!isAuction && formData.vrm && formData.badgeTier === 'BASIC' && (
+                                    <HpiBaitSection
+                                        isUnlocked={isHpiUnlocked}
+                                        onUnlock={() => setShowHpiModal(true)}
+                                    />
+                                )}
+                                {!isAuction && (formData.badgeTier === 'STANDARD' || formData.badgeTier === 'PREMIUM') && (
+                                    <div className="mt-4 rounded-xl border border-blue-500/25 bg-blue-500/10 p-4 text-sm text-blue-200">
+                                        <div className="flex items-center gap-2 font-bold">
+                                            <BadgeCheck size={16} /> HPI report included with this package
                                         </div>
-                                        <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
-                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> 24-hour live auction</li>
-                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Verified Traders can bid</li>
-                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> £100 seller reward after a successful approved handover</li>
-                                        </ul>
-                                    </div>
-                                ) : (
-                                    <div className="max-w-sm rounded-xl border border-primary bg-primary/10 ring-1 ring-primary/50 p-4">
-                                        <span className="float-right text-[10px] bg-primary text-white font-bold px-2 py-0.5 rounded-full">Selected</span>
-                                        <p className="text-primary font-bold text-sm mb-1">Retail Listing</p>
-                                        <div className="mb-3">
-                                            <p className="text-2xl font-black text-[var(--text-primary)]">£1 <span className="text-xs font-semibold text-[var(--text-muted)]">one-off</span></p>
-                                            <p className="text-[10px] text-[var(--text-muted)] font-semibold">Advertised until sold</p>
-                                        </div>
-                                        <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
-                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Public marketplace listing</li>
-                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Offers, negotiation and buyer chat</li>
-                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> HPI and Featured Boost remain optional add-ons</li>
-                                        </ul>
+                                        <p className="mt-1 text-xs text-[var(--text-muted)]">No separate HPI payment is required. The report request is created automatically when the listing package payment succeeds.</p>
                                     </div>
                                 )}
                             </div>
@@ -3500,14 +3569,25 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     )}
 
                                     <div className="flex items-center gap-2 mt-1">
-                                        {formData.listingType === 'AUCTION' ? (
-                                            <span className="text-xs bg-orange-500/15 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                                <Gavel size={10} /> Auction — Free to seller
-                                            </span>
-                                        ) : (
-                                            <span className="text-xs bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-md">
-                                                Retail — £1 one-off, until sold
-                                            </span>
+                                        {formData.badgeTier === 'FREE' && formData.listingType === 'AUCTION' && (
+                                            <span className="text-xs bg-orange-500/15 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">🔨 For Auction — Free</span>
+                                        )}
+                                        {formData.badgeTier === 'BASIC' && (
+                                            <span className="text-xs bg-white/10 text-[var(--text-muted)] px-2 py-0.5 rounded-md">Basic — £1</span>
+                                        )}
+                                        {formData.badgeTier === 'STANDARD' && (
+                                            <>
+                                                <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-md flex items-center gap-1"><BadgeCheck size={10} /> Standard — £10</span>
+                                                <span className="text-xs bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-md">HPI Included</span>
+                                                <span className="text-xs bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-md">Verified</span>
+                                            </>
+                                        )}
+                                        {formData.badgeTier === 'PREMIUM' && (
+                                            <>
+                                                <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-md flex items-center gap-1"><Star size={10} /> Premium — £25</span>
+                                                <span className="text-xs bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-md">HPI Included</span>
+                                                <span className="text-xs bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-md">Verified</span>
+                                            </>
                                         )}
                                     </div>
                                 </div>

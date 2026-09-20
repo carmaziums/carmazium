@@ -130,7 +130,7 @@ export function CarCard({
                                     <ShieldCheck size={12} className="text-emerald-500" /> Verified
                                 </div>
                                 <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md text-blue-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-blue-500/30">
-                                    <BadgeCheck size={12} className="text-blue-500" /> VIN Report
+                                    <BadgeCheck size={12} className="text-blue-500" /> HPI Included
                                 </div>
                             </>
                         )}
