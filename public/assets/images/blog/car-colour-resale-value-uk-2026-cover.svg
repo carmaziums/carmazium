@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
+<title id="title">Does Car Colour Affect Resale Value? UK Guide 2026</title>
+<desc id="desc">CarMazium editorial cover showing a generic unbranded car and UK used-car colour demand bars for black, grey, white and blue.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#07162b"/>
+    <stop offset="0.58" stop-color="#0d2846"/>
+    <stop offset="1" stop-color="#12395d"/>
+  </linearGradient>
+  <linearGradient id="road" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#24384d"/>
+    <stop offset="1" stop-color="#101c29"/>
+  </linearGradient>
+  <linearGradient id="car" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#8c99a6"/>
+    <stop offset="0.55" stop-color="#455361"/>
+    <stop offset="1" stop-color="#202b35"/>
+  </linearGradient>
+  <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#7db4da" stop-opacity=".9"/>
+    <stop offset="1" stop-color="#203a50" stop-opacity=".95"/>
+  </linearGradient>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+    <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000" flood-opacity=".35"/>
+  </filter>
+</defs>
+
+<rect width="1200" height="600" fill="url(#bg)"/>
+<circle cx="1040" cy="90" r="180" fill="#2f86c9" opacity=".12"/>
+<circle cx="1090" cy="420" r="230" fill="#5cb7ff" opacity=".06"/>
+<path d="M0 430 C230 395 420 420 650 392 C860 365 1010 385 1200 355 L1200 600 L0 600 Z" fill="url(#road)"/>
+<path d="M0 425 C260 392 470 412 690 385 C895 360 1030 375 1200 350" fill="none" stroke="#6c8498" stroke-width="2" opacity=".35"/>
+
+<!-- Safe-area content starts at x=180 and ends at x=1020 -->
+<g transform="translate(180 118)">
+  <text x="0" y="0" fill="#f7fbff" font-family="Arial,Helvetica,sans-serif" font-size="58" font-weight="800" letter-spacing="-1.2">Does Car Colour</text>
+  <text x="0" y="68" fill="#62b7ff" font-family="Arial,Helvetica,sans-serif" font-size="58" font-weight="800" letter-spacing="-1.2">Affect Resale Value?</text>
+  <rect x="0" y="96" width="74" height="4" rx="2" fill="#2e9cff"/>
+  <text x="92" y="108" fill="#cddbea" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="700" letter-spacing="5">UK GUIDE 2026</text>
+</g>
+
+<!-- Colour-demand chart, all inside safe margin -->
+<g transform="translate(182 315)">
+  <text x="0" y="0" fill="#dce8f4" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700">Q2 2026 UK used-car colour demand</text>
+  <line x1="0" y1="122" x2="340" y2="122" stroke="#7690a8" stroke-width="2" opacity=".65"/>
+  <rect x="12" y="28" width="54" height="94" rx="5" fill="#171a1f"/>
+  <rect x="92" y="42" width="54" height="80" rx="5" fill="#6e7680"/>
+  <rect x="172" y="51" width="54" height="71" rx="5" fill="#f4f6f8"/>
+  <rect x="252" y="55" width="54" height="67" rx="5" fill="#2d87d8"/>
+  <g fill="#b9c9d8" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700">
+    <text x="12" y="146">BLACK</text>
+    <text x="94" y="146">GREY</text>
+    <text x="171" y="146">WHITE</text>
+    <text x="254" y="146">BLUE</text>
+  </g>
+  <text x="0" y="175" fill="#829bb2" font-family="Arial,Helvetica,sans-serif" font-size="12">Popularity can affect saleability, but value still depends on the whole car.</text>
+</g>
+
+<!-- Generic unbranded vehicle -->
+<g transform="translate(615 272)" filter="url(#shadow)">
+  <ellipse cx="202" cy="177" rx="205" ry="28" fill="#05090d" opacity=".55"/>
+  <path d="M34 118 C58 82 92 60 142 51 L256 40 C307 41 346 58 376 86 L412 119 C422 128 425 145 421 158 L409 179 L18 179 L9 156 C7 143 16 129 34 118 Z" fill="url(#car)" stroke="#b8c7d4" stroke-width="2"/>
+  <path d="M119 61 C156 50 216 48 267 49 C300 51 326 62 349 82 L367 103 L104 103 C102 88 106 74 119 61 Z" fill="url(#glass)" stroke="#a4b6c5" stroke-width="2"/>
+  <path d="M235 50 L243 102" stroke="#b6c6d4" stroke-width="2" opacity=".55"/>
+  <path d="M354 106 C383 110 402 120 413 134" fill="none" stroke="#d5e0e8" stroke-width="3" opacity=".65"/>
+  <path d="M25 137 C68 123 105 118 146 117" fill="none" stroke="#e4edf4" stroke-width="3" opacity=".5"/>
+  <rect x="369" y="128" width="33" height="10" rx="5" fill="#b7d9f1"/>
+  <rect x="25" y="130" width="28" height="9" rx="4" fill="#b7d9f1"/>
+  <path d="M43 158 H388" stroke="#18232d" stroke-width="5" opacity=".85"/>
+  <circle cx="94" cy="178" r="48" fill="#10161c" stroke="#9eacb8" stroke-width="4"/>
+  <circle cx="94" cy="178" r="24" fill="#4d5c69" stroke="#bac6d0" stroke-width="3"/>
+  <circle cx="334" cy="178" r="48" fill="#10161c" stroke="#9eacb8" stroke-width="4"/>
+  <circle cx="334" cy="178" r="24" fill="#4d5c69" stroke="#bac6d0" stroke-width="3"/>
+  <path d="M151 120 H290" stroke="#9badbb" stroke-width="2" opacity=".6"/>
+  <path d="M161 132 H281" stroke="#293945" stroke-width="3" opacity=".7"/>
+</g>
+
+<g transform="translate(180 525)">
+  <text x="0" y="0" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="800">CarMazium</text>
+  <rect x="0" y="12" width="78" height="3" rx="1.5" fill="#2e9cff"/>
+  <text x="820" y="0" text-anchor="end" fill="#a7bbcc" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" letter-spacing="2">UK AUTOMOTIVE INSIGHTS</text>
+</g>
+</svg>
