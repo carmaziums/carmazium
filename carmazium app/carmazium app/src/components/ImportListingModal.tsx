@@ -28,48 +28,11 @@ import { IconButton } from './IconButton';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3;
-type BadgeTier = 'BASIC' | 'STANDARD' | 'PREMIUM';
 
 interface Props {
   onClose: () => void;
   onImported?: (listingId: string) => void;
 }
-
-// ─── Plan config (matches SellCarFlowScreen) ─────────────────────────────────
-
-const PLANS: Array<{
-  tier: BadgeTier;
-  label: string;
-  price: number;
-  sub: string;
-  accent: string;
-  features: string[];
-}> = [
-  {
-    tier: 'BASIC',
-    label: 'Basic',
-    price: 1,
-    sub: 'Standard listing',
-    accent: Colors.white,
-    features: ['Standard visibility', 'Offer range system'],
-  },
-  {
-    tier: 'STANDARD',
-    label: 'Standard',
-    price: 10,
-    sub: 'Most popular',
-    accent: Colors.infoBlue,
-    features: ['Verified badge', 'Priority in search', 'VIN Report badge'],
-  },
-  {
-    tier: 'PREMIUM',
-    label: 'Premium',
-    price: 25,
-    sub: 'Best value',
-    accent: Colors.warning,
-    features: ['Everything in Standard', 'Featured boost (28 days)', 'HPI check included'],
-  },
-];
 
 const PLATFORM_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   AUTOTRADER: { bg: 'rgba(249,115,22,0.12)', text: Colors.lightOrange_fb923c, label: 'AutoTrader' },
@@ -100,7 +63,6 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
 
   // Step 3
   const [importedId, setImportedId] = useState<string | null>(null);
-  const [selectedTier, setSelectedTier] = useState<BadgeTier>('BASIC');
   const [activating, setActivating] = useState(false);
 
   // ── Step 1 handler ──
@@ -162,15 +124,14 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
 
   const handleActivate = async () => {
     if (!importedId) return;
-    const plan = PLANS.find(p => p.tier === selectedTier)!;
     setActivating(true);
     try {
       const sheet = await createPaymentSheet({
         listingId: importedId,
-        amount: plan.price,
+        amount: 1,
         type: 'LISTING_FEE',
         currency: 'gbp',
-        badgeTier: plan.tier,
+        badgeTier: 'BASIC',
       });
       const { error: initError } = await initPaymentSheet({
         merchantDisplayName: 'Carmazium',
@@ -255,7 +216,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
             <Text style={st.headerSub}>
               {step === 1 ? 'Paste a link from AutoTrader, CarGurus or CarWow'
                 : step === 2 ? 'Review and confirm listing details'
-                : 'Choose your listing plan'}
+                : 'Retail listing fee'}
             </Text>
           </View>
           <View style={{ width: 38 }} />
@@ -451,56 +412,41 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
             </ScrollView>
           )}
 
-          {/* ── STEP 3 — Plan selection ── */}
+          {/* ── STEP 3 — Fixed retail listing fee ── */}
           {step === 3 && (
             <ScrollView
               contentContainerStyle={[st.body, { paddingBottom: insets.bottom + 32 }]}
               showsVerticalScrollIndicator={false}
             >
-              {/* Success header */}
               <View style={st.successHeader}>
                 <View style={st.successIcon}>
                   <Ionicons name="checkmark-circle" size={32} color={Colors.accentGreen} />
                 </View>
                 <Text style={st.successTitle}>Listing saved as draft</Text>
-                <Text style={st.successSub}>Choose a plan to make it live, or do it later from My Listings.</Text>
+                <Text style={st.successSub}>Retail listings cost £1 one-off and remain advertised until sold.</Text>
               </View>
 
-              {/* Plan cards */}
-              {PLANS.map(plan => {
-                const selected = selectedTier === plan.tier;
-                return (
-                  <TouchableOpacity
-                    key={plan.tier}
-                    style={[st.planCard, selected && { borderColor: plan.accent, backgroundColor: `${plan.accent}10` }]}
-                    onPress={() => setSelectedTier(plan.tier)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                      <View style={[st.planRadio, selected && { backgroundColor: plan.accent, borderColor: plan.accent }]}>
-                        {selected && <Ionicons name="checkmark" size={11} color={Colors.white} />}
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[st.planLabel, { color: plan.accent }]}>{plan.label}</Text>
-                        <Text style={st.planSub}>{plan.sub}</Text>
-                      </View>
-                      <Text style={[st.planPrice, { color: plan.accent }]}>£{plan.price}</Text>
+              <View style={[st.planCard, { borderColor: Colors.accent, backgroundColor: Colors.accentAlpha10 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={[st.planRadio, { backgroundColor: Colors.accent, borderColor: Colors.accent }]}>
+                    <Ionicons name="checkmark" size={11} color={Colors.white} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[st.planLabel, { color: Colors.accent }]}>Retail Listing</Text>
+                    <Text style={st.planSub}>One-off · advertised until sold</Text>
+                  </View>
+                  <Text style={[st.planPrice, { color: Colors.accent }]}>£1</Text>
+                </View>
+                <View style={{ marginTop: 10, marginLeft: 40, gap: 3 }}>
+                  {['Public marketplace listing', 'Offers and buyer chat', 'HPI and Featured Boost are optional'].map(feature => (
+                    <View key={feature} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="checkmark-circle" size={11} color={Colors.accentGreen} />
+                      <Text style={st.planFeatureText}>{feature}</Text>
                     </View>
-                    {selected && (
-                      <View style={{ marginTop: 10, marginLeft: 40, gap: 3 }}>
-                        {plan.features.map(f => (
-                          <View key={f} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Ionicons name="checkmark-circle" size={11} color={Colors.accentGreen} />
-                            <Text style={st.planFeatureText}>{f}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
+                  ))}
+                </View>
+              </View>
 
-              {/* Activate */}
               <TouchableOpacity
                 style={[st.primaryBtn, activating && { opacity: 0.6 }]}
                 onPress={handleActivate}
@@ -510,9 +456,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 {activating ? (
                   <ActivityIndicator color={Colors.white} size="small" />
                 ) : (
-                  <Text style={st.primaryBtnText}>
-                    Activate for £{PLANS.find(p => p.tier === selectedTier)?.price}
-                  </Text>
+                  <Text style={st.primaryBtnText}>Pay £1 & Submit Listing</Text>
                 )}
               </TouchableOpacity>
 
