@@ -45,85 +45,67 @@ interface PlanCard {
 
 const PLANS: PlanCard[] = [
   {
-    id: 'auction',
-    title: 'Auction',
-    subtitle: '24-hour live open auction',
+    id: 'auction-seller',
+    title: 'Auction Seller',
+    subtitle: `${PRICING.marketplace.auction.durationHours}-hour live auction`,
     price: 'Free',
     period: '',
     accentColor: Colors.warning,
     accentBg: Colors.warningAlpha10,
     accentBorder: Colors.warningAlpha25,
     features: [
-      { label: 'Live bidding marketplace', included: true },
-      { label: 'Open to all buyers', included: true },
-      { label: '24-hour auction duration', included: true },
-      { label: 'Anti-snipe protection', included: true },
-      { label: 'Real-time bid feed', included: true },
-      { label: 'Post-auction seller chat', included: true },
+      { label: '£0 seller listing fee', included: true },
+      { label: 'Only verified Traders can bid', included: true },
+      { label: 'Live bidding and anti-snipe protection', included: true },
+      { label: `£${PRICING.marketplace.auction.sellerReward} seller reward after successful approved handover`, included: true },
     ],
   },
   {
-    id: 'basic',
-    title: 'Basic',
-    subtitle: 'Standard listing, quick to list',
-    price: `£${PRICING.listing.basic.price}`,
-    period: 'one-off',
-    accentColor: Colors.textSecondary,
-    accentBg: Colors.whiteAlpha06,
-    accentBorder: Colors.whiteAlpha15,
-    features: [
-      { label: 'Public marketplace listing', included: true },
-      { label: 'Up to 20 photos', included: true },
-      { label: 'Offer & negotiation system', included: true },
-      { label: 'Direct buyer chat', included: true },
-      { label: 'DVLA auto-fill', included: true },
-      // Featured Boost has no tier restriction server-side (POST
-      // /featured-boost/:listingId only checks ownership + not-already-
-      // featured) — web's pricing page lists this as included on all three
-      // tiers including Basic; mobile omitted it here entirely, implying
-      // (incorrectly) that Basic-tier listings couldn't be boosted.
-      { label: 'Featured boost eligible', included: true },
-      { label: 'Performance analytics', included: true },
-      { label: 'Priority placement', included: false },
-    ],
-  },
-  {
-    id: 'standard',
-    title: 'Standard',
-    subtitle: '60-day listing, more reach',
-    price: `£${PRICING.listing.standard.price}`,
+    id: 'auction-buyer',
+    title: 'Winning Trader',
+    subtitle: 'Auction buyer fee after winning',
+    price: `£${PRICING.marketplace.auction.buyerFee}`,
     period: 'one-off',
     accentColor: Colors.infoBlue,
     accentBg: Colors.infoBlueAlpha10,
     accentBorder: Colors.infoBlueAlpha25,
     features: [
-      { label: 'Everything in Basic', included: true },
-      { label: 'Up to 50 photos', included: true },
-      { label: 'Performance analytics', included: true },
-      { label: 'Featured boost eligible', included: true },
-      { label: '60-day listing duration', included: true },
-      { label: 'Priority search placement', included: false },
-      { label: 'Free HPI included', included: false },
+      { label: 'Only the winning verified Trader pays', included: true },
+      { label: 'Seller contact and deal details unlock after the fee', included: true },
+      { label: 'Vehicle price is paid directly to the seller', included: true },
+      { label: 'CarMazium does not hold the vehicle purchase funds', included: true },
     ],
   },
   {
-    id: 'premium',
-    title: 'Premium',
-    subtitle: 'Advertise until sold, maximum exposure',
-    price: `£${PRICING.listing.premium.price}`,
+    id: 'retail-seller',
+    title: 'Retail Seller',
+    subtitle: 'Advertise until sold',
+    price: `£${PRICING.marketplace.retail.sellerListingFee}`,
     period: 'one-off',
-    badge: 'MOST POPULAR',
     accentColor: Colors.accent,
     accentBg: Colors.accentAlpha10,
     accentBorder: Colors.accentAlpha25,
     features: [
-      { label: 'Everything in Standard', included: true },
-      { label: 'Up to 100 photos', included: true },
-      { label: 'Priority search placement', included: true },
-      { label: 'HPI Verified badge included', included: true },
-      { label: 'Advertise until sold', included: true },
-      { label: 'Featured boost eligible', included: true },
-      { label: 'Full analytics: views, enquiries, offers & earnings', included: true },
+      { label: 'One simple listing price — no package upgrades', included: true },
+      { label: 'Advertised until sold', included: true },
+      { label: 'Offers, negotiation and buyer chat', included: true },
+      { label: 'HPI and Featured Boost are optional', included: true },
+    ],
+  },
+  {
+    id: 'retail-buyer',
+    title: 'Retail Buyer',
+    subtitle: 'No CarMazium retail buyer fee',
+    price: 'Free',
+    period: '',
+    accentColor: Colors.success,
+    accentBg: Colors.successAlpha10,
+    accentBorder: Colors.successAlpha25,
+    features: [
+      { label: 'Browse retail vehicles', included: true },
+      { label: 'Make offers and negotiate', included: true },
+      { label: 'Chat with the seller', included: true },
+      { label: 'Pay the seller directly for the vehicle', included: true },
     ],
   },
 ];
@@ -195,8 +177,7 @@ export const PricingScreen: React.FC = () => {
         <View style={styles.introSection}>
           <Text style={styles.introHeading}>Simple, honest pricing</Text>
           <Text style={styles.introSub}>
-            List your car for free at auction, or pay a one-off fee for a retail
-            listing. No subscriptions. No surprises.
+            Auction listings are free for sellers. Retail listings cost £1 one-off and stay advertised until sold.
           </Text>
         </View>
 
@@ -268,7 +249,7 @@ export const PricingScreen: React.FC = () => {
         {/* ── Add-ons ── */}
         <View style={styles.sectionHeadingWrap}>
           <Text style={styles.sectionHeading}>Optional add-ons</Text>
-          <Text style={styles.sectionSub}>Enhance any listing at any time — buy once, apply instantly.</Text>
+          <Text style={styles.sectionSub}>Optional extras — they do not change the core free-auction or £1-retail listing price.</Text>
         </View>
 
         {ADD_ONS.map((addon) => (
@@ -309,7 +290,7 @@ export const PricingScreen: React.FC = () => {
         <View style={styles.footerNote}>
           <Ionicons name="information-circle-outline" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={styles.footerNoteText}>
-            All payments are handled via Stripe and shown in GBP. CarMazium never stores your card details.
+            Platform fees and optional add-ons are handled securely in GBP. Vehicle purchase money is paid directly between buyer and seller.
           </Text>
         </View>
 
