@@ -235,7 +235,7 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                     deliveryPricePerMile: str(l.deliveryPricePerMile),
                     deliveryMaxMiles: str(l.deliveryMaxMiles),
                     listingType: l.type || '',
-                    badgeTier: l.type === 'AUCTION' ? 'FREE' : 'BASIC',
+                    badgeTier: l.badgeTier || (l.type === 'AUCTION' ? 'FREE' : 'BASIC'),
                     videoUrls: Array.isArray(l.videoUrls) ? l.videoUrls.join(', ') : '',
                     reservePrice: str(l.auction?.reservePrice),
                     startingBid: str(l.auction?.startingBid),
