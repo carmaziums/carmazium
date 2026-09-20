@@ -592,15 +592,13 @@ export async function importFromUrl(params: {
 export async function alsoListRetail(
   listingId: string,
   price: number,
-  _badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM',
+  badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM',
 ): Promise<{ linkedListingId: string }> {
   const res = await apiClient<ApiResponse<{ linkedListingId: string }>>(
     `/listings/${listingId}/also-list-retail`,
     {
       method: 'POST',
-      // Retail has one fixed £1 product. Keep the optional legacy argument only
-      // for source compatibility with older callers.
-      body: JSON.stringify({ price, badgeTier: 'BASIC' }),
+      body: JSON.stringify({ price, badgeTier }),
     },
   );
   return res.data;
