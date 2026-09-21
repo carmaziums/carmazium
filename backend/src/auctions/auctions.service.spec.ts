@@ -72,6 +72,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
             broadcastAuctionEnd: jest.fn(),
             broadcastBinPending: jest.fn(),
             broadcastAuctionStart: jest.fn(),
+            broadcastPriceUpdated: jest.fn(),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -240,6 +241,51 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                 data: expect.objectContaining({ buyItNowPendingBuyerId: 'buyer-new' }),
             }),
         );
+    });
+
+
+    it('adminCorrectReservePrice: lowers a live reserve without changing bids and clears pending BIN when reserve becomes met', async () => {
+        const auction = makeActiveAuction({
+            reservePrice: 20000,
+            buyItNowPrice: 25000,
+            buyItNowPendingBuyerId: 'buyer-bin',
+            buyItNowPendingAt: new Date(),
+        });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.bid.findFirst.mockResolvedValue({ amount: 18000 });
+        prisma.auction.update.mockResolvedValue({ ...auction, reservePrice: 17500 });
+
+        await service.adminCorrectReservePrice('auction-1', 17500, 'Seller entered the wrong reserve');
+
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where: { id: 'auction-1' },
+            data: expect.objectContaining({
+                reservePrice: 17500,
+                buyItNowPendingBuyerId: null,
+                buyItNowPendingAt: null,
+            }),
+        });
+        expect(auctionGateway.broadcastPriceUpdated).toHaveBeenCalledWith('auction-1', 17500);
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                userId: 'seller-1',
+                type: 'AUCTION_UPDATED',
+                actionType: 'PRICE_CORRECTED',
+            }),
+        );
+    });
+
+    it('adminCorrectReservePrice: refuses to raise a reserve above the top bid after reserve was already met', async () => {
+        const auction = makeActiveAuction({ reservePrice: 15000, buyItNowPrice: 25000 });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.bid.findFirst.mockResolvedValue({ amount: 16000 });
+
+        await expect(
+            service.adminCorrectReservePrice('auction-1', 17000),
+        ).rejects.toBeInstanceOf(BadRequestException);
+
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastPriceUpdated).not.toHaveBeenCalled();
     });
 });
 
