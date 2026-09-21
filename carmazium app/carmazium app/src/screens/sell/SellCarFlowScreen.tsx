@@ -44,6 +44,14 @@ type Step = 1 | 2 | 3 | 4 | 5;
 interface DvlaData {
   make?: string; model?: string; colour?: string; year?: number;
   engineSize?: number; fuelType?: string; transmission?: string;
+  variant?: string; bodyType?: string; driveType?: string;
+  doors?: number; seats?: number; bhp?: number; engineDescription?: string;
+  specEnrichment?: {
+    confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+    matchBasis: 'EXACT_REGISTRATION' | 'PROFILE_CONSENSUS' | 'NONE';
+    evidenceCount: number;
+    source: 'AI_LIVE_WEB';
+  };
   euroStandard?: string; co2Emissions?: number; motStatus?: string;
   taxStatus?: string; motExpiryDate?: string; taxDueDate?: string;
   markedForExport?: boolean; monthOfFirstRegistration?: string;
@@ -1087,9 +1095,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     if (!clean) return Alert.alert('Enter a registration', 'Please enter a UK registration number.');
     setDvlaLoading(true);
     try {
-      const data = await apiClient<any>('/dvla/lookup', {
+      const data = await apiClient<DvlaData>('/dvla/lookup', {
         method: 'POST',
         body: JSON.stringify({ vrm: clean }),
+        timeoutMs: 25_000,
       });
       // Use String() on every field — the backend might return nested objects for some fields
       if (data.make) setMake(String(data.make));
@@ -1100,6 +1109,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       if (data.engineSize) setEngineSize(String(data.engineSize));
       if (data.fuelType) setFuelType(String(data.fuelType));
       if (data.transmission) setTransmission(String(data.transmission));
+      if (data.variant) setVariant(String(data.variant));
+      if (data.bodyType) setBodyType(String(data.bodyType));
+      if (data.driveType) setDriveType(String(data.driveType));
+      if (data.doors != null) setDoors(String(data.doors));
+      if (data.seats != null) setSeats(String(data.seats));
+      if (data.bhp != null) setBhp(String(data.bhp));
       if (data.euroStandard) setEuroStandard(String(data.euroStandard));
       if (data.co2Emissions) setCo2Emissions(String(data.co2Emissions));
       if (data.motStatus) setMotStatus(String(data.motStatus));
