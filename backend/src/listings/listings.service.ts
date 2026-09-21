@@ -346,11 +346,16 @@ export class ListingsService {
                 carmaziumComparables: carmaziumComparableCount,
                 liveUkComparables: usableLiveComparables.length,
                 checkedAt: liveMarket?.checkedAt,
+                liveUkSearchStatus: 'USED',
+                rawLiveUkComparables: liveMarket?.rawComparableCount ?? usableLiveComparables.length,
             };
         } else {
             valuation.marketEvidence = {
                 carmaziumComparables: carmaziumComparableCount,
                 liveUkComparables: 0,
+                checkedAt: liveMarket?.checkedAt,
+                liveUkSearchStatus: liveMarket ? 'INSUFFICIENT' : 'UNAVAILABLE',
+                rawLiveUkComparables: liveMarket?.rawComparableCount ?? 0,
             };
         }
 
