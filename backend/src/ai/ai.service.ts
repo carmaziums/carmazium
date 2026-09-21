@@ -17,6 +17,45 @@ export interface AiChatResult {
     filterCard?: FilterCard;
 }
 
+export interface VehicleSpecResearchInput {
+    vrm: string;
+    make?: string;
+    model?: string;
+    year?: number;
+    engineSize?: number;
+    fuelType?: string;
+    colour?: string;
+    firstUsedDate?: string;
+}
+
+export interface VehicleSpecEnrichment {
+    variant: string | null;
+    transmission: 'MANUAL' | 'AUTOMATIC' | 'SEMI_AUTOMATIC' | 'CVT' | null;
+    bodyType:
+        | 'SEDAN'
+        | 'SUV'
+        | 'HATCHBACK'
+        | 'COUPE'
+        | 'CONVERTIBLE'
+        | 'ESTATE'
+        | 'CROSSOVER'
+        | 'SPORTS_CAR'
+        | 'MINIVAN'
+        | 'PICKUP_TRUCK'
+        | 'STATION_WAGON'
+        | 'MPV'
+        | 'VAN'
+        | null;
+    driveType: 'FWD' | 'RWD' | 'AWD' | '4WD' | null;
+    doors: number | null;
+    seats: number | null;
+    bhp: number | null;
+    engineDescription: string | null;
+    confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+    matchBasis: 'EXACT_REGISTRATION' | 'PROFILE_CONSENSUS' | 'NONE';
+    evidenceCount: number;
+}
+
 const SEARCH_SYSTEM_PROMPT = `You are Mazium AI, the intelligent car-buying assistant for CarMazium — UK's trusted car marketplace.
 
 The user will describe the kind of car they want in natural language. Your job is to:
@@ -175,6 +214,129 @@ export class AiService {
             return {
                 text: 'I\'m having a brief moment — please try again in a second! 🔄',
             };
+        }
+    }
+
+    async enrichVehicleSpecification(
+        input: VehicleSpecResearchInput,
+    ): Promise<VehicleSpecEnrichment | null> {
+        const apiKey = this.configService.get<string>('OPENAI_API_KEY');
+        if (!apiKey) return null;
+
+        const knownFacts = [
+            `registration: ${input.vrm}`,
+            input.make ? `make: ${input.make}` : '',
+            input.model ? `model: ${input.model}` : '',
+            input.year ? `year: ${input.year}` : '',
+            input.engineSize ? `engine: ${input.engineSize}cc` : '',
+            input.fuelType ? `fuel: ${input.fuelType}` : '',
+            input.colour ? `colour: ${input.colour}` : '',
+            input.firstUsedDate ? `first used: ${input.firstUsedDate}` : '',
+        ].filter(Boolean).join(', ');
+
+        const prompt = [
+            'You are enriching a UK vehicle record before market valuation.',
+            'You MUST search the live web now.',
+            `Known DVLA/MOT facts: ${knownFacts}`,
+            'First search the exact UK registration number in quotes together with make/model where known.',
+            'Prefer current or historical UK dealer adverts, marketplace adverts, manufacturer/dealer specification pages, and other reputable automotive sources.',
+            'Never infer an exact trim/variant merely because it exists in that model range.',
+            'For variant/trim: return it only when an exact-registration source supports it, or multiple independent sources strongly support the same derivative for this exact vehicle profile.',
+            'For transmission, body type, drivetrain, doors, seats and BHP: use exact-registration evidence where possible; otherwise use profile consensus only when make/model/year/engine/fuel match strongly.',
+            'If evidence is ambiguous, conflicting or absent, return null for that field.',
+            'Set matchBasis EXACT_REGISTRATION only when a source explicitly matches the registration. Set PROFILE_CONSENSUS only when multiple independent profile-matched sources agree. Otherwise NONE.',
+            'Set HIGH confidence only for strong exact-registration evidence, MEDIUM for strong multi-source profile consensus, otherwise LOW.',
+            'Do not invent specifications.',
+        ].join('\n');
+
+        try {
+            const response = await this.openai.responses.create({
+                model:
+                    this.configService.get<string>('OPENAI_VEHICLE_SPEC_MODEL')
+                    || this.configService.get<string>('OPENAI_WEB_VALUATION_MODEL')
+                    || 'gpt-5.6-luna',
+                tools: [{ type: 'web_search', search_context_size: 'high' }] as any,
+                tool_choice: 'required',
+                input: [{
+                    role: 'user',
+                    content: [{ type: 'input_text', text: prompt }],
+                }],
+                reasoning: { effort: 'none' },
+                max_output_tokens: 1800,
+                text: {
+                    format: {
+                        type: 'json_schema',
+                        name: 'vehicle_spec_enrichment',
+                        strict: true,
+                        schema: {
+                            type: 'object',
+                            additionalProperties: false,
+                            properties: {
+                                variant: { type: ['string', 'null'] },
+                                transmission: {
+                                    type: ['string', 'null'],
+                                    enum: ['MANUAL', 'AUTOMATIC', 'SEMI_AUTOMATIC', 'CVT', null],
+                                },
+                                bodyType: {
+                                    type: ['string', 'null'],
+                                    enum: [
+                                        'SEDAN', 'SUV', 'HATCHBACK', 'COUPE', 'CONVERTIBLE',
+                                        'ESTATE', 'CROSSOVER', 'SPORTS_CAR', 'MINIVAN',
+                                        'PICKUP_TRUCK', 'STATION_WAGON', 'MPV', 'VAN', null,
+                                    ],
+                                },
+                                driveType: {
+                                    type: ['string', 'null'],
+                                    enum: ['FWD', 'RWD', 'AWD', '4WD', null],
+                                },
+                                doors: { type: ['integer', 'null'], minimum: 1, maximum: 7 },
+                                seats: { type: ['integer', 'null'], minimum: 1, maximum: 12 },
+                                bhp: { type: ['integer', 'null'], minimum: 15, maximum: 2000 },
+                                engineDescription: { type: ['string', 'null'] },
+                                confidence: {
+                                    type: 'string',
+                                    enum: ['LOW', 'MEDIUM', 'HIGH'],
+                                },
+                                matchBasis: {
+                                    type: 'string',
+                                    enum: ['EXACT_REGISTRATION', 'PROFILE_CONSENSUS', 'NONE'],
+                                },
+                                evidenceCount: { type: 'integer', minimum: 0, maximum: 20 },
+                            },
+                            required: [
+                                'variant',
+                                'transmission',
+                                'bodyType',
+                                'driveType',
+                                'doors',
+                                'seats',
+                                'bhp',
+                                'engineDescription',
+                                'confidence',
+                                'matchBasis',
+                                'evidenceCount',
+                            ],
+                        },
+                    },
+                },
+            } as any);
+
+            const parsed = JSON.parse(response.output_text || '{}') as VehicleSpecEnrichment;
+
+            if (
+                !parsed
+                || !['LOW', 'MEDIUM', 'HIGH'].includes(parsed.confidence)
+                || !['EXACT_REGISTRATION', 'PROFILE_CONSENSUS', 'NONE'].includes(parsed.matchBasis)
+            ) {
+                return null;
+            }
+
+            return parsed;
+        } catch (error) {
+            this.logger.warn(
+                `Vehicle specification enrichment failed for ${input.make || ''} ${input.model || ''}: ${error instanceof Error ? error.message : String(error)}`,
+            );
+            return null;
         }
     }
 
