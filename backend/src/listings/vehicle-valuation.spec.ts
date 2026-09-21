@@ -155,6 +155,23 @@ describe('calculateVehicleValuation', () => {
         expect(automatic.mid).toBeGreaterThan(manual.mid);
     });
 
+
+    it('uses the upper market guide for retail and lower market guide for dealer auctions', () => {
+        const result = calculateVehicleValuation(vehicle, [
+            { price: 9000, year: 2019, mileage: 60000, kind: 'ACTIVE_ASK' },
+            { price: 9500, year: 2019, mileage: 58000, kind: 'ACTIVE_ASK' },
+            { price: 10000, year: 2020, mileage: 55000, kind: 'ACTIVE_ASK' },
+            { price: 10500, year: 2020, mileage: 52000, kind: 'ACTIVE_ASK' },
+            { price: 11000, year: 2021, mileage: 50000, kind: 'ACTIVE_ASK' },
+        ]);
+
+        expect(result.retail.suggestedAsking).toBe(result.high);
+        expect(result.retail.suggestedMinimum).toBe(result.mid);
+        expect(result.auction.marketValue).toBe(result.low);
+        expect(result.auction.marketValue).toBeLessThan(result.retail.suggestedAsking);
+        expect(result.auction.suggestedReserve).toBeLessThanOrEqual(result.auction.marketValue);
+    });
+
     it('does not let an extreme active asking price dominate completed outcomes', () => {
         const result = calculateVehicleValuation(vehicle, [
             { price: 7000, year: 2019, mileage: 60000, kind: 'SALE' },

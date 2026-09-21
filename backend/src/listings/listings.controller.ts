@@ -15,6 +15,7 @@ import {
     ForbiddenException,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import {
     ApiTags,
     ApiOperation,
@@ -111,7 +112,9 @@ export class ListingsController {
      * only — never another user's listing, identity or contact details.
      */
     @Get('valuation')
-    @ApiOperation({ summary: 'Estimate vehicle value from CarMazium market data' })
+    @UseGuards(ThrottlerGuard)
+    @Throttle({ default: { limit: 8, ttl: 60000 } })
+    @ApiOperation({ summary: 'Estimate vehicle value from CarMazium and live UK market evidence' })
     @ApiResponse({ status: 200, description: 'Estimated retail range and auction guidance' })
     async valuation(
         @Query() dto: VehicleValuationDto,
