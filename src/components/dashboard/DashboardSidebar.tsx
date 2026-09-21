@@ -411,7 +411,10 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
 
             {/* Desktop Sidebar */}
             <aside className="hidden lg:block w-72 shrink-0 self-start">
-                <div className={role === "admin"\n                    ? "glass-card p-5"\n                    : "glass-card p-5 !sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto"\n                }>
+                <div className={role === "admin"
+                    ? "glass-card p-5"
+                    : "glass-card p-5 !sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto"
+                }>
                     <div className="flex items-center gap-3 mb-5 p-3 rounded-xl" style={{ background: 'var(--bg-input)' }}>
                         <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-lg border border-primary/30 shrink-0">
                             {(userName || "U").split(" ").filter(Boolean).map(n => n[0]).join("").toUpperCase().slice(0, 2)}
