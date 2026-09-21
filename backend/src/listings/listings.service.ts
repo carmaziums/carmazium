@@ -47,7 +47,12 @@ import {
 import {
     calculateVehicleValuation,
     VehicleValuationComparable,
+    VehicleValuationInput,
 } from './vehicle-valuation';
+import {
+    searchLiveUkVehicleMarket,
+    LiveUkMarketSearchResult,
+} from './live-market-search';
 
 // ─── Enum mappers ─────────────────────────────────────────────────────────────
 
@@ -107,6 +112,10 @@ const mapBodyType = (body?: DtoBodyType): BodyType | null => {
 @Injectable()
 export class ListingsService {
     private readonly logger = new Logger(ListingsService.name);
+    private readonly liveMarketCache = new Map<string, {
+        expiresAt: number;
+        result: LiveUkMarketSearchResult;
+    }>();
 
     constructor(
         private readonly prisma: PrismaService,
@@ -292,23 +301,124 @@ export class ListingsService {
             }
         }
 
-        return calculateVehicleValuation(
-            {
-                make,
-                model,
-                year: dto.year,
-                mileage: dto.mileage,
-                variant: dto.variant,
-                fuelType: dto.fuelType,
-                transmission: dto.transmission,
-                condition: dto.condition,
-                serviceHistory: dto.serviceHistory,
-                owners: dto.owners,
-                writeOffCategory: dto.writeOffCategory,
-                isImported: dto.isImported,
-            },
-            comparables,
+        const valuationInput: VehicleValuationInput = {
+            make,
+            model,
+            year: dto.year,
+            mileage: dto.mileage,
+            variant: dto.variant,
+            fuelType: dto.fuelType,
+            transmission: dto.transmission,
+            condition: dto.condition,
+            serviceHistory: dto.serviceHistory,
+            owners: dto.owners,
+            writeOffCategory: dto.writeOffCategory,
+            isImported: dto.isImported,
+        };
+
+        const carmaziumComparableCount = comparables.length;
+        let liveMarket: LiveUkMarketSearchResult | null = null;
+
+        // Use live public UK market adverts only when CarMazium's own exact-model
+        // evidence is sparse. This keeps first-party completed-sale evidence
+        // authoritative while still giving sellers a useful price on rarer cars.
+        if (carmaziumComparableCount < 3) {
+            liveMarket = await this.getLiveUkMarketComparables(valuationInput);
+        }
+
+        const usableLiveComparables =
+            liveMarket && liveMarket.comparables.length >= 3
+                ? liveMarket.comparables
+                : [];
+
+        const valuation = calculateVehicleValuation(
+            valuationInput,
+            [...comparables, ...usableLiveComparables],
         );
+
+        if (usableLiveComparables.length > 0) {
+            const blended = carmaziumComparableCount > 0;
+            valuation.source = blended ? 'BLENDED_MARKET' : 'LIVE_UK_MARKET';
+            valuation.explanation = blended
+                ? `Based on ${carmaziumComparableCount} CarMazium market signal${carmaziumComparableCount === 1 ? '' : 's'} plus ${usableLiveComparables.length} similar vehicles currently advertised in the UK.`
+                : `Based on ${usableLiveComparables.length} similar vehicles currently advertised in the UK.`;
+            valuation.marketEvidence = {
+                carmaziumComparables: carmaziumComparableCount,
+                liveUkComparables: usableLiveComparables.length,
+                checkedAt: liveMarket?.checkedAt,
+            };
+        } else {
+            valuation.marketEvidence = {
+                carmaziumComparables: carmaziumComparableCount,
+                liveUkComparables: 0,
+            };
+        }
+
+        return valuation;
+    }
+
+    private liveMarketCacheKey(input: VehicleValuationInput): string {
+        const mileageBucket = Math.round(input.mileage / 5000) * 5000;
+        return [
+            input.make,
+            input.model,
+            input.year,
+            mileageBucket,
+            input.variant ?? '',
+            input.fuelType ?? '',
+            input.transmission ?? '',
+        ]
+            .map((part) => String(part).trim().toUpperCase())
+            .join('|');
+    }
+
+    private async getLiveUkMarketComparables(
+        input: VehicleValuationInput,
+    ): Promise<LiveUkMarketSearchResult | null> {
+        const apiKey = this.config.get<string>('OPENAI_API_KEY');
+        const enabled = this.config.get<string>('LIVE_MARKET_VALUATION_ENABLED');
+
+        if (!apiKey || enabled === 'false') return null;
+
+        const cacheKey = this.liveMarketCacheKey(input);
+        const now = Date.now();
+        const cached = this.liveMarketCache.get(cacheKey);
+        if (cached && cached.expiresAt > now) {
+            return cached.result;
+        }
+
+        try {
+            const result = await searchLiveUkVehicleMarket(input, {
+                apiKey,
+                model:
+                    this.config.get<string>('OPENAI_WEB_VALUATION_MODEL')
+                    || 'gpt-5.6-luna',
+                timeoutMs: 18_000,
+            });
+
+            // Good evidence stays fresh for six hours. Empty/weak searches are
+            // cached for 30 minutes so repeated public requests cannot repeatedly
+            // trigger paid web searches for the same hard-to-value vehicle.
+            const ttlMs = result.comparables.length >= 3
+                ? 6 * 60 * 60 * 1000
+                : 30 * 60 * 1000;
+
+            if (this.liveMarketCache.size >= 250) {
+                const oldestKey = this.liveMarketCache.keys().next().value;
+                if (oldestKey) this.liveMarketCache.delete(oldestKey);
+            }
+
+            this.liveMarketCache.set(cacheKey, {
+                expiresAt: now + ttlMs,
+                result,
+            });
+            return result;
+        } catch (error: any) {
+            this.logger.warn(
+                `Live UK valuation search failed for ${input.make} ${input.model}: ${error?.message || error}`,
+            );
+            return null;
+        }
     }
 
     /**
