@@ -300,6 +300,18 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             triggerNotificationRefresh()
         })
 
+        socket.on("auction:price-updated", ({ auctionId: evtId }: { auctionId: string; reservePrice: number }) => {
+            if (evtId !== auction.id) return
+            getAuction(auction.id)
+                .then(fresh => {
+                    setAuction(fresh)
+                    if (Number(currentBid ?? 0) >= Number(fresh.reservePrice)) {
+                        setBinPending(false)
+                    }
+                })
+                .catch(() => { /* next bid/reconnect will refresh state */ })
+        })
+
         return () => { socket.disconnect() }
     }, [auction?.id, user])
 

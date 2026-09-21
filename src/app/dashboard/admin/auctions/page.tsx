@@ -4,12 +4,12 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Gavel, Loader2, ArrowLeft, Eye, Car, UserCheck, X, AlertTriangle, Pencil } from "lucide-react"
+import { Gavel, Loader2, ArrowLeft, Eye, Car, UserCheck, X, AlertTriangle, Pencil, PoundSterling } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import { ListingEditModal } from "@/components/dashboard/ListingEditModal"
 import { useAuth } from "@/context/AuthContext"
-import { getAdminAuctions, getAllDealers, assignAuctionWinner } from "@/lib/adminApi"
+import { getAdminAuctions, getAllDealers, assignAuctionWinner, correctAuctionPrice } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
 
 const STATUS_STYLES: Record<string, string> = {
@@ -38,6 +38,11 @@ export default function AdminAuctionsPage() {
     const [assignError, setAssignError] = React.useState<string | null>(null)
     const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
     const [editListingId, setEditListingId] = React.useState<string | null>(null)
+    const [priceTarget, setPriceTarget] = React.useState<any | null>(null)
+    const [correctedReserve, setCorrectedReserve] = React.useState("")
+    const [priceReason, setPriceReason] = React.useState("")
+    const [savingPrice, setSavingPrice] = React.useState(false)
+    const [priceError, setPriceError] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         if (!authLoading) {
@@ -77,6 +82,41 @@ export default function AdminAuctionsPage() {
         setSelectedDealerId("")
         setConfirming(false)
         setAssignError(null)
+    }
+
+    function openPriceModal(auction: any) {
+        setPriceTarget(auction)
+        setCorrectedReserve(String(Number(auction.reservePrice)))
+        setPriceReason("")
+        setPriceError(null)
+    }
+
+    function closePriceModal() {
+        if (savingPrice) return
+        setPriceTarget(null)
+        setCorrectedReserve("")
+        setPriceReason("")
+        setPriceError(null)
+    }
+
+    async function handleCorrectPrice() {
+        if (!priceTarget) return
+        const reserve = Number(correctedReserve)
+        if (!Number.isFinite(reserve) || reserve <= 0) {
+            setPriceError("Enter a valid reserve price above £0.")
+            return
+        }
+        setSavingPrice(true)
+        setPriceError(null)
+        try {
+            await correctAuctionPrice(priceTarget.id, reserve, priceReason)
+            closePriceModal()
+            loadAuctions()
+        } catch (err: any) {
+            setPriceError(err.message || "Failed to correct auction price")
+        } finally {
+            setSavingPrice(false)
+        }
     }
 
     async function handleConfirmAssign() {
@@ -203,6 +243,16 @@ export default function AdminAuctionsPage() {
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-1">
+                                                    {(a.status === 'ACTIVE' || a.status === 'SCHEDULED') && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openPriceModal(a)}
+                                                            className="p-2.5 hover:bg-white/10 rounded-lg transition-colors text-amber-400 hover:text-primary dark:hover:text-white inline-flex cursor-pointer"
+                                                            title="Correct Auction Reserve"
+                                                        >
+                                                            <PoundSterling size={16} />
+                                                        </button>
+                                                    )}
                                                     {a.status === 'ACTIVE' && (
                                                         <button
                                                             type="button"
@@ -242,6 +292,90 @@ export default function AdminAuctionsPage() {
                     </div>
                 </main>
             </div>
+
+            {/* Correct Auction Price Modal */}
+            {priceTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={closePriceModal}>
+                    <div className="w-full max-w-md rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="mb-4 flex items-center justify-between">
+                            <h3 className="flex items-center gap-2 text-lg font-black uppercase tracking-tight">
+                                <PoundSterling size={20} className="text-amber-400" /> Correct Auction Price
+                            </h3>
+                            <button type="button" onClick={closePriceModal} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <p className="text-sm font-bold text-[var(--text-primary)]">{priceTarget.listing?.title}</p>
+                        <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                            <div className="rounded-xl bg-[var(--bg-input)] p-3">
+                                <p className="text-[var(--text-muted)]">Current reserve</p>
+                                <p className="mt-1 font-black">{formatPrice(Number(priceTarget.reservePrice))}</p>
+                            </div>
+                            <div className="rounded-xl bg-[var(--bg-input)] p-3">
+                                <p className="text-[var(--text-muted)]">Top bid</p>
+                                <p className="mt-1 font-black">{priceTarget.listing?.bids?.[0]?.amount ? formatPrice(Number(priceTarget.listing.bids[0].amount)) : "—"}</p>
+                            </div>
+                            <div className="rounded-xl bg-[var(--bg-input)] p-3">
+                                <p className="text-[var(--text-muted)]">Bids</p>
+                                <p className="mt-1 font-black">{priceTarget.listing?._count?.bids ?? 0}</p>
+                            </div>
+                        </div>
+
+                        <div className="mt-5">
+                            <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Corrected reserve price (£)</label>
+                            <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={correctedReserve}
+                                onChange={(e) => setCorrectedReserve(e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-lg font-bold focus:border-primary focus:outline-none"
+                            />
+                        </div>
+
+                        <div className="mt-4">
+                            <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Reason (optional)</label>
+                            <textarea
+                                value={priceReason}
+                                onChange={(e) => setPriceReason(e.target.value.slice(0, 300))}
+                                rows={3}
+                                placeholder="e.g. Seller entered an extra zero by mistake"
+                                className="mt-1 w-full resize-none rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-sm focus:border-primary focus:outline-none"
+                            />
+                        </div>
+
+                        <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
+                            <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-400" />
+                            <p className="text-xs text-amber-200">
+                                Existing bids are never changed. If the reserve has already been met, it cannot be raised above the current highest bid. The seller will be notified of the correction.
+                            </p>
+                        </div>
+
+                        {priceError && <p className="mt-3 text-xs text-red-400">{priceError}</p>}
+
+                        <div className="mt-5 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={closePriceModal}
+                                disabled={savingPrice}
+                                className="flex-1 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleCorrectPrice}
+                                disabled={savingPrice || !correctedReserve || Number(correctedReserve) <= 0}
+                                className="flex-1 rounded-xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-white disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {savingPrice ? <Loader2 size={14} className="animate-spin" /> : <PoundSterling size={14} />}
+                                Save Correction
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Assign Winner Modal */}
             {assignTarget && (

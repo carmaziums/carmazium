@@ -476,6 +476,11 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         setAuction(p => p ? { ...p, status: 'ACTIVE' } : p);
       });
 
+      socket.on('auction:price-updated', (d: { auctionId: string; reservePrice: number }) => {
+        if (d.auctionId !== auctionId) return;
+        loadAuctionRef.current({ silent: true });
+      });
+
       socket.on('bid:cancelled', (d: { auctionId: string; bidId: string }) => {
         if (d.auctionId !== auctionId) return;
         setBidHistory(prev => {
