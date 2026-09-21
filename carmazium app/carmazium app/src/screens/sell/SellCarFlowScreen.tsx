@@ -30,6 +30,7 @@ import { CAR_MAKES, getModelsForMake } from '../../data/carData';
 import { BottomSheet } from '../../components/BottomSheet';
 import * as Location from 'expo-location';
 import { getAuctionOpeningBid, getAuctionReserveGuide } from '../../lib/auctionPricing';
+import { getVehicleValuation, type VehicleValuation } from '../../lib/valuationApi';
 import {
   encodeVehicleImageCategory,
   parseVehicleImageMetadata,
@@ -544,6 +545,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [step, setStep] = useState<Step>(1);
 
+  // Route-derived edit identity is needed by valuation as well as draft save.
+  // Keep it above effects that may reference the current listing id.
+  const editListingId: string | null = route?.params?.listingId ?? null;
+  const editMode = !!editListingId;
+
   // ── Step 1 — Vehicle Details ──
   const [vehicleType, setVehicleType] = useState<'CAR' | 'HGV' | 'MOTORCYCLE'>('CAR');
   const [vrm, setVrm] = useState('');
@@ -650,6 +656,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [deliveryPricePerMile, setDeliveryPricePerMile] = useState('');
   const [badgeTier, setBadgeTier] = useState<BadgeTier>('BASIC');
   const [listingType, setListingType] = useState<'CLASSIFIED' | 'AUCTION'>('CLASSIFIED');
+  const [valuation, setValuation] = useState<VehicleValuation | null>(null);
+  const [valuationLoading, setValuationLoading] = useState(false);
+  const [valuationError, setValuationError] = useState<string | null>(null);
+  const valuationRequestId = useRef(0);
 
   // ── HPI Report unlock (Review step) — mirrors web's HpiPaymentModal ──
   // A listing has to exist before an HPI check can be run against it. If the
@@ -682,18 +692,101 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     setStartingBid(String(platformOpeningBid));
   }, [listingType, platformOpeningBid]);
 
+  useEffect(() => {
+    if (step !== 3 || vehicleType !== 'CAR') return;
+
+    const yearNumber = Number(year);
+    const mileageNumber = Number(String(mileage).replace(/[^0-9]/g, ''));
+    if (!make.trim() || !model.trim() || !Number.isFinite(yearNumber) || yearNumber < 1950 || !Number.isFinite(mileageNumber) || mileageNumber < 0) {
+      setValuation(null);
+      setValuationError(null);
+      return;
+    }
+
+    const requestId = ++valuationRequestId.current;
+    let cancelled = false;
+    setValuationLoading(true);
+    setValuationError(null);
+
+    getVehicleValuation({
+      make: make.trim(),
+      model: model.trim(),
+      year: yearNumber,
+      mileage: mileageNumber,
+      variant: variant || undefined,
+      fuelType: fuelType || undefined,
+      transmission: transmission || undefined,
+      condition: condition || undefined,
+      serviceHistory: serviceHistory || undefined,
+      owners: owners || undefined,
+      writeOffCategory: writeOffCat || undefined,
+      isImported,
+      excludeListingId: editListingId || undefined,
+    })
+      .then(result => {
+        if (cancelled || valuationRequestId.current !== requestId) return;
+        setValuation(result);
+      })
+      .catch(error => {
+        if (cancelled || valuationRequestId.current !== requestId) return;
+        setValuation(null);
+        setValuationError(
+          error?.message === 'VALUATION_TIMEOUT'
+            ? 'Live market valuation is taking longer than expected. You can enter your own price or retry.'
+            : 'Valuation is temporarily unavailable. You can still enter your own price.',
+        );
+      })
+      .finally(() => {
+        if (!cancelled && valuationRequestId.current === requestId) {
+          setValuationLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    step,
+    vehicleType,
+    make,
+    model,
+    year,
+    mileage,
+    variant,
+    fuelType,
+    transmission,
+    condition,
+    serviceHistory,
+    owners,
+    writeOffCat,
+    isImported,
+    editListingId,
+  ]);
+
+  function applyValuationGuide(target: 'CLASSIFIED' | 'AUCTION') {
+    if (!valuation || (valuation.source === 'CARMAZIUM_MODEL' && valuation.comparables === 0)) return;
+
+    setListingType(target);
+    setBadgeTier(target === 'AUCTION' ? 'FREE' : 'BASIC');
+
+    if (target === 'AUCTION') {
+      setPriceAsking(String(valuation.auction.marketValue));
+      setReservePrice(String(valuation.auction.suggestedReserve));
+      setStartingBid(String(valuation.auction.openingBid));
+      return;
+    }
+
+    setPriceAsking(String(valuation.retail.suggestedAsking));
+    setPriceMin(String(valuation.retail.suggestedMinimum));
+  }
+
   // ── Per-image upload progress ──
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
   // ── Publishing ──
   const [isPublishing, setIsPublishing] = useState(false);
-  // Derive editMode/editListingId from route.params directly, NOT from useState
-  // initializers. If this screen instance gets reused with new params (which
-  // React Navigation does when navigating back to a still-mounted screen with
-  // a different listingId), stateful init only runs once — the form would keep
-  // showing the previous listing's data and reads as "buttons don't respond."
-  const editListingId: string | null = route?.params?.listingId ?? null;
-  const editMode = !!editListingId;
+  // editListingId/editMode are derived above from route.params rather than
+  // useState so a reused screen instance always follows the current route.
   // Gates the form while the existing listing loads in edit mode — without this,
   // editing a listing used to open a blank form and Save would silently overwrite
   // the real listing with defaults (mobile-audit.md, critical finding).
@@ -929,7 +1022,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     if (key === 'auctionStartDate' && auctionStartMode === 'SCHEDULED' && !auctionStartDate.trim()) return 'Required';
     if (key === 'reservePrice' && (!reservePrice.trim() || parseFloat(reservePrice) <= 0)) return 'Enter a valid reserve price';
     if (key === 'startingBid' && platformOpeningBid <= 0) {
-      return 'Enter a valid Estimated Market Value first';
+      return 'Enter a valid Dealer Auction Value first';
     }
     if (key === 'minIncrement' && (!minIncrement.trim() || parseFloat(minIncrement) <= 0)) return 'Enter a valid minimum increment';
     return null;
@@ -2632,10 +2725,68 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     return (
       <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
 
-        <SectionBox title={isAuction ? 'Set Your Estimated Market Value' : 'Set Your Price Range'} accent={Colors.accent}>
+        <SectionBox title="CarMazium Market Guidance" accent={Colors.infoBlue}>
+          {valuationLoading ? (
+            <View style={s.valuationLoadingRow}>
+              <ActivityIndicator size="small" color={Colors.infoBlueLight} />
+              <Text style={s.valuationStatusText}>Checking current UK market evidence…</Text>
+            </View>
+          ) : valuationError ? (
+            <View style={s.valuationNotice}>
+              <Ionicons name="information-circle-outline" size={16} color={Colors.warning} />
+              <Text style={s.valuationNoticeText}>{valuationError}</Text>
+            </View>
+          ) : valuation && !(valuation.source === 'CARMAZIUM_MODEL' && valuation.comparables === 0) ? (
+            <>
+              <Text style={s.fieldHint}>
+                {valuation.source === 'LIVE_UK_MARKET' || valuation.source === 'BLENDED_MARKET'
+                  ? 'Live UK market guidance. Retail uses the stronger upper asking guide; auction uses the lower dealer-buy guide.'
+                  : 'CarMazium market guidance. Retail uses the stronger upper asking guide; auction uses the lower dealer-buy guide.'}
+              </Text>
+              <View style={s.valuationGrid}>
+                <TouchableOpacity
+                  style={[s.valuationCard, listingType === 'CLASSIFIED' && s.valuationCardSelected]}
+                  onPress={() => applyValuationGuide('CLASSIFIED')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={s.valuationCardLabel}>RETAIL ASKING GUIDE</Text>
+                  <Text style={s.valuationRetailPrice}>£{valuation.retail.suggestedAsking.toLocaleString('en-GB')}</Text>
+                  <Text style={s.valuationCardHint}>Upper market guidance for a retail advert.</Text>
+                  <Text style={s.valuationApplyText}>Use retail guide</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.valuationCard, listingType === 'AUCTION' && s.valuationCardSelectedAuction]}
+                  onPress={() => applyValuationGuide('AUCTION')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={s.valuationCardLabel}>DEALER AUCTION GUIDE</Text>
+                  <Text style={s.valuationAuctionPrice}>£{valuation.auction.marketValue.toLocaleString('en-GB')}</Text>
+                  <Text style={s.valuationCardHint}>Lower trade-oriented guide for dealer bidding.</Text>
+                  <Text style={[s.valuationApplyText, { color: Colors.lightOrange_fb923c }]}>Use auction guide</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={s.valuationEvidenceText}>
+                {valuation.comparables > 0
+                  ? `Based on ${valuation.comparables} comparable market signal${valuation.comparables === 1 ? '' : 's'}. Guide only; condition, specification and demand can change the final sale price.`
+                  : 'Guide only; condition, specification and demand can change the final sale price.'}
+              </Text>
+            </>
+          ) : valuation ? (
+            <View style={s.valuationNotice}>
+              <Ionicons name="alert-circle-outline" size={16} color={Colors.warning} />
+              <Text style={s.valuationNoticeText}>
+                Not enough reliable exact-model market evidence yet. Enter your own price rather than relying on a generic make-level estimate.
+              </Text>
+            </View>
+          ) : (
+            <Text style={s.fieldHint}>Complete the vehicle make, model, year and mileage to see retail and auction guidance.</Text>
+          )}
+        </SectionBox>
+
+        <SectionBox title={isAuction ? 'Set Your Dealer Auction Value' : 'Set Your Retail Price Range'} accent={Colors.accent}>
           {isAuction ? (
             <Text style={s.fieldHint}>
-              The <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Estimated Market Value</Text> is internal reference only — CarMazium automatically sets the Opening Bid at 70% of this value and never shows the market value to bidders.
+              The <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Dealer Auction Value</Text> is the lower trade-oriented guide. CarMazium automatically sets the Opening Bid at 70% of this value and never shows the guide value to bidders.
             </Text>
           ) : (
             <Text style={s.fieldHint}>
@@ -2667,9 +2818,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               </View>
             )}
             <View style={{ flex: 1 }}>
-              <SL label={isAuction ? 'ESTIMATED MARKET VALUE *' : 'ASKING PRICE *'} required />
+              <SL label={isAuction ? 'DEALER AUCTION VALUE *' : 'ASKING PRICE *'} required />
               <Text style={s.fieldHintRed}>
-                {isAuction ? 'Internal only — not shown to bidders' : 'Displayed on listing — required'}
+                {isAuction ? 'Lower trade guide · internal only · not shown to bidders' : 'Upper retail guide · displayed on listing'}
               </Text>
               <View style={[s.priceInputWrap, s.priceInputWrapActive, touched.priceAsking ? { borderColor: fieldBorderColor('priceAsking') } : {}]}>
                 <Text style={[s.priceCurrency, { color: Colors.accent }]}>£</Text>
@@ -3007,7 +3158,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 lineHeight: 15,
               }}>
                 {Number(reservePrice) >= askNum
-                  ? 'Your reserve is at or above the Estimated Market Value. Dealer bidding may be very limited.'
+                  ? 'Your reserve is at or above the Dealer Auction Value. Dealer bidding may be very limited.'
                   : 'Your reserve is above CarMazium’s suggested range and may reduce bidding.'}
               </Text>
             </View>
@@ -3015,7 +3166,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <View style={{ marginBottom: 16 }}>
             <SL label="OPENING BID (£)" />
             <Text style={s.fieldHint}>
-              CarMazium sets this automatically at 70% of your Estimated Market Value, allowing verified dealers to enter up to 30% below market value.
+              CarMazium sets this automatically at 70% of your Dealer Auction Value, giving verified traders room to enter the bidding competitively.
             </Text>
             <View style={[s.input, { opacity: 0.85, justifyContent: 'center' }]}>
               <Text style={{ fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.white }}>
@@ -3475,6 +3626,20 @@ const s = StyleSheet.create({
   dmgRecordMeta: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
 
   // Pricing
+  valuationLoadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
+  valuationStatusText: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary, flex: 1 },
+  valuationNotice: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 8, backgroundColor: Colors.warningAlpha08, borderWidth: 1, borderColor: Colors.warningAlpha15 },
+  valuationNoticeText: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 17, flex: 1 },
+  valuationGrid: { flexDirection: 'row', gap: 10, marginTop: 6 },
+  valuationCard: { flex: 1, minHeight: 142, padding: 12, borderRadius: 12, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
+  valuationCardSelected: { borderColor: Colors.infoBlue, backgroundColor: Colors.infoBlueAlpha08 },
+  valuationCardSelectedAuction: { borderColor: Colors.lightOrange_f97316, backgroundColor: 'rgba(249,115,22,0.08)' },
+  valuationCardLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.iconMuted, letterSpacing: 0.8, lineHeight: 13 },
+  valuationRetailPrice: { fontFamily: FontFamily.extraBold, fontSize: FontSize.size22, color: Colors.infoBlueLight, marginTop: 6 },
+  valuationAuctionPrice: { fontFamily: FontFamily.extraBold, fontSize: FontSize.size22, color: Colors.lightOrange_fb923c, marginTop: 6 },
+  valuationCardHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size9, color: Colors.textSecondary, lineHeight: 14, marginTop: 4, flex: 1 },
+  valuationApplyText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.infoBlueLight, marginTop: 8 },
+  valuationEvidenceText: { fontFamily: FontFamily.regular, fontSize: FontSize.size9, color: Colors.iconMuted, lineHeight: 15, marginTop: 10 },
   priceInputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.deepBlue_1a1a22, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 14, height: 52, marginBottom: 0 },
   priceInputWrapActive: { borderColor: Colors.accentAlpha40, backgroundColor: Colors.accentAlpha04 },
   priceCurrency: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.textSecondary, marginRight: 6 },
