@@ -130,10 +130,11 @@ export class ListingsService {
      * legacy mock-scraper rows with example source URLs from an earlier
      * experiment and must not be presented to customers as real market data.
      *
-     * Instead we use CarMazium's own completed sales, accepted offers, auction
-     * outcomes and live classified asking prices. When the marketplace has too
-     * little evidence for a particular make/model, the pure valuation engine
-     * returns an explicitly LOW-confidence age/mileage profile estimate.
+     * Every valuation combines CarMazium's own completed sales, accepted offers,
+     * auction outcomes and active classified asking prices with a fresh
+     * AI-assisted live UK market search. If the required live-market search is
+     * unavailable, the endpoint fails rather than silently returning an
+     * internal-only estimate.
      */
     async estimateVehicleValue(dto: VehicleValuationDto) {
         const make = dto.make.trim();
