@@ -4,6 +4,7 @@ import {
     NotFoundException,
     ForbiddenException,
     BadRequestException,
+    ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
@@ -112,10 +113,6 @@ const mapBodyType = (body?: DtoBodyType): BodyType | null => {
 @Injectable()
 export class ListingsService {
     private readonly logger = new Logger(ListingsService.name);
-    private readonly liveMarketCache = new Map<string, {
-        expiresAt: number;
-        result: LiveUkMarketSearchResult;
-    }>();
 
     constructor(
         private readonly prisma: PrismaService,
@@ -317,17 +314,14 @@ export class ListingsService {
         };
 
         const carmaziumComparableCount = comparables.length;
-        let liveMarket: LiveUkMarketSearchResult | null = null;
 
-        // Use live public UK market adverts only when CarMazium's own exact-model
-        // evidence is sparse. This keeps first-party completed-sale evidence
-        // authoritative while still giving sellers a useful price on rarer cars.
-        if (carmaziumComparableCount < 3) {
-            liveMarket = await this.getLiveUkMarketComparables(valuationInput);
-        }
+        // Live AI-assisted UK market research is mandatory for every valuation.
+        // CarMazium's own evidence remains valuable, but it is always combined
+        // with a fresh external market check rather than replacing it.
+        const liveMarket = await this.getLiveUkMarketComparables(valuationInput);
 
         const usableLiveComparables =
-            liveMarket && liveMarket.comparables.length >= 3
+            liveMarket.comparables.length >= 3
                 ? liveMarket.comparables
                 : [];
 
@@ -362,67 +356,35 @@ export class ListingsService {
         return valuation;
     }
 
-    private liveMarketCacheKey(input: VehicleValuationInput): string {
-        const mileageBucket = Math.round(input.mileage / 5000) * 5000;
-        return [
-            input.make,
-            input.model,
-            input.year,
-            mileageBucket,
-            input.variant ?? '',
-            input.fuelType ?? '',
-            input.transmission ?? '',
-        ]
-            .map((part) => String(part).trim().toUpperCase())
-            .join('|');
-    }
-
     private async getLiveUkMarketComparables(
         input: VehicleValuationInput,
-    ): Promise<LiveUkMarketSearchResult | null> {
+    ): Promise<LiveUkMarketSearchResult> {
         const apiKey = this.config.get<string>('OPENAI_API_KEY');
-        const enabled = this.config.get<string>('LIVE_MARKET_VALUATION_ENABLED');
 
-        if (!apiKey || enabled === 'false') return null;
-
-        const cacheKey = this.liveMarketCacheKey(input);
-        const now = Date.now();
-        const cached = this.liveMarketCache.get(cacheKey);
-        if (cached && cached.expiresAt > now) {
-            return cached.result;
+        // This is a required valuation dependency now. Do not silently fall back
+        // to an internal-only estimate if the AI/live-market service is missing.
+        if (!apiKey) {
+            this.logger.error('OPENAI_API_KEY is missing; live market valuation cannot run');
+            throw new ServiceUnavailableException(
+                'Live market valuation is temporarily unavailable. Please try again shortly.',
+            );
         }
 
         try {
-            const result = await searchLiveUkVehicleMarket(input, {
+            return await searchLiveUkVehicleMarket(input, {
                 apiKey,
                 model:
                     this.config.get<string>('OPENAI_WEB_VALUATION_MODEL')
                     || 'gpt-5.6-luna',
                 timeoutMs: 18_000,
             });
-
-            // Good evidence stays fresh for six hours. Empty/weak searches are
-            // cached for 30 minutes so repeated public requests cannot repeatedly
-            // trigger paid web searches for the same hard-to-value vehicle.
-            const ttlMs = result.comparables.length >= 3
-                ? 6 * 60 * 60 * 1000
-                : 30 * 60 * 1000;
-
-            if (this.liveMarketCache.size >= 250) {
-                const oldestKey = this.liveMarketCache.keys().next().value;
-                if (oldestKey) this.liveMarketCache.delete(oldestKey);
-            }
-
-            this.liveMarketCache.set(cacheKey, {
-                expiresAt: now + ttlMs,
-                result,
-            });
-            return result;
         } catch (error: any) {
             this.logger.warn(
                 `Live UK valuation search failed for ${input.make} ${input.model}: ${error?.message || error}`,
             );
-            return null;
+            throw new ServiceUnavailableException(
+                'Live market valuation is temporarily unavailable. Please try again shortly.',
+            );
         }
     }
 
