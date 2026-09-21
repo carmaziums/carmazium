@@ -80,6 +80,7 @@ type LandingVehiclePrefill = {
 type LandingValuationResult = {
     vehicle: LandingVehiclePrefill
     valuation: VehicleValuation
+    dvlaVerified: boolean
 }
 
 function formatGuidePrice(value: number) {
@@ -94,6 +95,10 @@ function QuickValuationForm() {
     const [vrm, setVrm] = React.useState("")
     const [mileage, setMileage] = React.useState("")
     const [model, setModel] = React.useState("")
+    const [manualMake, setManualMake] = React.useState("")
+    const [manualModel, setManualModel] = React.useState("")
+    const [manualYear, setManualYear] = React.useState("")
+    const [manualMode, setManualMode] = React.useState(false)
     const [pendingVehicle, setPendingVehicle] = React.useState<Awaited<ReturnType<typeof dvlaLookup>> | null>(null)
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
@@ -119,6 +124,54 @@ function QuickValuationForm() {
         setResult(null)
 
         try {
+            if (manualMode) {
+                const make = manualMake.trim()
+                const manualResolvedModel = manualModel.trim()
+                const year = Number(manualYear)
+
+                if (!make || !manualResolvedModel || !Number.isInteger(year) || year < 1950 || year > new Date().getFullYear() + 1) {
+                    setError("Enter the vehicle make, model and a valid year to continue.")
+                    return
+                }
+
+                const valuation = await getVehicleValuation({
+                    make,
+                    model: manualResolvedModel,
+                    year,
+                    mileage: mileageNumber,
+                })
+
+                setResult({
+                    valuation,
+                    dvlaVerified: false,
+                    vehicle: {
+                        vrm: cleanVrm,
+                        make,
+                        model: manualResolvedModel,
+                        year: String(year),
+                        mileage: String(mileageNumber),
+                        fuelType: "",
+                        transmission: "",
+                        color: "",
+                        primaryColour: "",
+                        engineSize: "",
+                        euroStandard: "",
+                        co2Emissions: "",
+                        dateOfLastV5CIssued: "",
+                        motStatus: "",
+                        taxStatus: "",
+                        motExpiryDate: "",
+                        taxDueDate: "",
+                        markedForExport: null,
+                        monthOfFirstRegistration: "",
+                        wheelplan: "",
+                        typeApproval: "",
+                        motHistory: [],
+                    },
+                })
+                return
+            }
+
             // Changing the registration clears pendingVehicle, so if one is
             // present it belongs to the current VRM and can be reused without
             // another DVLA request.
@@ -145,6 +198,7 @@ function QuickValuationForm() {
 
             setResult({
                 valuation,
+                dvlaVerified: true,
                 vehicle: {
                     vrm: cleanVrm,
                     make: vehicle.make,
@@ -171,8 +225,12 @@ function QuickValuationForm() {
                 },
             })
             setPendingVehicle(null)
-        } catch {
-            setError("We couldn't value that vehicle right now. Check the registration and mileage, then try again.")
+        } catch (err) {
+            if (err instanceof Error && err.message === "AUTH_REDIRECT") return
+
+            setManualMode(true)
+            setPendingVehicle(null)
+            setError(null)
         } finally {
             setLoading(false)
         }
@@ -185,6 +243,7 @@ function QuickValuationForm() {
                 listingType,
                 vehicle: result.vehicle,
                 valuation: result.valuation,
+                dvlaVerified: result.dvlaVerified,
             },
         }))
         window.setTimeout(scrollToSellerOptions, 0)
@@ -194,11 +253,12 @@ function QuickValuationForm() {
         ? !(result.valuation.source === "CARMAZIUM_MODEL" && result.valuation.comparables === 0)
         : false
     const needsModel = !!pendingVehicle && !pendingVehicle.model && !result
+    const needsManualDetails = manualMode && !result
 
     return (
         <div className="mt-5 rounded-2xl border border-primary/20 bg-[var(--bg-card)] p-4 text-left shadow-[var(--shadow-card)] sm:p-5">
             <form onSubmit={handleValuation} className="space-y-3">
-                <div className={`grid gap-3 sm:items-end ${needsModel ? "sm:grid-cols-[1.05fr_0.9fr_1fr_auto]" : "sm:grid-cols-[1.15fr_1fr_auto]"}`}>
+                <div className={`grid gap-3 sm:items-end ${needsManualDetails ? "sm:grid-cols-2 lg:grid-cols-[1fr_0.8fr_0.8fr_0.8fr_0.65fr_auto]" : needsModel ? "sm:grid-cols-[1.05fr_0.9fr_1fr_auto]" : "sm:grid-cols-[1.15fr_1fr_auto]"}`}>
                     <label className="block">
                         <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Registration</span>
                         <input
@@ -207,6 +267,10 @@ function QuickValuationForm() {
                                 setVrm(event.target.value.toUpperCase())
                                 setPendingVehicle(null)
                                 setModel("")
+                                setManualMode(false)
+                                setManualMake("")
+                                setManualModel("")
+                                setManualYear("")
                                 setResult(null)
                             }}
                             inputMode="text"
@@ -241,10 +305,48 @@ function QuickValuationForm() {
                             />
                         </label>
                     )}
+                    {needsManualDetails && (
+                        <>
+                            <label className="block">
+                                <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Make</span>
+                                <input
+                                    value={manualMake}
+                                    onChange={(event) => setManualMake(event.target.value)}
+                                    autoComplete="off"
+                                    placeholder="e.g. Vauxhall"
+                                    aria-label="Vehicle make"
+                                    className="h-12 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 text-base font-bold text-[var(--text-primary)] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                />
+                            </label>
+                            <label className="block">
+                                <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Model</span>
+                                <input
+                                    value={manualModel}
+                                    onChange={(event) => setManualModel(event.target.value)}
+                                    autoComplete="off"
+                                    placeholder="e.g. Corsa"
+                                    aria-label="Manual vehicle model"
+                                    className="h-12 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 text-base font-bold text-[var(--text-primary)] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                />
+                            </label>
+                            <label className="block">
+                                <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Year</span>
+                                <input
+                                    value={manualYear}
+                                    onChange={(event) => setManualYear(event.target.value.replace(/[^\d]/g, "").slice(0, 4))}
+                                    inputMode="numeric"
+                                    autoComplete="off"
+                                    placeholder="2016"
+                                    aria-label="Vehicle year"
+                                    className="h-12 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 text-base font-bold text-[var(--text-primary)] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                />
+                            </label>
+                        </>
+                    )}
                     <Button type="submit" size="lg" disabled={loading} className="h-12 w-full sm:w-auto">
                         {loading
                             ? <><Loader2 size={18} className="animate-spin" /> Valuing…</>
-                            : <>{needsModel ? "Continue Valuation" : "Get My Free Valuation"} <ArrowRight size={18} /></>}
+                            : <>{needsManualDetails ? "Value Manually" : needsModel ? "Continue Valuation" : "Get My Free Valuation"} <ArrowRight size={18} /></>}
                     </Button>
                 </div>
 
@@ -252,6 +354,13 @@ function QuickValuationForm() {
                     <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                         Vehicle found: {pendingVehicle.year} {pendingVehicle.make}. Enter the model to finish your free valuation.
                     </p>
+                )}
+
+                {needsManualDetails && (
+                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-sm text-amber-800 dark:text-amber-200">
+                        <p className="font-bold">We couldn't verify {vrm.trim().toUpperCase()} through DVLA.</p>
+                        <p className="mt-1">Check the registration, or enter the make, model and year above to continue with a CarMazium estimated valuation.</p>
+                    </div>
                 )}
 
                 <p className="text-center text-[11px] font-semibold text-[var(--text-muted)] sm:text-left">
