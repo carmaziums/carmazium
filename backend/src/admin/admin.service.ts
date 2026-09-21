@@ -789,6 +789,14 @@ export class AdminService {
         return { data, total };
     }
 
+    /**
+     * Correct a seller's mistaken reserve while preserving all existing bids.
+     * The auction service owns the safety checks and real-time broadcast.
+     */
+    async correctAuctionPrice(auctionId: string, reservePrice: number, reason?: string) {
+        return this.auctionsService.adminCorrectReservePrice(auctionId, reservePrice, reason);
+    }
+
     /** Lightweight list of every dealer, for the "assign winner" dropdown. */
     async getAllDealersForAssignment() {
         return this.prisma.user.findMany({
