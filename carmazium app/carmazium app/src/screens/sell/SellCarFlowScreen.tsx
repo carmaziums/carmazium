@@ -42,7 +42,7 @@ import {
 type Step = 1 | 2 | 3 | 4 | 5;
 
 interface DvlaData {
-  make?: string; model?: string; colour?: string; year?: number;
+  make?: string; model?: string; colour?: string; primaryColour?: string; year?: number;
   engineSize?: number; fuelType?: string; transmission?: string;
   variant?: string; bodyType?: string; driveType?: string;
   doors?: number; seats?: number; bhp?: number; engineDescription?: string;
@@ -56,6 +56,15 @@ interface DvlaData {
   taxStatus?: string; motExpiryDate?: string; taxDueDate?: string;
   markedForExport?: boolean; monthOfFirstRegistration?: string;
   wheelplan?: string; typeApproval?: string; dateOfLastV5CIssued?: string;
+  motHistory?: Array<{
+    completedDate: string;
+    testResult: 'PASSED' | 'FAILED';
+    expiryDate?: string;
+    odometerValue?: string;
+    odometerUnit?: string;
+    motTestNumber: string;
+    defects?: Array<{ text: string; type: 'ADVISORY' | 'MINOR' | 'MAJOR' | 'DANGEROUS'; dangerous: boolean }>;
+  }>;
 }
 
 interface DamageEntry {
