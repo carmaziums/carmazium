@@ -1015,7 +1015,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             </div>
 
             {/* Input */}
-            <div className="border-t border-[var(--border-default)]">
+            <div className="relative z-20 shrink-0 border-t border-[var(--border-default)] bg-[var(--bg-card)]">
                 {chatBlocked ? (
                     <div className="flex flex-wrap items-center justify-center gap-2 px-4 py-4 text-center text-sm text-[var(--text-muted)]">
                         <Ban size={16} className="text-red-400" />
@@ -1043,7 +1043,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 ) : (
                 <>
                 {isAdminViewer && (
-                    <div className="flex items-center gap-1.5 px-4 pt-3 overflow-x-auto scrollbar-hide">
+                    <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto px-4 pt-3 scrollbar-hide">
                         <Zap size={12} className="text-[var(--text-muted)] shrink-0" />
                         {ADMIN_QUICK_REPLIES.map((qr) => (
                             <button
@@ -1060,7 +1060,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 {attachmentError && (
                     <div className="px-4 pt-3 text-xs text-red-400">{attachmentError}</div>
                 )}
-                <div className="flex gap-2 items-end p-4">
+                <div className="flex shrink-0 items-end gap-2 p-3 sm:p-4">
                     <input
                         ref={attachmentInputRef}
                         type="file"
