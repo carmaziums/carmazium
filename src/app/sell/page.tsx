@@ -54,20 +54,45 @@ function SellerLanding() {
     return (
         <>
             <PageHero
-                eyebrow="Free car valuation · Sell your car online"
+                compact
+                className="sell-hero"
+                eyebrow="Sell my car · UK"
                 title={<>Sell Your Car <span className="text-primary">Online</span></>}
                 description={
-                    <div>
-                        <p className="font-bold text-[var(--text-primary)]">See what your car is worth, then choose Auction or Retail.</p>
-                        <p className="mt-2">Get a free car valuation, list in our dealer auction for £0 and let verified dealers compete, or advertise directly to buyers for £1. Complete a qualifying auction sale and you can receive a £100 CarMazium seller incentive.</p>
+                    <div className="mx-auto max-w-2xl">
+                        <p className="font-bold text-[var(--text-primary)]">
+                            Get your free car valuation, then choose how you want to sell.
+                        </p>
+
+                        <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+                            <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 shadow-sm">
+                                <Banknote size={20} className="mx-auto mb-1.5 text-primary" />
+                                <p className="text-sm font-black leading-tight text-[var(--text-primary)]">FREE Valuation</p>
+                                <p className="mt-1 text-[10px] font-semibold leading-tight text-[var(--text-muted)] sm:text-xs">See what your car is worth</p>
+                            </div>
+                            <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 shadow-sm">
+                                <Gavel size={20} className="mx-auto mb-1.5 text-primary" />
+                                <p className="text-sm font-black leading-tight text-[var(--text-primary)]">FREE Auction</p>
+                                <p className="mt-1 text-[10px] font-semibold leading-tight text-[var(--text-muted)] sm:text-xs">Verified dealers compete</p>
+                            </div>
+                            <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 shadow-sm">
+                                <PoundSterling size={20} className="mx-auto mb-1.5 text-primary" />
+                                <p className="text-sm font-black leading-tight text-[var(--text-primary)]">£1 Retail</p>
+                                <p className="mt-1 text-[10px] font-semibold leading-tight text-[var(--text-muted)] sm:text-xs">Advertise directly to buyers</p>
+                            </div>
+                        </div>
+
+                        <p className="mt-4 hidden text-sm leading-6 text-[var(--text-muted)] sm:block">
+                            Use the free dealer auction for competitive trade bids or advertise directly to retail buyers for £1. Qualifying completed auction sales can also receive a £100 CarMazium seller incentive.
+                        </p>
                     </div>
                 }
                 actions={
                     <>
                         <Button type="button" size="lg" onClick={scrollToSellerOptions}>
-                            Sell My Car <ArrowRight size={18} />
+                            Get My Free Valuation <ArrowRight size={18} />
                         </Button>
-                        <Button asChild variant="outline" size="lg">
+                        <Button asChild variant="outline" size="lg" className="hidden sm:inline-flex">
                             <a href="#how-selling-works">How It Works</a>
                         </Button>
                     </>
