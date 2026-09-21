@@ -1,7 +1,6 @@
 "use client"
 
 import Script from "next/script"
-import { useConsent } from "@/context/ConsentContext"
 import { analyticsEnabled } from "@/lib/analyticsEnv"
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID?.trim()
@@ -14,16 +13,18 @@ const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID?.trim()
  * Router page views through the gtag/dataLayer interface established by
  * GoogleConsentMode; it does not load or configure a second Google tag.
  *
- * Meta and TikTok remain independently managed by their existing components.
+ * IMPORTANT: do not gate GTM on the cookie-consent "granted" state.
+ * GoogleConsentMode sets Consent Mode v2 defaults to denied before this script
+ * loads. Loading the Google-only container under those denied defaults lets
+ * Google receive cookieless consent-mode signals and lets queued Google Ads
+ * conversion commands be processed without enabling advertising or analytics
+ * storage. If the visitor accepts, ConsentContext upgrades the consent state
+ * to granted. If they reject, storage remains denied.
  *
- * This component is hard-gated until analytics/marketing consent is granted,
- * while GoogleConsentMode establishes denied defaults before consent. Once
- * granted, GTM loads and processes the queued Google commands under the
- * visitor's updated consent state.
+ * Meta and TikTok remain independently consent-gated by their own components.
  */
 export function GoogleTagManager() {
-    const { granted } = useConsent()
-    if (!analyticsEnabled || !GTM_ID || !granted) return null
+    if (!analyticsEnabled || !GTM_ID) return null
 
     return (
         <>
