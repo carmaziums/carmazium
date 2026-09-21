@@ -47,7 +47,17 @@ export interface VehicleValuationResult {
         auctionResults: number;
         activeAsks: number;
     };
-    source: 'CARMAZIUM_MARKET' | 'CARMAZIUM_MODEL_PROFILE' | 'CARMAZIUM_MODEL';
+    source:
+        | 'CARMAZIUM_MARKET'
+        | 'LIVE_UK_MARKET'
+        | 'BLENDED_MARKET'
+        | 'CARMAZIUM_MODEL_PROFILE'
+        | 'CARMAZIUM_MODEL';
+    marketEvidence?: {
+        carmaziumComparables: number;
+        liveUkComparables: number;
+        checkedAt?: string;
+    };
     explanation: string;
     retail: {
         suggestedAsking: number;
@@ -391,17 +401,21 @@ export function calculateVehicleValuation(
                     ? `Based on ${usable.length} similar CarMazium vehicles, including ${strongEvidence} completed sale, accepted-offer or auction outcome signal${strongEvidence === 1 ? '' : 's'}.`
                     : `Based on ${usable.length} similar live CarMazium asking prices. Completed-sale evidence for this exact vehicle is still limited.`;
 
-    const suggestedAsking = mid;
-    // "Minimum" is seller guidance, not the statistical bottom of the market
-    // range. Keep it close enough to the estimated value to avoid encouraging
-    // users to under-price a vehicle because of one outlying comparable.
-    const suggestedMinimum = roundMoney(mid * 0.90);
-    // Keep these exactly aligned with the existing auctionPricing helpers so
-    // the valuation card and the Auction step never show different figures.
-    const openingBid = Math.round(mid * 0.70 * 100) / 100;
-    const reserveLow = Math.round(mid * 0.85 * 100) / 100;
-    const reserveHigh = Math.round(mid * 0.92 * 100) / 100;
-    const suggestedReserve = roundMoney(mid * 0.88);
+    // Retail should show the stronger end of the observed asking market.
+    // Sellers can still choose their own figure, but the platform does not
+    // encourage them to under-list a clean retail vehicle.
+    const suggestedAsking = high;
+    const suggestedMinimum = mid;
+
+    // Dealer auctions need a visibly lower guide than retail so traders can
+    // buy with realistic preparation, warranty and resale margin. Use the
+    // lower end of the market range as the dealer-buy guide, then calculate
+    // the opening/reserve guidance from that lower anchor.
+    const auctionMarketValue = low;
+    const openingBid = Math.round(auctionMarketValue * 0.70 * 100) / 100;
+    const reserveLow = Math.round(auctionMarketValue * 0.90 * 100) / 100;
+    const reserveHigh = Math.round(auctionMarketValue * 1.00 * 100) / 100;
+    const suggestedReserve = roundMoney(auctionMarketValue * 0.95);
 
     return {
         low,
@@ -418,7 +432,7 @@ export function calculateVehicleValuation(
             suggestedMinimum,
         },
         auction: {
-            marketValue: mid,
+            marketValue: auctionMarketValue,
             openingBid,
             reserveLow,
             reserveHigh,
