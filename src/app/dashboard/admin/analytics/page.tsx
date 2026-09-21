@@ -13,7 +13,9 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import {
     getAdminAnalytics, getAdminStats, getTrafficAnalytics, getAccountVerificationStats,
+    getLiveValuationAnalytics,
     type AnalyticsMonth, type AdminStats, type TrafficAnalytics, type AccountVerificationStats,
+    type ValuationLiveAnalytics,
 } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
 import { DateRangeFilter } from "@/components/dealer"
@@ -127,6 +129,11 @@ export default function AdminAnalyticsPage() {
     const [customStart, setCustomStart] = React.useState("")
     const [customEnd, setCustomEnd] = React.useState("")
 
+    // Live vehicle valuation analytics
+    const [valuationLive, setValuationLive] = React.useState<ValuationLiveAnalytics | null>(null)
+    const [valuationLoading, setValuationLoading] = React.useState(true)
+    const [valuationError, setValuationError] = React.useState<string | null>(null)
+
     React.useEffect(() => {
         if (!authLoading) {
             if (!user) { router.replace("/auth/login"); return }
@@ -164,8 +171,24 @@ export default function AdminAnalyticsPage() {
             .finally(() => setTrafficLoading(false))
     }, [profile, dateRange, customStart, customEnd])
 
+    const fetchValuationData = React.useCallback((showSpinner = false) => {
+        if (profile?.role !== "ADMIN") return
+        if (showSpinner) setValuationLoading(true)
+        setValuationError(null)
+        getLiveValuationAnalytics()
+            .then(setValuationLive)
+            .catch(err => setValuationError(err.message || "Failed to load valuation analytics"))
+            .finally(() => setValuationLoading(false))
+    }, [profile])
+
     React.useEffect(() => { fetchPlatformData() }, [fetchPlatformData])
     React.useEffect(() => { fetchTrafficData() }, [fetchTrafficData])
+    React.useEffect(() => {
+        if (profile?.role !== "ADMIN") return
+        fetchValuationData(true)
+        const timer = window.setInterval(() => fetchValuationData(false), 15_000)
+        return () => window.clearInterval(timer)
+    }, [profile, fetchValuationData])
 
     if (authLoading || (user && !profile) || platformLoading) {
         return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
@@ -211,12 +234,153 @@ export default function AdminAnalyticsPage() {
                                 Platform Analytics
                             </h1>
                         </div>
-                        <Button onClick={() => { fetchPlatformData(); fetchTrafficData() }} disabled={platformLoading || trafficLoading} variant="outline" className="flex items-center gap-2 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] border-[var(--border-default)]">
-                            <RefreshCw size={16} className={(platformLoading || trafficLoading) ? "animate-spin" : ""} /> Refresh
+                        <Button onClick={() => { fetchPlatformData(); fetchTrafficData(); fetchValuationData(true) }} disabled={platformLoading || trafficLoading || valuationLoading} variant="outline" className="flex items-center gap-2 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] border-[var(--border-default)]">
+                            <RefreshCw size={16} className={(platformLoading || trafficLoading || valuationLoading) ? "animate-spin" : ""} /> Refresh
                         </Button>
                     </div>
 
                     {platformError && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200"><strong>Error:</strong> {platformError}</div>}
+
+                    {/* ── Live vehicle valuation activity ── */}
+                    <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 px-1">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="relative flex h-2.5 w-2.5">
+                                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                                    </span>
+                                    <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-secondary)]">Car Valuation — Live</p>
+                                </div>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">Today uses Europe/London time · refreshes automatically every 15 seconds.</p>
+                            </div>
+                            {valuationLive && (
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                                    Updated {new Date(valuationLive.generatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                                </p>
+                            )}
+                        </div>
+
+                        {valuationError && (
+                            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-300">
+                                {valuationError}
+                            </div>
+                        )}
+
+                        {valuationLoading && !valuationLive ? (
+                            <div className="h-28 flex items-center justify-center rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)]">
+                                <Loader2 className="h-7 w-7 animate-spin text-primary" />
+                            </div>
+                        ) : valuationLive ? (
+                            <>
+                                <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+                                    {([
+                                        { label: "Valuations Today", value: valuationLive.today.requests, icon: Car, color: "bg-blue-500/20" },
+                                        { label: "Unique Sessions", value: valuationLive.today.uniqueSessions, icon: Users, color: "bg-emerald-500/20" },
+                                        { label: "Logged-in Users", value: valuationLive.today.loggedInUsers, icon: ShieldCheck, color: "bg-cyan-500/20" },
+                                        { label: "Anonymous Sessions", value: valuationLive.today.anonymousSessions, icon: UserX, color: "bg-slate-500/20" },
+                                        { label: "Auction Checks", value: valuationLive.today.auctionRequests, icon: BarChart3, color: "bg-orange-500/20" },
+                                        { label: "Retail Checks", value: valuationLive.today.retailRequests, icon: DollarSign, color: "bg-purple-500/20" },
+                                        { label: "Requests / Session", value: valuationLive.today.uniqueSessions > 0 ? (valuationLive.today.requests / valuationLive.today.uniqueSessions).toFixed(1) : "0.0", icon: TrendingUp, color: "bg-yellow-500/20" },
+                                    ] as StatCardProps[]).map(card => (
+                                        <StatCard key={card.label} {...card} />
+                                    ))}
+                                </div>
+
+                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                                    <div className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <Clock size={14} className="text-cyan-400" />
+                                            <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Today by Hour</p>
+                                        </div>
+                                        {valuationLive.hourly.length > 0 ? (
+                                            <SimpleBarChart
+                                                data={valuationLive.hourly as unknown as Record<string, unknown>[]}
+                                                maxVal={Math.max(...valuationLive.hourly.map(r => r.requests), 1)}
+                                                labelKey="hour"
+                                                valueKey="requests"
+                                                color="bg-cyan-500/70"
+                                                unit=""
+                                            />
+                                        ) : (
+                                            <p className="text-xs text-[var(--text-secondary)] font-bold py-8 text-center">No valuations recorded today</p>
+                                        )}
+                                    </div>
+
+                                    <div className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <Calendar size={14} className="text-emerald-400" />
+                                            <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Last 7 Days</p>
+                                        </div>
+                                        {valuationLive.last7Days.length > 0 ? (
+                                            <SimpleBarChart
+                                                data={valuationLive.last7Days.map(r => ({ ...r, date: r.date.slice(5) })) as unknown as Record<string, unknown>[]}
+                                                maxVal={Math.max(...valuationLive.last7Days.map(r => r.requests), 1)}
+                                                labelKey="date"
+                                                valueKey="requests"
+                                                color="bg-emerald-500/70"
+                                                unit=""
+                                            />
+                                        ) : (
+                                            <p className="text-xs text-[var(--text-secondary)] font-bold py-8 text-center">No valuation history yet</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="glass-card border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl overflow-hidden">
+                                    <div className="p-4 border-b border-[var(--border-default)] flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-2">
+                                            <Car size={14} className="text-primary" />
+                                            <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Latest Valuation Activity</p>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-[var(--text-secondary)]">No personal identifiers shown</span>
+                                    </div>
+                                    {valuationLive.recent.length === 0 ? (
+                                        <p className="text-xs text-[var(--text-secondary)] font-bold p-6 text-center">No recent valuations</p>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-xs">
+                                                <thead>
+                                                    <tr className="border-b border-[var(--border-default)] text-left text-[var(--text-muted)]">
+                                                        <th className="px-4 py-3 font-bold">Time</th>
+                                                        <th className="px-4 py-3 font-bold">Vehicle</th>
+                                                        <th className="px-4 py-3 font-bold">Route</th>
+                                                        <th className="px-4 py-3 font-bold">Fuel</th>
+                                                        <th className="px-4 py-3 font-bold">Device</th>
+                                                        <th className="px-4 py-3 font-bold">Location</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {valuationLive.recent.map(item => (
+                                                        <tr key={item.id} className="border-b border-[var(--border-default)]/60 hover:bg-white/[0.02]">
+                                                            <td className="px-4 py-3 whitespace-nowrap font-bold">
+                                                                {new Date(item.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                                                            </td>
+                                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                                {[item.year, item.make].filter(Boolean).join(" ") || "Unknown"}
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <span className="rounded-full bg-primary/10 px-2 py-1 font-bold uppercase text-primary">
+                                                                    {item.listingType || "—"}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-[var(--text-muted)]">{item.fuelType || "—"}</td>
+                                                            <td className="px-4 py-3 capitalize text-[var(--text-muted)]">{item.device || "—"}</td>
+                                                            <td className="px-4 py-3 text-[var(--text-muted)]">{[item.city, item.country].filter(Boolean).join(", ") || "—"}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <p className="px-1 text-[11px] leading-5 text-[var(--text-muted)]">
+                                    “Unique Sessions” is the number of first-party browser sessions that requested a valuation, not a claim of uniquely identified people. Logged-in Users counts distinct signed-in accounts.
+                                </p>
+                            </>
+                        ) : null}
+                    </div>
 
                     {/* ── 6-month summary ── */}
                     <div>
