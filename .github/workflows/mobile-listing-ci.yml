@@ -15,6 +15,7 @@ on:
       - "carmazium app/carmazium app/src/lib/storageHelper.ts"
       - "carmazium app/carmazium app/src/lib/vehicleImageMetadata.ts"
       - "carmazium app/carmazium app/src/lib/auctionPricing.ts"
+      - "carmazium app/carmazium app/src/lib/valuationApi.ts"
       - ".github/workflows/mobile-listing-ci.yml"
 
 permissions:
@@ -54,7 +55,7 @@ jobs:
             exit 0
           fi
 
-          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E 'src/(screens/(sell/SellCarFlowScreen|seller/(SellerAuctionsScreen|SellerListingsScreen)|main/PricingScreen)|components/ImportListingModal|hooks/useListingFeePayment|constants/pricing|lib/(listingsApi|paymentsApi|storageHelper|vehicleImageMetadata|auctionPricing))\.tsx?' || true)"
+          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E 'src/(screens/(sell/SellCarFlowScreen|seller/(SellerAuctionsScreen|SellerListingsScreen)|main/PricingScreen)|components/ImportListingModal|hooks/useListingFeePayment|constants/pricing|lib/(listingsApi|paymentsApi|storageHelper|vehicleImageMetadata|auctionPricing|valuationApi))\.tsx?' || true)"
           if [ -n "$LISTING_ERRORS" ]; then
             echo
             echo "TypeScript errors were found in mobile listing/auction files changed by this PR:"
