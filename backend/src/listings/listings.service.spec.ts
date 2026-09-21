@@ -711,6 +711,63 @@ describe('ListingsService', () => {
         });
     });
 
+    describe('mandatory live AI valuation research', () => {
+        it('runs live UK market research even when CarMazium already has strong internal comparables', async () => {
+            const internalRows = [0, 1, 2, 3].map((index) => ({
+                id: `internal-${index}`,
+                type: 'CLASSIFIED',
+                status: 'ACTIVE',
+                price: 40000 + index * 1000,
+                make: 'BMW',
+                model: 'M3',
+                variant: 'Competition',
+                year: 2020,
+                mileage: 30000 + index * 1000,
+                fuelType: 'PETROL',
+                transmission: 'AUTOMATIC',
+                writeOffCategory: null,
+                condition: 'GOOD',
+                serviceHistory: 'FULL',
+                owners: 2,
+                isImported: false,
+                sale: null,
+                auction: null,
+                offers: [],
+            }));
+            prisma.listing.findMany.mockResolvedValue(internalRows);
+
+            const liveSearch = jest
+                .spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValue({
+                    checkedAt: new Date().toISOString(),
+                    rawComparableCount: 3,
+                    comparables: [
+                        { price: 42500, year: 2020, mileage: 31000, kind: 'ACTIVE_ASK' },
+                        { price: 43500, year: 2021, mileage: 28000, kind: 'ACTIVE_ASK' },
+                        { price: 41500, year: 2019, mileage: 34000, kind: 'ACTIVE_ASK' },
+                    ],
+                });
+
+            const result = await service.estimateVehicleValue({
+                make: 'BMW',
+                model: 'M3',
+                year: 2020,
+                mileage: 30000,
+                variant: 'Competition',
+                fuelType: 'PETROL',
+                transmission: 'AUTOMATIC',
+            } as any);
+
+            expect(liveSearch).toHaveBeenCalledTimes(1);
+            expect(result.source).toBe('BLENDED_MARKET');
+            expect(result.marketEvidence).toEqual(expect.objectContaining({
+                carmaziumComparables: 4,
+                liveUkComparables: 3,
+                liveUkSearchStatus: 'USED',
+            }));
+        });
+    });
+
     describe('alsoAuction', () => {
         const baseSource = {
             id: 'listing-1',
