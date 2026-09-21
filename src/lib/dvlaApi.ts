@@ -13,6 +13,19 @@ export interface DvlaLookupResult {
     engineSize?: number;
     fuelType?: string;
     transmission?: string;
+    variant?: string;
+    bodyType?: BodyTypeValue;
+    driveType?: 'FWD' | 'RWD' | 'AWD' | '4WD';
+    doors?: number;
+    seats?: number;
+    bhp?: number;
+    engineDescription?: string;
+    specEnrichment?: {
+        confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+        matchBasis: 'EXACT_REGISTRATION' | 'PROFILE_CONSENSUS' | 'NONE';
+        evidenceCount: number;
+        source: 'AI_LIVE_WEB';
+    };
     euroStandard?: string;
     co2Emissions?: number;
     dateOfLastV5CIssued?: string;
