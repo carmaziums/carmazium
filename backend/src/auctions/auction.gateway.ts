@@ -31,6 +31,11 @@ export interface AuctionEndPayload {
     reserveMet: boolean;
 }
 
+export interface AuctionPriceUpdatedPayload {
+    auctionId: string;
+    reservePrice: number;
+}
+
 @WebSocketGateway({
     cors: WS_CORS,
     namespace: '/auctions',
@@ -172,5 +177,12 @@ export class AuctionGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     // Called by BidsService.cancelBid() — removes a cancelled bid from all viewers' feed
     broadcastBidCancelled(auctionId: string, bidId: string): void {
         this.server.to(`auction:${auctionId}`).emit('bid:cancelled', { auctionId, bidId });
+    }
+
+    // Called when an admin corrects a live/scheduled reserve price. Viewers
+    // refetch the auction so reserve-dependent UI and bid rules stay in sync.
+    broadcastPriceUpdated(auctionId: string, reservePrice: number): void {
+        const payload: AuctionPriceUpdatedPayload = { auctionId, reservePrice };
+        this.server.to(`auction:${auctionId}`).emit('auction:price-updated', payload);
     }
 }
