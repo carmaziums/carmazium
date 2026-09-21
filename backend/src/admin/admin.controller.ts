@@ -23,6 +23,7 @@ import { AdminService } from './admin.service';
 import { ReviewKycDto } from './dto/review-kyc.dto';
 import { RejectListingDto } from './dto/reject-listing.dto';
 import { AdminUpdateListingDto } from './dto/admin-update-listing.dto';
+import { AdminCorrectAuctionPriceDto } from './dto/admin-correct-auction-price.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -199,6 +200,17 @@ export class AdminController {
     ): Promise<PaginatedResponse<any>> {
         const { data, total } = await this.adminService.getAllAuctions(Number(page), Number(limit));
         return new PaginatedResponse(data, total, Number(page), Number(limit));
+    }
+
+    @Patch('auctions/:id/price')
+    @ApiOperation({ summary: 'Correct the reserve price of a scheduled or live auction' })
+    @ApiParam({ name: 'id', description: 'Auction UUID' })
+    async correctAuctionPrice(
+        @Param('id') id: string,
+        @Body() dto: AdminCorrectAuctionPriceDto,
+    ): Promise<StandardResponse<any>> {
+        const auction = await this.adminService.correctAuctionPrice(id, dto.reservePrice, dto.reason);
+        return new StandardResponse(auction);
     }
 
     @Get('dealers')
