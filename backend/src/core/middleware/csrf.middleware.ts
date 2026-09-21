@@ -31,6 +31,10 @@ export class CsrfMiddleware implements NestMiddleware {
             '/payments/listing-checkout',
             '/payments/checkout',
             '/pricing/estimate',
+            // Read-only DVLA vehicle lookup used by the public /sell valuation
+            // entry point. Keep this narrowly scoped; state-changing DVLA routes
+            // must not inherit this exemption.
+            '/dvla/lookup',
             '/analytics/event',
             '/analytics/email',
             '/payments/webhook',
