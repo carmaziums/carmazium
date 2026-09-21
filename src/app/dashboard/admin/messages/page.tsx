@@ -133,8 +133,8 @@ function AdminMessagesContent() {
                 <DashboardSidebar role="admin" userName={userName} userType="Admin Account" />
 
                 <main className="flex-1 min-w-0">
-                    <div className="glass-card overflow-hidden h-[calc(100vh-180px)] min-h-[620px]">
-                        <div className="p-4 sm:p-6 border-b border-[var(--border-default)] flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                    <div className="glass-card flex h-[calc(100dvh-180px)] min-h-0 flex-col overflow-hidden lg:h-[calc(100vh-180px)] lg:min-h-[620px]">
+                        <div className="shrink-0 p-4 sm:p-6 border-b border-[var(--border-default)] flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                             <div className="flex items-center gap-3 min-w-0">
                                 <MessageSquare className="text-primary shrink-0" />
                                 <div className="min-w-0">
@@ -207,7 +207,7 @@ function AdminMessagesContent() {
                             </div>
                         </div>
 
-                        <div className="h-[calc(100%-129px)] xl:h-[calc(100%-89px)]">
+                        <div className="min-h-0 flex-1">
                             {mode === "broadcast" ? (
                                 <AdminBroadcastComposer />
                             ) : mode === "history" ? (
@@ -233,7 +233,7 @@ function AdminMessagesContent() {
                                     }}
                                 />
                             ) : (
-                                <div className="flex h-full">
+                                <div className="flex h-full min-h-0">
                                     <div className={`w-full lg:w-[360px] border-r border-[var(--border-default)] ${selectedRoom ? "hidden lg:flex lg:flex-col" : "flex flex-col"}`}>
                                         <div className="flex flex-wrap gap-1.5 border-b border-[var(--border-default)] p-3">
                                             {filters.map(filter => (
@@ -262,10 +262,10 @@ function AdminMessagesContent() {
                                         </div>
                                     </div>
 
-                                    <div className={`flex min-w-0 flex-1 ${!selectedRoom ? "hidden lg:flex lg:items-center lg:justify-center" : ""}`}>
+                                    <div className={`flex min-h-0 min-w-0 flex-1 ${!selectedRoom ? "hidden lg:flex lg:items-center lg:justify-center" : ""}`}>
                                         {selectedRoom ? (
-                                            <div className="flex h-full min-w-0 flex-1">
-                                                <div className="min-w-0 flex-1">
+                                            <div className="flex h-full min-h-0 min-w-0 flex-1">
+                                                <div className="min-h-0 min-w-0 flex-1">
                                                     <ChatWindow
                                                         room={selectedRoom}
                                                         onBack={() => setSelectedRoom(null)}
