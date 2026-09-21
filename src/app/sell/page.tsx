@@ -60,6 +60,12 @@ type LandingVehiclePrefill = {
     mileage: string
     fuelType: string
     transmission: string
+    variant: string
+    bodyType: string
+    driveType: string
+    doors: string
+    seats: string
+    bhp: string
     color: string
     primaryColour: string
     engineSize: string
@@ -152,6 +158,12 @@ function QuickValuationForm() {
                         mileage: String(mileageNumber),
                         fuelType: "",
                         transmission: "",
+                        variant: "",
+                        bodyType: "",
+                        driveType: "",
+                        doors: "",
+                        seats: "",
+                        bhp: "",
                         color: "",
                         primaryColour: "",
                         engineSize: "",
@@ -194,6 +206,7 @@ function QuickValuationForm() {
                 mileage: mileageNumber,
                 fuelType: vehicle.fuelType,
                 transmission: vehicle.transmission,
+                variant: vehicle.variant,
             })
 
             setResult({
@@ -207,6 +220,12 @@ function QuickValuationForm() {
                     mileage: String(mileageNumber),
                     fuelType: vehicle.fuelType || "",
                     transmission: vehicle.transmission || "",
+                    variant: vehicle.variant || "",
+                    bodyType: vehicle.bodyType || "",
+                    driveType: vehicle.driveType || "",
+                    doors: vehicle.doors != null ? String(vehicle.doors) : "",
+                    seats: vehicle.seats != null ? String(vehicle.seats) : "",
+                    bhp: vehicle.bhp != null ? String(vehicle.bhp) : "",
                     color: vehicle.colour || vehicle.primaryColour || "",
                     primaryColour: vehicle.primaryColour || vehicle.colour || "",
                     engineSize: vehicle.engineSize ? String(vehicle.engineSize) : "",

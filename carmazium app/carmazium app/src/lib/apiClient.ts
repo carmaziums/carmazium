@@ -39,11 +39,13 @@ function normalizeErrorMessage(body: any, status: number, statusText: string): s
 }
 
 // Endpoints that are always public (no Bearer token required)
-const PUBLIC_ENDPOINTS = ['/auth/supabase-session', '/users/sync', '/auth/logout'];
+const PUBLIC_ENDPOINTS = ['/auth/supabase-session', '/users/sync', '/auth/logout', '/dvla/lookup'];
+
+type ApiClientOptions = RequestInit & { timeoutMs?: number };
 
 export async function apiClient<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: ApiClientOptions = {}
 ): Promise<T> {
   const token = await getAccessToken();
 
@@ -56,21 +58,23 @@ export async function apiClient<T>(
     throw new Error('NO_SESSION');
   }
 
+  const { timeoutMs = 10_000, ...fetchOptions } = options;
+
   const headers = {
     'Content-Type': 'application/json',
     ...(token && { 'Authorization': `Bearer ${token}` }),
-    ...options.headers,
+    ...fetchOptions.headers,
   };
 
   const config = {
-    ...options,
+    ...fetchOptions,
     headers,
   };
 
-  // 10-second timeout — prevents initializeAuth from hanging indefinitely
-  // when the backend is unreachable (e.g. local dev server is down).
+  // 10 seconds by default. Expensive read-only operations such as DVLA +
+  // live specification research can opt into a longer request budget.
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10_000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   let response: Response;
   try {

@@ -1822,6 +1822,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     const mappedTrans = transmissionMap[r.transmission.toUpperCase()]
                                                     if (mappedTrans) set("transmission", mappedTrans)
                                                 }
+
+                                                // Evidence-backed AI specification enrichment. The backend
+                                                // only exposes auto-fill fields when the match is sufficiently
+                                                // strong; the seller can still review and edit them.
+                                                if (r.variant) set("variant", r.variant)
+                                                if (r.bodyType && BODY_TYPE_KEYS.includes(r.bodyType as any)) {
+                                                    set("bodyType", r.bodyType as BodyTypeValue)
+                                                }
+                                                if (r.driveType && ["FWD", "RWD", "AWD", "4WD"].includes(r.driveType)) {
+                                                    set("driveType", r.driveType)
+                                                }
+                                                if (r.doors != null) set("doors", String(r.doors))
+                                                if (r.seats != null) set("seats", String(r.seats))
+                                                if (r.bhp != null) set("bhp", String(r.bhp))
                                                 if (r.euroStandard) set("euroStandard", r.euroStandard as EuroStandardValue)
                                                 if (r.co2Emissions) set("co2Emissions", String(r.co2Emissions))
                                                 // DVLA extended fields
@@ -1871,7 +1885,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </Button>
                                 </div>
                                 <p className="text-xs text-[var(--text-secondary)]">UK number plate — click Look Up to auto-fill vehicle details.</p>
-                                {dvlaSuccess && <p className="text-xs text-emerald-400 flex items-center gap-1"><BadgeCheck size={12} /> Vehicle data loaded — review and edit below.</p>}
+                                {dvlaSuccess && <p className="text-xs text-emerald-400 flex items-center gap-1"><BadgeCheck size={12} /> Vehicle data loaded — DVLA/MOT details plus verified live specification matches have been applied where available. Review and edit below.</p>}
                                 {dvlaError && <p className="text-xs text-red-400">{dvlaError}</p>}
                             </div>
 
