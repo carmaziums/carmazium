@@ -4,12 +4,14 @@ import { ListingsService } from './listings.service';
 import { AuthService } from '../auth/auth.service';
 import { TradeListingAccessGuard } from '../auctions/trade-access.guard';
 import { PrismaService } from '../prisma/prisma.service';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 describe('ListingsController', () => {
     let controller: ListingsController;
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
+            imports: [ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }])],
             controllers: [ListingsController],
             providers: [
                 {
