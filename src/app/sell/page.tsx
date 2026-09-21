@@ -93,6 +93,8 @@ function formatGuidePrice(value: number) {
 function QuickValuationForm() {
     const [vrm, setVrm] = React.useState("")
     const [mileage, setMileage] = React.useState("")
+    const [model, setModel] = React.useState("")
+    const [pendingVehicle, setPendingVehicle] = React.useState<Awaited<ReturnType<typeof dvlaLookup>> | null>(null)
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [result, setResult] = React.useState<LandingValuationResult | null>(null)
@@ -117,14 +119,23 @@ function QuickValuationForm() {
         setResult(null)
 
         try {
-            const vehicle = await dvlaLookup(cleanVrm)
-            if (!vehicle.make || !vehicle.model || !vehicle.year) {
+            const vehicle = pendingVehicle?.vrm?.replace(/\s/g, "").toUpperCase() === cleanVrm
+                ? pendingVehicle
+                : await dvlaLookup(cleanVrm)
+
+            if (!vehicle.make || !vehicle.year) {
                 throw new Error("Vehicle details could not be confirmed")
+            }
+
+            const resolvedModel = (vehicle.model || model).trim()
+            if (!resolvedModel) {
+                setPendingVehicle(vehicle)
+                return
             }
 
             const valuation = await getVehicleValuation({
                 make: vehicle.make,
-                model: vehicle.model,
+                model: resolvedModel,
                 year: vehicle.year,
                 mileage: mileageNumber,
                 fuelType: vehicle.fuelType,
@@ -136,7 +147,7 @@ function QuickValuationForm() {
                 vehicle: {
                     vrm: cleanVrm,
                     make: vehicle.make,
-                    model: vehicle.model,
+                    model: resolvedModel,
                     year: String(vehicle.year),
                     mileage: String(mileageNumber),
                     fuelType: vehicle.fuelType || "",
@@ -158,6 +169,7 @@ function QuickValuationForm() {
                     motHistory: vehicle.motHistory || [],
                 },
             })
+            setPendingVehicle(null)
         } catch {
             setError("We couldn't value that vehicle right now. Check the registration and mileage, then try again.")
         } finally {
@@ -180,16 +192,22 @@ function QuickValuationForm() {
     const hasReliableGuide = result
         ? !(result.valuation.source === "CARMAZIUM_MODEL" && result.valuation.comparables === 0)
         : false
+    const needsModel = !!pendingVehicle && !pendingVehicle.model && !result
 
     return (
         <div className="mt-5 rounded-2xl border border-primary/20 bg-[var(--bg-card)] p-4 text-left shadow-[var(--shadow-card)] sm:p-5">
             <form onSubmit={handleValuation} className="space-y-3">
-                <div className="grid gap-3 sm:grid-cols-[1.15fr_1fr_auto] sm:items-end">
+                <div className={`grid gap-3 sm:items-end ${needsModel ? "sm:grid-cols-[1.05fr_0.9fr_1fr_auto]" : "sm:grid-cols-[1.15fr_1fr_auto]"}`}>
                     <label className="block">
                         <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Registration</span>
                         <input
                             value={vrm}
-                            onChange={(event) => setVrm(event.target.value.toUpperCase())}
+                            onChange={(event) => {
+                                setVrm(event.target.value.toUpperCase())
+                                setPendingVehicle(null)
+                                setModel("")
+                                setResult(null)
+                            }}
                             inputMode="text"
                             autoComplete="off"
                             placeholder="AB12 CDE"
@@ -209,10 +227,31 @@ function QuickValuationForm() {
                             className="h-12 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 text-base font-bold text-[var(--text-primary)] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                         />
                     </label>
+                    {needsModel && (
+                        <label className="block">
+                            <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Model</span>
+                            <input
+                                value={model}
+                                onChange={(event) => setModel(event.target.value)}
+                                autoComplete="off"
+                                placeholder="e.g. Corsa"
+                                aria-label="Vehicle model"
+                                className="h-12 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 text-base font-bold text-[var(--text-primary)] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                            />
+                        </label>
+                    )}
                     <Button type="submit" size="lg" disabled={loading} className="h-12 w-full sm:w-auto">
-                        {loading ? <><Loader2 size={18} className="animate-spin" /> Valuing…</> : <>Get My Free Valuation <ArrowRight size={18} /></>}
+                        {loading
+                            ? <><Loader2 size={18} className="animate-spin" /> Valuing…</>
+                            : <>{needsModel ? "Continue Valuation" : "Get My Free Valuation"} <ArrowRight size={18} /></>}
                     </Button>
                 </div>
+
+                {needsModel && pendingVehicle && (
+                    <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                        Vehicle found: {pendingVehicle.year} {pendingVehicle.make}. Enter the model to finish your free valuation.
+                    </p>
+                )}
 
                 <p className="text-center text-[11px] font-semibold text-[var(--text-muted)] sm:text-left">
                     Free valuation · No obligation · Your guide price is based on vehicle details and available CarMazium market evidence.
