@@ -119,9 +119,10 @@ function QuickValuationForm() {
         setResult(null)
 
         try {
-            const vehicle = pendingVehicle?.vrm?.replace(/\s/g, "").toUpperCase() === cleanVrm
-                ? pendingVehicle
-                : await dvlaLookup(cleanVrm)
+            // Changing the registration clears pendingVehicle, so if one is
+            // present it belongs to the current VRM and can be reused without
+            // another DVLA request.
+            const vehicle = pendingVehicle ?? await dvlaLookup(cleanVrm)
 
             if (!vehicle.make || !vehicle.year) {
                 throw new Error("Vehicle details could not be confirmed")
