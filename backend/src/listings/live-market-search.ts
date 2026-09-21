@@ -7,6 +7,7 @@ import type {
 export interface LiveUkMarketSearchResult {
     comparables: VehicleValuationComparable[];
     checkedAt: string;
+    rawComparableCount: number;
 }
 
 const normalize = (value?: string | null) =>
@@ -111,7 +112,7 @@ export async function searchLiveUkVehicleMarket(
     ].filter(Boolean).join(', ');
 
     const prompt = [
-        'Find current UK used-car retail advertisements for vehicles comparable to the target below.',
+        'You MUST search the live web now. Find current UK used-car retail advertisements for vehicles comparable to the target below.',
         'Use reputable UK vehicle marketplaces and dealer websites discoverable on the public web.',
         'Return only actual whole-vehicle CASH asking prices in GBP from current adverts.',
         'Do not return monthly finance payments, lease prices, parts, salvage, damaged/non-runner adverts, duplicate adverts, auction bids, sold pages, or generic model landing pages.',
@@ -124,13 +125,26 @@ export async function searchLiveUkVehicleMarket(
 
     const response = await client.responses.create({
         model: options.model,
-        tools: [{ type: 'web_search', search_context_size: 'medium' }] as any,
+        tools: [{
+            type: 'web_search',
+            search_context_size: 'high',
+            filters: {
+                allowed_domains: [
+                    'autotrader.co.uk',
+                    'cargurus.co.uk',
+                    'motors.co.uk',
+                    'heycar.com',
+                    'toyota.co.uk',
+                ],
+            },
+        }] as any,
+        tool_choice: 'required',
         input: [{
             role: 'user',
             content: [{ type: 'input_text', text: prompt }],
         }],
         reasoning: { effort: 'none' },
-        max_output_tokens: 2400,
+        max_output_tokens: 3200,
         text: {
             format: {
                 type: 'json_schema',
@@ -186,8 +200,10 @@ export async function searchLiveUkVehicleMarket(
         parsed = {};
     }
 
+    const rawComparableCount = Array.isArray(parsed.comparables) ? parsed.comparables.length : 0;
     return {
         comparables: sanitizeLiveUkComparables(input, parsed.comparables),
         checkedAt: new Date().toISOString(),
+        rawComparableCount,
     };
 }
