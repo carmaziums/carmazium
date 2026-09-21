@@ -29,7 +29,17 @@ export interface VehicleValuation {
         auctionResults: number
         activeAsks: number
     }
-    source: 'CARMAZIUM_MARKET' | 'CARMAZIUM_MODEL_PROFILE' | 'CARMAZIUM_MODEL'
+    source:
+        | 'CARMAZIUM_MARKET'
+        | 'LIVE_UK_MARKET'
+        | 'BLENDED_MARKET'
+        | 'CARMAZIUM_MODEL_PROFILE'
+        | 'CARMAZIUM_MODEL'
+    marketEvidence?: {
+        carmaziumComparables: number
+        liveUkComparables: number
+        checkedAt?: string
+    }
     explanation: string
     retail: {
         suggestedAsking: number
@@ -228,15 +238,18 @@ function finishEstimate(
                 ? 'CarMazium has limited live marketplace evidence for this exact vehicle, so this uses a calibrated model-specific depreciation profile with age, mileage and transmission.'
                 : 'CarMazium does not yet have enough reliable market evidence for this exact vehicle. Enter your own price rather than relying on a generic make-level estimate.',
         retail: {
-            suggestedAsking: mid,
-            suggestedMinimum: roundMoney(mid * 0.90),
+            // Retail uses the upper market guide.
+            suggestedAsking: high,
+            suggestedMinimum: mid,
         },
         auction: {
-            marketValue: mid,
-            openingBid: Math.round(mid * 0.70 * 100) / 100,
-            reserveLow: Math.round(mid * 0.85 * 100) / 100,
-            reserveHigh: Math.round(mid * 0.92 * 100) / 100,
-            suggestedReserve: roundMoney(mid * 0.88),
+            // Auction uses the lower dealer-buy guide so traders retain
+            // realistic preparation, warranty and resale margin.
+            marketValue: low,
+            openingBid: Math.round(low * 0.70 * 100) / 100,
+            reserveLow: Math.round(low * 0.90 * 100) / 100,
+            reserveHigh: Math.round(low * 1.00 * 100) / 100,
+            suggestedReserve: roundMoney(low * 0.95),
         },
     }
 }
