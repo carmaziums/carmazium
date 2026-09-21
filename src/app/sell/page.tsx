@@ -3,6 +3,8 @@
 import * as React from "react"
 import { Suspense } from "react"
 import { ListingWizard } from "@/components/listing/ListingWizard"
+import { dvlaLookup } from "@/lib/dvlaApi"
+import { getVehicleValuation, type VehicleValuation } from "@/lib/valuationApi"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
 import { PageHero } from "@/components/layout/PageHero"
@@ -50,6 +52,216 @@ const SELLER_BENEFITS = [
     },
 ]
 
+type LandingVehiclePrefill = {
+    vrm: string
+    make: string
+    model: string
+    year: string
+    mileage: string
+    fuelType: string
+    transmission: string
+    color: string
+    primaryColour: string
+    engineSize: string
+    euroStandard: string
+    co2Emissions: string
+    dateOfLastV5CIssued: string
+    motStatus: string
+    taxStatus: string
+    motExpiryDate: string
+    taxDueDate: string
+    markedForExport: boolean | null
+    monthOfFirstRegistration: string
+    wheelplan: string
+    typeApproval: string
+    motHistory: unknown[]
+}
+
+type LandingValuationResult = {
+    vehicle: LandingVehiclePrefill
+    valuation: VehicleValuation
+}
+
+function formatGuidePrice(value: number) {
+    return new Intl.NumberFormat("en-GB", {
+        style: "currency",
+        currency: "GBP",
+        maximumFractionDigits: 0,
+    }).format(value)
+}
+
+function QuickValuationForm() {
+    const [vrm, setVrm] = React.useState("")
+    const [mileage, setMileage] = React.useState("")
+    const [loading, setLoading] = React.useState(false)
+    const [error, setError] = React.useState<string | null>(null)
+    const [result, setResult] = React.useState<LandingValuationResult | null>(null)
+
+    const handleValuation = async (event: React.FormEvent) => {
+        event.preventDefault()
+
+        const cleanVrm = vrm.replace(/\s/g, "").toUpperCase()
+        const mileageNumber = Number(mileage.replace(/,/g, ""))
+
+        if (!/^[A-Z0-9]{2,8}$/.test(cleanVrm)) {
+            setError("Enter a valid UK registration number.")
+            return
+        }
+        if (!Number.isFinite(mileageNumber) || mileageNumber <= 0 || mileageNumber > 1000000) {
+            setError("Enter the vehicle's current mileage.")
+            return
+        }
+
+        setLoading(true)
+        setError(null)
+        setResult(null)
+
+        try {
+            const vehicle = await dvlaLookup(cleanVrm)
+            if (!vehicle.make || !vehicle.model || !vehicle.year) {
+                throw new Error("Vehicle details could not be confirmed")
+            }
+
+            const valuation = await getVehicleValuation({
+                make: vehicle.make,
+                model: vehicle.model,
+                year: vehicle.year,
+                mileage: mileageNumber,
+                fuelType: vehicle.fuelType,
+                transmission: vehicle.transmission,
+            })
+
+            setResult({
+                valuation,
+                vehicle: {
+                    vrm: cleanVrm,
+                    make: vehicle.make,
+                    model: vehicle.model,
+                    year: String(vehicle.year),
+                    mileage: String(mileageNumber),
+                    fuelType: vehicle.fuelType || "",
+                    transmission: vehicle.transmission || "",
+                    color: vehicle.colour || vehicle.primaryColour || "",
+                    primaryColour: vehicle.primaryColour || vehicle.colour || "",
+                    engineSize: vehicle.engineSize ? String(vehicle.engineSize) : "",
+                    euroStandard: vehicle.euroStandard || "",
+                    co2Emissions: vehicle.co2Emissions ? String(vehicle.co2Emissions) : "",
+                    dateOfLastV5CIssued: vehicle.dateOfLastV5CIssued || "",
+                    motStatus: vehicle.motStatus || "",
+                    taxStatus: vehicle.taxStatus || "",
+                    motExpiryDate: vehicle.motExpiryDate || "",
+                    taxDueDate: vehicle.taxDueDate || "",
+                    markedForExport: vehicle.markedForExport ?? null,
+                    monthOfFirstRegistration: vehicle.monthOfFirstRegistration || "",
+                    wheelplan: vehicle.wheelplan || "",
+                    typeApproval: vehicle.typeApproval || "",
+                    motHistory: vehicle.motHistory || [],
+                },
+            })
+        } catch {
+            setError("We couldn't value that vehicle right now. Check the registration and mileage, then try again.")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const startListing = (listingType: "AUCTION" | "CLASSIFIED") => {
+        if (!result) return
+        window.dispatchEvent(new CustomEvent("carmazium:start-seller-listing", {
+            detail: {
+                listingType,
+                vehicle: result.vehicle,
+                valuation: result.valuation,
+            },
+        }))
+        window.setTimeout(scrollToSellerOptions, 0)
+    }
+
+    const hasReliableGuide = result
+        ? !(result.valuation.source === "CARMAZIUM_MODEL" && result.valuation.comparables === 0)
+        : false
+
+    return (
+        <div className="mt-5 rounded-2xl border border-primary/20 bg-[var(--bg-card)] p-4 text-left shadow-[var(--shadow-card)] sm:p-5">
+            <form onSubmit={handleValuation} className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-[1.15fr_1fr_auto] sm:items-end">
+                    <label className="block">
+                        <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Registration</span>
+                        <input
+                            value={vrm}
+                            onChange={(event) => setVrm(event.target.value.toUpperCase())}
+                            inputMode="text"
+                            autoComplete="off"
+                            placeholder="AB12 CDE"
+                            aria-label="Vehicle registration"
+                            className="h-12 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 font-mono text-base font-black uppercase tracking-[0.12em] text-[var(--text-primary)] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        />
+                    </label>
+                    <label className="block">
+                        <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Current mileage</span>
+                        <input
+                            value={mileage}
+                            onChange={(event) => setMileage(event.target.value.replace(/[^\d,]/g, ""))}
+                            inputMode="numeric"
+                            autoComplete="off"
+                            placeholder="45,000"
+                            aria-label="Current vehicle mileage"
+                            className="h-12 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 text-base font-bold text-[var(--text-primary)] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        />
+                    </label>
+                    <Button type="submit" size="lg" disabled={loading} className="h-12 w-full sm:w-auto">
+                        {loading ? <><Loader2 size={18} className="animate-spin" /> Valuing…</> : <>Get My Free Valuation <ArrowRight size={18} /></>}
+                    </Button>
+                </div>
+
+                <p className="text-center text-[11px] font-semibold text-[var(--text-muted)] sm:text-left">
+                    Free valuation · No obligation · Your guide price is based on vehicle details and available CarMazium market evidence.
+                </p>
+
+                {error && (
+                    <p role="alert" className="rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-500">
+                        {error}
+                    </p>
+                )}
+            </form>
+
+            {result && (
+                <div className="mt-4 border-t border-[var(--border-default)] pt-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p className="text-xs font-black uppercase tracking-[0.14em] text-primary">
+                                {result.vehicle.year} {result.vehicle.make} {result.vehicle.model}
+                            </p>
+                            {hasReliableGuide ? (
+                                <>
+                                    <p className="mt-1 text-3xl font-black tabular-nums text-[var(--text-primary)]">
+                                        {formatGuidePrice(result.valuation.mid)}
+                                    </p>
+                                    <p className="mt-1 text-xs text-[var(--text-muted)]">
+                                        Estimated market value. Guide only; specification, condition, demand and inspection can change the final sale price.
+                                    </p>
+                                </>
+                            ) : (
+                                <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--text-muted)]">
+                                    Vehicle found. CarMazium needs a few more listing details before showing a reliable guide price for this exact model.
+                                </p>
+                            )}
+                        </div>
+                        <div className="grid shrink-0 grid-cols-1 gap-2 sm:min-w-[230px]">
+                            <Button type="button" onClick={() => startListing("AUCTION")} className="bg-orange-600 hover:bg-orange-500">
+                                FREE Dealer Auction <Gavel size={16} />
+                            </Button>
+                            <Button type="button" variant="outline" onClick={() => startListing("CLASSIFIED")}>
+                                £1 Retail Listing <ArrowRight size={16} />
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
 function SellerLanding() {
     return (
         <>
@@ -59,10 +271,12 @@ function SellerLanding() {
                 eyebrow="Sell my car · UK"
                 title={<>Sell Your Car <span className="text-primary">Online</span></>}
                 description={
-                    <div className="mx-auto max-w-2xl">
+                    <div className="mx-auto max-w-3xl">
                         <p className="font-bold text-[var(--text-primary)]">
-                            Get your free car valuation, then choose how you want to sell.
+                            Get your free car valuation first, then choose a FREE dealer auction or £1 retail listing.
                         </p>
+
+                        <QuickValuationForm />
 
                         <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
                             <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 shadow-sm">
@@ -88,14 +302,9 @@ function SellerLanding() {
                     </div>
                 }
                 actions={
-                    <>
-                        <Button type="button" size="lg" onClick={scrollToSellerOptions}>
-                            Get My Free Valuation <ArrowRight size={18} />
-                        </Button>
-                        <Button asChild variant="outline" size="lg" className="hidden sm:inline-flex">
-                            <a href="#how-selling-works">How It Works</a>
-                        </Button>
-                    </>
+                    <Button asChild variant="outline" size="lg" className="hidden sm:inline-flex">
+                        <a href="#how-selling-works">How It Works</a>
+                    </Button>
                 }
             />
 
@@ -103,7 +312,8 @@ function SellerLanding() {
                 <div className="container mx-auto max-w-6xl px-5">
                     <div className="mb-7 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-semibold text-[var(--text-secondary)]">
                         <span className="inline-flex items-center gap-1.5"><BadgeCheck size={17} className="text-emerald-600 dark:text-emerald-400" /> Verified dealer bidding</span>
-                        <span className="inline-flex items-center gap-1.5"><ShieldCheck size={17} className="text-emerald-600 dark:text-emerald-400" /> Clear seller choices</span>
+                        <span className="inline-flex items-center gap-1.5"><ShieldCheck size={17} className="text-emerald-600 dark:text-emerald-400" /> Sell with finance outstanding</span>
+                        <span className="inline-flex items-center gap-1.5"><Banknote size={17} className="text-emerald-600 dark:text-emerald-400" /> Buyer pays you directly</span>
                         <span className="inline-flex items-center gap-1.5"><CheckCircle2 size={17} className="text-emerald-600 dark:text-emerald-400" /> UK vehicle marketplace</span>
                     </div>
                     <div className="mx-auto grid max-w-5xl grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
@@ -114,6 +324,18 @@ function SellerLanding() {
                                 <p className="text-xs leading-relaxed text-[var(--text-muted)] md:text-sm">{text}</p>
                             </article>
                         ))}
+                    </div>
+
+                    <div className="mx-auto mt-4 max-w-5xl rounded-2xl border border-blue-500/20 bg-blue-500/[0.06] p-4 text-left md:flex md:items-center md:justify-between md:gap-6 md:p-5">
+                        <div>
+                            <p className="font-black text-[var(--text-primary)]">Car on finance?</p>
+                            <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">
+                                You can still list it. The buyer can clear the outstanding settlement with the finance company as part of the agreed collection and handover.
+                            </p>
+                        </div>
+                        <Button type="button" variant="outline" className="mt-3 shrink-0 md:mt-0" onClick={scrollToSellerOptions}>
+                            Start Selling <ArrowRight size={16} />
+                        </Button>
                     </div>
                 </div>
             </section>
@@ -136,6 +358,14 @@ function SellerEducation() {
             answer: "The £100 is a separate CarMazium promotional incentive for qualifying successful auction sales after the required handover evidence is approved. Eligibility is subject to the current platform terms.",
         },
         {
+            question: "Can I sell a car with outstanding finance?",
+            answer: "Yes. You can list a vehicle with outstanding finance as long as you disclose it accurately. The buyer can clear the agreed settlement with the finance company as part of collection and handover.",
+        },
+        {
+            question: "How does the free car valuation work?",
+            answer: "CarMazium uses your vehicle details, mileage, transmission and available marketplace evidence to produce an estimated guide value. It is not a guaranteed purchase offer and the final sale price can change after condition checks and buyer inspection.",
+        },
+        {
             question: "What should I disclose about my vehicle?",
             answer: "Describe the vehicle accurately, including condition, known faults, history and any insurance write-off status where applicable. Accurate listings help buyers bid and inspect with confidence.",
         },
@@ -147,14 +377,15 @@ function SellerEducation() {
                 <div className="mx-auto mb-10 max-w-2xl text-center">
                     <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-primary">Simple seller journey</p>
                     <h2 className="mb-3 text-3xl font-black text-[var(--text-primary)] md:text-4xl">How selling on CarMazium works</h2>
-                    <p className="text-[var(--text-muted)]">Choose the route that suits you, create an accurate vehicle listing, then deal directly with the successful buyer.</p>
+                    <p className="text-[var(--text-muted)]">Value your car first, choose the selling route that suits you, create an accurate listing, then deal directly with the successful buyer.</p>
                 </div>
 
-                <div className="mb-12 grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {[
-                        ["1", "Choose Auction or Retail", "Use the free dealer auction or advertise retail for £1."],
-                        ["2", "Create Your Vehicle Listing", "Add the vehicle details, condition, photos and your price or reserve."],
-                        ["3", "Complete the Sale", "Arrange inspection and handover with the buyer and receive the vehicle payment directly."],
+                        ["1", "Value Your Car", "Enter the registration and mileage to get your CarMazium estimated market value."],
+                        ["2", "Choose Auction or Retail", "Use the free dealer auction or advertise retail for £1."],
+                        ["3", "Create Your Vehicle Listing", "Add the vehicle details, condition, photos and your price or reserve."],
+                        ["4", "Complete the Sale", "Arrange inspection and handover with the buyer and receive the vehicle payment directly."],
                     ].map(([number, title, text]) => (
                         <article key={number} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
                             <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-sm font-black text-white">{number}</div>
