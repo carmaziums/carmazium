@@ -107,6 +107,144 @@ export class AnalyticsService {
         };
     }
 
+    // ─── Admin: Live Vehicle Valuation Analytics ───────────────────────────────
+
+    /**
+     * Near-real-time valuation usage for the admin dashboard.
+     *
+     * "Unique sessions" is intentionally used instead of "people": anonymous
+     * visitors cannot be reliably deduplicated across browsers/devices.
+     * Day/hour boundaries are calculated in Europe/London so the admin's
+     * "today" cards remain correct across BST/GMT changes.
+     */
+    async getValuationAnalytics() {
+        const [
+            overviewRaw,
+            hourlyRaw,
+            sevenDayRaw,
+            recent,
+        ] = await Promise.all([
+            this.prisma.$queryRawUnsafe<Array<{
+                requests: string;
+                unique_sessions: string;
+                logged_in_users: string;
+                logged_in_sessions: string;
+                anonymous_sessions: string;
+                auction_requests: string;
+                retail_requests: string;
+            }>>(`
+                WITH bounds AS (
+                    SELECT
+                        (date_trunc('day', now() AT TIME ZONE 'Europe/London') AT TIME ZONE 'Europe/London') AS start_utc,
+                        ((date_trunc('day', now() AT TIME ZONE 'Europe/London') + interval '1 day') AT TIME ZONE 'Europe/London') AS end_utc
+                )
+                SELECT
+                    COUNT(*)::TEXT AS requests,
+                    COUNT(DISTINCT "sessionId") FILTER (WHERE "sessionId" IS NOT NULL)::TEXT AS unique_sessions,
+                    COUNT(DISTINCT "userId") FILTER (WHERE "userId" IS NOT NULL)::TEXT AS logged_in_users,
+                    COUNT(DISTINCT "sessionId") FILTER (WHERE "userId" IS NOT NULL AND "sessionId" IS NOT NULL)::TEXT AS logged_in_sessions,
+                    COUNT(DISTINCT "sessionId") FILTER (WHERE "userId" IS NULL AND "sessionId" IS NOT NULL)::TEXT AS anonymous_sessions,
+                    COUNT(*) FILTER (WHERE LOWER(COALESCE(payload->>'listing_type', '')) = 'auction')::TEXT AS auction_requests,
+                    COUNT(*) FILTER (WHERE LOWER(COALESCE(payload->>'listing_type', '')) = 'retail')::TEXT AS retail_requests
+                FROM analytics_events, bounds
+                WHERE type = 'valuation_requested'
+                  AND "createdAt" >= bounds.start_utc
+                  AND "createdAt" < bounds.end_utc
+            `),
+            this.prisma.$queryRawUnsafe<Array<{ hour: string; requests: string; sessions: string }>>(`
+                WITH bounds AS (
+                    SELECT
+                        (date_trunc('day', now() AT TIME ZONE 'Europe/London') AT TIME ZONE 'Europe/London') AS start_utc,
+                        ((date_trunc('day', now() AT TIME ZONE 'Europe/London') + interval '1 day') AT TIME ZONE 'Europe/London') AS end_utc
+                )
+                SELECT
+                    TO_CHAR(date_trunc('hour', "createdAt" AT TIME ZONE 'Europe/London'), 'HH24:00') AS hour,
+                    COUNT(*)::TEXT AS requests,
+                    COUNT(DISTINCT "sessionId") FILTER (WHERE "sessionId" IS NOT NULL)::TEXT AS sessions
+                FROM analytics_events, bounds
+                WHERE type = 'valuation_requested'
+                  AND "createdAt" >= bounds.start_utc
+                  AND "createdAt" < bounds.end_utc
+                GROUP BY date_trunc('hour', "createdAt" AT TIME ZONE 'Europe/London')
+                ORDER BY date_trunc('hour', "createdAt" AT TIME ZONE 'Europe/London') ASC
+            `),
+            this.prisma.$queryRawUnsafe<Array<{ date: string; requests: string; sessions: string }>>(`
+                SELECT
+                    TO_CHAR(("createdAt" AT TIME ZONE 'Europe/London')::date, 'YYYY-MM-DD') AS date,
+                    COUNT(*)::TEXT AS requests,
+                    COUNT(DISTINCT "sessionId") FILTER (WHERE "sessionId" IS NOT NULL)::TEXT AS sessions
+                FROM analytics_events
+                WHERE type = 'valuation_requested'
+                  AND "createdAt" >= (
+                      ((date_trunc('day', now() AT TIME ZONE 'Europe/London') - interval '6 days') AT TIME ZONE 'Europe/London')
+                  )
+                  AND "createdAt" < (
+                      ((date_trunc('day', now() AT TIME ZONE 'Europe/London') + interval '1 day') AT TIME ZONE 'Europe/London')
+                  )
+                GROUP BY ("createdAt" AT TIME ZONE 'Europe/London')::date
+                ORDER BY ("createdAt" AT TIME ZONE 'Europe/London')::date ASC
+            `),
+            this.prisma.analyticsEvent.findMany({
+                where: { type: 'valuation_requested' },
+                orderBy: { createdAt: 'desc' },
+                take: 15,
+                select: {
+                    id: true,
+                    createdAt: true,
+                    payload: true,
+                },
+            }),
+        ]);
+
+        const overview = overviewRaw[0] ?? {
+            requests: '0',
+            unique_sessions: '0',
+            logged_in_users: '0',
+            logged_in_sessions: '0',
+            anonymous_sessions: '0',
+            auction_requests: '0',
+            retail_requests: '0',
+        };
+
+        return {
+            timezone: 'Europe/London',
+            generatedAt: new Date().toISOString(),
+            today: {
+                requests: Number(overview.requests ?? 0),
+                uniqueSessions: Number(overview.unique_sessions ?? 0),
+                loggedInUsers: Number(overview.logged_in_users ?? 0),
+                loggedInSessions: Number(overview.logged_in_sessions ?? 0),
+                anonymousSessions: Number(overview.anonymous_sessions ?? 0),
+                auctionRequests: Number(overview.auction_requests ?? 0),
+                retailRequests: Number(overview.retail_requests ?? 0),
+            },
+            hourly: hourlyRaw.map((row) => ({
+                hour: row.hour,
+                requests: Number(row.requests),
+                sessions: Number(row.sessions),
+            })),
+            last7Days: sevenDayRaw.map((row) => ({
+                date: row.date,
+                requests: Number(row.requests),
+                sessions: Number(row.sessions),
+            })),
+            recent: recent.map((event) => {
+                const payload = (event.payload ?? {}) as Record<string, unknown>;
+                return {
+                    id: event.id,
+                    createdAt: event.createdAt,
+                    make: typeof payload.make === 'string' ? payload.make : null,
+                    year: typeof payload.year === 'number' ? payload.year : Number(payload.year) || null,
+                    fuelType: typeof payload.fuel_type === 'string' ? payload.fuel_type : null,
+                    listingType: typeof payload.listing_type === 'string' ? payload.listing_type : null,
+                    device: typeof payload.device === 'string' ? payload.device : null,
+                    city: typeof payload.city === 'string' ? payload.city : null,
+                    country: typeof payload.country === 'string' ? payload.country : null,
+                };
+            }),
+        };
+    }
+
     // ─── Admin: Paginated Events ──────────────────────────────────────────────
 
     async getEvents(page = 1, limit = 50, type?: string) {
