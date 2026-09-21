@@ -71,6 +71,13 @@ export class AnalyticsController {
         return this.analyticsService.getAccountVerificationStats();
     }
 
+    @Get('valuations/live')
+    @UseGuards(SessionAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    async getLiveValuationAnalytics() {
+        return this.analyticsService.getValuationAnalytics();
+    }
+
     @Get('events')
     @UseGuards(SessionAuthGuard, RolesGuard)
     @Roles(UserRole.ADMIN)
