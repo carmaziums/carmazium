@@ -57,6 +57,8 @@ export interface VehicleValuationResult {
         carmaziumComparables: number;
         liveUkComparables: number;
         checkedAt?: string;
+        liveUkSearchStatus?: 'USED' | 'INSUFFICIENT' | 'UNAVAILABLE';
+        rawLiveUkComparables?: number;
     };
     explanation: string;
     retail: {
