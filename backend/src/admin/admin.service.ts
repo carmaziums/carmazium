@@ -466,13 +466,28 @@ export class AdminService {
         if (dto.listingType !== undefined) data.type = dto.listingType;
         if (dto.badgeTier !== undefined) data.badgeTier = dto.badgeTier;
 
-        const updated = await this.prisma.listing.update({ where: { id }, data });
-
-        // Auction schedule lives on the related Auction row, not Listing — only
-        // touch it while the auction hasn't gone live yet (SCHEDULED), same gate
-        // as the listing itself being PENDING_REVIEW/REJECTED.
         const hasAuctionFields = [dto.reservePrice, dto.startingBid, dto.minIncrement, dto.buyItNowPrice, dto.startTime]
             .some(v => v !== undefined);
+
+        // Once bidding is live, only the reserve can be corrected. Rewriting
+        // start time, opening bid, increment or BIN after the auction starts
+        // would change the rules underneath existing bidders.
+        if (hasAuctionFields && listing.auction?.status === 'ACTIVE') {
+            const unsafeLiveFields = [dto.startingBid, dto.minIncrement, dto.buyItNowPrice, dto.startTime]
+                .some(v => v !== undefined);
+            if (unsafeLiveFields) {
+                throw new BadRequestException(
+                    'For a live auction, only the reserve price can be corrected. Opening bid, increment, Buy It Now and timing are locked.',
+                );
+            }
+        }
+
+        const updated = await this.prisma.listing.update({ where: { id }, data });
+
+        // Auction schedule lives on the related Auction row. Before the auction
+        // starts, admins retain the full schedule editor. Once ACTIVE, route the
+        // reserve through the dedicated correction path so bid-integrity checks,
+        // seller notification and the live socket refresh all happen.
         if (hasAuctionFields && listing.auction && listing.auction.status === 'SCHEDULED') {
             const auctionData: Record<string, unknown> = {};
             if (dto.reservePrice !== undefined) auctionData.reservePrice = dto.reservePrice;
@@ -485,6 +500,16 @@ export class AdminService {
                 auctionData.endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
             }
             await this.prisma.auction.update({ where: { id: listing.auction.id }, data: auctionData });
+        } else if (
+            dto.reservePrice !== undefined
+            && listing.auction
+            && listing.auction.status === 'ACTIVE'
+        ) {
+            await this.auctionsService.adminCorrectReservePrice(
+                listing.auction.id,
+                dto.reservePrice,
+                'Corrected by CarMazium admin from the listing editor.',
+            );
         }
 
         return updated;
