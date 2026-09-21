@@ -545,6 +545,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [step, setStep] = useState<Step>(1);
 
+  // Route-derived edit identity is needed by valuation as well as draft save.
+  // Keep it above effects that may reference the current listing id.
+  const editListingId: string | null = route?.params?.listingId ?? null;
+  const editMode = !!editListingId;
+
   // ── Step 1 — Vehicle Details ──
   const [vehicleType, setVehicleType] = useState<'CAR' | 'HGV' | 'MOTORCYCLE'>('CAR');
   const [vrm, setVrm] = useState('');
@@ -780,13 +785,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // ── Publishing ──
   const [isPublishing, setIsPublishing] = useState(false);
-  // Derive editMode/editListingId from route.params directly, NOT from useState
-  // initializers. If this screen instance gets reused with new params (which
-  // React Navigation does when navigating back to a still-mounted screen with
-  // a different listingId), stateful init only runs once — the form would keep
-  // showing the previous listing's data and reads as "buttons don't respond."
-  const editListingId: string | null = route?.params?.listingId ?? null;
-  const editMode = !!editListingId;
+  // editListingId/editMode are derived above from route.params rather than
+  // useState so a reused screen instance always follows the current route.
   // Gates the form while the existing listing loads in edit mode — without this,
   // editing a listing used to open a blank form and Save would silently overwrite
   // the real listing with defaults (mobile-audit.md, critical finding).
