@@ -47,7 +47,7 @@ export interface VehicleValuationResult {
         auctionResults: number;
         activeAsks: number;
     };
-    source: 'CARMAZIUM_MARKET' | 'CARMAZIUM_MODEL';
+    source: 'CARMAZIUM_MARKET' | 'CARMAZIUM_MODEL_PROFILE' | 'CARMAZIUM_MODEL';
     explanation: string;
     retail: {
         suggestedAsking: number;
@@ -100,6 +100,18 @@ const BASE_NEW_VALUES: Record<string, number> = {
     'VOLVO': 48000,
 };
 
+const MODEL_FALLBACK_PROFILES: Record<string, { baseNewValue: number; retainedValueAdjustment: number }> = {
+    // Calibrated against a real 2019 Jaguar XE 2.0 Portfolio Auto benchmark
+    // supplied during QA. The make-wide £50k Jaguar fallback is too high for
+    // this model and produced a materially misleading low-confidence estimate.
+    'JAGUAR|XE': { baseNewValue: 35000, retainedValueAdjustment: 0.825 },
+};
+
+function getModelFallbackProfile(input: VehicleValuationInput) {
+    const key = `${normalizeText(input.make)}|${normalizeText(input.model)}`;
+    return MODEL_FALLBACK_PROFILES[key] ?? null;
+}
+
 const clamp = (value: number, min: number, max: number) =>
     Math.min(max, Math.max(min, value));
 
@@ -121,10 +133,11 @@ function transmissionFamily(value?: string | null): 'MANUAL' | 'AUTO' | null {
     return null;
 }
 
-function fallbackMid(input: VehicleValuationInput): number {
+function fallbackMid(input: VehicleValuationInput): { value: number; calibratedModelProfile: boolean } {
     const currentYear = new Date().getFullYear();
     const age = Math.max(0, currentYear - input.year);
-    let value = BASE_NEW_VALUES[normalizeText(input.make)] ?? 32000;
+    const modelProfile = getModelFallbackProfile(input);
+    let value = modelProfile?.baseNewValue ?? BASE_NEW_VALUES[normalizeText(input.make)] ?? 32000;
 
     for (let year = 1; year <= age; year += 1) {
         value *= year === 1 ? 0.78 : year <= 3 ? 0.85 : year <= 7 ? 0.89 : 0.92;
@@ -142,7 +155,12 @@ function fallbackMid(input: VehicleValuationInput): number {
     if (transmission === 'AUTO') value *= 1.04;
     if (transmission === 'MANUAL') value *= 0.96;
 
-    return Math.max(500, value);
+    if (modelProfile) value *= modelProfile.retainedValueAdjustment;
+
+    return {
+        value: Math.max(500, value),
+        calibratedModelProfile: !!modelProfile,
+    };
 }
 
 function vehicleProfileFactor(input: {
@@ -282,7 +300,8 @@ export function calculateVehicleValuation(
     input: VehicleValuationInput,
     comparables: VehicleValuationComparable[],
 ): VehicleValuationResult {
-    const fallback = fallbackMid(input);
+    const fallbackResult = fallbackMid(input);
+    const fallback = fallbackResult.value;
     const normalized = comparables
         .map((row) => normalizeComparable(input, row))
         .filter((row): row is { value: number; weight: number } => !!row);
@@ -356,13 +375,21 @@ export function calculateVehicleValuation(
         confidenceScore >= 0.45 ? 'MEDIUM' :
         'LOW';
 
-    const source = usable.length > 0 ? 'CARMAZIUM_MARKET' : 'CARMAZIUM_MODEL';
+    const source =
+        usable.length > 0
+            ? 'CARMAZIUM_MARKET'
+            : fallbackResult.calibratedModelProfile
+                ? 'CARMAZIUM_MODEL_PROFILE'
+                : 'CARMAZIUM_MODEL';
 
-    const explanation = source === 'CARMAZIUM_MODEL'
-        ? 'CarMazium does not yet have enough comparable completed transactions for this exact vehicle, so this is an early estimate based on age, mileage and vehicle profile.'
-        : strongEvidence > 0
-            ? `Based on ${usable.length} similar CarMazium vehicles, including ${strongEvidence} completed sale, accepted-offer or auction outcome signal${strongEvidence === 1 ? '' : 's'}.`
-            : `Based on ${usable.length} similar live CarMazium asking prices. Completed-sale evidence for this exact vehicle is still limited.`;
+    const explanation =
+        source === 'CARMAZIUM_MODEL_PROFILE'
+            ? 'CarMazium has limited live marketplace evidence for this exact vehicle, so this estimate uses a calibrated model-specific depreciation profile together with age, mileage and transmission.'
+            : source === 'CARMAZIUM_MODEL'
+                ? 'CarMazium does not yet have enough reliable market evidence for this exact vehicle. The generic make-level fallback is not precise enough to present as a seller valuation.'
+                : strongEvidence > 0
+                    ? `Based on ${usable.length} similar CarMazium vehicles, including ${strongEvidence} completed sale, accepted-offer or auction outcome signal${strongEvidence === 1 ? '' : 's'}.`
+                    : `Based on ${usable.length} similar live CarMazium asking prices. Completed-sale evidence for this exact vehicle is still limited.`;
 
     const suggestedAsking = mid;
     // "Minimum" is seller guidance, not the statistical bottom of the market
