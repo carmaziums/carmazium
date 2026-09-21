@@ -860,6 +860,105 @@ export class AuctionsService {
     }
 
     /**
+     * Admin correction for an auction reserve entered incorrectly by the seller.
+     *
+     * Safety rules:
+     * - only SCHEDULED or ACTIVE auctions can be corrected;
+     * - existing bids are never edited;
+     * - once the reserve has been met, an admin cannot raise it above the
+     *   current highest bid and retroactively make the reserve unmet;
+     * - reserve cannot exceed an existing Buy It Now price.
+     *
+     * Lowering a reserve below the current top bid is allowed. In that case the
+     * reserve becomes met immediately and any pending Buy It Now request is
+     * cleared because the normal auction should now run to its end.
+     */
+    async adminCorrectReservePrice(
+        auctionId: string,
+        reservePrice: number,
+        reason?: string,
+    ): Promise<Auction> {
+        const auction = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            include: {
+                listing: {
+                    select: {
+                        id: true,
+                        title: true,
+                        sellerId: true,
+                    },
+                },
+            },
+        });
+
+        if (!auction || auction.deletedAt) {
+            throw new NotFoundException('Auction not found');
+        }
+        if (auction.status !== 'SCHEDULED' && auction.status !== 'ACTIVE') {
+            throw new BadRequestException('Only SCHEDULED or ACTIVE auctions can have their reserve corrected');
+        }
+        if (!Number.isFinite(reservePrice) || reservePrice <= 0) {
+            throw new BadRequestException('Reserve price must be greater than £0');
+        }
+        if (auction.buyItNowPrice != null && reservePrice > Number(auction.buyItNowPrice)) {
+            throw new BadRequestException('Reserve price cannot be higher than the Buy It Now price');
+        }
+
+        const topBid = await this.prisma.bid.findFirst({
+            where: {
+                listingId: auction.listingId,
+                deletedAt: null,
+                cancelledAt: null,
+                archivedAt: null,
+            },
+            orderBy: { amount: 'desc' },
+            select: { amount: true },
+        });
+
+        const oldReserve = Number(auction.reservePrice);
+        const topBidAmount = topBid ? Number(topBid.amount) : null;
+        const reserveWasMet = topBidAmount !== null && topBidAmount >= oldReserve;
+        const reserveWillBeMet = topBidAmount !== null && topBidAmount >= reservePrice;
+
+        if (auction.status === 'ACTIVE' && reserveWasMet && !reserveWillBeMet) {
+            throw new BadRequestException(
+                'The reserve has already been met. It cannot be raised above the current highest bid.',
+            );
+        }
+
+        const updated = await this.prisma.auction.update({
+            where: { id: auctionId },
+            data: {
+                reservePrice,
+                ...(reserveWillBeMet && {
+                    buyItNowPendingBuyerId: null,
+                    buyItNowPendingAt: null,
+                }),
+            },
+        });
+
+        if (auction.listing.sellerId) {
+            const reasonText = reason?.trim() ? ` Reason: ${reason.trim()}` : '';
+            const notification = await this.notificationsService.create({
+                userId: auction.listing.sellerId,
+                type: 'AUCTION_UPDATED',
+                title: 'Auction reserve corrected',
+                message: `CarMazium corrected the reserve for "${auction.listing.title}" from £${oldReserve.toLocaleString('en-GB')} to £${reservePrice.toLocaleString('en-GB')}.${reasonText}`,
+                link: '/dashboard/seller/auctions',
+                entityType: 'Auction',
+                entityId: auctionId,
+                actionType: 'PRICE_CORRECTED',
+            }).catch(() => null);
+            if (notification) {
+                this.notificationsGateway.sendNotification(auction.listing.sellerId, notification);
+            }
+        }
+
+        this.auctionGateway.broadcastPriceUpdated(auctionId, reservePrice);
+        return updated;
+    }
+
+    /**
      * Admin override: ends a live auction immediately, assigning a specific
      * dealer as winner regardless of whether they ever bid on it. Winning
      * amount is always the Buy It Now price if one was set, otherwise the
