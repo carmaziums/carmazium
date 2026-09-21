@@ -68,6 +68,9 @@ export function VehicleValuationCard({
         )
     }
 
+    const usesLiveUkMarket =
+        valuation.source === "LIVE_UK_MARKET" || valuation.source === "BLENDED_MARKET"
+
     const confidenceClass =
         valuation.confidence === "HIGH"
             ? "text-emerald-600 border-emerald-500/30 bg-emerald-500/10 dark:text-emerald-400"
@@ -91,10 +94,12 @@ export function VehicleValuationCard({
                         </div>
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-500">
-                                {mode === "auction" ? "CarMazium Estimated Market Value" : "CarMazium Estimated Retail Value"}
+                                {usesLiveUkMarket ? "Live UK Market Estimate" : "CarMazium Market Estimate"}
                             </p>
                             <p className="mt-1 text-xs text-[var(--text-muted)]">
-                                Includes vehicle age, mileage, transmission and available CarMazium market evidence
+                                {mode === "auction"
+                                    ? "Lower dealer-buy guidance designed for a competitive trade auction."
+                                    : "Upper retail asking guidance based on current market evidence."}
                             </p>
                         </div>
                     </div>
@@ -105,13 +110,15 @@ export function VehicleValuationCard({
 
                 <div className="mt-5 rounded-2xl border border-blue-500/20 bg-[var(--bg-input)] p-5 md:p-6">
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-                        {mode === "auction" ? "Estimated market value" : "Estimated retail value"}
+                        {mode === "auction" ? "Dealer auction guide" : "Retail asking guide"}
                     </p>
                     <p className="mt-2 text-3xl font-black tabular-nums text-[var(--text-primary)] md:text-4xl">
                         {formatPrice(primaryValue)}
                     </p>
                     <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
-                        One clear guide price to help you set your listing. You remain in control of the final asking price or auction reserve.
+                        {mode === "auction"
+                            ? "A lower guide intended to leave traders room for preparation, warranty and resale margin. You remain in control of the reserve."
+                            : "A stronger retail asking guide. You remain in control of the final advertised price."}
                     </p>
                 </div>
 
