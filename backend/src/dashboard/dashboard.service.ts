@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { UserRole } from '@prisma/client';
+import { UserRole, ServiceJobStatus } from '@prisma/client';
 import { subDays } from 'date-fns';
 
 @Injectable()
@@ -356,18 +356,29 @@ export class DashboardService {
 
         if (!profile) return null;
 
+        // Reads ServiceJob, not the retired ServiceRequest model. ServiceRequest
+        // was removed from the schema while these four calls were left behind, so
+        // `this.prisma.serviceRequest` was undefined at runtime and every request
+        // to GET /dashboard/contractor threw before returning anything. The build
+        // did not catch it because SWC strips types without checking them.
         const [pending, active, completed] = await Promise.all([
-            this.prisma.serviceRequest.count({ where: { contractorId: profile.id, status: 'PENDING' } }),
-            this.prisma.serviceRequest.count({ where: { contractorId: profile.id, status: 'IN_PROGRESS' } }),
-            this.prisma.serviceRequest.count({ where: { contractorId: profile.id, status: 'COMPLETED' } }),
+            this.prisma.serviceJob.count({
+                where: { contractorId: profile.id, status: { in: [ServiceJobStatus.ACCEPTED, ServiceJobStatus.PAID] } },
+            }),
+            this.prisma.serviceJob.count({
+                where: { contractorId: profile.id, status: ServiceJobStatus.IN_PROGRESS },
+            }),
+            this.prisma.serviceJob.count({
+                where: { contractorId: profile.id, status: { in: [ServiceJobStatus.COMPLETED, ServiceJobStatus.RELEASED] } },
+            }),
         ]);
 
-        const recentRequests = await this.prisma.serviceRequest.findMany({
+        const recentRequests = await this.prisma.serviceJob.findMany({
             where: { contractorId: profile.id },
             take: 5,
             orderBy: { createdAt: 'desc' },
             include: {
-                requester: {
+                customer: {
                     select: { id: true, firstName: true, lastName: true, email: true, role: true },
                 },
             },

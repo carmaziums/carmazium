@@ -6,6 +6,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { AuctionGateway } from './auction.gateway';
 import { EmailService } from '../email/email.service';
+import { ChatService } from '../chat/chat.service';
 
 describe('AuctionsService — Buy It Now lifecycle', () => {
     let service: AuctionsService;
@@ -83,6 +84,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                 { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
                 { provide: AuctionGateway, useValue: auctionGateway },
                 { provide: EmailService, useValue: { sendAuctionWonEmail: jest.fn(), sendAuctionEndedSellerEmail: jest.fn(), sendAuctionReserveNotMetEmail: jest.fn() } },
+                { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
             ],
         }).compile();
 
@@ -313,6 +315,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
                 { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
                 { provide: AuctionGateway, useValue: { broadcastAuctionEnd: jest.fn() } },
                 { provide: EmailService, useValue: {} },
+                { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
             ],
         }).compile();
 
@@ -533,6 +536,7 @@ describe('AuctionsService — create', () => {
                 { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
                 { provide: AuctionGateway, useValue: {} },
                 { provide: EmailService, useValue: {} },
+                { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
             ],
         }).compile();
 
@@ -858,6 +862,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
                         sendAuctionReserveNotMetEmail: jest.fn().mockResolvedValue(undefined),
                     },
                 },
+                { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
             ],
         }).compile();
 

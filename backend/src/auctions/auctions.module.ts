@@ -7,6 +7,7 @@ import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { BidsModule } from '../bids/bids.module';
 import { EmailModule } from '../email/email.module';
+import { ChatModule } from '../chat/chat.module';
 import { TradeAuctionAccessGuard } from './trade-access.guard';
 
 @Module({
@@ -16,6 +17,7 @@ import { TradeAuctionAccessGuard } from './trade-access.guard';
         NotificationsModule,
         forwardRef(() => BidsModule),
         EmailModule,
+        forwardRef(() => ChatModule),
     ],
     controllers: [AuctionsController],
     providers: [AuctionsService, AuctionGateway, TradeAuctionAccessGuard],

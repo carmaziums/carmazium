@@ -5,12 +5,14 @@ import {
     ForbiddenException,
     forwardRef,
     Inject,
+    Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuctionGateway, AuctionEndPayload } from './auction.gateway';
 import { EmailService } from '../email/email.service';
+import { ChatService } from '../chat/chat.service';
 import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
@@ -31,6 +33,8 @@ export interface RetailDealAuctionCancellation {
 
 @Injectable()
 export class AuctionsService {
+    private readonly logger = new Logger(AuctionsService.name);
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly notificationsGateway: NotificationsGateway,
@@ -38,6 +42,8 @@ export class AuctionsService {
         @Inject(forwardRef(() => AuctionGateway))
         private readonly auctionGateway: AuctionGateway,
         private readonly emailService: EmailService,
+        @Inject(forwardRef(() => ChatService))
+        private readonly chatService: ChatService,
     ) { }
 
     async create(createAuctionDto: CreateAuctionDto, userId: string): Promise<Auction> {
@@ -1346,22 +1352,31 @@ export class AuctionsService {
                 });
             }
 
-            // Auto-create chat room between winner and seller
+            // Auto-create chat room between winner and seller.
+            //
+            // Delegated to ChatService rather than writing chatRoom directly.
+            // This used to upsert on an `initiatorId_participantId` compound key
+            // that no longer exists, and omitted `context` and `conversationKey`,
+            // which are now required — so closing an auction threw here and the
+            // winner and seller never got their room. Hand-rolling the row is
+            // what let it drift out of step with the chat schema in the first
+            // place; findOrCreateRoom derives the context and canonical key from
+            // the listing, so there is one implementation to keep correct.
+            //
+            // Non-fatal on purpose: the auction is already won and the money
+            // path must not fail because a convenience chat room could not be
+            // opened. Either party can still start the conversation by hand.
             if (listing.sellerId && listing.sellerId !== winnerId) {
-                await this.prisma.chatRoom.upsert({
-                    where: {
-                        initiatorId_participantId: {
-                            initiatorId: winnerId,
-                            participantId: listing.sellerId,
-                        },
-                    },
-                    create: {
-                        initiatorId: winnerId,
+                try {
+                    await this.chatService.findOrCreateRoom(winnerId, {
                         participantId: listing.sellerId,
                         listingId: auction.listingId,
-                    },
-                    update: { listingId: auction.listingId },
-                });
+                    });
+                } catch (e: any) {
+                    this.logger.error(
+                        `Auction ${auction.id}: could not open winner/seller chat room — ${e?.message}`,
+                    );
+                }
             }
 
             // Email winner and seller

@@ -772,7 +772,7 @@ export class ServicesService {
 
             listing = offer.listing;
             vehicle = {
-                registration: offer.listing.vehicle?.registration ?? offer.listing.vrm ?? null,
+                registration: offer.listing.vehicle?.vrm ?? offer.listing.vrm ?? null,
                 make: offer.listing.vehicle?.make ?? offer.listing.make ?? null,
                 model: offer.listing.vehicle?.model ?? offer.listing.model ?? null,
                 year: offer.listing.vehicle?.year ?? offer.listing.year ?? null,
@@ -820,7 +820,7 @@ export class ServicesService {
 
             listing = auction.listing;
             vehicle = {
-                registration: auction.listing.vehicle?.registration ?? auction.listing.vrm ?? null,
+                registration: auction.listing.vehicle?.vrm ?? auction.listing.vrm ?? null,
                 make: auction.listing.vehicle?.make ?? auction.listing.make ?? null,
                 model: auction.listing.vehicle?.model ?? auction.listing.model ?? null,
                 year: auction.listing.vehicle?.year ?? auction.listing.year ?? null,

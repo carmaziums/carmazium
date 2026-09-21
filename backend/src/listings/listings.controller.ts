@@ -26,6 +26,7 @@ import {
 } from '@nestjs/swagger';
 import { ListingsService } from './listings.service';
 import { CreateListingDto } from './dto/create-listing.dto';
+import { AlsoAuctionDto } from './dto/also-auction.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { VehicleValuationDto } from './dto/vehicle-valuation.dto';
