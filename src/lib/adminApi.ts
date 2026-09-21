@@ -884,6 +884,45 @@ export interface TrafficAnalytics {
   topSearches: SearchItem[];
 }
 
+export interface ValuationLiveAnalytics {
+  timezone: string;
+  generatedAt: string;
+  today: {
+    requests: number;
+    uniqueSessions: number;
+    loggedInUsers: number;
+    loggedInSessions: number;
+    anonymousSessions: number;
+    auctionRequests: number;
+    retailRequests: number;
+  };
+  hourly: Array<{
+    hour: string;
+    requests: number;
+    sessions: number;
+  }>;
+  last7Days: Array<{
+    date: string;
+    requests: number;
+    sessions: number;
+  }>;
+  recent: Array<{
+    id: string;
+    createdAt: string;
+    make: string | null;
+    year: number | null;
+    fuelType: string | null;
+    listingType: string | null;
+    device: string | null;
+    city: string | null;
+    country: string | null;
+  }>;
+}
+
+export async function getLiveValuationAnalytics(): Promise<ValuationLiveAnalytics> {
+  return apiClient<ValuationLiveAnalytics>('/analytics/valuations/live');
+}
+
 export async function getTrafficAnalytics(from?: string, to?: string): Promise<TrafficAnalytics> {
   const params = new URLSearchParams();
   if (from) params.set('from', from);
