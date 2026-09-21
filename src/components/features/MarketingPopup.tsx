@@ -4,6 +4,7 @@ import * as React from "react"
 import { createPortal } from "react-dom"
 import Image from "next/image"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { X } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { getMarketingPopupConfig, type MarketingPopupConfig } from "@/lib/marketingApi"
@@ -37,6 +38,7 @@ const DEFAULT_ALT = "We pay you £100 — auction your car now with Carmazium"
  *   the X button, Escape, and backdrop click all close without navigating.
  */
 export function MarketingPopup() {
+    const pathname = usePathname()
     const { user, loading: authLoading } = useAuth()
     const [open, setOpen] = React.useState(false)
     const [shouldMount, setShouldMount] = React.useState(false)
@@ -53,6 +55,7 @@ export function MarketingPopup() {
     // popup doesn't show this session — never blocks or breaks the page.
     React.useEffect(() => {
         if (authLoading || user) return
+        if (pathname?.startsWith("/sell")) return
         if (typeof window === "undefined") return
         if (sessionStorage.getItem(SESSION_KEY)) return
 
@@ -72,7 +75,7 @@ export function MarketingPopup() {
             cancelled = true
             if (showTimer !== undefined) window.clearTimeout(showTimer)
         }
-    }, [authLoading, user])
+    }, [authLoading, user, pathname])
 
     // Deterministic mount/unmount: shouldMount controls DOM presence, visible
     // controls the CSS transition state.
@@ -120,6 +123,7 @@ export function MarketingPopup() {
         return () => window.removeEventListener("keydown", handler)
     }, [open])
 
+    if (pathname?.startsWith("/sell")) return null
     if (!domReady || !shouldMount) return null
 
     return createPortal(

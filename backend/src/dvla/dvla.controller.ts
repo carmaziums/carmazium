@@ -5,8 +5,10 @@ import {
     HttpCode,
     HttpStatus,
     UsePipes,
+    UseGuards,
     ValidationPipe,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, Matches } from 'class-validator';
 import { DvlaService, DvlaLookupResult } from './dvla.service';
@@ -28,6 +30,8 @@ export class DvlaController {
     constructor(private readonly dvlaService: DvlaService) { }
 
     @Post('lookup')
+    @UseGuards(ThrottlerGuard)
+    @Throttle({ default: { limit: 10, ttl: 60000 } })
     @HttpCode(HttpStatus.OK)
     @UsePipes(new ValidationPipe({ whitelist: true }))
     @ApiOperation({ summary: 'Look up a UK vehicle by registration number via DVLA VES API' })
