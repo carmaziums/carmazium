@@ -7,6 +7,7 @@ import { pushToDataLayer, SELLER_FUNNEL } from "@/lib/gtm"
 import { trackAdsConversion } from "@/lib/googleAds"
 import { trackGa4Event } from "@/components/analytics/GoogleAnalytics"
 import { trackMetaEvent } from "@/components/analytics/MetaPixel"
+import { hasTrackingConsent } from "@/lib/trackingConsent"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 
@@ -38,6 +39,66 @@ function googleEventParams(type: string, payload: Record<string, unknown>): Reco
     if (type !== "search") return payload
     const searchTerm = String(payload.search_term ?? payload.query ?? "").trim()
     return compact({ ...payload, query: undefined, search_term: searchTerm || undefined })
+}
+
+const META_SELLER_LEAD_STORAGE_PREFIX = "cm_meta_seller_lead_v1:"
+const metaSellerLeadSessionDedupe = new Set<string>()
+
+/**
+ * Meta's standard Lead event is the optimisation signal for seller acquisition.
+ *
+ * A listing can pass through several legitimate submission branches over its
+ * lifetime (Stripe return, HPI resume, admin rejection/resubmission, edit and
+ * republish). Those are useful lifecycle events, but they must not make one
+ * vehicle look like several newly acquired seller leads.
+ *
+ * Persist the dedupe by listing id so the same browser cannot train Meta more
+ * than once for the same listing across reloads or later resubmissions. We only
+ * consume the dedupe key after consent is granted and fbq is actually present;
+ * otherwise a visitor who accepts cookies later would incorrectly lose the
+ * conversion before it was ever sent.
+ */
+function trackMetaSellerLeadOnce(payload: Record<string, unknown>): void {
+    const params = compact({ ...payload, content_category: "seller_listing_submitted" })
+    const listingId = String(payload.listing_id ?? "").trim()
+
+    // listing_submitted should always have an id. Preserve the old behaviour if
+    // a future call site violates that contract rather than silently dropping it.
+    if (!listingId) {
+        trackMetaEvent("Lead", params)
+        return
+    }
+
+    if (
+        typeof window === "undefined" ||
+        !hasTrackingConsent() ||
+        typeof window.fbq !== "function"
+    ) {
+        return
+    }
+
+    const dedupeKey = `${META_SELLER_LEAD_STORAGE_PREFIX}${listingId}`
+    if (metaSellerLeadSessionDedupe.has(dedupeKey)) return
+
+    try {
+        if (window.localStorage.getItem(dedupeKey) === "1") {
+            metaSellerLeadSessionDedupe.add(dedupeKey)
+            return
+        }
+    } catch {
+        // Storage can be blocked independently of consent. The in-memory set
+        // below still prevents duplicate sends during this page lifetime.
+    }
+
+    trackMetaEvent("Lead", params)
+    metaSellerLeadSessionDedupe.add(dedupeKey)
+
+    try {
+        window.localStorage.setItem(dedupeKey, "1")
+    } catch {
+        // The event has already been sent. Do not let storage failure affect
+        // the seller flow; in-memory dedupe still covers the current page.
+    }
 }
 
 function mirrorToMeta(type: string, payload: Record<string, unknown>): void {
@@ -83,11 +144,13 @@ function mirrorToMeta(type: string, payload: Record<string, unknown>): void {
             return
         case SELLER_FUNNEL.LISTING_SUBMITTED:
             if (!isAdmin) {
-                // Meta's standard Lead now means a seller actually completed
-                // the listing wizard. This covers both free auctions and retail
-                // listings, so the TOFU campaign optimises for a meaningful
-                // seller outcome instead of a cheap listing-start micro-event.
-                trackMetaEvent("Lead", compact({ ...payload, content_category: "seller_listing_submitted" }))
+                // Meta's standard Lead means a seller actually completed the
+                // listing wizard. Count each listing id once for optimisation:
+                // edits, payment returns and rejection/resubmission flows can
+                // legitimately emit listing_submitted again for the same car.
+                trackMetaSellerLeadOnce(payload)
+                // Keep the custom lifecycle event on every genuine submission
+                // so reporting can still measure resubmissions separately.
                 trackMetaEvent("SellerCompleteListing", compact(payload))
             }
             return
