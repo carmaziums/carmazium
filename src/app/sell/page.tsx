@@ -252,6 +252,9 @@ function QuickValuationForm() {
     const hasReliableGuide = result
         ? !(result.valuation.source === "CARMAZIUM_MODEL" && result.valuation.comparables === 0)
         : false
+    const usesLiveUkMarket = result
+        ? result.valuation.source === "LIVE_UK_MARKET" || result.valuation.source === "BLENDED_MARKET"
+        : false
     const needsModel = !!pendingVehicle && !pendingVehicle.model && !result
     const needsManualDetails = manualMode && !result
 
@@ -383,25 +386,53 @@ function QuickValuationForm() {
                             </p>
                             {hasReliableGuide ? (
                                 <>
-                                    <p className="mt-1 text-3xl font-black tabular-nums text-[var(--text-primary)]">
-                                        {formatGuidePrice(result.valuation.mid)}
+                                    <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                                        {usesLiveUkMarket ? "Live UK market guidance" : "CarMazium market guidance"}
                                     </p>
-                                    <p className="mt-1 text-xs text-[var(--text-muted)]">
-                                        Estimated market value. Guide only; specification, condition, demand and inspection can change the final sale price.
+                                    <div className="mt-3 grid grid-cols-2 gap-2 sm:max-w-xl">
+                                        <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-3">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600 dark:text-blue-400">
+                                                Retail asking guide
+                                            </p>
+                                            <p className="mt-1 text-2xl font-black tabular-nums text-[var(--text-primary)]">
+                                                {formatGuidePrice(result.valuation.retail.suggestedAsking)}
+                                            </p>
+                                            <p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">
+                                                Upper market guidance for a retail advert.
+                                            </p>
+                                        </div>
+                                        <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.06] p-3">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-orange-600 dark:text-orange-400">
+                                                Dealer auction guide
+                                            </p>
+                                            <p className="mt-1 text-2xl font-black tabular-nums text-[var(--text-primary)]">
+                                                {formatGuidePrice(result.valuation.auction.marketValue)}
+                                            </p>
+                                            <p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">
+                                                Lower trade-oriented guide for dealer bidding.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
+                                        Guide only. Exact specification, condition, demand and inspection can change the final sale price.
                                     </p>
                                 </>
                             ) : (
                                 <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--text-muted)]">
-                                    Vehicle found. CarMazium needs a few more listing details before showing a reliable guide price for this exact model.
+                                    Vehicle found. CarMazium could not find enough reliable exact-model market evidence yet. You can still continue and set your own price.
                                 </p>
                             )}
                         </div>
-                        <div className="grid shrink-0 grid-cols-1 gap-2 sm:min-w-[230px]">
+                        <div className="grid shrink-0 grid-cols-1 gap-2 sm:min-w-[250px]">
                             <Button type="button" onClick={() => startListing("AUCTION")} className="bg-orange-600 hover:bg-orange-500">
-                                FREE Dealer Auction <Gavel size={16} />
+                                FREE Dealer Auction
+                                {hasReliableGuide && <span className="font-black">{formatGuidePrice(result.valuation.auction.marketValue)}</span>}
+                                <Gavel size={16} />
                             </Button>
                             <Button type="button" variant="outline" onClick={() => startListing("CLASSIFIED")}>
-                                £1 Retail Listing <ArrowRight size={16} />
+                                £1 Retail Listing
+                                {hasReliableGuide && <span className="font-black">{formatGuidePrice(result.valuation.retail.suggestedAsking)}</span>}
+                                <ArrowRight size={16} />
                             </Button>
                         </div>
                     </div>
