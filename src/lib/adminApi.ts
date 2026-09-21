@@ -701,6 +701,21 @@ export async function getAdminAuctions(page = 1, limit = 20) {
   return result;
 }
 
+export async function correctAuctionPrice(
+  auctionId: string,
+  reservePrice: number,
+  reason?: string,
+) {
+  const result = await apiClient<{ data: any }>(`/admin/auctions/${auctionId}/price`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      reservePrice,
+      reason: reason?.trim() || undefined,
+    }),
+  });
+  return result.data;
+}
+
 export async function getAllDealers() {
   const result = await apiClient<{ data: any[] }>('/admin/dealers');
   return result.data;
