@@ -974,6 +974,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 listingType?: "AUCTION" | "CLASSIFIED"
                 vehicle?: Partial<FormData>
                 valuation?: VehicleValuation | null
+                dvlaVerified?: boolean
             }>).detail
 
             if (!detail?.listingType || !detail.vehicle) return
@@ -1002,8 +1003,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             }))
             setValuation(detail.valuation ?? null)
             setValuationError(null)
-            setDvlaSuccess(true)
-            setDvlaError(null)
+            const verifiedByDvla = detail.dvlaVerified !== false
+            setDvlaSuccess(verifiedByDvla)
+            setDvlaError(verifiedByDvla ? null : "DVLA could not verify this registration. Review the manually entered vehicle details before continuing.")
             setSellingMethod("list")
             setCurrentStep(1)
 
