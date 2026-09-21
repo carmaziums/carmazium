@@ -965,6 +965,67 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         set("status", "ACTIVE")
     }
 
+
+    React.useEffect(() => {
+        if (isDashboard) return
+
+        const handleStartFromLanding = (event: Event) => {
+            const detail = (event as CustomEvent<{
+                listingType?: "AUCTION" | "CLASSIFIED"
+                vehicle?: Partial<FormData>
+                valuation?: VehicleValuation | null
+            }>).detail
+
+            if (!detail?.listingType || !detail.vehicle) return
+            if (!isAuthenticated) {
+                setShowLoginModal(true)
+                return
+            }
+            if (!isEmailVerified) {
+                alert("Please verify your email address before creating a listing.")
+                router.push("/auth/onboarding")
+                return
+            }
+            if (profile?.role === "DEALER" && !isVerifiedDealer) {
+                alert("Your dealer account is pending KYC verification. Complete verification to start listing vehicles.")
+                router.push("/dashboard/dealer")
+                return
+            }
+
+            const listingType = detail.listingType
+            setFormData(prev => ({
+                ...prev,
+                ...detail.vehicle,
+                listingType,
+                badgeTier: listingType === "AUCTION" ? "FREE" : "BASIC",
+                status: "ACTIVE",
+            }))
+            setValuation(detail.valuation ?? null)
+            setValuationError(null)
+            setDvlaSuccess(true)
+            setDvlaError(null)
+            setSellingMethod("list")
+            setCurrentStep(1)
+
+            trackEvent(SELLER_FUNNEL.LISTING_STARTED, {
+                listing_type: listingType === "AUCTION" ? "auction" : "retail",
+                seller_role: profile?.role || "UNKNOWN",
+                entry_point: "sell_landing_valuation",
+            })
+        }
+
+        window.addEventListener("carmazium:start-seller-listing", handleStartFromLanding as EventListener)
+        return () => window.removeEventListener("carmazium:start-seller-listing", handleStartFromLanding as EventListener)
+    }, [
+        isDashboard,
+        isAuthenticated,
+        isEmailVerified,
+        isVerifiedDealer,
+        profile?.role,
+        router,
+        trackEvent,
+    ])
+
     // ─── Submit ──────────────────────────────────────────────────────────────────
 
     // handleSubmit has three top-level branches (edit / returning-from-HPI /
@@ -1507,9 +1568,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     {!isDashboard && <div className="fixed inset-0 -z-10" style={{ background: 'var(--bg-body)' }} />}
                     <div className="container mx-auto px-5 max-w-4xl">
                         <div className="text-center mb-14">
-                            <p className="text-xs font-black uppercase tracking-widest text-primary mb-3">Step 1 · Choose Your Listing Method</p>
-                            <h1 className="text-4xl md:text-5xl font-black font-heading mb-4 tracking-tight uppercase">CURATE YOUR LISTING</h1>
-                            <p className="text-lg text-[var(--text-muted)] max-w-lg mx-auto">Present your vehicle to thousands of high-intent buyers seeking premium quality. Choose Retail or Auction below.</p>
+                            <p className="text-xs font-black uppercase tracking-widest text-primary mb-3">
+                                {isDashboard ? "Choose Your Listing Method" : "Step 2 · Choose How to Sell"}
+                            </p>
+                            <h2 className="text-4xl md:text-5xl font-black font-heading mb-4 tracking-tight">Choose How You Want to Sell</h2>
+                            <p className="text-lg text-[var(--text-muted)] max-w-2xl mx-auto">
+                                Use the free dealer auction for verified motor-trade bids or advertise directly to retail buyers from £1.
+                            </p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
@@ -1550,7 +1615,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         <Gavel className="w-8 h-8 text-orange-400" />
                                     </div>
                                     <h2 className="text-2xl font-bold mb-2 font-heading">Auction</h2>
-                                    <p className="text-[var(--text-muted)] mb-4 text-sm">Let buyers bid in real-time. Live auctions with anti-snipe protection.</p>
+                                    <p className="text-[var(--text-muted)] mb-4 text-sm">Let verified motor dealers bid for your car in real time. Live auctions include anti-snipe protection.</p>
                                     {/* Bidding notice */}
                                     <div className="flex items-start gap-2 mb-5 px-3 py-2.5 rounded-lg border text-xs bg-orange-500/5 border-orange-500/20 text-orange-300/80">
                                         <Shield size={12} className="shrink-0 mt-0.5" />
@@ -1585,7 +1650,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Starting from £1</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> DVLA-verified vehicle data</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Instant estimated valuation</li>
-                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Reach thousands of buyers</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Reach retail buyers across the UK</li>
                                     </ul>
                                     <Button className="w-full py-4 group-hover:shadow-neon">Start Listing <ArrowRight className="ml-2 h-4 w-4" /></Button>
                                 </div>
@@ -1647,9 +1712,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 </div>
 
                 <div className="text-center mb-10">
-                    <h1 className="text-3xl md:text-4xl font-heading font-bold">
+                    <h2 className="text-3xl md:text-4xl font-heading font-bold">
                         {formData.listingType === "AUCTION" ? "List for Auction" : "List Your Car"}
-                    </h1>
+                    </h2>
                     <p className="text-[var(--text-muted)] mt-2">Step {currentStep + 1} of {totalSteps + 1}</p>
                 </div>
 
