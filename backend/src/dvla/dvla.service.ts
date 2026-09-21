@@ -1,5 +1,6 @@
 import { Injectable, Logger, ServiceUnavailableException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AiService } from '../ai/ai.service';
 
 // ─── DVLA VES API Response ────────────────────────────────────────────────────
 
@@ -53,6 +54,19 @@ export interface DvlaLookupResult {
     dateOfLastV5CIssued?: string;
     realDrivingEmissions?: string;
     transmission?: string;
+    variant?: string;
+    bodyType?: string;
+    driveType?: string;
+    doors?: number;
+    seats?: number;
+    bhp?: number;
+    engineDescription?: string;
+    specEnrichment?: {
+        confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+        matchBasis: 'EXACT_REGISTRATION' | 'PROFILE_CONSENSUS' | 'NONE';
+        evidenceCount: number;
+        source: 'AI_LIVE_WEB';
+    };
     dataSource: 'DVLA';
     motHistory?: MotTestResult[];
 }
@@ -123,7 +137,10 @@ export class DvlaService {
     private readonly apiKey: string | undefined;
     private readonly baseUrl: string;
 
-    constructor(private configService: ConfigService) {
+    constructor(
+        private configService: ConfigService,
+        private readonly aiService: AiService,
+    ) {
         this.apiKey = this.configService.get<string>('DVLA_API_KEY');
         this.baseUrl = this.configService.get<string>('DVLA_API_URL') ?? DVLA_PROD_URL;
 
@@ -163,6 +180,58 @@ export class DvlaService {
             if (motResult.value.model) combined.model = motResult.value.model;
             if (motResult.value.primaryColour) combined.primaryColour = motResult.value.primaryColour;
             if (motResult.value.firstUsedDate) combined.firstUsedDate = motResult.value.firstUsedDate;
+        }
+
+        // Enrich the registration record with evidence-backed live specification
+        // research. This never replaces trusted DVLA/MOT values. Exact trim is
+        // only auto-filled from strong exact-registration evidence; broader
+        // profile consensus may fill non-identity specs such as gearbox/body.
+        const enrichment = await this.aiService.enrichVehicleSpecification({
+            vrm: normalised,
+            make: combined.make,
+            model: combined.model,
+            year: combined.year,
+            engineSize: combined.engineSize,
+            fuelType: combined.fuelType,
+            colour: combined.primaryColour || combined.colour,
+            firstUsedDate: combined.firstUsedDate,
+        });
+
+        if (enrichment) {
+            combined.specEnrichment = {
+                confidence: enrichment.confidence,
+                matchBasis: enrichment.matchBasis,
+                evidenceCount: enrichment.evidenceCount,
+                source: 'AI_LIVE_WEB',
+            };
+
+            const exactHighConfidence =
+                enrichment.matchBasis === 'EXACT_REGISTRATION'
+                && enrichment.confidence === 'HIGH'
+                && enrichment.evidenceCount >= 1;
+
+            const strongProfileConsensus =
+                enrichment.matchBasis === 'PROFILE_CONSENSUS'
+                && ['MEDIUM', 'HIGH'].includes(enrichment.confidence)
+                && enrichment.evidenceCount >= 2;
+
+            if (exactHighConfidence && enrichment.variant) {
+                combined.variant = enrichment.variant;
+            }
+
+            if (exactHighConfidence || strongProfileConsensus) {
+                if (!combined.transmission && enrichment.transmission) {
+                    combined.transmission = enrichment.transmission;
+                }
+                if (enrichment.bodyType) combined.bodyType = enrichment.bodyType;
+                if (enrichment.driveType) combined.driveType = enrichment.driveType;
+                if (enrichment.doors != null) combined.doors = enrichment.doors;
+                if (enrichment.seats != null) combined.seats = enrichment.seats;
+                if (enrichment.bhp != null) combined.bhp = enrichment.bhp;
+                if (enrichment.engineDescription) {
+                    combined.engineDescription = enrichment.engineDescription;
+                }
+            }
         }
 
         return combined;
