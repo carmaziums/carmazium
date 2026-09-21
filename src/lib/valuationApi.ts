@@ -29,7 +29,7 @@ export interface VehicleValuation {
         auctionResults: number
         activeAsks: number
     }
-    source: 'CARMAZIUM_MARKET' | 'CARMAZIUM_MODEL'
+    source: 'CARMAZIUM_MARKET' | 'CARMAZIUM_MODEL_PROFILE' | 'CARMAZIUM_MODEL'
     explanation: string
     retail: {
         suggestedAsking: number
@@ -95,6 +95,10 @@ const BASE_NEW_VALUES: Record<string, number> = {
     VOLVO: 48000,
 }
 
+const MODEL_FALLBACK_PROFILES: Record<string, { baseNewValue: number; retainedValueAdjustment: number }> = {
+    'JAGUAR|XE': { baseNewValue: 35000, retainedValueAdjustment: 0.825 },
+}
+
 const clamp = (value: number, min: number, max: number) =>
     Math.min(max, Math.max(min, value))
 
@@ -146,9 +150,15 @@ function profileFactor(request: VehicleValuationRequest): number {
     return factor
 }
 
-function modelFallbackMid(request: VehicleValuationRequest): number {
+function getModelFallbackProfile(request: VehicleValuationRequest) {
+    const key = `${(request.make ?? '').trim().toUpperCase()}|${(request.model ?? '').trim().toUpperCase()}`
+    return MODEL_FALLBACK_PROFILES[key] ?? null
+}
+
+function modelFallbackMid(request: VehicleValuationRequest): { value: number; calibratedModelProfile: boolean } {
     const age = Math.max(0, new Date().getFullYear() - request.year)
-    let value = BASE_NEW_VALUES[(request.make ?? '').trim().toUpperCase()] ?? 32000
+    const modelProfile = getModelFallbackProfile(request)
+    let value = modelProfile?.baseNewValue ?? BASE_NEW_VALUES[(request.make ?? '').trim().toUpperCase()] ?? 32000
 
     for (let year = 1; year <= age; year += 1) {
         value *= year === 1 ? 0.78 : year <= 3 ? 0.85 : year <= 7 ? 0.89 : 0.92
@@ -163,14 +173,20 @@ function modelFallbackMid(request: VehicleValuationRequest): number {
     if (transmission === 'AUTO') value *= 1.04
     if (transmission === 'MANUAL') value *= 0.96
 
-    return Math.max(500, value)
+    if (modelProfile) value *= modelProfile.retainedValueAdjustment
+
+    return {
+        value: Math.max(500, value),
+        calibratedModelProfile: !!modelProfile,
+    }
 }
 
 function finishEstimate(
     request: VehicleValuationRequest,
     values: number[],
 ): VehicleValuation {
-    const fallback = modelFallbackMid(request)
+    const fallbackResult = modelFallbackMid(request)
+    const fallback = fallbackResult.value
     let marketMid = values.length ? quantile(values, 0.5) : fallback
 
     if (values.length === 1) marketMid = marketMid * 0.45 + fallback * 0.55
@@ -186,7 +202,11 @@ function finishEstimate(
 
     const confidenceScore = values.length >= 8 ? 0.48 : values.length >= 3 ? 0.38 : values.length ? 0.28 : 0.18
     const confidence: VehicleValuation['confidence'] = confidenceScore >= 0.45 ? 'MEDIUM' : 'LOW'
-    const source: VehicleValuation['source'] = values.length ? 'CARMAZIUM_MARKET' : 'CARMAZIUM_MODEL'
+    const source: VehicleValuation['source'] = values.length
+        ? 'CARMAZIUM_MARKET'
+        : fallbackResult.calibratedModelProfile
+            ? 'CARMAZIUM_MODEL_PROFILE'
+            : 'CARMAZIUM_MODEL'
 
     return {
         low,
@@ -204,7 +224,9 @@ function finishEstimate(
         source,
         explanation: values.length
             ? `Based on ${values.length} similar live CarMazium asking price${values.length === 1 ? '' : 's'}. Completed transaction evidence will be added when available.`
-            : 'CarMazium does not yet have enough comparable marketplace data for this exact vehicle, so this is an early estimate based on age, mileage and vehicle profile.',
+            : fallbackResult.calibratedModelProfile
+                ? 'CarMazium has limited live marketplace evidence for this exact vehicle, so this uses a calibrated model-specific depreciation profile with age, mileage and transmission.'
+                : 'CarMazium does not yet have enough reliable market evidence for this exact vehicle. Enter your own price rather than relying on a generic make-level estimate.',
         retail: {
             suggestedAsking: mid,
             suggestedMinimum: roundMoney(mid * 0.90),

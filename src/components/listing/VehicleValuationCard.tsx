@@ -50,6 +50,24 @@ export function VehicleValuationCard({
 
     if (!valuation) return null
 
+    if (valuation.source === "CARMAZIUM_MODEL" && valuation.comparables === 0) {
+        return (
+            <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-5 md:p-6">
+                <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10">
+                        <AlertTriangle size={18} className="text-amber-500" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-black text-[var(--text-primary)]">Not enough reliable market evidence yet</p>
+                        <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+                            CarMazium does not have enough exact-model evidence to give you a trustworthy price for this vehicle yet. Please enter your own asking price or auction value rather than relying on a generic make-level estimate.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     const confidenceClass =
         valuation.confidence === "HIGH"
             ? "text-emerald-600 border-emerald-500/30 bg-emerald-500/10 dark:text-emerald-400"

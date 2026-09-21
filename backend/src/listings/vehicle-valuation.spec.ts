@@ -38,7 +38,47 @@ describe('calculateVehicleValuation', () => {
         expect(result.comparables).toBe(0);
         expect(result.low).toBeLessThan(result.mid);
         expect(result.high).toBeGreaterThan(result.mid);
-        expect(result.explanation).toMatch(/does not yet have enough comparable completed transactions/i);
+        expect(result.explanation).toMatch(/does not yet have enough reliable market evidence/i);
+    });
+
+    it('calibrates a 2019 Jaguar XE automatic near the supplied retail benchmark', () => {
+        const result = calculateVehicleValuation({
+            make: 'Jaguar',
+            model: 'XE',
+            year: 2019,
+            mileage: 73500,
+            fuelType: 'PETROL',
+            transmission: 'AUTOMATIC',
+            variant: '2.0 GPF Portfolio Saloon 4dr Petrol Auto Euro 6 (s/s) (200 ps)',
+            condition: 'GOOD',
+            writeOffCategory: 'NONE',
+        }, []);
+
+        expect(result.source).toBe('CARMAZIUM_MODEL_PROFILE');
+        expect(result.confidence).toBe('LOW');
+        expect(result.mid).toBeGreaterThanOrEqual(9500);
+        expect(result.mid).toBeLessThanOrEqual(10750);
+    });
+
+    it('keeps a manual Jaguar XE below the equivalent automatic fallback', () => {
+        const automatic = calculateVehicleValuation({
+            make: 'Jaguar',
+            model: 'XE',
+            year: 2019,
+            mileage: 73500,
+            fuelType: 'PETROL',
+            transmission: 'AUTOMATIC',
+        }, []);
+        const manual = calculateVehicleValuation({
+            make: 'Jaguar',
+            model: 'XE',
+            year: 2019,
+            mileage: 73500,
+            fuelType: 'PETROL',
+            transmission: 'MANUAL',
+        }, []);
+
+        expect(automatic.mid).toBeGreaterThan(manual.mid);
     });
 
     it('discounts write-off vehicles relative to an otherwise identical clean vehicle', () => {
