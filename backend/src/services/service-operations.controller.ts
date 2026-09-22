@@ -81,11 +81,12 @@ export class AdminServiceOperationsController {
     @Patch('capabilities/:id/provider')
     @ApiOperation({ summary: 'Correct provider business details from the admin review screen' })
     async updateProviderDetails(
+        @CurrentUser() admin: any,
         @Param('id') id: string,
         @Body() body: AdminProviderDetailsUpdateInput,
     ) {
         return new StandardResponse(
-            await this.operations.adminUpdateProviderDetails(id, body),
+            await this.operations.adminUpdateProviderDetails(admin.id, id, body),
         );
     }
 
