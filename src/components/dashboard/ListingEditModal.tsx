@@ -8,9 +8,10 @@ import {
     Tag, Fingerprint, Wrench, History as HistoryIcon, ShieldCheck,
     MapPinned, Truck, Layers, Gavel, ImageIcon, AlignLeft,
     Star, SlidersHorizontal, RotateCcw, ArrowLeft, ArrowRight,
-    GripVertical, Move,
+    GripVertical, Move, Sparkles,
 } from "lucide-react"
 import { getAdminListing, updateListingAsAdmin } from "@/lib/adminApi"
+import { aiGenerateDescription } from "@/lib/aiApi"
 import { uploadImage } from "@/lib/supabase"
 import {
     encodeVehicleImagePresentation,
@@ -159,6 +160,8 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
     const [saving, setSaving] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [savedMsg, setSavedMsg] = React.useState<string | null>(null)
+    const [isGeneratingDescription, setIsGeneratingDescription] = React.useState(false)
+    const [descriptionAiError, setDescriptionAiError] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         if (!listingId) return
@@ -256,6 +259,47 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
     }, [listingId])
 
     const set = (key: string) => (v: string) => setEditForm(prev => ({ ...prev, [key]: v }))
+
+    const handleGenerateDescription = async () => {
+        if (isGeneratingDescription) return
+
+        setDescriptionAiError(null)
+        setIsGeneratingDescription(true)
+        try {
+            const features = (editForm.features || '')
+                .split(',')
+                .map(v => v.trim())
+                .filter(Boolean)
+
+            const result = await aiGenerateDescription({
+                make: editForm.make,
+                model: editForm.model,
+                year: editForm.year,
+                mileage: editForm.mileage,
+                condition: editForm.condition,
+                fuelType: editForm.fuelType,
+                transmission: editForm.transmission,
+                color: editForm.color,
+                features,
+                vrm: editForm.vrm,
+                motStatus: editForm.motStatus,
+                engineSize: editForm.engineSize,
+                bodyType: editForm.bodyType,
+                serviceHistory: editForm.serviceHistory,
+                owners: editForm.owners,
+            })
+
+            if (!result?.text?.trim()) {
+                throw new Error('AI returned an empty description')
+            }
+
+            set('description')(result.text.trim())
+        } catch (err) {
+            setDescriptionAiError(errorMessage(err, 'Failed to generate an AI description. Please try again.'))
+        } finally {
+            setIsGeneratingDescription(false)
+        }
+    }
 
     const imagesChanged = editImages.length !== originalImages.length || editImages.some((img, i) => img !== originalImages[i])
     const changedFieldKeys = Object.keys(editForm).filter(k => editForm[k] !== originalForm[k])
@@ -817,7 +861,51 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                                 )}
 
                                 {active.key === 'description' && (
-                                    <Field label="Description" value={editForm.description} onChange={set('description')} type="textarea" />
+                                    <div className="space-y-4">
+                                        <Field label="Description" value={editForm.description} onChange={set('description')} type="textarea" />
+
+                                        <div className="rounded-xl border border-indigo-500/25 bg-gradient-to-r from-indigo-500/10 to-violet-500/10 p-4">
+                                            <div className="flex items-start gap-3">
+                                                <div className="mt-0.5 rounded-lg bg-indigo-500/15 p-2 text-indigo-400">
+                                                    {isGeneratingDescription
+                                                        ? <Loader2 size={18} className="animate-spin" />
+                                                        : <Sparkles size={18} />}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-sm font-black text-[var(--text-primary)]">AI Description</p>
+                                                    <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+                                                        Generate a professional vehicle description from the listing details already entered.
+                                                    </p>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleGenerateDescription}
+                                                        disabled={isGeneratingDescription || (!editForm.make && !editForm.model && !editForm.year)}
+                                                        className="mt-3 inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-indigo-300 transition-colors hover:bg-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                                    >
+                                                        {isGeneratingDescription
+                                                            ? <Loader2 size={14} className="animate-spin" />
+                                                            : <Sparkles size={14} />}
+                                                        {isGeneratingDescription
+                                                            ? 'Generating...'
+                                                            : editForm.description.trim()
+                                                                ? 'Replace with AI Description'
+                                                                : 'Generate AI Description'}
+                                                    </button>
+
+                                                    {descriptionAiError && (
+                                                        <p className="mt-2 text-xs font-medium text-red-400">{descriptionAiError}</p>
+                                                    )}
+
+                                                    {editForm.description.trim() && !isGeneratingDescription && (
+                                                        <p className="mt-2 text-[10px] leading-4 text-[var(--text-secondary)]">
+                                                            This will replace the text currently in the description box. You can still edit the AI draft before saving.
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         </div>
