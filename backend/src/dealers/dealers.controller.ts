@@ -1,5 +1,8 @@
 import {
     Controller,
+    UploadedFile,
+    UseInterceptors,
+    BadRequestException,
     Get,
     Post,
     Patch,
@@ -21,7 +24,9 @@ import {
     ApiResponse,
     ApiCookieAuth,
 } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { DealersService } from './dealers.service';
+import { KycDocumentsService, isKycDocumentField } from './kyc-documents.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
@@ -35,7 +40,10 @@ import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dt
 @UseGuards(SessionAuthGuard)
 @ApiCookieAuth()
 export class DealersController {
-    constructor(private readonly dealersService: DealersService) {}
+    constructor(
+        private readonly dealersService: DealersService,
+        private readonly kycDocuments: KycDocumentsService,
+    ) {}
 
     // ─── Dashboard Stats ────────────────────────────────────────────
 
@@ -172,7 +180,32 @@ export class DealersController {
     @ApiResponse({ status: 200, description: 'KYC data' })
     async getKyc(@CurrentUser() user: any): Promise<StandardResponse<any>> {
         const kyc = await this.dealersService.getKyc(user.id);
-        return new StandardResponse(kyc);
+        // Object keys never leave the server; each document becomes a
+        // short-lived signed URL, or its legacy public URL for older records.
+        return new StandardResponse(await this.kycDocuments.hydrateDocuments(kyc));
+    }
+
+    @Post('kyc/documents/:field')
+    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+    @ApiOperation({ summary: 'Upload one KYC document to private storage' })
+    @ApiResponse({ status: 201, description: 'Document stored; returns a short-lived view URL' })
+    async uploadKycDocument(
+        @CurrentUser() user: any,
+        @Param('field') field: string,
+        @UploadedFile() file: any,
+    ): Promise<StandardResponse<any>> {
+        if (!isKycDocumentField(field)) {
+            throw new BadRequestException('Unknown KYC document type.');
+        }
+        if (!file) {
+            throw new BadRequestException('No document was uploaded.');
+        }
+        const storagePath = await this.kycDocuments.storeDocument(user.id, field, file);
+        return new StandardResponse({
+            field,
+            // The caller gets a viewable link, never the storage key.
+            url: await this.kycDocuments.signPath(storagePath),
+        });
     }
 
     @Post('kyc/checkout')

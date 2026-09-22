@@ -29,7 +29,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getDealerKyc, submitDealerKyc, DealerKycData, BusinessType, createKycCheckoutSession } from "@/lib/dealerApi";
-import { uploadImage } from "@/lib/supabase";
 import { apiClient } from "@/lib/apiClient";
 import { useRouter } from "next/navigation";
 
@@ -97,8 +96,19 @@ function FileUploadField({
 
     setUploading(true);
     try {
-      const url = await uploadImage(file, "listings", "kyc");
-      onUpload(fieldName, url);
+      // Uploaded through the backend, not straight to Supabase Storage.
+      // These are identity documents: they used to go into the PUBLIC
+      // `listings` bucket and keep a permanent public URL, so anyone with the
+      // link could read a passport. The server now writes them to a private
+      // bucket the browser has no credentials for and hands back a link that
+      // expires in ten minutes.
+      const body = new FormData();
+      body.append("file", file);
+      const res = await apiClient<{ data: { url: string | null } }>(
+        `/dealers/kyc/documents/${fieldName}`,
+        { method: "POST", body },
+      );
+      onUpload(fieldName, res.data.url ?? "");
     } catch (err: any) {
       setUploadError(err.message || "Upload failed. Please try again.");
     } finally {
@@ -452,7 +462,11 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
       // Always save the latest field values first — the backend service locks
       // already-approved fields by reading their values from the database
       // (ignoring what arrives in the DTO), so it's safe to resend everything.
-      const payload: Partial<DealerKycData> = { ...formData, ...fileUrls };
+      // fileUrls deliberately excluded: each document was already stored by
+      // POST /dealers/kyc/documents/:field, and the values held here are
+      // 10-minute signed URLs. Sending them would persist a link that dies
+      // before a reviewer opens it. The server ignores them either way.
+      const payload: Partial<DealerKycData> = { ...formData };
       const response = await submitDealerKyc(payload);
       setKycData(response);
 

@@ -132,6 +132,11 @@ export class DealersService {
         // submitKyc only persists the dealer's form fields, it never touches payment state.
         const alreadyStripeVerified = (profile.kyc as any)?.stripeChargedAt != null;
 
+        // Uploaded through the private-document endpoint, never through this body.
+        const KYC_UPLOAD_FIELDS = new Set([
+            'vatProof', 'companyRegistrationProof', 'directorIdProof', 'proofOfAddress',
+        ]);
+
         const fieldsList = [
             'businessType',
             'companyHouseName',
@@ -202,11 +207,19 @@ export class DealersService {
                     // Update with incoming value.
                     // For required (non-nullable) fields, fall back to the existing DB
                     // value if the DTO provides null/undefined to prevent Prisma crashes.
+                    // Document fields are owned by POST /dealers/kyc/documents/:field,
+                    // which writes a private object key. Never take their value
+                    // from this payload: the client now holds only a 10-minute
+                    // signed URL, and persisting that would store a link that is
+                    // dead before a reviewer opens it -- and would let a caller
+                    // point a "document" anywhere they liked.
                     const value = field === 'businessType'
                         ? businessType
-                        : (incomingValue !== null && incomingValue !== undefined)
-                            ? incomingValue
-                            : (requiredFields.has(field) ? (existingValue ?? '') : null);
+                        : KYC_UPLOAD_FIELDS.has(field)
+                            ? existingValue
+                            : (incomingValue !== null && incomingValue !== undefined)
+                                ? incomingValue
+                                : (requiredFields.has(field) ? (existingValue ?? '') : null);
 
                     updatedFields[field] = value;
                     documentStatuses[field] = { status: 'PENDING', note: '' };
@@ -247,9 +260,11 @@ export class DealersService {
                 // For required fields default to '' rather than null to prevent DB errors
                 updatedFields[field] = field === 'businessType'
                     ? businessType
-                    : (incomingValue !== null && incomingValue !== undefined)
-                        ? incomingValue
-                        : (requiredFields.has(field) ? '' : null);
+                    : KYC_UPLOAD_FIELDS.has(field)
+                        ? null
+                        : (incomingValue !== null && incomingValue !== undefined)
+                            ? incomingValue
+                            : (requiredFields.has(field) ? '' : null);
 
                 documentStatuses[field] = { status: 'PENDING', note: '' };
             }

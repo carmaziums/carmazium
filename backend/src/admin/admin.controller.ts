@@ -20,6 +20,7 @@ import {
     ApiResponse,
 } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
+import { KycDocumentsService } from '../dealers/kyc-documents.service';
 import { ReviewKycDto } from './dto/review-kyc.dto';
 import { RejectListingDto } from './dto/reject-listing.dto';
 import { AdminUpdateListingDto } from './dto/admin-update-listing.dto';
@@ -36,7 +37,9 @@ import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dt
 @UseGuards(SessionAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
 export class AdminController {
-    constructor(private readonly adminService: AdminService) { }
+    constructor(private readonly adminService: AdminService,
+        private readonly kycDocuments: KycDocumentsService,
+    ) { }
 
     // ── Users ─────────────────────────────────────────────────────────────────
 
@@ -322,7 +325,11 @@ export class AdminController {
     @ApiResponse({ status: 200, description: 'List of pending dealer KYC applications' })
     async getPendingKyc(): Promise<StandardResponse<any>> {
         const list = await this.adminService.getPendingKyc();
-        return new StandardResponse(list);
+        // Documents live in a private bucket; reviewers get short-lived signed
+        // URLs, and records predating that keep their legacy public URL.
+        return new StandardResponse(
+            await Promise.all(list.map((kyc: any) => this.kycDocuments.hydrateDocuments(kyc))),
+        );
     }
 
     @Get('dealers/kyc-archive')
@@ -334,7 +341,10 @@ export class AdminController {
         @Query('limit') limit = 20,
     ): Promise<PaginatedResponse<any>> {
         const { data, total } = await this.adminService.getAllDealersKycArchive(Number(page), Number(limit));
-        return new PaginatedResponse(data, total, Number(page), Number(limit));
+        const hydrated = await Promise.all(
+            data.map((kyc: any) => this.kycDocuments.hydrateDocuments(kyc)),
+        );
+        return new PaginatedResponse(hydrated, total, Number(page), Number(limit));
     }
 
     @Patch('dealers/kyc/:id/review')

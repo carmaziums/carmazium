@@ -518,6 +518,18 @@ model DealerKyc {
   directorName               String
   directorIdProof            String? // Optional URL to stored Director ID photo
   proofOfAddress             String? // Sole traders only — utility bill / bank statement
+
+  /// Private-storage object keys for the four KYC documents.
+  ///
+  /// The legacy columns above hold permanent PUBLIC URLs in the `listings`
+  /// bucket — passports, driving licences and proof of address were readable by
+  /// anyone holding the link. New uploads write a key here instead and are
+  /// served as short-lived signed URLs. Both are kept because existing rows
+  /// still carry the old URLs; readers prefer the path and fall back.
+  vatProofPath                 String?
+  companyRegistrationProofPath String?
+  directorIdProofPath          String?
+  proofOfAddressPath           String?
   businessWebsite            String
   businessRegisteredAddress  String
   tradingAddress             String?
