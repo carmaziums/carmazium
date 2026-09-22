@@ -906,7 +906,15 @@ export interface ValuationLiveAnalytics {
     uniqueListingsCreated: number;
     retailListingsCreated: number;
     auctionListingsCreated: number;
+    retailFeePaid: number;
+    reachedReview: number;
+    retailReachedReview: number;
+    auctionReachedReview: number;
+    approvedLive: number;
+    rejected: number;
     conversionRate: number;
+    approvalRate: number;
+    liveFromValuationRate: number;
   };
   hourly: Array<{
     hour: string;
@@ -923,7 +931,15 @@ export interface ValuationLiveAnalytics {
     uniqueListingsCreated: number;
     retailListingsCreated: number;
     auctionListingsCreated: number;
+    retailFeePaid: number;
+    reachedReview: number;
+    retailReachedReview: number;
+    auctionReachedReview: number;
+    approvedLive: number;
+    rejected: number;
     conversionRate: number;
+    approvalRate: number;
+    liveFromValuationRate: number;
   }>;
   recent: Array<{
     id: string;
@@ -940,6 +956,11 @@ export interface ValuationLiveAnalytics {
     startedListing: boolean;
     createdListing: boolean;
     listingId: string | null;
+    listingStatus: string | null;
+    feePaid: boolean;
+    reachedReview: boolean;
+    approvedLive: boolean;
+    rejected: boolean;
   }>;
 }
 
