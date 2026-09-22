@@ -21,6 +21,8 @@ import {
     ShieldCheck,
 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useAnalytics } from "@/hooks/useAnalytics"
+import { SELLER_FUNNEL } from "@/lib/gtm"
 
 function scrollToSellerOptions() {
     document.getElementById("sell-options")?.scrollIntoView({
@@ -87,6 +89,7 @@ type LandingValuationResult = {
     vehicle: LandingVehiclePrefill
     valuation: VehicleValuation
     dvlaVerified: boolean
+    valuationId: string
 }
 
 function formatGuidePrice(value: number) {
@@ -98,6 +101,7 @@ function formatGuidePrice(value: number) {
 }
 
 function QuickValuationForm() {
+    const { trackEvent } = useAnalytics()
     const [vrm, setVrm] = React.useState("")
     const [mileage, setMileage] = React.useState("")
     const [model, setModel] = React.useState("")
@@ -147,9 +151,11 @@ function QuickValuationForm() {
                     mileage: mileageNumber,
                 })
 
+                const valuationId = crypto.randomUUID()
                 setResult({
                     valuation,
                     dvlaVerified: false,
+                    valuationId,
                     vehicle: {
                         vrm: cleanVrm,
                         make,
@@ -181,6 +187,15 @@ function QuickValuationForm() {
                         motHistory: [],
                     },
                 })
+                trackEvent(SELLER_FUNNEL.VALUATION_REQUESTED, {
+                    valuation_id: valuationId,
+                    entry_point: "sell_landing",
+                    make,
+                    model: manualResolvedModel,
+                    year,
+                    valuation_source: valuation.source,
+                    dvla_verified: false,
+                })
                 return
             }
 
@@ -209,9 +224,11 @@ function QuickValuationForm() {
                 variant: vehicle.variant,
             })
 
+            const valuationId = crypto.randomUUID()
             setResult({
                 valuation,
                 dvlaVerified: true,
+                valuationId,
                 vehicle: {
                     vrm: cleanVrm,
                     make: vehicle.make,
@@ -243,6 +260,16 @@ function QuickValuationForm() {
                     motHistory: vehicle.motHistory || [],
                 },
             })
+            trackEvent(SELLER_FUNNEL.VALUATION_REQUESTED, {
+                valuation_id: valuationId,
+                entry_point: "sell_landing",
+                make: vehicle.make,
+                model: resolvedModel,
+                year: vehicle.year,
+                fuel_type: vehicle.fuelType || undefined,
+                valuation_source: valuation.source,
+                dvla_verified: true,
+            })
             setPendingVehicle(null)
         } catch (err) {
             if (err instanceof Error && err.message === "AUTH_REDIRECT") return
@@ -263,6 +290,7 @@ function QuickValuationForm() {
                 vehicle: result.vehicle,
                 valuation: result.valuation,
                 dvlaVerified: result.dvlaVerified,
+                valuationId: result.valuationId,
             },
         }))
         window.setTimeout(scrollToSellerOptions, 0)
