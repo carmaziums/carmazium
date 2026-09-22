@@ -1310,6 +1310,46 @@ export async function getDamageRecords(listingId: string): Promise<any[]> {
     return data.data
 }
 
+// ─── Auction → Retail conversion ─────────────────────────────────────────────
+
+export interface RetailConversionCandidate {
+    listingId: string
+    title: string
+    listingStatus: string
+    listingType: 'AUCTION' | 'CLASSIFIED'
+    auctionId: string
+    auctionStatus: 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED' | string
+    hasActiveBids: boolean
+    reserveMet: boolean
+    canConvert: boolean
+    blockedReason: string | null
+    existingRetailListingId: string | null
+    existingRetailSlug: string | null
+}
+
+export async function getRetailConversionCandidate(
+    vrm: string,
+): Promise<{ candidate: RetailConversionCandidate | null }> {
+    const data = await apiClient<{ data: { candidate: RetailConversionCandidate | null } }>(
+        `/listings/retail-conversion-candidate?vrm=${encodeURIComponent(vrm)}`,
+        { method: 'GET', cache: 'no-store' },
+    )
+    return data.data
+}
+
+export async function convertAuctionToRetail(
+    listingId: string,
+    input: CreateListingRequest & { confirmAuctionCancellation: true },
+): Promise<{ listingId: string; slug: string; auctionCancelled: boolean; bidderCount: number }> {
+    const data = await apiClient<{
+        data: { listingId: string; slug: string; auctionCancelled: boolean; bidderCount: number }
+    }>(`/listings/${listingId}/convert-to-retail`, {
+        method: 'POST',
+        body: JSON.stringify(input),
+    })
+    return data.data
+}
+
 // ─── Dual-channel (auction + retail simultaneously) ───────────────────────────
 
 export async function alsoListRetail(
