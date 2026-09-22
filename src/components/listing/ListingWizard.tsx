@@ -319,6 +319,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [valuation, setValuation] = React.useState<VehicleValuation | null>(null)
     const [valuationLoading, setValuationLoading] = React.useState(false)
     const [valuationError, setValuationError] = React.useState<string | null>(null)
+    // A non-PII journey key links a valuation to a later listing submission.
+    // Keep it outside FormData so it never becomes vehicle/listing data.
+    const valuationJourneyIdRef = React.useRef<string | null>(null)
+    const valuationJourneyVrmRef = React.useRef<string | null>(null)
     const [retailConversion, setRetailConversion] = React.useState<{
         candidate: RetailConversionCandidate
         payload: CreateListingRequest
@@ -624,6 +628,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         setValuation(null)
         setValuationLoading(false)
         setValuationError(null)
+        valuationJourneyIdRef.current = null
+        valuationJourneyVrmRef.current = null
         setSubmitError(null)
 
         // Strip HPI/edit/query parameters so a stale URL cannot repopulate the
@@ -682,7 +688,30 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 excludeListingId: editId || undefined,
             })
                 .then((result) => {
-                    if (!cancelled) setValuation(result)
+                    if (cancelled) return
+                    setValuation(result)
+
+                    // Count an actual completed valuation, not merely a DVLA
+                    // lookup. Reuse one journey id for repeated recalculations
+                    // of the same vehicle so conversion reporting stays stable.
+                    const normalizedVrm = formData.vrm.replace(/\s/g, "").toUpperCase()
+                    if (
+                        !valuationJourneyIdRef.current
+                        || valuationJourneyVrmRef.current !== normalizedVrm
+                    ) {
+                        valuationJourneyIdRef.current = crypto.randomUUID()
+                        valuationJourneyVrmRef.current = normalizedVrm
+                        trackEvent(SELLER_FUNNEL.VALUATION_REQUESTED, {
+                            valuation_id: valuationJourneyIdRef.current,
+                            entry_point: isDashboard ? "dashboard_listing_wizard" : "listing_wizard",
+                            listing_type: listingTypeLabel(formData.listingType),
+                            make: formData.make || undefined,
+                            model: formData.model || undefined,
+                            year: Number(formData.year) || undefined,
+                            fuel_type: formData.fuelType || undefined,
+                            valuation_source: result.source,
+                        })
+                    }
                 })
                 .catch((error: any) => {
                     if (cancelled) return
@@ -714,6 +743,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         formData.writeOffCategory,
         formData.isImported,
         editId,
+        isDashboard,
+        trackEvent,
     ])
 
     function applyValuation() {
@@ -968,6 +999,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         trackEvent(SELLER_FUNNEL.LISTING_STARTED, {
             listing_type: 'retail',
             seller_role: profile?.role || 'UNKNOWN',
+            valuation_id: valuationJourneyIdRef.current || undefined,
         })
         set("status", "ACTIVE")
     }
@@ -982,6 +1014,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 vehicle?: Partial<FormData>
                 valuation?: VehicleValuation | null
                 dvlaVerified?: boolean
+                valuationId?: string
             }>).detail
 
             if (!detail?.listingType || !detail.vehicle) return
@@ -1010,6 +1043,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             }))
             setValuation(detail.valuation ?? null)
             setValuationError(null)
+            if (detail.valuationId) {
+                valuationJourneyIdRef.current = detail.valuationId
+                valuationJourneyVrmRef.current = String(detail.vehicle.vrm || "").replace(/\s/g, "").toUpperCase()
+            }
             const verifiedByDvla = detail.dvlaVerified !== false
             setDvlaSuccess(verifiedByDvla)
             setDvlaError(verifiedByDvla ? null : "DVLA could not verify this registration. Review the manually entered vehicle details before continuing.")
@@ -1020,6 +1057,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 listing_type: listingType === "AUCTION" ? "auction" : "retail",
                 seller_role: profile?.role || "UNKNOWN",
                 entry_point: "sell_landing_valuation",
+                valuation_id: detail.valuationId || valuationJourneyIdRef.current || undefined,
             })
         }
 
@@ -1057,6 +1095,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             model: payload.model,
             year: payload.year,
             seller_role: profile?.role || 'UNKNOWN',
+            valuation_id: valuationJourneyIdRef.current || undefined,
         }
         trackEvent(SELLER_FUNNEL.LISTING_SUBMITTED, { ...common, outcome })
         // Gate the path-specific events on listing_type, not on outcome —
@@ -1801,6 +1840,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     trackEvent(SELLER_FUNNEL.LISTING_STARTED, {
                                         listing_type: 'auction',
                                         seller_role: profile?.role || 'UNKNOWN',
+                                        valuation_id: valuationJourneyIdRef.current || undefined,
                                     })
                                 }}
                                 className="relative group cursor-pointer"
@@ -2066,10 +2106,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     set("ulezCompliant", false)
                                                 }
                                                 setDvlaSuccess(true)
-                                                // Top of the seller funnel: they've committed a reg and
-                                                // got real vehicle data back. Note: no VRM in the payload
-                                                // on purpose (personal data — see lib/gtm.ts).
-                                                trackEvent(SELLER_FUNNEL.VALUATION_REQUESTED, {
+                                                // Vehicle lookup is distinct from valuation. The actual
+                                                // valuation_requested event fires only after the valuation
+                                                // endpoint returns successfully (see valuation effect above).
+                                                trackEvent('vehicle_lookup_completed', {
                                                     listing_type: listingTypeLabel(formData.listingType),
                                                     make: r.make || undefined,
                                                     model: r.model || undefined,
