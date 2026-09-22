@@ -60,3 +60,11 @@ CREATE POLICY "Block public KYC uploads"
 --   SELECT count(*) AS legacy_public_kyc_objects
 --   FROM storage.objects
 --   WHERE bucket_id = 'listings' AND name LIKE 'kyc/%';
+
+-- ── Follow-up 2026-09-22 ───────────────────────────────────────────────────
+-- The orphan audit found four `kyc/` objects referenced by paymentScreenshot,
+-- a fifth column the first pass did not cover. These are bank-transfer
+-- receipts from the pre-Stripe £1 KYC fee: they carry bank details and are
+-- still rendered in admin review, so they move to private storage too.
+ALTER TABLE dealer_kycs
+    ADD COLUMN IF NOT EXISTS "paymentScreenshotPath" TEXT;

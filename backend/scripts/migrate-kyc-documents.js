@@ -31,6 +31,8 @@ const FIELDS = [
     { legacy: 'companyRegistrationProof', path: 'companyRegistrationProofPath' },
     { legacy: 'directorIdProof', path: 'directorIdProofPath' },
     { legacy: 'proofOfAddress', path: 'proofOfAddressPath' },
+    // Added after the orphan audit found four objects referenced only here.
+    { legacy: 'paymentScreenshot', path: 'paymentScreenshotPath' },
 ];
 
 const EXT_BY_MIME = {

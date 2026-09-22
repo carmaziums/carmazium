@@ -530,6 +530,10 @@ model DealerKyc {
   companyRegistrationProofPath String?
   directorIdProofPath          String?
   proofOfAddressPath           String?
+  /// Legacy bank-transfer receipt from the pre-Stripe £1 KYC fee. Still shown
+  /// in admin review and still contains bank details, so it belongs in private
+  /// storage with the identity documents.
+  paymentScreenshotPath        String?
   businessWebsite            String
   businessRegisteredAddress  String
   tradingAddress             String?

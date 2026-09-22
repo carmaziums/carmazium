@@ -27,6 +27,10 @@ export const KYC_DOCUMENT_FIELDS = {
     proofOfAddress: { path: 'proofOfAddressPath', legacy: 'proofOfAddress' },
     vatProof: { path: 'vatProofPath', legacy: 'vatProof' },
     companyRegistrationProof: { path: 'companyRegistrationProofPath', legacy: 'companyRegistrationProof' },
+    // Legacy bank-transfer receipt from the pre-Stripe fee. Carries bank
+    // details and is still shown in admin review, so it is treated as a
+    // private document even though nothing uploads new ones.
+    paymentScreenshot: { path: 'paymentScreenshotPath', legacy: 'paymentScreenshot' },
 } as const;
 
 export type KycDocumentField = keyof typeof KYC_DOCUMENT_FIELDS;
