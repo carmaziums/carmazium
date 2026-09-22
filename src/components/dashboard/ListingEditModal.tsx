@@ -168,6 +168,8 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
         setLoading(true)
         setLoadError(null)
         setSavedMsg(null)
+        setDescriptionAiError(null)
+        setIsGeneratingDescription(false)
         setActiveSection('core')
         getAdminListing(listingId)
             .then((l) => {
