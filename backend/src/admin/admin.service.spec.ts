@@ -13,6 +13,7 @@ describe('AdminService listing approval readiness', () => {
             },
             user: { findUnique: jest.fn() },
             transaction: { findFirst: jest.fn() },
+            analyticsEvent: { create: jest.fn().mockResolvedValue({ id: 'analytics-1' }) },
         };
 
         const service = new AdminService(
@@ -88,6 +89,16 @@ describe('AdminService listing approval readiness', () => {
                 where: { id: 'auction-listing-1' },
             }),
         );
+        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                type: 'listing_approved',
+                userId: 'seller-1',
+                payload: expect.objectContaining({
+                    listing_id: 'auction-listing-1',
+                    listing_type: 'auction',
+                }),
+            }),
+        });
     });
 
     it('rejects an incomplete listing even if it is already PENDING_REVIEW', async () => {

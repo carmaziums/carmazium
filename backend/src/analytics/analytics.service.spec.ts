@@ -38,6 +38,12 @@ describe('AnalyticsService live valuation analytics', () => {
                         listing_count: '2',
                         retail_listings: '1',
                         auction_listings: '1',
+                        retail_fee_paid: '1',
+                        reached_review: '2',
+                        retail_reached_review: '1',
+                        auction_reached_review: '1',
+                        approved_live: '1',
+                        rejected: '0',
                     },
                     {
                         date: '2026-09-21',
@@ -47,6 +53,12 @@ describe('AnalyticsService live valuation analytics', () => {
                         listing_count: '5',
                         retail_listings: '2',
                         auction_listings: '3',
+                        retail_fee_paid: '2',
+                        reached_review: '4',
+                        retail_reached_review: '2',
+                        auction_reached_review: '2',
+                        approved_live: '3',
+                        rejected: '1',
                     },
                 ])
                 .mockResolvedValueOnce([
@@ -69,6 +81,11 @@ describe('AnalyticsService live valuation analytics', () => {
                         converted: true,
                         listing_id: 'listing-1',
                         converted_listing_type: 'retail',
+                        listing_status: 'ACTIVE',
+                        fee_paid: true,
+                        reached_review: true,
+                        approved_live: true,
+                        rejected: false,
                     },
                 ]),
         };
@@ -90,7 +107,15 @@ describe('AnalyticsService live valuation analytics', () => {
             uniqueListingsCreated: 5,
             retailListingsCreated: 2,
             auctionListingsCreated: 3,
+            retailFeePaid: 2,
+            reachedReview: 4,
+            retailReachedReview: 2,
+            auctionReachedReview: 2,
+            approvedLive: 3,
+            rejected: 1,
             conversionRate: 38.5,
+            approvalRate: 60,
+            liveFromValuationRate: 23.1,
         });
         expect(result.hourly[0]).toEqual({ hour: '18:00', requests: 4, sessions: 3 });
         expect(result.last7Days[1]).toEqual({
@@ -103,7 +128,15 @@ describe('AnalyticsService live valuation analytics', () => {
             uniqueListingsCreated: 5,
             retailListingsCreated: 2,
             auctionListingsCreated: 3,
+            retailFeePaid: 2,
+            reachedReview: 4,
+            retailReachedReview: 2,
+            auctionReachedReview: 2,
+            approvedLive: 3,
+            rejected: 1,
             conversionRate: 38.5,
+            approvalRate: 60,
+            liveFromValuationRate: 23.1,
         });
         expect(result.recent[0]).toEqual(expect.objectContaining({
             make: 'VOLKSWAGEN',
@@ -118,6 +151,11 @@ describe('AnalyticsService live valuation analytics', () => {
             startedListing: true,
             createdListing: true,
             listingId: 'listing-1',
+            listingStatus: 'ACTIVE',
+            feePaid: true,
+            reachedReview: true,
+            approvedLive: true,
+            rejected: false,
         }));
         expect(result.recent[0]).not.toHaveProperty('userId');
         expect(result.recent[0]).not.toHaveProperty('sessionId');

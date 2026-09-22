@@ -193,6 +193,12 @@ export class AnalyticsService {
                 listing_count: string;
                 retail_listings: string;
                 auction_listings: string;
+                retail_fee_paid: string;
+                reached_review: string;
+                retail_reached_review: string;
+                auction_reached_review: string;
+                approved_live: string;
+                rejected: string;
             }>>(`
                 WITH raw_valuations AS (
                     SELECT
@@ -231,7 +237,11 @@ export class AnalyticsService {
                         started.id AS started_event_id,
                         submitted.id AS submitted_event_id,
                         submitted.payload->>'listing_id' AS listing_id,
-                        LOWER(COALESCE(submitted.payload->>'listing_type', '')) AS converted_listing_type
+                        LOWER(COALESCE(submitted.payload->>'listing_type', '')) AS converted_listing_type,
+                        listing.status::TEXT AS listing_status,
+                        listing."reviewedAt" AS reviewed_at,
+                        (fee.id IS NOT NULL) AS retail_fee_paid,
+                        (approval.id IS NOT NULL) AS approval_event
                     FROM valuations v
                     LEFT JOIN LATERAL (
                         SELECT e.id
@@ -267,6 +277,29 @@ export class AnalyticsService {
                         ORDER BY e."createdAt" ASC
                         LIMIT 1
                     ) submitted ON TRUE
+                    LEFT JOIN listings listing
+                      ON listing.id = submitted.payload->>'listing_id'
+                     AND listing."deletedAt" IS NULL
+                    LEFT JOIN LATERAL (
+                        SELECT t.id
+                        FROM transactions t
+                        WHERE t."listingId" = submitted.payload->>'listing_id'
+                          AND t.type::TEXT = 'LISTING_FEE'
+                          AND t.status::TEXT = 'COMPLETED'
+                          AND t."deletedAt" IS NULL
+                        ORDER BY t."updatedAt" ASC
+                        LIMIT 1
+                    ) fee ON TRUE
+                    LEFT JOIN LATERAL (
+                        SELECT e.id
+                        FROM analytics_events e
+                        WHERE e.type = 'listing_approved'
+                          AND e.payload->>'listing_id' = submitted.payload->>'listing_id'
+                          AND e."createdAt" >= v.first_valuation_at
+                          AND e."createdAt" < v.first_valuation_at + interval '30 days'
+                        ORDER BY e."createdAt" ASC
+                        LIMIT 1
+                    ) approval ON TRUE
                 )
                 SELECT
                     valuation_date AS date,
@@ -279,7 +312,33 @@ export class AnalyticsService {
                     )::TEXT AS retail_listings,
                     COUNT(DISTINCT listing_id) FILTER (
                         WHERE listing_id IS NOT NULL AND converted_listing_type = 'auction'
-                    )::TEXT AS auction_listings
+                    )::TEXT AS auction_listings,
+                    COUNT(*) FILTER (
+                        WHERE converted_listing_type = 'retail' AND retail_fee_paid
+                    )::TEXT AS retail_fee_paid,
+                    COUNT(*) FILTER (
+                        WHERE listing_id IS NOT NULL
+                          AND listing_status IN ('PENDING_REVIEW', 'ACTIVE', 'OFFER_ACCEPTED', 'SOLD', 'WITHDRAWN', 'REJECTED')
+                    )::TEXT AS reached_review,
+                    COUNT(*) FILTER (
+                        WHERE converted_listing_type = 'retail'
+                          AND listing_status IN ('PENDING_REVIEW', 'ACTIVE', 'OFFER_ACCEPTED', 'SOLD', 'WITHDRAWN', 'REJECTED')
+                    )::TEXT AS retail_reached_review,
+                    COUNT(*) FILTER (
+                        WHERE converted_listing_type = 'auction'
+                          AND listing_status IN ('PENDING_REVIEW', 'ACTIVE', 'OFFER_ACCEPTED', 'SOLD', 'WITHDRAWN', 'REJECTED')
+                    )::TEXT AS auction_reached_review,
+                    COUNT(*) FILTER (
+                        WHERE listing_id IS NOT NULL
+                          AND (
+                            approval_event
+                            OR listing_status IN ('ACTIVE', 'OFFER_ACCEPTED', 'SOLD')
+                            OR (listing_status = 'WITHDRAWN' AND reviewed_at IS NOT NULL)
+                          )
+                    )::TEXT AS approved_live,
+                    COUNT(*) FILTER (
+                        WHERE listing_id IS NOT NULL AND listing_status = 'REJECTED'
+                    )::TEXT AS rejected
                 FROM attributed
                 GROUP BY valuation_date
                 ORDER BY valuation_date ASC
@@ -292,6 +351,11 @@ export class AnalyticsService {
                 converted: boolean;
                 listing_id: string | null;
                 converted_listing_type: string | null;
+                listing_status: string | null;
+                fee_paid: boolean;
+                reached_review: boolean;
+                approved_live: boolean;
+                rejected: boolean;
             }>>(`
                 SELECT
                     v.id,
@@ -300,7 +364,18 @@ export class AnalyticsService {
                     (started.id IS NOT NULL) AS started,
                     (submitted.id IS NOT NULL) AS converted,
                     submitted.payload->>'listing_id' AS listing_id,
-                    LOWER(NULLIF(submitted.payload->>'listing_type', '')) AS converted_listing_type
+                    LOWER(NULLIF(submitted.payload->>'listing_type', '')) AS converted_listing_type,
+                    listing.status::TEXT AS listing_status,
+                    (fee.id IS NOT NULL) AS fee_paid,
+                    (
+                        listing.status::TEXT IN ('PENDING_REVIEW', 'ACTIVE', 'OFFER_ACCEPTED', 'SOLD', 'WITHDRAWN', 'REJECTED')
+                    ) AS reached_review,
+                    (
+                        approval.id IS NOT NULL
+                        OR listing.status::TEXT IN ('ACTIVE', 'OFFER_ACCEPTED', 'SOLD')
+                        OR (listing.status::TEXT = 'WITHDRAWN' AND listing."reviewedAt" IS NOT NULL)
+                    ) AS approved_live,
+                    (listing.status::TEXT = 'REJECTED') AS rejected
                 FROM analytics_events v
                 LEFT JOIN LATERAL (
                     SELECT e.id
@@ -342,6 +417,29 @@ export class AnalyticsService {
                     ORDER BY e."createdAt" ASC
                     LIMIT 1
                 ) submitted ON TRUE
+                LEFT JOIN listings listing
+                  ON listing.id = submitted.payload->>'listing_id'
+                 AND listing."deletedAt" IS NULL
+                LEFT JOIN LATERAL (
+                    SELECT t.id
+                    FROM transactions t
+                    WHERE t."listingId" = submitted.payload->>'listing_id'
+                      AND t.type::TEXT = 'LISTING_FEE'
+                      AND t.status::TEXT = 'COMPLETED'
+                      AND t."deletedAt" IS NULL
+                    ORDER BY t."updatedAt" ASC
+                    LIMIT 1
+                ) fee ON TRUE
+                LEFT JOIN LATERAL (
+                    SELECT e.id
+                    FROM analytics_events e
+                    WHERE e.type = 'listing_approved'
+                      AND e.payload->>'listing_id' = submitted.payload->>'listing_id'
+                      AND e."createdAt" >= v."createdAt"
+                      AND e."createdAt" < v."createdAt" + interval '30 days'
+                    ORDER BY e."createdAt" ASC
+                    LIMIT 1
+                ) approval ON TRUE
                 WHERE v.type = 'valuation_requested'
                 ORDER BY v."createdAt" DESC
                 LIMIT 15
@@ -367,6 +465,8 @@ export class AnalyticsService {
         const todayFunnel = funnelDailyRaw.find((row) => row.date === todayDate);
         const todayValuationJourneys = Number(todayFunnel?.valuation_journeys ?? 0);
         const todayConvertedJourneys = Number(todayFunnel?.converted_journeys ?? 0);
+        const todayReachedReview = Number(todayFunnel?.reached_review ?? 0);
+        const todayApprovedLive = Number(todayFunnel?.approved_live ?? 0);
 
         return {
             timezone: 'Europe/London',
@@ -390,8 +490,20 @@ export class AnalyticsService {
                 uniqueListingsCreated: Number(todayFunnel?.listing_count ?? 0),
                 retailListingsCreated: Number(todayFunnel?.retail_listings ?? 0),
                 auctionListingsCreated: Number(todayFunnel?.auction_listings ?? 0),
+                retailFeePaid: Number(todayFunnel?.retail_fee_paid ?? 0),
+                reachedReview: todayReachedReview,
+                retailReachedReview: Number(todayFunnel?.retail_reached_review ?? 0),
+                auctionReachedReview: Number(todayFunnel?.auction_reached_review ?? 0),
+                approvedLive: todayApprovedLive,
+                rejected: Number(todayFunnel?.rejected ?? 0),
                 conversionRate: todayValuationJourneys > 0
                     ? Math.round((todayConvertedJourneys / todayValuationJourneys) * 1000) / 10
+                    : 0,
+                approvalRate: todayConvertedJourneys > 0
+                    ? Math.round((todayApprovedLive / todayConvertedJourneys) * 1000) / 10
+                    : 0,
+                liveFromValuationRate: todayValuationJourneys > 0
+                    ? Math.round((todayApprovedLive / todayValuationJourneys) * 1000) / 10
                     : 0,
             },
             hourly: hourlyRaw.map((row) => ({
@@ -413,8 +525,20 @@ export class AnalyticsService {
                     uniqueListingsCreated: Number(funnel?.listing_count ?? 0),
                     retailListingsCreated: Number(funnel?.retail_listings ?? 0),
                     auctionListingsCreated: Number(funnel?.auction_listings ?? 0),
+                    retailFeePaid: Number(funnel?.retail_fee_paid ?? 0),
+                    reachedReview: Number(funnel?.reached_review ?? 0),
+                    retailReachedReview: Number(funnel?.retail_reached_review ?? 0),
+                    auctionReachedReview: Number(funnel?.auction_reached_review ?? 0),
+                    approvedLive: Number(funnel?.approved_live ?? 0),
+                    rejected: Number(funnel?.rejected ?? 0),
                     conversionRate: journeys > 0
                         ? Math.round((converted / journeys) * 1000) / 10
+                        : 0,
+                    approvalRate: converted > 0
+                        ? Math.round((Number(funnel?.approved_live ?? 0) / converted) * 1000) / 10
+                        : 0,
+                    liveFromValuationRate: journeys > 0
+                        ? Math.round((Number(funnel?.approved_live ?? 0) / journeys) * 1000) / 10
                         : 0,
                 };
             }),
@@ -436,6 +560,11 @@ export class AnalyticsService {
                     startedListing: Boolean(event.started),
                     createdListing: Boolean(event.converted),
                     listingId: event.listing_id,
+                    listingStatus: event.listing_status,
+                    feePaid: Boolean(event.fee_paid),
+                    reachedReview: Boolean(event.reached_review),
+                    approvedLive: Boolean(event.approved_live),
+                    rejected: Boolean(event.rejected),
                 };
             }),
         };

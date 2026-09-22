@@ -654,6 +654,21 @@ export class AdminService {
             data: buildListingActivationData(listing.badgeTier),
         });
 
+        // Operational funnel telemetry: admin approval is the exact moment a
+        // listing becomes live. Keep this server-side so it is not lost when a
+        // seller closes the browser and do not include personal identifiers.
+        this.prisma.analyticsEvent.create({
+            data: {
+                type: 'listing_approved',
+                userId: listing.sellerId ?? null,
+                payload: {
+                    listing_id: listing.id,
+                    listing_type: listing.type === 'AUCTION' ? 'auction' : 'retail',
+                    badge_tier: listing.badgeTier,
+                },
+            },
+        }).catch(() => null);
+
         if (listing.sellerId) {
             await this.sellersService.incrementListings(listing.sellerId);
 
@@ -702,6 +717,20 @@ export class AdminService {
                 reviewedAt: new Date(),
             },
         });
+
+        // Record the review outcome without copying the free-text rejection
+        // reason into analytics. The reason remains on the listing itself.
+        this.prisma.analyticsEvent.create({
+            data: {
+                type: 'listing_rejected',
+                userId: listing.sellerId ?? null,
+                payload: {
+                    listing_id: listing.id,
+                    listing_type: listing.type === 'AUCTION' ? 'auction' : 'retail',
+                    badge_tier: listing.badgeTier,
+                },
+            },
+        }).catch(() => null);
 
         // A rejected listing has nothing to auction — cancel its still-scheduled
         // auction rather than leaving it to activate against a rejected listing.
