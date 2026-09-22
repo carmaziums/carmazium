@@ -301,14 +301,14 @@ export default function AdminAnalyticsPage() {
                             <>
                                 <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3">
                                     {([
-                                        { label: "Valuations Today", value: valuationLive.today.requests, icon: Car, color: "bg-blue-500/20" },
-                                        { label: "Unique Sessions", value: valuationLive.today.uniqueSessions, icon: Users, color: "bg-emerald-500/20" },
+                                        { label: "Valuations Today", value: valuationLive.today.valuationJourneys, icon: Car, color: "bg-blue-500/20" },
                                         { label: "Started Listing", value: valuationLive.today.listingStarted, icon: MousePointerClick, color: "bg-cyan-500/20" },
-                                        { label: "Listings Created", value: valuationLive.today.listingCreated, icon: Car, color: "bg-primary/20" },
+                                        { label: "Listings Created", value: valuationLive.today.listingCreated, icon: BarChart3, color: "bg-primary/20" },
+                                        { label: "Retail Fees Paid", value: valuationLive.today.retailFeePaid, icon: CreditCard, color: "bg-purple-500/20" },
+                                        { label: "Reached Review", value: valuationLive.today.reachedReview, icon: ShieldCheck, color: "bg-orange-500/20" },
+                                        { label: "Approved & Live", value: valuationLive.today.approvedLive, icon: CheckCircle2, color: "bg-emerald-500/20" },
                                         { label: "Valuation → Listing", value: `${valuationLive.today.conversionRate.toFixed(1)}%`, icon: TrendingUp, color: "bg-yellow-500/20" },
-                                        { label: "Auction Listings", value: valuationLive.today.auctionListingsCreated, icon: BarChart3, color: "bg-orange-500/20" },
-                                        { label: "Retail Listings", value: valuationLive.today.retailListingsCreated, icon: DollarSign, color: "bg-purple-500/20" },
-                                        { label: "Logged-in Users", value: valuationLive.today.loggedInUsers, icon: ShieldCheck, color: "bg-slate-500/20" },
+                                        { label: "Valuation → Live", value: `${valuationLive.today.liveFromValuationRate.toFixed(1)}%`, icon: TrendingUp, color: "bg-slate-500/20" },
                                     ] as StatCardProps[]).map(card => (
                                         <StatCard key={card.label} {...card} />
                                     ))}
