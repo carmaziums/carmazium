@@ -1,7 +1,14 @@
 import { AnalyticsService } from './analytics.service';
 
 describe('AnalyticsService live valuation analytics', () => {
-    it('returns admin-safe real-time valuation aggregates', async () => {
+    afterEach(() => {
+        jest.useRealTimers();
+    });
+
+    it('returns admin-safe real-time valuation aggregates and conversion attribution', async () => {
+        jest.useFakeTimers();
+        jest.setSystemTime(new Date('2026-09-21T20:00:00.000Z'));
+
         const prisma = {
             $queryRawUnsafe: jest
                 .fn()
@@ -21,25 +28,49 @@ describe('AnalyticsService live valuation analytics', () => {
                 .mockResolvedValueOnce([
                     { date: '2026-09-20', requests: '9', sessions: '7' },
                     { date: '2026-09-21', requests: '18', sessions: '13' },
-                ]),
-            analyticsEvent: {
-                findMany: jest.fn().mockResolvedValue([
+                ])
+                .mockResolvedValueOnce([
+                    {
+                        date: '2026-09-20',
+                        valuation_journeys: '7',
+                        started_journeys: '3',
+                        converted_journeys: '2',
+                        listing_count: '2',
+                        retail_listings: '1',
+                        auction_listings: '1',
+                    },
+                    {
+                        date: '2026-09-21',
+                        valuation_journeys: '13',
+                        started_journeys: '8',
+                        converted_journeys: '5',
+                        listing_count: '5',
+                        retail_listings: '2',
+                        auction_listings: '3',
+                    },
+                ])
+                .mockResolvedValueOnce([
                     {
                         id: 'event-1',
-                        createdAt: new Date('2026-09-21T21:43:30.646Z'),
+                        created_at: new Date('2026-09-21T19:43:30.646Z'),
                         payload: {
                             make: 'VOLKSWAGEN',
+                            model: 'ID.3',
                             year: 2025,
                             fuel_type: 'ELECTRIC',
                             listing_type: 'auction',
                             device: 'desktop',
                             city: 'Ilford',
                             country: 'GB',
+                            entry_point: 'sell_landing',
                             user_email: 'must-not-leak@example.com',
                         },
+                        started: true,
+                        converted: true,
+                        listing_id: 'listing-1',
+                        converted_listing_type: 'retail',
                     },
                 ]),
-            },
         };
 
         const service = new AnalyticsService(prisma as any);
@@ -53,21 +84,49 @@ describe('AnalyticsService live valuation analytics', () => {
             anonymousSessions: 2,
             auctionRequests: 15,
             retailRequests: 3,
+            valuationJourneys: 13,
+            listingStarted: 8,
+            listingCreated: 5,
+            uniqueListingsCreated: 5,
+            retailListingsCreated: 2,
+            auctionListingsCreated: 3,
+            conversionRate: 38.5,
         });
         expect(result.hourly[0]).toEqual({ hour: '18:00', requests: 4, sessions: 3 });
-        expect(result.last7Days[1]).toEqual({ date: '2026-09-21', requests: 18, sessions: 13 });
+        expect(result.last7Days[1]).toEqual({
+            date: '2026-09-21',
+            requests: 18,
+            sessions: 13,
+            valuationJourneys: 13,
+            listingStarted: 8,
+            listingCreated: 5,
+            uniqueListingsCreated: 5,
+            retailListingsCreated: 2,
+            auctionListingsCreated: 3,
+            conversionRate: 38.5,
+        });
         expect(result.recent[0]).toEqual(expect.objectContaining({
             make: 'VOLKSWAGEN',
+            model: 'ID.3',
             year: 2025,
             fuelType: 'ELECTRIC',
-            listingType: 'auction',
+            listingType: 'retail',
             device: 'desktop',
             city: 'Ilford',
             country: 'GB',
+            entryPoint: 'sell_landing',
+            startedListing: true,
+            createdListing: true,
+            listingId: 'listing-1',
         }));
         expect(result.recent[0]).not.toHaveProperty('userId');
         expect(result.recent[0]).not.toHaveProperty('sessionId');
         expect(result.recent[0]).not.toHaveProperty('user_email');
         expect(result.timezone).toBe('Europe/London');
+        expect(result.attribution).toEqual({
+            windowDays: 30,
+            exactKey: 'valuation_id',
+            historicalFallback: 'session',
+        });
     });
 });

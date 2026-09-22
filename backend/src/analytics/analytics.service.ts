@@ -122,7 +122,8 @@ export class AnalyticsService {
             overviewRaw,
             hourlyRaw,
             sevenDayRaw,
-            recent,
+            funnelDailyRaw,
+            recentRaw,
         ] = await Promise.all([
             this.prisma.$queryRawUnsafe<Array<{
                 requests: string;
@@ -184,16 +185,167 @@ export class AnalyticsService {
                 GROUP BY ("createdAt" AT TIME ZONE 'Europe/London')::date
                 ORDER BY ("createdAt" AT TIME ZONE 'Europe/London')::date ASC
             `),
-            this.prisma.analyticsEvent.findMany({
-                where: { type: 'valuation_requested' },
-                orderBy: { createdAt: 'desc' },
-                take: 15,
-                select: {
-                    id: true,
-                    createdAt: true,
-                    payload: true,
-                },
-            }),
+            this.prisma.$queryRawUnsafe<Array<{
+                date: string;
+                valuation_journeys: string;
+                started_journeys: string;
+                converted_journeys: string;
+                listing_count: string;
+                retail_listings: string;
+                auction_listings: string;
+            }>>(`
+                WITH raw_valuations AS (
+                    SELECT
+                        id,
+                        "createdAt",
+                        "sessionId",
+                        NULLIF(payload->>'valuation_id', '') AS valuation_id,
+                        TO_CHAR(("createdAt" AT TIME ZONE 'Europe/London')::date, 'YYYY-MM-DD') AS valuation_date,
+                        COALESCE(
+                            NULLIF(payload->>'valuation_id', ''),
+                            CASE WHEN "sessionId" IS NOT NULL THEN 'session:' || "sessionId" END,
+                            'event:' || id
+                        ) AS journey_key
+                    FROM analytics_events
+                    WHERE type = 'valuation_requested'
+                      AND "createdAt" >= (
+                          ((date_trunc('day', now() AT TIME ZONE 'Europe/London') - interval '6 days') AT TIME ZONE 'Europe/London')
+                      )
+                      AND "createdAt" < (
+                          ((date_trunc('day', now() AT TIME ZONE 'Europe/London') + interval '1 day') AT TIME ZONE 'Europe/London')
+                      )
+                ),
+                valuations AS (
+                    SELECT
+                        journey_key,
+                        MIN("createdAt") AS first_valuation_at,
+                        MIN(valuation_date) AS valuation_date,
+                        MAX("sessionId") AS session_id,
+                        MAX(valuation_id) AS valuation_id
+                    FROM raw_valuations
+                    GROUP BY journey_key
+                ),
+                attributed AS (
+                    SELECT
+                        v.*,
+                        started.id AS started_event_id,
+                        submitted.id AS submitted_event_id,
+                        submitted.payload->>'listing_id' AS listing_id,
+                        LOWER(COALESCE(submitted.payload->>'listing_type', '')) AS converted_listing_type
+                    FROM valuations v
+                    LEFT JOIN LATERAL (
+                        SELECT e.id
+                        FROM analytics_events e
+                        WHERE e.type = 'listing_started'
+                          AND e."createdAt" >= v.first_valuation_at
+                          AND e."createdAt" < v.first_valuation_at + interval '30 days'
+                          AND (
+                              (v.valuation_id IS NOT NULL AND e.payload->>'valuation_id' = v.valuation_id)
+                              OR (
+                                  v.valuation_id IS NULL
+                                  AND v.session_id IS NOT NULL
+                                  AND e."sessionId" = v.session_id
+                              )
+                          )
+                        ORDER BY e."createdAt" ASC
+                        LIMIT 1
+                    ) started ON TRUE
+                    LEFT JOIN LATERAL (
+                        SELECT e.id, e.payload
+                        FROM analytics_events e
+                        WHERE e.type = 'listing_submitted'
+                          AND e."createdAt" >= v.first_valuation_at
+                          AND e."createdAt" < v.first_valuation_at + interval '30 days'
+                          AND (
+                              (v.valuation_id IS NOT NULL AND e.payload->>'valuation_id' = v.valuation_id)
+                              OR (
+                                  v.valuation_id IS NULL
+                                  AND v.session_id IS NOT NULL
+                                  AND e."sessionId" = v.session_id
+                              )
+                          )
+                        ORDER BY e."createdAt" ASC
+                        LIMIT 1
+                    ) submitted ON TRUE
+                )
+                SELECT
+                    valuation_date AS date,
+                    COUNT(*)::TEXT AS valuation_journeys,
+                    COUNT(*) FILTER (WHERE started_event_id IS NOT NULL)::TEXT AS started_journeys,
+                    COUNT(*) FILTER (WHERE submitted_event_id IS NOT NULL)::TEXT AS converted_journeys,
+                    COUNT(DISTINCT listing_id) FILTER (WHERE listing_id IS NOT NULL)::TEXT AS listing_count,
+                    COUNT(DISTINCT listing_id) FILTER (
+                        WHERE listing_id IS NOT NULL AND converted_listing_type = 'retail'
+                    )::TEXT AS retail_listings,
+                    COUNT(DISTINCT listing_id) FILTER (
+                        WHERE listing_id IS NOT NULL AND converted_listing_type = 'auction'
+                    )::TEXT AS auction_listings
+                FROM attributed
+                GROUP BY valuation_date
+                ORDER BY valuation_date ASC
+            `),
+            this.prisma.$queryRawUnsafe<Array<{
+                id: string;
+                created_at: Date;
+                payload: Record<string, unknown>;
+                started: boolean;
+                converted: boolean;
+                listing_id: string | null;
+                converted_listing_type: string | null;
+            }>>(`
+                SELECT
+                    v.id,
+                    v."createdAt" AS created_at,
+                    v.payload,
+                    (started.id IS NOT NULL) AS started,
+                    (submitted.id IS NOT NULL) AS converted,
+                    submitted.payload->>'listing_id' AS listing_id,
+                    LOWER(NULLIF(submitted.payload->>'listing_type', '')) AS converted_listing_type
+                FROM analytics_events v
+                LEFT JOIN LATERAL (
+                    SELECT e.id
+                    FROM analytics_events e
+                    WHERE e.type = 'listing_started'
+                      AND e."createdAt" >= v."createdAt"
+                      AND e."createdAt" < v."createdAt" + interval '30 days'
+                      AND (
+                          (
+                              NULLIF(v.payload->>'valuation_id', '') IS NOT NULL
+                              AND e.payload->>'valuation_id' = v.payload->>'valuation_id'
+                          )
+                          OR (
+                              NULLIF(v.payload->>'valuation_id', '') IS NULL
+                              AND v."sessionId" IS NOT NULL
+                              AND e."sessionId" = v."sessionId"
+                          )
+                      )
+                    ORDER BY e."createdAt" ASC
+                    LIMIT 1
+                ) started ON TRUE
+                LEFT JOIN LATERAL (
+                    SELECT e.id, e.payload
+                    FROM analytics_events e
+                    WHERE e.type = 'listing_submitted'
+                      AND e."createdAt" >= v."createdAt"
+                      AND e."createdAt" < v."createdAt" + interval '30 days'
+                      AND (
+                          (
+                              NULLIF(v.payload->>'valuation_id', '') IS NOT NULL
+                              AND e.payload->>'valuation_id' = v.payload->>'valuation_id'
+                          )
+                          OR (
+                              NULLIF(v.payload->>'valuation_id', '') IS NULL
+                              AND v."sessionId" IS NOT NULL
+                              AND e."sessionId" = v."sessionId"
+                          )
+                      )
+                    ORDER BY e."createdAt" ASC
+                    LIMIT 1
+                ) submitted ON TRUE
+                WHERE v.type = 'valuation_requested'
+                ORDER BY v."createdAt" DESC
+                LIMIT 15
+            `),
         ]);
 
         const overview = overviewRaw[0] ?? {
@@ -206,9 +358,24 @@ export class AnalyticsService {
             retail_requests: '0',
         };
 
+        const todayDate = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Europe/London',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).format(new Date());
+        const todayFunnel = funnelDailyRaw.find((row) => row.date === todayDate);
+        const todayValuationJourneys = Number(todayFunnel?.valuation_journeys ?? 0);
+        const todayConvertedJourneys = Number(todayFunnel?.converted_journeys ?? 0);
+
         return {
             timezone: 'Europe/London',
             generatedAt: new Date().toISOString(),
+            attribution: {
+                windowDays: 30,
+                exactKey: 'valuation_id',
+                historicalFallback: 'session',
+            },
             today: {
                 requests: Number(overview.requests ?? 0),
                 uniqueSessions: Number(overview.unique_sessions ?? 0),
@@ -217,29 +384,58 @@ export class AnalyticsService {
                 anonymousSessions: Number(overview.anonymous_sessions ?? 0),
                 auctionRequests: Number(overview.auction_requests ?? 0),
                 retailRequests: Number(overview.retail_requests ?? 0),
+                valuationJourneys: todayValuationJourneys,
+                listingStarted: Number(todayFunnel?.started_journeys ?? 0),
+                listingCreated: todayConvertedJourneys,
+                uniqueListingsCreated: Number(todayFunnel?.listing_count ?? 0),
+                retailListingsCreated: Number(todayFunnel?.retail_listings ?? 0),
+                auctionListingsCreated: Number(todayFunnel?.auction_listings ?? 0),
+                conversionRate: todayValuationJourneys > 0
+                    ? Math.round((todayConvertedJourneys / todayValuationJourneys) * 1000) / 10
+                    : 0,
             },
             hourly: hourlyRaw.map((row) => ({
                 hour: row.hour,
                 requests: Number(row.requests),
                 sessions: Number(row.sessions),
             })),
-            last7Days: sevenDayRaw.map((row) => ({
-                date: row.date,
-                requests: Number(row.requests),
-                sessions: Number(row.sessions),
-            })),
-            recent: recent.map((event) => {
+            last7Days: sevenDayRaw.map((row) => {
+                const funnel = funnelDailyRaw.find((item) => item.date === row.date);
+                const journeys = Number(funnel?.valuation_journeys ?? 0);
+                const converted = Number(funnel?.converted_journeys ?? 0);
+                return {
+                    date: row.date,
+                    requests: Number(row.requests),
+                    sessions: Number(row.sessions),
+                    valuationJourneys: journeys,
+                    listingStarted: Number(funnel?.started_journeys ?? 0),
+                    listingCreated: converted,
+                    uniqueListingsCreated: Number(funnel?.listing_count ?? 0),
+                    retailListingsCreated: Number(funnel?.retail_listings ?? 0),
+                    auctionListingsCreated: Number(funnel?.auction_listings ?? 0),
+                    conversionRate: journeys > 0
+                        ? Math.round((converted / journeys) * 1000) / 10
+                        : 0,
+                };
+            }),
+            recent: recentRaw.map((event) => {
                 const payload = (event.payload ?? {}) as Record<string, unknown>;
                 return {
                     id: event.id,
-                    createdAt: event.createdAt,
+                    createdAt: event.created_at,
                     make: typeof payload.make === 'string' ? payload.make : null,
+                    model: typeof payload.model === 'string' ? payload.model : null,
                     year: typeof payload.year === 'number' ? payload.year : Number(payload.year) || null,
                     fuelType: typeof payload.fuel_type === 'string' ? payload.fuel_type : null,
-                    listingType: typeof payload.listing_type === 'string' ? payload.listing_type : null,
+                    listingType: event.converted_listing_type
+                        || (typeof payload.listing_type === 'string' ? payload.listing_type : null),
                     device: typeof payload.device === 'string' ? payload.device : null,
                     city: typeof payload.city === 'string' ? payload.city : null,
                     country: typeof payload.country === 'string' ? payload.country : null,
+                    entryPoint: typeof payload.entry_point === 'string' ? payload.entry_point : null,
+                    startedListing: Boolean(event.started),
+                    createdListing: Boolean(event.converted),
+                    listingId: event.listing_id,
                 };
             }),
         };

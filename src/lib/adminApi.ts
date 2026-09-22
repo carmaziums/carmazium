@@ -887,6 +887,11 @@ export interface TrafficAnalytics {
 export interface ValuationLiveAnalytics {
   timezone: string;
   generatedAt: string;
+  attribution: {
+    windowDays: number;
+    exactKey: string;
+    historicalFallback: string;
+  };
   today: {
     requests: number;
     uniqueSessions: number;
@@ -895,6 +900,13 @@ export interface ValuationLiveAnalytics {
     anonymousSessions: number;
     auctionRequests: number;
     retailRequests: number;
+    valuationJourneys: number;
+    listingStarted: number;
+    listingCreated: number;
+    uniqueListingsCreated: number;
+    retailListingsCreated: number;
+    auctionListingsCreated: number;
+    conversionRate: number;
   };
   hourly: Array<{
     hour: string;
@@ -905,17 +917,29 @@ export interface ValuationLiveAnalytics {
     date: string;
     requests: number;
     sessions: number;
+    valuationJourneys: number;
+    listingStarted: number;
+    listingCreated: number;
+    uniqueListingsCreated: number;
+    retailListingsCreated: number;
+    auctionListingsCreated: number;
+    conversionRate: number;
   }>;
   recent: Array<{
     id: string;
     createdAt: string;
     make: string | null;
+    model: string | null;
     year: number | null;
     fuelType: string | null;
     listingType: string | null;
     device: string | null;
     city: string | null;
     country: string | null;
+    entryPoint: string | null;
+    startedListing: boolean;
+    createdListing: boolean;
+    listingId: string | null;
   }>;
 }
 
