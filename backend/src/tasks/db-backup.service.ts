@@ -56,7 +56,10 @@ export class DbBackupService {
     }
   }
 
-  async pruneOldBackups(supabase: ReturnType<typeof createClient>): Promise<void> {
+  // `any` on purpose: supabase-js changed its client generics, so the instance
+  // created above and ReturnType<typeof createClient> no longer unify. The
+  // alternative is pinning a generic signature that breaks on the next bump.
+  async pruneOldBackups(supabase: any): Promise<void> {
     const { data: files } = await supabase.storage
       .from('backups')
       .list('backups', { limit: 100 });

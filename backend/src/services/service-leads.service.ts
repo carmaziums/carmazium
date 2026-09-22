@@ -317,7 +317,7 @@ export class ServiceLeadsService {
             }
 
             listingVehicle = {
-                registration: listing.vehicle?.registration ?? listing.vrm ?? null,
+                registration: listing.vehicle?.vrm ?? listing.vrm ?? null,
                 make: listing.vehicle?.make ?? listing.make ?? null,
                 model: listing.vehicle?.model ?? listing.model ?? null,
                 year: listing.vehicle?.year ?? listing.year ?? null,

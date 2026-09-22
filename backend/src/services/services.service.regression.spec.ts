@@ -18,7 +18,7 @@ describe('ServicesService TradeXchange hardening regressions', () => {
     let stripe: any;
     let service: ServicesService;
 
-    const openDeliveryJob = () => ({
+    const openDeliveryJob = (): any => ({
         id: 'job-1',
         customerId: 'customer-1',
         contractorId: null,
@@ -46,7 +46,7 @@ describe('ServicesService TradeXchange hardening regressions', () => {
         payment: null,
     });
 
-    const acceptedPendingJob = () => ({
+    const acceptedPendingJob = (): any => ({
         ...openDeliveryJob(),
         contractorId: 'contractor-1',
         acceptedQuoteId: 'quote-1',

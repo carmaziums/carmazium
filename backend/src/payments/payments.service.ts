@@ -649,7 +649,7 @@ export class PaymentsService {
         listingId: string,
         userId: string,
         clientAmount: number,
-        type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'LISTING_FEE' | 'HPI_REPORT' = 'FULL_PAYMENT',
+        type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'LISTING_FEE' | 'HPI_REPORT' | 'HPI_REPORT_EMAIL' = 'FULL_PAYMENT',
         currency = 'gbp',
         badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM',
         vrm?: string,

@@ -41,6 +41,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The backend compiles with SWC, which strips types without checking
+      # them, so `npm run build` exits 0 with type errors present. That is how
+      # a removed Prisma model and a stale chat-room key reached production as
+      # runtime 500s. This step is the only thing that reads those types.
+      - name: Typecheck backend
+        run: npm run typecheck
+
       - name: Run backend tests
         run: npm test -- --runInBand
 

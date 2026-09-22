@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { BlogService } from './blog.service';
 
-const basePost = {
+const basePost: Record<string, any> = {
   id: 'post-1',
   title: 'UK Car Selling Guide',
   slug: 'uk-car-selling-guide',

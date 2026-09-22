@@ -36,7 +36,7 @@ describe('AlsoAuctionDto', () => {
         [{ startTime: '2026-09-19T12:00:00.000Z' }, 'missing reservePrice'],
         [{ startTime: '2026-09-19T12:00:00.000Z', reservePrice: -1 }, 'negative reserve'],
         [{ startTime: '2026-09-19T12:00:00.000Z', reservePrice: 9000, minIncrement: 0 }, 'zero increment'],
-    ])('rejects %s (%s)', async (payload) => {
+    ])('rejects %s (%s)', async (payload, _reason) => {
         await expect(transform(payload as Record<string, unknown>))
             .rejects.toBeInstanceOf(BadRequestException);
     });

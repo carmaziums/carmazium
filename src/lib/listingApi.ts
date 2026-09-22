@@ -804,37 +804,8 @@ export interface ContractorStats {
     totalEarnings: number
 }
 
-/**
- * Get contractor's service requests (jobs) (authenticated)
- */
-export async function getContractorJobs(page = 1, limit = 20): Promise<ServiceRequestsResponse> {
-    return apiClient<ServiceRequestsResponse>(`/service-requests/contractor?page=${page}&limit=${limit}`, {
-        method: 'GET',
-        cache: 'no-store',
-    })
-}
 
-/**
- * Get contractor dashboard stats (authenticated)
- */
-export async function getContractorStats(): Promise<ContractorStats> {
-    const data = await apiClient<{ data: ContractorStats }>('/service-requests/contractor/stats', {
-        method: 'GET',
-        cache: 'no-store',
-    })
-    return data.data
-}
 
-/**
- * Update service request status (authenticated)
- */
-export async function updateJobStatus(requestId: string, status: string): Promise<ServiceRequest> {
-    const data = await apiClient<{ data: ServiceRequest }>(`/service-requests/${requestId}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status }),
-    })
-    return data.data
-}
 
 // ============================================================================
 // PROFILE UPDATE API

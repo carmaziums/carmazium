@@ -135,6 +135,10 @@ export class ChatService {
         context?: ChatContext;
         initiator: any;
         participant: any;
+        // Loaded by roomInclude for DISPUTE rooms. Declared here because the
+        // DISPUTE branch below reads it; without it the constraint silently
+        // excluded the field and the read was a type error.
+        disputeCase?: any;
     }>(
         room: T,
         userId: string,

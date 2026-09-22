@@ -37,6 +37,15 @@ import { TradeTeamService } from './trade-team.service';
 import { parseFutureRequestedFor, postcodeArea, requireUkPostcode } from './service-validation';
 import { boundedServiceLimit, decodeServiceCursor, makeServicePage } from './service-pagination';
 
+/**
+ * Service areas that run the job/quote/payment engine, and those that are
+ * enquiry-only. Typed as ServiceType[] rather than inferred: a literal array
+ * infers the narrow union, and `.includes(serviceType)` then refuses the full
+ * enum it is being asked about.
+ */
+const JOB_SERVICE_AREAS: ServiceType[] = [ServiceType.DELIVERY, ServiceType.INSPECTION];
+const LEAD_SERVICE_AREAS: ServiceType[] = [ServiceType.FINANCE, ServiceType.WARRANTY];
+
 /** Days an OPEN job accepts quotes before it expires. */
 const JOB_OPEN_DAYS = 7;
 /** Hours after a contractor marks COMPLETED before the customer is assumed to agree. */
@@ -436,7 +445,7 @@ export class ServicesService {
             select: { id: true, serviceType: true },
         });
         if (!capability) throw new NotFoundException('Service capability not found on your account.');
-        if (![ServiceType.DELIVERY, ServiceType.INSPECTION].includes(capability.serviceType)) {
+        if (!JOB_SERVICE_AREAS.includes(capability.serviceType)) {
             throw new BadRequestException('Job matching settings apply only to Delivery/Recovery and Inspection capabilities.');
         }
 
@@ -465,7 +474,7 @@ export class ServicesService {
             select: { id: true, serviceType: true },
         });
         if (!capability) throw new NotFoundException('Service capability not found on your account.');
-        if (![ServiceType.FINANCE, ServiceType.WARRANTY].includes(capability.serviceType)) {
+        if (!LEAD_SERVICE_AREAS.includes(capability.serviceType)) {
             throw new BadRequestException('Lead matching settings apply only to Finance and Warranty capabilities.');
         }
 
@@ -600,7 +609,7 @@ export class ServicesService {
         let verification: Awaited<ReturnType<typeof assertCapabilityVerificationReady>> | null = null;
         if (dto.status === CapabilityStatus.APPROVED) {
             if (
-                [ServiceType.DELIVERY, ServiceType.INSPECTION].includes(cap.serviceType)
+                JOB_SERVICE_AREAS.includes(cap.serviceType)
                 && (cap as any).jobNationwide === false
                 && Array.isArray((cap as any).jobPostcodeAreas)
                 && (cap as any).jobPostcodeAreas.length === 0

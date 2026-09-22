@@ -30,6 +30,11 @@ export interface SellerProfileResponse {
     };
     reviewCount: number;
     averageRating: number;
+    /** Review sentiment split — returned by getSellerProfile since it was written. */
+    positiveCount: number;
+    neutralCount: number;
+    negativeCount: number;
+    starCounts: { star: number; count: number }[];
 }
 
 export interface ReviewsResponse {
