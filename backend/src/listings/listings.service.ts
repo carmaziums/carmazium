@@ -478,6 +478,7 @@ export class ListingsService {
         mileage: number | null;
         linkedListingId: string | null;
         importedFromUrl: string | null;
+        writeOffCategory: any;
     }>> {
         const candidates = await db.listing.findMany({
             where: {
@@ -496,6 +497,7 @@ export class ListingsService {
                 mileage: true,
                 linkedListingId: true,
                 importedFromUrl: true,
+                writeOffCategory: true,
             },
             orderBy: { updatedAt: 'desc' },
         });
