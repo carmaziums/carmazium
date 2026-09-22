@@ -86,6 +86,12 @@ export interface CapabilityEvidenceUploadInput {
   expiresAt?: string;
 }
 
+export interface AdminProviderDetailsUpdateInput {
+  businessName: string;
+  phone?: string;
+  serviceArea?: string;
+}
+
 export interface ServiceCaseEntryInput {
   kind?: ServiceCaseEntryKind;
   label?: string;
@@ -220,6 +226,49 @@ export async function deleteCapabilityAttachment(id: string, entryId: string): P
 
 export async function adminGetCapabilityDetail(id: string): Promise<AdminCapabilityDetail> {
   const r = await apiClient<{ data: AdminCapabilityDetail }>(`/admin/services/operations/capabilities/${id}`);
+  return r.data;
+}
+
+export async function adminUpdateProviderDetails(
+  id: string,
+  input: AdminProviderDetailsUpdateInput,
+): Promise<AdminCapabilityDetail> {
+  const r = await apiClient<{ data: AdminCapabilityDetail }>(
+    `/admin/services/operations/capabilities/${id}/provider`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  );
+  return r.data;
+}
+
+export async function adminUploadCapabilityEvidence(
+  id: string,
+  file: File,
+  input: CapabilityEvidenceUploadInput,
+): Promise<{ evidence: ServiceCaseEntry; verification: CapabilityVerificationSummary }> {
+  const body = new FormData();
+  body.append('file', file);
+  body.append('evidenceType', input.evidenceType);
+  if (input.label?.trim()) body.append('label', input.label.trim());
+  if (input.issuer?.trim()) body.append('issuer', input.issuer.trim());
+  if (input.reference?.trim()) body.append('reference', input.reference.trim());
+  if (input.validFrom) body.append('validFrom', input.validFrom);
+  if (input.expiresAt) body.append('expiresAt', input.expiresAt);
+  const r = await apiClient<{ data: { evidence: ServiceCaseEntry; verification: CapabilityVerificationSummary } }>(
+    `/admin/services/operations/capabilities/${id}/evidence/upload`,
+    { method: 'POST', body },
+  );
+  return r.data;
+}
+
+export async function adminUpdateCapabilityEvidenceMetadata(
+  capabilityId: string,
+  entryId: string,
+  input: CapabilityEvidenceUploadInput,
+): Promise<{ evidence: ServiceCaseEntry | null; verification: CapabilityVerificationSummary }> {
+  const r = await apiClient<{ data: { evidence: ServiceCaseEntry | null; verification: CapabilityVerificationSummary } }>(
+    `/admin/services/operations/capabilities/${capabilityId}/evidence/${entryId}/metadata`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  );
   return r.data;
 }
 
