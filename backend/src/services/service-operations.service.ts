@@ -673,9 +673,9 @@ export class ServiceOperationsService {
                 "evidenceValidFrom" = ${validFrom},
                 "evidenceExpiresAt" = ${expiresAt},
                 "evidenceStatus" = 'PENDING',
-                "evidenceReviewedAt" = ${resetReview ? null : undefined},
-                "evidenceReviewedById" = ${resetReview ? null : undefined},
-                "evidenceReviewNote" = ${resetReview ? 'Metadata changed by admin; evidence requires re-review.' : undefined}
+                "evidenceReviewedAt" = NULL,
+                "evidenceReviewedById" = NULL,
+                "evidenceReviewNote" = ${resetReview ? 'Metadata changed by admin; evidence requires re-review.' : null}
             WHERE "id" = ${entryId}
               AND "scope" = 'CAPABILITY'
               AND "entityId" = ${capabilityId}
