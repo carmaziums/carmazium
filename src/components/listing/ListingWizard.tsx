@@ -1592,6 +1592,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
         const { candidate, payload } = retailConversion
         const activeAuction = candidate.auctionStatus === 'ACTIVE' || candidate.auctionStatus === 'SCHEDULED'
+        const draftAuction = candidate.auctionStatus === 'DRAFT'
         const tier = payload.badgeTier === 'PREMIUM'
             ? 'Premium £25'
             : payload.badgeTier === 'STANDARD'
@@ -1618,6 +1619,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <p className="text-sm text-[var(--text-muted)] mt-2">
                                     Continuing will close the auction before this vehicle is changed to a Retail listing.
                                     {candidate.hasActiveBids ? " Existing auction bids will be closed and bidders will be notified." : ""}
+                                </p>
+                            </div>
+                        ) : draftAuction ? (
+                            <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
+                                <p className="font-bold">An Auction draft already exists for this vehicle.</p>
+                                <p className="text-sm text-[var(--text-muted)] mt-2">
+                                    CarMazium will replace that Auction draft with this Retail listing instead of creating a duplicate.
                                 </p>
                             </div>
                         ) : (
