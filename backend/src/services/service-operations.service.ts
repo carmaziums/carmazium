@@ -44,6 +44,14 @@ export interface CapabilityEvidenceReviewInput {
     expiresAt?: string;
 }
 
+export interface AdminProviderDetailsUpdateInput {
+    businessName: string;
+    phone?: string;
+    serviceArea?: string;
+}
+
+export interface AdminCapabilityEvidenceMetadataInput extends CapabilityEvidenceUploadInput {}
+
 export const TRADEXCHANGE_DOCUMENT_BUCKET = 'tradexchange-documents';
 export const TRADEXCHANGE_DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
 export const TRADEXCHANGE_DOCUMENT_MIME_TYPES = [
@@ -454,6 +462,232 @@ export class ServiceOperationsService {
             });
         }
         return result;
+    }
+
+    private async refreshCapabilityVerificationAfterMutation(
+        capabilityId: string,
+        capabilityStatus: CapabilityStatus,
+        now = new Date(),
+    ) {
+        const summary = await getCapabilityVerificationSummary(this.prisma, capabilityId);
+        if (capabilityStatus === CapabilityStatus.APPROVED && summary.ready && summary.recommendedExpiresAt) {
+            await this.prisma.contractorCapability.update({
+                where: { id: capabilityId },
+                data: {
+                    verificationStatus: 'VERIFIED',
+                    verificationCompletedAt: now,
+                    verificationExpiresAt: summary.recommendedExpiresAt,
+                    verificationReminder30SentAt: null,
+                    verificationReminder7SentAt: null,
+                },
+            });
+        } else if (capabilityStatus === CapabilityStatus.APPROVED) {
+            await this.prisma.contractorCapability.update({
+                where: { id: capabilityId },
+                data: {
+                    status: CapabilityStatus.PENDING,
+                    appliedAt: now,
+                    verificationStatus: 'REVERIFICATION_REQUIRED',
+                    verificationCompletedAt: null,
+                    verificationExpiresAt: null,
+                    verificationReminder30SentAt: null,
+                    verificationReminder7SentAt: null,
+                    reviewNote: 'Verification evidence changed and must be reviewed again before taking new work.',
+                },
+            });
+        } else {
+            await this.prisma.contractorCapability.update({
+                where: { id: capabilityId },
+                data: {
+                    verificationStatus: pendingVerificationStatus(summary.requirements),
+                    verificationCompletedAt: null,
+                    verificationExpiresAt: null,
+                    verificationReminder30SentAt: null,
+                    verificationReminder7SentAt: null,
+                },
+            });
+        }
+        return getCapabilityVerificationSummary(this.prisma, capabilityId);
+    }
+
+    async adminUpdateProviderDetails(
+        capabilityId: string,
+        input: AdminProviderDetailsUpdateInput,
+    ) {
+        const businessName = this.cleanText(input?.businessName, 120);
+        if (!businessName) throw new BadRequestException('Business name is required.');
+        const phone = this.cleanText(input?.phone, 30);
+        const serviceArea = this.cleanText(input?.serviceArea, 200);
+
+        const capability = await this.prisma.contractorCapability.findUnique({
+            where: { id: capabilityId },
+            include: {
+                contractor: {
+                    include: {
+                        user: {
+                            select: {
+                                dealerProfile: { select: { id: true } },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (!capability) throw new NotFoundException('Provider application not found.');
+
+        await this.prisma.$transaction(async (tx) => {
+            await tx.contractorProfile.update({
+                where: { id: capability.contractor.id },
+                data: { businessName, phone, serviceArea },
+            });
+            const dealerProfileId = capability.contractor.user?.dealerProfile?.id;
+            if (dealerProfileId) {
+                await tx.dealerProfile.update({
+                    where: { id: dealerProfileId },
+                    data: {
+                        companyName: businessName,
+                        phone,
+                        businessAddress: serviceArea,
+                    },
+                });
+            }
+        });
+
+        return this.adminCapabilityDetail(capabilityId);
+    }
+
+    async adminUploadCapabilityDocument(
+        adminId: string,
+        capabilityId: string,
+        file: any,
+        input: CapabilityEvidenceUploadInput,
+    ) {
+        const capability = await this.prisma.contractorCapability.findUnique({
+            where: { id: capabilityId },
+            select: { id: true, serviceType: true, status: true },
+        });
+        if (!capability) throw new NotFoundException('Provider application not found.');
+
+        const requirement = capabilityEvidenceRequirement(capability.serviceType, input?.evidenceType);
+        if (!requirement) {
+            throw new BadRequestException('Choose a verification evidence type required for this service.');
+        }
+        const validFrom = this.parseOptionalDate(input?.validFrom, 'Valid-from date');
+        const expiresAt = this.parseOptionalDate(input?.expiresAt, 'Expiry date');
+        if (requirement.expiryRequired && !expiresAt) {
+            throw new BadRequestException(`${requirement.title} requires an expiry date.`);
+        }
+        if (expiresAt && expiresAt <= new Date()) {
+            throw new BadRequestException('Verification evidence must be current and not already expired.');
+        }
+        if (validFrom && expiresAt && validFrom > expiresAt) {
+            throw new BadRequestException('Valid-from date cannot be after the expiry date.');
+        }
+        if (!file) throw new BadRequestException('Choose a document to upload.');
+
+        const existing = await this.listEntries('CAPABILITY', capabilityId);
+        if (existing.filter((e) => e.kind === 'DOCUMENT' || e.kind === 'PHOTO').length >= 30) {
+            throw new BadRequestException('A maximum of 30 verification evidence files can be retained on one service application.');
+        }
+
+        const evidence = await this.uploadDocument(
+            'CAPABILITY',
+            capabilityId,
+            adminId,
+            file,
+            input?.label,
+            {
+                type: input.evidenceType,
+                status: 'PENDING',
+                issuer: this.cleanText(input?.issuer, 160),
+                reference: this.cleanText(input?.reference, 160),
+                validFrom,
+                expiresAt,
+            },
+        );
+        const verification = await this.refreshCapabilityVerificationAfterMutation(
+            capabilityId,
+            capability.status,
+        );
+        return { evidence, verification };
+    }
+
+    async adminUpdateCapabilityEvidenceMetadata(
+        adminId: string,
+        capabilityId: string,
+        entryId: string,
+        input: AdminCapabilityEvidenceMetadataInput,
+    ) {
+        const capability = await this.prisma.contractorCapability.findUnique({
+            where: { id: capabilityId },
+            select: { id: true, serviceType: true, status: true },
+        });
+        if (!capability) throw new NotFoundException('Provider application not found.');
+
+        const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+            SELECT "id", "kind", "evidenceType", "evidenceStatus"
+            FROM "service_case_entries"
+            WHERE "id" = ${entryId}
+              AND "scope" = 'CAPABILITY'
+              AND "entityId" = ${capabilityId}
+            LIMIT 1
+        `);
+        const entry = rows[0];
+        if (!entry) throw new NotFoundException('Verification evidence not found.');
+        if (entry.kind !== 'DOCUMENT' && entry.kind !== 'PHOTO') {
+            throw new BadRequestException('Only verification document metadata can be edited.');
+        }
+        if (entry.evidenceStatus === 'SUPERSEDED') {
+            throw new BadRequestException('Superseded evidence is retained for audit and cannot be edited.');
+        }
+
+        const evidenceType = input?.evidenceType || entry.evidenceType;
+        const requirement = capabilityEvidenceRequirement(capability.serviceType, evidenceType);
+        if (!requirement) {
+            throw new BadRequestException('Choose a verification evidence type required for this service.');
+        }
+        const validFrom = this.parseOptionalDate(input?.validFrom, 'Valid-from date');
+        const expiresAt = this.parseOptionalDate(input?.expiresAt, 'Expiry date');
+        if (requirement.expiryRequired && !expiresAt) {
+            throw new BadRequestException(`${requirement.title} requires an expiry date.`);
+        }
+        if (expiresAt && expiresAt <= new Date()) {
+            throw new BadRequestException('Verification evidence must be current and not already expired.');
+        }
+        if (validFrom && expiresAt && validFrom > expiresAt) {
+            throw new BadRequestException('Valid-from date cannot be after the expiry date.');
+        }
+
+        const label = this.cleanText(input?.label, 160);
+        const issuer = this.cleanText(input?.issuer, 160);
+        const reference = this.cleanText(input?.reference, 160);
+        const resetReview = entry.evidenceStatus !== 'PENDING';
+
+        await this.prisma.$executeRaw(Prisma.sql`
+            UPDATE "service_case_entries"
+            SET
+                "label" = ${label},
+                "evidenceType" = ${evidenceType},
+                "evidenceIssuer" = ${issuer},
+                "evidenceReference" = ${reference},
+                "evidenceValidFrom" = ${validFrom},
+                "evidenceExpiresAt" = ${expiresAt},
+                "evidenceStatus" = 'PENDING',
+                "evidenceReviewedAt" = ${resetReview ? null : undefined},
+                "evidenceReviewedById" = ${resetReview ? null : undefined},
+                "evidenceReviewNote" = ${resetReview ? 'Metadata changed by admin; evidence requires re-review.' : undefined}
+            WHERE "id" = ${entryId}
+              AND "scope" = 'CAPABILITY'
+              AND "entityId" = ${capabilityId}
+        `);
+
+        const verification = await this.refreshCapabilityVerificationAfterMutation(
+            capabilityId,
+            capability.status,
+        );
+        const evidence = (await this.listEntries('CAPABILITY', capabilityId))
+            .find((item) => item.id === entryId) ?? null;
+        return { evidence, verification, editedByAdminId: adminId };
     }
 
     async adminCapabilityDetail(capabilityId: string) {
