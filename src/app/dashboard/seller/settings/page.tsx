@@ -235,7 +235,7 @@ export default function SellerSettingsPage() {
                     </div>
 
                     {/* Payouts */}
-                    <div className="glass-card p-8 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
+                    <div id="payouts" className="glass-card p-8 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl scroll-mt-28">
                         <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
                             <CreditCard className="text-primary" size={20} /> Payouts
                         </h3>
