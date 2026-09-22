@@ -76,7 +76,7 @@ function SimpleBarChart({ data, maxVal, labelKey, valueKey, color, unit = "" }: 
                 return (
                     <div key={i} className="flex items-center gap-3">
                         <span className="text-xs text-[var(--text-muted)] font-bold w-16 shrink-0 truncate text-right">{String(row[labelKey] ?? "")}</span>
-                        <div className="flex-1 h-2 bg-white/[0.04] rounded-full overflow-hidden">
+                        <div className="flex-1 h-2 bg-[var(--bg-input)] rounded-full overflow-hidden">
                             <div className={`h-full ${color} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
                         </div>
                         <span className="text-xs font-black tabular-nums w-12 text-right shrink-0">{val.toLocaleString()}{unit}</span>
@@ -90,12 +90,12 @@ function SimpleBarChart({ data, maxVal, labelKey, valueKey, color, unit = "" }: 
 interface StatCardProps { label: string; value: string | number; icon: React.ComponentType<{ size?: number; className?: string }>; color: string }
 function StatCard({ label, value, icon: Icon, color }: StatCardProps) {
     return (
-        <div className="glass-card p-5 border border-[var(--border-default)] bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl">
+        <div className="glass-card p-5 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
             <div className={`inline-flex p-2 ${color} rounded-lg mb-3`}>
                 <Icon size={16} className="" />
             </div>
-            <p className="text-gray-400 text-xs uppercase tracking-widest font-bold">{label}</p>
-            <h3 className="text-3xl font-black font-heading mt-1 text-white">{typeof value === "number" ? value.toLocaleString() : value}</h3>
+            <p className="text-[var(--text-muted)] text-xs uppercase tracking-widest font-bold">{label}</p>
+            <h3 className="text-3xl font-black font-heading mt-1 text-[var(--text-primary)]">{typeof value === "number" ? value.toLocaleString() : value}</h3>
         </div>
     )
 }
@@ -104,9 +104,9 @@ const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
 function DeviceIcon({ device }: { device: string }) {
     const d = device.toLowerCase()
-    if (d === "mobile") return <Smartphone size={12} className="text-blue-400" />
-    if (d === "tablet") return <Tablet size={12} className="text-purple-400" />
-    return <Monitor size={12} className="text-emerald-400" />
+    if (d === "mobile") return <Smartphone size={12} className="text-blue-600 dark:text-blue-400" />
+    if (d === "tablet") return <Tablet size={12} className="text-purple-600 dark:text-purple-400" />
+    return <Monitor size={12} className="text-emerald-600 dark:text-emerald-400" />
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -239,7 +239,7 @@ export default function AdminAnalyticsPage() {
                         </Button>
                     </div>
 
-                    {platformError && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200"><strong>Error:</strong> {platformError}</div>}
+                    {platformError && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-700 dark:text-red-300"><strong>Error:</strong> {platformError}</div>}
 
                     {/* ── Live vehicle valuation activity ── */}
                     <div className="space-y-4">
@@ -262,7 +262,7 @@ export default function AdminAnalyticsPage() {
                         </div>
 
                         {valuationError && (
-                            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-300">
+                            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-700 dark:text-red-300">
                                 {valuationError}
                             </div>
                         )}
@@ -310,7 +310,7 @@ export default function AdminAnalyticsPage() {
 
                                     <div className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                                         <div className="flex items-center gap-2 mb-4">
-                                            <Calendar size={14} className="text-emerald-400" />
+                                            <Calendar size={14} className="text-emerald-600 dark:text-emerald-400" />
                                             <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Last 7 Days</p>
                                         </div>
                                         {valuationLive.last7Days.length > 0 ? (
@@ -395,7 +395,7 @@ export default function AdminAnalyticsPage() {
                                                 </thead>
                                                 <tbody>
                                                     {valuationLive.recent.map(item => (
-                                                        <tr key={item.id} className="border-b border-[var(--border-default)]/60 hover:bg-white/[0.02]">
+                                                        <tr key={item.id} className="border-b border-[var(--border-default)]/60 hover:bg-[var(--bg-card-hover)]">
                                                             <td className="px-4 py-3 whitespace-nowrap font-bold">
                                                                 {new Date(item.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
                                                             </td>
@@ -560,7 +560,7 @@ export default function AdminAnalyticsPage() {
                                 </div>
 
                                 <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 text-xs text-[var(--text-muted)]">
-                                    <strong className="text-cyan-300">Data quality:</strong> “Unique Sessions” is based on CarMazium&apos;s first-party session ID and is not presented as unique people. {traffic.overview.excludedInternalPageViews.toLocaleString()} internal dashboard/admin/auth page views were excluded from this selected period.
+                                    <strong className="text-cyan-700 dark:text-cyan-300">Data quality:</strong> “Unique Sessions” is based on CarMazium&apos;s first-party session ID and is not presented as unique people. {traffic.overview.excludedInternalPageViews.toLocaleString()} internal dashboard/admin/auth page views were excluded from this selected period.
                                 </div>
 
                                 {/* ── Traffic by day ── */}
@@ -629,15 +629,15 @@ export default function AdminAnalyticsPage() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                     <div className="glass-card border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl overflow-hidden">
                                         <div className="p-4 border-b border-[var(--border-default)] flex items-center gap-2">
-                                            <Eye size={13} className="text-blue-400" />
+                                            <Eye size={13} className="text-blue-600 dark:text-blue-400" />
                                             <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Top Public Pages</p>
                                         </div>
                                         {traffic.topPages.length === 0 ? (
                                             <p className="text-xs text-[var(--text-secondary)] font-bold p-4 text-center">No page view data yet</p>
                                         ) : (
-                                            <div className="divide-y divide-white/[0.03]">
+                                            <div className="divide-y divide-[var(--border-default)]">
                                                 {traffic.topPages.slice(0, 10).map((p, i) => (
-                                                    <div key={p.url} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
+                                                    <div key={p.url} className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--bg-card-hover)] transition-colors">
                                                         <span className="text-xs font-black text-[var(--text-secondary)] w-4 shrink-0">{i + 1}</span>
                                                         <span className="flex-1 text-xs text-[var(--text-secondary)] truncate font-medium">{p.url}</span>
                                                         <span className="text-xs font-black tabular-nums">{p.views.toLocaleString()}</span>
@@ -655,9 +655,9 @@ export default function AdminAnalyticsPage() {
                                         {traffic.topSearches.length === 0 ? (
                                             <p className="text-xs text-[var(--text-secondary)] font-bold p-4 text-center">No search data yet</p>
                                         ) : (
-                                            <div className="divide-y divide-white/[0.03]">
+                                            <div className="divide-y divide-[var(--border-default)]">
                                                 {traffic.topSearches.slice(0, 10).map((s, i) => (
-                                                    <div key={s.query} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
+                                                    <div key={s.query} className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--bg-card-hover)] transition-colors">
                                                         <span className="text-xs font-black text-[var(--text-secondary)] w-4 shrink-0">{i + 1}</span>
                                                         <span className="flex-1 text-xs text-[var(--text-secondary)] truncate font-medium">"{s.query}"</span>
                                                         <span className="text-xs font-black tabular-nums">{s.count.toLocaleString()}</span>
@@ -672,15 +672,15 @@ export default function AdminAnalyticsPage() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                     <div className="glass-card border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl overflow-hidden">
                                         <div className="p-4 border-b border-[var(--border-default)] flex items-center gap-2">
-                                            <Globe size={13} className="text-emerald-400" />
+                                            <Globe size={13} className="text-emerald-600 dark:text-emerald-400" />
                                             <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Where Visitors Come From</p>
                                         </div>
                                         {traffic.referrers.length === 0 ? (
                                             <p className="text-xs text-[var(--text-secondary)] font-bold p-4 text-center">No referrer data yet</p>
                                         ) : (
-                                            <div className="divide-y divide-white/[0.03]">
+                                            <div className="divide-y divide-[var(--border-default)]">
                                                 {traffic.referrers.slice(0, 10).map((r, i) => (
-                                                    <div key={r.referrer} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
+                                                    <div key={r.referrer} className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--bg-card-hover)] transition-colors">
                                                         <span className="text-xs font-black text-[var(--text-secondary)] w-4 shrink-0">{i + 1}</span>
                                                         <span className="flex-1 text-xs text-[var(--text-secondary)] truncate font-medium">{r.referrer}</span>
                                                         <span className="text-xs font-black tabular-nums">{r.count.toLocaleString()}</span>
@@ -692,22 +692,22 @@ export default function AdminAnalyticsPage() {
 
                                     <div className="glass-card border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl overflow-hidden">
                                         <div className="p-4 border-b border-[var(--border-default)] flex items-center gap-2">
-                                            <Monitor size={13} className="text-purple-400" />
+                                            <Monitor size={13} className="text-purple-600 dark:text-purple-400" />
                                             <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Devices</p>
                                         </div>
                                         {traffic.devices.length === 0 ? (
                                             <p className="text-xs text-[var(--text-secondary)] font-bold p-4 text-center">No device data yet</p>
                                         ) : (
-                                            <div className="divide-y divide-white/[0.03]">
+                                            <div className="divide-y divide-[var(--border-default)]">
                                                 {traffic.devices.map(d => {
                                                     const total = traffic.devices.reduce((s, x) => s + x.count, 0)
                                                     const pct = total > 0 ? Math.round((d.count / total) * 100) : 0
                                                     return (
-                                                        <div key={d.device} className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors">
+                                                        <div key={d.device} className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--bg-card-hover)] transition-colors">
                                                             <DeviceIcon device={d.device} />
                                                             <span className="flex-1 text-xs text-[var(--text-secondary)] font-bold capitalize">{d.device}</span>
                                                             <div className="flex items-center gap-2">
-                                                                <div className="w-16 h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
+                                                                <div className="w-16 h-1.5 bg-[var(--bg-input)] rounded-full overflow-hidden">
                                                                     <div className="h-full bg-primary/60 rounded-full" style={{ width: `${pct}%` }} />
                                                                 </div>
                                                                 <span className="text-xs text-[var(--text-muted)] font-bold w-8 text-right">{pct}%</span>
@@ -731,9 +731,9 @@ export default function AdminAnalyticsPage() {
                                         {traffic.topCities.length === 0 ? (
                                             <p className="text-xs text-[var(--text-secondary)] font-bold p-4 text-center">No city data yet — geo enriches over time</p>
                                         ) : (
-                                            <div className="divide-y divide-white/[0.03]">
+                                            <div className="divide-y divide-[var(--border-default)]">
                                                 {traffic.topCities.slice(0, 10).map((c, i) => (
-                                                    <div key={c.city} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
+                                                    <div key={c.city} className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--bg-card-hover)] transition-colors">
                                                         <span className="text-xs font-black text-[var(--text-secondary)] w-4 shrink-0">{i + 1}</span>
                                                         <span className="flex-1 text-xs text-[var(--text-secondary)] truncate font-medium">{c.city}</span>
                                                         <span className="text-xs font-black tabular-nums">{c.count.toLocaleString()}</span>
@@ -751,9 +751,9 @@ export default function AdminAnalyticsPage() {
                                         {traffic.topCountries.length === 0 ? (
                                             <p className="text-xs text-[var(--text-secondary)] font-bold p-4 text-center">No country data yet — geo enriches over time</p>
                                         ) : (
-                                            <div className="divide-y divide-white/[0.03]">
+                                            <div className="divide-y divide-[var(--border-default)]">
                                                 {traffic.topCountries.slice(0, 10).map((c, i) => (
-                                                    <div key={c.country} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
+                                                    <div key={c.country} className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--bg-card-hover)] transition-colors">
                                                         <span className="text-xs font-black text-[var(--text-secondary)] w-4 shrink-0">{i + 1}</span>
                                                         <span className="flex-1 text-xs text-[var(--text-secondary)] truncate font-medium">{c.country}</span>
                                                         <span className="text-xs font-black tabular-nums">{c.count.toLocaleString()}</span>
