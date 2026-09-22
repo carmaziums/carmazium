@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import {
     TrendingUp, Loader2, ArrowLeft, Users, Car, DollarSign, RefreshCw,
     Eye, Search, Globe, Monitor, Smartphone, Tablet, MousePointerClick,
-    Clock, BarChart3, Calendar, ShieldCheck, UserX, Building2,
+    Clock, BarChart3, Calendar, ShieldCheck, UserX, Building2, CheckCircle2, CreditCard,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -217,6 +217,32 @@ export default function AdminAnalyticsPage() {
     // Traffic by day
     const maxDaySessions = Math.max(...(traffic?.trafficByDay.map(r => r.sessions) ?? []), 1)
 
+    const sellerFunnel7d = valuationLive?.last7Days.reduce((acc, row) => ({
+        valuations: acc.valuations + row.valuationJourneys,
+        started: acc.started + row.listingStarted,
+        created: acc.created + row.listingCreated,
+        retailCreated: acc.retailCreated + row.retailListingsCreated,
+        auctionCreated: acc.auctionCreated + row.auctionListingsCreated,
+        retailFeePaid: acc.retailFeePaid + row.retailFeePaid,
+        reachedReview: acc.reachedReview + row.reachedReview,
+        retailReachedReview: acc.retailReachedReview + row.retailReachedReview,
+        auctionReachedReview: acc.auctionReachedReview + row.auctionReachedReview,
+        approvedLive: acc.approvedLive + row.approvedLive,
+        rejected: acc.rejected + row.rejected,
+    }), {
+        valuations: 0,
+        started: 0,
+        created: 0,
+        retailCreated: 0,
+        auctionCreated: 0,
+        retailFeePaid: 0,
+        reachedReview: 0,
+        retailReachedReview: 0,
+        auctionReachedReview: 0,
+        approvedLive: 0,
+        rejected: 0,
+    }) ?? null
+
     return (
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
@@ -329,16 +355,63 @@ export default function AdminAnalyticsPage() {
                                 </div>
 
                                 <div className="glass-card border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl overflow-hidden">
-                                    <div className="p-4 border-b border-[var(--border-default)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                    <div className="p-5 border-b border-[var(--border-default)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <TrendingUp size={14} className="text-yellow-400" />
-                                                <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Valuation → Listing Conversion — Last 7 Days</p>
+                                                <TrendingUp size={15} className="text-yellow-400" />
+                                                <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Seller Commercial Funnel — Last 7 Days</p>
                                             </div>
-                                            <p className="text-[11px] text-[var(--text-muted)] mt-1">Shows how many valuation journeys later reached a submitted CarMazium listing.</p>
+                                            <p className="text-[11px] text-[var(--text-muted)] mt-1">Valuation → listing → payment/review → admin approval and live vehicle.</p>
                                         </div>
                                         <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">30-day attribution window</span>
                                     </div>
+
+                                    {sellerFunnel7d && (
+                                        <div className="p-5 border-b border-[var(--border-default)]">
+                                            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+                                                {[
+                                                    { label: "Valuations", value: sellerFunnel7d.valuations, sub: "Funnel entry", icon: Car },
+                                                    { label: "Started Listing", value: sellerFunnel7d.started, sub: sellerFunnel7d.valuations ? `${((sellerFunnel7d.started / sellerFunnel7d.valuations) * 100).toFixed(1)}% of valuations` : "0.0% of valuations", icon: MousePointerClick },
+                                                    { label: "Listings Created", value: sellerFunnel7d.created, sub: sellerFunnel7d.valuations ? `${((sellerFunnel7d.created / sellerFunnel7d.valuations) * 100).toFixed(1)}% of valuations` : "0.0% of valuations", icon: BarChart3 },
+                                                    { label: "Reached Review", value: sellerFunnel7d.reachedReview, sub: sellerFunnel7d.created ? `${((sellerFunnel7d.reachedReview / sellerFunnel7d.created) * 100).toFixed(1)}% of listings` : "0.0% of listings", icon: ShieldCheck },
+                                                    { label: "Approved & Live", value: sellerFunnel7d.approvedLive, sub: sellerFunnel7d.valuations ? `${((sellerFunnel7d.approvedLive / sellerFunnel7d.valuations) * 100).toFixed(1)}% of valuations` : "0.0% of valuations", icon: CheckCircle2 },
+                                                ].map(({ label, value, sub, icon: Icon }) => (
+                                                    <div key={label} className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                                                        <div className="flex items-center gap-2 text-[var(--text-muted)]">
+                                                            <Icon size={14} />
+                                                            <span className="text-[10px] font-black uppercase tracking-wider">{label}</span>
+                                                        </div>
+                                                        <p className="mt-2 text-2xl font-black tabular-nums">{value.toLocaleString()}</p>
+                                                        <p className="mt-1 text-[10px] font-bold text-[var(--text-muted)]">{sub}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                                                <div className="rounded-xl border border-purple-500/20 bg-purple-500/[0.06] p-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <CreditCard size={15} className="text-purple-400" />
+                                                        <p className="text-xs font-black uppercase tracking-widest text-purple-400">Retail path</p>
+                                                    </div>
+                                                    <p className="mt-2 text-sm font-bold">
+                                                        {sellerFunnel7d.retailCreated} retail listings → {sellerFunnel7d.retailFeePaid} listing fees paid → {sellerFunnel7d.retailReachedReview} reached review
+                                                    </p>
+                                                    <p className="mt-1 text-[11px] text-[var(--text-muted)]">Fee paid is read from completed LISTING_FEE transactions, not just the checkout success page.</p>
+                                                </div>
+                                                <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.06] p-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <BarChart3 size={15} className="text-orange-400" />
+                                                        <p className="text-xs font-black uppercase tracking-widest text-orange-400">Auction path</p>
+                                                    </div>
+                                                    <p className="mt-2 text-sm font-bold">
+                                                        {sellerFunnel7d.auctionCreated} auction listings → {sellerFunnel7d.auctionReachedReview} reached review
+                                                    </p>
+                                                    <p className="mt-1 text-[11px] text-[var(--text-muted)]">Auction listings are free, so there is no seller listing-fee stage.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-xs">
                                             <thead>
@@ -346,10 +419,12 @@ export default function AdminAnalyticsPage() {
                                                     <th className="px-4 py-3 font-bold">Date</th>
                                                     <th className="px-4 py-3 font-bold text-right">Valuations</th>
                                                     <th className="px-4 py-3 font-bold text-right">Started</th>
-                                                    <th className="px-4 py-3 font-bold text-right">Listings Created</th>
-                                                    <th className="px-4 py-3 font-bold text-right">Conversion</th>
-                                                    <th className="px-4 py-3 font-bold text-right">Auction</th>
-                                                    <th className="px-4 py-3 font-bold text-right">Retail</th>
+                                                    <th className="px-4 py-3 font-bold text-right">Created</th>
+                                                    <th className="px-4 py-3 font-bold text-right">Retail Fee Paid</th>
+                                                    <th className="px-4 py-3 font-bold text-right">Auction → Review</th>
+                                                    <th className="px-4 py-3 font-bold text-right">Reached Review</th>
+                                                    <th className="px-4 py-3 font-bold text-right">Approved / Live</th>
+                                                    <th className="px-4 py-3 font-bold text-right">Live / Valuation</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -359,13 +434,19 @@ export default function AdminAnalyticsPage() {
                                                         <td className="px-4 py-3 text-right tabular-nums">{row.valuationJourneys}</td>
                                                         <td className="px-4 py-3 text-right tabular-nums">{row.listingStarted}</td>
                                                         <td className="px-4 py-3 text-right tabular-nums font-black">{row.listingCreated}</td>
-                                                        <td className="px-4 py-3 text-right tabular-nums font-black text-yellow-400">{row.conversionRate.toFixed(1)}%</td>
-                                                        <td className="px-4 py-3 text-right tabular-nums text-orange-400">{row.auctionListingsCreated}</td>
-                                                        <td className="px-4 py-3 text-right tabular-nums text-purple-400">{row.retailListingsCreated}</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums text-purple-400">{row.retailFeePaid}</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums text-orange-400">{row.auctionReachedReview}</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums">{row.reachedReview}</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums font-black text-emerald-400">{row.approvedLive}</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums font-black text-yellow-400">{row.liveFromValuationRate.toFixed(1)}%</td>
                                                     </tr>
                                                 ))}
                                             </tbody>
                                         </table>
+                                    </div>
+                                    <div className="px-5 py-3 border-t border-[var(--border-default)] text-[11px] text-[var(--text-muted)]">
+                                        Admin approval makes a listing live immediately, so “Approved” and “Vehicle Live” are the same lifecycle transition in CarMazium.
+                                        {sellerFunnel7d && sellerFunnel7d.rejected > 0 ? ` ${sellerFunnel7d.rejected} attributed listing(s) are currently rejected and need seller corrections.` : ""}
                                     </div>
                                 </div>
 
@@ -408,8 +489,16 @@ export default function AdminAnalyticsPage() {
                                                                 </span>
                                                             </td>
                                                             <td className="px-4 py-3">
-                                                                {item.createdListing ? (
-                                                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-black uppercase text-emerald-400">Listing Created</span>
+                                                                {item.approvedLive ? (
+                                                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-black uppercase text-emerald-400">Approved & Live</span>
+                                                                ) : item.rejected ? (
+                                                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-1 font-black uppercase text-rose-400">Rejected</span>
+                                                                ) : item.reachedReview ? (
+                                                                    <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 font-black uppercase text-cyan-400">In Review</span>
+                                                                ) : item.feePaid ? (
+                                                                    <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-1 font-black uppercase text-purple-400">Fee Paid</span>
+                                                                ) : item.createdListing ? (
+                                                                    <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-1 font-black uppercase text-blue-400">Listing Created</span>
                                                                 ) : item.startedListing ? (
                                                                     <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 font-black uppercase text-amber-400">Started</span>
                                                                 ) : (
@@ -428,7 +517,7 @@ export default function AdminAnalyticsPage() {
                                 </div>
 
                                 <p className="px-1 text-[11px] leading-5 text-[var(--text-muted)]">
-                                    “Listings Created” means a valuation journey reached the listing_submitted event within 30 days. New journeys use an exact non-personal valuation ID; older historical data falls back to same-session matching. These figures cover first-party analytics-consented sessions, so they should be used as conversion telemetry rather than a count of every visitor.
+                                    The funnel attributes a listing to a valuation for up to 30 days. New journeys use an exact non-personal valuation ID; older history falls back to same-session matching. Retail payment comes from completed transaction records, and approval/live status comes from the listing lifecycle plus server-side approval telemetry. The valuation denominator still covers first-party analytics-consented journeys, so use these figures as conversion telemetry rather than a census of every visitor.
                                 </p>
                             </>
                         ) : null}
