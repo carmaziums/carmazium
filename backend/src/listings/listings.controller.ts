@@ -37,6 +37,7 @@ import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { OptionalSessionAuthGuard } from '../auth/guards/optional-session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { TradeListingAccessGuard } from '../auctions/trade-access.guard';
+import { ConvertAuctionToRetailDto } from './dto/convert-auction-to-retail.dto';
 
 
 
@@ -340,6 +341,24 @@ export class ListingsController {
     }
 
     /**
+     * Check whether this seller already has the same vehicle in the auction
+     * channel and whether it can safely be switched to Retail.
+     */
+    @Get('retail-conversion-candidate')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Check whether an existing auction vehicle can be switched to Retail' })
+    async retailConversionCandidate(
+        @Query('vrm') vrm: string,
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<any>> {
+        if (!vrm) throw new BadRequestException('vrm is required');
+        return new StandardResponse(
+            await this.listingsService.getRetailConversionCandidate(user.id, vrm),
+        );
+    }
+
+    /**
      * Get a single listing by slug
      * Public endpoint
      * IMPORTANT: This route uses :slug parameter and must come AFTER the /listings route
@@ -407,6 +426,24 @@ export class ListingsController {
     ): Promise<StandardResponse<Listing>> {
         const listing = await this.listingsService.update(id, user.id, updateListingDto);
         return new StandardResponse(listing);
+    }
+
+    @Post(':id/convert-to-retail')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Cancel/close an existing auction vehicle and reuse the same listing as a paid Retail draft' })
+    @ApiResponse({ status: 200, description: 'Auction closed where necessary and listing converted to CLASSIFIED DRAFT' })
+    @ApiResponse({ status: 400, description: 'Conversion is unsafe, not confirmed, or the auction already has a winner/reserve-met bid' })
+    @ApiResponse({ status: 403, description: 'You do not own this listing' })
+    async convertAuctionToRetail(
+        @Param('id') id: string,
+        @Body() dto: ConvertAuctionToRetailDto,
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<any>> {
+        return new StandardResponse(
+            await this.listingsService.convertAuctionToRetail(id, user.id, dto),
+        );
     }
 
     @Post(':id/also-list-retail')
