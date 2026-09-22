@@ -220,6 +220,25 @@ export class ServiceOperationsService {
         return Promise.all(rows.map((entry) => this.hydrateEntry(entry)));
     }
 
+    private async listCapabilityEvidence(capabilityId: string) {
+        const entries = await this.listEntries('CAPABILITY', capabilityId);
+        return entries.filter((entry) => entry.kind === 'DOCUMENT' || entry.kind === 'PHOTO');
+    }
+
+    private async addCapabilityAuditNote(
+        adminId: string,
+        capabilityId: string,
+        note: string,
+    ) {
+        return this.insertEntry(
+            'CAPABILITY',
+            capabilityId,
+            adminId,
+            { kind: 'NOTE', note },
+            ['NOTE'],
+        );
+    }
+
     private async insertEntry(
         scope: ServiceCaseScope,
         entityId: string,
@@ -373,14 +392,14 @@ export class ServiceOperationsService {
 
     async providerCapabilityEntries(userId: string, capabilityId: string) {
         await this.ownedCapability(userId, capabilityId);
-        return this.listEntries('CAPABILITY', capabilityId);
+        return this.listCapabilityEvidence(capabilityId);
     }
 
     async providerCapabilityVerification(userId: string, capabilityId: string) {
         const capability = await this.ownedCapability(userId, capabilityId);
         const [verification, attachments] = await Promise.all([
             getCapabilityVerificationSummary(this.prisma, capabilityId),
-            this.listEntries('CAPABILITY', capabilityId),
+            this.listCapabilityEvidence(capabilityId),
         ]);
         return {
             capabilityId,
@@ -414,7 +433,7 @@ export class ServiceOperationsService {
             throw new BadRequestException('Valid-from date cannot be after the expiry date.');
         }
 
-        const existing = await this.listEntries('CAPABILITY', capabilityId);
+        const existing = await this.listCapabilityEvidence(capabilityId);
         if (existing.filter((e) => e.kind === 'DOCUMENT' || e.kind === 'PHOTO').length >= 30) {
             throw new BadRequestException('A maximum of 30 verification evidence files can be retained on one service application.');
         }
@@ -467,6 +486,7 @@ export class ServiceOperationsService {
     private async refreshCapabilityVerificationAfterMutation(
         capabilityId: string,
         capabilityStatus: CapabilityStatus,
+        adminId: string,
         now = new Date(),
     ) {
         const summary = await getCapabilityVerificationSummary(this.prisma, capabilityId);
@@ -475,7 +495,6 @@ export class ServiceOperationsService {
                 where: { id: capabilityId },
                 data: {
                     verificationStatus: 'VERIFIED',
-                    verificationCompletedAt: now,
                     verificationExpiresAt: summary.recommendedExpiresAt,
                     verificationReminder30SentAt: null,
                     verificationReminder7SentAt: null,
@@ -487,6 +506,8 @@ export class ServiceOperationsService {
                 data: {
                     status: CapabilityStatus.PENDING,
                     appliedAt: now,
+                    reviewedAt: now,
+                    reviewedById: adminId,
                     verificationStatus: 'REVERIFICATION_REQUIRED',
                     verificationCompletedAt: null,
                     verificationExpiresAt: null,
@@ -511,6 +532,7 @@ export class ServiceOperationsService {
     }
 
     async adminUpdateProviderDetails(
+        adminId: string,
         capabilityId: string,
         input: AdminProviderDetailsUpdateInput,
     ) {
@@ -552,6 +574,12 @@ export class ServiceOperationsService {
                 });
             }
         });
+
+        await this.addCapabilityAuditNote(
+            adminId,
+            capabilityId,
+            'Admin corrected provider business details (business name, phone and/or service area).',
+        );
 
         return this.adminCapabilityDetail(capabilityId);
     }
@@ -608,6 +636,7 @@ export class ServiceOperationsService {
         const verification = await this.refreshCapabilityVerificationAfterMutation(
             capabilityId,
             capability.status,
+            adminId,
         );
         return { evidence, verification };
     }
@@ -684,8 +713,14 @@ export class ServiceOperationsService {
         const verification = await this.refreshCapabilityVerificationAfterMutation(
             capabilityId,
             capability.status,
+            adminId,
         );
-        const evidence = (await this.listEntries('CAPABILITY', capabilityId))
+        await this.addCapabilityAuditNote(
+            adminId,
+            capabilityId,
+            `Admin edited verification evidence metadata for entry ${entryId}; the evidence was returned to pending review.`,
+        );
+        const evidence = (await this.listCapabilityEvidence(capabilityId))
             .find((item) => item.id === entryId) ?? null;
         return { evidence, verification, editedByAdminId: adminId };
     }
@@ -719,7 +754,7 @@ export class ServiceOperationsService {
             },
         });
         if (!capability) throw new NotFoundException('Provider application not found.');
-        const [attachments, verification, statusHistory] = await Promise.all([
+        const [caseEntries, verification, statusHistory] = await Promise.all([
             this.listEntries('CAPABILITY', capabilityId),
             getCapabilityVerificationSummary(this.prisma, capabilityId),
             this.prisma.$queryRaw<any[]>(Prisma.sql`
@@ -735,7 +770,9 @@ export class ServiceOperationsService {
                 ORDER BY h."createdAt" ASC, h."id" ASC
             `),
         ]);
-        return { ...capability, attachments, verification, statusHistory };
+        const attachments = caseEntries.filter((entry) => entry.kind === 'DOCUMENT' || entry.kind === 'PHOTO');
+        const auditEntries = caseEntries.filter((entry) => entry.kind === 'NOTE');
+        return { ...capability, attachments, auditEntries, verification, statusHistory };
     }
 
     async adminReviewCapabilityEvidence(
@@ -853,7 +890,7 @@ export class ServiceOperationsService {
         });
 
         return {
-            evidence: (await this.listEntries('CAPABILITY', capabilityId)).find((item) => item.id === entryId) ?? null,
+            evidence: (await this.listCapabilityEvidence(capabilityId)).find((item) => item.id === entryId) ?? null,
             verification: await getCapabilityVerificationSummary(this.prisma, capabilityId),
         };
     }
