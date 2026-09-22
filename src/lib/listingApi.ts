@@ -578,7 +578,7 @@ export interface BidsResponse {
 
 export interface ActiveAuctionBidPosition {
     listingId: string
-    auctionId: string
+    auctionId: string | null
     listing: {
         id: string
         title: string
