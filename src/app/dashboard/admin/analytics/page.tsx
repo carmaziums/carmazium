@@ -239,7 +239,7 @@ export default function AdminAnalyticsPage() {
                         </Button>
                     </div>
 
-                    {platformError && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-700 dark:text-red-700 dark:text-red-300"><strong>Error:</strong> {platformError}</div>}
+                    {platformError && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-700 dark:text-red-300"><strong>Error:</strong> {platformError}</div>}
 
                     {/* ── Live vehicle valuation activity ── */}
                     <div className="space-y-4">
