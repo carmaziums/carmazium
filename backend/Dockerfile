@@ -48,6 +48,11 @@ COPY --from=builder /app/dist ./dist
 # Static assets bundled with the app (letterhead PDF template, etc.)
 COPY --from=builder /app/assets ./assets
 
+# One-off maintenance scripts. Shipped so they can be run against production
+# from `flyctl ssh console`, where DATABASE_URL and SUPABASE_SERVICE_KEY already
+# exist, rather than needing those secrets copied onto someone's laptop.
+COPY --from=builder /app/scripts ./scripts
+
 EXPOSE 8080
 
 CMD ["node", "dist/main"]
