@@ -613,8 +613,8 @@ export class ServiceOperationsService {
         }
         if (!file) throw new BadRequestException('Choose a document to upload.');
 
-        const existing = await this.listEntries('CAPABILITY', capabilityId);
-        if (existing.filter((e) => e.kind === 'DOCUMENT' || e.kind === 'PHOTO').length >= 30) {
+        const existing = await this.listCapabilityEvidence(capabilityId);
+        if (existing.length >= 30) {
             throw new BadRequestException('A maximum of 30 verification evidence files can be retained on one service application.');
         }
 
@@ -873,6 +873,8 @@ export class ServiceOperationsService {
                     ? {
                         status: CapabilityStatus.PENDING,
                         appliedAt: now,
+                        reviewedAt: now,
+                        reviewedById: adminId,
                         verificationStatus: 'REVERIFICATION_REQUIRED',
                         verificationCompletedAt: null,
                         verificationExpiresAt: null,
