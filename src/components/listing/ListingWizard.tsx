@@ -17,7 +17,9 @@ import {
     createListing, formatPrice, getDamageRecords,
     type CreateListingRequest, type BodyTypeValue,
     type EuroStandardValue, type VehicleTypeValue,
-    createHpiCheckoutSession, createListingCheckoutSession, publishListing
+    createHpiCheckoutSession, createListingCheckoutSession, publishListing,
+    getRetailConversionCandidate, convertAuctionToRetail,
+    type RetailConversionCandidate
 } from "@/lib/listingApi"
 import { uploadImage } from "@/lib/supabase"
 import { getSessionStatus, applyHpiFee } from "@/lib/paymentApi"
@@ -317,6 +319,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [valuation, setValuation] = React.useState<VehicleValuation | null>(null)
     const [valuationLoading, setValuationLoading] = React.useState(false)
     const [valuationError, setValuationError] = React.useState<string | null>(null)
+    const [retailConversion, setRetailConversion] = React.useState<{
+        candidate: RetailConversionCandidate
+        payload: CreateListingRequest
+    } | null>(null)
+    const [isConvertingToRetail, setIsConvertingToRetail] = React.useState(false)
 
     // HPI Payment State
     const [showHpiModal, setShowHpiModal] = React.useState(false)
