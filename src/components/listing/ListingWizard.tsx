@@ -1353,6 +1353,41 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     ...(isPaidTier ? { ...payload, status: 'DRAFT' as const } : payload),
                     ...initialAuctionFields,
                 }
+                // If this VRM already belongs to one of this seller's auction
+                // listings, do not create a duplicate Retail row. Ask the seller
+                // to confirm the channel switch first; the backend re-checks all
+                // auction safety rules again when they confirm.
+                if (payload.listingType === 'CLASSIFIED') {
+                    const conversion = await getRetailConversionCandidate(payload.vrm)
+                    if (conversion.candidate) {
+                        if (!conversion.candidate.canConvert) {
+                            if (conversion.candidate.existingRetailSlug) {
+                                setSubmitError(
+                                    conversion.candidate.blockedReason
+                                    || 'This vehicle already has a Retail listing. Open that listing instead.',
+                                )
+                            } else {
+                                setSubmitError(
+                                    conversion.candidate.blockedReason
+                                    || 'This auction cannot be switched to Retail at the moment.',
+                                )
+                            }
+                            return
+                        }
+
+                        setRetailConversion({
+                            candidate: conversion.candidate,
+                            payload: {
+                                ...payload,
+                                listingType: 'CLASSIFIED',
+                                status: 'DRAFT',
+                                badgeTier: payload.badgeTier === 'FREE' ? 'BASIC' : payload.badgeTier,
+                            },
+                        })
+                        return
+                    }
+                }
+
                 const response = await createListing(createPayload)
                 const newListingId = response.data.id
 
@@ -1456,6 +1491,80 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         }
     }
 
+    const confirmRetailConversion = async () => {
+        if (!retailConversion) return
+
+        setIsConvertingToRetail(true)
+        setSubmitError(null)
+
+        try {
+            const { candidate, payload } = retailConversion
+            const result = await convertAuctionToRetail(candidate.listingId, {
+                ...payload,
+                listingType: 'CLASSIFIED',
+                status: 'DRAFT',
+                badgeTier: payload.badgeTier === 'FREE' ? 'BASIC' : payload.badgeTier,
+                confirmAuctionCancellation: true,
+            })
+
+            // Preserve the same damage-save behaviour as a normal new listing.
+            // If the seller did not edit damage in this form, existing damage
+            // records on the reused listing are left untouched.
+            if (damageRecords.length > 0) {
+                try {
+                    const detections = damageRecords.map(r => ({
+                        part: r.zone,
+                        type: r.description,
+                        size: "MEDIUM",
+                        coords: { x: r.x, y: r.y, view: r.view },
+                        imageUrl: r.photoUrl ?? "",
+                    }))
+                    await apiClient(`/damage/${result.listingId}/save`, {
+                        method: 'POST',
+                        body: JSON.stringify({ detections }),
+                    })
+                } catch (e) {
+                    console.error('Failed to save damage records during Retail conversion:', e)
+                }
+            }
+
+            setRetailConversion(null)
+
+            // Use the normal Retail publish/payment gate after conversion. This
+            // prevents the channel switch from bypassing either the listing fee
+            // or admin review.
+            const publish = await publishListing(result.listingId)
+            if (publish.activated) {
+                trackListingSubmitted(payload, result.listingId, 'published')
+                localStorage.removeItem('carmazium_listing_draft')
+                localStorage.removeItem('carmazium_listing_draft_step')
+                router.push(result.slug ? `/buy-cars/${result.slug}` : '/dashboard/seller/listings')
+                return
+            }
+            if (publish.pendingReview) {
+                trackListingSubmitted(payload, result.listingId, 'pending_review')
+                setPendingReview({
+                    title: payload.title,
+                    onContinue: () => router.push('/dashboard/seller/listings'),
+                })
+                return
+            }
+
+            trackListingSubmitted(payload, result.listingId, 'awaiting_payment')
+            const checkout = await createListingCheckoutSession(
+                result.listingId,
+                (payload.badgeTier === 'FREE' ? 'BASIC' : payload.badgeTier) as string,
+            )
+            window.location.href = checkout.url
+        } catch (error: any) {
+            console.error("Auction to Retail conversion error:", error)
+            setSubmitError(error?.message || "Could not switch this auction to a Retail listing. Please try again.")
+            setRetailConversion(null)
+        } finally {
+            setIsConvertingToRetail(false)
+        }
+    }
+
     // ─── Shared ──────────────────────────────────────────────────────────────────
 
     const inputCls = "bg-[var(--bg-input)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)] focus:border-primary text-base md:text-sm"
@@ -1477,6 +1586,85 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             </div>
         </div>
     )
+
+    const RetailConversionModal = () => {
+        if (!retailConversion) return null
+
+        const { candidate, payload } = retailConversion
+        const activeAuction = candidate.auctionStatus === 'ACTIVE' || candidate.auctionStatus === 'SCHEDULED'
+        const tier = payload.badgeTier === 'PREMIUM'
+            ? 'Premium £25'
+            : payload.badgeTier === 'STANDARD'
+                ? 'Standard £10'
+                : 'Basic £1'
+
+        return (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-5">
+                <div className="glass-card p-0 max-w-lg w-full overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="retail-conversion-title">
+                    <div className="p-6 border-b border-[var(--border-default)] flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
+                            <AlertTriangle className="text-amber-500" size={24}/>
+                        </div>
+                        <div>
+                            <h3 id="retail-conversion-title" className="text-xl font-bold font-heading">Switch this vehicle to Retail?</h3>
+                            <p className="text-sm text-[var(--text-muted)] mt-1">{candidate.title}</p>
+                        </div>
+                    </div>
+
+                    <div className="p-6 space-y-4">
+                        {activeAuction ? (
+                            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+                                <p className="font-bold text-amber-500">Your existing auction will be cancelled.</p>
+                                <p className="text-sm text-[var(--text-muted)] mt-2">
+                                    Continuing will close the auction before this vehicle is changed to a Retail listing.
+                                    {candidate.hasActiveBids ? " Existing auction bids will be closed and bidders will be notified." : ""}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
+                                <p className="font-bold">Your previous auction is already closed.</p>
+                                <p className="text-sm text-[var(--text-muted)] mt-2">
+                                    CarMazium will reuse that vehicle listing for Retail instead of creating a duplicate.
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4 text-sm">
+                            <p><strong>Retail package:</strong> {tier}</p>
+                            <p className="text-[var(--text-muted)] mt-2">
+                                After you confirm, the vehicle becomes a Retail draft. You will then continue to the normal payment step if a Retail listing fee is due. The listing will still require CarMazium review before going live.
+                            </p>
+                        </div>
+
+                        <p className="text-xs text-[var(--text-muted)]">
+                            If the auction already has a winner or the reserve has been met, CarMazium will block the conversion even after confirmation.
+                        </p>
+                    </div>
+
+                    <div className="p-5 border-t border-[var(--border-default)] flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={isConvertingToRetail}
+                            onClick={() => setRetailConversion(null)}
+                        >
+                            Keep Auction
+                        </Button>
+                        <Button
+                            type="button"
+                            disabled={isConvertingToRetail}
+                            onClick={confirmRetailConversion}
+                            className="bg-emerald-600 hover:bg-emerald-700 border-none"
+                        >
+                            {isConvertingToRetail
+                                ? <><Loader2 size={16} className="animate-spin mr-2"/>Switching...</>
+                                : <>{activeAuction ? "Cancel Auction & Continue" : "Switch to Retail & Continue"}<ArrowRight size={16} className="ml-2"/></>}
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
 
     // ─── HPI Payment Modal ───────────────────────────────────────────────────────
 
@@ -1570,6 +1758,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         return (
             <>
                 <LoginModal />
+                <RetailConversionModal />
                 <HpiPaymentModal />
                 <PendingReviewModal open={!!pendingReview} listingTitle={pendingReview?.title} onContinue={() => pendingReview?.onContinue()} />
                 <div className={`relative ${isDashboard ? 'pb-12 w-full' : 'min-h-screen pt-24 pb-12'}`}>
@@ -1689,6 +1878,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         <div className="min-h-screen py-12">
             <div className="container mx-auto px-5 max-w-3xl">
                 <LoginModal />
+                <RetailConversionModal />
                 <HpiPaymentModal />
                 <PendingReviewModal open={!!pendingReview} listingTitle={pendingReview?.title} onContinue={() => pendingReview?.onContinue()} />
 
