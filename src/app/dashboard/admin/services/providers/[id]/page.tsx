@@ -455,6 +455,19 @@ export default function AdminProviderReviewPage() {
                             </div>)}</div>}
                     </section>
 
+                    {data.auditEntries?.length > 0 && <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
+                        <h2 className="font-heading font-bold text-lg mb-1">Admin activity</h2>
+                        <p className="text-xs text-[var(--text-muted)] mb-4">Recorded corrections made from this review workflow.</p>
+                        <div className="space-y-3">
+                            {data.auditEntries.map(entry => <div key={entry.id} className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                                <p className="text-sm">{entry.note || "Admin verification update"}</p>
+                                <p className="text-[11px] text-[var(--text-muted)] mt-2">
+                                    {entry.submittedByEmail || [entry.submittedByFirstName, entry.submittedByLastName].filter(Boolean).join(" ") || "CarMazium admin"} · {new Date(entry.createdAt).toLocaleString("en-GB")}
+                                </p>
+                            </div>)}
+                        </div>
+                    </section>}
+
                     <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
                         <h2 className="font-heading font-bold text-lg mb-1">Provider status history</h2>
                         <p className="text-xs text-[var(--text-muted)] mb-4">Immutable approval, suspension, rejection and reinstatement history for this service capability.</p>
@@ -489,9 +502,9 @@ export default function AdminProviderReviewPage() {
                                 Approve
                             </Button>}
                             {!canApprove && data.status !== "APPROVED" && <p className="text-xs text-amber-500 w-full">
-                                Approval is locked until verification is complete
-                                {paidService && !stripeReady ? ", Stripe Connect is completed" : ""}
-                                {leadService && !matchingReady ? ", and lead matching coverage is configured" : ""}.
+                                Approval is locked until all required checks are complete
+                                {paidService && !stripeReady ? "; Stripe Connect must be completed" : ""}
+                                {leadService && !matchingReady ? "; lead matching coverage must be configured" : ""}.
                             </p>}
                             {data.status === "PENDING" && <Button variant="outline" disabled={busy} onClick={() => review("REJECTED")}><XCircle size={15} className="mr-2"/>Reject</Button>}
                             {data.status === "APPROVED" && <Button variant="outline" disabled={busy} onClick={() => review("SUSPENDED")}><Ban size={15} className="mr-2"/>Suspend</Button>}
