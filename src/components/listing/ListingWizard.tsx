@@ -730,6 +730,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         }
     }, [
         valuationReady,
+        formData.vrm,
         formData.make,
         formData.model,
         formData.year,
@@ -742,6 +743,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         formData.owners,
         formData.writeOffCategory,
         formData.isImported,
+        formData.listingType,
         editId,
         isDashboard,
         trackEvent,
