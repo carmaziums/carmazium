@@ -113,6 +113,7 @@ export interface CapabilityStatusHistoryEntry {
 
 export interface AdminCapabilityDetail extends ContractorCapability {
   attachments: ServiceCaseEntry[];
+  auditEntries: ServiceCaseEntry[];
   verification: CapabilityVerificationSummary;
   statusHistory: CapabilityStatusHistoryEntry[];
 }
