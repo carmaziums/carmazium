@@ -361,6 +361,51 @@ export class EmailService {
         });
     }
 
+    /**
+     * Ask a seller to complete Stripe Connect so an approved £100 auction
+     * seller bonus can be released. The CTA deliberately returns to the
+     * authenticated CarMazium settings page rather than emailing Stripe's
+     * short-lived Account Link.
+     */
+    async sendStripePayoutSetupReminderEmail(
+        toEmail: string,
+        firstName: string,
+        vehicleTitle: string,
+    ) {
+        const settingsUrl = `${this.frontendUrl}/dashboard/seller/settings#payouts`;
+        const bodyHtml = `
+            <h1 style="margin: 0 0 10px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff;">
+                Your £100 seller bonus is waiting
+            </h1>
+            <p style="margin: 0 0 24px; font-size: 15px; color: #94a3b8; line-height: 1.7;">
+                Hi <strong style="color:#ffffff;">${firstName}</strong>, your handover for
+                <strong style="color:#ffffff;">${vehicleTitle}</strong> has been approved,
+                but CarMazium cannot send your £100 seller bonus until your payout account is connected.
+            </p>
+            <div style="background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.22); border-radius: 14px; padding: 20px; margin-bottom: 28px;">
+                <p style="margin: 0; font-size: 14px; color: #cbd5e1; line-height: 1.6;">
+                    Open Payout Settings, choose <strong style="color:#ffffff;">Connect Bank Account</strong>,
+                    and complete Stripe's secure onboarding. It normally takes only a few minutes.
+                </p>
+            </div>
+            <div style="text-align: center; margin: 32px 0 24px;">
+                <a href="${settingsUrl}" target="_blank"
+                   style="display:inline-block; padding:16px 38px; background:linear-gradient(135deg,#ed1c24,#c41920); color:#ffffff; text-decoration:none; font-weight:800; font-size:14px; border-radius:12px;">
+                    Complete Payout Setup
+                </a>
+            </div>
+            <p style="margin: 20px 0 0; font-size: 12px; color: #64748b; line-height: 1.6; text-align:center;">
+                For your security, CarMazium never emails a reusable bank-onboarding link. Sign in first, then Stripe opens securely from your account settings.
+            </p>
+        `;
+
+        return this.sendBrandedEmail({
+            to: toEmail,
+            subject: 'Action needed: connect your bank account for your £100 CarMazium bonus',
+            bodyHtml,
+        });
+    }
+
     // ─── Generic Sender ─────────────────────────────────────────────
 
     /**

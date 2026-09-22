@@ -1106,6 +1106,83 @@ export class AdminService {
     }
 
     /**
+     * Remind an unpaid seller to complete Stripe Connect payout onboarding.
+     *
+     * The admin never receives or forwards Stripe's one-time onboarding URL.
+     * Instead the seller is sent back to their authenticated CarMazium payout
+     * settings, where the existing seller-owned flow creates/reopens the Stripe
+     * Express onboarding session securely.
+     */
+    async sendStripePayoutSetupReminder(auctionId: string) {
+        const auction = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            include: {
+                listing: {
+                    select: {
+                        title: true,
+                        seller: {
+                            select: {
+                                id: true,
+                                email: true,
+                                firstName: true,
+                                stripeConnectOnboardingComplete: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!auction) throw new NotFoundException('Auction not found');
+        if (!auction.sellerBonusReleased) {
+            throw new BadRequestException('This handover has not been approved yet.');
+        }
+        if (auction.stripePayoutTransferId || auction.manualPayoutConfirmedAt) {
+            throw new BadRequestException('This seller bonus has already been paid.');
+        }
+
+        const seller = auction.listing?.seller;
+        if (!seller) throw new NotFoundException('Seller not found');
+        if (seller.stripeConnectOnboardingComplete) {
+            throw new BadRequestException('Seller already has Stripe payouts connected. Use "Retry via Stripe" instead.');
+        }
+
+        const settingsLink = '/dashboard/seller/settings#payouts';
+        await this.notificationsService.create({
+            userId: seller.id,
+            type: 'SYSTEM',
+            title: 'Complete your payout setup',
+            message: `Your £100 CarMazium seller bonus for "${auction.listing.title}" is waiting. Connect your bank account in Payout Settings so we can release it.`,
+            entityType: 'AUCTION',
+            entityId: auctionId,
+            link: settingsLink,
+            data: { action: 'stripe_payout_setup_required' },
+        });
+
+        let emailSent = false;
+        if (seller.email) {
+            try {
+                await this.emailService.sendStripePayoutSetupReminderEmail(
+                    seller.email,
+                    seller.firstName || 'there',
+                    auction.listing.title,
+                );
+                emailSent = true;
+            } catch (err: any) {
+                console.error(`[Admin] Failed to email Stripe payout setup reminder for auction ${auctionId}:`, err?.message || err);
+            }
+        }
+
+        return {
+            sent: true,
+            emailSent,
+            sellerId: seller.id,
+            sellerEmail: seller.email,
+            settingsLink,
+        };
+    }
+
+    /**
      * Re-attempt the Stripe transfer for an approved handover that's still
      * owed — e.g. the seller has since connected Stripe, or a transient
      * Stripe error has cleared. Idempotent: no-ops if already paid.

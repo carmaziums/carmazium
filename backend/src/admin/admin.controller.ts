@@ -269,6 +269,15 @@ export class AdminController {
         return new StandardResponse(data);
     }
 
+    @Post('payouts/:auctionId/send-stripe-setup')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Send seller a secure Stripe payout setup reminder' })
+    @ApiParam({ name: 'auctionId' })
+    async sendStripePayoutSetupReminder(@Param('auctionId') auctionId: string): Promise<StandardResponse<any>> {
+        const result = await this.adminService.sendStripePayoutSetupReminder(auctionId);
+        return new StandardResponse(result);
+    }
+
     @Post('payouts/:auctionId/retry')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Retry the Stripe transfer for an approved-but-unpaid handover' })

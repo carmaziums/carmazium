@@ -6,12 +6,12 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import {
     Handshake, Loader2, ArrowLeft, CheckCircle, XCircle, ExternalLink,
-    Car, Clock, AlertTriangle, BadgeCheck, RefreshCw, Banknote
+    Car, Clock, AlertTriangle, BadgeCheck, RefreshCw, Banknote, Send
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
-import { getPendingHandovers, approveHandover, denyHandover, getPendingPayouts, retryPayout, markPayoutPaidManually } from "@/lib/adminApi"
+import { getPendingHandovers, approveHandover, denyHandover, getPendingPayouts, retryPayout, markPayoutPaidManually, sendStripePayoutSetupReminder } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
 
 export default function AdminHandoversPage() {
@@ -30,6 +30,8 @@ export default function AdminHandoversPage() {
     const [payoutsLoading, setPayoutsLoading] = React.useState(true)
     const [payoutProcessing, setPayoutProcessing] = React.useState<string | null>(null)
     const [payoutError, setPayoutError] = React.useState<string | null>(null)
+    const [reminderProcessing, setReminderProcessing] = React.useState<string | null>(null)
+    const [reminderSent, setReminderSent] = React.useState<Set<string>>(() => new Set())
 
     React.useEffect(() => {
         if (!authLoading) {
@@ -71,6 +73,26 @@ export default function AdminHandoversPage() {
             alert(err.message || 'Retry failed')
         } finally {
             setPayoutProcessing(null)
+        }
+    }
+
+    const handleSendStripeSetup = async (auctionId: string, sellerEmail?: string) => {
+        if (!confirm(`Send this seller a Stripe payout setup reminder${sellerEmail ? ` at ${sellerEmail}` : ''}?`)) return
+        try {
+            setReminderProcessing(auctionId)
+            const result = await sendStripePayoutSetupReminder(auctionId)
+            setReminderSent(prev => {
+                const next = new Set(prev)
+                next.add(auctionId)
+                return next
+            })
+            if (!result.emailSent) {
+                alert('The in-app payout setup reminder was sent, but the email could not be delivered.')
+            }
+        } catch (err: any) {
+            alert(err.message || 'Failed to send Stripe setup reminder')
+        } finally {
+            setReminderProcessing(null)
         }
     }
 
@@ -179,7 +201,26 @@ export default function AdminHandoversPage() {
                                             )}
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2 shrink-0">
+                                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                        {p.listing?.seller?.stripeConnectOnboardingComplete === false && (
+                                            <Button
+                                                onClick={() => handleSendStripeSetup(p.id, p.listing?.seller?.email)}
+                                                disabled={reminderProcessing === p.id}
+                                                size="sm"
+                                                className="bg-primary hover:bg-red-600 text-white flex items-center gap-2"
+                                            >
+                                                {reminderProcessing === p.id
+                                                    ? <Loader2 size={14} className="animate-spin" />
+                                                    : reminderSent.has(p.id)
+                                                        ? <CheckCircle size={14} />
+                                                        : <Send size={14} />}
+                                                {reminderProcessing === p.id
+                                                    ? 'Sending...'
+                                                    : reminderSent.has(p.id)
+                                                        ? 'Setup Link Sent'
+                                                        : 'Send Stripe Setup Link'}
+                                            </Button>
+                                        )}
                                         {p.listing?.seller?.stripeConnectOnboardingComplete && (
                                             <Button
                                                 onClick={() => handleRetryPayout(p.id)}
