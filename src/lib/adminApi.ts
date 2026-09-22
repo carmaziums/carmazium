@@ -754,6 +754,14 @@ export async function getPendingPayouts() {
   return result.data;
 }
 
+export async function sendStripePayoutSetupReminder(auctionId: string) {
+  const result = await apiClient<{ data: { sent: boolean; emailSent: boolean; settingsLink: string } }>(
+    `/admin/payouts/${auctionId}/send-stripe-setup`,
+    { method: 'POST' },
+  );
+  return result.data;
+}
+
 export async function retryPayout(auctionId: string) {
   const result = await apiClient<any>(`/admin/payouts/${auctionId}/retry`, { method: 'POST' });
   return result;
