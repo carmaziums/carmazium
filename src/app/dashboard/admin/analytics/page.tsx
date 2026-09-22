@@ -273,15 +273,16 @@ export default function AdminAnalyticsPage() {
                             </div>
                         ) : valuationLive ? (
                             <>
-                                <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+                                <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3">
                                     {([
                                         { label: "Valuations Today", value: valuationLive.today.requests, icon: Car, color: "bg-blue-500/20" },
                                         { label: "Unique Sessions", value: valuationLive.today.uniqueSessions, icon: Users, color: "bg-emerald-500/20" },
-                                        { label: "Logged-in Users", value: valuationLive.today.loggedInUsers, icon: ShieldCheck, color: "bg-cyan-500/20" },
-                                        { label: "Anonymous Sessions", value: valuationLive.today.anonymousSessions, icon: UserX, color: "bg-slate-500/20" },
-                                        { label: "Auction Checks", value: valuationLive.today.auctionRequests, icon: BarChart3, color: "bg-orange-500/20" },
-                                        { label: "Retail Checks", value: valuationLive.today.retailRequests, icon: DollarSign, color: "bg-purple-500/20" },
-                                        { label: "Requests / Session", value: valuationLive.today.uniqueSessions > 0 ? (valuationLive.today.requests / valuationLive.today.uniqueSessions).toFixed(1) : "0.0", icon: TrendingUp, color: "bg-yellow-500/20" },
+                                        { label: "Started Listing", value: valuationLive.today.listingStarted, icon: MousePointerClick, color: "bg-cyan-500/20" },
+                                        { label: "Listings Created", value: valuationLive.today.listingCreated, icon: Car, color: "bg-primary/20" },
+                                        { label: "Valuation → Listing", value: `${valuationLive.today.conversionRate.toFixed(1)}%`, icon: TrendingUp, color: "bg-yellow-500/20" },
+                                        { label: "Auction Listings", value: valuationLive.today.auctionListingsCreated, icon: BarChart3, color: "bg-orange-500/20" },
+                                        { label: "Retail Listings", value: valuationLive.today.retailListingsCreated, icon: DollarSign, color: "bg-purple-500/20" },
+                                        { label: "Logged-in Users", value: valuationLive.today.loggedInUsers, icon: ShieldCheck, color: "bg-slate-500/20" },
                                     ] as StatCardProps[]).map(card => (
                                         <StatCard key={card.label} {...card} />
                                     ))}
@@ -328,6 +329,47 @@ export default function AdminAnalyticsPage() {
                                 </div>
 
                                 <div className="glass-card border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl overflow-hidden">
+                                    <div className="p-4 border-b border-[var(--border-default)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <TrendingUp size={14} className="text-yellow-400" />
+                                                <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Valuation → Listing Conversion — Last 7 Days</p>
+                                            </div>
+                                            <p className="text-[11px] text-[var(--text-muted)] mt-1">Shows how many valuation journeys later reached a submitted CarMazium listing.</p>
+                                        </div>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">30-day attribution window</span>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-xs">
+                                            <thead>
+                                                <tr className="border-b border-[var(--border-default)] text-left text-[var(--text-muted)]">
+                                                    <th className="px-4 py-3 font-bold">Date</th>
+                                                    <th className="px-4 py-3 font-bold text-right">Valuations</th>
+                                                    <th className="px-4 py-3 font-bold text-right">Started</th>
+                                                    <th className="px-4 py-3 font-bold text-right">Listings Created</th>
+                                                    <th className="px-4 py-3 font-bold text-right">Conversion</th>
+                                                    <th className="px-4 py-3 font-bold text-right">Auction</th>
+                                                    <th className="px-4 py-3 font-bold text-right">Retail</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {valuationLive.last7Days.map(row => (
+                                                    <tr key={row.date} className="border-b border-[var(--border-default)]/60">
+                                                        <td className="px-4 py-3 font-bold whitespace-nowrap">{new Date(`${row.date}T12:00:00`).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums">{row.valuationJourneys}</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums">{row.listingStarted}</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums font-black">{row.listingCreated}</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums font-black text-yellow-400">{row.conversionRate.toFixed(1)}%</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums text-orange-400">{row.auctionListingsCreated}</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums text-purple-400">{row.retailListingsCreated}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div className="glass-card border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl overflow-hidden">
                                     <div className="p-4 border-b border-[var(--border-default)] flex items-center justify-between gap-3">
                                         <div className="flex items-center gap-2">
                                             <Car size={14} className="text-primary" />
@@ -345,6 +387,7 @@ export default function AdminAnalyticsPage() {
                                                         <th className="px-4 py-3 font-bold">Time</th>
                                                         <th className="px-4 py-3 font-bold">Vehicle</th>
                                                         <th className="px-4 py-3 font-bold">Route</th>
+                                                        <th className="px-4 py-3 font-bold">Outcome</th>
                                                         <th className="px-4 py-3 font-bold">Fuel</th>
                                                         <th className="px-4 py-3 font-bold">Device</th>
                                                         <th className="px-4 py-3 font-bold">Location</th>
@@ -357,12 +400,21 @@ export default function AdminAnalyticsPage() {
                                                                 {new Date(item.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
                                                             </td>
                                                             <td className="px-4 py-3 whitespace-nowrap">
-                                                                {[item.year, item.make].filter(Boolean).join(" ") || "Unknown"}
+                                                                {[item.year, item.make, item.model].filter(Boolean).join(" ") || "Unknown"}
                                                             </td>
                                                             <td className="px-4 py-3">
                                                                 <span className="rounded-full bg-primary/10 px-2 py-1 font-bold uppercase text-primary">
                                                                     {item.listingType || "—"}
                                                                 </span>
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                {item.createdListing ? (
+                                                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-black uppercase text-emerald-400">Listing Created</span>
+                                                                ) : item.startedListing ? (
+                                                                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 font-black uppercase text-amber-400">Started</span>
+                                                                ) : (
+                                                                    <span className="rounded-full border border-[var(--border-default)] bg-[var(--bg-input)] px-2 py-1 font-bold uppercase text-[var(--text-muted)]">Valuation Only</span>
+                                                                )}
                                                             </td>
                                                             <td className="px-4 py-3 text-[var(--text-muted)]">{item.fuelType || "—"}</td>
                                                             <td className="px-4 py-3 capitalize text-[var(--text-muted)]">{item.device || "—"}</td>
@@ -376,7 +428,7 @@ export default function AdminAnalyticsPage() {
                                 </div>
 
                                 <p className="px-1 text-[11px] leading-5 text-[var(--text-muted)]">
-                                    “Unique Sessions” is the number of first-party browser sessions that requested a valuation, not a claim of uniquely identified people. Logged-in Users counts distinct signed-in accounts.
+                                    “Listings Created” means a valuation journey reached the listing_submitted event within 30 days. New journeys use an exact non-personal valuation ID; older historical data falls back to same-session matching. These figures cover first-party analytics-consented sessions, so they should be used as conversion telemetry rather than a count of every visitor.
                                 </p>
                             </>
                         ) : null}
