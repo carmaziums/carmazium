@@ -580,7 +580,14 @@ export class ListingsService {
                     deletedAt: true,
                 },
             });
-            if (!auction || auction.deletedAt) continue;
+
+            // Legacy/orphan AUCTION drafts can exist without an Auction row.
+            // They are still valid conversion candidates: switching them to
+            // Retail is safer than forcing a duplicate vehicle row. A plain
+            // CLASSIFIED listing with no Auction row is not an auction-history
+            // candidate and stays on the normal duplicate/edit flow.
+            if ((!auction || auction.deletedAt) && listing.type !== 'AUCTION') continue;
+            const liveAuction = auction && !auction.deletedAt ? auction : null;
 
             let existingRetail: { id: string; slug: string; status: ListingStatus } | null = null;
             if (listing.linkedListingId) {
@@ -604,8 +611,9 @@ export class ListingsService {
                 orderBy: { amount: 'desc' },
                 select: { amount: true },
             });
-            const reserveMet = !!highestBid
-                && Number(highestBid.amount) >= Number(auction.reservePrice);
+            const reserveMet = !!liveAuction
+                && !!highestBid
+                && Number(highestBid.amount) >= Number(liveAuction.reservePrice);
 
             const sourceAlreadyRetail = listing.type === 'CLASSIFIED'
                 && !['DRAFT', 'REJECTED'].includes(listing.status);
@@ -617,9 +625,9 @@ export class ListingsService {
                 blockedReason = 'This auction already has a linked retail listing. Open the existing retail listing instead.';
             } else if (listing.status === 'SOLD' || listing.status === 'OFFER_ACCEPTED') {
                 blockedReason = 'This vehicle already has a completed or sale-pending transaction and cannot be switched to Retail.';
-            } else if (auction.winnerId || auction.buyerFeePaid || auction.winningBidAmount) {
+            } else if (liveAuction?.winnerId || liveAuction?.buyerFeePaid || liveAuction?.winningBidAmount) {
                 blockedReason = 'This auction already has a winner and cannot be converted to a retail listing.';
-            } else if (auction.status === 'ACTIVE' && reserveMet) {
+            } else if (liveAuction?.status === 'ACTIVE' && reserveMet) {
                 blockedReason = 'The auction reserve has been met, so the auction must finish normally before the vehicle can be listed elsewhere.';
             } else if (listing.writeOffCategory === 'CAT_A' || listing.writeOffCategory === 'CAT_B') {
                 blockedReason = 'Cat A and Cat B vehicles cannot be listed for retail sale.';
@@ -631,8 +639,8 @@ export class ListingsService {
                     title: listing.title,
                     listingStatus: listing.status,
                     listingType: listing.type,
-                    auctionId: auction.id,
-                    auctionStatus: auction.status,
+                    auctionId: liveAuction?.id ?? null,
+                    auctionStatus: liveAuction?.status ?? 'DRAFT',
                     hasActiveBids: !!highestBid,
                     reserveMet,
                     canConvert: !blockedReason,
@@ -766,18 +774,16 @@ export class ListingsService {
                 );
             }
 
-            const bidderRows = auction
-                ? await tx.bid.findMany({
-                    where: {
-                        listingId: source.id,
-                        deletedAt: null,
-                        cancelledAt: null,
-                        archivedAt: null,
-                    },
-                    distinct: ['bidderId'],
-                    select: { bidderId: true },
-                })
-                : [];
+            const bidderRows = await tx.bid.findMany({
+                where: {
+                    listingId: source.id,
+                    deletedAt: null,
+                    cancelledAt: null,
+                    archivedAt: null,
+                },
+                distinct: ['bidderId'],
+                select: { bidderId: true },
+            });
 
             if (auction && ['ACTIVE', 'SCHEDULED'].includes(auction.status)) {
                 await tx.auction.update({
@@ -879,12 +885,13 @@ export class ListingsService {
                 auctionId: auction?.id ?? null,
                 auctionWasCancelled: !!auction && ['ACTIVE', 'SCHEDULED'].includes(auction.status),
                 bidderIds: bidderRows.map((row: any) => row.bidderId),
+                legacyAuctionDraftReplaced: !auction && source.type === 'AUCTION',
             };
         });
 
         // Best-effort bidder notice after the transaction commits. Payment and
         // conversion must never depend on push delivery succeeding.
-        if (result.auctionWasCancelled && result.auctionId) {
+        if ((result.auctionWasCancelled || result.legacyAuctionDraftReplaced) && result.bidderIds.length > 0) {
             for (const bidderId of result.bidderIds) {
                 try {
                     const notification = await this.notificationsService.create({
@@ -894,7 +901,7 @@ export class ListingsService {
                         message: `The seller moved "${result.listing.title}" from auction to a retail listing. Your auction bid is no longer active.`,
                         link: '/dashboard/dealer/auctions',
                         entityType: 'AUCTION',
-                        entityId: result.auctionId,
+                        entityId: result.auctionId ?? result.listing.id,
                         actionType: 'CANCELLED',
                     });
                     if (notification) this.notificationsGateway.sendNotification(bidderId, notification);
