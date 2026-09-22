@@ -19,6 +19,7 @@ import { UpdateListingDto } from './dto/update-listing.dto';
 import { VehicleValuationDto } from './dto/vehicle-valuation.dto';
 import { ListingFilterDto } from './dto/listing-filter.dto';
 import { AlsoAuctionDto } from './dto/also-auction.dto';
+import { ConvertAuctionToRetailDto } from './dto/convert-auction-to-retail.dto';
 // These types come from @prisma/client and are available once `prisma generate` has run.
 // VehicleCondition and EuroStandard are new — resolve after the migration is applied.
 import {
@@ -468,6 +469,7 @@ export class ListingsService {
         normalizedVrm: string,
     ): Promise<Array<{
         id: string;
+        slug: string;
         vrm: string | null;
         type: ListingType;
         status: ListingStatus;
@@ -477,6 +479,7 @@ export class ListingsService {
         mileage: number | null;
         linkedListingId: string | null;
         importedFromUrl: string | null;
+        writeOffCategory: any;
     }>> {
         const candidates = await db.listing.findMany({
             where: {
@@ -486,6 +489,7 @@ export class ListingsService {
             },
             select: {
                 id: true,
+                slug: true,
                 vrm: true,
                 type: true,
                 status: true,
@@ -495,6 +499,7 @@ export class ListingsService {
                 mileage: true,
                 linkedListingId: true,
                 importedFromUrl: true,
+                writeOffCategory: true,
             },
             orderBy: { updatedAt: 'desc' },
         });
@@ -548,6 +553,381 @@ export class ListingsService {
         throw new BadRequestException(
             `This vehicle already has an existing ${existing.type.toLowerCase()} listing (${existing.status.toLowerCase()}). Open that listing instead of creating a duplicate.`,
         );
+    }
+
+    /**
+     * Find a same-seller vehicle that originated in the auction flow and can be
+     * reused as Retail instead of forcing the seller to create a duplicate.
+     *
+     * This is intentionally read-only. The frontend uses it to show the seller
+     * an explicit cancellation warning before any auction state is changed.
+     */
+    async getRetailConversionCandidate(userId: string, vrm: string) {
+        const normalizedVrm = this.normalizeVrm(vrm);
+        if (!normalizedVrm) return { candidate: null };
+
+        const matches = await this.findCurrentListingsForVrm(this.prisma, userId, normalizedVrm);
+        for (const listing of matches) {
+            const auction = await this.prisma.auction.findUnique({
+                where: { listingId: listing.id },
+                select: {
+                    id: true,
+                    status: true,
+                    reservePrice: true,
+                    winnerId: true,
+                    winningBidAmount: true,
+                    buyerFeePaid: true,
+                    deletedAt: true,
+                },
+            });
+
+            // Legacy/orphan AUCTION drafts can exist without an Auction row.
+            // They are still valid conversion candidates: switching them to
+            // Retail is safer than forcing a duplicate vehicle row. A plain
+            // CLASSIFIED listing with no Auction row is not an auction-history
+            // candidate and stays on the normal duplicate/edit flow.
+            if ((!auction || auction.deletedAt) && listing.type !== 'AUCTION') continue;
+            const liveAuction = auction && !auction.deletedAt ? auction : null;
+
+            let existingRetail: { id: string; slug: string; status: ListingStatus } | null = null;
+            if (listing.linkedListingId) {
+                existingRetail = await this.prisma.listing.findUnique({
+                    where: { id: listing.linkedListingId },
+                    select: { id: true, slug: true, status: true, type: true, deletedAt: true },
+                }).then((row: any) =>
+                    row && !row.deletedAt && row.type === 'CLASSIFIED'
+                        ? { id: row.id, slug: row.slug, status: row.status }
+                        : null,
+                );
+            }
+
+            const highestBid = await this.prisma.bid.findFirst({
+                where: {
+                    listingId: listing.id,
+                    deletedAt: null,
+                    cancelledAt: null,
+                    archivedAt: null,
+                },
+                orderBy: { amount: 'desc' },
+                select: { amount: true },
+            });
+            const reserveMet = !!liveAuction
+                && !!highestBid
+                && Number(highestBid.amount) >= Number(liveAuction.reservePrice);
+
+            const sourceAlreadyRetail = listing.type === 'CLASSIFIED'
+                && !['DRAFT', 'REJECTED'].includes(listing.status);
+
+            let blockedReason: string | null = null;
+            if (sourceAlreadyRetail) {
+                blockedReason = `This vehicle already has a Retail listing (${listing.status.toLowerCase()}). Open that listing instead.`;
+            } else if (existingRetail) {
+                blockedReason = 'This auction already has a linked retail listing. Open the existing retail listing instead.';
+            } else if (listing.status === 'SOLD' || listing.status === 'OFFER_ACCEPTED') {
+                blockedReason = 'This vehicle already has a completed or sale-pending transaction and cannot be switched to Retail.';
+            } else if (liveAuction?.winnerId || liveAuction?.buyerFeePaid || liveAuction?.winningBidAmount) {
+                blockedReason = 'This auction already has a winner and cannot be converted to a retail listing.';
+            } else if (liveAuction?.status === 'ACTIVE' && reserveMet) {
+                blockedReason = 'The auction reserve has been met, so the auction must finish normally before the vehicle can be listed elsewhere.';
+            } else if (listing.writeOffCategory === 'CAT_A' || listing.writeOffCategory === 'CAT_B') {
+                blockedReason = 'Cat A and Cat B vehicles cannot be listed for retail sale.';
+            }
+
+            return {
+                candidate: {
+                    listingId: listing.id,
+                    title: listing.title,
+                    listingStatus: listing.status,
+                    listingType: listing.type,
+                    auctionId: liveAuction?.id ?? null,
+                    auctionStatus: liveAuction?.status ?? 'DRAFT',
+                    hasActiveBids: !!highestBid,
+                    reserveMet,
+                    canConvert: !blockedReason,
+                    blockedReason,
+                    existingRetailListingId: sourceAlreadyRetail ? listing.id : (existingRetail?.id ?? null),
+                    existingRetailSlug: sourceAlreadyRetail ? listing.slug : (existingRetail?.slug ?? null),
+                },
+            };
+        }
+
+        return { candidate: null };
+    }
+
+    /**
+     * Replace an existing auction-channel listing with Retail using the same
+     * Listing row. The seller must explicitly confirm the cancellation.
+     *
+     * The vehicle remains DRAFT after conversion. Normal listing-fee checkout
+     * and admin review still apply, so switching channels can never bypass the
+     * £1/£10/£25 retail fee or the listing review gate.
+     */
+    async convertAuctionToRetail(
+        listingId: string,
+        userId: string,
+        dto: ConvertAuctionToRetailDto,
+    ) {
+        if (dto.confirmAuctionCancellation !== true) {
+            throw new BadRequestException('Confirm that the existing auction will be cancelled before switching to Retail.');
+        }
+        if (dto.listingType !== 'CLASSIFIED') {
+            throw new BadRequestException('Auction conversion can only create a CLASSIFIED retail listing.');
+        }
+        if ([
+            dto.auctionStartTime,
+            dto.auctionReservePrice,
+            dto.auctionMinIncrement,
+            dto.auctionBuyItNowPrice,
+            dto.auctionStartingBid,
+        ].some((value) => value !== undefined)) {
+            throw new BadRequestException('Auction schedule fields are not valid when switching to Retail.');
+        }
+
+        const badgeTier = dto.badgeTier === 'FREE' ? 'BASIC' : dto.badgeTier;
+        if (!badgeTier || !['BASIC', 'STANDARD', 'PREMIUM'].includes(badgeTier)) {
+            throw new BadRequestException('Choose Basic, Standard or Premium for the retail listing.');
+        }
+        if (dto.writeOffCategory === 'CAT_A' || dto.writeOffCategory === 'CAT_B') {
+            throw new BadRequestException('Cat A and Cat B vehicles cannot be listed for retail sale.');
+        }
+
+        const normalizedVrm = this.normalizeVrm(dto.vrm);
+        if (!normalizedVrm) throw new BadRequestException('A vehicle registration is required.');
+        this.assertListingImageUrls(dto.images ?? [], userId);
+
+        const archivedAt = new Date();
+        const result = await this.prisma.$transaction(async (tx) => {
+            await this.lockVehicleCreation(tx, userId, normalizedVrm);
+
+            const source = await tx.listing.findUnique({
+                where: { id: listingId },
+                include: { auction: true },
+            });
+            if (!source || source.deletedAt) throw new NotFoundException('Auction listing not found');
+            if (source.sellerId !== userId) throw new ForbiddenException('You do not own this listing');
+            if (this.normalizeVrm(source.vrm) !== normalizedVrm) {
+                throw new BadRequestException('The retail form registration does not match the existing auction vehicle.');
+            }
+            if (source.status === 'SOLD' || source.status === 'OFFER_ACCEPTED') {
+                throw new BadRequestException('This vehicle is already sold or sale pending and cannot be switched to Retail.');
+            }
+            if (source.writeOffCategory === 'CAT_A' || source.writeOffCategory === 'CAT_B') {
+                throw new BadRequestException('Cat A and Cat B vehicles cannot be listed for retail sale.');
+            }
+
+            const auction = source.auction;
+            if (!auction && source.type !== 'AUCTION') {
+                throw new BadRequestException('This vehicle is not an auction listing that can be converted.');
+            }
+            if (
+                source.type === 'CLASSIFIED'
+                && !['DRAFT', 'REJECTED'].includes(source.status)
+            ) {
+                throw new BadRequestException(
+                    `This vehicle already has a Retail listing (${source.status.toLowerCase()}). Open that listing instead.`,
+                );
+            }
+            if (
+                source.type === 'CLASSIFIED'
+                && auction
+                && !['ENDED', 'CANCELLED'].includes(auction.status)
+            ) {
+                throw new BadRequestException(
+                    'The auction is still open. Refresh the vehicle before switching this Retail draft.',
+                );
+            }
+            if (auction?.winnerId || auction?.buyerFeePaid || auction?.winningBidAmount) {
+                throw new BadRequestException('This auction already has a winner and cannot be converted to Retail.');
+            }
+
+            if (source.linkedListingId) {
+                const linked = await tx.listing.findUnique({
+                    where: { id: source.linkedListingId },
+                    select: { id: true, type: true, deletedAt: true },
+                });
+                if (linked && !linked.deletedAt && linked.type === 'CLASSIFIED') {
+                    throw new BadRequestException(
+                        'This auction already has a linked retail listing. Open the existing retail listing instead.',
+                    );
+                }
+            }
+
+            const highestBid = auction
+                ? await tx.bid.findFirst({
+                    where: {
+                        listingId: source.id,
+                        deletedAt: null,
+                        cancelledAt: null,
+                        archivedAt: null,
+                    },
+                    orderBy: { amount: 'desc' },
+                    select: { amount: true },
+                })
+                : null;
+            if (
+                auction?.status === 'ACTIVE'
+                && highestBid
+                && Number(highestBid.amount) >= Number(auction.reservePrice)
+            ) {
+                throw new BadRequestException(
+                    'The auction reserve has been met. The auction must finish normally and cannot be cancelled for a retail conversion.',
+                );
+            }
+
+            const bidderRows = await tx.bid.findMany({
+                where: {
+                    listingId: source.id,
+                    deletedAt: null,
+                    cancelledAt: null,
+                    archivedAt: null,
+                },
+                distinct: ['bidderId'],
+                select: { bidderId: true },
+            });
+
+            if (auction && ['ACTIVE', 'SCHEDULED'].includes(auction.status)) {
+                await tx.auction.update({
+                    where: { id: auction.id },
+                    data: {
+                        status: 'CANCELLED',
+                        buyItNowPendingBuyerId: null,
+                        buyItNowPendingAt: null,
+                    },
+                });
+            }
+
+            // Preserve bid history, but remove old auction bids from all current
+            // bid queries immediately after the seller confirms conversion.
+            await tx.bid.updateMany({
+                where: {
+                    listingId: source.id,
+                    deletedAt: null,
+                    archivedAt: null,
+                },
+                data: { archivedAt },
+            });
+
+            const updated = await tx.listing.update({
+                where: { id: source.id },
+                data: {
+                    title: dto.title,
+                    price: dto.price,
+                    priceMin: dto.priceMin ?? dto.price,
+                    priceMax: dto.priceMax ?? dto.price,
+                    images: dto.images ?? [],
+                    videoUrls: dto.videoUrls ?? [],
+                    type: 'CLASSIFIED',
+                    status: 'DRAFT',
+                    description: dto.description ?? null,
+                    make: dto.make ?? null,
+                    model: dto.model ?? null,
+                    year: dto.year,
+                    mileage: dto.mileage,
+                    vrm: normalizedVrm,
+                    vin: dto.vin ?? null,
+                    fuelType: mapFuelType(dto.fuelType),
+                    transmission: mapTransmission(dto.transmission),
+                    color: dto.color ?? null,
+                    doors: dto.doors ?? null,
+                    seats: dto.seats ?? null,
+                    engineSize: dto.engineSize ?? null,
+                    bhp: dto.bhp ?? null,
+                    bodyType: mapBodyType(dto.bodyType),
+                    features: dto.features ?? undefined,
+                    location: dto.location ?? null,
+                    condition: dto.condition ?? null,
+                    ulezCompliant: dto.ulezCompliant ?? null,
+                    euroStandard: dto.euroStandard ?? null,
+                    co2Emissions: dto.co2Emissions ?? null,
+                    motStatus: dto.motStatus ?? null,
+                    taxStatus: dto.taxStatus ?? null,
+                    motExpiryDate: dto.motExpiryDate ?? null,
+                    taxDueDate: dto.taxDueDate ?? null,
+                    markedForExport: dto.markedForExport ?? null,
+                    monthOfFirstRegistration: dto.monthOfFirstRegistration ?? null,
+                    wheelplan: dto.wheelplan ?? null,
+                    typeApproval: dto.typeApproval ?? null,
+                    badgeTier,
+                    isFeatured: false,
+                    featuredUntil: null,
+                    vehicleType: dto.vehicleType ?? source.vehicleType,
+                    isImported: dto.isImported ?? source.isImported,
+                    stolenRecovered: dto.stolenRecovered ?? null,
+                    hasOutstandingFinance: dto.hasOutstandingFinance ?? null,
+                    isLegalRegisteredKeeper: dto.isLegalRegisteredKeeper ?? null,
+                    writeOffCategory: dto.writeOffCategory ?? source.writeOffCategory ?? 'NONE',
+                    variant: dto.variant ?? null,
+                    driveType: dto.driveType ?? null,
+                    numberOfKeys: dto.numberOfKeys ?? null,
+                    serviceHistory: dto.serviceHistory ?? null,
+                    owners: dto.owners ?? null,
+                    torqueNm: dto.torqueNm ?? null,
+                    topSpeedMph: dto.topSpeedMph ?? null,
+                    zeroTo60Mph: dto.zeroTo60Mph ?? null,
+                    combinedMpg: dto.combinedMpg ?? null,
+                    extraUrbanMpg: dto.extraUrbanMpg ?? null,
+                    bannerLabel: dto.bannerLabel ?? null,
+                    isDepartedSale: dto.isDepartedSale ?? false,
+                    departedRelationship: dto.departedRelationship ?? null,
+                    notOwnerRelationship: dto.notOwnerRelationship ?? null,
+                    deliveryAvailable: dto.deliveryAvailable ?? false,
+                    deliveryPricePerMile: dto.deliveryPricePerMile ?? null,
+                    deliveryMaxMiles: dto.deliveryMaxMiles ?? null,
+                    linkedListingId: null,
+                    rejectionReason: null,
+                    reviewedAt: null,
+                    deletedAt: null,
+                } as any,
+            });
+
+            return {
+                listing: updated,
+                auctionId: auction?.id ?? null,
+                auctionWasCancelled: !!auction && ['ACTIVE', 'SCHEDULED'].includes(auction.status),
+                bidderIds: bidderRows.map((row: any) => row.bidderId),
+                legacyAuctionDraftReplaced: !auction && source.type === 'AUCTION',
+            };
+        });
+
+        // Best-effort bidder notice after the transaction commits. Payment and
+        // conversion must never depend on push delivery succeeding.
+        if ((result.auctionWasCancelled || result.legacyAuctionDraftReplaced) && result.bidderIds.length > 0) {
+            for (const bidderId of result.bidderIds) {
+                try {
+                    const notification = await this.notificationsService.create({
+                        userId: bidderId,
+                        type: 'AUCTION_CANCELLED',
+                        title: 'Auction Closed',
+                        message: `The seller moved "${result.listing.title}" from auction to a retail listing. Your auction bid is no longer active.`,
+                        link: '/dashboard/dealer/auctions',
+                        entityType: 'AUCTION',
+                        entityId: result.auctionId ?? result.listing.id,
+                        actionType: 'CANCELLED',
+                    });
+                    if (notification) this.notificationsGateway.sendNotification(bidderId, notification);
+                } catch (error) {
+                    this.logger.warn(`Could not notify bidder ${bidderId} about retail conversion: ${error}`);
+                }
+            }
+        }
+
+        if (dto.location) {
+            this.geocodeLocation(dto.location)
+                .then((coords) => coords
+                    ? this.prisma.listing.update({
+                        where: { id: result.listing.id },
+                        data: { latitude: coords.lat, longitude: coords.lng },
+                    })
+                    : undefined)
+                .catch(() => undefined);
+        }
+
+        return {
+            listingId: result.listing.id,
+            slug: result.listing.slug,
+            auctionCancelled: result.auctionWasCancelled,
+            bidderCount: result.bidderIds.length,
+        };
     }
 
     private assertListingImageUrls(imageUrls: string[], userId?: string): void {
