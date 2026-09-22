@@ -469,6 +469,7 @@ export class ListingsService {
         normalizedVrm: string,
     ): Promise<Array<{
         id: string;
+        slug: string;
         vrm: string | null;
         type: ListingType;
         status: ListingStatus;
@@ -488,6 +489,7 @@ export class ListingsService {
             },
             select: {
                 id: true,
+                slug: true,
                 vrm: true,
                 type: true,
                 status: true,
@@ -605,8 +607,13 @@ export class ListingsService {
             const reserveMet = !!highestBid
                 && Number(highestBid.amount) >= Number(auction.reservePrice);
 
+            const sourceAlreadyRetail = listing.type === 'CLASSIFIED'
+                && !['DRAFT', 'REJECTED'].includes(listing.status);
+
             let blockedReason: string | null = null;
-            if (existingRetail) {
+            if (sourceAlreadyRetail) {
+                blockedReason = `This vehicle already has a Retail listing (${listing.status.toLowerCase()}). Open that listing instead.`;
+            } else if (existingRetail) {
                 blockedReason = 'This auction already has a linked retail listing. Open the existing retail listing instead.';
             } else if (listing.status === 'SOLD' || listing.status === 'OFFER_ACCEPTED') {
                 blockedReason = 'This vehicle already has a completed or sale-pending transaction and cannot be switched to Retail.';
@@ -630,8 +637,8 @@ export class ListingsService {
                     reserveMet,
                     canConvert: !blockedReason,
                     blockedReason,
-                    existingRetailListingId: existingRetail?.id ?? null,
-                    existingRetailSlug: existingRetail?.slug ?? null,
+                    existingRetailListingId: sourceAlreadyRetail ? listing.id : (existingRetail?.id ?? null),
+                    existingRetailSlug: sourceAlreadyRetail ? listing.slug : (existingRetail?.slug ?? null),
                 },
             };
         }
@@ -703,6 +710,23 @@ export class ListingsService {
             const auction = source.auction;
             if (!auction && source.type !== 'AUCTION') {
                 throw new BadRequestException('This vehicle is not an auction listing that can be converted.');
+            }
+            if (
+                source.type === 'CLASSIFIED'
+                && !['DRAFT', 'REJECTED'].includes(source.status)
+            ) {
+                throw new BadRequestException(
+                    `This vehicle already has a Retail listing (${source.status.toLowerCase()}). Open that listing instead.`,
+                );
+            }
+            if (
+                source.type === 'CLASSIFIED'
+                && auction
+                && !['ENDED', 'CANCELLED'].includes(auction.status)
+            ) {
+                throw new BadRequestException(
+                    'The auction is still open. Refresh the vehicle before switching this Retail draft.',
+                );
             }
             if (auction?.winnerId || auction?.buyerFeePaid || auction?.winningBidAmount) {
                 throw new BadRequestException('This auction already has a winner and cannot be converted to Retail.');
