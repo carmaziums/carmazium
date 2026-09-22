@@ -118,6 +118,34 @@ describe('ListingsService', () => {
             }));
         });
 
+        it('recovers a legacy AUCTION draft even when its Auction row is missing', async () => {
+            prisma.listing.findMany.mockResolvedValue([{
+                id: 'orphan-auction',
+                slug: 'bmw-m3-orphan',
+                vrm: 'AB12CDE',
+                type: 'AUCTION',
+                status: 'DRAFT',
+                title: 'BMW M3',
+                price: 10000,
+                year: 2020,
+                mileage: 30000,
+                linkedListingId: null,
+                importedFromUrl: null,
+                writeOffCategory: 'NONE',
+            }]);
+            prisma.auction.findUnique.mockResolvedValue(null);
+            prisma.bid.findFirst.mockResolvedValue(null);
+
+            const result = await service.getRetailConversionCandidate(sellerId, 'AB12CDE');
+
+            expect(result.candidate).toEqual(expect.objectContaining({
+                listingId: 'orphan-auction',
+                auctionId: null,
+                auctionStatus: 'DRAFT',
+                canConvert: true,
+            }));
+        });
+
         it('blocks an active auction conversion once the reserve has been met', async () => {
             prisma.listing.findMany.mockResolvedValue([{
                 id: 'listing-1',
