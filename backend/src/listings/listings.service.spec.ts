@@ -45,6 +45,11 @@ describe('ListingsService', () => {
             transaction: { findMany: jest.fn() },
             hpiReport: { findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }) },
             auction: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+            bid: {
+                findFirst: jest.fn(),
+                findMany: jest.fn().mockResolvedValue([]),
+                updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+            },
             // The production query casts pg_advisory_xact_lock(void) to text
             // because Prisma cannot deserialize PostgreSQL void columns.
             $queryRaw: jest.fn().mockResolvedValue([{ lock_result: '' }]),
@@ -73,6 +78,191 @@ describe('ListingsService', () => {
         }).compile();
 
         service = module.get<ListingsService>(ListingsService);
+    });
+
+    describe('auction to retail conversion', () => {
+        const sellerId = '11111111-1111-4111-8111-111111111111';
+
+        it('offers a safe conversion instead of treating an ended auction vehicle as a duplicate', async () => {
+            prisma.listing.findMany.mockResolvedValue([{
+                id: 'listing-1',
+                vrm: 'AB12CDE',
+                type: 'CLASSIFIED',
+                status: 'DRAFT',
+                title: 'BMW M3',
+                price: 10000,
+                year: 2020,
+                mileage: 30000,
+                linkedListingId: null,
+                importedFromUrl: null,
+                writeOffCategory: 'NONE',
+            }]);
+            prisma.auction.findUnique.mockResolvedValue({
+                id: 'auction-1',
+                status: 'ENDED',
+                reservePrice: 9000,
+                winnerId: null,
+                winningBidAmount: null,
+                buyerFeePaid: false,
+                deletedAt: null,
+            });
+            prisma.bid.findFirst.mockResolvedValue(null);
+
+            const result = await service.getRetailConversionCandidate(sellerId, 'AB12 CDE');
+
+            expect(result.candidate).toEqual(expect.objectContaining({
+                listingId: 'listing-1',
+                auctionStatus: 'ENDED',
+                canConvert: true,
+                reserveMet: false,
+            }));
+        });
+
+        it('blocks an active auction conversion once the reserve has been met', async () => {
+            prisma.listing.findMany.mockResolvedValue([{
+                id: 'listing-1',
+                vrm: 'AB12CDE',
+                type: 'AUCTION',
+                status: 'ACTIVE',
+                title: 'BMW M3',
+                price: 10000,
+                year: 2020,
+                mileage: 30000,
+                linkedListingId: null,
+                importedFromUrl: null,
+                writeOffCategory: 'NONE',
+            }]);
+            prisma.auction.findUnique.mockResolvedValue({
+                id: 'auction-1',
+                status: 'ACTIVE',
+                reservePrice: 9000,
+                winnerId: null,
+                winningBidAmount: null,
+                buyerFeePaid: false,
+                deletedAt: null,
+            });
+            prisma.bid.findFirst.mockResolvedValue({ amount: 9500 });
+
+            const result = await service.getRetailConversionCandidate(sellerId, 'AB12CDE');
+
+            expect(result.candidate).toEqual(expect.objectContaining({
+                canConvert: false,
+                reserveMet: true,
+            }));
+            expect(result.candidate?.blockedReason).toContain('reserve has been met');
+        });
+
+        it('reuses the same listing row, cancels the auction and leaves Retail as DRAFT for payment', async () => {
+            const source = {
+                id: 'listing-1',
+                slug: 'bmw-m3-abcd',
+                sellerId,
+                vrm: 'AB12CDE',
+                type: 'AUCTION',
+                status: 'ACTIVE',
+                title: 'BMW M3',
+                vehicleType: 'CAR',
+                isImported: false,
+                writeOffCategory: 'NONE',
+                linkedListingId: null,
+                deletedAt: null,
+                auction: {
+                    id: 'auction-1',
+                    status: 'ACTIVE',
+                    reservePrice: 9000,
+                    winnerId: null,
+                    winningBidAmount: null,
+                    buyerFeePaid: false,
+                },
+            };
+            prisma.listing.findUnique.mockResolvedValue(source);
+            prisma.bid.findFirst.mockResolvedValue({ amount: 8000 });
+            prisma.bid.findMany.mockResolvedValue([]);
+            prisma.auction.update.mockResolvedValue({ ...source.auction, status: 'CANCELLED' });
+            prisma.listing.update.mockResolvedValue({
+                ...source,
+                type: 'CLASSIFIED',
+                status: 'DRAFT',
+                badgeTier: 'BASIC',
+                price: 12000,
+            });
+
+            const result = await service.convertAuctionToRetail('listing-1', sellerId, {
+                title: 'BMW M3 Retail',
+                price: 12000,
+                priceMin: 11000,
+                priceMax: 12000,
+                mileage: 30000,
+                year: 2020,
+                vrm: 'AB12 CDE',
+                images: [],
+                listingType: 'CLASSIFIED',
+                badgeTier: 'BASIC',
+                status: 'DRAFT',
+                confirmAuctionCancellation: true,
+            } as any);
+
+            expect(prisma.auction.update).toHaveBeenCalledWith(expect.objectContaining({
+                where: { id: 'auction-1' },
+                data: expect.objectContaining({ status: 'CANCELLED' }),
+            }));
+            expect(prisma.bid.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+                where: expect.objectContaining({ listingId: 'listing-1' }),
+                data: expect.objectContaining({ archivedAt: expect.any(Date) }),
+            }));
+            expect(prisma.listing.update).toHaveBeenCalledWith(expect.objectContaining({
+                where: { id: 'listing-1' },
+                data: expect.objectContaining({
+                    type: 'CLASSIFIED',
+                    status: 'DRAFT',
+                    badgeTier: 'BASIC',
+                    price: 12000,
+                }),
+            }));
+            expect(result).toEqual(expect.objectContaining({
+                listingId: 'listing-1',
+                auctionCancelled: true,
+            }));
+        });
+
+        it('re-checks reserve safety on confirmation and refuses an unsafe conversion', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-1',
+                sellerId,
+                vrm: 'AB12CDE',
+                type: 'AUCTION',
+                status: 'ACTIVE',
+                vehicleType: 'CAR',
+                isImported: false,
+                writeOffCategory: 'NONE',
+                linkedListingId: null,
+                deletedAt: null,
+                auction: {
+                    id: 'auction-1',
+                    status: 'ACTIVE',
+                    reservePrice: 9000,
+                    winnerId: null,
+                    winningBidAmount: null,
+                    buyerFeePaid: false,
+                },
+            });
+            prisma.bid.findFirst.mockResolvedValue({ amount: 9500 });
+
+            await expect(service.convertAuctionToRetail('listing-1', sellerId, {
+                title: 'BMW M3 Retail',
+                price: 12000,
+                mileage: 30000,
+                year: 2020,
+                vrm: 'AB12CDE',
+                images: [],
+                listingType: 'CLASSIFIED',
+                badgeTier: 'BASIC',
+                confirmAuctionCancellation: true,
+            } as any)).rejects.toThrow(BadRequestException);
+
+            expect(prisma.listing.update).not.toHaveBeenCalled();
+            expect(prisma.auction.update).not.toHaveBeenCalled();
+        });
     });
 
     describe('atomic initial auction creation', () => {
