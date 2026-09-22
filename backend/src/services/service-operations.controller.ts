@@ -10,6 +10,8 @@ import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { StandardResponse } from '../listings/dto/response.dto';
 import {
     ServiceOperationsService,
+    type AdminCapabilityEvidenceMetadataInput,
+    type AdminProviderDetailsUpdateInput,
     type CapabilityEvidenceReviewInput,
     type CapabilityEvidenceUploadInput,
     type ServiceCaseEntryInput,
@@ -74,6 +76,44 @@ export class AdminServiceOperationsController {
     @ApiOperation({ summary: 'Provider application detail including uploaded verification documents' })
     async capability(@Param('id') id: string) {
         return new StandardResponse(await this.operations.adminCapabilityDetail(id));
+    }
+
+    @Patch('capabilities/:id/provider')
+    @ApiOperation({ summary: 'Correct provider business details from the admin review screen' })
+    async updateProviderDetails(
+        @Param('id') id: string,
+        @Body() body: AdminProviderDetailsUpdateInput,
+    ) {
+        return new StandardResponse(
+            await this.operations.adminUpdateProviderDetails(id, body),
+        );
+    }
+
+    @Post('capabilities/:id/evidence/upload')
+    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+    @ApiOperation({ summary: 'Upload private verification evidence on behalf of a provider' })
+    async uploadCapabilityEvidence(
+        @CurrentUser() admin: any,
+        @Param('id') id: string,
+        @UploadedFile() file: any,
+        @Body() body: CapabilityEvidenceUploadInput,
+    ) {
+        return new StandardResponse(
+            await this.operations.adminUploadCapabilityDocument(admin.id, id, file, body),
+        );
+    }
+
+    @Patch('capabilities/:id/evidence/:entryId/metadata')
+    @ApiOperation({ summary: 'Correct verification evidence classification and metadata; reviewed evidence returns to pending review' })
+    async updateCapabilityEvidenceMetadata(
+        @CurrentUser() admin: any,
+        @Param('id') id: string,
+        @Param('entryId') entryId: string,
+        @Body() body: AdminCapabilityEvidenceMetadataInput,
+    ) {
+        return new StandardResponse(
+            await this.operations.adminUpdateCapabilityEvidenceMetadata(admin.id, id, entryId, body),
+        );
     }
 
     @Patch('capabilities/:id/evidence/:entryId')
