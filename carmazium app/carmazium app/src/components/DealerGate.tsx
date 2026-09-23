@@ -50,8 +50,13 @@ export const DealerGate: React.FC<{ children: React.ReactNode }> = ({ children }
   const navigation = useNavigation<any>();
   const isVerified = useAuthStore((s) => s.user?.isVerified);
   const isDealerStaff = useAuthStore((s) => s.user?.isDealerStaff);
+  const accountRole = useAuthStore((s) => s.accountRole);
 
-  if (isVerified || isDealerStaff) return <>{children}</>;
+  if (isDealerStaff || (accountRole === 'dealer' && isVerified)) {
+    return <>{children}</>;
+  }
+
+  const wrongAccountType = accountRole !== 'dealer' && !isDealerStaff;
 
   return (
     <View style={styles.container}>
@@ -64,12 +69,17 @@ export const DealerGate: React.FC<{ children: React.ReactNode }> = ({ children }
           <Ionicons name="lock-closed-outline" size={34} color={Colors.warning} />
         </View>
 
-        <Text style={styles.title}>Dealer Features Locked</Text>
-        <Text style={styles.blurb}>
-          Complete KYC verification to unlock your dealer dashboard and start
-          listing vehicles, managing inventory, and accessing auction tools.
+        <Text style={styles.title}>
+          {wrongAccountType ? 'Dealer Account Required' : 'Dealer Features Locked'}
         </Text>
-        <Text style={styles.eta}>Verification typically takes less than 24 hours</Text>
+        <Text style={styles.blurb}>
+          {wrongAccountType
+            ? 'These tools belong to a Dealer capability. Your current CarMazium account role does not grant dealer access.'
+            : 'Complete KYC verification to unlock your dealer dashboard and start listing vehicles, managing inventory, and accessing auction tools.'}
+        </Text>
+        {!wrongAccountType && (
+          <Text style={styles.eta}>Verification typically takes less than 24 hours</Text>
+        )}
 
         <View style={styles.featureGrid}>
           {LOCKED_FEATURES.map((f) => (
@@ -80,22 +90,26 @@ export const DealerGate: React.FC<{ children: React.ReactNode }> = ({ children }
           ))}
         </View>
 
-        <TouchableOpacity
-          style={styles.primaryBtn}
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate('DealerKYC')}
-          accessibilityRole="button"
-        >
-          <Text style={styles.primaryBtnText}>Start KYC verification</Text>
-          <Ionicons name="arrow-forward" size={16} color={Colors.white} />
-        </TouchableOpacity>
+        {!wrongAccountType && (
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('DealerKYC')}
+            accessibilityRole="button"
+          >
+            <Text style={styles.primaryBtnText}>Start KYC verification</Text>
+            <Ionicons name="arrow-forward" size={16} color={Colors.white} />
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           onPress={() => navigation.navigate('Tabs')}
           activeOpacity={0.7}
           accessibilityRole="button"
         >
-          <Text style={styles.secondaryText}>Changed your mind? Go back to browsing</Text>
+          <Text style={styles.secondaryText}>
+            {wrongAccountType ? 'Back to dashboard' : 'Changed your mind? Go back to browsing'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
