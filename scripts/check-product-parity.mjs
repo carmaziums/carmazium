@@ -251,6 +251,8 @@ const mobileVehicleDetail = read('carmazium app/carmazium app/src/screens/vehicl
 const mobilePaymentsApi = read('carmazium app/carmazium app/src/lib/paymentsApi.ts');
 const mobilePurchaseFlow = read('carmazium app/carmazium app/src/screens/main/PurchaseFlowScreen.tsx');
 const mobileAuctionComplete = read('carmazium app/carmazium app/src/screens/main/AuctionCompleteScreen.tsx');
+const mobileBuyerBids = read('carmazium app/carmazium app/src/screens/buyer/BuyerBidsScreen.tsx');
+const backendBidsService = read('backend/src/bids/bids.service.ts');
 const paymentsController = read('backend/src/payments/payments.controller.ts');
 const buyerPaymentsService = read('backend/src/payments/payments.service.ts');
 
@@ -273,6 +275,28 @@ if (
   fail('Native auction buyer-fee payment is missing authoritative PaymentIntent reconciliation');
 } else {
   ok('Native auction buyer fee reconciles against Stripe before auction unlock');
+}
+
+if (
+  !backendBidsService.includes('wonAt: true') ||
+  !backendBidsService.includes('buyerFeePaid: true') ||
+  !mobileBuyerBids.includes('paymentDeadline: auction?.wonAt') ||
+  !mobileBuyerBids.includes('!bid.buyerFeePaid ?') ||
+  !mobileBuyerBids.includes('CHAT WITH SELLER')
+) {
+  fail('Won-auction mobile state must use authoritative fee-paid and win-time fields');
+} else {
+  ok('Won-auction payment deadline and contact actions use authoritative backend state');
+}
+
+if (
+  !buyerPaymentsService.includes("transaction.stripePaymentId.startsWith('pi_')") ||
+  !buyerPaymentsService.includes("payment_intent: paymentIntentId") ||
+  !buyerPaymentsService.includes('amount: 10000')
+) {
+  fail('Auction handover refund path must support both web Checkout and native PaymentIntent fees');
+} else {
+  ok('Auction handover refunds support web and native buyer-fee payments');
 }
 
 if (
