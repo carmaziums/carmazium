@@ -35,6 +35,7 @@ import {
 import { createChatRoom } from '../../lib/chatApi';
 import { apiClient } from '../../lib/apiClient';
 import { DealerAccess, getDealerAccess } from '../../lib/dealerAccessApi';
+import { createInspectionFromAuction } from '../../lib/servicesApi';
 import { io } from 'socket.io-client';
 import { getAccessToken } from '../../lib/supabase';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -276,6 +277,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [antiSnipeActive, setAntiSnipeActive] = useState(false);
   const [antiSnipeToast, setAntiSnipeToast] = useState(false);
   const [connectingChat, setConnectingChat] = useState(false);
+  const [inspectionLoading, setInspectionLoading] = useState(false);
 
   // ── BIN state ──
   const [binPendingBuyerId, setBinPendingBuyerId] = useState<string | null>(null);
@@ -677,6 +679,22 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   }, [canPlaceBid]);
 
   // ─── Buy It Now handlers ──────────────────────────────────────────────────────
+
+  const handleArrangeInspection = useCallback(async () => {
+    if (!auction?.id) return;
+    setInspectionLoading(true);
+    try {
+      const job = await createInspectionFromAuction({ auctionId: auction.id });
+      navigation.navigate('CustomerServiceJobDetail', { jobId: job.id });
+    } catch (err: any) {
+      Alert.alert(
+        'Could not arrange inspection',
+        err?.message || 'Please try again from My Service Jobs.',
+      );
+    } finally {
+      setInspectionLoading(false);
+    }
+  }, [auction?.id, navigation]);
 
   const handleTriggerBin = useCallback(() => {
     if (!auction || !canPlaceBid) {
@@ -1700,6 +1718,32 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     </>
                 }
               </TouchableOpacity>
+            )}
+            {userWon
+              && auction?.buyerFeePaid
+              && !auction?.sellerBonusReleased
+              && !auction?.buyerRefusedAt && (
+              <TouchableOpacity
+                style={[s.quickBidBtn, { marginTop: 8, borderWidth: 1, borderColor: Colors.warningAlpha30 }]}
+                disabled={inspectionLoading}
+                activeOpacity={0.8}
+                onPress={() => void handleArrangeInspection()}
+              >
+                {inspectionLoading
+                  ? <ActivityIndicator color={Colors.warning} size="small" />
+                  : <Ionicons name="search-outline" size={15} color={Colors.warning} />}
+                <Text style={[s.quickBidBtnText, { color: Colors.warning }]}>
+                  Inspect Before Handover
+                </Text>
+              </TouchableOpacity>
+            )}
+            {userWon && auction?.buyerRefusedAt && (
+              <View style={[s.banner, s.bannerAmber, { marginTop: 8 }]}>
+                <Ionicons name="checkmark-circle-outline" size={13} color={Colors.warning} />
+                <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
+                  This auction purchase was refused after a verified inspection.
+                </Text>
+              </View>
             )}
             {userWon && !auction?.buyerFeePaid && (
               canPayAuctionFee ? (

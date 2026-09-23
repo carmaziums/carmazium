@@ -219,9 +219,13 @@
         "src/app/dashboard/service/jobs/[id]/page.tsx"
       ],
       "mobile": [
+        "carmazium app/carmazium app/src/screens/vehicle/AuctionDetailScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/CustomerServiceJobsScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/CustomerServiceJobDetailScreen.tsx",
+        "carmazium app/carmazium app/src/lib/servicesApi.ts",
         "carmazium app/carmazium app/src/lib/auctionApi.ts"
       ],
-      "status": "gap"
+      "status": "required"
     },
     {
       "id": "seller.dashboard",
