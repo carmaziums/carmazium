@@ -7,6 +7,7 @@ import {
     Kanban, PlusCircle, User, MessageSquare,
     Loader2, ChevronRight, Phone, Mail, ArrowUpRight,
     TrendingUp, ShieldCheck, Activity, X, Search, CheckCircle,
+    Clock3, Sparkles,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -18,8 +19,8 @@ import { useRouter } from "next/navigation"
 
 const COLUMNS = [
     { key: "NEW", label: "New Leads", color: "border-blue-500/40", dotColor: "bg-blue-400", bg: "from-blue-500/5" },
-    { key: "CONTACTED", label: "Discovery", color: "border-amber-500/40", dotColor: "bg-amber-400", bg: "from-amber-500/5" },
-    { key: "QUALIFIED", label: "Qualified", color: "border-purple-500/40", dotColor: "bg-purple-400", bg: "from-purple-500/5" },
+    { key: "CONTACTED", label: "Contacted", color: "border-amber-500/40", dotColor: "bg-amber-400", bg: "from-amber-500/5" },
+    { key: "QUALIFIED", label: "Viewing / Qualified", color: "border-purple-500/40", dotColor: "bg-purple-400", bg: "from-purple-500/5" },
     { key: "NEGOTIATING", label: "Negotiating", color: "border-cyan-500/40", dotColor: "bg-cyan-400", bg: "from-cyan-500/5" },
     { key: "WON", label: "Closed Won", color: "border-emerald-500/40", dotColor: "bg-emerald-400", bg: "from-emerald-500/5" },
     { key: "LOST", label: "Lost", color: "border-red-500/40", dotColor: "bg-red-400", bg: "from-red-500/5" },
@@ -30,6 +31,36 @@ const COLUMNS = [
 // documents (CreateLeadDto: "listing_enquiry, chat, offer, walk_in, phone"),
 // which is also what mobile's DealerLeadsScreen.tsx already sends.
 const SOURCES = ["listing_enquiry", "chat", "offer", "walk_in", "phone"] as const
+
+const SOURCE_LABELS: Record<string, string> = {
+    listing_enquiry: "Listing enquiry",
+    chat: "CarMazium message",
+    offer: "Retail offer",
+    walk_in: "Walk-in",
+    phone: "Phone",
+}
+
+function formatActivityTime(value?: string | null) {
+    if (!value) return "No activity yet"
+    const date = new Date(value)
+    const diff = Date.now() - date.getTime()
+    const mins = Math.max(0, Math.floor(diff / 60_000))
+    if (mins < 1) return "Just now"
+    if (mins < 60) return `${mins}m ago`
+    const hours = Math.floor(mins / 60)
+    if (hours < 24) return `${hours}h ago`
+    const days = Math.floor(hours / 24)
+    if (days < 7) return `${days}d ago`
+    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+}
+
+function isFollowUpOverdue(lead: any) {
+    return Boolean(
+        lead?.nextFollowUpAt &&
+        !["WON", "LOST"].includes(lead.status) &&
+        new Date(lead.nextFollowUpAt).getTime() < Date.now()
+    )
+}
 
 // ─── Add Lead Modal ────────────────────────────────────────────────────────────
 
