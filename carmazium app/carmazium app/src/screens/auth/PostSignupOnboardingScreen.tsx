@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -135,10 +135,18 @@ export const PostSignupOnboardingScreen: React.FC = () => {
   // mount so saving the name mid-flow doesn't yank the step list out from
   // under the user.
   const [needsName] = useState(() => !user?.firstName?.trim() || !user?.lastName?.trim());
-  const steps: Step[] = needsName ? [0, 1, 2, 3] : [1, 2, 3];
+  const [needsEmailVerification] = useState(() => !user?.isEmailVerified);
+  const steps: Step[] = [
+    ...(needsName ? [0 as Step] : []),
+    ...(needsEmailVerification ? [1 as Step] : []),
+    2,
+    3,
+  ];
   const stepPosition = (s: Step) => steps.indexOf(s) + 1;
 
-  const [step, setStep] = useState<Step>(needsName ? 0 : 1);
+  const [step, setStep] = useState<Step>(
+    needsName ? 0 : needsEmailVerification ? 1 : 2,
+  );
 
   // Step 0 state
   const [onbFirstName, setOnbFirstName] = useState(user?.firstName ?? '');
@@ -184,13 +192,13 @@ export const PostSignupOnboardingScreen: React.FC = () => {
         body: JSON.stringify({ firstName: trimmedFirst, lastName: trimmedLast }),
       });
       updateUser({ firstName: trimmedFirst, lastName: trimmedLast });
-      setStep(user?.isEmailVerified ? 2 : 1);
+      setStep(needsEmailVerification ? 1 : 2);
     } catch (err: any) {
       setNameError(err?.message || 'Could not save your name. Please try again.');
     } finally {
       setNameSaving(false);
     }
-  }, [onbFirstName, onbLastName, updateUser, user?.isEmailVerified]);
+  }, [onbFirstName, onbLastName, updateUser, needsEmailVerification]);
 
   // ── Step 1 handlers ──────────────────────────────────────────────────────
 
@@ -627,11 +635,11 @@ export const PostSignupOnboardingScreen: React.FC = () => {
                 ))}
               </View>
 
-              {/* Toast */}
+              {/* Save error */}
               {saveToast !== '' && (
-                <View style={styles.toastRow}>
-                  <Ionicons name="checkmark-circle-outline" size={16} color={Colors.success} />
-                  <Text style={styles.toastText}>{saveToast}</Text>
+                <View style={styles.saveErrorRow}>
+                  <Ionicons name="alert-circle-outline" size={16} color={Colors.error} />
+                  <Text style={styles.saveErrorText}>{saveToast}</Text>
                 </View>
               )}
 
@@ -771,18 +779,27 @@ const styles = StyleSheet.create({
     color: Colors.warning,
     lineHeight: FontSize.sm * 1.6,
   },
-  // Skip link
-  skipLink: {
-    alignItems: 'center',
+  saveErrorRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 18,
+    marginBottom: 4,
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    marginBottom: 8,
+    borderRadius: Radius.inline,
+    borderWidth: 1,
+    borderColor: Colors.errorAlpha25,
+    backgroundColor: Colors.errorAlpha10,
   },
-  skipLinkText: {
+  saveErrorText: {
+    flex: 1,
     fontFamily: FontFamily.medium,
-    fontSize: FontSize.base,
-    color: Colors.textSecondary,
-    textDecorationLine: 'underline',
+    fontSize: FontSize.sm,
+    color: Colors.error,
+    lineHeight: FontSize.sm * 1.5,
   },
+
   // CTA wrapper
   ctaWrapper: {
     marginBottom: 16,
