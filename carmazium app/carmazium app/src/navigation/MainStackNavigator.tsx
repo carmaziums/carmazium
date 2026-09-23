@@ -28,6 +28,8 @@ import { PartnerDashboardScreen } from '../screens/main/PartnerDashboardScreen';
 import { ProviderCapabilitiesScreen } from '../screens/main/ProviderCapabilitiesScreen';
 import { ProviderVerificationScreen } from '../screens/main/ProviderVerificationScreen';
 import { ProviderMatchingScreen } from '../screens/main/ProviderMatchingScreen';
+import { ProviderJobsScreen } from '../screens/main/ProviderJobsScreen';
+import { ProviderJobDetailScreen } from '../screens/main/ProviderJobDetailScreen';
 import { TermsScreen } from '../screens/main/TermsScreen';
 import { HowItWorksScreen } from '../screens/main/HowItWorksScreen';
 import { AboutScreen } from '../screens/main/AboutScreen';
@@ -107,6 +109,8 @@ export type MainStackParamList = {
   ProviderCapabilities: undefined;
   ProviderVerification: { capabilityId: string };
   ProviderMatching: { capabilityId: string };
+  ProviderJobs: undefined;
+  ProviderJobDetail: { jobId: string };
   Terms: undefined;
   HowItWorks: undefined;
   About: undefined;
@@ -260,6 +264,8 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="ProviderCapabilities" component={ProviderCapabilitiesScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ProviderVerification" component={ProviderVerificationScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ProviderMatching" component={ProviderMatchingScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ProviderJobs" component={ProviderJobsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ProviderJobDetail" component={ProviderJobDetailScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Terms" component={TermsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="HowItWorks" component={HowItWorksScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="About" component={AboutScreen} options={{ animation: 'slide_from_right' }} />
