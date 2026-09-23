@@ -1,0 +1,306 @@
+{
+  "version": 1,
+  "purpose": "CarMazium one-product parity contract",
+  "policy": {
+    "backend_is_source_of_truth": true,
+    "parity_required_for_business_rules": true,
+    "undocumented_client_only_business_rules_forbidden": true
+  },
+  "features": [
+    {
+      "id": "marketplace.search",
+      "web": [
+        "src/app/search/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/SearchScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "marketplace.vehicle_detail",
+      "web": [
+        "src/app/buy-cars/[slug]/page.tsx",
+        "src/app/vehicle/[id]/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/vehicle/VehicleDetailScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "marketplace.auctions",
+      "web": [
+        "src/app/auctions/page.tsx",
+        "src/app/auctions/live/[id]/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/LiveScreen.tsx",
+        "carmazium app/carmazium app/src/screens/vehicle/AuctionDetailScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "seller.sell_flow",
+      "web": [
+        "src/app/sell/page.tsx",
+        "src/app/dashboard/seller/add-listing/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "pricing.customer",
+      "web": [
+        "src/app/pricing/page.tsx",
+        "src/lib/pricingConfig.ts"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/PricingScreen.tsx",
+        "carmazium app/carmazium app/src/constants/pricing.ts"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "buyer.dashboard",
+      "web": [
+        "src/app/dashboard/buyer/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/buyer/BuyerDashboardScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "buyer.bids",
+      "web": [
+        "src/app/dashboard/buyer/bids/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/buyer/BuyerBidsScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "buyer.offers",
+      "web": [
+        "src/app/dashboard/buyer/offers/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/buyer/BuyerOffersScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "buyer.history",
+      "web": [
+        "src/app/dashboard/buyer/history/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/buyer/BuyerPurchaseHistoryScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "seller.dashboard",
+      "web": [
+        "src/app/dashboard/seller/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/seller/SellerDashboardScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "seller.listings",
+      "web": [
+        "src/app/dashboard/seller/listings/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/seller/SellerListingsScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "seller.auctions",
+      "web": [
+        "src/app/dashboard/seller/auctions/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/seller/SellerAuctionsScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "seller.offers",
+      "web": [
+        "src/app/dashboard/seller/offers/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/seller/SellerOffersScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "seller.earnings",
+      "web": [
+        "src/app/dashboard/seller/earnings/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/seller/EarningsScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "seller.performance",
+      "web": [
+        "src/app/dashboard/seller/performance/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/seller/SellerPerformanceScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "dealer.dashboard",
+      "web": [
+        "src/app/dashboard/dealer/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/DealerProfileScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "dealer.inventory",
+      "web": [
+        "src/app/dashboard/dealer/inventory/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/DealerInventoryScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "dealer.analytics",
+      "web": [
+        "src/app/dashboard/dealer/analytics/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/DealerAnalyticsScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "dealer.offers",
+      "web": [
+        "src/app/dashboard/dealer/offers/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/DealerOffersScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "dealer.purchases",
+      "web": [
+        "src/app/dashboard/dealer/purchases/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/DealerPurchasesScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "dealer.earnings",
+      "web": [
+        "src/app/dashboard/dealer/earnings/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/DealerEarningsScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "dealer.finance",
+      "web": [
+        "src/app/dashboard/dealer/finance/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/DealerFinanceScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "dealer.team",
+      "web": [
+        "src/app/dashboard/dealer/team/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/DealerTeamScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "partner.dashboard",
+      "web": [
+        "src/app/dashboard/partner/page.tsx"
+      ],
+      "mobile": [],
+      "status": "gap"
+    },
+    {
+      "id": "service_provider.capabilities",
+      "web": [
+        "src/app/dashboard/service/capabilities/page.tsx",
+        "src/app/dashboard/service/capabilities/[id]/verification/page.tsx"
+      ],
+      "mobile": [],
+      "status": "gap"
+    },
+    {
+      "id": "service_provider.jobs",
+      "web": [
+        "src/app/dashboard/service/jobs/page.tsx",
+        "src/app/dashboard/service/jobs/[id]/page.tsx"
+      ],
+      "mobile": [],
+      "status": "gap"
+    },
+    {
+      "id": "service_provider.leads",
+      "web": [
+        "src/app/dashboard/service/leads/page.tsx",
+        "src/app/dashboard/service/leads/[id]/page.tsx"
+      ],
+      "mobile": [],
+      "status": "gap"
+    },
+    {
+      "id": "service_provider.messages",
+      "web": [
+        "src/app/dashboard/service/messages/page.tsx"
+      ],
+      "mobile": [],
+      "status": "gap"
+    },
+    {
+      "id": "admin.operations",
+      "web": [
+        "src/app/dashboard/admin/page.tsx"
+      ],
+      "mobile": [],
+      "status": "gap"
+    },
+    {
+      "id": "blog.seo",
+      "web": [
+        "src/app/blog/page.tsx"
+      ],
+      "mobile": [],
+      "status": "web_only_candidate"
+    }
+  ]
+}
