@@ -122,6 +122,23 @@ export const ServicesScreen: React.FC = () => {
         <View style={{ height: 8 }} />
 
         <TouchableOpacity
+          style={styles.customerJobsCard}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('CustomerServiceJobs')}
+        >
+          <View style={styles.customerJobsIcon}>
+            <Ionicons name="briefcase-outline" size={22} color={Colors.infoBlueLight} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.partnerTitle}>My service jobs</Text>
+            <Text style={styles.partnerText}>
+              Track delivery and inspection requests, compare quotes, pay providers and manage completed work.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={styles.partnerCard}
           activeOpacity={0.85}
           onPress={() => navigation.navigate('PartnerDashboard')}
@@ -212,6 +229,26 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 
+  customerJobsCard: {
+    flexDirection: 'row',
+    gap: 13,
+    alignItems: 'center',
+    backgroundColor: Colors.infoBlueAlpha10,
+    borderRadius: Radius.card,
+    borderWidth: 1,
+    borderColor: 'rgba(59,130,246,0.22)',
+    padding: 16,
+  },
+  customerJobsIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.infoBlueAlpha10,
+    borderWidth: 1,
+    borderColor: 'rgba(59,130,246,0.22)',
+  },
   partnerCard: {
     flexDirection: 'row',
     gap: 13,
