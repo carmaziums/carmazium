@@ -577,6 +577,29 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
           </View>
         </View>
 
+        <View style={styles.section}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => navigation?.navigate('SaleCancellations')}
+            style={{
+              minHeight: 48,
+              borderRadius: Radius.card,
+              borderWidth: 1,
+              borderColor: Colors.warningAlpha25,
+              backgroundColor: Colors.warningAlpha05,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+          >
+            <Ionicons name="shield-checkmark-outline" size={17} color={Colors.warning} />
+            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.warning }}>
+              Sale Cancellations
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {/* ── 6. My Listings ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
