@@ -2540,3 +2540,24 @@ Still explicit Block 7 gaps:
 - `service_provider.jobs`: open job feed, quoting, assigned work, start/complete, inspection outcomes and job chat.
 - `service_provider.leads`: matched Finance/Warranty inbox, detail and provider responses.
 - `service_provider.messages`: provider-focused message workspace/list entry.
+
+## 2026-09-23 — Block 7: Native provider Jobs
+
+**Block 7 checkpoint:** Provider Jobs implemented; Block 7 remains in progress.
+
+Completed in this slice:
+
+- Native Available Jobs and My Work workspaces use the existing TradeXchange cursor-paginated job feed and assigned-work endpoints.
+- Provider job detail reuses the authoritative backend lifecycle: quote/update/withdraw, accepted-payment wait, paid-job start and in-progress completion.
+- Delivery/Recovery and Inspection job locations, vehicle context, timing and assigned value are visible in native.
+- Inspection completion requires structured `PASS` / `FAULTS_FOUND`; faults require a written summary, preserving the Block 5 buyer-refusal evidence contract.
+- Paid/assigned jobs use the existing service-job chat and the normal native `ChatScreen`.
+- Partner Account exposes Provider Jobs as a first-class workspace.
+- Permanent product-parity guard covers native feed/assigned APIs, quote/start/complete actions, inspection outcomes, chat and navigation.
+- `service_provider.jobs` moved from `gap` to `required`.
+
+Still explicit Block 7 gaps:
+
+- `service_provider.leads`: matched Finance/Warranty inbox, detail and provider responses.
+- `service_provider.messages`: provider-focused message workspace/list entry.
+
