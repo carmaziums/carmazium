@@ -272,6 +272,7 @@ export default function DealerCRMPage() {
     const [showAddModal, setShowAddModal] = React.useState(false)
     const [startingChat, setStartingChat] = React.useState<string | null>(null)
     const [toast, setToast] = React.useState<string | null>(null)
+    const [mobileStatus, setMobileStatus] = React.useState("NEW")
     const router = useRouter()
 
     React.useEffect(() => {
@@ -319,6 +320,27 @@ export default function DealerCRMPage() {
         }
     }
 
+    async function setLeadFollowUp(leadId: string, nextFollowUpAt: string | null) {
+        try {
+            const res = await apiClient<{ data: any }>(`/dealers/leads/${leadId}`, {
+                method: "PATCH",
+                body: JSON.stringify({ nextFollowUpAt }),
+            })
+            setLeads(prev => prev.map(lead => lead.id === leadId ? { ...lead, ...res.data } : lead))
+            showToast(nextFollowUpAt ? "Follow-up reminder set" : "Follow-up reminder cleared")
+        } catch (err) {
+            console.error("Failed to update follow-up reminder:", err)
+            showToast("Failed to update follow-up reminder")
+        }
+    }
+
+    function followUpTomorrow(leadId: string) {
+        const next = new Date()
+        next.setDate(next.getDate() + 1)
+        next.setHours(9, 0, 0, 0)
+        setLeadFollowUp(leadId, next.toISOString())
+    }
+
     async function handleMessageBuyer(lead: any) {
         if (!lead.buyerId) {
             showToast("This lead has no linked buyer account. Use email/phone to contact them.")
@@ -345,6 +367,15 @@ export default function DealerCRMPage() {
         : (user?.email?.split('@')[0] || "Dealer")
 
     const leadsByStatus = (status: string) => leads.filter(l => l.status === status)
+    const activeLeads = leads.filter(l => !["WON", "LOST"].includes(l.status))
+    const overdueLeads = activeLeads.filter(isFollowUpOverdue)
+    const mobileLeads = leadsByStatus(mobileStatus).sort((a, b) => {
+        const aOverdue = isFollowUpOverdue(a) ? 1 : 0
+        const bOverdue = isFollowUpOverdue(b) ? 1 : 0
+        if (aOverdue !== bOverdue) return bOverdue - aOverdue
+        return new Date(b.lastActivityAt || b.updatedAt || b.createdAt).getTime() -
+            new Date(a.lastActivityAt || a.updatedAt || a.createdAt).getTime()
+    })
 
     return (
         <div className="min-h-screen pt-20 pb-12">
@@ -380,7 +411,7 @@ export default function DealerCRMPage() {
                                 className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-all"
                                 shape="default"
                             >
-                                <PlusCircle size={18} /> Add Lead
+                                <PlusCircle size={18} /> Add Customer
                             </Button>
                         </PageHeader>
                     </div>
