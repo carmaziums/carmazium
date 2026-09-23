@@ -10,7 +10,7 @@ const mockPrisma = {
   sale: { count: jest.fn().mockResolvedValue(0), findMany: jest.fn().mockResolvedValue([]), aggregate: jest.fn().mockResolvedValue({ _sum: { soldPrice: 0 } }) },
   listing: { count: jest.fn().mockResolvedValue(0), aggregate: jest.fn().mockResolvedValue({ _sum: { viewCount: 0 } }), findMany: jest.fn().mockResolvedValue([]) },
   lead: { groupBy: jest.fn().mockResolvedValue([]) },
-  dealerProfile: { findUnique: jest.fn().mockResolvedValue({ id: 'dp-1' }) },
+  dealerProfile: { findUnique: jest.fn().mockResolvedValue({ id: 'dp-1', userId: 'user-1', isVerified: true }) },
   dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
 };
 
