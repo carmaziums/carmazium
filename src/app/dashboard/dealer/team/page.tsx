@@ -10,6 +10,8 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { useDealerAccess } from "@/context/DealerAccessContext"
+import { DealerPermissionGate } from "@/components/dealer/DealerPermissionGate"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { MetricCard } from "@/components/dashboard/MetricCard"
@@ -23,6 +25,8 @@ const ROLE_CONFIG: Record<string, { label: string; icon: any; color: string; bg:
 
 export default function DealerTeamPage() {
     const { user, profile, loading: authLoading } = useAuth()
+    const { loading: accessLoading, has } = useDealerAccess()
+    const canManageTeam = has('MANAGE_TEAM')
     const [staff, setStaff] = React.useState<any[]>([])
     const [pendingInvites, setPendingInvites] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -33,10 +37,12 @@ export default function DealerTeamPage() {
     const [removingId, setRemovingId] = React.useState<string | null>(null)
 
     React.useEffect(() => {
-        if (!authLoading && user) {
+        if (!authLoading && !accessLoading && user && canManageTeam) {
             fetchStaff()
+        } else if (!accessLoading && !canManageTeam) {
+            setLoading(false)
         }
-    }, [user, authLoading])
+    }, [user, authLoading, accessLoading, canManageTeam])
 
     async function fetchStaff() {
         setLoading(true)
@@ -88,6 +94,11 @@ export default function DealerTeamPage() {
         : (user?.email?.split('@')[0] || "Dealer")
 
     return (
+        <DealerPermissionGate
+            permission="MANAGE_TEAM"
+            title="Team management restricted"
+            description="Only the dealership owner and dealer admins can invite or remove staff."
+        >
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
@@ -265,5 +276,6 @@ export default function DealerTeamPage() {
                 </main>
             </div>
         </div>
+        </DealerPermissionGate>
     )
 }
