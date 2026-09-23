@@ -253,7 +253,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     const dealerMobileHrefs = [
         "/dashboard/dealer",
         "/dashboard/dealer/inventory",
-        "/dashboard/dealer/offers",
+        "/dashboard/dealer/crm",
         "/dashboard/dealer/auctions",
     ]
 
