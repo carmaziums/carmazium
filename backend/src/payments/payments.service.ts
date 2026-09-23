@@ -1466,15 +1466,29 @@ export class PaymentsService {
             throw new BadRequestException('Buyer fee payment could not be resolved for refund');
         }
 
-        await stripe.refunds.create(
-            {
-                payment_intent: paymentIntentId,
-                amount: 12500,
-            },
-            {
-                idempotencyKey: `auction-inspection-refusal-${transaction.id}`,
-            },
-        );
+        // A handover-proof denial may already have refunded £100 of this same
+        // £125 fee. Inspection refusal promises a *full* buyer-fee refund, so
+        // reconcile existing Stripe refunds and top up only the remainder.
+        const existingRefunds = await stripe.refunds.list({
+            payment_intent: paymentIntentId,
+            limit: 100,
+        });
+        const alreadyRefunded = existingRefunds.data
+            .filter((refund: any) => refund.status !== 'failed' && refund.status !== 'canceled')
+            .reduce((sum: number, refund: any) => sum + Number(refund.amount || 0), 0);
+        const remainingPence = Math.max(0, 12500 - alreadyRefunded);
+
+        if (remainingPence > 0) {
+            await stripe.refunds.create(
+                {
+                    payment_intent: paymentIntentId,
+                    amount: remainingPence,
+                },
+                {
+                    idempotencyKey: `auction-inspection-refusal-${transaction.id}-${remainingPence}`,
+                },
+            );
+        }
 
         if (transaction.status !== ('REFUNDED' as any)) {
             await this.prisma.transaction.update({
