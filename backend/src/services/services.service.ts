@@ -17,6 +17,7 @@ import {
     ServicePaymentStatus,
     CapabilityStatus,
     UserRole,
+    InspectionOutcome,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -24,7 +25,7 @@ import { EmailService } from '../email/email.service';
 import { PaymentsService } from '../payments/payments.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
 import {
-    CreateJobDto, JobFromPurchaseDto, CancelJobDto, UpsertQuoteDto,
+    CreateJobDto, JobFromPurchaseDto, InspectionFromAuctionDto, CompleteJobDto, CancelJobDto, UpsertQuoteDto,
     ApplyCapabilityDto, UpdateLeadMatchingDto, UpdateJobMatchingDto, ReviewCapabilityDto, ResolveDisputeDto, CreateServiceReviewDto, JOB_SERVICE_TYPES,
 } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
@@ -917,6 +918,123 @@ export class ServicesService {
         }
     }
 
+    /**
+     * Create an inspection tied to a won auction so any later refusal can be
+     * proven against a real CarMazium inspection job, not free-text buyer input.
+     */
+    async createInspectionFromAuction(customerId: string, dto: InspectionFromAuctionDto) {
+        assertServiceAcceptingNewRequests(ServiceType.INSPECTION);
+
+        const auction = await this.prisma.auction.findUnique({
+            where: { id: dto.auctionId },
+            include: {
+                listing: {
+                    include: {
+                        vehicle: true,
+                        sale: { select: { buyerId: true } },
+                        seller: {
+                            select: {
+                                postcode: true,
+                                location: true,
+                                dealerProfile: {
+                                    select: {
+                                        businessAddress: true,
+                                        kyc: {
+                                            select: {
+                                                tradingAddress: true,
+                                                businessRegisteredAddress: true,
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (!auction) throw new NotFoundException('Auction not found');
+        if (auction.winnerId !== customerId) throw new ForbiddenException('Not your auction purchase');
+        if (
+            auction.status !== 'ENDED'
+            || auction.listing.status !== 'SOLD'
+            || auction.listing.deletedAt
+        ) {
+            throw new BadRequestException('This auction purchase is not in an inspection-eligible state.');
+        }
+        if (!auction.buyerFeePaid) {
+            throw new BadRequestException('Pay the auction buyer fee before arranging an inspection.');
+        }
+        if (!auction.listing.sale || auction.listing.sale.buyerId !== customerId) {
+            throw new ForbiddenException('The auction sale record does not belong to this buyer.');
+        }
+        if (auction.sellerBonusReleased) {
+            throw new BadRequestException('The handover has already been approved and can no longer be inspected for refusal.');
+        }
+
+        const existing = await this.prisma.serviceJob.findFirst({
+            where: {
+                customerId,
+                serviceType: ServiceType.INSPECTION,
+                sourceAuctionId: auction.id,
+                status: { notIn: [ServiceJobStatus.CANCELLED, ServiceJobStatus.EXPIRED] },
+            },
+            include: { vehicles: true },
+        });
+        if (existing) return existing;
+
+        const servicePostcode = requireUkPostcode(
+            dto.servicePostcode || auction.listing.seller?.postcode,
+            'Inspection postcode',
+        );
+        const workPostcodeArea = postcodeArea(servicePostcode);
+        if (!workPostcodeArea) {
+            throw new BadRequestException('Unable to determine the inspection postcode area.');
+        }
+
+        const serviceAddress = dto.serviceAddress?.trim() || [
+            auction.listing.seller?.dealerProfile?.kyc?.tradingAddress,
+            auction.listing.seller?.dealerProfile?.businessAddress,
+            auction.listing.seller?.dealerProfile?.kyc?.businessRegisteredAddress,
+            auction.listing.seller?.location,
+            auction.listing.location,
+        ].map((value: unknown) => typeof value === 'string' ? value.trim() : '')
+            .find((value: string) => value.length > 0) || null;
+
+        const requestedFor = parseFutureRequestedFor(dto.requestedFor);
+        const vehicle = {
+            registration: auction.listing.vehicle?.vrm ?? auction.listing.vrm ?? null,
+            make: auction.listing.vehicle?.make ?? auction.listing.make ?? null,
+            model: auction.listing.vehicle?.model ?? auction.listing.model ?? null,
+            year: auction.listing.vehicle?.year ?? auction.listing.year ?? null,
+        };
+
+        return this.withActiveJobSlot(customerId, async (tx) => tx.serviceJob.create({
+            data: {
+                customerId,
+                serviceType: ServiceType.INSPECTION,
+                title: `Inspect ${auction.listing.title}`.slice(0, 120),
+                description: 'Post-auction pre-handover inspection.',
+                servicePostcode,
+                serviceAddress,
+                workPostcodeArea,
+                requestedFor,
+                expiresAt: new Date(Date.now() + JOB_OPEN_DAYS * 86_400_000),
+                sourceAuctionId: auction.id,
+                vehicles: {
+                    create: [{
+                        registration: vehicle.registration?.toUpperCase().replace(/\s+/g, '') || null,
+                        make: vehicle.make?.trim() || null,
+                        model: vehicle.model?.trim() || null,
+                        year: vehicle.year ?? null,
+                        listingId: auction.listing.id,
+                    }],
+                },
+            },
+            include: { vehicles: true },
+        }));
+    }
+
     async myJobsPage(
         customerId: string,
         options: { limit?: number; cursor?: string } = {},
@@ -1521,7 +1639,7 @@ export class ServicesService {
         return { success: true };
     }
 
-    async completeJob(contractorProfileId: string, jobId: string) {
+    async completeJob(contractorProfileId: string, jobId: string, dto: CompleteJobDto = {}) {
         const job = await this.assignedJob(contractorProfileId, jobId);
         if (
             job.status !== ServiceJobStatus.IN_PROGRESS ||
@@ -1530,6 +1648,20 @@ export class ServicesService {
             job.confirmedAt
         ) {
             throw new BadRequestException('Start this job before marking it complete.');
+        }
+
+        if (job.serviceType === ServiceType.INSPECTION) {
+            if (!dto.inspectionOutcome) {
+                throw new BadRequestException('Inspection outcome is required before completing an inspection.');
+            }
+            if (
+                dto.inspectionOutcome === InspectionOutcome.FAULTS_FOUND
+                && !dto.inspectionSummary?.trim()
+            ) {
+                throw new BadRequestException('Describe the faults found before completing the inspection.');
+            }
+        } else if (dto.inspectionOutcome || dto.inspectionSummary) {
+            throw new BadRequestException('Inspection outcome fields are only valid for inspection jobs.');
         }
 
         const completedAt = new Date();
@@ -1546,14 +1678,27 @@ export class ServicesService {
                 completedAt: null,
                 confirmedAt: null,
             },
-            data: { status: ServiceJobStatus.COMPLETED, completedAt },
+            data: {
+                status: ServiceJobStatus.COMPLETED,
+                completedAt,
+                ...(job.serviceType === ServiceType.INSPECTION ? {
+                    inspectionOutcome: dto.inspectionOutcome!,
+                    inspectionSummary: dto.inspectionSummary?.trim() || null,
+                } : {}),
+            },
         });
         if (completed.count !== 1) {
             throw new ConflictException('The job state changed before it could be marked complete.');
         }
 
+        const completionMessage = job.serviceType === ServiceType.INSPECTION
+            ? dto.inspectionOutcome === InspectionOutcome.FAULTS_FOUND
+                ? `Your inspector completed "${job.title}" and recorded faults. Review the inspection before handover; an eligible auction purchase can now be refused.`
+                : `Your inspector completed "${job.title}" and recorded no refusal-triggering faults. Confirm completion to release their payment.`
+            : `Your provider marked "${job.title}" complete. Confirm to release their payment — or it releases automatically in ${AUTO_CONFIRM_HOURS} hours.`;
+
         await this.notify(job.customerId, 'SERVICE_JOB_COMPLETED', 'Please confirm completion',
-            `Your provider marked "${job.title}" complete. Confirm to release their payment — or it releases automatically in ${AUTO_CONFIRM_HOURS} hours.`,
+            completionMessage,
             `/services/jobs/${jobId}`);
         this.sendEmail(job.customer.email, job.customer.firstName, `Is "${job.title}" done?`,
             `<p>Your provider has marked the job complete. If everything is in order, confirm it and their payment is released.</p><p>If you do nothing it releases automatically in ${AUTO_CONFIRM_HOURS} hours. If something is wrong, raise a dispute before then.</p>`,
