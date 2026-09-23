@@ -255,6 +255,10 @@ const mobilePartnerDashboard = read('carmazium app/carmazium app/src/screens/mai
 const mobileProviderCapabilities = read('carmazium app/carmazium app/src/screens/main/ProviderCapabilitiesScreen.tsx');
 const mobileProviderVerification = read('carmazium app/carmazium app/src/screens/main/ProviderVerificationScreen.tsx');
 const mobileProviderMatching = read('carmazium app/carmazium app/src/screens/main/ProviderMatchingScreen.tsx');
+const mobileProviderJobs = read('carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx');
+const mobileProviderJobDetail = read('carmazium app/carmazium app/src/screens/main/ProviderJobDetailScreen.tsx');
+const mobileServicesApi = read('carmazium app/carmazium app/src/lib/servicesApi.ts');
+const mobileChatApi = read('carmazium app/carmazium app/src/lib/chatApi.ts');
 const mobileMainNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
 const mobileGlobalDrawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
 const mobileBuyerBids = read('carmazium app/carmazium app/src/screens/buyer/BuyerBidsScreen.tsx');
@@ -485,6 +489,34 @@ if (
   fail('Native dealer auction UI can drift from canonical dealership identity or staff permissions');
 } else {
   ok('Native dealer auction winner, bid and fee controls are dealership-permission aware');
+}
+
+// Block 7 provider Jobs: native must reuse the authoritative TradeXchange
+// feed/assigned lifecycle, quote/start/complete actions, structured inspection
+// outcome and service-job chat instead of introducing a parallel workflow.
+if (
+  !mobileProviderJobs.includes('getProviderJobFeedPage') ||
+  !mobileProviderJobs.includes('getAssignedProviderJobsPage') ||
+  !mobileProviderJobs.includes("navigation.navigate('ProviderJobDetail'") ||
+  !mobileProviderJobDetail.includes('upsertProviderJobQuote') ||
+  !mobileProviderJobDetail.includes('withdrawProviderJobQuote') ||
+  !mobileProviderJobDetail.includes('startProviderJob') ||
+  !mobileProviderJobDetail.includes('completeProviderJob') ||
+  !mobileProviderJobDetail.includes("'FAULTS_FOUND'") ||
+  !mobileProviderJobDetail.includes('getOrCreateServiceJobRoom') ||
+  !mobileServicesApi.includes('/services/jobs/feed') ||
+  !mobileServicesApi.includes('/services/jobs/assigned') ||
+  !mobileServicesApi.includes('/services/jobs/${jobId}/quote') ||
+  !mobileServicesApi.includes('/services/jobs/${jobId}/start') ||
+  !mobileServicesApi.includes('/services/jobs/${jobId}/complete') ||
+  !mobileChatApi.includes('/chat/service-jobs/${jobId}') ||
+  !mobileMainNavigator.includes('ProviderJobs') ||
+  !mobileMainNavigator.includes('ProviderJobDetail') ||
+  !mobilePartnerDashboard.includes("navigation.navigate('ProviderJobs')")
+) {
+  fail('Native provider Jobs can drift from the TradeXchange job lifecycle');
+} else {
+  ok('Native provider Jobs, quoting, lifecycle, inspection outcome and job chat are present');
 }
 
 // Block 7 provider foundation: one Partner business, service capabilities,
