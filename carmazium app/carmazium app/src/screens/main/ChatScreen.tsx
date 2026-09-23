@@ -324,6 +324,12 @@ export const ChatScreen: React.FC = () => {
   const { user } = useAuthStore();
   const room = rooms.find((r) => r.id === threadId);
 
+  useEffect(() => {
+    if (!room && threadId) {
+      refreshRooms().catch(() => {});
+    }
+  }, [room, threadId, refreshRooms]);
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
