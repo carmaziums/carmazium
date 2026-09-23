@@ -4,8 +4,11 @@ import React from "react"
 import { useAuth } from "@/context/AuthContext"
 import { KycOverlayForm, KYC_SKIP_KEY } from "@/components/dashboard/KycOverlayForm"
 import { Loader2, Lock, ShieldCheck, ArrowRight, Phone, AlertCircle } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { apiClient } from "@/lib/apiClient"
+import { DealerAccessProvider } from "@/context/DealerAccessContext"
+import { DealerPermissionGate } from "@/components/dealer/DealerPermissionGate"
+import type { DealerPermission } from "@/lib/dealerAccess"
 
 /**
  * Blocks the dealer dashboard until the dealership's contact phone is set.
@@ -85,6 +88,34 @@ function DealerPhoneGate({ onSaved }: { onSaved: () => void }) {
                 </form>
             </div>
         </div>
+    )
+}
+
+function DealerRoutePermissionBoundary({ children }: { children: React.ReactNode }) {
+    const pathname = usePathname()
+
+    const routePermissions: Array<[string, DealerPermission]> = [
+        ["/dashboard/dealer/auctions/won", "VIEW_PURCHASES"],
+        ["/dashboard/dealer/add-listing", "MANAGE_INVENTORY"],
+        ["/dashboard/dealer/put-on-auction", "MANAGE_INVENTORY"],
+        ["/dashboard/dealer/inventory", "VIEW_INVENTORY"],
+        ["/dashboard/dealer/crm", "MANAGE_CRM"],
+        ["/dashboard/dealer/offers", "MANAGE_OFFERS"],
+        ["/dashboard/dealer/team", "MANAGE_TEAM"],
+        ["/dashboard/dealer/analytics", "VIEW_ANALYTICS"],
+        ["/dashboard/dealer/earnings", "VIEW_ANALYTICS"],
+        ["/dashboard/dealer/purchases", "VIEW_PURCHASES"],
+        ["/dashboard/dealer/bids", "VIEW_TRADE"],
+        ["/dashboard/dealer/auctions", "VIEW_TRADE"],
+    ]
+
+    const match = routePermissions.find(([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+    if (!match) return <>{children}</>
+
+    return (
+        <DealerPermissionGate permission={match[1]}>
+            {children}
+        </DealerPermissionGate>
     )
 }
 
@@ -223,5 +254,11 @@ export default function DealerDashboardLayout({
         return <DealerPhoneGate onSaved={refreshProfile} />
     }
 
-    return <>{children}</>
+    return (
+        <DealerAccessProvider>
+            <DealerRoutePermissionBoundary>
+                {children}
+            </DealerRoutePermissionBoundary>
+        </DealerAccessProvider>
+    )
 }
