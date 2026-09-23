@@ -43,3 +43,28 @@ export async function createPaymentSheet(
   );
   return res.data;
 }
+
+
+export interface AuctionFeeReconciliationResult {
+  applied: boolean;
+  status: string;
+}
+
+/**
+ * Confirm a native auction buyer-fee PaymentIntent against Stripe and apply
+ * the auction unlock server-side. This is the native equivalent of the web
+ * checkout success fallback and prevents the app from declaring success before
+ * a delayed webhook has updated the auction.
+ */
+export async function reconcileAuctionFeeIntent(
+  transactionId: string,
+): Promise<AuctionFeeReconciliationResult> {
+  const res = await apiClient<{ success: boolean; data: AuctionFeeReconciliationResult }>(
+    '/payments/reconcile-auction-fee-intent',
+    {
+      method: 'POST',
+      body: JSON.stringify({ transactionId }),
+    },
+  );
+  return res.data;
+}

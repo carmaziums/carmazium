@@ -1,18 +1,22 @@
 // ─── Stripe mock (module-level, must be before all imports) ─────────────────
 const mockPaymentIntentsCreate = jest.fn();
+const mockPaymentIntentsRetrieve = jest.fn();
 const mockCustomersCreate = jest.fn();
 const mockEphemeralKeysCreate = jest.fn();
 const mockConstructEvent = jest.fn();
 const mockCheckoutSessionsCreate = jest.fn();
+const mockCheckoutSessionsRetrieve = jest.fn();
+const mockRefundsCreate = jest.fn();
 const mockHpiCreatePendingReport = jest.fn();
 
 jest.mock('stripe', () => {
     const MockStripe = jest.fn().mockImplementation(() => ({
-        paymentIntents: { create: mockPaymentIntentsCreate },
+        paymentIntents: { create: mockPaymentIntentsCreate, retrieve: mockPaymentIntentsRetrieve },
         customers: { create: mockCustomersCreate },
         ephemeralKeys: { create: mockEphemeralKeysCreate },
         webhooks: { constructEvent: mockConstructEvent },
-        checkout: { sessions: { create: mockCheckoutSessionsCreate } },
+        checkout: { sessions: { create: mockCheckoutSessionsCreate, retrieve: mockCheckoutSessionsRetrieve } },
+        refunds: { create: mockRefundsCreate },
     }));
     // `payments.service.ts` loads Stripe via a dynamic `await import('stripe')`
     // (unlike dealers.service.ts's static import) — __esModule: true is required
@@ -42,6 +46,8 @@ function buildPrismaMock() {
         },
         transaction: {
             create: jest.fn().mockResolvedValue({ id: 'txn-1' }),
+            findUnique: jest.fn(),
+            findFirst: jest.fn(),
             update: jest.fn(),
         },
         sale: {
@@ -49,6 +55,7 @@ function buildPrismaMock() {
             create: jest.fn(),
         },
         auction: {
+            findUnique: jest.fn(),
             findFirst: jest.fn(),
             update: jest.fn(),
         },
@@ -249,6 +256,11 @@ describe('PaymentsService — createPaymentSheet (LISTING_FEE)', () => {
     });
 
     it('omits badgeTier from metadata for non-listing-fee payment types', async () => {
+        prisma.auction.findFirst.mockResolvedValue({
+            id: 'auction-1',
+            winnerId: 'user-1',
+            buyerFeePaid: false,
+        });
         await service.createPaymentSheet('listing-1', 'user-1', 125, 'COMMISSION', 'gbp');
 
         const callArg = mockPaymentIntentsCreate.mock.calls[0][0];
@@ -267,6 +279,110 @@ describe('PaymentsService — createPaymentSheet (LISTING_FEE)', () => {
                 }),
             }),
         );
+    });
+});
+
+describe('PaymentsService — reconcileAuctionFeeIntent', () => {
+    let service: PaymentsService;
+    let prisma: any;
+
+    beforeEach(async () => {
+        mockPaymentIntentsRetrieve.mockReset();
+        prisma = buildPrismaMock();
+        const module: TestingModule = await buildModule(prisma);
+        service = module.get<PaymentsService>(PaymentsService);
+    });
+
+    it('heals a delayed native auction-fee webhook and marks the ended auction paid', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({
+            id: 'txn-commission',
+            userId: 'buyer-1',
+            listingId: 'listing-auction',
+            type: 'COMMISSION',
+            status: 'PENDING',
+            stripePaymentId: 'pi_commission',
+        });
+        mockPaymentIntentsRetrieve.mockResolvedValue({
+            id: 'pi_commission',
+            status: 'succeeded',
+            metadata: {
+                transactionId: 'txn-commission',
+                userId: 'buyer-1',
+                listingId: 'listing-auction',
+                type: 'COMMISSION',
+            },
+        });
+        prisma.auction.findFirst.mockResolvedValue({
+            id: 'auction-1',
+            buyerFeePaid: false,
+            buyerFeeTransactionId: null,
+        });
+
+        await expect(
+            service.reconcileAuctionFeeIntent('txn-commission', 'buyer-1'),
+        ).resolves.toEqual({ applied: true, status: 'succeeded' });
+
+        expect(prisma.transaction.update).toHaveBeenCalledWith({
+            where: { id: 'txn-commission' },
+            data: {
+                status: 'COMPLETED',
+                stripePaymentId: 'pi_commission',
+            },
+        });
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where: { id: 'auction-1' },
+            data: {
+                buyerFeePaid: true,
+                buyerFeeTransactionId: 'txn-commission',
+            },
+        });
+    });
+
+    it('never lets one buyer reconcile another buyers transaction', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({
+            id: 'txn-commission',
+            userId: 'buyer-2',
+            listingId: 'listing-auction',
+            type: 'COMMISSION',
+            status: 'PENDING',
+            stripePaymentId: 'pi_commission',
+        });
+
+        await expect(
+            service.reconcileAuctionFeeIntent('txn-commission', 'buyer-1'),
+        ).rejects.toThrow(/permission/i);
+
+        expect(mockPaymentIntentsRetrieve).not.toHaveBeenCalled();
+        expect(prisma.transaction.update).not.toHaveBeenCalled();
+    });
+
+    it('keeps an unconfirmed PaymentIntent pending and does not unlock the auction', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({
+            id: 'txn-commission',
+            userId: 'buyer-1',
+            listingId: 'listing-auction',
+            type: 'COMMISSION',
+            status: 'PENDING',
+            stripePaymentId: 'pi_commission',
+        });
+        mockPaymentIntentsRetrieve.mockResolvedValue({
+            id: 'pi_commission',
+            status: 'processing',
+            metadata: {
+                transactionId: 'txn-commission',
+                userId: 'buyer-1',
+                listingId: 'listing-auction',
+                type: 'COMMISSION',
+            },
+        });
+
+        await expect(
+            service.reconcileAuctionFeeIntent('txn-commission', 'buyer-1'),
+        ).resolves.toEqual({ applied: false, status: 'processing' });
+
+        expect(prisma.transaction.update).not.toHaveBeenCalled();
+        expect(prisma.auction.findFirst).not.toHaveBeenCalled();
+        expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 });
 
@@ -309,10 +425,47 @@ describe('PaymentsService — createPaymentSheet (F2: server-side amount, ignore
 
     it('charges the fixed £125 auction buyer fee for COMMISSION regardless of client-supplied amount', async () => {
         prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
+        prisma.auction.findFirst.mockResolvedValue({
+            id: 'auction-1',
+            winnerId: 'user-1',
+            buyerFeePaid: false,
+        });
 
         await service.createPaymentSheet('listing-1', 'user-1', 1, 'COMMISSION', 'gbp');
 
         expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(expect.objectContaining({ amount: 12500 }));
+    });
+
+    it('rejects an auction buyer-fee PaymentSheet when the caller is not the recorded winner', async () => {
+        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
+        prisma.auction.findFirst.mockResolvedValue({
+            id: 'auction-1',
+            winnerId: 'different-user',
+            buyerFeePaid: false,
+        });
+
+        await expect(
+            service.createPaymentSheet('listing-1', 'user-1', 125, 'COMMISSION', 'gbp'),
+        ).rejects.toThrow(/only the auction winner/i);
+
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
+        expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
+    });
+
+    it('rejects a second auction buyer-fee PaymentSheet after the auction is already paid', async () => {
+        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
+        prisma.auction.findFirst.mockResolvedValue({
+            id: 'auction-1',
+            winnerId: 'user-1',
+            buyerFeePaid: true,
+        });
+
+        await expect(
+            service.createPaymentSheet('listing-1', 'user-1', 125, 'COMMISSION', 'gbp'),
+        ).rejects.toThrow(/already been paid/i);
+
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
+        expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
     });
 
     it('charges the real LISTING_FEES[badgeTier] amount regardless of a lower client-supplied amount', async () => {
@@ -490,6 +643,61 @@ describe('PaymentsService — handleWebhook payment_intent.succeeded (LISTING_FE
     });
 });
 
+describe('PaymentsService — auction buyer-fee refunds', () => {
+    let service: PaymentsService;
+    let prisma: any;
+
+    beforeEach(async () => {
+        mockCheckoutSessionsRetrieve.mockReset();
+        mockRefundsCreate.mockReset();
+        prisma = buildPrismaMock();
+        const module: TestingModule = await buildModule(prisma);
+        service = module.get<PaymentsService>(PaymentsService);
+
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1',
+            buyerFeeTransactionId: 'txn-commission',
+        });
+    });
+
+    it('refunds a native PaymentSheet commission directly from its PaymentIntent id', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({
+            id: 'txn-commission',
+            stripePaymentId: 'pi_native_commission',
+        });
+
+        await service.issueRefundForAuction('auction-1');
+
+        expect(mockCheckoutSessionsRetrieve).not.toHaveBeenCalled();
+        expect(mockRefundsCreate).toHaveBeenCalledWith({
+            payment_intent: 'pi_native_commission',
+            amount: 10000,
+        });
+        expect(prisma.transaction.update).toHaveBeenCalledWith({
+            where: { id: 'txn-commission' },
+            data: { status: 'REFUNDED' },
+        });
+    });
+
+    it('keeps hosted web Checkout refunds working through the session PaymentIntent', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({
+            id: 'txn-commission',
+            stripePaymentId: 'cs_web_commission',
+        });
+        mockCheckoutSessionsRetrieve.mockResolvedValue({
+            payment_intent: 'pi_from_checkout',
+        });
+
+        await service.issueRefundForAuction('auction-1');
+
+        expect(mockCheckoutSessionsRetrieve).toHaveBeenCalledWith('cs_web_commission');
+        expect(mockRefundsCreate).toHaveBeenCalledWith({
+            payment_intent: 'pi_from_checkout',
+            amount: 10000,
+        });
+    });
+});
+
 describe('PaymentsService — createCheckoutSession (F6: server-side amount, same fix as F2)', () => {
     let service: PaymentsService;
     let prisma: any;
@@ -532,6 +740,11 @@ describe('PaymentsService — createCheckoutSession (F6: server-side amount, sam
 
     it('charges the fixed £125 auction buyer fee for COMMISSION regardless of client-supplied amount', async () => {
         prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, make: 'BMW', model: 'M3', year: 2022, images: [], deletedAt: null });
+        prisma.auction.findFirst.mockResolvedValue({
+            id: 'auction-1',
+            winnerId: 'user-1',
+            buyerFeePaid: false,
+        });
 
         await service.createCheckoutSession('listing-1', 'user-1', 1, 'COMMISSION', 'gbp');
 

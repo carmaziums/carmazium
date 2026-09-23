@@ -131,6 +131,22 @@ export class PaymentsController {
         return new StandardResponse(result);
     }
 
+    @Post('reconcile-auction-fee-intent')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Reconcile a native PaymentIntent auction buyer fee' })
+    async reconcileAuctionFeeIntent(
+        @Body('transactionId') transactionId: string,
+        @CurrentUser() user: any,
+    ) {
+        if (!transactionId) throw new BadRequestException('transactionId is required');
+        const result = await this.paymentsService.reconcileAuctionFeeIntent(
+            transactionId,
+            user.id,
+        );
+        return new StandardResponse(result);
+    }
+
     @Post('apply-kyc-fee')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()

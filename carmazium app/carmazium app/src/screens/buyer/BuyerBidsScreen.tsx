@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Alert,
   ActivityIndicator,
@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
@@ -58,6 +59,8 @@ interface RawBid {
       endTime: string;
       winnerId: string | null;
       winningBidAmount: number | string | null;
+      wonAt?: string | null;
+      buyerFeePaid?: boolean;
     } | null;
   };
 }
@@ -70,6 +73,7 @@ interface Bid {
   isWinning?: boolean;
   isArchived?: boolean;
   isWinner?: boolean;
+  buyerFeePaid?: boolean;
   winningBidAmount?: number | null;
   paymentDeadline?: string | null;
   bidCount?: number | null;
@@ -117,16 +121,12 @@ const mapRawBid = (b: RawBid, currentUserId?: string): Bid => {
     isWinning: b.isWinning,
     isArchived: Boolean(b.isArchived),
     isWinner: !b.isArchived && !!auction?.winnerId && auction.winnerId === currentUserId,
+    buyerFeePaid: Boolean(auction?.buyerFeePaid),
     winningBidAmount: auction?.winningBidAmount != null ? Number(auction.winningBidAmount) : null,
-    // 72h, matching the backend's BUYER_FEE_GRACE_MS — this was 24h (AUC-022).
-    // The backend measures from `wonAt`, but `GET /bids/my` does not select it
-    // (`bids.service.ts:203-211` returns only id/status/endTime/winnerId/
-    // winningBidAmount), so `endTime` is the closest basis available here. The
-    // two differ only by how long the close takes to run, but it means this
-    // figure is an approximation where the live-win path is exact. Logged as a
-    // backend item: add `wonAt` to that select.
-    paymentDeadline: auction?.endTime
-      ? new Date(new Date(auction.endTime).getTime() + AUCTION_PAYMENT_GRACE_MS).toISOString()
+    // Use the backend's authoritative win timestamp so the 72-hour payment
+    // deadline matches web and the expiry cron exactly.
+    paymentDeadline: auction?.wonAt
+      ? new Date(new Date(auction.wonAt).getTime() + AUCTION_PAYMENT_GRACE_MS).toISOString()
       : null,
     bidCount: null,
     listing: {
@@ -235,9 +235,14 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
     }
   }, [page, currentUserId]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  // Re-read authoritative winner/payment state whenever the buyer returns
+  // from AuctionComplete/Stripe. A plain mount-only effect left a stale
+  // "PAY BUYER FEE" button visible after a successful payment.
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData]),
+  );
 
   // ── navigate to auction ──────────────────────────────────────
   const handleViewAuction = async (bid: Bid) => {
@@ -470,34 +475,39 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
           </View>
         </View>
 
-        {/* Winner CTAs — pay buyer fee, and chat with the seller (matches
-            web's bids page "Chat with Seller" action on a won row) */}
+        {/* Winner actions mirror web: before the £125 fee only payment +
+            the server-gated phone action are shown. Chat unlocks after the
+            authoritative auction buyerFeePaid flag is true. */}
         {isWon && (
           <View style={styles.wonCtaRow}>
-            <TouchableOpacity
-              style={[styles.wonCtaBtn, { flex: 1 }]}
-              activeOpacity={0.85}
-              onPress={handlePayFee}
-            >
-              <Ionicons name="lock-closed-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
-              <Text style={styles.wonCtaBtnText}>PAY BUYER FEE · £125</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.wonChatBtn}
-              activeOpacity={0.85}
-              onPress={() => handleChatWithSeller(bid)}
-              disabled={connectingChatId === bid.id}
-            >
-              {connectingChatId === bid.id ? (
-                <ActivityIndicator size="small" color={Colors.accentGreen} />
-              ) : (
-                <Ionicons name="chatbubble-ellipses-outline" size={16} color={Colors.accentGreen} />
-              )}
-            </TouchableOpacity>
-            {/* Call Seller — web's won-auction list gained this in 05cfe7e4.
-                Always shown on a won row: the number is gated server-side, so
-                hiding the button until the fee is paid would just leave the
-                winner guessing where the seller's details are. */}
+            {!bid.buyerFeePaid ? (
+              <TouchableOpacity
+                style={[styles.wonCtaBtn, { flex: 1 }]}
+                activeOpacity={0.85}
+                onPress={handlePayFee}
+              >
+                <Ionicons name="lock-closed-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
+                <Text style={styles.wonCtaBtnText}>PAY BUYER FEE · £125</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.wonChatBtn, { flex: 1 }]}
+                activeOpacity={0.85}
+                onPress={() => handleChatWithSeller(bid)}
+                disabled={connectingChatId === bid.id}
+              >
+                {connectingChatId === bid.id ? (
+                  <ActivityIndicator size="small" color={Colors.accentGreen} />
+                ) : (
+                  <>
+                    <Ionicons name="chatbubble-ellipses-outline" size={16} color={Colors.accentGreen} />
+                    <Text style={styles.wonChatBtnText}>CHAT WITH SELLER</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+            {/* Always show the call action. Before payment the backend deliberately
+                withholds the number and this button explains that it is locked. */}
             <TouchableOpacity
               style={styles.wonCallBtn}
               activeOpacity={0.85}
@@ -815,6 +825,12 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size12,
     color: Colors.white,
     letterSpacing: 0.8,
+  },
+  wonChatBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xs,
+    color: Colors.accentGreen,
+    marginLeft: 6,
   },
   wonCallBtn: {
     width: 44,
