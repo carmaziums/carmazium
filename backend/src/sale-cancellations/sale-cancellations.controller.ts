@@ -92,12 +92,12 @@ export class SaleCancellationsController {
     @ApiOperation({ summary: 'Admin approves or rejects an escalated cancellation request' })
     async adminReview(
         @Param('id') id: string,
-        @Body() body: { decision?: 'APPROVE' | 'REJECT'; note?: string },
+        @Body() body: { decision?: 'APPROVE' | 'REJECT'; note?: string; refundBuyerFee?: boolean },
         @CurrentUser() user: any,
     ) {
         if (!body.decision) throw new BadRequestException('decision is required');
         return new StandardResponse(
-            await this.service.adminReview(id, user.id, body.decision, body.note),
+            await this.service.adminReview(id, user.id, body.decision, body.note, body.refundBuyerFee),
         );
     }
 }
