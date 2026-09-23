@@ -300,6 +300,17 @@ if (
 }
 
 if (
+  !buyerPaymentsService.includes('async getPayableAuctionForWinner') ||
+  !buyerPaymentsService.includes("'Only the auction winner can pay the buyer fee'") ||
+  !buyerPaymentsService.includes("'The auction buyer fee has already been paid'") ||
+  !buyerPaymentsService.includes('winnerId: buyerId')
+) {
+  fail('Auction buyer fee charging must be winner-only and idempotently winner-bound');
+} else {
+  ok('Auction buyer fee charging is restricted to the recorded winner');
+}
+
+if (
   !mobilePurchaseFlow.includes('setPendingConfirmationId(sheet.transactionId)') ||
   !mobilePurchaseFlow.includes('reconcilePendingAuctionFee(sheet.transactionId)') ||
   !mobilePurchaseFlow.includes('CONFIRM PAYMENT STATUS') ||
