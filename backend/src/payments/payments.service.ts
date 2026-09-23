@@ -310,14 +310,36 @@ export class PaymentsService {
      * Idempotent so webhook delivery and explicit client reconciliation can race
      * safely without double-applying anything.
      */
+    private async getPayableAuctionForWinner(listingId: string, userId: string) {
+        const auction = await this.prisma.auction.findFirst({
+            where: { listingId, status: 'ENDED', deletedAt: null },
+        });
+        if (!auction?.winnerId) {
+            throw new BadRequestException('This listing does not have a payable auction win');
+        }
+        if (auction.winnerId !== userId) {
+            throw new ForbiddenException('Only the auction winner can pay the buyer fee');
+        }
+        if (auction.buyerFeePaid) {
+            throw new BadRequestException('The auction buyer fee has already been paid');
+        }
+        return auction;
+    }
+
     private async markAuctionBuyerFeePaid(
         transactionId: string,
         listingId: string | null | undefined,
+        buyerId: string | null | undefined,
     ): Promise<boolean> {
-        if (!listingId) return false;
+        if (!listingId || !buyerId) return false;
 
         const auction = await this.prisma.auction.findFirst({
-            where: { listingId, status: 'ENDED', deletedAt: null },
+            where: {
+                listingId,
+                status: 'ENDED',
+                deletedAt: null,
+                winnerId: buyerId,
+            },
         });
         if (!auction) return false;
 
@@ -347,6 +369,10 @@ export class PaymentsService {
 
         if (!listing || listing.deletedAt) {
             throw new NotFoundException(`Listing "${listingId}" not found`);
+        }
+
+        if (type === 'COMMISSION') {
+            await this.getPayableAuctionForWinner(listingId, userId);
         }
 
         // Re-derive the real charge amount server-side instead of trusting the
@@ -693,6 +719,10 @@ export class PaymentsService {
         const user = await this.prisma.user.findUnique({ where: { id: userId } });
         if (!user) throw new NotFoundException('User not found');
 
+        if (type === 'COMMISSION') {
+            await this.getPayableAuctionForWinner(listingId, userId);
+        }
+
         // Re-derive the real charge amount server-side instead of trusting the
         // client-supplied `clientAmount` — without this, a modified client could
         // request a Payment Sheet for an arbitrary (e.g. £1) amount against a real
@@ -1007,7 +1037,7 @@ export class PaymentsService {
                 // Shared with native PaymentIntent reconciliation so the two
                 // clients cannot drift on the post-payment side effect.
                 if (type === 'COMMISSION' && transactionId) {
-                    await this.markAuctionBuyerFeePaid(transactionId, listingId);
+                    await this.markAuctionBuyerFeePaid(transactionId, listingId, session.metadata?.userId);
                 }
                 break;
             }
@@ -1068,7 +1098,7 @@ export class PaymentsService {
                 }
 
                 if (type === 'COMMISSION' && transactionId) {
-                    await this.markAuctionBuyerFeePaid(transactionId, listingId);
+                    await this.markAuctionBuyerFeePaid(transactionId, listingId, pi.metadata?.userId);
                 }
 
                 if (type === 'HPI_REPORT' && listingId) {
@@ -1211,6 +1241,7 @@ export class PaymentsService {
         const applied = await this.markAuctionBuyerFeePaid(
             transaction.id,
             transaction.listingId,
+            transaction.userId,
         );
         return { applied };
     }
@@ -1273,6 +1304,7 @@ export class PaymentsService {
         const applied = await this.markAuctionBuyerFeePaid(
             transaction.id,
             transaction.listingId,
+            transaction.userId,
         );
         return { applied, status: paymentIntent.status };
     }
