@@ -1702,26 +1702,35 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </TouchableOpacity>
             )}
             {userWon && !auction?.buyerFeePaid && (
-              <TouchableOpacity
-                style={[s.bidBtn, { backgroundColor: Colors.accent, marginTop: 8 }]}
-                activeOpacity={0.8}
-                onPress={() =>
-                  navigation.navigate('PurchaseFlow' as any, {
-                    listingId: auction?.listingId,
-                    salePrice: 0,
-                    buyerFee: 125,
-                    listingTitle: auction?.listing?.title ?? 'Vehicle',
-                    listingImage: auction?.listing?.images?.[0],
-                    sellerName: auction?.listing?.seller
-                      ? `${auction.listing.seller.firstName ?? ''} ${auction.listing.seller.lastName ?? ''}`.trim()
-                      : undefined,
-                    paymentType: 'COMMISSION',
-                  })
-                }
-              >
-                <Ionicons name="lock-closed-outline" size={15} color={Colors.white} />
-                <Text style={s.bidBtnText}>Pay £125 Fee to Unlock Chat</Text>
-              </TouchableOpacity>
+              canPayAuctionFee ? (
+                <TouchableOpacity
+                  style={[s.bidBtn, { backgroundColor: Colors.accent, marginTop: 8 }]}
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    navigation.navigate('PurchaseFlow' as any, {
+                      listingId: auction?.listingId,
+                      salePrice: 0,
+                      buyerFee: 125,
+                      listingTitle: auction?.listing?.title ?? 'Vehicle',
+                      listingImage: auction?.listing?.images?.[0],
+                      sellerName: auction?.listing?.seller
+                        ? `${auction.listing.seller.firstName ?? ''} ${auction.listing.seller.lastName ?? ''}`.trim()
+                        : undefined,
+                      paymentType: 'COMMISSION',
+                    })
+                  }
+                >
+                  <Ionicons name="lock-closed-outline" size={15} color={Colors.white} />
+                  <Text style={s.bidBtnText}>Pay £125 Fee to Unlock Chat</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={[s.banner, s.bannerAmber, { marginTop: 8 }]}>
+                  <Ionicons name="lock-closed-outline" size={13} color={Colors.warning} />
+                  <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
+                    The £125 buyer fee must be paid by a dealership Owner, Admin or Finance Manager.
+                  </Text>
+                </View>
+              )
             )}
           </View>
         ) : isScheduled ? (
@@ -1764,19 +1773,28 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 live auction. Removed rather than wired (AUC-016, decision P-4).
                 The reserve status bar above it stays — that part is real, reads
                 from live state, and web has no equivalent. */}
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity
-                style={[s.quickBidBtn, { flex: 1, backgroundColor: Colors.accentAlpha10, borderColor: Colors.accentAlpha25, borderWidth: 1 }, (closingEarly || reserveMet) && { opacity: 0.6 }]}
-                activeOpacity={0.8}
-                onPress={handleCloseEarly}
-                disabled={closingEarly || reserveMet}
-              >
-                {closingEarly
-                  ? <ActivityIndicator size="small" color={Colors.accent} />
-                  : <Text style={[s.quickBidBtnText, { color: Colors.accent }]}>{reserveMet ? 'RUNNING TO END' : 'CLOSE NOW'}</Text>
-                }
-              </TouchableOpacity>
-            </View>
+            {canManageSellerAuction ? (
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  style={[s.quickBidBtn, { flex: 1, backgroundColor: Colors.accentAlpha10, borderColor: Colors.accentAlpha25, borderWidth: 1 }, (closingEarly || reserveMet) && { opacity: 0.6 }]}
+                  activeOpacity={0.8}
+                  onPress={handleCloseEarly}
+                  disabled={closingEarly || reserveMet}
+                >
+                  {closingEarly
+                    ? <ActivityIndicator size="small" color={Colors.accent} />
+                    : <Text style={[s.quickBidBtnText, { color: Colors.accent }]}>{reserveMet ? 'RUNNING TO END' : 'CLOSE NOW'}</Text>
+                  }
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={[s.banner, s.bannerBlue]}>
+                <Ionicons name="eye-outline" size={13} color={Colors.infoBlueLight} />
+                <Text style={[s.bannerText, { color: Colors.infoLight }]}>
+                  You can monitor this dealership auction, but your role cannot change or close it.
+                </Text>
+              </View>
+            )}
           </View>
         ) : !currentUser ? (
           <View style={s.bidStateBox}>
@@ -1792,15 +1810,32 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <View style={s.bidStateBox}>
             <Text style={s.muted}>Only verified dealers can bid in auctions.</Text>
           </View>
-        ) : !currentUser.isVerified ? (
+        ) : dealerAccessLoading ? (
           <View style={s.bidStateBox}>
-            <Text style={s.muted}>Verify your dealership to place bids.</Text>
-            <Button
-              label="Complete KYC"
-              size="sm"
-              style={{ marginTop: 8 }}
-              onPress={() => navigation.navigate('DealerKYC')}
-            />
+            <ActivityIndicator size="small" color={Colors.accent} />
+            <Text style={s.muted}>Checking dealership permissions…</Text>
+          </View>
+        ) : !canPlaceBid ? (
+          <View style={s.bidStateBox}>
+            <Ionicons name="eye-outline" size={20} color={Colors.infoBlue} />
+            <Text style={[s.bidStateText, { color: Colors.infoBlueLight }]}>View-only auction access</Text>
+            <Text style={s.muted}>Your dealership role can follow auctions but cannot place or cancel bids.</Text>
+          </View>
+        ) : !isDealerVerified ? (
+          <View style={s.bidStateBox}>
+            <Text style={s.muted}>
+              {dealerAccess?.isOwner
+                ? 'Verify your dealership to place bids.'
+                : 'The dealership owner must complete verification before staff can bid.'}
+            </Text>
+            {dealerAccess?.isOwner && (
+              <Button
+                label="Complete KYC"
+                size="sm"
+                style={{ marginTop: 8 }}
+                onPress={() => navigation.navigate('DealerKYC')}
+              />
+            )}
           </View>
         ) : (
           <View style={{ gap: 10 }}>
