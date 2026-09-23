@@ -469,9 +469,9 @@ if (
 if (
   webDealerFinance.includes("'FUNDED'") ||
   webDealerFinance.includes("'REVIEWING'") ||
-  webDealerFinance.includes('/status') ||
-  webDealerFinance.includes('Approve') ||
-  webDealerFinance.includes('Reject') ||
+  webDealerFinance.includes('async function updateStatus') ||
+  webDealerFinance.includes('onClick={() => updateStatus') ||
+  webDealerFinance.includes('/finance/${id}/status') ||
   !webDealerFinance.includes('Finance providers control underwriting decisions') ||
   !mobileDealerFinance.includes("FinanceApplicationStatus")
 ) {
