@@ -344,7 +344,8 @@ describe('OffersService — accepted offer remains visible after sale', () => {
                 count: jest.fn(),
                 findMany: jest.fn(),
             },
-            dealerStaff: { findFirst: jest.fn() },
+            dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $transaction: jest.fn((fn: any) => fn(prisma)),
         };
 
