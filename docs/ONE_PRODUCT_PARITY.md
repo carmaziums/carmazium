@@ -95,6 +95,7 @@ The repository currently contains a mature Next.js website and an Expo/React Nat
 - Mobile-native navigation/back-stack correctness.
 - Loading, empty, error and offline states.
 - Accessibility and performance checks.
+- **Checkpoint (23 Sep 2026): reachability remediation in progress.** The remaining buyer auction-inspection/refusal gap is now implemented natively: a won auction can create/reopen its linked inspection, customers can reach My Service Jobs via navigation or deep link, compare/accept quotes, follow payment/job state, contact the provider, confirm/dispute/cancel work, and refuse the auction with a full £125 buyer-fee refund when a completed linked inspection records verified faults. The broader Block 9 visual/accessibility/performance audit remains open.
 
 ### Block 10 — End-to-end certification and release gate
 - Run matched web/mobile test journeys against the same production-like backend.
