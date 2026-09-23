@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feat/controlled-sale-cancellation
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
