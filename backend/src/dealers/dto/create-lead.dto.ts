@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsEmail } from 'class-validator';
+import { IsString, IsOptional, IsEmail, IsDateString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateLeadDto {
@@ -21,6 +21,11 @@ export class CreateLeadDto {
     @IsString()
     listingId?: string;
 
+    @ApiPropertyOptional({ description: 'Authenticated buyer user ID, normally populated automatically by CarMazium' })
+    @IsOptional()
+    @IsString()
+    buyerId?: string;
+
     @ApiPropertyOptional({ description: 'Sales agent user ID to assign the lead to' })
     @IsOptional()
     @IsString()
@@ -35,6 +40,11 @@ export class CreateLeadDto {
     @IsOptional()
     @IsString()
     notes?: string;
+
+    @ApiPropertyOptional({ description: 'Optional next follow-up reminder (ISO timestamp)' })
+    @IsOptional()
+    @IsDateString()
+    nextFollowUpAt?: string;
 
     @ApiPropertyOptional({ enum: ['NEW', 'CONTACTED', 'QUALIFIED', 'NEGOTIATING', 'WON', 'LOST'] })
     @IsOptional()
