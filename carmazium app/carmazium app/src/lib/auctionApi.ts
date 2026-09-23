@@ -120,6 +120,10 @@ export interface AuctionDetail {
   handoverSubmittedAt?: string | null;
   sellerBonusReleased?: boolean;
   stripePayoutError?: string | null;
+  buyerRefusedAt?: string | null;
+  buyerRefusedById?: string | null;
+  buyerRefusalReason?: string | null;
+  buyerRefusalInspectionJobId?: string | null;
   createdAt: string;
   updatedAt: string;
   listing: AuctionListingDetail;
@@ -204,6 +208,20 @@ export async function getScheduledAuctions(
 
 export async function getAuction(id: string): Promise<AuctionDetail> {
   const res = await apiClient<{ success: boolean; data: AuctionDetail }>(`/auctions/${id}`);
+  return res.data;
+}
+
+export async function refuseAuctionAfterInspection(
+  auctionId: string,
+  reason?: string,
+): Promise<{ refused: boolean; refundedAmount: number; inspectionJobId: string }> {
+  const res = await apiClient<{
+    success: boolean;
+    data: { refused: boolean; refundedAmount: number; inspectionJobId: string };
+  }>(`/auctions/${auctionId}/refuse-after-inspection`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
   return res.data;
 }
 
