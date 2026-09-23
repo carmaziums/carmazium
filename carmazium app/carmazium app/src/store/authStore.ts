@@ -158,6 +158,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, fullName: string, role?: SignupRole) => Promise<void>;
   prepareOAuthSignupRole: (role: SignupRole) => Promise<void>;
+  clearOAuthSignupRole: () => Promise<void>;
   logout: () => Promise<void>;
   setLoading: (loading: boolean) => void;
   setRole: (role: PreviewRole) => void;
@@ -188,6 +189,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   prepareOAuthSignupRole: async (role: SignupRole) => {
     await SecureStore.setItemAsync(PENDING_SIGNUP_ROLE_KEY, role);
+  },
+
+  clearOAuthSignupRole: async () => {
+    await SecureStore.deleteItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => {});
   },
 
   completeIntro: async () => {
@@ -406,6 +411,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (email, password) => {
     set({ isLoading: true });
+    // A normal login is never a continuation of a previously abandoned
+    // OAuth signup. Clear any stale account-type intent before authenticating.
+    await SecureStore.deleteItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => {});
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -495,6 +503,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signup: async (email, password, fullName, selectedRole = 'BUYER') => {
     set({ isLoading: true });
+    // Password signup carries its role explicitly in this request; a stale
+    // OAuth intent from a cancelled browser flow must not survive alongside it.
+    await SecureStore.deleteItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => {});
     try {
       const parts = fullName.trim().split(/\s+/);
       const firstName = parts[0] || '';
@@ -638,6 +649,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         console.warn('Backend logout failed:', e);
       }
       await supabase.auth.signOut();
+      await SecureStore.deleteItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => {});
     } catch (e) {
       console.warn('Supabase logout error:', e);
     } finally {
