@@ -1,6 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertDealerPermission, resolveDealerActor } from '../dealers/dealer-access';
 
 /** Single server-side rule for viewing Trade Exchange auction data. */
 export async function assertTradeAuctionAccess(
@@ -17,19 +18,24 @@ export async function assertTradeAuctionAccess(
 
     const viewer = await prisma.user.findUnique({
         where: { id: viewerId },
-        select: {
-            role: true,
-            dealerProfile: { select: { isVerified: true } },
-        },
+        select: { role: true },
     });
 
     if (viewer?.role === UserRole.ADMIN) return;
-    if (viewer?.role === UserRole.DEALER && viewer.dealerProfile?.isVerified) return;
 
     if (viewer?.role === UserRole.DEALER) {
-        throw new ForbiddenException(
-            'Your dealer account is awaiting verification. Complete your KYC to access the Trade Exchange.',
+        const actor = await resolveDealerActor(prisma, viewerId);
+        if (!actor?.isVerified) {
+            throw new ForbiddenException(
+                'Your dealer account is awaiting verification. Complete your KYC to access the Trade Exchange.',
+            );
+        }
+        assertDealerPermission(
+            actor,
+            'VIEW_TRADE',
+            'Your dealership role does not include Trade Exchange access.',
         );
+        return;
     }
 
     throw new ForbiddenException(
