@@ -496,8 +496,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
     setRetailSubmitting(true);
     setRetailError(null);
+    let linkedListingId: string | null = null;
     try {
       const res = await alsoListRetail(alsoRetailAuction.listingId, price, retailTier);
+      linkedListingId = res.linkedListingId;
 
       // The linked Retail row is created as a draft. It is not public until its
       // listing fee is paid and the normal admin-review gate has completed.
@@ -576,10 +578,17 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       // a payment error made the vehicle public; the seller can safely resume
       // from My Listings without creating another vehicle.
       setAlsoRetailAuction(null);
-      Alert.alert(
-        'Retail listing saved as draft',
-        `${err?.message ?? 'Payment could not be completed.'} Your auction is unchanged. Publish the Retail draft from My Listings when ready.`,
-      );
+      if (linkedListingId) {
+        Alert.alert(
+          'Retail listing saved as draft',
+          `${err?.message ?? 'Payment could not be completed.'} Your auction is unchanged. Publish the Retail draft from My Listings when ready.`,
+        );
+      } else {
+        Alert.alert(
+          'Could not create Retail listing',
+          err?.message ?? 'The Retail listing could not be created. Your auction is unchanged.',
+        );
+      }
     } finally {
       setRetailSubmitting(false);
     }
