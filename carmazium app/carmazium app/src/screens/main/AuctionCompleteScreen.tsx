@@ -19,7 +19,7 @@ import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
 import { useStripe } from '@stripe/stripe-react-native';
-import { createPaymentSheet } from '../../lib/paymentsApi';
+import { createPaymentSheet, reconcileAuctionFeeIntent } from '../../lib/paymentsApi';
 import { apiClient } from '../../lib/apiClient';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { haptics } from '../../lib/haptics';
@@ -166,10 +166,9 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
 
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState(false);
-  // True once we've confirmed the backend's payment_intent.succeeded webhook
-  // actually landed (Auction.buyerFeePaid) — false if we gave up waiting
-  // after the retry budget (mobile-production-readiness-plan.md F25).
-  const [feeConfirmPending, setFeeConfirmPending] = useState(false);
+  // Once Stripe has accepted the native charge, confirmation retries must use
+  // that exact transaction rather than creating a second £125 PaymentIntent.
+  const [pendingConfirmationId, setPendingConfirmationId] = useState<string | null>(null);
 
   // ── Seller review state (shown in success screen) ─────────────────────────
   const [sellerProfileId, setSellerProfileId] = useState<string | null>(null);
@@ -184,15 +183,28 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
       return;
     }
     if (timeLeft === 0) {
-      // `=== 0` deliberately, not `<= 0` or a falsy check: timeLeft is null when
-      // no deadline is known, and an unknown deadline must not block payment.
       Alert.alert('Deadline passed', 'The payment deadline has passed. Please contact support.');
       return;
     }
 
     setPaying(true);
     try {
-      // 1. Create PaymentIntent for the auction buyer fee (COMMISSION type)
+      // If Stripe already accepted the charge, only reconcile that transaction.
+      // Never create another PaymentIntent while server confirmation is pending.
+      if (pendingConfirmationId) {
+        const result = await reconcileAuctionFeeIntent(pendingConfirmationId);
+        if (result.applied) {
+          setPendingConfirmationId(null);
+          setPaid(true);
+        } else {
+          Alert.alert(
+            'Payment confirmation pending',
+            'Your payment is still being confirmed. Do not pay again. Retry this payment status check shortly.',
+          );
+        }
+        return;
+      }
+
       const sheet = await createPaymentSheet({
         listingId,
         amount: buyerFee,
@@ -200,7 +212,6 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
         currency: 'gbp',
       });
 
-      // 2. Initialise Payment Sheet
       const { error: initError } = await initPaymentSheet({
         merchantDisplayName: 'Carmazium',
         customerId: sheet.customerId,
@@ -229,48 +240,52 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
         return;
       }
 
-      // 3. Present the native Payment Sheet
       const { error: presentError } = await presentPaymentSheet();
-
       if (presentError) {
-        if (presentError.code !== 'Canceled') {
+        if (presentError.code === 'Canceled') {
+          Alert.alert(
+            'Payment cancelled',
+            'You still won this auction. Pay the £125 buyer fee within 72 hours to unlock seller chat and complete the handover, or the win may be cancelled and the vehicle relisted.',
+          );
+        } else {
           Alert.alert('Payment failed', presentError.message);
         }
         return;
       }
 
-      // 4. Stripe confirmed the charge — always show success from here (the
-      // card has genuinely been charged), but confirm the backend's
-      // payment_intent.succeeded webhook has actually flipped
-      // Auction.buyerFeePaid before trusting downstream gates (chat unlock,
-      // handover) are ready. Same poll-with-backoff pattern already used by
-      // VehicleDetailScreen's HPI checkout and DealerKYCScreen's KYC
-      // checkout — this flow has no Checkout-Session-based fallback
-      // endpoint to call (/payments/apply-auction-fee is specifically for
-      // the hosted-Checkout flow, not the native Payment Sheet flow this
-      // screen uses), so if the webhook hasn't landed yet we just say so
-      // rather than silently pretending everything downstream is ready.
-      let confirmed = false;
-      for (let attempt = 0; attempt < 5; attempt++) {
-        try {
-          const res = await apiClient<{ success: boolean; data: { buyerFeePaid?: boolean } }>(
-            `/auctions/${auctionId}`,
+      // Stripe accepted the charge. Reconcile the exact PaymentIntent against
+      // the backend before this screen can say "Buyer fee paid".
+      setPendingConfirmationId(sheet.transactionId);
+      try {
+        const result = await reconcileAuctionFeeIntent(sheet.transactionId);
+        if (result.applied) {
+          setPendingConfirmationId(null);
+          setPaid(true);
+        } else {
+          Alert.alert(
+            'Payment submitted — confirmation pending',
+            'Stripe accepted your payment, but CarMazium is still confirming the auction update. Do not pay again. Use Confirm Payment Status to retry this same transaction.',
           );
-          if (res.success && res.data?.buyerFeePaid) {
-            confirmed = true;
-            break;
-          }
-        } catch { /* not ready yet — retry */ }
-        await new Promise(r => setTimeout(r, 1500));
+        }
+      } catch {
+        Alert.alert(
+          'Payment submitted — confirmation pending',
+          'Your card payment was submitted, but CarMazium could not confirm the auction update yet. Do not pay again. Use Confirm Payment Status to retry this same transaction.',
+        );
       }
-      setFeeConfirmPending(!confirmed);
-      setPaid(true);
     } catch (err: any) {
       Alert.alert('Payment error', err?.message ?? 'Something went wrong. Please try again.');
     } finally {
       setPaying(false);
     }
-  }, [listingId, auctionId, buyerFee, timeLeft, initPaymentSheet, presentPaymentSheet]);
+  }, [
+    listingId,
+    buyerFee,
+    timeLeft,
+    initPaymentSheet,
+    presentPaymentSheet,
+    pendingConfirmationId,
+  ]);
 
   // ── Fetch seller profile ID once payment succeeds ──────────────────────────
   useEffect(() => {
@@ -362,61 +377,6 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
             </View>
           </View>
 
-          {feeConfirmPending && (
-            <View style={styles.feeConfirmPendingBanner}>
-              <Ionicons name="time-outline" size={15} color={Colors.warning} />
-              <Text style={styles.feeConfirmPendingText}>
-                Your card has been charged — we're still confirming it with our system. Chat and handover may take a minute to unlock.
-              </Text>
-            </View>
-          )}
-
-          <Text style={styles.sectionLabel}>YOUR JOURNEY</Text>
-
-          <View style={styles.journeyBox}>
-            {[
-              { label: 'Auction ended', done: true },
-              { label: 'Buyer fee paid', done: true, bold: true },
-              // Both still outstanding at this point, and both are driven by
-              // the seller. Mobile has no live handover status card (AUC-020),
-              // so these stay static until that lands — but the header above no
-              // longer claims they are done.
-              { label: 'Handover to be booked', done: false },
-              { label: 'Handover confirmed', done: false },
-            ].map((item, i, arr) => (
-              <View key={i} style={styles.journeyItemWrap}>
-                <View style={styles.journeyItem}>
-                  <View style={[styles.journeyCircle, item.done && styles.journeyCircleDone]}>
-                    {item.done ? (
-                      <Ionicons name="checkmark" size={14} color={Colors.accentGreen} />
-                    ) : (
-                      <View style={styles.journeyCirclePending} />
-                    )}
-                  </View>
-                  <Text
-                    style={[
-                      styles.journeyLabel,
-                      item.done && styles.journeyLabelDone,
-                      item.bold && styles.journeyLabelBold,
-                    ]}
-                  >
-                    {item.label}
-                  </Text>
-                </View>
-                {i < arr.length - 1 && (
-                  <View style={[styles.journeyLine, !item.done && styles.journeyLinePending]} />
-                )}
-              </View>
-            ))}
-          </View>
-
-          <Text style={styles.sectionLabel}>WHAT HAPPENS NEXT</Text>
-          <View style={styles.nextBox}>
-            <Text style={styles.nextText}>
-              The seller has been notified. They will contact you within 24 hours to arrange
-              handover. Check your messages in the app.
-            </Text>
-          </View>
 
           {/* ── Seller review ── */}
           {sellerProfileId && (
@@ -629,10 +589,16 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
             <Ionicons name="lock-closed-outline" size={18} color={Colors.white} style={{ marginRight: 12 }} />
           )}
           <Text style={styles.payBtnText}>
-            {paying ? 'PROCESSING…' : `COMPLETE PAYMENT · ${fmt(buyerFee)}`}
+            {paying
+              ? 'PROCESSING…'
+              : pendingConfirmationId
+                ? 'CONFIRM PAYMENT STATUS'
+                : `COMPLETE PAYMENT · ${fmt(buyerFee)}`}
           </Text>
         </TouchableOpacity>
-        <Text style={styles.footerNote}>Buyer fee is paid securely via Stripe and is non-refundable</Text>
+        <Text style={styles.footerNote}>
+          Buyer fee is paid securely via Stripe. If handover proof is denied, the current CarMazium flow refunds £100 of the £125 fee; the £25 platform fee remains.
+        </Text>
       </View>
     </View>
   );
