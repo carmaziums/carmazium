@@ -9,6 +9,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { supabase } from '../../lib/supabase';
+import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -51,7 +52,13 @@ export const VerifyEmailScreen: React.FC = () => {
     if (!user?.email || resending || cooldownSec > 0) return;
     setResending(true);
     try {
-      await supabase.auth.resend({ type: 'signup', email: user.email });
+      await apiClient('/auth/send-verification', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: user.email,
+          redirectTo: 'carmazium://auth/callback',
+        }),
+      });
       setResent(true);
       setCooldownSec(60);
     } catch {
