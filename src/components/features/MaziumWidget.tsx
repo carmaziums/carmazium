@@ -206,7 +206,7 @@ export function MaziumWidget() {
                 <div className="shrink-0 bg-gradient-to-r from-slate-900 to-slate-800 p-4 text-white flex justify-between items-center">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 relative">
-                            <Image src="/assets/images/mazium-bot-transparent.webp" alt="Mazium" width={40} height={40} className="w-full h-full object-contain" />
+                            <Image src="/assets/images/mazium-bot-transparent.png" alt="Mazium" width={40} height={40} className="w-full h-full object-contain" unoptimized />
                             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-slate-900" />
                         </div>
                         <div>
@@ -393,7 +393,7 @@ export function MaziumWidget() {
                     >
                         <div className="relative shrink-0">
                             <div className="w-2 h-2 bg-green-500 rounded-full absolute -top-1 -right-1 animate-pulse z-10" />
-                            <Image src="/assets/images/mazium-bot-transparent.webp" alt="Mazium" width={32} height={32} className="object-contain" />
+                            <Image src="/assets/images/mazium-bot-transparent.png" alt="Mazium" width={32} height={32} className="object-contain" unoptimized />
                         </div>
                         <div className="min-w-0">
                             <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
@@ -434,10 +434,10 @@ export function MaziumWidget() {
             <button
                 onClick={handleToggle}
                 className={cn(
-                    "flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 p-0 border-0",
+                    "flex items-center justify-center p-0 border-0",
                     isOpen
-                        ? "h-14 w-14 rounded-full bg-slate-800 shadow-[0_4px_20px_rgba(237,28,36,0.5)]"
-                        : "h-16 w-16 rounded-none bg-transparent shadow-none overflow-visible animate-float"
+                        ? "h-14 w-14 rounded-full bg-slate-800 shadow-[0_4px_20px_rgba(237,28,36,0.5)] transition-all duration-300 hover:scale-105 active:scale-95"
+                        : "h-16 w-16 rounded-none bg-transparent shadow-none overflow-visible"
                 )}
                 style={!isOpen ? { backgroundColor: "transparent", boxShadow: "none" } : undefined}
             >
@@ -445,12 +445,14 @@ export function MaziumWidget() {
                     <X size={24} className="text-white" />
                 ) : (
                     <Image
-                        src="/assets/images/mazium-bot-transparent.webp"
+                        src="/assets/images/mazium-bot-transparent.png"
                         alt="Mazium AI"
                         width={64}
                         height={64}
-                        className="h-16 w-16 object-contain"
+                        className="block h-16 w-16 object-contain"
                         priority
+                        unoptimized
+                        draggable={false}
                     />
                 )}
             </button>
