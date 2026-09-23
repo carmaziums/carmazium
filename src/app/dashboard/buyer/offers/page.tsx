@@ -21,6 +21,7 @@ function StatusBadge({ status }: { status: Offer['status'] }) {
         ACCEPTED: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
         REJECTED: 'bg-red-500/15 text-red-300 border-red-500/30',
         WITHDRAWN: 'bg-gray-500/15 text-[var(--text-muted)] border-gray-500/30',
+        CANCELLED: 'bg-gray-500/15 text-[var(--text-muted)] border-gray-500/30',
         COUNTERED: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
     }
     const icons: Record<string, React.ReactNode> = {
@@ -28,6 +29,7 @@ function StatusBadge({ status }: { status: Offer['status'] }) {
         ACCEPTED: <CheckCircle size={11} />,
         REJECTED: <XCircle size={11} />,
         WITHDRAWN: <XCircle size={11} />,
+        CANCELLED: <XCircle size={11} />,
         COUNTERED: <Clock size={11} />,
     }
     return (
