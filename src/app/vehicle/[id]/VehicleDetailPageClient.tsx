@@ -1430,6 +1430,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                                             <BlurredPhone
                                                 phone={listing.seller.dealerProfile.phone}
                                                 phoneAvailable={listing.seller.dealerProfile.phoneAvailable ?? !!listing.seller.dealerProfile.phone}
+                                                onPhoneClick={handleDealerPhoneClick}
                                             />
                                             {listing.seller.dealerProfile.website && (
                                                 <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group">
