@@ -50,7 +50,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
 
-  const { signup, prepareOAuthSignupRole, clearOAuthSignupRole, isLoading } = useAuthStore();
+  const { signup, isLoading } = useAuthStore();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -62,11 +62,10 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
     setFormError(null);
     setIsGoogleLoading(true);
     try {
-      await prepareOAuthSignupRole(role);
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: 'carmazium://auth/callback',
+          redirectTo: `carmazium://auth/callback?role=${encodeURIComponent(role)}`,
           skipBrowserRedirect: true,
         },
       });
@@ -77,7 +76,6 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
         throw new Error('Could not get sign-in URL. Is Google enabled in Supabase?');
       }
     } catch (err: any) {
-      await clearOAuthSignupRole();
       setFormError(err.message || 'Unable to start Google sign-in.');
     } finally {
       setIsGoogleLoading(false);
@@ -88,11 +86,10 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
     setFormError(null);
     setIsAppleLoading(true);
     try {
-      await prepareOAuthSignupRole(role);
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: 'carmazium://auth/callback',
+          redirectTo: `carmazium://auth/callback?role=${encodeURIComponent(role)}`,
           skipBrowserRedirect: true,
         },
       });
@@ -103,7 +100,6 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
         throw new Error('Could not get Apple sign-in URL.');
       }
     } catch (err: any) {
-      await clearOAuthSignupRole();
       setFormError(err.message || 'Unable to start Apple sign-in.');
     } finally {
       setIsAppleLoading(false);
