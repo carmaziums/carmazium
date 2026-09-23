@@ -279,6 +279,7 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
           id: l.seller.id,
           profileImage: l.seller.profileImage ?? null,
           memberSince: l.seller.createdAt ?? null,
+          isDealer: l.seller.dealerProfile != null,
           isVerifiedDealer: l.seller.dealerProfile?.isVerified === true,
           companyName: l.seller.dealerProfile?.companyName ?? null,
           description: l.seller.dealerProfile?.description ?? null,
