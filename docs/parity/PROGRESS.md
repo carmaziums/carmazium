@@ -2500,3 +2500,20 @@ The parity guard now checks that the fault-verified inspection rule, full £125 
 `product-parity.json` records `buyer.auction_inspection_refusal` as a gap until the Block 7
 native service-job UI is delivered.
 
+
+
+## 2026-09-23 — Block 6: Trader/dealer journey remediation complete
+
+**Programme checkpoint:** Blocks 1–6 have now reached the business-rule parity checkpoint.
+
+Completed in Block 6:
+
+- Canonical dealership identity: active dealer staff act under `DealerProfile.userId` rather than creating personal shadow buyer/seller identities.
+- Central RBAC contract: Owner, Admin, Sales Agent and Finance Manager permissions are resolved through `/dealers/access` and enforced server-side.
+- Backend scope: bidding, auction winner/contact state, Buy It Now, inspection refusal, auction-linked delivery/inspection, inventory, CRM/offers, purchases, analytics, team/KYC and platform-fee payment.
+- Web scope: dealer routes/navigation and read-only finance inventory consume live permissions; direct mutation routes are gated.
+- Native scope: DealerGate, drawer/navigation and read-only finance inventory consume the same permission contract.
+- Auction client closure: web and native live-auction, won-auction, bid-history and native Auction Complete surfaces use canonical dealership identity and gate `PLACE_BID`, `MANAGE_INVENTORY` and `PAY_AUCTION_FEE` controls consistently.
+- Permanent parity coverage: `dealer.auction_staff_permissions` is a required manifest surface and `scripts/check-product-parity.mjs` guards against staff-ID winner checks or role-control drift.
+
+**Explicit boundary:** full native Partner/TradeXchange provider job UI remains Block 7 and is not counted as a Block 6 gap.
