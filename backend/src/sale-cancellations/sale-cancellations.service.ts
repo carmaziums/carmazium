@@ -407,7 +407,11 @@ export class SaleCancellationsService {
         const needsAdmin =
             !!ctx.auction?.sellerBonusReleased ||
             !!ctx.auction?.stripePayoutTransferId ||
-            !!ctx.auction?.manualPayoutConfirmedAt;
+            !!ctx.auction?.manualPayoutConfirmedAt ||
+            (
+                request.requestedByRole === 'BUYER'
+                && EVIDENCE_REQUIRED.has(request.reason as CancellationReason)
+            );
 
         if (needsAdmin) {
             const updated = await this.prisma.saleCancellationRequest.update({
