@@ -148,8 +148,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Messages",
         subHeader: "Direct bespoke communication",
         icon: MessageSquare,
-        section: "Business",
-        permission: "MANAGE_TEAM"
+        section: "Business"
     },
     {
         href: "/dashboard/dealer/team",
@@ -158,7 +157,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         subHeader: "Manage business personnel & service permissions",
         icon: Users,
         section: "Business",
-        permission: "VIEW_PURCHASES"
+        permission: "MANAGE_TEAM"
     },
     {
         href: "/dashboard/dealer/finance",
@@ -166,7 +165,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Finance",
         subHeader: "Strategic vehicle financing & liquidity oversight",
         icon: DollarSign,
-        section: "Business"
+        section: "Business",
+        permission: "VIEW_PURCHASES"
     },
     {
         href: "/dashboard/dealer/analytics",
