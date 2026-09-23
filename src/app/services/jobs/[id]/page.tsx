@@ -14,6 +14,7 @@ import {
 } from "@/lib/servicesApi"
 import { JobStatusBadge, RecoveryBadge, JobRoute, JobTiming, JobVehicles } from "@/components/services/JobBits"
 import { getOrCreateServiceJobRoom } from "@/lib/chatApi"
+import { refuseAuctionAfterInspection } from "@/lib/auctionApi"
 
 /**
  * The customer's view of one TradeXchange service job. Quotes can be compared
@@ -148,6 +149,27 @@ function JobDetail() {
                         <JobVehicles vehicles={job.vehicles} />
                     </section>
 
+                    {isInspection && job.inspectionOutcome && (
+                        <section className={`mb-8 rounded-2xl border p-5 ${
+                            job.inspectionOutcome === "FAULTS_FOUND"
+                                ? "border-amber-500/35 bg-amber-500/10"
+                                : "border-emerald-500/30 bg-emerald-500/10"
+                        }`}>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2">Inspection result</p>
+                            <h2 className="font-heading font-black text-lg">
+                                {job.inspectionOutcome === "FAULTS_FOUND" ? "Faults found" : "No refusal-triggering faults found"}
+                            </h2>
+                            {job.inspectionSummary && (
+                                <p className="text-sm text-[var(--text-secondary)] whitespace-pre-line mt-2">{job.inspectionSummary}</p>
+                            )}
+                            {job.inspectionOutcome === "FAULTS_FOUND" && job.sourceAuctionId && (
+                                <p className="text-xs text-[var(--text-muted)] mt-3">
+                                    Because this inspection is tied to your won auction, you can refuse the vehicle before approved handover and receive a full £125 buyer-fee refund.
+                                </p>
+                            )}
+                        </section>
+                    )}
+
                     {job.description && (
                         <section className="mb-8">
                             <h2 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-2">Notes</h2>
@@ -247,6 +269,32 @@ function JobDetail() {
                                 {busy === "pay" ? <Loader2 className="animate-spin" size={16} /> : <><Banknote size={16} className="mr-2" /> Pay {formatPence(accepted.amountPence)}</>}
                             </Button>
                         )}
+                        {isInspection && job.inspectionOutcome === "FAULTS_FOUND" && job.sourceAuctionId && ["COMPLETED", "RELEASED"].includes(job.status) && (
+                            <div className="rounded-xl border border-amber-500/35 bg-amber-500/10 p-4">
+                                <p className="font-black text-sm">Refuse this auction purchase</p>
+                                <p className="text-[11px] text-[var(--text-muted)] mt-1 mb-3">
+                                    This cancels the auction sale, refunds the full £125 buyer fee, and returns the vehicle to the seller so it can be repaired or relisted.
+                                </p>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="w-full border-amber-500/40"
+                                    disabled={busy === "refuse-auction"}
+                                    onClick={() => {
+                                        if (!confirm("Refuse this vehicle because the linked inspection found faults? This will cancel the auction sale and refund your full £125 buyer fee.")) return
+                                        const note = prompt("Optional note for the seller about the refusal:", job.inspectionSummary ?? "") ?? undefined
+                                        void run(
+                                            "refuse-auction",
+                                            async () => { await refuseAuctionAfterInspection(job.sourceAuctionId!, note?.trim() || undefined) },
+                                            "Vehicle refused. Your £125 buyer fee has been refunded and the seller can repair or relist the car.",
+                                        )
+                                    }}
+                                >
+                                    {busy === "refuse-auction" ? <Loader2 className="animate-spin" size={16} /> : "Refuse vehicle & refund £125"}
+                                </Button>
+                            </div>
+                        )}
+
                         {job.status === "COMPLETED" && (
                             <>
                                 <Button className="w-full" disabled={busy === "confirm"}
