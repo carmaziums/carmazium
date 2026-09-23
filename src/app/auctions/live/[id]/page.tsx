@@ -264,9 +264,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         socket.on("auction:viewers", ({ count }: { count: number }) => setWatchers(count))
 
         socket.on("bid:new", (payload: BidBroadcastPayload) => {
-            const wasWinning = user && payload.bidderId !== user.id
+            const wasWinning = !!businessUserId && isWinning && payload.bidderId !== businessUserId
             setCurrentBid(payload.amount)
-            setIsWinning(!!user && payload.bidderId === user.id)
+            setIsWinning(!!businessUserId && payload.bidderId === businessUserId)
             setBidHistory(prev => [
                 { initials: payload.bidderInitials, amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString("en-GB"), bidId: payload.bidId, isNew: true },
                 ...prev.map(b => ({ ...b, isNew: false })),
@@ -284,7 +284,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             // Track cancel window for own bids — being outbid does NOT remove
             // cancel eligibility, since the 24h window no longer requires being
             // the current highest bidder to cancel
-            if (payload.bidderId === user?.id) {
+            if (payload.bidderId === businessUserId) {
                 const expiresAt = new Date(payload.timestamp).getTime() + BID_CANCEL_WINDOW_MS
                 setCancelableBids(prev => new Map(prev).set(payload.bidId, expiresAt))
             }
@@ -336,7 +336,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         })
 
         return () => { socket.disconnect() }
-    }, [auction?.id, user])
+    }, [auction?.id, businessUserId, isWinning])
 
     // ── Anti-snipe activation ─────────────────────────────────────────────────
     // Schedule a single timeout to fire exactly when we enter the anti-snipe window,
@@ -377,7 +377,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
     // ── Handle bid ────────────────────────────────────────────────────────────
     const handleBid = React.useCallback(async (amount: number) => {
-        if (!auction || !user) return
+        if (!auction || !user || !canPlaceBid) {
+            setBidError("Your dealership role does not allow auction bidding.")
+            return
+        }
 
         // Validate
         const parsed = Number(amount)
@@ -405,7 +408,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         } finally {
             setBidLoading(false)
         }
-    }, [auction, user, currentBid])
+    }, [auction, user, currentBid, canPlaceBid])
 
     // ── Accept bid (seller) ───────────────────────────────────────────────────
     const handleConfirmAccept = React.useCallback(async () => {
@@ -431,7 +434,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
     // ── Buy It Now ────────────────────────────────────────────────────────────
     async function handleBinTrigger() {
-        if (!auction?.id) return
+        if (!auction?.id || !canPlaceBid) return
         setBinLoading(true)
         try {
             await triggerBuyItNow(auction.id)
@@ -446,6 +449,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
     // ── Cancel Bid ────────────────────────────────────────────────────────────
     async function handleCancelBid(bidId: string) {
+        if (!canPlaceBid) {
+            setCancelError("Your dealership role does not allow auction bidding.")
+            return
+        }
         setCancellingBidId(bidId)
         setCancelError(null)
         try {
@@ -528,13 +535,20 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const isLive = auction.status === "ACTIVE"
     const isEnded = auction.status === "ENDED"
     const isCancelled = auction.status === "CANCELLED"
-    const isSeller = !!user && auction.listing.sellerId === user.id
-    // userWon: check both socket payload (real-time) and auction.winnerId (page load for ended auctions)
-    const userWon = isEnded && !!(endedPayload?.winnerId === user?.id || (auction.winnerId && auction.winnerId === user?.id))
+    const isSeller = !!businessUserId && auction.listing.sellerId === businessUserId
+    const canManageSellerAuction =
+        isSeller
+        && (profile?.role !== 'DEALER' || canManageDealerInventory)
+    // Compare with the canonical dealership buyer identity so staff see the
+    // same winner state as backend bids, sales and buyer-fee records.
+    const userWon = isEnded && !!(
+        endedPayload?.winnerId === businessUserId
+        || (auction.winnerId && auction.winnerId === businessUserId)
+    )
     const topBidAmount = bidHistory[0]?.amount ?? (auction.listing.bids?.[0] ? Number(auction.listing.bids[0].amount) : null)
     const reserveMet = !!(topBidAmount !== null && topBidAmount >= Number(auction.reservePrice))
     // BIN card visibility: live + buyer + BIN price set + reserve not met + no pending BIN
-    const showBin = isLive && !isSeller && !!auction.buyItNowPrice && !reserveMet && !binPending
+    const showBin = isLive && !isSeller && canPlaceBid && !!auction.buyItNowPrice && !reserveMet && !binPending
     const images = auction.listing.images?.length ? auction.listing.images : ["/assets/images/hero-bg.png"]
     const bidCount = bidHistory.length
 
