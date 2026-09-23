@@ -24,7 +24,7 @@ import {
   notifStyle,
   notifTimeAgo,
 } from '../../lib/notificationsApi';
-import { getAuction, auctionToListingParam } from '../../lib/auctionApi';
+import { resolveMobileNotificationTarget } from '../../lib/notificationRouting';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../store/authStore';
@@ -106,121 +106,9 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
         markNotificationRead(n.id).catch(() => {});
       }
 
-      // Deep-link to the relevant screen. Priority mirrors web's
-      // NotificationBell.tsx: entityType/entityId first (works for any
-      // AUCTION_* type uniformly — WON, ENDED, ENDING all carry the same
-      // fields), then type-specific data (chat room id), then a plain
-      // type-string fallback for everything else.
-      // Case-insensitive — most backend services send entityType: 'AUCTION'
-      // but WatchlistReminderService (WATCHLIST_ENDING_24H) sends 'auction'
-      // lowercase. Handling both here rather than requiring a backend fix
-      // for a display-only mismatch.
-      if (n.entityType?.toUpperCase() === 'AUCTION' && n.entityId) {
-        try {
-          const auction = await getAuction(n.entityId);
-          navigation?.navigate('LiveAuctionDetailed', { listing: auctionToListingParam(auction) });
-        } catch {
-          // Auction may be gone/inaccessible by tap time — fail silently
-          // rather than block on an error the user can't act on.
-        }
-        return;
-      }
-
-      if (n.type === 'MESSAGE_RECEIVED' && n.data?.roomId) {
-        navigation?.navigate('ChatScreen', { threadId: n.data.roomId });
-        return;
-      }
-
-      switch (n.type) {
-        case 'OUTBID':
-        case 'BID_PLACED':
-          navigation?.navigate('BuyerBids');
-          break;
-
-        case 'OFFER_RECEIVED':
-        case 'OFFER_COUNTERED':
-          // Dealers have their own "Direct Offers" screen/endpoint — routing
-          // them to SellerOffers (a different data source scoped to individual
-          // sellers) landed on a screen with no matching data at all.
-          if (role === 'dealer') {
-            navigation?.navigate('DealerOffers');
-          } else if (role === 'seller') {
-            navigation?.navigate('SellerOffers');
-          } else {
-            navigation?.navigate('BuyerOffers');
-          }
-          break;
-
-        // These four can each land on EITHER side of a deal depending on which
-        // code path fired them, so neither the type nor the reader's role is
-        // enough to route on. OFFER_ACCEPTED/REJECTED go to the buyer on the
-        // respond path (offers.service.ts:415-419) but to the SELLER on the
-        // respond-counter path (:764). OFFER_WITHDRAWN (:590) and DEAL_CLOSED
-        // (:466) always go to the seller. Routing these to BuyerOffers
-        // unconditionally, as before, sent a seller to a screen listing offers
-        // they had sent — never the offer the notification was about.
-        //
-        // The backend already sets the correct `link` on every one of them, so
-        // that's the discriminator: it says which side of the deal this
-        // notification belongs to, and role only decides which screen serves
-        // that side for this user.
-        case 'OFFER_ACCEPTED':
-        case 'OFFER_REJECTED':
-        case 'OFFER_WITHDRAWN':
-        case 'DEAL_CLOSED': {
-          const isSentByMe = n.link?.includes('/buyer/');
-          if (isSentByMe) {
-            navigation?.navigate(role === 'dealer' ? 'DealerMyOffers' : 'BuyerOffers');
-          } else {
-            navigation?.navigate(role === 'dealer' ? 'DealerOffers' : 'SellerOffers');
-          }
-          break;
-        }
-
-        case 'KYC_APPROVED':
-        case 'KYC_REJECTED':
-          navigation?.navigate('DealerKYC');
-          break;
-
-        // A seller told their listing was approved or rejected has nowhere to
-        // act on it from the notification list; these had no destination.
-        // Dealers manage stock in their own inventory screen.
-        case 'LISTING_SUBMITTED':
-        case 'LISTING_APPROVED':
-        case 'LISTING_REJECTED':
-          navigation?.navigate(role === 'dealer' ? 'DealerInventory' : 'SellerListings');
-          break;
-
-        // An unpaid win that auto-reverted (backend 0517f642). The auction is
-        // gone from the user's perspective, so the useful destination is their
-        // bid history rather than the dead auction.
-        case 'AUCTION_WIN_EXPIRED':
-          navigation?.navigate('BuyerBids');
-          break;
-
-        case 'DELIVERY_REQUESTED':
-        case 'DELIVERY_ACCEPTED':
-        case 'DELIVERY_DECLINED':
-        case 'DELIVERY_EXPIRED':
-          // Same split as offers, and the backend sets `link` here too:
-          // DELIVERY_REQUESTED goes to the seller (delivery.service.ts:215),
-          // ACCEPTED/DECLINED/EXPIRED go to the buyer (:284, :329, and
-          // delivery-expiry.service.ts:53). None of these had a tap
-          // destination at all before.
-          if (n.link?.includes('/buyer/')) {
-            navigation?.navigate('BuyerDeliveryRequests');
-          } else {
-            navigation?.navigate('SellerOffers');
-          }
-          break;
-
-        case 'PAYOUT_FAILED':
-          navigation?.navigate('Settings');
-          break;
-
-        // All other types: informational only, no actionable destination.
-        default:
-          break;
+      const target = await resolveMobileNotificationTarget(n, role);
+      if (target) {
+        navigation?.navigate(target.screen as never, target.params as never);
       }
     },
     [navigation, role],
