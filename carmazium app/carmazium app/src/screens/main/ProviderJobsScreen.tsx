@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   metaText: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textSecondary },
   cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: Colors.whiteAlpha08, paddingTop: 11, marginTop: 2 },
-  trailing: { fontFamily: FontFamily.bold, fontSize: FontSize.size11, color: Colors.accent },
+  trailing: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent },
   openRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   openText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accent, letterSpacing: 0.6 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -347,5 +347,5 @@ const styles = StyleSheet.create({
   emptyTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, textAlign: 'center' },
   emptyText: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted, textAlign: 'center', lineHeight: 19, maxWidth: 340 },
   primaryButton: { marginTop: 5, minHeight: 44, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
-  primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.size11, color: Colors.white, letterSpacing: 0.7 },
+  primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 0.7 },
 });
