@@ -16,6 +16,7 @@ interface ChatContextType {
   unreadCount: number;
   isConnected: boolean;
   isLoading: boolean;
+  roomsError: string | null;
   /** Ids of conversation partners currently online. The gateway broadcasts
    *  this and web has always consumed it; mobile listened for neither
    *  presence event, so it could never show who was reachable (DASH-023). */
@@ -60,6 +61,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
+  const [roomsError, setRoomsError] = useState<string | null>(null);
 
   const socketRef = useRef<Socket | null>(null);
   const messageCallbacks = useRef<Set<(message: ChatMessage) => void>>(new Set());
@@ -73,6 +75,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       socketRef.current?.disconnect();
       socketRef.current = null;
       setIsConnected(false);
+      setRoomsError(null);
       hasInitiallyLoaded.current = false;
       return;
     }
@@ -182,17 +185,24 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
     try {
       setIsLoading(true);
+      setRoomsError(null);
       const data = await getChatRooms();
       setRooms(data);
     } catch (error) {
       const msg = error instanceof Error ? error.message : '';
-      // NO_SESSION = user is on VerifyEmail screen, no real Supabase session yet
-      // AUTH_REDIRECT = session expired/invalid — both are expected, not bugs
-      // OFFLINE = no connectivity; the app-wide banner already says so, and a
-      // chat error on top of it would be noise (CROSS-015).
-      if (msg !== 'NO_SESSION' && msg !== 'AUTH_REDIRECT' && msg !== 'REQUEST_TIMEOUT' && msg !== 'OFFLINE') {
-        console.error('Failed to fetch rooms:', error);
+      // NO_SESSION / AUTH_REDIRECT are handled by auth flows. OFFLINE is
+      // intentionally owned by the app-wide connectivity banner so messages
+      // do not stack a second offline warning on top of it.
+      if (msg === 'NO_SESSION' || msg === 'AUTH_REDIRECT' || msg === 'OFFLINE') {
+        setRoomsError(null);
+      } else {
+        setRoomsError('Could not load messages. Please try again.');
+        if (msg !== 'REQUEST_TIMEOUT') {
+          console.error('Failed to fetch rooms:', error);
+        }
       }
+      // Preserve any already-loaded rooms. A refresh failure must never turn
+      // real conversations into a false "No messages yet" state.
     } finally {
       setIsLoading(false);
     }
@@ -317,6 +327,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     onlineUserIds,
     isConnected,
     isLoading,
+    roomsError,
     refreshRooms,
     refreshUnreadCount,
     sendMessage,
@@ -327,7 +338,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     onTyping,
     onMessagesRead,
   }), [
-    rooms, unreadCount, onlineUserIds, isConnected, isLoading,
+    rooms, unreadCount, onlineUserIds, isConnected, isLoading, roomsError,
     refreshRooms, refreshUnreadCount, sendMessage, startTyping, stopTyping,
     markAsRead, onNewMessage, onTyping, onMessagesRead,
   ]);
