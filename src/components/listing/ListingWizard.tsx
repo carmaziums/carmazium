@@ -1759,9 +1759,25 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                              }
                              setIsProcessingPayment(true)
                              try {
-                                 // Need a listing ID for HPI checkout — create a draft first if we don't have one
+                                 // Need a listing ID for HPI checkout — create a draft first if we don't have one.
+                                 // Do not create that draft ahead of an auction → Retail switch:
+                                 // the final submit flow owns the destructive confirmation and reuses
+                                 // the existing listing row instead of producing a duplicate.
                                  let listingId = draftListingId
                                  if (!listingId) {
+                                     if (formData.listingType === 'CLASSIFIED') {
+                                         const conversion = await getRetailConversionCandidate(formData.vrm)
+                                         if (conversion.candidate) {
+                                             alert(
+                                                 conversion.candidate.canConvert
+                                                     ? 'This registration already belongs to your auction listing. Submit this Retail form first so CarMazium can safely switch and reuse that listing; then add the optional HPI check from the Retail draft.'
+                                                     : (conversion.candidate.blockedReason || 'This vehicle cannot be changed to a Retail listing at the moment.'),
+                                             )
+                                             setIsProcessingPayment(false)
+                                             return
+                                         }
+                                     }
+
                                      const draft = await createListing({
                                          title: formData.title || `${formData.make || ''} ${formData.model || ''} ${formData.year || ''}`.trim() || formData.vrm,
                                          price: parseFloat(formData.priceAsking) || 1,
