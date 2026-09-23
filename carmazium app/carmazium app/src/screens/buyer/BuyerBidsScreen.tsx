@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Alert,
   ActivityIndicator,
@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
@@ -234,9 +235,14 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
     }
   }, [page, currentUserId]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  // Re-read authoritative winner/payment state whenever the buyer returns
+  // from AuctionComplete/Stripe. A plain mount-only effect left a stale
+  // "PAY BUYER FEE" button visible after a successful payment.
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData]),
+  );
 
   // ── navigate to auction ──────────────────────────────────────
   const handleViewAuction = async (bid: Bid) => {
