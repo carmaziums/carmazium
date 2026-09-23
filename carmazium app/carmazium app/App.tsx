@@ -26,6 +26,8 @@ import { supabase } from './src/lib/supabase';
 import * as Notifications from 'expo-notifications';
 import { addNotificationListeners, registerForPushNotifications } from './src/lib/pushNotifications';
 import { navigationRef } from './src/lib/navigationRef';
+import { markNotificationRead } from './src/lib/notificationsApi';
+import { resolveMobileNotificationTarget } from './src/lib/notificationRouting';
 
 import { SplashScreen as AppSplashScreen } from './src/screens/loading/SplashScreen';
 
@@ -35,22 +37,6 @@ SplashScreen.preventAutoHideAsync();
 
 // navigationRef is now a module-level singleton from src/lib/navigationRef.ts
 // so it can be imported by GlobalAIChatBot and other non-screen components safely.
-
-// ── Notification type → screen mapping for deep-linking ──────────────────
-// Used as a client-side fallback when the backend doesn't include a 'screen'
-// field in the notification payload (backend may only send 'type').
-const NOTIFICATION_SCREEN_MAP: Record<string, { screen: string; paramsKeys: string[] }> = {
-  BID_PLACED:       { screen: 'LiveAuctionDetailed', paramsKeys: ['auctionId'] },
-  OUTBID:           { screen: 'LiveAuctionDetailed', paramsKeys: ['auctionId'] },
-  AUCTION_ENDING:   { screen: 'LiveAuctionDetailed', paramsKeys: ['auctionId'] },
-  AUCTION_WON:      { screen: 'AuctionComplete',     paramsKeys: ['listingId', 'auctionId', 'hammerPrice'] },
-  AUCTION_ENDED:    { screen: 'LiveAuctionDetailed', paramsKeys: ['auctionId'] },
-  OFFER_RECEIVED:   { screen: 'SellerOffers',        paramsKeys: [] },
-  COUNTER_RECEIVED: { screen: 'BuyerOffers',         paramsKeys: [] },
-  OFFER_ACCEPTED:   { screen: 'BuyerOffers',         paramsKeys: [] },
-  OFFER_REJECTED:   { screen: 'BuyerOffers',         paramsKeys: [] },
-  PAYOUT_FAILED:    { screen: 'Settings',            paramsKeys: [] },
-};
 
 export default function App() {
   const initializeAuth = useAuthStore((state) => state.initializeAuth);
@@ -77,77 +63,66 @@ export default function App() {
 
   // ── Push Notification listeners ─────────────────────────────────
   useEffect(() => {
-    const handleNotificationResponse = (response: Notifications.NotificationResponse | null) => {
+    const handleNotificationResponse = (
+      response: Notifications.NotificationResponse | null,
+    ) => {
       if (!response) return;
-      const rawData = response.notification.request.content.data as Record<string, any> | undefined;
+      const rawData = response.notification.request.content.data as
+        | Record<string, any>
+        | undefined;
       if (!rawData) return;
 
-      // Resolve screen: prefer explicit 'screen' field from backend, fall back to type map
-      let targetScreen: string | undefined = rawData.screen;
-      let params: Record<string, any> = {};
+      let attempts = 0;
 
-      if (!targetScreen && rawData.type) {
-        const mapping = NOTIFICATION_SCREEN_MAP[rawData.type as string];
-        if (mapping) {
-          targetScreen = mapping.screen;
-          // Build params from the notification data based on notification type
-          if (
-            rawData.type === 'BID_PLACED' ||
-            rawData.type === 'OUTBID' ||
-            rawData.type === 'AUCTION_ENDING' ||
-            rawData.type === 'AUCTION_ENDED'
-          ) {
-            // LiveAuctionDetailed expects: { listing: { id: auctionId } }
-            params = { listing: { id: rawData.auctionId ?? rawData.entityId } };
-          } else if (rawData.type === 'AUCTION_WON') {
-            params = {
-              listingId: rawData.listingId ?? rawData.entityId,
-              auctionId: rawData.auctionId,
-              hammerPrice: rawData.hammerPrice ?? 0,
-            };
+      const resolveAndNavigate = async () => {
+        const auth = useAuthStore.getState();
+
+        if (!navigationRef.isReady() || !auth.authInitialized) {
+          attempts += 1;
+          if (attempts <= 120) {
+            setTimeout(() => { void resolveAndNavigate(); }, 100);
           }
-          // For SellerOffers, BuyerOffers, Settings: no params needed
+          return;
         }
-      }
 
-      // Also parse params if backend sent them as JSON string
-      if (!Object.keys(params).length && rawData.params) {
-        try {
-          params = typeof rawData.params === 'string' ? JSON.parse(rawData.params) : rawData.params;
-        } catch {
-          // ignore
+        if (!auth.isAuthenticated) return;
+
+        if (typeof rawData.notifId === 'string') {
+          markNotificationRead(rawData.notifId).catch(() => {});
         }
-      }
 
-      if (!targetScreen) return; // no screen to navigate to
+        const target = await resolveMobileNotificationTarget(
+          rawData,
+          auth.role,
+        ).catch(() => null);
 
-      // Wait for navigation container to be ready — critical for cold-start
-      const navigate = () => {
-        if (navigationRef.isReady()) {
-          (navigationRef.current as any)?.navigate('Main', {
-            screen: targetScreen,
-            params,
-          });
-        } else {
-          setTimeout(navigate, 100); // retry every 100ms until nav is ready
-        }
+        const resolved = target ?? { screen: 'Notifications' };
+
+        (navigationRef.current as any)?.navigate('Main', {
+          screen: resolved.screen,
+          params: resolved.params,
+        });
       };
-      navigate();
+
+      void resolveAndNavigate();
     };
 
     const cleanup = addNotificationListeners(
       (_notification) => {
-        // Notification received while app is foregrounded — handled by GlobalToastProvider
+        // Foreground presentation is handled by GlobalToastProvider. Taps still
+        // enter through the shared response handler above.
       },
       handleNotificationResponse,
     );
 
-    // Handle cold-start: check if app was opened via a notification tap while killed
-    // Safe to call on every mount — resolves with null if no pending response
-    Notifications.getLastNotificationResponseAsync().then(handleNotificationResponse);
+    // Cold-start: Expo retains the response that launched the app.
+    Notifications.getLastNotificationResponseAsync()
+      .then(handleNotificationResponse)
+      .catch(() => {});
 
     return cleanup;
   }, []);
+
 
   // Register this device for push once the user is authenticated.
   //

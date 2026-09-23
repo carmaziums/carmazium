@@ -323,6 +323,22 @@ export const ChatScreen: React.FC = () => {
 
   const { user } = useAuthStore();
   const room = rooms.find((r) => r.id === threadId);
+  const roomRefreshAttemptRef = useRef<string | null>(null);
+
+  // A room can be created immediately before navigation (service jobs,
+  // notification taps, support) while ChatContext still has its previous room
+  // snapshot. Hydrate once for this thread before treating room metadata as
+  // unavailable.
+  useEffect(() => {
+    if (room) {
+      roomRefreshAttemptRef.current = null;
+      return;
+    }
+    if (!threadId || roomRefreshAttemptRef.current === threadId) return;
+
+    roomRefreshAttemptRef.current = threadId;
+    refreshRooms().catch(() => {});
+  }, [room, threadId, refreshRooms]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
