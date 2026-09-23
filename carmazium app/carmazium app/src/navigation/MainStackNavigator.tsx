@@ -24,6 +24,10 @@ import { DealerPurchasesScreen } from '../screens/main/DealerPurchasesScreen';
 import { DealerEarningsScreen } from '../screens/main/DealerEarningsScreen';
 import { DealerFinanceScreen } from '../screens/main/DealerFinanceScreen';
 import { ServicesScreen } from '../screens/main/ServicesScreen';
+import { PartnerDashboardScreen } from '../screens/main/PartnerDashboardScreen';
+import { ProviderCapabilitiesScreen } from '../screens/main/ProviderCapabilitiesScreen';
+import { ProviderVerificationScreen } from '../screens/main/ProviderVerificationScreen';
+import { ProviderMatchingScreen } from '../screens/main/ProviderMatchingScreen';
 import { TermsScreen } from '../screens/main/TermsScreen';
 import { HowItWorksScreen } from '../screens/main/HowItWorksScreen';
 import { AboutScreen } from '../screens/main/AboutScreen';
@@ -99,6 +103,10 @@ export type MainStackParamList = {
   DealerEarnings: undefined;
   DealerFinance: undefined;
   Services: undefined;
+  PartnerDashboard: undefined;
+  ProviderCapabilities: undefined;
+  ProviderVerification: { capabilityId: string };
+  ProviderMatching: { capabilityId: string };
   Terms: undefined;
   HowItWorks: undefined;
   About: undefined;
@@ -248,6 +256,10 @@ export const MainStackNavigator: React.FC = () => {
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen name="Services" component={ServicesScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PartnerDashboard" component={PartnerDashboardScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ProviderCapabilities" component={ProviderCapabilitiesScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ProviderVerification" component={ProviderVerificationScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ProviderMatching" component={ProviderMatchingScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Terms" component={TermsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="HowItWorks" component={HowItWorksScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="About" component={AboutScreen} options={{ animation: 'slide_from_right' }} />
