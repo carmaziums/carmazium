@@ -290,6 +290,13 @@ describe('DealersService — KYC: submitKyc', () => {
 
     it('synchronises the dealership business identity into an existing ContractorProfile projection', async () => {
         prisma.dealerProfile.findUnique
+            // assertDealerOwner()
+            .mockResolvedValueOnce({
+                id: 'profile-1',
+                userId: 'user-1',
+                isVerified: false,
+            })
+            // submitKyc() profile + current KYC
             .mockResolvedValueOnce({
                 id: 'profile-1',
                 userId: 'user-1',
@@ -299,6 +306,7 @@ describe('DealersService — KYC: submitKyc', () => {
                 kyc: null,
                 user: { id: 'user-1', role: 'DEALER', firstName: 'John', lastName: 'Doe' },
             })
+            // syncProfileFromKyc() business projection
             .mockResolvedValueOnce({
                 id: 'profile-1',
                 userId: 'user-1',
