@@ -275,6 +275,22 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
               })}
 
               <View style={styles.card}>
+                <View style={styles.rowBetween}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.label}>PROVIDER WORKSPACE</Text>
+                    <Text style={styles.cardTitle}>Available Jobs & My Work</Text>
+                    <Text style={styles.cardText}>
+                      Quote on matching Delivery, Recovery and Inspection jobs, then manage assigned work, inspection outcomes and customer chat in one place.
+                    </Text>
+                  </View>
+                  <Ionicons name="briefcase-outline" size={26} color={Colors.warning} />
+                </View>
+                <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('ProviderJobs')}>
+                  <Text style={styles.primaryText}>OPEN PROVIDER JOBS</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.card}>
                 <Text style={styles.cardTitle}>Business payouts</Text>
                 <Text style={styles.cardText}>
                   Delivery and Inspection customers pay through CarMazium. CarMazium deducts 9% and 91% is paid to the Partner business Stripe Connect account.
