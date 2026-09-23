@@ -20,6 +20,8 @@ import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { BulkImportModal } from "@/components/dealer/BulkImportModal"
 import { ImportListingModal } from "@/components/features/ImportListingModal"
 import { ExternalLink } from "lucide-react"
+import { useDealerAccess } from "@/context/DealerAccessContext"
+import { DealerPermissionGate } from "@/components/dealer/DealerPermissionGate"
 
 // ─── Status colours ─────────────────────────────────────────────────────────
 
@@ -44,6 +46,9 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function DealerInventoryPage() {
     const { user, profile, loading: authLoading } = useAuth()
+    const { loading: accessLoading, has } = useDealerAccess()
+    const canViewInventory = has('VIEW_INVENTORY')
+    const canManageInventory = has('MANAGE_INVENTORY')
     const router = useRouter()
     const searchParams = useSearchParams()
     // Featured Boost checkout redirects here with ?boost=success — the payment
@@ -85,8 +90,12 @@ export default function DealerInventoryPage() {
     const [soldModalLoading,     setSoldModalLoading]     = React.useState(false)
 
     React.useEffect(() => {
-        if (!authLoading && user) fetchListings(searchQuery)
-    }, [user, authLoading, searchQuery])
+        if (!authLoading && !accessLoading && user && canViewInventory) {
+            fetchListings(searchQuery)
+        } else if (!accessLoading && !canViewInventory) {
+            setLoading(false)
+        }
+    }, [user, authLoading, accessLoading, canViewInventory, searchQuery])
 
     async function fetchListings(search = "") {
         setLoading(true)
@@ -183,7 +192,101 @@ export default function DealerInventoryPage() {
         })
     }, [listings, searchQuery, statusFilter])
 
+    if (!accessLoading && canViewInventory && !canManageInventory) {
+        return (
+            <div className="min-h-screen pt-20 pb-12">
+                <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
+                    <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
+                    <main className="flex-1 space-y-6 min-w-0">
+                        <PageHeader
+                            title={DEALER_ROUTE_CONFIG[1].title}
+                            subHeader="Read-only dealership inventory"
+                        />
+                        <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-300">
+                            Your Finance Manager role can view dealership stock and values. Listing creation, editing, publishing, imports, boosts and sale-status changes are managed by the owner, admins or sales staff.
+                        </div>
+
+                        <div className="dealer-glass-card p-5 flex flex-col sm:flex-row gap-3">
+                            <div className="relative flex-1">
+                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                                <Input
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    placeholder="Search vehicle, make, model or registration"
+                                    className="pl-10"
+                                />
+                            </div>
+                            <select
+                                value={statusFilter}
+                                onChange={e => setStatusFilter(e.target.value)}
+                                className="h-10 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm"
+                            >
+                                <option value="ALL">All statuses</option>
+                                <option value="ACTIVE">Live</option>
+                                <option value="DRAFT">Draft</option>
+                                <option value="PENDING_REVIEW">Under Review</option>
+                                <option value="SOLD">Sold</option>
+                                <option value="REJECTED">Rejected</option>
+                            </select>
+                        </div>
+
+                        {loading ? (
+                            <div className="flex justify-center py-20">
+                                <Loader2 className="animate-spin text-primary" size={30} />
+                            </div>
+                        ) : filteredListings.length === 0 ? (
+                            <div className="dealer-glass-card p-14 text-center">
+                                <Car className="mx-auto mb-3 text-[var(--text-muted)]" size={38} />
+                                <p className="font-bold text-[var(--text-muted)]">No vehicles found</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                {filteredListings.map((listing: any) => (
+                                    <div key={listing.id} className="dealer-glass-card overflow-hidden">
+                                        <div className="relative h-40 bg-black/30">
+                                            {listing.images?.[0] ? (
+                                                <Image src={listing.images[0]} alt={listing.title || "Vehicle"} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
+                                            ) : (
+                                                <div className="h-full flex items-center justify-center text-[var(--text-muted)]"><Car size={30} /></div>
+                                            )}
+                                        </div>
+                                        <div className="p-5 space-y-3">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <p className="font-black truncate">{listing.title || `${listing.make || ""} ${listing.model || ""}`.trim() || "Vehicle"}</p>
+                                                    <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest mt-1">{listing.vrm || "Private registration"}</p>
+                                                </div>
+                                                <span className={`shrink-0 inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${STATUS_COLORS[listing.status] || STATUS_COLORS.DRAFT}`}>
+                                                    {STATUS_LABELS[listing.status] || listing.status}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-end justify-between border-t border-[var(--border-default)] pt-3">
+                                                <div>
+                                                    <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)]">Price</p>
+                                                    <p className="font-black text-lg">£{Number(listing.price || 0).toLocaleString()}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)]">Views</p>
+                                                    <p className="font-bold">{Number(listing.viewCount || 0).toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </main>
+                </div>
+            </div>
+        )
+    }
+
     return (
+        <DealerPermissionGate
+            permission="VIEW_INVENTORY"
+            title="Inventory access restricted"
+            description="Your dealership role does not include inventory access."
+        >
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
@@ -755,5 +858,6 @@ export default function DealerInventoryPage() {
             )}
 
         </div>
+        </DealerPermissionGate>
     )
 }
