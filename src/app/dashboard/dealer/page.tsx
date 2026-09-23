@@ -10,7 +10,7 @@ import {
     Mail, ShieldCheck, BarChart3, ChevronRight
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
-import { PeriodToggle } from "@/components/dashboard/PeriodToggle"
+import { FlexiblePeriodControl, type DashboardRangeSelection, type DashboardRangeUnit } from "@/components/dashboard/FlexiblePeriodControl"
 import { useAuth } from "@/context/AuthContext"
 import { supabase } from "@/lib/supabase"
 import { apiClient } from "@/lib/apiClient"
@@ -23,15 +23,44 @@ export default function DealerDashboard() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const pathname = usePathname()
-    const period = (searchParams.get('period') as '7d' | '30d') ?? '30d'
 
-    function setPeriod(p: '7d' | '30d') {
+    const rangeAllTime = searchParams.get('range') === 'all'
+    const rangeUnitParam = searchParams.get('rangeUnit')
+    const rangeUnit: DashboardRangeUnit =
+        rangeUnitParam === 'months' || rangeUnitParam === 'years' ? rangeUnitParam : 'days'
+    const rawRangeValue = Number(searchParams.get('rangeValue') || 30)
+    const rangeValue = Number.isFinite(rawRangeValue) && rawRangeValue > 0
+        ? Math.min(Math.floor(rawRangeValue), 10000)
+        : 30
+    const compareRange = searchParams.get('compare') === '1'
+
+    const rangeSelection: DashboardRangeSelection = {
+        allTime: rangeAllTime,
+        value: rangeValue,
+        unit: rangeUnit,
+        compare: compareRange,
+    }
+
+    function setRange(next: DashboardRangeSelection) {
         const params = new URLSearchParams(searchParams.toString())
-        params.set('period', p)
+        params.delete('period')
+        if (next.allTime) {
+            params.set('range', 'all')
+            params.delete('rangeValue')
+            params.delete('rangeUnit')
+        } else {
+            params.delete('range')
+            params.set('rangeValue', String(next.value))
+            params.set('rangeUnit', next.unit)
+        }
+        if (next.compare) params.set('compare', '1')
+        else params.delete('compare')
         router.replace(`${pathname}?${params.toString()}`)
     }
 
-    const subLabel = period === '7d' ? 'Last 7 days' : 'Last 30 days'
+    const fallbackRangeLabel = rangeAllTime
+        ? 'All time'
+        : `Last ${rangeValue} ${rangeUnit === 'days' ? 'day' : rangeUnit === 'months' ? 'month' : 'year'}${rangeValue === 1 ? '' : 's'}`
 
     const [stats, setStats] = React.useState<any>(null)
     const [loading, setLoading] = React.useState(true)
@@ -51,14 +80,23 @@ export default function DealerDashboard() {
         if (!authLoading && !accessLoading && user) {
             fetchDashboardData()
         }
-    }, [user, authLoading, accessLoading, period, canManageCrm])
+    }, [user, authLoading, accessLoading, rangeAllTime, rangeValue, rangeUnit, compareRange, canManageCrm])
 
     async function fetchDashboardData() {
         setLoading(true)
         setStatsError(false)
         try {
+            const rangeQuery = new URLSearchParams()
+            if (rangeAllTime) {
+                rangeQuery.set('range', 'all')
+            } else {
+                rangeQuery.set('rangeValue', String(rangeValue))
+                rangeQuery.set('rangeUnit', rangeUnit)
+            }
+            if (compareRange) rangeQuery.set('compare', '1')
+
             const [statsRes, leadsRes] = await Promise.all([
-                apiClient<{ data: any }>(`/dashboard/dealer?period=${period}`),
+                apiClient<{ data: any }>(`/dashboard/dealer?${rangeQuery.toString()}`),
                 canManageCrm
                     ? apiClient<{ data: any[]; meta?: any }>('/dealers/leads?limit=5').catch(() => ({ data: [] }))
                     : Promise.resolve({ data: [] }),
@@ -74,6 +112,10 @@ export default function DealerDashboard() {
                 activeLeads: s.activeLeads ?? 0,
                 totalRevenue: s.totalRevenue ?? 0,
                 staffCount: s.staffCount ?? 1,
+                accountCreatedAt: s.accountCreatedAt ?? null,
+                range: s.range ?? null,
+                comparison: s.comparison ?? null,
+                leadsCreated: s.leadsCreated ?? 0,
                 recentLeads: leadsRes?.data ?? [],
             })
         } catch (err) {
@@ -164,6 +206,19 @@ export default function DealerDashboard() {
         },
     ].filter(action => action.show)
 
+    const selectedRangeLabel = stats?.range?.label ?? fallbackRangeLabel
+
+    const comparisonText = (metric: 'totalViews' | 'soldListings' | 'totalRevenue') => {
+        const item = stats?.comparison?.available ? stats.comparison?.[metric] : null
+        if (!compareRange) return undefined
+        if (!item) return 'No earlier account data available'
+        if (item.percentChange === null) {
+            return `${item.previous.toLocaleString()} in previous period`
+        }
+        const sign = item.percentChange > 0 ? '+' : ''
+        return `${sign}${item.percentChange}% vs previous period`
+    }
+
     return (
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
@@ -251,15 +306,20 @@ export default function DealerDashboard() {
                         </div>
                     )}
 
-                    {/* ── Period Toggle ── */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
+                    {/* ── Flexible reporting range ── */}
+                    <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
+                        <div className="max-w-xl">
                             <h2 className="text-2xl font-black font-heading uppercase tracking-tighter">Overview</h2>
                             <p className="text-xs text-[var(--text-muted)] mt-1">
-                                Stock and active leads are current. Vehicle views and completed sales follow the selected period.
+                                Choose any number of days, months or years, or view everything since this dealer account was created.
+                                Turn on comparison to compare with the immediately preceding period.
                             </p>
                         </div>
-                        <PeriodToggle value={period} onChange={setPeriod} />
+                        <FlexiblePeriodControl
+                            value={rangeSelection}
+                            accountCreatedAt={stats?.accountCreatedAt}
+                            onChange={setRange}
+                        />
                     </div>
 
                     {statsError && (
@@ -292,8 +352,9 @@ export default function DealerDashboard() {
                             border="border-blue-500/20"
                             loading={loading}
                             statusLabel="Tracked"
-                            subLabel={subLabel}
+                            subLabel={selectedRangeLabel}
                             showSparkline={false}
+                            comparisonLabel={comparisonText('totalViews')}
                         />
                         {canManageCrm && (
                             <MetricCard
@@ -319,8 +380,9 @@ export default function DealerDashboard() {
                             statusLabel="Period"
                             loading={loading}
                             href="/dashboard/dealer/inventory?status=SOLD"
-                            subLabel={subLabel}
+                            subLabel={selectedRangeLabel}
                             showSparkline={false}
+                            comparisonLabel={comparisonText('soldListings')}
                         />
                     </div>
 
