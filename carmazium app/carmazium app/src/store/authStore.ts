@@ -16,9 +16,6 @@ const ONBOARDING_KEY = 'czm_onboarding_complete';
  *  Absent on existing installs, which correctly means "not seen yet" — the
  *  worst case is one extra viewing of the carousel, never a skipped wizard. */
 const INTRO_SEEN_KEY = 'czm_intro_seen';
-const PENDING_SIGNUP_ROLE_KEY = 'czm_pending_signup_role';
-const OAUTH_SIGNUP_INTENT_TTL_MS = 15 * 60 * 1000;
-
 export type AccountRole =
   | 'buyer'
   | 'seller'
@@ -30,42 +27,6 @@ export type AccountRole =
 
 type PreviewRole = 'buyer' | 'seller' | 'dealer';
 type SignupRole = 'BUYER' | 'DEALER';
-
-type PendingSignupRoleIntent = {
-  role: SignupRole;
-  createdAt: number;
-};
-
-const savePendingSignupRoleIntent = async (role: SignupRole) => {
-  const intent: PendingSignupRoleIntent = { role, createdAt: Date.now() };
-  await SecureStore.setItemAsync(PENDING_SIGNUP_ROLE_KEY, JSON.stringify(intent));
-};
-
-const clearPendingSignupRoleIntent = async () => {
-  await SecureStore.deleteItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => {});
-};
-
-const readPendingSignupRoleIntent = async (): Promise<SignupRole | null> => {
-  const raw = await SecureStore.getItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => null);
-  if (!raw) return null;
-
-  try {
-    const parsed = JSON.parse(raw) as Partial<PendingSignupRoleIntent>;
-    const validRole = parsed.role === 'BUYER' || parsed.role === 'DEALER';
-    const validCreatedAt = typeof parsed.createdAt === 'number' && Number.isFinite(parsed.createdAt);
-    const age = validCreatedAt ? Date.now() - parsed.createdAt! : Number.POSITIVE_INFINITY;
-    if (!validRole || age < 0 || age > OAUTH_SIGNUP_INTENT_TTL_MS) {
-      await clearPendingSignupRoleIntent();
-      return null;
-    }
-    return parsed.role!;
-  } catch {
-    // Older builds stored the bare role string. Treat that value as stale
-    // rather than allowing an indefinitely-lived intent to affect a new login.
-    await clearPendingSignupRoleIntent();
-    return null;
-  }
-};
 
 const mapAccountRole = (role?: string | null): AccountRole => {
   switch ((role ?? '').toUpperCase()) {
@@ -191,11 +152,9 @@ interface AuthState {
    *  see INTRO_SEEN_KEY. */
   completeIntro: () => Promise<void>;
   hasSeenIntro: boolean;
-  initializeAuth: () => Promise<void>;
+  initializeAuth: (signupRole?: SignupRole) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, fullName: string, role?: SignupRole) => Promise<void>;
-  prepareOAuthSignupRole: (role: SignupRole) => Promise<void>;
-  clearOAuthSignupRole: () => Promise<void>;
   logout: () => Promise<void>;
   setLoading: (loading: boolean) => void;
   setRole: (role: PreviewRole) => void;
@@ -222,14 +181,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     await SecureStore.setItemAsync(ONBOARDING_KEY, '1').catch(() => {});
     set({ hasCompletedOnboarding: true });
-  },
-
-  prepareOAuthSignupRole: async (role: SignupRole) => {
-    await savePendingSignupRoleIntent(role);
-  },
-
-  clearOAuthSignupRole: async () => {
-    await clearPendingSignupRoleIntent();
   },
 
   completeIntro: async () => {
@@ -338,7 +289,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setRole: (role: PreviewRole) => set({ role }),
   updateUser: (updates) => set((state) => ({ user: state.user ? { ...state.user, ...updates } : state.user })),
 
-  initializeAuth: async () => {
+  initializeAuth: async (signupRole) => {
     set({ isLoading: true });
     try {
       // Read first and unconditionally: the carousel gate matters precisely
@@ -382,13 +333,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (response.success && response.data) {
           let profile = response.data;
 
-          // Google/Apple OAuth does not carry our signup account-type choice
-          // into provider metadata. Preserve the explicit Partner Account
-          // choice made on the mobile signup screen and apply it only through
-          // the backend's self-service role-elevation endpoint.
-          const pendingSignupRole = await readPendingSignupRoleIntent();
+          // OAuth signup carries the selected account type on the callback URL,
+          // exactly like the web client. It is therefore single-use and bound
+          // to this callback rather than persisted on the device.
           const canApplyPartnerIntent =
-            pendingSignupRole === 'DEALER' &&
+            signupRole === 'DEALER' &&
             (profile.role === 'BUYER' || profile.role === 'SELLER');
 
           if (canApplyPartnerIntent) {
@@ -400,11 +349,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               response = await apiClient<UserProfileResponse>('/users/me');
               profile = response.data;
             } catch (roleErr) {
-              console.warn('Could not apply pending Partner Account role:', roleErr);
+              console.warn('Could not apply Partner Account role from OAuth callback:', roleErr);
             }
-          }
-          if (pendingSignupRole) {
-            await clearPendingSignupRoleIntent();
           }
 
           const accountRole = mapAccountRole(profile.role);
@@ -452,9 +398,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (email, password) => {
     set({ isLoading: true });
-    // A normal login is never a continuation of a previously abandoned
-    // OAuth signup. Clear any stale account-type intent before authenticating.
-    await clearPendingSignupRoleIntent();
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -544,9 +487,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signup: async (email, password, fullName, selectedRole = 'BUYER') => {
     set({ isLoading: true });
-    // Password signup carries its role explicitly in this request; a stale
-    // OAuth intent from a cancelled browser flow must not survive alongside it.
-    await clearPendingSignupRoleIntent();
     try {
       const parts = fullName.trim().split(/\s+/);
       const firstName = parts[0] || '';
@@ -690,7 +630,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         console.warn('Backend logout failed:', e);
       }
       await supabase.auth.signOut();
-      await clearPendingSignupRoleIntent();
     } catch (e) {
       console.warn('Supabase logout error:', e);
     } finally {
