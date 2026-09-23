@@ -10,6 +10,7 @@ import { resolveFrontendUrl } from '../core/frontend-url';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
 import {
     assertDealerPermission,
+    DealerPermission,
     resolveDealerActor,
 } from '../dealers/dealer-access';
 
@@ -911,9 +912,59 @@ export class PaymentsService {
         };
     }
 
-    async getSessionStatus(sessionId: string) {
+    private async assertPaymentActorAccess(
+        canonicalUserId: string | null | undefined,
+        userId: string,
+        permission?: DealerPermission,
+    ): Promise<void> {
+        if (!canonicalUserId) {
+            throw new ForbiddenException('Payment session ownership could not be verified');
+        }
+        if (canonicalUserId === userId) return;
+
+        if (!permission) {
+            throw new ForbiddenException('You do not have permission to access this payment session');
+        }
+
+        const actor = await resolveDealerActor(this.prisma, userId);
+        if (
+            !actor
+            || actor.ownerUserId !== canonicalUserId
+            || !actor.isVerified
+        ) {
+            throw new ForbiddenException('You do not have permission to access this payment session');
+        }
+
+        assertDealerPermission(
+            actor,
+            permission,
+            'Your dealership role does not allow this payment action.',
+        );
+    }
+
+    private checkoutSessionPermission(session: any): DealerPermission | undefined {
+        const metadata = session?.metadata ?? {};
+        if (metadata.type === 'COMMISSION') return 'PAY_AUCTION_FEE';
+        if (metadata.type === 'LISTING_FEE') return 'PAY_LISTING_FEE';
+        if (metadata.type === 'KYC_VERIFICATION') return 'MANAGE_KYC';
+        if (metadata.boostId || metadata.sellerId) return 'MANAGE_INVENTORY';
+        return undefined;
+    }
+
+    private async assertCheckoutSessionAccess(session: any, userId: string): Promise<void> {
+        const metadata = session?.metadata ?? {};
+        const canonicalUserId = metadata.userId || metadata.sellerId || null;
+        await this.assertPaymentActorAccess(
+            canonicalUserId,
+            userId,
+            this.checkoutSessionPermission(session),
+        );
+    }
+
+    async getSessionStatus(sessionId: string, userId: string) {
         const stripe = await this.getStripe();
         const session = await stripe.checkout.sessions.retrieve(sessionId);
+        await this.assertCheckoutSessionAccess(session, userId);
 
         return {
             status: session.status,
@@ -1252,15 +1303,17 @@ export class PaymentsService {
      * Webhook fallback for the £1 dealer KYC verification fee.
      * Called from the success page in case the webhook was delayed or missed.
      */
-    async applyKycFee(sessionId: string): Promise<{ applied: boolean }> {
+    async applyKycFee(sessionId: string, userId: string): Promise<{ applied: boolean }> {
         const kyc = await this.prisma.dealerKyc.findFirst({
             where: { stripeCheckoutSessionId: sessionId } as any,
         });
         if (!kyc) return { applied: false };
-        if ((kyc as any).stripeChargedAt) return { applied: true };
 
         const stripe = await this.getStripe();
         const session = await stripe.checkout.sessions.retrieve(sessionId);
+        await this.assertCheckoutSessionAccess(session, userId);
+
+        if ((kyc as any).stripeChargedAt) return { applied: true };
         if (session.payment_status !== 'paid') return { applied: false };
 
         await this.markKycFeePaid(kyc.id, (session.payment_intent as string) ?? session.id);
@@ -1272,11 +1325,16 @@ export class PaymentsService {
      * Called from the success page in case the webhook was delayed or missed.
      * Verifies the Stripe session and marks buyerFeePaid if confirmed paid.
      */
-    async applyAuctionFee(sessionId: string): Promise<{ applied: boolean }> {
+    async applyAuctionFee(sessionId: string, userId: string): Promise<{ applied: boolean }> {
         const transaction = await this.prisma.transaction.findFirst({
             where: { stripePaymentId: sessionId, type: 'COMMISSION' as any },
         });
         if (!transaction) return { applied: false };
+        await this.assertPaymentActorAccess(
+            transaction.userId,
+            userId,
+            'PAY_AUCTION_FEE',
+        );
 
         if (transaction.status !== 'COMPLETED') {
             const stripe = await this.getStripe();
@@ -1379,11 +1437,12 @@ export class PaymentsService {
      * URL flag with no server-side confirmation, so a delayed/dropped webhook
      * meant the customer paid but the report was never actually generated.
      */
-    async applyHpiFee(sessionId: string): Promise<{ applied: boolean }> {
+    async applyHpiFee(sessionId: string, userId: string): Promise<{ applied: boolean }> {
         const transaction = await this.prisma.transaction.findFirst({
             where: { stripePaymentId: sessionId, type: 'HPI_REPORT' as any },
         });
         if (!transaction) return { applied: false };
+        await this.assertPaymentActorAccess(transaction.userId, userId);
 
         // Already completed with a report on file — nothing left to do.
         if (transaction.status === 'COMPLETED' && transaction.listingId) {
@@ -1417,11 +1476,12 @@ export class PaymentsService {
      * Webhook fallback for a buyer's "email me this report" fee — same
      * reasoning as applyHpiFee above, mirrored for the buyer-side flow.
      */
-    async applyHpiEmailFee(sessionId: string): Promise<{ applied: boolean }> {
+    async applyHpiEmailFee(sessionId: string, userId: string): Promise<{ applied: boolean }> {
         const transaction = await this.prisma.transaction.findFirst({
             where: { stripePaymentId: sessionId, type: 'HPI_REPORT_EMAIL' as any },
         });
         if (!transaction) return { applied: false };
+        await this.assertPaymentActorAccess(transaction.userId, userId);
 
         if (transaction.status === 'COMPLETED') {
             // Already registered — requestEmailDelivery is itself idempotent
