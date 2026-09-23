@@ -319,7 +319,8 @@ if (
   !buyerServicesService.includes('createInspectionFromAuction') ||
   !buyerAuctionsService.includes('async refuseAfterInspection(') ||
   !buyerAuctionsService.includes('issueFullRefundForAuctionInspection') ||
-  !buyerPaymentsService.includes('amount: 12500') ||
+  !buyerPaymentsService.includes('12500 - alreadyRefunded') ||
+  !buyerPaymentsService.includes('amount: remainingPence') ||
   !webAuctionApi.includes('/refuse-after-inspection') ||
   !mobileAuctionApi.includes('/refuse-after-inspection')
 ) {
