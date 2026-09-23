@@ -581,6 +581,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
             </TouchableOpacity>
 
           </View>
+        )}
         {offer.status === 'ACCEPTED' && (
           <TouchableOpacity
             style={[styles.actionBtn, styles.actionBtnDecline, { marginTop: 4 }]}
@@ -591,7 +592,6 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
             <Ionicons name="close-circle-outline" size={14} color={Colors.accent} style={{ marginRight: 6 }} />
             <Text style={[styles.actionBtnText, { color: Colors.accent }]}>Request Cancellation</Text>
           </TouchableOpacity>
-        )}
         )}
       </View>
     );
