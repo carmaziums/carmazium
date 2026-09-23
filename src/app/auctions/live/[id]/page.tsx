@@ -131,6 +131,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const canPlaceBid =
         profile?.role === 'DEALER'
         && Boolean(dealerAccess?.permissions?.includes('PLACE_BID'))
+    const canPayAuctionFee =
+        profile?.role === 'DEALER'
+        && Boolean(dealerAccess?.permissions?.includes('PAY_AUCTION_FEE'))
     const canManageDealerInventory =
         profile?.role === 'DEALER'
         && Boolean(dealerAccess?.permissions?.includes('MANAGE_INVENTORY'))
@@ -842,11 +845,17 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             </div>
                                         )}
                                         {!auction.buyerFeePaid ? (
-                                            <Link href={`/checkout?listing_id=${auction.listingId}&mode=auction_fee`}>
-                                                <Button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black text-sm h-11 flex items-center gap-1.5">
-                                                    <CreditCard size={14} /> Pay the £125 fee
-                                                </Button>
-                                            </Link>
+                                            canPayAuctionFee ? (
+                                                <Link href={`/checkout?listing_id=${auction.listingId}&mode=auction_fee`}>
+                                                    <Button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black text-sm h-11 flex items-center gap-1.5">
+                                                        <CreditCard size={14} /> Pay the £125 fee
+                                                    </Button>
+                                                </Link>
+                                            ) : (
+                                                <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-2 text-xs text-blue-200 max-w-xs">
+                                                    The £125 buyer fee must be paid by the dealership Owner, Admin or Finance Manager.
+                                                </div>
+                                            )
                                         ) : (
                                             <Button
                                                 className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm h-11 flex items-center gap-1.5"
