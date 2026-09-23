@@ -1777,7 +1777,7 @@ export class AuctionsService {
      * Seller confirms the Buy It Now request — ends the auction with the pending buyer as winner.
      */
     async confirmBuyItNow(auctionId: string, sellerId: string): Promise<void> {
-        const businessSellerId = await this.resolveSellerBusinessId(businessSellerId, 'MANAGE_INVENTORY');
+        const businessSellerId = await this.resolveSellerBusinessId(sellerId, 'MANAGE_INVENTORY');
         const auction = await this.findOne(auctionId);
 
         if (auction.listing.sellerId !== businessSellerId) {
