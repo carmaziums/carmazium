@@ -11,7 +11,10 @@ import {
     HttpCode,
     HttpStatus,
     BadRequestException,
+    UseInterceptors,
+    UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
     ApiTags,
     ApiOperation,
@@ -19,6 +22,7 @@ import {
     ApiCookieAuth,
 } from '@nestjs/swagger';
 import { AuctionsService } from './auctions.service';
+import { HandoverDocumentsService } from './handover-documents.service';
 import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
@@ -35,7 +39,10 @@ import { TradeAuctionAccessGuard } from './trade-access.guard';
 @ApiTags('Auctions')
 @Controller('auctions')
 export class AuctionsController {
-    constructor(private readonly auctionsService: AuctionsService) { }
+    constructor(
+        private readonly auctionsService: AuctionsService,
+        private readonly handoverDocuments: HandoverDocumentsService,
+    ) { }
 
     // ── Trade Exchange browse routes (dealers and admins only) ────────────────
     //
@@ -266,7 +273,30 @@ export class AuctionsController {
         if (!proofUrl) {
             throw new BadRequestException('proofUrl is required');
         }
-        const result = await this.auctionsService.submitHandoverProof(id, user.id, proofUrl);
+        const result = await this.auctionsService.submitHandoverProof(id, user.id, { proofUrl });
         return new StandardResponse(result);
+    }
+
+    @Post(':id/handover-proof/document')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+    @ApiOperation({ summary: 'Submit handover proof as a file, stored privately (seller only)' })
+    @ApiResponse({ status: 201, description: 'Proof stored privately and submitted for verification' })
+    @ApiResponse({ status: 400, description: 'Auction not ended, no winner, or proof already submitted' })
+    @ApiResponse({ status: 403, description: 'You do not own this auction' })
+    async submitHandoverProofDocument(
+        @Param('id') id: string,
+        @UploadedFile() file: any,
+        @CurrentUser() user: any,
+    ) {
+        if (!file) {
+            throw new BadRequestException('No document was uploaded.');
+        }
+        const proofPath = await this.handoverDocuments.storeProof(user.id, id, file);
+        const result = await this.auctionsService.submitHandoverProof(id, user.id, { proofPath });
+        return new StandardResponse(
+            await this.handoverDocuments.hydrateProof(result as any),
+        );
     }
 }

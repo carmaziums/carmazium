@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { AuctionsService } from './auctions.service';
+import { HandoverDocumentsService } from './handover-documents.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
@@ -83,6 +84,17 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                 { provide: NotificationsService, useValue: notificationsService },
                 { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
                 { provide: AuctionGateway, useValue: auctionGateway },
+                {
+                    provide: HandoverDocumentsService,
+                    useValue: {
+                        // Pass-through: these tests assert auction state, not
+                        // how handover proof URLs are signed.
+                        hydrateProof: jest.fn(async (a: any) => a),
+                        hydrateMany: jest.fn(async (a: any) => a),
+                        signPath: jest.fn(async () => null),
+                        deleteProof: jest.fn(),
+                    },
+                },
                 { provide: EmailService, useValue: { sendAuctionWonEmail: jest.fn(), sendAuctionEndedSellerEmail: jest.fn(), sendAuctionReserveNotMetEmail: jest.fn() } },
                 { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
             ],
@@ -314,6 +326,17 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
                 { provide: NotificationsService, useValue: { create: jest.fn(), shouldSendEmail: jest.fn().mockResolvedValue(true) } },
                 { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
                 { provide: AuctionGateway, useValue: { broadcastAuctionEnd: jest.fn() } },
+                {
+                    provide: HandoverDocumentsService,
+                    useValue: {
+                        // Pass-through: these tests assert auction state, not
+                        // how handover proof URLs are signed.
+                        hydrateProof: jest.fn(async (a: any) => a),
+                        hydrateMany: jest.fn(async (a: any) => a),
+                        signPath: jest.fn(async () => null),
+                        deleteProof: jest.fn(),
+                    },
+                },
                 { provide: EmailService, useValue: {} },
                 { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
             ],
@@ -535,6 +558,17 @@ describe('AuctionsService — create', () => {
                 { provide: NotificationsService, useValue: { create: jest.fn() } },
                 { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
                 { provide: AuctionGateway, useValue: {} },
+                {
+                    provide: HandoverDocumentsService,
+                    useValue: {
+                        // Pass-through: these tests assert auction state, not
+                        // how handover proof URLs are signed.
+                        hydrateProof: jest.fn(async (a: any) => a),
+                        hydrateMany: jest.fn(async (a: any) => a),
+                        signPath: jest.fn(async () => null),
+                        deleteProof: jest.fn(),
+                    },
+                },
                 { provide: EmailService, useValue: {} },
                 { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
             ],
@@ -856,6 +890,17 @@ describe('AuctionsService — final lifecycle consistency', () => {
                 { provide: NotificationsService, useValue: notificationsService },
                 { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
                 { provide: AuctionGateway, useValue: auctionGateway },
+                {
+                    provide: HandoverDocumentsService,
+                    useValue: {
+                        // Pass-through: these tests assert auction state, not
+                        // how handover proof URLs are signed.
+                        hydrateProof: jest.fn(async (a: any) => a),
+                        hydrateMany: jest.fn(async (a: any) => a),
+                        signPath: jest.fn(async () => null),
+                        deleteProof: jest.fn(),
+                    },
+                },
                 {
                     provide: EmailService,
                     useValue: {

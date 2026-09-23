@@ -9,6 +9,7 @@ import { BidsModule } from '../bids/bids.module';
 import { EmailModule } from '../email/email.module';
 import { ChatModule } from '../chat/chat.module';
 import { TradeAuctionAccessGuard } from './trade-access.guard';
+import { HandoverDocumentsService } from './handover-documents.service';
 
 @Module({
     imports: [
@@ -20,7 +21,7 @@ import { TradeAuctionAccessGuard } from './trade-access.guard';
         forwardRef(() => ChatModule),
     ],
     controllers: [AuctionsController],
-    providers: [AuctionsService, AuctionGateway, TradeAuctionAccessGuard],
-    exports: [AuctionsService, AuctionGateway],
+    providers: [AuctionsService, AuctionGateway, TradeAuctionAccessGuard, HandoverDocumentsService],
+    exports: [AuctionsService, AuctionGateway, HandoverDocumentsService],
 })
 export class AuctionsModule { }

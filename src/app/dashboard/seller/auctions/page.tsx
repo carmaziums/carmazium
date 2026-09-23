@@ -23,7 +23,6 @@ import {
     type Auction, type CreateAuctionRequest,
 } from "@/lib/auctionApi"
 import { apiClient } from "@/lib/apiClient"
-import { uploadImage } from "@/lib/supabase"
 import { getStripeConnectStatus, alsoAuction, alsoListRetail, createListingCheckout, type StripeConnectStatus, type Listing } from "@/lib/listingApi"
 import { getAuctionOpeningBid, getAuctionReserveGuide } from "@/lib/auctionPricing"
 
@@ -384,10 +383,15 @@ function SellerAuctionsPage() {
         setHandoverUploading(auctionId)
         setHandoverError(prev => ({ ...prev, [auctionId]: "" }))
         try {
-            const url = await uploadImage(file, 'listings', `handover/${auctionId}`)
-            await apiClient(`/auctions/${auctionId}/handover-proof`, {
+            // Handover proof goes through the backend into a PRIVATE bucket.
+            // It used to be uploaded straight to the public `listings` bucket,
+            // which left signed handover documents — names, addresses,
+            // signatures — readable by anyone holding the URL.
+            const body = new FormData()
+            body.append("file", file)
+            await apiClient(`/auctions/${auctionId}/handover-proof/document`, {
                 method: "POST",
-                body: JSON.stringify({ proofUrl: url }),
+                body,
             })
             setHandoverDone(prev => new Set([...prev, auctionId]))
             setSuccessMsg("Handover proof submitted — your £100 bonus will be released after verification.")

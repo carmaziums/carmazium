@@ -10,6 +10,7 @@ import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SellersService } from '../sellers/sellers.service';
 import { AuctionsService } from '../auctions/auctions.service';
+import { HandoverDocumentsService } from '../auctions/handover-documents.service';
 import { buildListingActivationData } from '../listings/listing-activation';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
 import { AUCTION_DURATION_MS } from '../auctions/auction-pricing';
@@ -24,6 +25,7 @@ export class AdminService {
         private readonly notificationsService: NotificationsService,
         private readonly sellersService: SellersService,
         private readonly auctionsService: AuctionsService,
+        private readonly handoverDocuments: HandoverDocumentsService,
     ) { }
 
     async getAllUsers(page = 1, limit = 20, search?: string) {
@@ -876,7 +878,7 @@ export class AdminService {
     }
 
     async getPendingHandovers() {
-        return this.prisma.auction.findMany({
+        const rows = await this.prisma.auction.findMany({
             where: {
                 deletedAt: null,
                 status: 'ENDED',
@@ -912,6 +914,9 @@ export class AdminService {
                 winner: { select: { id: true, firstName: true, lastName: true, email: true } },
             },
         });
+        // Private proof keys become short-lived signed URLs for review; the
+        // key itself never leaves the server.
+        return this.handoverDocuments.hydrateMany(rows as any[]);
     }
 
     /**
@@ -1249,7 +1254,7 @@ export class AdminService {
         // already null, either nothing has been submitted yet or this denial ran
         // already; either way, running the refund path a second time would try to
         // re-refund an already-refunded Stripe intent and page every admin twice.
-        if (!auction.handoverProofUrl) {
+        if (!auction.handoverProofUrl && !(auction as any).handoverProofPath) {
             return auction;
         }
 
@@ -1284,35 +1289,23 @@ export class AdminService {
             }
         }
 
-        // Purge the denied proof from Supabase storage — the URL is a public path
-        // like `${supabaseUrl}/storage/v1/object/public/listings/handover/{id}/xxx.jpg`;
-        // we take everything after `/listings/` as the object path. Failure is
-        // logged but never blocks the denial from completing.
-        try {
-            const marker = '/storage/v1/object/public/listings/';
-            const idx = auction.handoverProofUrl.indexOf(marker);
-            if (idx !== -1) {
-                const objectPath = auction.handoverProofUrl.slice(idx + marker.length);
-                const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-                const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
-                if (supabaseUrl && supabaseKey && objectPath) {
-                    // eslint-disable-next-line @typescript-eslint/no-var-requires
-                    const { createClient } = require('@supabase/supabase-js');
-                    const supabase = createClient(supabaseUrl, supabaseKey);
-                    await supabase.storage.from('listings').remove([objectPath]);
-                }
-            }
-        } catch (err) {
-            console.error(`[Admin] Failed to purge denied handover proof for auction ${auctionId}:`, err);
-        }
+        // Purge the denied proof from whichever bucket holds it: the private
+        // handover bucket for new submissions, the public `listings` bucket for
+        // legacy and mobile ones. Never throws — a denial must complete even
+        // when storage is unreachable, or the seller cannot resubmit.
+        await this.handoverDocuments.deleteProof(
+            (auction as any).handoverProofPath,
+            auction.handoverProofUrl,
+        );
 
-        // Clear the proof URL so seller can resubmit
+        // Clear both proof columns so the seller can resubmit
         const updated = await this.prisma.auction.update({
             where: { id: auctionId },
             data: {
                 handoverProofUrl: null,
+                handoverProofPath: null,
                 handoverSubmittedAt: null,
-            },
+            } as any,
         });
 
         const sellerId = auction.listing?.sellerId;

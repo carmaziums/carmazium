@@ -966,7 +966,8 @@ model Auction {
   wonAt                   DateTime?
   buyerFeePaid            Boolean   @default(false)
   buyerFeeTransactionId   String?
-  handoverProofUrl        String?
+  handoverProofUrl        String? // Legacy PUBLIC bucket URL — still written by released mobile clients
+  handoverProofPath       String? // Object key in the private `auction-handover-documents` bucket
   handoverSubmittedAt     DateTime?
   sellerBonusReleased     Boolean   @default(false)
   sellerBonusReleasedAt   DateTime?

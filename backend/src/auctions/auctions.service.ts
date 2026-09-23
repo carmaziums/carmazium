@@ -13,6 +13,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { AuctionGateway, AuctionEndPayload } from './auction.gateway';
 import { EmailService } from '../email/email.service';
 import { ChatService } from '../chat/chat.service';
+import { HandoverDocumentsService } from './handover-documents.service';
 import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
@@ -44,6 +45,7 @@ export class AuctionsService {
         private readonly emailService: EmailService,
         @Inject(forwardRef(() => ChatService))
         private readonly chatService: ChatService,
+        private readonly handoverDocuments: HandoverDocumentsService,
     ) { }
 
     async create(createAuctionDto: CreateAuctionDto, userId: string): Promise<Auction> {
@@ -352,7 +354,9 @@ export class AuctionsService {
             }),
             this.prisma.auction.count({ where }),
         ]);
-        return { data, total };
+        // Private proof keys become short-lived signed URLs; the key itself
+        // never leaves the server.
+        return { data: await this.handoverDocuments.hydrateMany(data), total };
     }
 
     /**
@@ -1142,7 +1146,19 @@ export class AuctionsService {
         return removed;
     }
 
-    async submitHandoverProof(auctionId: string, userId: string, proofUrl: string): Promise<any> {
+    /**
+     * Record handover proof for an ended auction.
+     *
+     * `proofPath` is an object key in the private handover bucket, written by
+     * the multipart upload endpoint. `proofUrl` is the legacy public URL, still
+     * sent by released mobile clients; it is kept working on purpose until the
+     * app ships against the private endpoint.
+     */
+    async submitHandoverProof(
+        auctionId: string,
+        userId: string,
+        proof: { proofUrl?: string; proofPath?: string },
+    ): Promise<any> {
         const auction = await this.prisma.auction.findUnique({
             where: { id: auctionId },
             include: { listing: { select: { sellerId: true, title: true } } },
@@ -1160,16 +1176,19 @@ export class AuctionsService {
         if (!auction.winnerId) {
             throw new BadRequestException('This auction has no winner');
         }
-        if (auction.handoverProofUrl) {
+        if (auction.handoverProofUrl || (auction as any).handoverProofPath) {
             throw new BadRequestException('Handover proof has already been submitted');
         }
 
         const updated = await this.prisma.auction.update({
             where: { id: auctionId },
             data: {
-                handoverProofUrl: proofUrl,
+                // Exactly one of these is set. A private upload leaves the
+                // legacy column null so nothing public is ever recorded for it.
+                handoverProofUrl: proof.proofPath ? null : proof.proofUrl,
+                handoverProofPath: proof.proofPath ?? null,
                 handoverSubmittedAt: new Date(),
-            },
+            } as any,
         });
 
         // Notify seller that proof is under review

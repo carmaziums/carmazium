@@ -24,6 +24,7 @@ describe('AdminService listing approval readiness', () => {
             { create: jest.fn().mockResolvedValue(null) } as any,
             { incrementListings: jest.fn() } as any,
             {} as any,
+            { deleteProof: jest.fn(), hydrateMany: jest.fn(async (r: any) => r) } as any,
         );
 
         return { service, prisma };
