@@ -34,6 +34,7 @@ import {
 } from '../../lib/auctionApi';
 import { createChatRoom } from '../../lib/chatApi';
 import { apiClient } from '../../lib/apiClient';
+import { DealerAccess, getDealerAccess } from '../../lib/dealerAccessApi';
 import { io } from 'socket.io-client';
 import { getAccessToken } from '../../lib/supabase';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -190,9 +191,55 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // ── Auction state ──
   const [auction, setAuction] = useState<AuctionDetail | null>(null);
+  const [dealerAccess, setDealerAccess] = useState<DealerAccess | null>(null);
+  const [dealerAccessLoading, setDealerAccessLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    if (role !== 'dealer' || !currentUser?.id) {
+      setDealerAccess(null);
+      setDealerAccessLoading(false);
+      return;
+    }
+
+    let mounted = true;
+    setDealerAccessLoading(true);
+    getDealerAccess()
+      .then((access) => {
+        if (mounted) setDealerAccess(access);
+      })
+      .catch(() => {
+        if (mounted) setDealerAccess(null);
+      })
+      .finally(() => {
+        if (mounted) setDealerAccessLoading(false);
+      });
+
+    return () => { mounted = false; };
+  }, [role, currentUser?.id]);
+
+  const businessUserId = dealerAccess?.ownerUserId ?? currentUser?.id;
+  const canPlaceBid =
+    role === 'dealer'
+    && Boolean(dealerAccess?.permissions?.includes('PLACE_BID'));
+  const canPayAuctionFee =
+    role === 'dealer'
+    && Boolean(dealerAccess?.permissions?.includes('PAY_AUCTION_FEE'));
+  const canManageDealerInventory =
+    role === 'dealer'
+    && Boolean(dealerAccess?.permissions?.includes('MANAGE_INVENTORY'));
+  const isDealerVerified =
+    role === 'dealer'
+    ? Boolean(dealerAccess?.isVerified)
+    : Boolean(currentUser?.isVerified);
+  const isBusinessSeller =
+    !!businessUserId
+    && auction?.listing?.sellerId === businessUserId;
+  const canManageSellerAuction =
+    isBusinessSeller
+    && (role !== 'dealer' || canManageDealerInventory);
 
   // ── Bid state ──
   const [currentBid, setCurrentBid] = useState<number>(listingObj.currentBid ?? listingObj.startingBid ?? 0);
@@ -305,7 +352,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         const bids = data.listing.bids ?? [];
         const topBid = bids[0] ? Number(bids[0].amount) : Number(data.startingBid);
         setCurrentBid(topBid);
-        setIsWinning(!!currentUser && bids[0]?.bidderId === currentUser.id);
+        setIsWinning(!!businessUserId && bids[0]?.bidderId === businessUserId);
         setBidHistory(bids.map(b => {
           const first = b.bidder?.firstName ?? '';
           const last = b.bidder?.lastName ?? '';
@@ -336,7 +383,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       })
       .catch(() => { if (!opts?.silent) setLoadError('Failed to load auction. Please try again.'); })
       .finally(() => { if (!opts?.silent) setLoading(false); });
-  }, [auctionId, currentUser]);
+  }, [auctionId, businessUserId]);
 
   useEffect(() => { loadAuction(); }, [loadAuction]);
 
@@ -408,7 +455,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       socket.on('bid:new', (payload: BidBroadcastPayload) => {
         if (payload.auctionId !== auctionId) return;
         setCurrentBid(payload.amount);
-        setIsWinning(!!currentUser && payload.bidderId === currentUser.id);
+        setIsWinning(!!businessUserId && payload.bidderId === businessUserId);
         setBidHistory(prev => [
           { id: payload.bidId, initials: payload.bidderInitials || '??', amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString('en-GB'), createdAt: payload.timestamp, bidderId: payload.bidderId, isNew: true },
           ...prev.map(b => ({ ...b, isNew: false })),
@@ -417,7 +464,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         // derived from bidHistory (see cancelableBids) — being outbid no
         // longer clears eligibility, since the 24h window applies
         // regardless of current ranking (server-side restriction removed).
-        if (currentUser && payload.bidderId === currentUser.id) {
+        if (businessUserId && payload.bidderId === businessUserId) {
           bidFlash.value = withSequence(
             withTiming(1, { duration: 120 }),
             withTiming(0, { duration: 400 }),
@@ -441,7 +488,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         setAuction(p => p ? { ...p, status: 'ENDED', winnerId: payload.winnerId, winningBidAmount: payload.winningBidAmount } : p);
 
         // Route winners to AuctionComplete screen
-        if (payload.winnerId && currentUser && payload.winnerId === currentUser.id) {
+        if (payload.winnerId && businessUserId && payload.winnerId === businessUserId) {
           haptics.success();
           const _auction = auction;
           navigation.navigate('AuctionComplete' as any, {
@@ -489,7 +536,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           const topAmount = next.length > 0 ? next[0].amount : Number(auction?.startingBid ?? 0);
           setCurrentBid(topAmount);
           // Recalculate winning status from the new top bidder
-          setIsWinning(!!currentUser && next.length > 0 && next[0].bidderId === currentUser.id);
+          setIsWinning(!!businessUserId && next.length > 0 && next[0].bidderId === businessUserId);
           return next;
         });
       });
@@ -506,7 +553,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // any change to the stored profile tore this socket down and reconnected it
   // mid-auction — dropping live bid updates for the duration of the
   // handshake, on the one screen where that matters most.
-  }, [auctionId, currentUser?.id]);
+  }, [auctionId, businessUserId]);
 
   // ─── Cancel bid countdown — 24h window, ticks every 30s (no need for
   // per-second precision over a day-long window). ─────────────────────────
@@ -520,8 +567,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // "must be highest bidder" restriction was removed server-side, so being
   // outbid no longer disqualifies a bid from cancellation, and more than one
   // can be eligible at once.
-  const cancelableBids = currentUser
-    ? bidHistory.filter(b => b.bidderId === currentUser.id && (nowMs - new Date(b.createdAt).getTime()) < BID_CANCEL_WINDOW_MS)
+  const cancelableBids = canPlaceBid && businessUserId
+    ? bidHistory.filter(b => b.bidderId === businessUserId && (nowMs - new Date(b.createdAt).getTime()) < BID_CANCEL_WINDOW_MS)
     : [];
 
   // ─── Anti-snipe timer ─────────────────────────────────────────────────────
@@ -549,23 +596,28 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // ─── Bid handling ─────────────────────────────────────────────────────────
 
   const handleBid = useCallback(async (amount: number) => {
-    // Only dealers can place bids
     if (role !== 'dealer') {
       setBidError('Only dealers can place bids in auctions.');
       return;
     }
-    // Dealer must be KYC verified
-    if (!currentUser?.isVerified) {
+    if (!canPlaceBid) {
+      setBidError('Your dealership role does not allow auction bidding.');
+      return;
+    }
+    if (!isDealerVerified) {
+      const actions: any[] = [{ text: 'OK', style: 'cancel' }];
+      if (dealerAccess?.isOwner) {
+        actions.push({
+          text: 'Go to Verification',
+          onPress: () => navigation.navigate('DealerKYC'),
+        });
+      }
       Alert.alert(
         'Verification Required',
-        'Verify your dealership to place bids. Complete KYC in Settings.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Go to Verification',
-            onPress: () => navigation.navigate('DealerKYC'),
-          },
-        ],
+        dealerAccess?.isOwner
+          ? 'Verify your dealership to place bids.'
+          : 'The dealership owner must complete verification before staff can bid.',
+        actions,
       );
       return;
     }
@@ -589,11 +641,15 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     } finally {
       setBidLoading(false);
     }
-  }, [auction, currentUser, currentBid]);
+  }, [auction, currentUser, currentBid, role, canPlaceBid, isDealerVerified, dealerAccess?.isOwner, navigation]);
 
   // ─── Cancel bid ──────────────────────────────────────────────────────────────
 
   const handleCancelBid = useCallback((bidId: string) => {
+    if (!canPlaceBid) {
+      Alert.alert('View-only access', 'Your dealership role does not allow auction bidding.');
+      return;
+    }
     Alert.alert(
       'Cancel your bid?',
       'Your bid will be removed. The auction continues with the previous highest bid.',
@@ -618,12 +674,15 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, []);
+  }, [canPlaceBid]);
 
   // ─── Buy It Now handlers ──────────────────────────────────────────────────────
 
   const handleTriggerBin = useCallback(() => {
-    if (!auction) return;
+    if (!auction || !canPlaceBid) {
+      Alert.alert('View-only access', 'Your dealership role does not allow Buy It Now requests.');
+      return;
+    }
     Alert.alert(
       'Buy It Now?',
       `The seller must confirm within 24 hours. The auction continues until they respond.\n\nBuy It Now price: ${fmt(Number(auction.buyItNowPrice))}`,
@@ -635,7 +694,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             setBinLoading(true);
             try {
               await triggerBuyItNow(auction.id);
-              setBinPendingBuyerId(currentUser?.id ?? 'pending');
+              setBinPendingBuyerId(businessUserId ?? 'pending');
               setBinBannerDismissed(false);
             } catch (err: any) {
               Alert.alert('Failed', err?.message ?? 'Could not request Buy It Now. Please try again.');
@@ -646,10 +705,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, [auction, currentUser]);
+  }, [auction, canPlaceBid, businessUserId]);
 
   const handleConfirmBin = useCallback(() => {
-    if (!auction) return;
+    if (!auction || !canManageSellerAuction) return;
     Alert.alert(
       'Confirm Buy It Now?',
       `This ends the auction immediately at ${fmt(Number(auction.buyItNowPrice))}.`,
@@ -671,10 +730,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, [auction]);
+  }, [auction, canManageSellerAuction]);
 
   const handleDeclineBin = useCallback(async () => {
-    if (!auction) return;
+    if (!auction || !canManageSellerAuction) return;
     setBinLoading(true);
     try {
       await declineBuyItNow(auction.id);
@@ -684,12 +743,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     } finally {
       setBinLoading(false);
     }
-  }, [auction]);
+  }, [auction, canManageSellerAuction]);
 
   // ─── Seller: accept a specific bid early ─────────────────────────────────────
 
   const handleAcceptBid = useCallback((bid: BidEntry) => {
-    if (!auction) return;
+    if (!auction || !canManageSellerAuction) return;
     Alert.alert(
       'Accept current highest offer?',
       `Accepting ${fmt(bid.amount)} will end the auction immediately, even if it is below your reserve. The bidder becomes the winner and this cannot be undone.`,
@@ -715,12 +774,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, [auction]);
+  }, [auction, canManageSellerAuction]);
 
   // ─── Seller: close auction early (uses current highest bid) ──────────────────
 
   const handleCloseEarly = useCallback(() => {
-    if (!auction) return;
+    if (!auction || !canManageSellerAuction) return;
     Alert.alert(
       'End auction without a sale?',
       'This closes the auction without accepting the current below-reserve offer. To sell at the current offer, use Accept Offer instead.',
@@ -744,7 +803,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, [auction]);
+  }, [auction, canManageSellerAuction]);
 
   // ─── Derived values ───────────────────────────────────────────────────────
 
@@ -753,8 +812,11 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const isScheduled = status === 'SCHEDULED';
   const isEnded = status === 'ENDED';
   const isCancelled = status === 'CANCELLED';
-  const isSeller = !!currentUser && auction?.listing?.sellerId === currentUser.id;
-  const userWon = isEnded && !!(endedPayload?.winnerId === currentUser?.id || (auction?.winnerId && auction.winnerId === currentUser?.id));
+  const isSeller = isBusinessSeller;
+  const userWon = isEnded && !!(
+    endedPayload?.winnerId === businessUserId
+    || (auction?.winnerId && auction.winnerId === businessUserId)
+  );
   const reservePrice = auction ? Number(auction.reservePrice) : 0;
   const reserveMet = currentBid > 0 && reservePrice > 0 && currentBid >= reservePrice;
   const minIncrement = auction ? Number(auction.minIncrement) : 100;
@@ -908,7 +970,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
       )}
       {/* Seller quick-close control — only when auction is actively running */}
-      {isSeller && isActive && !reserveMet && (
+      {canManageSellerAuction && isActive && !reserveMet && (
         <View style={s.sellerToolsRow}>
           <Ionicons name="settings-outline" size={13} color={Colors.warning} />
           <Text style={s.sellerToolsLabel}>Seller Tools</Text>
@@ -925,7 +987,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       )}
-      {isSeller && isActive && !reserveMet && bidHistory[0]?.id && (
+      {canManageSellerAuction && isActive && !reserveMet && bidHistory[0]?.id && (
         <View style={[s.binSellerPanel, { borderColor: Colors.accentGreenAlpha30, backgroundColor: Colors.accentGreenAlpha08 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="cash-outline" size={16} color={Colors.accentGreen} />
@@ -969,7 +1031,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
       )}
       {/* ── Seller BIN confirmation panel ── */}
-      {isSeller && isActive && binPendingBuyerId && auction?.buyItNowPrice && (
+      {canManageSellerAuction && isActive && binPendingBuyerId && auction?.buyItNowPrice && (
         <View style={s.binSellerPanel}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <Ionicons name="pricetag" size={16} color={Colors.warning} />
@@ -1442,7 +1504,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                         <Text style={[s.bidAmt, { fontFamily: FontFamily.mono }]}>{fmt(bid.amount)}</Text>
                         <Text style={s.bidTime}>{bid.time}</Text>
                         {/* Seller-only "Accept" button — ends the auction at this bid */}
-                        {isSeller && isActive && !reserveMet && i === 0 && (
+                        {canManageSellerAuction && isActive && !reserveMet && i === 0 && (
                           <TouchableOpacity
                             style={[s.acceptBidBtn, acceptingBidId === bid.id && { opacity: 0.6 }]}
                             onPress={() => handleAcceptBid(bid)}
@@ -1561,7 +1623,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         )}
 
         {/* ── Buy It Now panel (buyer) — hidden when reserve met or auction not active ── */}
-        {isActive && !isSeller && !isEnded && !isCancelled && auction?.buyItNowPrice && !reserveMet && (
+        {isActive && !isSeller && canPlaceBid && !isEnded && !isCancelled && auction?.buyItNowPrice && !reserveMet && (
           binPendingBuyerId ? (
             // BIN is pending — show waiting state
             <View style={s.binPendingBanner}>
@@ -1640,26 +1702,35 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </TouchableOpacity>
             )}
             {userWon && !auction?.buyerFeePaid && (
-              <TouchableOpacity
-                style={[s.bidBtn, { backgroundColor: Colors.accent, marginTop: 8 }]}
-                activeOpacity={0.8}
-                onPress={() =>
-                  navigation.navigate('PurchaseFlow' as any, {
-                    listingId: auction?.listingId,
-                    salePrice: 0,
-                    buyerFee: 125,
-                    listingTitle: auction?.listing?.title ?? 'Vehicle',
-                    listingImage: auction?.listing?.images?.[0],
-                    sellerName: auction?.listing?.seller
-                      ? `${auction.listing.seller.firstName ?? ''} ${auction.listing.seller.lastName ?? ''}`.trim()
-                      : undefined,
-                    paymentType: 'COMMISSION',
-                  })
-                }
-              >
-                <Ionicons name="lock-closed-outline" size={15} color={Colors.white} />
-                <Text style={s.bidBtnText}>Pay £125 Fee to Unlock Chat</Text>
-              </TouchableOpacity>
+              canPayAuctionFee ? (
+                <TouchableOpacity
+                  style={[s.bidBtn, { backgroundColor: Colors.accent, marginTop: 8 }]}
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    navigation.navigate('PurchaseFlow' as any, {
+                      listingId: auction?.listingId,
+                      salePrice: 0,
+                      buyerFee: 125,
+                      listingTitle: auction?.listing?.title ?? 'Vehicle',
+                      listingImage: auction?.listing?.images?.[0],
+                      sellerName: auction?.listing?.seller
+                        ? `${auction.listing.seller.firstName ?? ''} ${auction.listing.seller.lastName ?? ''}`.trim()
+                        : undefined,
+                      paymentType: 'COMMISSION',
+                    })
+                  }
+                >
+                  <Ionicons name="lock-closed-outline" size={15} color={Colors.white} />
+                  <Text style={s.bidBtnText}>Pay £125 Fee to Unlock Chat</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={[s.banner, s.bannerAmber, { marginTop: 8 }]}>
+                  <Ionicons name="lock-closed-outline" size={13} color={Colors.warning} />
+                  <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
+                    The £125 buyer fee must be paid by a dealership Owner, Admin or Finance Manager.
+                  </Text>
+                </View>
+              )
             )}
           </View>
         ) : isScheduled ? (
@@ -1702,19 +1773,28 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 live auction. Removed rather than wired (AUC-016, decision P-4).
                 The reserve status bar above it stays — that part is real, reads
                 from live state, and web has no equivalent. */}
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity
-                style={[s.quickBidBtn, { flex: 1, backgroundColor: Colors.accentAlpha10, borderColor: Colors.accentAlpha25, borderWidth: 1 }, (closingEarly || reserveMet) && { opacity: 0.6 }]}
-                activeOpacity={0.8}
-                onPress={handleCloseEarly}
-                disabled={closingEarly || reserveMet}
-              >
-                {closingEarly
-                  ? <ActivityIndicator size="small" color={Colors.accent} />
-                  : <Text style={[s.quickBidBtnText, { color: Colors.accent }]}>{reserveMet ? 'RUNNING TO END' : 'CLOSE NOW'}</Text>
-                }
-              </TouchableOpacity>
-            </View>
+            {canManageSellerAuction ? (
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  style={[s.quickBidBtn, { flex: 1, backgroundColor: Colors.accentAlpha10, borderColor: Colors.accentAlpha25, borderWidth: 1 }, (closingEarly || reserveMet) && { opacity: 0.6 }]}
+                  activeOpacity={0.8}
+                  onPress={handleCloseEarly}
+                  disabled={closingEarly || reserveMet}
+                >
+                  {closingEarly
+                    ? <ActivityIndicator size="small" color={Colors.accent} />
+                    : <Text style={[s.quickBidBtnText, { color: Colors.accent }]}>{reserveMet ? 'RUNNING TO END' : 'CLOSE NOW'}</Text>
+                  }
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={[s.banner, s.bannerBlue]}>
+                <Ionicons name="eye-outline" size={13} color={Colors.infoBlueLight} />
+                <Text style={[s.bannerText, { color: Colors.infoLight }]}>
+                  You can monitor this dealership auction, but your role cannot change or close it.
+                </Text>
+              </View>
+            )}
           </View>
         ) : !currentUser ? (
           <View style={s.bidStateBox}>
@@ -1730,15 +1810,32 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <View style={s.bidStateBox}>
             <Text style={s.muted}>Only verified dealers can bid in auctions.</Text>
           </View>
-        ) : !currentUser.isVerified ? (
+        ) : dealerAccessLoading ? (
           <View style={s.bidStateBox}>
-            <Text style={s.muted}>Verify your dealership to place bids.</Text>
-            <Button
-              label="Complete KYC"
-              size="sm"
-              style={{ marginTop: 8 }}
-              onPress={() => navigation.navigate('DealerKYC')}
-            />
+            <ActivityIndicator size="small" color={Colors.accent} />
+            <Text style={s.muted}>Checking dealership permissions…</Text>
+          </View>
+        ) : !canPlaceBid ? (
+          <View style={s.bidStateBox}>
+            <Ionicons name="eye-outline" size={20} color={Colors.infoBlue} />
+            <Text style={[s.bidStateText, { color: Colors.infoBlueLight }]}>View-only auction access</Text>
+            <Text style={s.muted}>Your dealership role can follow auctions but cannot place or cancel bids.</Text>
+          </View>
+        ) : !isDealerVerified ? (
+          <View style={s.bidStateBox}>
+            <Text style={s.muted}>
+              {dealerAccess?.isOwner
+                ? 'Verify your dealership to place bids.'
+                : 'The dealership owner must complete verification before staff can bid.'}
+            </Text>
+            {dealerAccess?.isOwner && (
+              <Button
+                label="Complete KYC"
+                size="sm"
+                style={{ marginTop: 8 }}
+                onPress={() => navigation.navigate('DealerKYC')}
+              />
+            )}
           </View>
         ) : (
           <View style={{ gap: 10 }}>
