@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
     gap: 9,
     padding: 10,
     borderRadius: 10,
-    backgroundColor: Colors.blackAlpha20,
+    backgroundColor: 'rgba(0,0,0,0.20)',
   },
   fileName: {
     fontFamily: FontFamily.medium,
