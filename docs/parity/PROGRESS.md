@@ -2540,3 +2540,26 @@ Still explicit Block 7 gaps:
 - `service_provider.jobs`: open job feed, quoting, assigned work, start/complete, inspection outcomes and job chat.
 - `service_provider.leads`: matched Finance/Warranty inbox, detail and provider responses.
 - `service_provider.messages`: provider-focused message workspace/list entry.
+
+## 2026-09-23 — Block 7: Native Partner/provider Jobs
+
+**Block 7 checkpoint:** paid-job provider lifecycle completed on native mobile; Block 7 remains in progress.
+
+Completed in this slice:
+
+- Native Available Jobs and My Work views for Delivery, Recovery and Inspection.
+- Matching feed uses the same approved capability/postcode backend filters as web.
+- Cursor pagination, pull-to-refresh and provider capability empty/error states.
+- Provider quote create/update/withdraw using the authoritative TradeXchange job endpoints.
+- Assigned job lifecycle: accepted → customer paid → start → complete → payout/release state.
+- Full customer contact is only shown when the backend authorizes the assigned provider business.
+- Native service-job chat uses `POST /chat/service-jobs/:jobId` and reuses the existing ChatScreen/realtime room.
+- Inspection completion preserves structured `PASS` / `FAULTS_FOUND` outcomes; faulted inspections require a written summary, maintaining the Block 5 auction-refusal contract.
+- `service_provider.jobs` moved from `gap` to `required` in `product-parity.json`.
+- Permanent parity checks now fail if native job feed, quote/start/complete, structured inspection or service-job chat contracts disappear.
+
+Still explicit Block 7 gaps:
+
+- `service_provider.leads`: matched Finance/Warranty inbox, detail and provider responses.
+- `service_provider.messages`: provider-focused message workspace/list entry.
+
