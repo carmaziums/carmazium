@@ -8,6 +8,8 @@ import { useAuthStore } from '../store/authStore';
 import { Colors } from '../constants/colors';
 import { Radius } from '../constants/spacing';
 import { FontFamily, FontSize } from '../constants/typography';
+import { useDealerAccess } from '../hooks/useDealerAccess';
+import type { DealerPermission } from '../lib/dealerAccessApi';
 
 const LOCKED_FEATURES = [
   'List Vehicles',
@@ -45,18 +47,51 @@ const LOCKED_FEATURES = [
  * security-meaningful part — no access to inventory, offers, leads, team,
  * earnings, finance, purchases or analytics — is fully enforced.
  */
-export const DealerGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const DealerGate: React.FC<{
+  children: React.ReactNode;
+  requiredPermission?: DealerPermission;
+  allowUnverifiedOwner?: boolean;
+}> = ({ children, requiredPermission, allowUnverifiedOwner = false }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const isVerified = useAuthStore((s) => s.user?.isVerified);
   const isDealerStaff = useAuthStore((s) => s.user?.isDealerStaff);
   const accountRole = useAuthStore((s) => s.accountRole);
 
-  if (isDealerStaff || (accountRole === 'dealer' && isVerified)) {
+  const dealerIdentity = accountRole === 'dealer' || !!isDealerStaff;
+  const basicDealerAccess =
+    dealerIdentity && (allowUnverifiedOwner || !!isDealerStaff || !!isVerified);
+  const permissionCheckEnabled = basicDealerAccess && !!requiredPermission;
+  const {
+    access,
+    loading: permissionLoading,
+    error: permissionError,
+    hasPermission,
+    refresh,
+  } = useDealerAccess(permissionCheckEnabled);
+
+  const wrongAccountType = !dealerIdentity;
+  const kycLocked = !wrongAccountType && !allowUnverifiedOwner && !isDealerStaff && !isVerified;
+  const permissionDenied =
+    basicDealerAccess
+    && !!requiredPermission
+    && !permissionLoading
+    && !permissionError
+    && !hasPermission(requiredPermission);
+
+  if (basicDealerAccess && !requiredPermission) {
     return <>{children}</>;
   }
 
-  const wrongAccountType = accountRole !== 'dealer' && !isDealerStaff;
+  if (
+    basicDealerAccess
+    && requiredPermission
+    && !permissionLoading
+    && !permissionError
+    && hasPermission(requiredPermission)
+  ) {
+    return <>{children}</>;
+  }
 
   return (
     <View style={styles.container}>
@@ -70,27 +105,43 @@ export const DealerGate: React.FC<{ children: React.ReactNode }> = ({ children }
         </View>
 
         <Text style={styles.title}>
-          {wrongAccountType ? 'Dealer Account Required' : 'Dealer Features Locked'}
+          {wrongAccountType
+            ? 'Dealer Account Required'
+            : permissionDenied
+              ? 'Role Access Restricted'
+              : permissionLoading
+                ? 'Checking Dealer Access'
+                : permissionError
+                  ? 'Access Check Unavailable'
+                  : 'Dealer Features Locked'}
         </Text>
         <Text style={styles.blurb}>
           {wrongAccountType
             ? 'These tools belong to a Dealer capability. Your current CarMazium account role does not grant dealer access.'
-            : 'Complete KYC verification to unlock your dealer dashboard and start listing vehicles, managing inventory, and accessing auction tools.'}
+            : permissionDenied
+              ? `Your ${access?.role?.replace(/_/g, ' ') || 'staff'} role does not include this dealership tool.`
+              : permissionLoading
+                ? 'Checking the permissions assigned to your dealership role.'
+                : permissionError
+                  ? 'CarMazium could not confirm your dealership permissions. Retry the access check.'
+                  : 'Complete KYC verification to unlock your dealer dashboard and start listing vehicles, managing inventory, and accessing auction tools.'}
         </Text>
-        {!wrongAccountType && (
+        {kycLocked && (
           <Text style={styles.eta}>Verification typically takes less than 24 hours</Text>
         )}
 
-        <View style={styles.featureGrid}>
-          {LOCKED_FEATURES.map((f) => (
-            <View key={f} style={styles.featureChip}>
-              <Ionicons name="lock-closed-outline" size={11} color={Colors.warning} />
-              <Text style={styles.featureText} numberOfLines={1}>{f}</Text>
-            </View>
-          ))}
-        </View>
+        {(wrongAccountType || kycLocked) && (
+          <View style={styles.featureGrid}>
+            {LOCKED_FEATURES.map((f) => (
+              <View key={f} style={styles.featureChip}>
+                <Ionicons name="lock-closed-outline" size={11} color={Colors.warning} />
+                <Text style={styles.featureText} numberOfLines={1}>{f}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
-        {!wrongAccountType && (
+        {kycLocked && (
           <TouchableOpacity
             style={styles.primaryBtn}
             activeOpacity={0.85}
@@ -102,13 +153,29 @@ export const DealerGate: React.FC<{ children: React.ReactNode }> = ({ children }
           </TouchableOpacity>
         )}
 
+        {permissionError && (
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            activeOpacity={0.85}
+            onPress={() => refresh(true)}
+            accessibilityRole="button"
+          >
+            <Text style={styles.primaryBtnText}>Retry access check</Text>
+            <Ionicons name="refresh" size={16} color={Colors.white} />
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity
           onPress={() => navigation.navigate('Tabs')}
           activeOpacity={0.7}
           accessibilityRole="button"
         >
           <Text style={styles.secondaryText}>
-            {wrongAccountType ? 'Back to dashboard' : 'Changed your mind? Go back to browsing'}
+            {wrongAccountType
+              ? 'Back to dashboard'
+              : permissionDenied || permissionError || permissionLoading
+                ? 'Back to dealer dashboard'
+                : 'Changed your mind? Go back to browsing'}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -119,9 +186,16 @@ export const DealerGate: React.FC<{ children: React.ReactNode }> = ({ children }
 /** Wraps a screen component in the gate — used at navigator registration so
  *  every entry path (drawer, deep link, notification tap) is covered, not just
  *  the ones that go through a menu. */
-export const withDealerGate = <P extends object>(Screen: React.ComponentType<P>) => {
+export const withDealerGate = <P extends object>(
+  Screen: React.ComponentType<P>,
+  requiredPermission?: DealerPermission,
+  allowUnverifiedOwner = false,
+) => {
   const Gated: React.FC<P> = (props) => (
-    <DealerGate>
+    <DealerGate
+      requiredPermission={requiredPermission}
+      allowUnverifiedOwner={allowUnverifiedOwner}
+    >
       <Screen {...props} />
     </DealerGate>
   );
