@@ -54,18 +54,21 @@ export class SellersController {
 
     /**
      * GET /sellers/:userId/phone
-     * Soft-auth — returns the seller's contact phone only if the caller is
-     * logged in; anonymous callers get `phoneAvailable` instead of the number.
+     * Soft-auth. Authenticated callers can see the seller number. Anonymous
+     * callers may see it only when `listingId` identifies this seller's ACTIVE
+     * PREMIUM retail listing; otherwise only `phoneAvailable` is returned.
      */
     @Get(':userId/phone')
     @UseGuards(OptionalSessionAuthGuard)
-    @ApiOperation({ summary: "Get a seller's contact phone (gated by login)" })
+    @ApiOperation({ summary: "Get a seller's contact phone with listing-aware public gating" })
     @ApiParam({ name: 'userId', description: 'UUID of the seller', example: 'uuid' })
+    @ApiQuery({ name: 'listingId', required: false, type: String, description: 'Listing context for Premium public contact visibility' })
     async getContactPhone(
         @Param('userId') userId: string,
         @CurrentUser() user: any,
+        @Query('listingId') listingId?: string,
     ): Promise<StandardResponse<{ phone: string | null; phoneAvailable: boolean }>> {
-        const result = await this.sellersService.getContactPhone(userId, !!user);
+        const result = await this.sellersService.getContactPhone(userId, !!user, listingId);
         return new StandardResponse(result);
     }
 
