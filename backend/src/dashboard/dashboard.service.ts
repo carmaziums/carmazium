@@ -297,56 +297,145 @@ export class DashboardService {
         const dateFilter = this.buildPeriodFilter(period);
         const actor = await resolveDealerActor(this.prisma, userId);
         assertDealerPermission(actor, 'VIEW_ANALYTICS');
+
         const ownerUserId = actor.ownerUserId;
         const dealerProfileId = actor.dealerProfileId;
+        const now = new Date();
 
         const [
+            dealerProfile,
             activeListings,
             activeAuctions,
-            soldThisMonth,
+            soldListings,
             leadCounts,
-            viewAgg,
-            totalListingsForViews,
+            allTimeViewAgg,
+            totalRevenue,
+            trackedViewsRaw,
         ] = await Promise.all([
-            this.prisma.listing.count({ where: { sellerId: ownerUserId, status: 'ACTIVE', deletedAt: null, createdAt: dateFilter } }),
-            this.prisma.auction.count({ where: { listing: { sellerId: ownerUserId }, endTime: { gt: new Date() }, createdAt: dateFilter } }),
-            this.prisma.sale.count({ where: { sellerId: ownerUserId, createdAt: dateFilter } }),
+            this.prisma.dealerProfile.findUnique({
+                where: { id: dealerProfileId },
+                select: {
+                    companyName: true,
+                    staff: {
+                        where: { isActive: true },
+                        select: { id: true },
+                    },
+                },
+            }),
+
+            // Current stock is a snapshot, not an acquisition metric. Do not
+            // hide an older car just because it was uploaded before the
+            // selected 7/30-day reporting window.
+            this.prisma.listing.count({
+                where: {
+                    sellerId: ownerUserId,
+                    status: 'ACTIVE',
+                    deletedAt: null,
+                },
+            }),
+
+            // Same principle for live auctions: this is the number available
+            // to act on now, regardless of when the auction was created.
+            this.prisma.auction.count({
+                where: {
+                    listing: { sellerId: ownerUserId, deletedAt: null },
+                    endTime: { gt: now },
+                    status: 'ACTIVE',
+                },
+            }),
+
+            // Completed sales are a period metric.
+            this.prisma.sale.count({
+                where: {
+                    sellerId: ownerUserId,
+                    createdAt: dateFilter,
+                },
+            }),
+
+            // CRM stages describe the current sales pipeline.
             this.prisma.lead.groupBy({
                 by: ['status'],
                 where: { dealerProfileId },
                 _count: { status: true },
             }),
+
+            // Keep the all-time listing counter for backwards compatibility
+            // and for the average-views figure used by other dashboard clients.
             this.prisma.listing.aggregate({
                 where: { sellerId: ownerUserId, deletedAt: null },
                 _sum: { viewCount: true },
                 _count: { id: true },
             }),
-            this.prisma.listing.count({ where: { sellerId: ownerUserId, deletedAt: null } }),
+
+            // Revenue follows the same selected period as completed sales.
+            this.prisma.sale.aggregate({
+                where: {
+                    sellerId: ownerUserId,
+                    createdAt: dateFilter,
+                },
+                _sum: { soldPrice: true },
+            }),
+
+            // VehicleViewTracker records one first-party view_item event per
+            // mounted listing page after analytics consent. Joining the event's
+            // item_id back to listings makes this a dealership-scoped,
+            // date-bounded view count instead of reusing a cumulative counter.
+            this.prisma.$queryRaw<Array<{ views: bigint }>>`
+                SELECT COUNT(*)::bigint AS views
+                FROM analytics_events ae
+                INNER JOIN listings l
+                    ON l.id = ae.payload->>'item_id'
+                WHERE ae.type = 'view_item'
+                  AND ae."createdAt" >= ${dateFilter.gte}
+                  AND l."sellerId" = ${ownerUserId}
+                  AND l."deletedAt" IS NULL
+            `,
         ]);
 
         const funnelMap: Record<string, number> = {};
         for (const row of leadCounts as any[]) {
             funnelMap[row.status] = row._count.status;
         }
+
         const totalLeads = Object.values(funnelMap).reduce((a, b) => a + b, 0);
         const wonLeads = funnelMap['WON'] ?? 0;
+        const lostLeads = funnelMap['LOST'] ?? 0;
+        const activeLeads = Math.max(0, totalLeads - wonLeads - lostLeads);
+        const totalViews = Number(trackedViewsRaw?.[0]?.views ?? 0);
+        const allTimeViews = Number(allTimeViewAgg._sum.viewCount ?? 0);
+        const totalListings = Number(allTimeViewAgg._count.id ?? 0);
 
         return {
+            period,
+            companyName: dealerProfile?.companyName ?? 'Your Dealership',
+            isVerified: actor.isVerified,
+
+            // Current snapshot KPIs
             activeListings,
             activeAuctions,
+            activeLeads,
+            staffCount: (dealerProfile?.staff.length ?? 0) + 1,
+
+            // Selected-period KPIs
+            totalViews,
+            soldListings,
+            soldThisMonth: soldListings, // legacy alias kept for older clients
+            totalRevenue: Number(totalRevenue._sum.soldPrice ?? 0),
+
+            // Supporting analytics
+            allTimeViews,
             totalLeads,
-            soldThisMonth,
             leadFunnel: {
                 NEW:         funnelMap['NEW']         ?? 0,
                 CONTACTED:   funnelMap['CONTACTED']   ?? 0,
                 QUALIFIED:   funnelMap['QUALIFIED']   ?? 0,
                 NEGOTIATING: funnelMap['NEGOTIATING'] ?? 0,
-                WON:         funnelMap['WON']         ?? 0,
-                LOST:        funnelMap['LOST']        ?? 0,
+                WON:         wonLeads,
+                LOST:        lostLeads,
             },
             conversionRate: totalLeads > 0 ? wonLeads / totalLeads : 0,
-            avgViews: totalListingsForViews > 0
-                ? Math.round((viewAgg._sum.viewCount ?? 0) / totalListingsForViews)
+            avgViews: totalListings > 0
+                ? Math.round(allTimeViews / totalListings)
                 : 0,
         };
     }
