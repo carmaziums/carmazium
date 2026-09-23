@@ -6,8 +6,10 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import {
     Car, Eye, TrendingUp, Users, Kanban, Gavel,
-    PlusCircle, ArrowUpRight, Loader2, Building2, CheckCircle,
-    Mail, Activity, Sparkles, ShieldCheck, HeartHandshake, Zap
+    PlusCircle, Loader2, Building2, CheckCircle,
+    Mail, Activity, ShieldCheck, Zap, Tag, Trophy,
+    Heart, DollarSign, BarChart3, Briefcase, Wrench,
+    Settings, MessageSquare, ChevronRight
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PeriodToggle } from "@/components/dashboard/PeriodToggle"
@@ -42,7 +44,11 @@ export default function DealerDashboard() {
     const canViewInventory = hasPermission('VIEW_INVENTORY')
     const canManageInventory = hasPermission('MANAGE_INVENTORY')
     const canManageCrm = hasPermission('MANAGE_CRM')
+    const canManageOffers = hasPermission('MANAGE_OFFERS')
     const canViewTrade = hasPermission('VIEW_TRADE')
+    const canViewPurchases = hasPermission('VIEW_PURCHASES')
+    const canManageTeam = hasPermission('MANAGE_TEAM')
+    const canViewAnalytics = hasPermission('VIEW_ANALYTICS')
 
     const isEmailVerified = !!user?.email_confirmed_at
 
@@ -131,6 +137,68 @@ export default function DealerDashboard() {
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`
         : (user?.email?.split('@')[0] || "Dealer")
+
+    const dealerToolGroups = [
+        {
+            title: "Sell & stock",
+            description: "List cars, manage stock and turn enquiries into sales.",
+            eyebrow: "Sales",
+            accent: "bg-cyan-400",
+            header: "from-cyan-500/20 via-blue-500/10 to-transparent border-cyan-400/25",
+            iconBox: "bg-gradient-to-br from-cyan-400 to-blue-600 text-white",
+            tools: [
+                { href: "/dashboard/dealer/add-listing", title: "Add vehicle", description: "Create a new listing.", icon: PlusCircle, show: canManageInventory },
+                { href: "/dashboard/dealer/inventory", title: "Inventory", description: "Live, draft and sold stock.", icon: Car, show: canViewInventory },
+                { href: "/dashboard/dealer/crm", title: "Leads", description: "Buyer enquiries and follow-up.", icon: Kanban, show: canManageCrm },
+                { href: "/dashboard/dealer/offers", title: "Offers received", description: "Review offers on your vehicles.", icon: Tag, show: canManageOffers },
+            ].filter(tool => tool.show),
+        },
+        {
+            title: "Buy & auctions",
+            description: "See every buying action without searching through menus.",
+            eyebrow: "Buying",
+            accent: "bg-violet-400",
+            header: "from-violet-500/20 via-fuchsia-500/10 to-transparent border-violet-400/25",
+            iconBox: "bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white",
+            tools: [
+                { href: "/dashboard/dealer/auctions", title: "Auctions", description: "Browse and bid on live auctions.", icon: Gavel, show: canViewTrade },
+                { href: "/dashboard/dealer/bids", title: "My auction bids", description: "Auctions you are bidding on.", icon: Gavel, show: canViewTrade },
+                { href: "/dashboard/dealer/my-offers", title: "My retail offers", description: "Offers made on retail cars.", icon: Tag, show: canManageOffers },
+                { href: "/dashboard/dealer/auctions/won", title: "Purchases", description: "Auction wins and next steps.", icon: Trophy, show: canViewPurchases },
+                { href: "/dashboard/dealer/wishlist", title: "Saved cars", description: "Vehicles saved for later.", icon: Heart, show: true },
+            ].filter(tool => tool.show),
+        },
+        {
+            title: "Business",
+            description: "Communication, staff and account tools together.",
+            eyebrow: "Operations",
+            accent: "bg-emerald-400",
+            header: "from-emerald-500/20 via-teal-500/10 to-transparent border-emerald-400/25",
+            iconBox: "bg-gradient-to-br from-emerald-400 to-teal-600 text-white",
+            tools: [
+                { href: "/dashboard/dealer/messages", title: "Messages", description: "Customer and support conversations.", icon: MessageSquare, show: true },
+                { href: "/dashboard/dealer/team", title: "Team", description: "Staff access and permissions.", icon: Users, show: canManageTeam },
+                { href: "/dashboard/dealer/finance", title: "Finance", description: "Dealership finance tools.", icon: DollarSign, show: true },
+                { href: "/dashboard/dealer/settings", title: "Settings", description: "Business profile and preferences.", icon: Settings, show: true },
+            ].filter(tool => tool.show),
+        },
+        {
+            title: "Services & performance",
+            description: "Partner services and performance tools in one section.",
+            eyebrow: "Growth",
+            accent: "bg-amber-400",
+            header: "from-amber-500/20 via-orange-500/10 to-transparent border-amber-400/25",
+            iconBox: "bg-gradient-to-br from-amber-400 to-orange-600 text-white",
+            tools: [
+                { href: "/dashboard/partner", title: "Partner services", description: "Business details, payouts and service status.", icon: Building2, show: true },
+                { href: "/dashboard/service/capabilities", title: "Service add-ons", description: "Delivery, inspection, finance and warranty.", icon: Wrench, show: true },
+                { href: "/dashboard/service/jobs", title: "Service jobs", description: "TradeXchange delivery and inspection work.", icon: Briefcase, show: true },
+                { href: "/dashboard/service/leads", title: "Service enquiries", description: "Finance and warranty enquiries.", icon: Briefcase, show: true },
+                { href: "/dashboard/dealer/analytics", title: "Analytics", description: "Dealership performance and insights.", icon: BarChart3, show: canViewAnalytics },
+                { href: "/dashboard/dealer/earnings", title: "Earnings", description: "Revenue and sales history.", icon: DollarSign, show: canViewAnalytics },
+            ].filter(tool => tool.show),
+        },
+    ].filter(group => group.tools.length > 0)
 
     return (
         <div className="min-h-screen pt-20 pb-12">
@@ -326,68 +394,69 @@ export default function DealerDashboard() {
                         </div>
                     </div>
 
-                    {/* ── Main Dashboard Bottom Area ── */}
-                    {canManageCrm && (
-                    <div className="flex flex-col lg:flex-row gap-8">
-                        {/* Recent Leads (Takes 2/3 width) */}
-                        <div className="dealer-glass-card flex-[2] flex flex-col">
-                            <div className="p-6 border-b border-[var(--border-default)] flex justify-between items-center bg-[var(--bg-input)]">
-                                <h2 className="text-xl font-black font-heading uppercase tracking-tight">Recent Leads</h2>
-                                <Link href="/dashboard/dealer/crm" className="text-primary hover:text-red-600 dark:hover:text-white text-xs font-bold transition-colors uppercase tracking-widest border border-primary/20 px-3 py-1.5 rounded-md hover:bg-primary/10">View All</Link>
+                    {/* ── Dealer Command Centre Tool Map ── */}
+                    <section className="space-y-5">
+                        <div>
+                            <div className="flex items-center gap-2 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] text-primary mb-1">
+                                <ShieldCheck size={14} /> Everything in one place
                             </div>
-                            <div className="overflow-x-auto flex-1">
-                                <table className="w-full text-left h-full">
-                                    <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-black tracking-widest border-b border-[var(--border-default)]">
-                                        <tr>
-                                            <th className="px-6 py-4">Name</th>
-                                            <th className="px-6 py-4">Vehicle</th>
-                                            <th className="px-6 py-4 text-center">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-[var(--border-default)] text-[var(--text-secondary)] bg-[var(--bg-input)]">
-                                        {loading ? (
-                                            <tr>
-                                                <td colSpan={3} className="px-6 py-8 text-center">
-                                                    <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
-                                                </td>
-                                            </tr>
-                                        ) : !stats?.recentLeads?.length ? (
-                                            <tr>
-                                                <td colSpan={3} className="px-6 py-12 text-center text-[var(--text-muted)] text-sm">
-                                                    No leads yet. As buyers interact with your listings, leads will appear here.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            stats.recentLeads.slice(0, 4).map((lead: any) => (
-                                                <tr key={lead.id} className="hover:bg-white/[0.02] transition-colors group">
-                                                    <td className="px-6 py-4">
-                                                        <p className="font-bold group-hover:text-primary transition-colors">{lead.buyerName}</p>
-                                                        <p className="text-xs text-[var(--text-muted)] font-medium">{lead.buyerEmail}</p>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)] font-medium">{lead.listing?.title || '—'}</td>
-                                                    <td className="px-6 py-4 text-center">
-                                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs uppercase tracking-wider font-bold ${
-                                                            lead.status === 'NEW' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                                                            lead.status === 'CONTACTED' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                                                            lead.status === 'WON' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                                                            'bg-gray-500/10 text-[var(--text-muted)] border border-gray-500/20'
-                                                        }`}>
-                                                            {lead.status}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <h2 className="font-black text-xl sm:text-2xl text-[var(--text-primary)]">All dealer tools</h2>
+                            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-0.5">
+                                No hunting through menus — choose the job you want to do.
+                            </p>
                         </div>
 
-                        <div className="flex-[3] flex flex-col">
-                            {/* Added minimal valid child space since recent leads was placed out of grid layout properly before when the concierge took space */}
-                        </div>
-                    </div>
-                    )}
+                        {dealerToolGroups.map(group => (
+                            <div
+                                key={group.title}
+                                className="relative overflow-hidden border border-[var(--border-default)] rounded-[26px] bg-[var(--bg-card)] shadow-[0_18px_44px_rgba(15,23,42,0.08)]"
+                            >
+                                <div className={`relative overflow-hidden px-4 sm:px-6 py-5 border-b bg-gradient-to-r ${group.header}`}>
+                                    <div className="pointer-events-none absolute -right-10 -top-14 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
+                                    <div className="relative flex items-center justify-between gap-4">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1.5">
+                                                <span className={`h-2.5 w-2.5 rounded-full ${group.accent}`} />
+                                                <span className="text-[10px] sm:text-xs uppercase tracking-[0.18em] font-black text-[var(--text-muted)]">
+                                                    {group.eyebrow}
+                                                </span>
+                                            </div>
+                                            <h3 className="font-black text-base sm:text-lg text-[var(--text-primary)]">{group.title}</h3>
+                                            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-0.5">{group.description}</p>
+                                        </div>
+                                        <div className="hidden sm:flex items-center rounded-full border border-white/40 dark:border-white/10 bg-white/50 dark:bg-white/5 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                                            {group.tools.length} tools
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 sm:p-4">
+                                    {group.tools.map(tool => {
+                                        const Icon = tool.icon
+                                        return (
+                                            <Link
+                                                key={tool.href}
+                                                href={tool.href}
+                                                className="group flex items-center gap-3 sm:gap-4 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)]/80 px-4 py-4 sm:px-5 sm:py-5 shadow-[0_7px_18px_rgba(15,23,42,0.06)] hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-300"
+                                            >
+                                                <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl ${group.iconBox} flex items-center justify-center shrink-0 border border-white/30 shadow-sm`}>
+                                                    <Icon size={19} />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="font-black text-sm sm:text-[15px] text-[var(--text-primary)]">{tool.title}</p>
+                                                    <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">{tool.description}</p>
+                                                </div>
+                                                <div className="w-8 h-8 rounded-xl bg-[var(--bg-card)] border border-[var(--border-default)] flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-all">
+                                                    <ChevronRight size={15} className="text-[var(--text-muted)]" />
+                                                </div>
+                                            </Link>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                    </section>
+
                 </main>
             </div>
         </div>

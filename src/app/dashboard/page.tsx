@@ -29,7 +29,11 @@ export default function DashboardPage() {
 
         if (role === 'BUYER' || role === 'SELLER') {
             router.push('/dashboard/user')
-        } else if (role === 'DEALER' || role === 'CONTRACTOR') {
+        } else if (role === 'DEALER') {
+            // Verified motor-trade users land in the Dealer Command Centre.
+            // Partner services remain one tap away from that dashboard.
+            router.push('/dashboard/dealer')
+        } else if (role === 'CONTRACTOR') {
             router.push('/dashboard/partner')
         } else if (role === 'FINANCE_PARTNER') {
             router.push('/dashboard/finance')
