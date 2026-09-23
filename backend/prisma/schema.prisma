@@ -306,6 +306,13 @@ enum ServiceJobStatus {
   @@map("service_job_status")
 }
 
+enum InspectionOutcome {
+  PASS
+  FAULTS_FOUND
+
+  @@map("inspection_outcome")
+}
+
 enum ServiceQuoteStatus {
   ACTIVE
   ACCEPTED
@@ -973,7 +980,11 @@ model Auction {
   sellerBonusReleasedAt   DateTime?
   stripePayoutTransferId  String? // Set when Stripe transfer succeeds
   stripePayoutError       String? // Set when auto-payout didn't happen (no Connect account, Stripe error, or test-mode skip) — needs manual action
-  stripeRefundError       String? // Set if the buyer-fee refund fails on handover denial — needs manual action
+  stripeRefundError       String? // Set if a buyer-fee refund fails — needs manual action
+  buyerRefusedAt         DateTime?
+  buyerRefusedById       String?
+  buyerRefusalReason     String?
+  buyerRefusalInspectionJobId String?
   // Set once an admin manually confirms they've paid the seller outside Stripe
   // (bank transfer). sellerBonusReleased means "handover approved" — this is
   // the separate "the £100 has actually reached the seller" signal; without
@@ -1953,10 +1964,12 @@ model ServiceJob {
   sourceOfferId   String?
   sourceAuctionId String?
 
-  acceptedAt   DateTime?
-  startedAt    DateTime?
-  completedAt  DateTime? /// contractor marked complete
-  confirmedAt  DateTime? /// customer confirmed (or auto after 48h)
+  acceptedAt        DateTime?
+  startedAt         DateTime?
+  completedAt       DateTime? /// contractor marked complete
+  inspectionOutcome InspectionOutcome?
+  inspectionSummary String?
+  confirmedAt       DateTime? /// customer confirmed (or auto after 48h)
   cancelledAt  DateTime?
   cancelReason String?
   createdAt    DateTime  @default(now())

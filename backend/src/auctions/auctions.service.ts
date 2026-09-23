@@ -17,9 +17,10 @@ import { HandoverDocumentsService } from './handover-documents.service';
 import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
-import { Auction, Prisma } from '@prisma/client';
+import { Auction, Prisma, ServiceType, ServiceJobStatus, InspectionOutcome } from '@prisma/client';
 import { AUCTION_DURATION_MS, calculatePlatformOpeningBid } from './auction-pricing';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
+import { PaymentsService } from '../payments/payments.service';
 
 const ANTI_SNIPE_MINUTES = 3;
 // Grace window a declared winner has to pay the £125 buyer fee before the win
@@ -46,6 +47,7 @@ export class AuctionsService {
         @Inject(forwardRef(() => ChatService))
         private readonly chatService: ChatService,
         private readonly handoverDocuments: HandoverDocumentsService,
+        private readonly paymentsService: PaymentsService,
     ) { }
 
     async create(createAuctionDto: CreateAuctionDto, userId: string): Promise<Auction> {
@@ -1107,6 +1109,183 @@ export class AuctionsService {
         }
 
         return { reverted: stale.length };
+    }
+
+    /**
+     * A winning buyer may refuse the vehicle only when a completed,
+     * purchase-linked CarMazium inspection recorded FAULTS_FOUND. The £125
+     * buyer fee is refunded in full before the sale is unwound, then the same
+     * seller-restoration rules as an unpaid win return the vehicle for
+     * repair/relist.
+     */
+    async refuseAfterInspection(
+        auctionId: string,
+        buyerId: string,
+        reason?: string,
+    ): Promise<{ refused: boolean; refundedAmount: number; inspectionJobId: string }> {
+        const auction = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            include: {
+                listing: {
+                    select: {
+                        id: true,
+                        title: true,
+                        sellerId: true,
+                        linkedListingId: true,
+                    },
+                },
+                serviceJobs: {
+                    where: {
+                        customerId: buyerId,
+                        serviceType: ServiceType.INSPECTION,
+                        status: { in: [ServiceJobStatus.COMPLETED, ServiceJobStatus.RELEASED] },
+                        inspectionOutcome: InspectionOutcome.FAULTS_FOUND,
+                    },
+                    orderBy: { completedAt: 'desc' },
+                    take: 1,
+                    select: {
+                        id: true,
+                        inspectionSummary: true,
+                        completedAt: true,
+                    },
+                },
+            },
+        });
+        if (!auction || auction.deletedAt) throw new NotFoundException('Auction not found');
+
+        if (auction.buyerRefusedAt) {
+            if (auction.buyerRefusedById !== buyerId || !auction.buyerRefusalInspectionJobId) {
+                throw new ForbiddenException('This auction was already refused by a different buyer.');
+            }
+            return {
+                refused: true,
+                refundedAmount: 125,
+                inspectionJobId: auction.buyerRefusalInspectionJobId,
+            };
+        }
+
+        if (auction.winnerId !== buyerId) throw new ForbiddenException('Only the winning buyer can refuse this vehicle.');
+        if (auction.status !== 'ENDED') throw new BadRequestException('Only an ended auction can be refused after inspection.');
+        if (!auction.buyerFeePaid || !auction.buyerFeeTransactionId) {
+            throw new BadRequestException('The auction buyer fee has not been paid.');
+        }
+        if (auction.sellerBonusReleased) {
+            throw new BadRequestException('Handover has already been approved and can no longer be refused.');
+        }
+
+        const inspection = auction.serviceJobs[0];
+        if (!inspection) {
+            throw new BadRequestException(
+                'A completed CarMazium inspection with FAULTS_FOUND is required before refusing this auction purchase.',
+            );
+        }
+
+        try {
+            await this.paymentsService.issueFullRefundForAuctionInspection(auction.id);
+        } catch (error: any) {
+            const message = error?.message || 'Unknown Stripe refund error';
+            await this.prisma.auction.update({
+                where: { id: auction.id },
+                data: { stripeRefundError: message },
+            }).catch(() => {});
+            throw error;
+        }
+
+        const linkedRetailId = auction.listing.linkedListingId;
+        const refusedAt = new Date();
+        await this.prisma.$transaction([
+            this.prisma.auction.update({
+                where: { id: auction.id },
+                data: {
+                    status: 'CANCELLED',
+                    winnerId: null,
+                    winningBidAmount: null,
+                    wonAt: null,
+                    buyerFeePaid: false,
+                    buyerRefusedAt: refusedAt,
+                    buyerRefusedById: buyerId,
+                    buyerRefusalReason: reason?.trim() || inspection.inspectionSummary || 'Faults found during inspection',
+                    buyerRefusalInspectionJobId: inspection.id,
+                    handoverProofUrl: null,
+                    handoverProofPath: null,
+                    handoverSubmittedAt: null,
+                    stripeRefundError: null,
+                },
+            }),
+            this.prisma.listing.update({
+                where: { id: auction.listing.id },
+                data: linkedRetailId
+                    ? {
+                        status: 'DRAFT',
+                        linkedListingId: null,
+                        deletedAt: new Date(),
+                    } as any
+                    : {
+                        status: 'DRAFT',
+                        type: 'CLASSIFIED',
+                        linkedListingId: null,
+                    } as any,
+            }),
+            ...(linkedRetailId ? [
+                this.prisma.listing.update({
+                    where: { id: linkedRetailId },
+                    data: {
+                        status: 'DRAFT',
+                        linkedListingId: null,
+                    } as any,
+                }),
+            ] : []),
+            this.prisma.sale.deleteMany({
+                where: { listingId: auction.listing.id, buyerId },
+            }),
+            ...(auction.listing.sellerId ? [
+                this.prisma.sellerProfile.update({
+                    where: { userId: auction.listing.sellerId },
+                    data: { totalSales: { decrement: 1 } },
+                }),
+            ] : []),
+        ]);
+
+        await this.handoverDocuments.deleteProof(
+            auction.handoverProofPath,
+            auction.handoverProofUrl,
+        ).catch(() => {});
+
+        await this.notificationsService.create({
+            userId: buyerId,
+            type: 'SYSTEM',
+            title: 'Vehicle refused after inspection',
+            message: `Your refusal of "${auction.listing.title}" was accepted because the linked inspection recorded faults. Your £125 buyer fee has been refunded.`,
+            entityType: 'AUCTION',
+            entityId: auction.id,
+            link: '/dashboard/dealer/auctions/won',
+        }).catch(() => {});
+
+        if (auction.listing.sellerId) {
+            const sellerNotification = await this.notificationsService.create({
+                userId: auction.listing.sellerId,
+                type: 'SYSTEM',
+                title: 'Auction sale cancelled after inspection',
+                message: linkedRetailId
+                    ? `The buyer refused "${auction.listing.title}" after a CarMazium inspection recorded faults. The auction has been cancelled and your retail listing returned to draft so you can repair or update it before relisting.`
+                    : `The buyer refused "${auction.listing.title}" after a CarMazium inspection recorded faults. The vehicle is back in your inventory so you can repair, relist or re-auction it.`,
+                entityType: 'AUCTION',
+                entityId: auction.id,
+                link: '/dashboard/seller/auctions',
+            }).catch(() => null);
+            if (sellerNotification) {
+                this.notificationsGateway.sendNotification(auction.listing.sellerId, sellerNotification);
+            }
+        }
+
+        this.auctionGateway.broadcastAuctionEnd(auction.id, {
+            auctionId: auction.id,
+            winnerId: null,
+            winningBidAmount: null,
+            reserveMet: false,
+        });
+
+        return { refused: true, refundedAmount: 125, inspectionJobId: inspection.id };
     }
 
     async remove(id: string, userId: string): Promise<Auction> {

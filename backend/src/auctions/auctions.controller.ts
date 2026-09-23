@@ -26,6 +26,7 @@ import { HandoverDocumentsService } from './handover-documents.service';
 import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
+import { RefuseAfterInspectionDto } from './dto/refuse-after-inspection.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { OptionalSessionAuthGuard } from '../auth/guards/optional-session-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -174,6 +175,21 @@ export class AuctionsController {
     async cancel(@Param('id') id: string, @CurrentUser() user: any) {
         const auction = await this.auctionsService.cancel(id, user.id);
         return new StandardResponse(auction);
+    }
+
+    @Post(':id/refuse-after-inspection')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Winning buyer refuses after a completed linked inspection records faults' })
+    async refuseAfterInspection(
+        @Param('id') id: string,
+        @Body() dto: RefuseAfterInspectionDto,
+        @CurrentUser() user: any,
+    ) {
+        return new StandardResponse(
+            await this.auctionsService.refuseAfterInspection(id, user.id, dto.reason),
+        );
     }
 
     @Delete(':id')

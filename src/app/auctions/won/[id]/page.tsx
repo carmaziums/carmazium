@@ -16,6 +16,7 @@ import { ImageLightbox } from "@/components/features/ImageLightbox"
 import { useAuth } from "@/context/AuthContext"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { ArrangeDelivery } from "@/components/services/ArrangeDelivery"
+import { ArrangeInspection } from "@/components/services/ArrangeInspection"
 import { TRADE_EXCHANGE_ROLES, canAccessTradeStock } from "@/lib/tradeAccess"
 import { getWonAuctionById, type Auction } from "@/lib/auctionApi"
 import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
@@ -556,6 +557,16 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                 <p className="text-xs text-[var(--text-muted)]">Approved transporters quote the route. You pay CarMazium, the driver is paid on arrival.</p>
                             </div>
                             <ArrangeDelivery auctionId={auction.id} />
+                        </div>
+
+                        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-5 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <p className="font-heading font-bold text-sm">Inspect before handover</p>
+                                <p className="text-xs text-[var(--text-muted)]">
+                                    Approved inspectors can quote this exact won vehicle. If a completed linked inspection records faults, you can refuse before approved handover and receive a full £125 buyer-fee refund.
+                                </p>
+                            </div>
+                            <ArrangeInspection auctionId={auction.id} />
                         </div>
 
                         {/* Handover status — mirrors the stage grouping on /dashboard/dealer/auctions/won */}

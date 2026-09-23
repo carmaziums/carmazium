@@ -4,7 +4,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ServiceType, CapabilityStatus } from '@prisma/client';
+import { ServiceType, CapabilityStatus, InspectionOutcome } from '@prisma/client';
 
 /** Service areas with a job flow. FINANCE and WARRANTY are enquiry-based (phase 3). */
 export const JOB_SERVICE_TYPES = [ServiceType.DELIVERY, ServiceType.INSPECTION] as const;
@@ -104,6 +104,34 @@ export class JobFromPurchaseDto {
 
     @ApiPropertyOptional() @IsOptional() @IsDateString()
     requestedFor?: string;
+}
+
+export class InspectionFromAuctionDto {
+    @ApiProperty({ description: 'Won auction to inspect before handover' })
+    @IsUUID()
+    auctionId: string;
+
+    @ApiPropertyOptional({ description: 'Inspection postcode. Defaults to the seller postcode when available.' })
+    @IsOptional() @IsString() @MaxLength(10)
+    servicePostcode?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional() @IsString() @MaxLength(300)
+    serviceAddress?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional() @IsDateString()
+    requestedFor?: string;
+}
+
+export class CompleteJobDto {
+    @ApiPropertyOptional({ enum: InspectionOutcome, description: 'Required when completing an inspection job.' })
+    @IsOptional() @IsEnum(InspectionOutcome)
+    inspectionOutcome?: InspectionOutcome;
+
+    @ApiPropertyOptional({ description: 'Inspector summary. Required when faults are found.' })
+    @IsOptional() @IsString() @MaxLength(4000)
+    inspectionSummary?: string;
 }
 
 export class CancelJobDto {

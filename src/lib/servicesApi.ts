@@ -106,6 +106,8 @@ export interface ServiceJob {
   acceptedAt: string | null;
   startedAt: string | null;
   completedAt: string | null;
+  inspectionOutcome?: 'PASS' | 'FAULTS_FOUND' | null;
+  inspectionSummary?: string | null;
   confirmedAt: string | null;
   cancelledAt: string | null;
   cancelReason: string | null;
@@ -269,6 +271,19 @@ export async function createJobFromPurchase(input: PurchaseDeliverySource & {
   const r = await apiClient<{ data: ServiceJob }>('/services/jobs/from-purchase', { method: 'POST', body: JSON.stringify(input) });
   return r.data;
 }
+export async function createInspectionFromAuction(input: {
+  auctionId: string;
+  servicePostcode?: string;
+  serviceAddress?: string;
+  requestedFor?: string;
+}): Promise<ServiceJob> {
+  const r = await apiClient<{ data: ServiceJob }>('/services/jobs/inspection/from-auction', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  return r.data;
+}
+
 export async function getMyJobsPage(cursor?: string, limit = 20): Promise<CursorPage<ServiceJob>> {
   const q = new URLSearchParams({ limit: String(limit) });
   if (cursor) q.set('cursor', cursor);
@@ -371,7 +386,15 @@ export async function upsertQuote(jobId: string, input: { amountPence: number; m
 }
 export async function withdrawQuote(jobId: string): Promise<void> { await apiClient(`/services/jobs/${jobId}/quote`, { method: 'DELETE' }); }
 export async function startJob(id: string): Promise<void> { await apiClient(`/services/jobs/${id}/start`, { method: 'POST' }); }
-export async function completeJob(id: string): Promise<void> { await apiClient(`/services/jobs/${id}/complete`, { method: 'POST' }); }
+export async function completeJob(
+  id: string,
+  input?: { inspectionOutcome?: 'PASS' | 'FAULTS_FOUND'; inspectionSummary?: string },
+): Promise<void> {
+  await apiClient(`/services/jobs/${id}/complete`, {
+    method: 'POST',
+    body: JSON.stringify(input ?? {}),
+  });
+}
 
 // Enquiries: Finance + Warranty. No CarMazium payment is created.
 export interface CreateServiceLeadInput {

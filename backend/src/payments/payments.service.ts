@@ -1433,6 +1433,72 @@ export class PaymentsService {
     }
 
     /**
+     * Full £125 buyer-fee refund after a completed purchase-linked inspection
+     * records FAULTS_FOUND. The idempotency key makes a retry safe if Stripe
+     * succeeds but the subsequent auction-state transaction has to be retried.
+     */
+    async issueFullRefundForAuctionInspection(auctionId: string): Promise<void> {
+        const auction = await this.prisma.auction.findUnique({ where: { id: auctionId } });
+        if (!auction?.buyerFeeTransactionId) {
+            throw new BadRequestException('No paid auction buyer fee is recorded');
+        }
+
+        const transaction = await this.prisma.transaction.findUnique({
+            where: { id: auction.buyerFeeTransactionId },
+        });
+        if (!transaction?.stripePaymentId) {
+            throw new BadRequestException('Buyer fee payment reference is missing');
+        }
+
+        const stripe = await this.getStripe();
+        let paymentIntentId: string | null = null;
+        if (transaction.stripePaymentId.startsWith('pi_')) {
+            paymentIntentId = transaction.stripePaymentId;
+        } else {
+            const session = await stripe.checkout.sessions.retrieve(transaction.stripePaymentId);
+            paymentIntentId =
+                typeof session.payment_intent === 'string'
+                    ? session.payment_intent
+                    : session.payment_intent?.id ?? null;
+        }
+
+        if (!paymentIntentId) {
+            throw new BadRequestException('Buyer fee payment could not be resolved for refund');
+        }
+
+        // A handover-proof denial may already have refunded £100 of this same
+        // £125 fee. Inspection refusal promises a *full* buyer-fee refund, so
+        // reconcile existing Stripe refunds and top up only the remainder.
+        const existingRefunds = await stripe.refunds.list({
+            payment_intent: paymentIntentId,
+            limit: 100,
+        });
+        const alreadyRefunded = existingRefunds.data
+            .filter((refund: any) => refund.status !== 'failed' && refund.status !== 'canceled')
+            .reduce((sum: number, refund: any) => sum + Number(refund.amount || 0), 0);
+        const remainingPence = Math.max(0, 12500 - alreadyRefunded);
+
+        if (remainingPence > 0) {
+            await stripe.refunds.create(
+                {
+                    payment_intent: paymentIntentId,
+                    amount: remainingPence,
+                },
+                {
+                    idempotencyKey: `auction-inspection-refusal-${transaction.id}-${remainingPence}`,
+                },
+            );
+        }
+
+        if (transaction.status !== ('REFUNDED' as any)) {
+            await this.prisma.transaction.update({
+                where: { id: transaction.id },
+                data: { status: 'REFUNDED' as any },
+            });
+        }
+    }
+
+    /**
      * Transfer the seller payout (£100) to their connected Stripe Express account.
      * Called by AdminService after superadmin approves handover proof.
      */

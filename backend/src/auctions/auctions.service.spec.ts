@@ -8,12 +8,14 @@ import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { AuctionGateway } from './auction.gateway';
 import { EmailService } from '../email/email.service';
 import { ChatService } from '../chat/chat.service';
+import { PaymentsService } from '../payments/payments.service';
 
 describe('AuctionsService — Buy It Now lifecycle', () => {
     let service: AuctionsService;
     let prisma: any;
     let notificationsService: any;
     let auctionGateway: any;
+    let paymentsService: any;
 
     const makeMakeModel = () => ({ make: 'BMW', model: 'M3', year: 2022, sellerId: 'seller-1', title: 'BMW M3', bids: [] });
 
@@ -58,8 +60,8 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                 findUnique: jest.fn(),
                 update: jest.fn().mockResolvedValue({ id: 'listing-1', status: 'PENDING_REVIEW' }),
             },
-            sale: { create: jest.fn() },
-            sellerProfile: { upsert: jest.fn() },
+            sale: { create: jest.fn(), deleteMany: jest.fn() },
+            sellerProfile: { upsert: jest.fn(), update: jest.fn() },
             chatRoom: { upsert: jest.fn() },
             user: { findUnique: jest.fn().mockResolvedValue(null) },
             $transaction: jest.fn(),
@@ -67,6 +69,10 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
 
         notificationsService = {
             create: jest.fn().mockResolvedValue({}),
+        };
+
+        paymentsService = {
+            issueFullRefundForAuctionInspection: jest.fn().mockResolvedValue(undefined),
         };
 
         auctionGateway = {
@@ -92,11 +98,12 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                         hydrateProof: jest.fn(async (a: any) => a),
                         hydrateMany: jest.fn(async (a: any) => a),
                         signPath: jest.fn(async () => null),
-                        deleteProof: jest.fn(),
+                        deleteProof: jest.fn().mockResolvedValue(undefined),
                     },
                 },
                 { provide: EmailService, useValue: { sendAuctionWonEmail: jest.fn(), sendAuctionEndedSellerEmail: jest.fn(), sendAuctionReserveNotMetEmail: jest.fn() } },
                 { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
+                { provide: PaymentsService, useValue: paymentsService },
             ],
         }).compile();
 
@@ -334,11 +341,12 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
                         hydrateProof: jest.fn(async (a: any) => a),
                         hydrateMany: jest.fn(async (a: any) => a),
                         signPath: jest.fn(async () => null),
-                        deleteProof: jest.fn(),
+                        deleteProof: jest.fn().mockResolvedValue(undefined),
                     },
                 },
                 { provide: EmailService, useValue: {} },
                 { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
+                { provide: PaymentsService, useValue: { issueFullRefundForAuctionInspection: jest.fn().mockResolvedValue(undefined) } },
             ],
         }).compile();
 
@@ -491,6 +499,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
 describe('AuctionsService — create', () => {
     let service: AuctionsService;
     let prisma: any;
+    let paymentsService: { issueFullRefundForAuctionInspection: jest.Mock };
 
     const makeDto = (overrides: Record<string, any> = {}) => ({
         listingId: 'listing-1',
@@ -546,9 +555,19 @@ describe('AuctionsService — create', () => {
             hpiReport: {
                 findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }),
             },
+            sale: {
+                deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+            },
+            sellerProfile: {
+                update: jest.fn().mockResolvedValue({}),
+            },
             $transaction: jest.fn(async (arg: any) =>
                 typeof arg === 'function' ? arg(prisma) : Promise.all(arg)
             ),
+        };
+
+        paymentsService = {
+            issueFullRefundForAuctionInspection: jest.fn().mockResolvedValue(undefined),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -557,7 +576,7 @@ describe('AuctionsService — create', () => {
                 { provide: PrismaService, useValue: prisma },
                 { provide: NotificationsService, useValue: { create: jest.fn() } },
                 { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
-                { provide: AuctionGateway, useValue: {} },
+                { provide: AuctionGateway, useValue: { broadcastAuctionEnd: jest.fn() } },
                 {
                     provide: HandoverDocumentsService,
                     useValue: {
@@ -566,11 +585,12 @@ describe('AuctionsService — create', () => {
                         hydrateProof: jest.fn(async (a: any) => a),
                         hydrateMany: jest.fn(async (a: any) => a),
                         signPath: jest.fn(async () => null),
-                        deleteProof: jest.fn(),
+                        deleteProof: jest.fn().mockResolvedValue(undefined),
                     },
                 },
                 { provide: EmailService, useValue: {} },
                 { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
+                { provide: PaymentsService, useValue: paymentsService },
             ],
         }).compile();
 
@@ -844,6 +864,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
     let prisma: any;
     let auctionGateway: any;
     let notificationsService: any;
+    let paymentsService: { issueFullRefundForAuctionInspection: jest.Mock };
 
     beforeEach(async () => {
         prisma = {
@@ -882,6 +903,9 @@ describe('AuctionsService — final lifecycle consistency', () => {
         notificationsService = {
             create: jest.fn().mockResolvedValue({ id: 'notification-1' }),
         };
+        paymentsService = {
+            issueFullRefundForAuctionInspection: jest.fn().mockResolvedValue(undefined),
+        };
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -898,7 +922,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
                         hydrateProof: jest.fn(async (a: any) => a),
                         hydrateMany: jest.fn(async (a: any) => a),
                         signPath: jest.fn(async () => null),
-                        deleteProof: jest.fn(),
+                        deleteProof: jest.fn().mockResolvedValue(undefined),
                     },
                 },
                 {
@@ -908,6 +932,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
                     },
                 },
                 { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
+                { provide: PaymentsService, useValue: paymentsService },
             ],
         }).compile();
 
@@ -1054,6 +1079,133 @@ describe('AuctionsService — final lifecycle consistency', () => {
                 linkedListingId: null,
             },
         });
+    });
+
+    it('refuses a won vehicle only when a completed linked inspection recorded faults', async () => {
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1',
+            status: 'ENDED',
+            deletedAt: null,
+            winnerId: 'buyer-1',
+            buyerFeePaid: true,
+            buyerFeeTransactionId: 'txn-1',
+            sellerBonusReleased: false,
+            buyerRefusedAt: null,
+            handoverProofPath: null,
+            handoverProofUrl: null,
+            listing: {
+                id: 'listing-1',
+                title: 'BMW M3 2022',
+                sellerId: 'seller-1',
+                linkedListingId: null,
+            },
+            serviceJobs: [{
+                id: 'inspection-1',
+                inspectionSummary: 'Gearbox fault confirmed.',
+                completedAt: new Date(),
+            }],
+        });
+
+        const result = await service.refuseAfterInspection('auction-1', 'buyer-1', 'Gearbox fault');
+
+        expect(paymentsService.issueFullRefundForAuctionInspection).toHaveBeenCalledWith('auction-1');
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where: { id: 'auction-1' },
+            data: expect.objectContaining({
+                status: 'CANCELLED',
+                winnerId: null,
+                buyerFeePaid: false,
+                buyerRefusedById: 'buyer-1',
+                buyerRefusalInspectionJobId: 'inspection-1',
+            }),
+        });
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'listing-1' },
+            data: {
+                status: 'DRAFT',
+                type: 'CLASSIFIED',
+                linkedListingId: null,
+            },
+        });
+        expect(prisma.sale.deleteMany).toHaveBeenCalledWith({
+            where: { listingId: 'listing-1', buyerId: 'buyer-1' },
+        });
+        expect(result).toEqual({
+            refused: true,
+            refundedAmount: 125,
+            inspectionJobId: 'inspection-1',
+        });
+    });
+
+    it('returns a faulted linked retail listing to DRAFT instead of advertising it immediately', async () => {
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1',
+            status: 'ENDED',
+            deletedAt: null,
+            winnerId: 'buyer-1',
+            buyerFeePaid: true,
+            buyerFeeTransactionId: 'txn-1',
+            sellerBonusReleased: false,
+            buyerRefusedAt: null,
+            handoverProofPath: null,
+            handoverProofUrl: null,
+            listing: {
+                id: 'auction-listing-1',
+                title: 'BMW M3 2022',
+                sellerId: 'seller-1',
+                linkedListingId: 'retail-1',
+            },
+            serviceJobs: [{
+                id: 'inspection-1',
+                inspectionSummary: 'Oil leak and gearbox fault confirmed.',
+                completedAt: new Date(),
+            }],
+        });
+
+        await service.refuseAfterInspection('auction-1', 'buyer-1');
+
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'auction-listing-1' },
+            data: expect.objectContaining({
+                status: 'DRAFT',
+                linkedListingId: null,
+                deletedAt: expect.any(Date),
+            }),
+        });
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'retail-1' },
+            data: {
+                status: 'DRAFT',
+                linkedListingId: null,
+            },
+        });
+    });
+
+    it('does not refund or unwind when no linked inspection recorded faults', async () => {
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1',
+            status: 'ENDED',
+            deletedAt: null,
+            winnerId: 'buyer-1',
+            buyerFeePaid: true,
+            buyerFeeTransactionId: 'txn-1',
+            sellerBonusReleased: false,
+            buyerRefusedAt: null,
+            listing: {
+                id: 'listing-1',
+                title: 'BMW M3 2022',
+                sellerId: 'seller-1',
+                linkedListingId: null,
+            },
+            serviceJobs: [],
+        });
+
+        await expect(
+            service.refuseAfterInspection('auction-1', 'buyer-1'),
+        ).rejects.toThrow(/FAULTS_FOUND/i);
+
+        expect(paymentsService.issueFullRefundForAuctionInspection).not.toHaveBeenCalled();
+        expect(prisma.sale.deleteMany).not.toHaveBeenCalled();
     });
 
     it('keeps edited scheduled auctions at exactly 24 hours and persists Buy It Now', async () => {

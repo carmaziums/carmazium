@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "purpose": "CarMazium one-product parity contract",
   "policy": {
     "backend_is_source_of_truth": true,
@@ -210,6 +210,18 @@
         "carmazium app/carmazium app/src/screens/buyer/BuyerPurchaseHistoryScreen.tsx"
       ],
       "status": "required"
+    },
+    {
+      "id": "buyer.auction_inspection_refusal",
+      "web": [
+        "src/app/auctions/won/[id]/page.tsx",
+        "src/app/services/jobs/[id]/page.tsx",
+        "src/app/dashboard/service/jobs/[id]/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/lib/auctionApi.ts"
+      ],
+      "status": "gap"
     },
     {
       "id": "seller.dashboard",

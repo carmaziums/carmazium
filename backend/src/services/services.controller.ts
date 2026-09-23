@@ -13,7 +13,7 @@ import { TradeTeamService } from './trade-team.service';
 import { ACCEPTED_PAYMENT_TIMEOUT_MINUTES } from './services-lifecycle.service';
 import { serviceAvailabilitySnapshot } from './service-availability';
 import {
-    CreateJobDto, JobFromPurchaseDto, CancelJobDto, UpsertQuoteDto, ApplyCapabilityDto,
+    CreateJobDto, JobFromPurchaseDto, InspectionFromAuctionDto, CompleteJobDto, CancelJobDto, UpsertQuoteDto, ApplyCapabilityDto,
     UpdateLeadMatchingDto, UpdateJobMatchingDto, ServiceListQueryDto, ServiceJobFeedQueryDto, CreateServiceReviewDto,
 } from './dto';
 
@@ -102,6 +102,17 @@ export class ServicesController {
         return new StandardResponse(await this.services.createJobFromPurchase(user.id, dto));
     }
 
+    @Post('jobs/inspection/from-auction')
+    @Throttle({ default: { limit: 10, ttl: 60_000 } })
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Post a purchase-linked inspection for a won auction' })
+    async inspectionFromAuction(
+        @CurrentUser() user: any,
+        @Body() dto: InspectionFromAuctionDto,
+    ) {
+        return new StandardResponse(await this.services.createInspectionFromAuction(user.id, dto));
+    }
+
     @Get('jobs/my')
     @ApiOperation({ summary: 'Jobs the caller posted' })
     async myJobs(@CurrentUser() user: any, @Query() page: ServiceListQueryDto) {
@@ -183,9 +194,9 @@ export class ServicesController {
     @Post('jobs/:id/complete')
     @UseGuards(ContractorGuard)
     @ApiOperation({ summary: 'Mark a job complete on behalf of the provider business' })
-    async complete(@Req() req: any, @Param('id') id: string) {
+    async complete(@Req() req: any, @Param('id') id: string, @Body() dto: CompleteJobDto) {
         if (req.tradeActor) await this.tradeTeam.assertJobPermission(req.tradeActor, id, 'complete');
-        const result = await this.services.completeJob(req.contractorProfileId, id);
+        const result = await this.services.completeJob(req.contractorProfileId, id, dto);
         if (req.tradeActor) await this.tradeTeam.logAction(req.tradeActor, id, 'JOB_COMPLETED');
         return new StandardResponse(result);
     }
