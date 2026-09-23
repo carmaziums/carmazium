@@ -64,6 +64,8 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
             sellerProfile: { upsert: jest.fn(), update: jest.fn() },
             chatRoom: { upsert: jest.fn() },
             user: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $transaction: jest.fn(),
         };
 
@@ -265,6 +267,87 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
     });
 
 
+    it('SALES_AGENT Buy It Now is recorded against the dealership owner identity', async () => {
+        const auction = makeActiveAuction();
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'SALES_AGENT',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+            },
+        });
+
+        await service.triggerBuyItNow('auction-1', 'sales-1');
+
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where: { id: 'auction-1' },
+            data: expect.objectContaining({
+                buyItNowPendingBuyerId: 'owner-1',
+            }),
+        });
+        expect(auctionGateway.broadcastBinPending).toHaveBeenCalledWith(
+            'auction-1',
+            'owner-1',
+        );
+    });
+
+    it('FINANCE_MANAGER cannot trigger Buy It Now because it is a bidding commitment', async () => {
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'FINANCE_MANAGER',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+            },
+        });
+
+        await expect(
+            service.triggerBuyItNow('auction-1', 'finance-1'),
+        ).rejects.toThrow(/does not allow this auction purchase action/i);
+
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
+    it('dealer ADMIN confirms Buy It Now as the dealership seller, not a staff seller identity', async () => {
+        const auction = makeActiveAuction({
+            buyItNowPendingBuyerId: 'buyer-1',
+            buyItNowPendingAt: new Date(),
+            buyItNowPrice: 25000,
+        });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'ADMIN',
+            dealerProfile: {
+                id: 'dealer-seller',
+                userId: 'seller-1',
+                isVerified: true,
+            },
+        });
+        prisma.$transaction.mockResolvedValue([]);
+
+        await service.confirmBuyItNow('auction-1', 'admin-staff-1');
+
+        expect(prisma.sale.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                listingId: 'listing-1',
+                sellerId: 'seller-1',
+                buyerId: 'buyer-1',
+            }),
+        });
+        expect(prisma.sellerProfile.upsert).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: { userId: 'seller-1' },
+            }),
+        );
+    });
+
     it('adminCorrectReservePrice: lowers a live reserve without changing bids and clears pending BIN when reserve becomes met', async () => {
         const auction = makeActiveAuction({
             reservePrice: 20000,
@@ -323,6 +406,8 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             sellerProfile: { upsert: jest.fn() },
             chatRoom: { upsert: jest.fn() },
             user: { findUnique: jest.fn() },
+            dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $transaction: jest.fn(),
         };
 
@@ -561,6 +646,8 @@ describe('AuctionsService — create', () => {
             sellerProfile: {
                 update: jest.fn().mockResolvedValue({}),
             },
+            dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $transaction: jest.fn(async (arg: any) =>
                 typeof arg === 'function' ? arg(prisma) : Promise.all(arg)
             ),
@@ -893,6 +980,8 @@ describe('AuctionsService — final lifecycle consistency', () => {
             user: {
                 findUnique: jest.fn().mockResolvedValue(null),
             },
+            dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $transaction: jest.fn(async (arg: any) =>
                 typeof arg === 'function' ? arg(prisma) : Promise.all(arg)
             ),
