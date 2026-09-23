@@ -98,6 +98,8 @@ const accountRoles = read('backend/src/core/account-roles.ts');
 const registerDto = read('backend/src/auth/dto/register.dto.ts');
 const authService = read('backend/src/auth/auth.service.ts');
 const mobileAuthStore = read('carmazium app/carmazium app/src/store/authStore.ts');
+const mobileSignup = read('carmazium app/carmazium app/src/screens/auth/SignupScreen.tsx');
+const mobileApp = read('carmazium app/carmazium app/App.tsx');
 
 const selfServiceMatch = accountRoles.match(/SELF_SERVICE_USER_ROLES[^=]*=\s*\[([\s\S]*?)\];/);
 if (!selfServiceMatch) {
@@ -148,6 +150,17 @@ if (!mobileAccountRoleMatch) {
     }
   }
   ok('Mobile recognizes every backend account role without buyer fallback');
+}
+
+if (mobileAuthStore.includes('PENDING_SIGNUP_ROLE_KEY')) {
+  fail('Mobile OAuth signup role must not be persisted on-device');
+} else if (
+  !mobileSignup.includes('auth/callback?role=\\${encodeURIComponent(role)}') ||
+  !mobileApp.includes('reinitializeAuth(callbackRole)')
+) {
+  fail('Mobile OAuth signup account type is not bound to the callback URL');
+} else {
+  ok('Mobile OAuth signup account type is callback-scoped and non-persistent');
 }
 
 const webPricing = read('src/lib/pricingConfig.ts');
