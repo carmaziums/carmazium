@@ -139,7 +139,7 @@ export async function adminReviewSaleCancellation(
 ): Promise<SaleCancellationRequest> {
     const response = await apiClient<{ data: SaleCancellationRequest }>(`/sale-cancellations/${id}/admin-review`, {
         method: 'POST',
-        body: JSON.stringify({ decision, note }),
+        body: JSON.stringify({ decision, note, refundBuyerFee }),
     });
     return response.data;
 }
