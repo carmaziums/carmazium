@@ -165,6 +165,7 @@ if (mobileAuthStore.includes('PENDING_SIGNUP_ROLE_KEY')) {
 
 // Seller journey parity: both clients must use the same backend channel-switch
 // and review/payment lifecycle rather than creating client-specific shortcuts.
+// Keep this section as a CI tripwire whenever seller flows change on either client.
 const webListingWizard = read('src/components/listing/ListingWizard.tsx');
 const mobileSellFlow = read('carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx');
 const mobileListingsScreen = read('carmazium app/carmazium app/src/screens/seller/SellerListingsScreen.tsx');
