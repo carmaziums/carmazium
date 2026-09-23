@@ -13,7 +13,7 @@
         "src/app/auth/accept-invite/page.tsx"
       ],
       "mobile": [
-        "carmazium app/carmazium app/src/screens/auth/AcceptInviteScreen.tsx"
+        "carmazium app/carmazium app/src/screens/main/AcceptInviteScreen.tsx"
       ],
       "status": "required"
     },
