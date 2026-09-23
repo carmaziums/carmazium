@@ -159,6 +159,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/dealer/finance",
+        requiredPermission: "MANAGE_FINANCE",
         label: "Finance",
         title: "Finance",
         subHeader: "Strategic vehicle financing & liquidity oversight",
