@@ -1230,7 +1230,7 @@ export class AuctionsService {
                 this.prisma.listing.update({
                     where: { id: linkedRetailId },
                     data: {
-                        status: 'ACTIVE',
+                        status: 'DRAFT',
                         linkedListingId: null,
                     } as any,
                 }),
@@ -1267,7 +1267,7 @@ export class AuctionsService {
                 type: 'SYSTEM',
                 title: 'Auction sale cancelled after inspection',
                 message: linkedRetailId
-                    ? `The buyer refused "${auction.listing.title}" after a CarMazium inspection recorded faults. The auction has been cancelled and your retail listing restored so you can repair or continue selling it.`
+                    ? `The buyer refused "${auction.listing.title}" after a CarMazium inspection recorded faults. The auction has been cancelled and your retail listing returned to draft so you can repair or update it before relisting.`
                     : `The buyer refused "${auction.listing.title}" after a CarMazium inspection recorded faults. The vehicle is back in your inventory so you can repair, relist or re-auction it.`,
                 entityType: 'AUCTION',
                 entityId: auction.id,
