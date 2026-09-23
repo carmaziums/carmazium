@@ -225,6 +225,15 @@ if (
   ok('Mobile HPI add-on respects Standard/Premium HPI inclusion');
 }
 
+if (
+  !webListingWizard.includes("formData.vrm && (isAuction || formData.badgeTier === 'BASIC')") ||
+  !webListingWizard.includes('Optional for both Auction and Retail listings')
+) {
+  fail('Web seller wizard must expose the optional HPI add-on for Auction as well as Basic Retail listings');
+} else {
+  ok('Web HPI add-on is available for both Auction and Basic Retail listings');
+}
+
 const webPricing = read('src/lib/pricingConfig.ts');
 const mobilePricing = read('carmazium app/carmazium app/src/constants/pricing.ts');
 const payments = read('backend/src/payments/payments.service.ts');
