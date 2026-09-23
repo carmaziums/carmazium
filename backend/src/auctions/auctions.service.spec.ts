@@ -64,6 +64,8 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
             sellerProfile: { upsert: jest.fn(), update: jest.fn() },
             chatRoom: { upsert: jest.fn() },
             user: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $transaction: jest.fn(),
         };
 
@@ -323,6 +325,8 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             sellerProfile: { upsert: jest.fn() },
             chatRoom: { upsert: jest.fn() },
             user: { findUnique: jest.fn() },
+            dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $transaction: jest.fn(),
         };
 
@@ -561,6 +565,8 @@ describe('AuctionsService — create', () => {
             sellerProfile: {
                 update: jest.fn().mockResolvedValue({}),
             },
+            dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $transaction: jest.fn(async (arg: any) =>
                 typeof arg === 'function' ? arg(prisma) : Promise.all(arg)
             ),
@@ -893,6 +899,8 @@ describe('AuctionsService — final lifecycle consistency', () => {
             user: {
                 findUnique: jest.fn().mockResolvedValue(null),
             },
+            dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $transaction: jest.fn(async (arg: any) =>
                 typeof arg === 'function' ? arg(prisma) : Promise.all(arg)
             ),
