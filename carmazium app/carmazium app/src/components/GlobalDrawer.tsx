@@ -62,6 +62,7 @@ const ITEMS: MenuItem[] = [
   { id: 'about',    label: 'About',      icon: 'information-circle-outline', iconLib: 'ion', stackScreen: 'About' },
   { id: 'how-it-works', label: 'How It Works', icon: 'compass-outline',     iconLib: 'ion', stackScreen: 'HowItWorks' },
   { id: 'services', label: 'Services',   icon: 'construct-outline',         iconLib: 'ion', stackScreen: 'Services' },
+  { id: 'partner',  label: 'Partner Account', icon: 'business-outline',       iconLib: 'ion', stackScreen: 'PartnerDashboard' },
   { id: 'contact',  label: 'Contact',    icon: 'call-outline',              iconLib: 'ion', stackScreen: 'Contact' },
   // Built but previously unreachable from anywhere in the app — no nav entry
   // existed at all (mobile-production-readiness-plan.md F13).
