@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import {
-    Gavel, PlusCircle, Loader2, Eye, XCircle, Clock,
+    Gavel, PlusCircle, Loader2, Eye, XCircle, Clock, Flame,
     ChevronRight, AlertCircle, CheckCircle2, Calendar, X, Tags, Star,
     Upload, Handshake, Info, CheckCircle, ImageIcon, BarChart2,
 } from "lucide-react"
@@ -354,6 +354,27 @@ function DealerAuctionsPage() {
                                 <PlusCircle size={18} /> Create Auction
                             </Button>
                         </PageHeader>
+
+                        <nav
+                            aria-label="Auction navigation"
+                            className="mt-3 flex w-full max-w-md items-center gap-1 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"
+                        >
+                            <div
+                                aria-current="page"
+                                className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-black text-white shadow-sm"
+                            >
+                                <Gavel size={16} />
+                                My Auctions
+                            </div>
+                            <Link
+                                href="/auctions/browse"
+                                className="group flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-black text-[var(--text-muted)] transition-all hover:bg-red-500/10 hover:text-primary"
+                            >
+                                <Flame size={16} className="transition-transform group-hover:scale-110" />
+                                Live Auctions
+                                <ChevronRight size={14} className="opacity-60" />
+                            </Link>
+                        </nav>
                     </div>
 
                     {/* Action needed — the single most important thing on this page when it applies,
