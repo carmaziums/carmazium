@@ -56,6 +56,13 @@ export interface SaleCancellationRequest {
         vrm?: string | null;
     } | null;
     evidence: SaleCancellationEvidence[];
+    linkedServiceJobs?: Array<{
+        id: string;
+        title: string;
+        serviceType: string;
+        status: string;
+        agreedAmountPence?: number | null;
+    }>;
     viewer?: {
         isRequester?: boolean;
         canRespond?: boolean;
