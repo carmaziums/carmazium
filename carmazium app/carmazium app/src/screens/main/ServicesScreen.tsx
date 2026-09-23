@@ -121,6 +121,23 @@ export const ServicesScreen: React.FC = () => {
 
         <View style={{ height: 8 }} />
 
+        <TouchableOpacity
+          style={styles.partnerCard}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('PartnerDashboard')}
+        >
+          <View style={styles.partnerIcon}>
+            <Ionicons name="business-outline" size={22} color={Colors.warning} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.partnerTitle}>Provide services with CarMazium</Text>
+            <Text style={styles.partnerText}>
+              Use one Partner Account for Delivery & Recovery, Inspections, Vehicle Finance and Warranty services.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+        </TouchableOpacity>
+
         {SERVICES.map((service) => (
           <View key={service.title} style={styles.card}>
             <View style={[styles.iconWrap, { backgroundColor: service.bg, borderColor: service.border }]}>
@@ -136,8 +153,7 @@ export const ServicesScreen: React.FC = () => {
         <View style={styles.noteCard}>
           <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={styles.noteText}>
-            Carmazium connects you with independent professionals and partners. Each service is
-            provided by a third party — agreements and any costs are between you and that provider.
+            Carmazium connects you with independent professionals and Partner businesses. Delivery and Inspection jobs use CarMazium checkout and provider payouts; Finance and Warranty are matched enquiries handled directly with the provider.
           </Text>
         </View>
 
@@ -194,6 +210,37 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     lineHeight: 21,
     marginTop: 6,
+  },
+
+  partnerCard: {
+    flexDirection: 'row',
+    gap: 13,
+    alignItems: 'center',
+    backgroundColor: Colors.warningAlpha08,
+    borderRadius: Radius.card,
+    borderWidth: 1,
+    borderColor: Colors.warningAlpha30,
+    padding: 16,
+  },
+  partnerIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: Radius.inline,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.warningAlpha10,
+  },
+  partnerTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.base,
+    color: Colors.white,
+    marginBottom: 4,
+  },
+  partnerText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size12,
+    color: Colors.textSecondary,
+    lineHeight: 18,
   },
 
   card: {
