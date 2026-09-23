@@ -1,3 +1,4 @@
+import type { DealerPermission } from "@/lib/dealerAccess"
 import {
     LayoutDashboard,
     Car,
@@ -24,6 +25,7 @@ export interface DealerRoute {
     icon: LucideIcon
     hidden?: boolean
     section?: string
+    requiredPermission?: DealerPermission
 }
 
 export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
@@ -69,6 +71,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/dealer/inventory",
+        requiredPermission: "VIEW_INVENTORY",
         label: "Inventory",
         title: "Inventory",
         subHeader: "Curate and manage your high-end stock",
@@ -77,6 +80,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/dealer/crm",
+        requiredPermission: "MANAGE_CRM",
         label: "Leads",
         title: "Leads",
         subHeader: "Strategic lead management & conversion tracking",
@@ -85,6 +89,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/dealer/offers",
+        requiredPermission: "MANAGE_OFFERS",
         label: "Offers Received",
         title: "Offers",
         subHeader: "Direct high-value vehicle acquisition review",
@@ -93,6 +98,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/dealer/my-offers",
+        requiredPermission: "MANAGE_OFFERS",
         label: "My Offers",
         title: "My Offers",
         subHeader: "Retail offers you've made on marketplace vehicles",
@@ -101,6 +107,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/dealer/bids",
+        requiredPermission: "VIEW_TRADE",
         label: "My Auction Bids",
         title: "My Auction Bids",
         subHeader: "Live auctions you're currently bidding on",
@@ -109,6 +116,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/dealer/auctions",
+        requiredPermission: "VIEW_TRADE",
         label: "Auctions",
         title: "Auctions",
         subHeader: "Manage live vehicle auctions & bidding",
@@ -117,6 +125,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/dealer/auctions/won",
+        requiredPermission: "VIEW_PURCHASES",
         label: "Auction Purchases",
         title: "Purchased from Auction",
         subHeader: "Every auction you're bidding on or have won, and exactly what to do next",
@@ -141,6 +150,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/dealer/team",
+        requiredPermission: "MANAGE_TEAM",
         label: "Team",
         title: "Team",
         subHeader: "Manage business personnel & service permissions",
@@ -157,6 +167,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/dealer/analytics",
+        requiredPermission: "VIEW_ANALYTICS",
         label: "Analytics",
         title: "Analytics",
         subHeader: "Strategic market performance & predictive insights",
@@ -165,6 +176,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/dealer/earnings",
+        requiredPermission: "VIEW_ANALYTICS",
         label: "Earnings",
         title: "Revenue & Earnings",
         subHeader: "Strategic revenue tracking and platform sales history",
