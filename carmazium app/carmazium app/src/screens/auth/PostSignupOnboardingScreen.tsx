@@ -25,6 +25,7 @@ import { Logo } from '../../components/Logo';
 type Step = 0 | 1 | 2 | 3;
 
 const UK_POSTCODE_REGEX = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
+const UK_PHONE_REGEX = /^(?:\+44|0)\d{9,10}$/;
 
 const BODY_TYPES = ['SUV', 'Saloon', 'Hatchback', 'Coupé', 'Estate', 'Convertible'] as const;
 const FUEL_TYPES = ['Petrol', 'Diesel', 'Electric', 'Hybrid', 'Plug-in'] as const;
@@ -140,8 +141,8 @@ export const PostSignupOnboardingScreen: React.FC = () => {
   const [step, setStep] = useState<Step>(needsName ? 0 : 1);
 
   // Step 0 state
-  const [onbFirstName, setOnbFirstName] = useState('');
-  const [onbLastName, setOnbLastName] = useState('');
+  const [onbFirstName, setOnbFirstName] = useState(user?.firstName ?? '');
+  const [onbLastName, setOnbLastName] = useState(user?.lastName ?? '');
   const [nameError, setNameError] = useState('');
   const [nameSaving, setNameSaving] = useState(false);
 
@@ -150,13 +151,14 @@ export const PostSignupOnboardingScreen: React.FC = () => {
   const [resendLabel, setResendLabel] = useState('Resend email');
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyWarning, setVerifyWarning] = useState('');
-  const [showSkip, setShowSkip] = useState(false);
-  const skipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Step 2 state
-  const [postcode, setPostcode] = useState('');
+  // Step 2 state — same required account details as web onboarding.
+  const [phone, setPhone] = useState(user?.phone ?? '');
+  const [location, setLocation] = useState(user?.location ?? '');
+  const [postcode, setPostcode] = useState(user?.postcode ?? '');
+  const [phoneError, setPhoneError] = useState('');
+  const [locationError, setLocationError] = useState('');
   const [postcodeError, setPostcodeError] = useState('');
-  const [postcodeFocused, setPostcodeFocused] = useState(false);
+  const [focusedContactField, setFocusedContactField] = useState<'phone' | 'location' | 'postcode' | null>(null);
 
   // Step 3 state
   const [selectedBodyTypes, setSelectedBodyTypes] = useState<string[]>([]);
@@ -182,13 +184,13 @@ export const PostSignupOnboardingScreen: React.FC = () => {
         body: JSON.stringify({ firstName: trimmedFirst, lastName: trimmedLast }),
       });
       updateUser({ firstName: trimmedFirst, lastName: trimmedLast });
-      setStep(1);
+      setStep(user?.isEmailVerified ? 2 : 1);
     } catch (err: any) {
       setNameError(err?.message || 'Could not save your name. Please try again.');
     } finally {
       setNameSaving(false);
     }
-  }, [onbFirstName, onbLastName, updateUser]);
+  }, [onbFirstName, onbLastName, updateUser, user?.isEmailVerified]);
 
   // ── Step 1 handlers ──────────────────────────────────────────────────────
 
@@ -217,8 +219,6 @@ export const PostSignupOnboardingScreen: React.FC = () => {
   const handleVerifyCheck = useCallback(async () => {
     setVerifyLoading(true);
     setVerifyWarning('');
-    setShowSkip(false);
-    if (skipTimerRef.current) clearTimeout(skipTimerRef.current);
 
     try {
       const { data, error } = await supabase.auth.refreshSession();
@@ -232,50 +232,36 @@ export const PostSignupOnboardingScreen: React.FC = () => {
       setVerifyLoading(false);
     }
 
-    setVerifyWarning("We couldn't confirm your email yet. Try again or continue anyway.");
-    skipTimerRef.current = setTimeout(() => {
-      setShowSkip(true);
-    }, 3000);
+    setVerifyWarning("We couldn't confirm your email yet. Please open the verification link, then try again.");
   }, []);
 
   // ── Step 2 handlers ──────────────────────────────────────────────────────
 
   const normalisePostcode = (raw: string) => raw.trim().toUpperCase();
 
-  const validatePostcode = (raw: string) => {
-    const normalised = normalisePostcode(raw);
-    return UK_POSTCODE_REGEX.test(normalised);
-  };
+  const validatePostcode = (raw: string) => UK_POSTCODE_REGEX.test(normalisePostcode(raw));
+  const validatePhone = (raw: string) => UK_PHONE_REGEX.test(raw.replace(/[\s-]/g, ''));
 
-  const handlePostcodeChange = (text: string) => {
-    setPostcode(text);
-    if (postcodeError && validatePostcode(text)) {
-      setPostcodeError('');
-    }
-  };
+  const handleContactContinue = () => {
+    const trimmedPhone = phone.trim();
+    const trimmedLocation = location.trim();
+    const trimmedPostcode = postcode.trim();
 
-  const handlePostcodeBlur = () => {
-    setPostcodeFocused(false);
-    if (postcode.trim() && !validatePostcode(postcode)) {
-      setPostcodeError('Please enter a valid UK postcode');
-    } else {
-      setPostcodeError('');
-    }
-  };
+    const nextPhoneError = validatePhone(trimmedPhone)
+      ? ''
+      : 'Please enter a valid UK phone number';
+    const nextLocationError = trimmedLocation
+      ? ''
+      : 'Please enter your town or city';
+    const nextPostcodeError = validatePostcode(trimmedPostcode)
+      ? ''
+      : 'Please enter a valid UK postcode';
 
-  const isPostcodeValid = postcode.trim() !== '' && validatePostcode(postcode);
+    setPhoneError(nextPhoneError);
+    setLocationError(nextLocationError);
+    setPostcodeError(nextPostcodeError);
 
-  const handlePostcodeContinue = () => {
-    if (!isPostcodeValid) {
-      setPostcodeError('Please enter a valid UK postcode');
-      return;
-    }
-    setStep(3);
-  };
-
-  const handlePostcodeSkip = () => {
-    setPostcode('');
-    setPostcodeError('');
+    if (nextPhoneError || nextLocationError || nextPostcodeError) return;
     setStep(3);
   };
 
@@ -297,7 +283,9 @@ export const PostSignupOnboardingScreen: React.FC = () => {
     setSaving(true);
     setSaveToast('');
 
-    const normPostcode = postcode.trim() ? normalisePostcode(postcode) : undefined;
+    const trimmedPhone = phone.trim();
+    const trimmedLocation = location.trim();
+    const normPostcode = normalisePostcode(postcode);
     const preferences = {
       bodyTypes: selectedBodyTypes,
       fuelTypes: selectedFuelTypes,
@@ -308,20 +296,34 @@ export const PostSignupOnboardingScreen: React.FC = () => {
       await apiClient('/users/me', {
         method: 'PATCH',
         body: JSON.stringify({
-          ...(normPostcode ? { location: normPostcode } : {}),
+          phone: trimmedPhone,
+          location: trimmedLocation,
+          postcode: normPostcode,
           preferences,
         }),
       });
-    } catch {
-      setSaveToast('Saved locally');
-      setTimeout(() => setSaveToast(''), 3000);
+      updateUser({
+        phone: trimmedPhone,
+        location: trimmedLocation,
+        postcode: normPostcode,
+      });
+      await completeOnboarding();
+      // RootNavigator gate automatically switches to Main.
+    } catch (err: any) {
+      setSaveToast(err?.message || 'Could not save your account details. Please try again.');
     } finally {
       setSaving(false);
     }
-
-    await completeOnboarding();
-    // RootNavigator gate automatically switches to Main
-  }, [postcode, selectedBodyTypes, selectedFuelTypes, selectedBudget, completeOnboarding]);
+  }, [
+    phone,
+    location,
+    postcode,
+    selectedBodyTypes,
+    selectedFuelTypes,
+    selectedBudget,
+    updateUser,
+    completeOnboarding,
+  ]);
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -447,17 +449,6 @@ export const PostSignupOnboardingScreen: React.FC = () => {
                 </View>
               )}
 
-              {/* Skip for now */}
-              {showSkip && (
-                <TouchableOpacity
-                  style={styles.skipLink}
-                  onPress={() => setStep(2)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.skipLinkText}>Skip for now</Text>
-                </TouchableOpacity>
-              )}
-
               {/* Primary CTA */}
               <View style={styles.ctaWrapper}>
                 <PrimaryCTA
@@ -472,74 +463,115 @@ export const PostSignupOnboardingScreen: React.FC = () => {
             </View>
           )}
 
-          {/* ── Step 2: Location ───────────────────────────────────────── */}
+          {/* ── Step 2: Required account details ───────────────────────── */}
           {step === 2 && (
             <View>
               <Text style={styles.stepIndicator}>STEP {stepPosition(2)} OF {steps.length}</Text>
               <Text style={styles.titleText}>
-                Where are <Text style={styles.titleAccent}>you based?</Text>
+                Complete your <Text style={styles.titleAccent}>account.</Text>
               </Text>
               <Text style={styles.subtitleText}>
-                We'll show you vehicles near you first.
+                Add the same required contact and location details used on CarMazium web.
               </Text>
 
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>UK POSTCODE</Text>
-                <View
-                  style={[
-                    styles.inputWrapper,
-                    postcodeFocused && styles.inputFocused,
-                    postcodeError !== '' && styles.inputError,
-                  ]}
-                >
-                  <Ionicons
-                    name="location-outline"
-                    size={20}
-                    color={
-                      postcodeError !== ''
-                        ? Colors.error
-                        : postcodeFocused
-                        ? Colors.accent
-                        : Colors.textMuted
-                    }
-                    style={styles.inputIcon}
+                <Text style={styles.fieldLabel}>PHONE NUMBER</Text>
+                <View style={[
+                  styles.inputWrapper,
+                  focusedContactField === 'phone' && styles.inputFocused,
+                  phoneError !== '' && styles.inputError,
+                ]}>
+                  <Ionicons name="call-outline" size={20} color={phoneError ? Colors.error : focusedContactField === 'phone' ? Colors.accent : Colors.textMuted} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    value={phone}
+                    onChangeText={(value) => { setPhone(value); if (phoneError) setPhoneError(''); }}
+                    placeholder="e.g. 07123 456789"
+                    placeholderTextColor={Colors.inputPlaceholder}
+                    keyboardType="phone-pad"
+                    autoCorrect={false}
+                    returnKeyType="next"
+                    onFocus={() => setFocusedContactField('phone')}
+                    onBlur={() => {
+                      setFocusedContactField(null);
+                      setPhoneError(validatePhone(phone) ? '' : 'Please enter a valid UK phone number');
+                    }}
                   />
+                </View>
+                {phoneError !== '' && <Text style={styles.errorText}>{phoneError}</Text>}
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>TOWN / CITY</Text>
+                <View style={[
+                  styles.inputWrapper,
+                  focusedContactField === 'location' && styles.inputFocused,
+                  locationError !== '' && styles.inputError,
+                ]}>
+                  <Ionicons name="location-outline" size={20} color={locationError ? Colors.error : focusedContactField === 'location' ? Colors.accent : Colors.textMuted} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    value={location}
+                    onChangeText={(value) => { setLocation(value); if (locationError) setLocationError(''); }}
+                    placeholder="e.g. Birmingham"
+                    placeholderTextColor={Colors.inputPlaceholder}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                    onFocus={() => setFocusedContactField('location')}
+                    onBlur={() => {
+                      setFocusedContactField(null);
+                      setLocationError(location.trim() ? '' : 'Please enter your town or city');
+                    }}
+                  />
+                </View>
+                {locationError !== '' && <Text style={styles.errorText}>{locationError}</Text>}
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>UK POSTCODE</Text>
+                <View style={[
+                  styles.inputWrapper,
+                  focusedContactField === 'postcode' && styles.inputFocused,
+                  postcodeError !== '' && styles.inputError,
+                ]}>
+                  <Ionicons name="navigate-outline" size={20} color={postcodeError ? Colors.error : focusedContactField === 'postcode' ? Colors.accent : Colors.textMuted} style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     value={postcode}
-                    onChangeText={handlePostcodeChange}
-                    placeholder="e.g. SW1X 7LY"
+                    onChangeText={(value) => { setPostcode(value.toUpperCase()); if (postcodeError) setPostcodeError(''); }}
+                    placeholder="e.g. B1 1AA"
                     placeholderTextColor={Colors.inputPlaceholder}
                     autoCapitalize="characters"
                     autoCorrect={false}
                     returnKeyType="done"
-                    onFocus={() => setPostcodeFocused(true)}
-                    onBlur={handlePostcodeBlur}
+                    onFocus={() => setFocusedContactField('postcode')}
+                    onBlur={() => {
+                      setFocusedContactField(null);
+                      setPostcodeError(validatePostcode(postcode) ? '' : 'Please enter a valid UK postcode');
+                    }}
+                    onSubmitEditing={handleContactContinue}
                   />
                 </View>
-                {postcodeError !== '' && (
-                  <Text style={styles.errorText}>{postcodeError}</Text>
-                )}
+                {postcodeError !== '' && <Text style={styles.errorText}>{postcodeError}</Text>}
+              </View>
+
+              <View style={styles.warningRow}>
+                <Ionicons name="shield-checkmark-outline" size={16} color={Colors.warning} />
+                <Text style={styles.warningText}>
+                  These fields are required on both the app and website before dashboard access.
+                </Text>
               </View>
 
               <View style={styles.ctaWrapper}>
                 <PrimaryCTA
                   label="CONTINUE"
-                  onPress={handlePostcodeContinue}
-                  disabled={postcode.trim() === '' || postcodeError !== ''}
+                  onPress={handleContactContinue}
+                  disabled={!phone.trim() || !location.trim() || !postcode.trim()}
                   hasChamfer={true}
                   icon={<Ionicons name="arrow-forward" size={16} color={Colors.white} />}
                   iconPosition="right"
                 />
               </View>
-
-              <TouchableOpacity
-                style={styles.skipLink}
-                onPress={handlePostcodeSkip}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.skipLinkText}>Skip</Text>
-              </TouchableOpacity>
             </View>
           )}
 
