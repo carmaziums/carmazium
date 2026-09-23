@@ -434,14 +434,24 @@ export function MaziumWidget() {
             <button
                 onClick={handleToggle}
                 className={cn(
-                    "h-14 w-14 rounded-full shadow-[0_4px_20px_rgba(237,28,36,0.5)] flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95",
-                    isOpen ? "bg-slate-800" : "animate-float bg-transparent"
+                    "flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 p-0 border-0",
+                    isOpen
+                        ? "h-14 w-14 rounded-full bg-slate-800 shadow-[0_4px_20px_rgba(237,28,36,0.5)]"
+                        : "h-16 w-16 rounded-none bg-transparent shadow-none overflow-visible animate-float"
                 )}
+                style={!isOpen ? { backgroundColor: "transparent", boxShadow: "none" } : undefined}
             >
                 {isOpen ? (
                     <X size={24} className="text-white" />
                 ) : (
-                    <Image src="/assets/images/mazium-bot-transparent.webp" alt="Mazium AI" width={56} height={56} className="w-full h-full object-contain" />
+                    <Image
+                        src="/assets/images/mazium-bot-transparent.webp"
+                        alt="Mazium AI"
+                        width={64}
+                        height={64}
+                        className="h-16 w-16 object-contain"
+                        priority
+                    />
                 )}
             </button>
             </div>
