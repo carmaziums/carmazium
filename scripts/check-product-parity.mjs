@@ -413,6 +413,9 @@ const mobileDealerGate = read('carmazium app/carmazium app/src/components/Dealer
 const mobileDealerNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
 const mobileDealerDrawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
 const mobileDealerInventory = read('carmazium app/carmazium app/src/screens/main/DealerInventoryScreen.tsx');
+const webDealerLiveAuction = read('src/app/auctions/live/[id]/page.tsx');
+const webDealerWonAuctions = read('src/app/dashboard/dealer/auctions/won/page.tsx');
+const mobileDealerLiveAuction = read('carmazium app/carmazium app/src/screens/vehicle/AuctionDetailScreen.tsx');
 
 if (
   !webDealerAccess.includes("('/dealers/access')") ||
@@ -443,6 +446,39 @@ if (
   fail('Native dealer UI is not bound to the backend dealership permission contract');
 } else {
   ok('Native dealer routes, drawer and inventory controls consume dealership permissions');
+}
+
+// Dealer auction clients must use canonical dealership identity and the same
+// fine-grained permissions as the backend. This specifically prevents staff
+// accounts drifting back to personal winner IDs or exposing fee/bid mutations
+// to Finance/Sales roles that do not own those permissions.
+if (
+  !webDealerLiveAuction.includes('dealerAccess?.ownerUserId ?? user?.id') ||
+  !webDealerLiveAuction.includes("permissions?.includes('PLACE_BID')") ||
+  !webDealerLiveAuction.includes("permissions?.includes('PAY_AUCTION_FEE')") ||
+  !webDealerLiveAuction.includes('canManageSellerAuction') ||
+  !webDealerWonAuctions.includes('hasPermission("PAY_AUCTION_FEE")') ||
+  !webDealerWonAuctions.includes('hasPermission("PLACE_BID")')
+) {
+  fail('Web dealer auction UI can drift from canonical dealership identity or staff permissions');
+} else {
+  ok('Web dealer auction winner, bid and fee controls are dealership-permission aware');
+}
+
+if (
+  !mobileDealerLiveAuction.includes('dealerAccess?.ownerUserId ?? currentUser?.id') ||
+  !mobileDealerLiveAuction.includes("permissions?.includes('PLACE_BID')") ||
+  !mobileDealerLiveAuction.includes("permissions?.includes('PAY_AUCTION_FEE')") ||
+  !mobileDealerLiveAuction.includes('canManageSellerAuction') ||
+  !mobileBuyerBids.includes('dealerAccess?.ownerUserId ?? currentUserId') ||
+  !mobileBuyerBids.includes("permissions?.includes('PAY_AUCTION_FEE')") ||
+  !mobileBuyerBids.includes('canPlaceBid && isCancelable(bid)') ||
+  !mobileAuctionComplete.includes("permissions?.includes('PAY_AUCTION_FEE')") ||
+  !mobileAuctionComplete.includes('!canPayAuctionFee')
+) {
+  fail('Native dealer auction UI can drift from canonical dealership identity or staff permissions');
+} else {
+  ok('Native dealer auction winner, bid and fee controls are dealership-permission aware');
 }
 
 const webPricing = read('src/lib/pricingConfig.ts');

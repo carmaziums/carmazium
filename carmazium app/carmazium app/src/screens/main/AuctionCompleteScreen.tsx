@@ -23,6 +23,8 @@ import { createPaymentSheet, reconcileAuctionFeeIntent } from '../../lib/payment
 import { apiClient } from '../../lib/apiClient';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { haptics } from '../../lib/haptics';
+import { useAuthStore } from '../../store/authStore';
+import { DealerAccess, getDealerAccess } from '../../lib/dealerAccessApi';
 
 import { IconButton } from '../../components/IconButton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -72,6 +74,31 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
   const insets = useSafeAreaInsets();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const confettiRef = useRef<any>(null);
+  const currentUserId = useAuthStore((s) => s.user?.id);
+  const role = useAuthStore((s) => s.role);
+  const [dealerAccess, setDealerAccess] = useState<DealerAccess | null>(null);
+  const [dealerAccessLoading, setDealerAccessLoading] = useState(false);
+
+  useEffect(() => {
+    if (role !== 'dealer' || !currentUserId) {
+      setDealerAccess(null);
+      setDealerAccessLoading(false);
+      return;
+    }
+
+    let mounted = true;
+    setDealerAccessLoading(true);
+    getDealerAccess()
+      .then((access) => { if (mounted) setDealerAccess(access); })
+      .catch(() => { if (mounted) setDealerAccess(null); })
+      .finally(() => { if (mounted) setDealerAccessLoading(false); });
+
+    return () => { mounted = false; };
+  }, [role, currentUserId]);
+
+  const canPayAuctionFee =
+    role === 'dealer'
+    && Boolean(dealerAccess?.permissions?.includes('PAY_AUCTION_FEE'));
 
   // Nav params
   const params: AuctionCompleteParams = route?.params ?? {
@@ -178,6 +205,14 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
   const [reviewDone, setReviewDone] = useState(false);
 
   const handlePayFee = useCallback(async () => {
+    if (dealerAccessLoading) return;
+    if (!canPayAuctionFee) {
+      Alert.alert(
+        'Payment permission required',
+        'The £125 auction buyer fee must be paid by the dealership Owner, Admin or Finance Manager.',
+      );
+      return;
+    }
     if (!listingId) {
       Alert.alert('Error', 'No listing found for this auction.');
       return;
@@ -285,6 +320,8 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
     initPaymentSheet,
     presentPaymentSheet,
     pendingConfirmationId,
+    dealerAccessLoading,
+    canPayAuctionFee,
   ]);
 
   // ── Fetch seller profile ID once payment succeeds ──────────────────────────
@@ -572,10 +609,10 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
       {/* Floating CTA */}
       <View style={[styles.floatingBottom, { paddingBottom: insets.bottom || 20 }]}>
         <TouchableOpacity
-          style={[styles.payBtn, paying && styles.payBtnDisabled]}
+          style={[styles.payBtn, (paying || dealerAccessLoading || !canPayAuctionFee) && styles.payBtnDisabled]}
           onPress={handlePayFee}
           activeOpacity={0.85}
-          disabled={paying || timeLeft === 0}
+          disabled={paying || dealerAccessLoading || !canPayAuctionFee || timeLeft === 0}
         >
           <LinearGradient
             colors={[Colors.accentGlow, Colors.accent]}
@@ -589,15 +626,21 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
             <Ionicons name="lock-closed-outline" size={18} color={Colors.white} style={{ marginRight: 12 }} />
           )}
           <Text style={styles.payBtnText}>
-            {paying
-              ? 'PROCESSING…'
-              : pendingConfirmationId
-                ? 'CONFIRM PAYMENT STATUS'
-                : `COMPLETE PAYMENT · ${fmt(buyerFee)}`}
+            {dealerAccessLoading
+              ? 'CHECKING PAYMENT PERMISSION…'
+              : !canPayAuctionFee
+                ? 'OWNER / ADMIN / FINANCE TO PAY'
+                : paying
+                  ? 'PROCESSING…'
+                  : pendingConfirmationId
+                    ? 'CONFIRM PAYMENT STATUS'
+                    : `COMPLETE PAYMENT · ${fmt(buyerFee)}`}
           </Text>
         </TouchableOpacity>
         <Text style={styles.footerNote}>
-          Buyer fee is paid securely via Stripe. If handover proof is denied, the current CarMazium flow refunds £100 of the £125 fee; the £25 platform fee remains.
+          {canPayAuctionFee
+            ? 'Buyer fee is paid securely via Stripe. If handover proof is denied, the current CarMazium flow refunds £100 of the £125 fee; the £25 platform fee remains.'
+            : 'This win belongs to the dealership. Fee payment is restricted to the Owner, Admin or Finance Manager.'}
         </Text>
       </View>
     </View>
