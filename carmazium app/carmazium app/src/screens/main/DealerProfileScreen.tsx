@@ -26,6 +26,7 @@ import { HamburgerButton } from '../../components/HamburgerButton';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
+import { useDealerAccess } from '../../hooks/useDealerAccess';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 import { useAuthStore } from '../../store/authStore';
@@ -87,6 +88,12 @@ export const DealerProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const { showToast } = useContext(GlobalToastContext);
   const { user, setRole } = useAuthStore();
+  const { access, hasPermission } = useDealerAccess(true);
+  const canManageCrm = hasPermission('MANAGE_CRM');
+  const canManageOffers = hasPermission('MANAGE_OFFERS');
+  const canManageInventory = hasPermission('MANAGE_INVENTORY');
+  const canViewPurchases = hasPermission('VIEW_PURCHASES');
+  const canManageTeam = hasPermission('MANAGE_TEAM');
   const [activeSubTab, setActiveSubTab] = useState<'today' | 'this_week'>('today');
 
   const [stats, setStats] = useState<DealerStats | null>(null);
@@ -119,7 +126,11 @@ export const DealerProfileScreen: React.FC = () => {
     })();
   }, []);
 
-  const showPhoneBanner = phoneCheckDone && !dealerPhone && !phoneBannerDismissed;
+  const showPhoneBanner =
+    phoneCheckDone
+    && access?.isOwner === true
+    && !dealerPhone
+    && !phoneBannerDismissed;
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -269,6 +280,8 @@ export const DealerProfileScreen: React.FC = () => {
 
           <View style={styles.attentionList}>
             {/* Leads */}
+            {canManageCrm && (
+
             <TouchableOpacity
               style={styles.attentionRow}
               activeOpacity={0.8}
@@ -284,7 +297,11 @@ export const DealerProfileScreen: React.FC = () => {
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
+
+            )}
             {/* Direct offers */}
+            {canManageOffers && (
+
             <TouchableOpacity
               style={styles.attentionRow}
               activeOpacity={0.8}
@@ -300,7 +317,11 @@ export const DealerProfileScreen: React.FC = () => {
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
+
+            )}
             {/* My Offers */}
+            {canManageOffers && (
+
             <TouchableOpacity
               style={styles.attentionRow}
               activeOpacity={0.8}
@@ -316,7 +337,11 @@ export const DealerProfileScreen: React.FC = () => {
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
+
+            )}
             {/* Purchases */}
+            {canViewPurchases && (
+
             <TouchableOpacity
               style={styles.attentionRow}
               activeOpacity={0.8}
@@ -332,6 +357,8 @@ export const DealerProfileScreen: React.FC = () => {
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
+
+            )}
             {/* Earnings */}
             <TouchableOpacity
               style={styles.attentionRow}
@@ -367,6 +394,8 @@ export const DealerProfileScreen: React.FC = () => {
             {/* Manage auctions (create/schedule/cancel — was previously
                 watch-only for dealers; SellerAuctionsScreen's create flow
                 already works generically, it just had no dealer entry point) */}
+            {canManageInventory && (
+
             <TouchableOpacity
               style={styles.attentionRow}
               activeOpacity={0.8}
@@ -382,6 +411,8 @@ export const DealerProfileScreen: React.FC = () => {
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
+
+            )}
             {/* Finance applications */}
             <TouchableOpacity
               style={styles.attentionRow}
@@ -399,6 +430,8 @@ export const DealerProfileScreen: React.FC = () => {
             </TouchableOpacity>
 
             {/* Team */}
+            {canManageTeam && (
+
             <TouchableOpacity
               style={styles.attentionRow}
               activeOpacity={0.8}
@@ -413,6 +446,8 @@ export const DealerProfileScreen: React.FC = () => {
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
+
+            )}
           </View>
         </View>
 
@@ -527,14 +562,16 @@ export const DealerProfileScreen: React.FC = () => {
         </View>
 
         {/* ADD LISTING BUTTON */}
-        <TouchableOpacity
-          style={styles.addListingCTA}
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate('SellCarFlow')}
-        >
-          <Ionicons name="add" size={20} color={Colors.white} style={{ marginRight: 6 }} />
-          <Text style={styles.addListingCTAText}>ADD LISTING</Text>
-        </TouchableOpacity>
+        {canManageInventory && (
+          <TouchableOpacity
+            style={styles.addListingCTA}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('SellCarFlow')}
+          >
+            <Ionicons name="add" size={20} color={Colors.white} style={{ marginRight: 6 }} />
+            <Text style={styles.addListingCTAText}>ADD LISTING</Text>
+          </TouchableOpacity>
+        )}
 
         {/* SWITCH BUTTON (buyer/seller) */}
         <TouchableOpacity style={[styles.switchProfileBtn, { marginTop: 12 }]} onPress={handleViewBuyerProfile} activeOpacity={0.8}>
