@@ -15,6 +15,7 @@ import {
     Wrench,
     LucideIcon
 } from "lucide-react"
+import type { DealerPermission } from "@/lib/dealerAccess"
 
 export interface DealerRoute {
     href: string
@@ -24,6 +25,7 @@ export interface DealerRoute {
     icon: LucideIcon
     hidden?: boolean
     section?: string
+    permission?: DealerPermission
 }
 
 export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
@@ -33,7 +35,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Vehicle Dealer",
         subHeader: "Dealer workspace",
         icon: Car,
-        section: "Workspaces"
+        section: "Workspaces",
+        permission: "VIEW_ANALYTICS"
     },
     {
         href: "/dashboard/partner",
@@ -73,7 +76,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Inventory",
         subHeader: "Curate and manage your high-end stock",
         icon: Car,
-        section: "Sales"
+        section: "Sales",
+        permission: "VIEW_INVENTORY"
     },
     {
         href: "/dashboard/dealer/crm",
@@ -81,7 +85,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Leads",
         subHeader: "Strategic lead management & conversion tracking",
         icon: Kanban,
-        section: "Sales"
+        section: "Sales",
+        permission: "MANAGE_CRM"
     },
     {
         href: "/dashboard/dealer/offers",
@@ -89,7 +94,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Offers",
         subHeader: "Direct high-value vehicle acquisition review",
         icon: Tag,
-        section: "Sales"
+        section: "Sales",
+        permission: "MANAGE_OFFERS"
     },
     {
         href: "/dashboard/dealer/my-offers",
@@ -97,7 +103,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "My Offers",
         subHeader: "Retail offers you've made on marketplace vehicles",
         icon: Gavel,
-        section: "Buying"
+        section: "Buying",
+        permission: "MANAGE_OFFERS"
     },
     {
         href: "/dashboard/dealer/bids",
@@ -105,7 +112,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "My Auction Bids",
         subHeader: "Live auctions you're currently bidding on",
         icon: Gavel,
-        section: "Buying"
+        section: "Buying",
+        permission: "VIEW_TRADE"
     },
     {
         href: "/dashboard/dealer/auctions",
@@ -113,7 +121,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Auctions",
         subHeader: "Manage live vehicle auctions & bidding",
         icon: Gavel,
-        section: "Buying"
+        section: "Buying",
+        permission: "VIEW_TRADE"
     },
     {
         href: "/dashboard/dealer/auctions/won",
@@ -121,7 +130,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Purchased from Auction",
         subHeader: "Every auction you're bidding on or have won, and exactly what to do next",
         icon: Trophy,
-        section: "Buying"
+        section: "Buying",
+        permission: "VIEW_PURCHASES"
     },
     {
         href: "/dashboard/dealer/wishlist",
@@ -129,7 +139,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Saved Cars",
         subHeader: "Vehicles you've saved to review and make offers on",
         icon: Heart,
-        section: "Buying"
+        section: "Buying",
+        permission: "VIEW_TRADE"
     },
     {
         href: "/dashboard/dealer/messages",
@@ -137,7 +148,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Messages",
         subHeader: "Direct bespoke communication",
         icon: MessageSquare,
-        section: "Business"
+        section: "Business",
+        permission: "MANAGE_TEAM"
     },
     {
         href: "/dashboard/dealer/team",
@@ -145,7 +157,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Team",
         subHeader: "Manage business personnel & service permissions",
         icon: Users,
-        section: "Business"
+        section: "Business",
+        permission: "VIEW_PURCHASES"
     },
     {
         href: "/dashboard/dealer/finance",
@@ -161,7 +174,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Analytics",
         subHeader: "Strategic market performance & predictive insights",
         icon: BarChart3,
-        section: "Performance"
+        section: "Performance",
+        permission: "VIEW_ANALYTICS"
     },
     {
         href: "/dashboard/dealer/earnings",
@@ -169,7 +183,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Revenue & Earnings",
         subHeader: "Strategic revenue tracking and platform sales history",
         icon: DollarSign,
-        section: "Performance"
+        section: "Performance",
+        permission: "VIEW_ANALYTICS"
     },
     {
         href: "/dashboard/dealer/settings",
