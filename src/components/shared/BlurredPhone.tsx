@@ -11,6 +11,8 @@ interface BlurredPhoneProps {
     /** Whether the seller has a phone number on file at all */
     phoneAvailable: boolean
     className?: string
+    /** Optional tracking callback fired immediately before the phone dialler opens. */
+    onPhoneClick?: () => void
     /**
      * Override for contexts where "log in" isn't why the number is withheld
      * (e.g. a live auction, where it unlocks only once this viewer has won
@@ -28,7 +30,7 @@ interface BlurredPhoneProps {
  * if provided) if the number exists but was withheld, or nothing if the
  * seller has no phone on file.
  */
-export function BlurredPhone({ phone, phoneAvailable, className = "", lockedMessage }: BlurredPhoneProps) {
+export function BlurredPhone({ phone, phoneAvailable, className = "", lockedMessage, onPhoneClick }: BlurredPhoneProps) {
     const pathname = usePathname()
     const [showLoginWall, setShowLoginWall] = React.useState(false)
 
@@ -38,6 +40,7 @@ export function BlurredPhone({ phone, phoneAvailable, className = "", lockedMess
         return (
             <a
                 href={`tel:${phone}`}
+                onClick={onPhoneClick}
                 className={`flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group ${className}`}
             >
                 <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">

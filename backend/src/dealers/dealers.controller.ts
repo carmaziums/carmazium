@@ -29,6 +29,7 @@ import { DealersService } from './dealers.service';
 import { KycDocumentsService, isKycDocumentField } from './kyc-documents.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
+import { TrackDealerCallDto } from './dto/track-dealer-call.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
 import { CreateKycDto } from './dto/create-kyc.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
@@ -94,6 +95,21 @@ export class DealersController {
     ): Promise<PaginatedResponse<any>> {
         const { data, total } = await this.dealersService.getLeads(user.id, status, page, limit);
         return new PaginatedResponse(data, total, page!, limit!);
+    }
+
+    @Post('leads/activity/call')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Track a buyer clicking the dealer call button for a retail listing' })
+    async trackDealerCall(
+        @CurrentUser() user: any,
+        @Body() dto: TrackDealerCallDto,
+    ): Promise<StandardResponse<any>> {
+        const lead = await this.dealersService.syncRetailLeadActivity({
+            listingId: dto.listingId,
+            buyerId: user.id,
+            source: 'phone',
+        });
+        return new StandardResponse({ tracked: Boolean(lead), leadId: lead?.id ?? null });
     }
 
     @Post('leads')

@@ -69,3 +69,20 @@ export async function createKycCheckoutSession(): Promise<{
   );
   return result.data;
 }
+
+
+/**
+ * Records that an authenticated buyer initiated a phone call to a dealer from
+ * a retail listing. The request uses keepalive so mobile browsers can finish it
+ * while handing off to the native phone dialler.
+ */
+export async function trackDealerPhoneClick(listingId: string): Promise<void> {
+  await apiClient<{ data: { tracked: boolean; leadId: string | null } }>(
+    '/dealers/leads/activity/call',
+    {
+      method: 'POST',
+      body: JSON.stringify({ listingId }),
+      keepalive: true,
+    },
+  );
+}
