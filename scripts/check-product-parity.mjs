@@ -259,6 +259,7 @@ const mobileProviderJobs = read('carmazium app/carmazium app/src/screens/main/Pr
 const mobileProviderJobDetail = read('carmazium app/carmazium app/src/screens/main/ProviderJobDetailScreen.tsx');
 const mobileProviderLeads = read('carmazium app/carmazium app/src/screens/main/ProviderLeadsScreen.tsx');
 const mobileProviderLeadDetail = read('carmazium app/carmazium app/src/screens/main/ProviderLeadDetailScreen.tsx');
+const mobileProviderMessages = read('carmazium app/carmazium app/src/screens/main/ProviderMessagesScreen.tsx');
 const mobileServicesApi = read('carmazium app/carmazium app/src/lib/servicesApi.ts');
 const mobileChatApi = read('carmazium app/carmazium app/src/lib/chatApi.ts');
 const mobileMainNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
@@ -390,6 +391,23 @@ if (
   fail('Native Partner Leads must preserve Finance/Warranty inbox, detail and response parity');
 } else {
   ok('Native Partner Leads preserve matched enquiry and provider response parity');
+}
+
+// Partner/provider Messages parity: native reuses the shared chat system, but
+// must understand SERVICE_JOB room metadata and expose a provider-focused
+// service-job conversation workspace that opens the normal ChatScreen.
+if (
+  !mobileChatApi.includes("context?: 'SUPPORT' | 'RETAIL' | 'AUCTION' | 'DISPUTE' | 'SERVICE_JOB' | 'LEGACY'") ||
+  !mobileChatApi.includes('serviceJob?: ChatServiceJob | null') ||
+  !mobileProviderMessages.includes("room.context === 'SERVICE_JOB'") ||
+  !mobileProviderMessages.includes("navigation.navigate('ChatScreen'") ||
+  !mobileProviderMessages.includes('room.serviceJob?.title') ||
+  !mobileMainNavigator.includes('ProviderMessages') ||
+  !mobilePartnerDashboard.includes("navigation.navigate('ProviderMessages')")
+) {
+  fail('Native provider Messages can drift from shared SERVICE_JOB chat context');
+} else {
+  ok('Native provider Messages reuse shared service-job chat rooms and ChatScreen');
 }
 
 // Dealer business identity / RBAC: staff must act under one dealership identity

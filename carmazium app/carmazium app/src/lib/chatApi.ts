@@ -24,6 +24,21 @@ export interface ChatListing {
   } | null;
 }
 
+export interface ChatServiceJob {
+  id: string;
+  title: string;
+  status: string;
+  serviceType: string;
+  customerId: string;
+  contractorId: string | null;
+  contractor?: {
+    id: string;
+    businessName: string | null;
+    userId: string;
+  } | null;
+  payment?: { status: string } | null;
+}
+
 export interface ChatMessage {
   id: string;
   chatRoomId: string;
@@ -44,8 +59,10 @@ export interface ChatMessage {
 
 export interface ChatRoom {
   id: string;
+  context?: 'SUPPORT' | 'RETAIL' | 'AUCTION' | 'DISPUTE' | 'SERVICE_JOB' | 'LEGACY';
   otherUser: ChatUser;
   listing: ChatListing | null;
+  serviceJob?: ChatServiceJob | null;
   lastMessage: {
     id: string;
     content: string;

@@ -2584,3 +2584,20 @@ Still explicit Block 7 gap:
 
 - `service_provider.messages`: provider-focused message workspace/list entry.
 
+## 2026-09-23 — Block 7: Native Partner/provider Messages
+
+**Block 7 checkpoint:** Partner/TradeXchange provider journey completed on native mobile.
+
+Completed in this slice:
+
+- Native chat rooms now expose the existing shared `SERVICE_JOB` context and service-job metadata already used by web.
+- Partner Account has a dedicated Service Job Messages workspace for approved Delivery/Inspection providers.
+- Provider Messages filters the shared room collection to service-job conversations instead of creating a second messaging backend.
+- Conversation rows show customer, service/job title, job/payment status, unread count and latest message.
+- Search and pull-to-refresh operate on the shared room list.
+- Opening a provider conversation reuses the normal native `ChatScreen`, preserving the existing message, attachment, read-state and realtime behaviour.
+- Permanent product-parity guard covers service-job room metadata, provider filtering, Partner navigation and shared ChatScreen reuse.
+- `service_provider.messages` moved from `gap` to `required`.
+
+**Block 7 result:** `partner.dashboard`, `service_provider.capabilities`, `service_provider.jobs`, `service_provider.leads` and `service_provider.messages` are now represented on web and native mobile. No explicit Partner/provider UI gap remains in Block 7.
+

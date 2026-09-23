@@ -429,8 +429,10 @@
       "web": [
         "src/app/dashboard/service/messages/page.tsx"
       ],
-      "mobile": [],
-      "status": "gap"
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/ProviderMessagesScreen.tsx"
+      ],
+      "status": "required"
     },
     {
       "id": "admin.operations",
