@@ -465,7 +465,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isAuthenticated: true,
           hasCompletedOnboarding,
           role: mappedRole,
-          accountRole: mappedRole,
+          accountRole,
           user: {
             id: profile.id,
             email: profile.email,
@@ -476,8 +476,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             location: profile.location || null,
               postcode: profile.postcode || null,
             isAddressVerified: profile.isAddressVerified || false,
+            isEmailVerified: profile.isEmailVerified || false,
             isVerified: profile.dealerProfile?.isVerified ?? false,
-              isDealerStaff: (profile.dealerStaffMemberships?.length ?? 0) > 0,
+            isDealerStaff: (profile.dealerStaffMemberships?.length ?? 0) > 0,
           },
         });
       }
