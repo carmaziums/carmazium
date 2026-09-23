@@ -220,7 +220,6 @@ export const SearchScreen: React.FC = () => {
   const [maxCo2, setMaxCo2] = useState('');
   const [deliveryAvailable, setDeliveryAvailable] = useState(false);
   const [sellerType, setSellerType] = useState<'' | 'DEALER' | 'PRIVATE'>('');
-  const [listingType, setListingType] = useState<'' | 'CLASSIFIED' | 'AUCTION'>('');
   // Public marketplace defaults to Cars on both web and mobile.
   const [vehicleType, setVehicleType] = useState<'' | 'CAR' | 'HGV' | 'MOTORCYCLE'>('CAR');
   const [locationFilter, setLocationFilter] = useState('');
@@ -367,7 +366,6 @@ export const SearchScreen: React.FC = () => {
       maxCo2: maxCo2 ? parseInt(maxCo2) : undefined,
       deliveryAvailable: deliveryAvailable ? true : undefined,
       sellerType: sellerType || undefined,
-      listingType: listingType || undefined,
       color: colorFilter.trim() || undefined,
       minDoors: minDoors ? parseInt(minDoors) : undefined,
       minSeats: minSeats ? parseInt(minSeats) : undefined,
@@ -417,7 +415,7 @@ export const SearchScreen: React.FC = () => {
       setLoadingMore(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
+  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
 
   // Initial load
   useEffect(() => { fetch(true); }, []);
@@ -435,7 +433,7 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     fetch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi]);
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -457,7 +455,6 @@ export const SearchScreen: React.FC = () => {
     !!maxCo2,
     deliveryAvailable,
     !!sellerType,
-    !!listingType,
     vehicleType !== 'CAR',
     !!locationFilter,
     !!modelFilter,
@@ -490,7 +487,6 @@ export const SearchScreen: React.FC = () => {
     setMaxCo2('');
     setDeliveryAvailable(false);
     setSellerType('');
-    setListingType('');
     setVehicleType('CAR');
     setLocationFilter('');
     setModelFilter('');
@@ -539,8 +535,8 @@ export const SearchScreen: React.FC = () => {
       // Apply whatever filter params the AI returned. Keys must match
       // ai.service.ts's SEARCH_SYSTEM_PROMPT exactly (make, model, bodyType,
       // fuelType, transmission, color, min/maxPrice, min/maxYear,
-      // min/maxMileage, minDoors, minSeats) — listingType/sellerType/
-      // vehicleType/location/ulezCompliant/deliveryAvailable are NOT
+      // min/maxMileage, minDoors, minSeats) — sellerType/vehicleType/
+      // location/ulezCompliant/deliveryAvailable are NOT
       // extracted by the AI and were dead branches here.
       if (f.make) setSelectedMakes([f.make]);
       if (f.fuelType) setSelectedFuels([f.fuelType]);
@@ -1303,27 +1299,6 @@ export const SearchScreen: React.FC = () => {
                   </TouchableOpacity>
                 </View>
               )}
-
-              <View style={s.divider} />
-
-              {/* Listing Type */}
-              <Text style={s.filterLabel}>LISTING TYPE</Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {[
-                  { id: '' as const,           label: 'All' },
-                  { id: 'CLASSIFIED' as const, label: 'Buy Now' },
-                  { id: 'AUCTION' as const,    label: 'Auction' },
-                ].map(opt => (
-                  <TouchableOpacity
-                    key={opt.id}
-                    style={[s.segmentBtn, listingType === opt.id && s.segmentBtnActive]}
-                    onPress={() => setListingType(opt.id)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[s.segmentBtnText, listingType === opt.id && s.segmentBtnTextActive]}>{opt.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
 
               <View style={s.divider} />
 
