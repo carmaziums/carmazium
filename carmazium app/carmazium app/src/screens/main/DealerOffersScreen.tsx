@@ -551,6 +551,7 @@ export const DealerOffersScreen: React.FC = () => {
             </TouchableOpacity>
 
           </View>
+        )}
         {offer.status === 'ACCEPTED' && (
           <TouchableOpacity
             style={[styles.actionBtn, styles.actionBtnDecline, { marginTop: 4 }]}
@@ -561,7 +562,6 @@ export const DealerOffersScreen: React.FC = () => {
             <Ionicons name="close-circle-outline" size={14} color={Colors.accent} style={{ marginRight: 6 }} />
             <Text style={[styles.actionBtnText, { color: Colors.accent }]}>Request Cancellation</Text>
           </TouchableOpacity>
-        )}
         )}
       </View>
     );
