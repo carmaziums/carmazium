@@ -267,6 +267,7 @@ const mobileServicesApi = read('carmazium app/carmazium app/src/lib/servicesApi.
 const mobileChatApi = read('carmazium app/carmazium app/src/lib/chatApi.ts');
 const mobileMainNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
 const mobileGlobalDrawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
+const mobileBuyerDashboard = read('carmazium app/carmazium app/src/screens/buyer/BuyerDashboardScreen.tsx');
 const mobileBuyerBids = read('carmazium app/carmazium app/src/screens/buyer/BuyerBidsScreen.tsx');
 const backendBidsService = read('backend/src/bids/bids.service.ts');
 const paymentsController = read('backend/src/payments/payments.controller.ts');
@@ -395,6 +396,36 @@ if (
   fail('Native public vehicle/auction links must hydrate safely and preserve a usable back stack');
 } else {
   ok('Native public detail links hydrate authoritative data and reset to Tabs → Detail');
+}
+
+// Block 9 — cross-role navigation/back-stack certification.
+// Drawer targets must always point at registered MainStack screens, and
+// dashboard deep links must keep Tabs beneath the linked screen so Back does
+// not exit a cold-started app immediately.
+const registeredMainScreens = [
+  ...mobileMainNavigator.matchAll(/<Stack\.Screen\s+name="([^"]+)"/g),
+].map((match) => match[1]);
+const drawerStackTargets = [
+  ...mobileGlobalDrawer.matchAll(/stackScreen:\s*'([^']+)'/g),
+].map((match) => match[1]);
+const missingDrawerTargets = [...new Set(drawerStackTargets)]
+  .filter((target) => !registeredMainScreens.includes(target));
+
+if (
+  missingDrawerTargets.length > 0 ||
+  !mobileBuyerDashboard.includes("navigation?.navigate('Tabs', { screen: 'Search' })") ||
+  mobileBuyerDashboard.includes("navigation?.navigate('Search')") ||
+  !mobileLinkingConfig.includes("initialRouteName: 'Tabs'")
+) {
+  fail(
+    `Native cross-role navigation/back stack drifted${
+      missingDrawerTargets.length
+        ? `: missing drawer targets ${missingDrawerTargets.join(', ')}`
+        : ''
+    }`,
+  );
+} else {
+  ok('Native drawer targets are registered and linked dashboard screens preserve Tabs back stack');
 }
 
 if (

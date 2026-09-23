@@ -58,6 +58,7 @@ export const linking: LinkingOptions<RootStackParamList> = {
       // state, not from the URL) or drop a signed-out user onto a screen that
       // immediately 401s.
       Main: {
+        initialRouteName: 'Tabs',
         screens: {
           // The invite link web sends is /auth/accept-invite?token=... — mapped
           // here so the token arrives as a route param instead of being pasted

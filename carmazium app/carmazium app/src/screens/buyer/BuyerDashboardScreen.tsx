@@ -439,7 +439,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   title="Make an Offer"
                   subtitle="Browse listings and make your first offer"
                   time=""
-                  onPress={() => navigation?.navigate('Search')}
+                  onPress={() => navigation?.navigate('Tabs', { screen: 'Search' })}
                   isLast
                 />
               </>
