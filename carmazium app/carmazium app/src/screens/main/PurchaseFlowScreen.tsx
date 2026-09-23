@@ -16,8 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { useStripe } from '@stripe/stripe-react-native';
-import { createPaymentSheet } from '../../lib/paymentsApi';
-import { apiClient } from '../../lib/apiClient';
+import { createPaymentSheet, reconcileAuctionFeeIntent } from '../../lib/paymentsApi';
 import { Colors } from '../../constants/colors';
 
 import { IconButton } from '../../components/IconButton';
@@ -111,6 +110,20 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
 
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState(false);
+  // Once Stripe reports success locally, never offer a second charge while
+  // CarMazium is still reconciling that same PaymentIntent. The transaction id
+  // lets the buyer retry confirmation without creating another payment.
+  const [pendingConfirmationId, setPendingConfirmationId] = useState<string | null>(null);
+
+  const reconcilePendingAuctionFee = useCallback(async (transactionId: string) => {
+    const result = await reconcileAuctionFeeIntent(transactionId);
+    if (!result.applied) {
+      return false;
+    }
+    setPendingConfirmationId(null);
+    setPaid(true);
+    return true;
+  }, []);
 
   const handlePay = useCallback(async () => {
     if (!listingId) {
@@ -118,9 +131,32 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
       return;
     }
 
+    // A successful PaymentSheet may be waiting only for backend confirmation.
+    // Retry that exact transaction; never create a second PaymentIntent.
+    if (pendingConfirmationId) {
+      setPaying(true);
+      try {
+        const confirmed = await reconcilePendingAuctionFee(pendingConfirmationId);
+        if (!confirmed) {
+          Alert.alert(
+            'Payment confirmation pending',
+            'Your payment is still being confirmed. Do not pay again. You can retry this confirmation shortly.',
+          );
+        }
+      } catch {
+        Alert.alert(
+          'Unable to confirm yet',
+          'Your payment was already submitted to Stripe. Do not pay again. Retry payment status confirmation shortly.',
+        );
+      } finally {
+        setPaying(false);
+      }
+      return;
+    }
+
     setPaying(true);
     try {
-      // 1. Ask the backend to create a PaymentIntent + EphemeralKey
+      // 1. Ask the backend to create a PaymentIntent + EphemeralKey.
       const sheet = await createPaymentSheet({
         listingId,
         amount: total,
@@ -128,7 +164,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
         currency: 'gbp',
       });
 
-      // 2. Initialise the Payment Sheet
+      // 2. Initialise the Payment Sheet.
       const { error: initError } = await initPaymentSheet({
         merchantDisplayName: 'Carmazium',
         customerId: sheet.customerId,
@@ -158,37 +194,61 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
         return;
       }
 
-      // 3. Present the native Payment Sheet
+      // 3. Present the native Payment Sheet.
       const { error: presentError } = await presentPaymentSheet();
 
       if (presentError) {
-        if (presentError.code !== 'Canceled') {
+        if (presentError.code === 'Canceled') {
+          if (isWonAuctionFee) {
+            Alert.alert(
+              'Payment cancelled',
+              'You still won this auction. Pay the £125 buyer fee within 72 hours to unlock seller chat and complete the handover, or the win may be cancelled and the vehicle relisted.',
+            );
+          }
+        } else {
           Alert.alert('Payment failed', presentError.message);
         }
         return;
       }
 
-      // 4. Payment succeeded — show success state
-      setPaid(true);
-
-      // For auction commission payments, refetch the auction so downstream
-      // screens (LiveAuctionDetailed) observe buyerFeePaid = true on their
-      // next render. The Stripe webhook flips the flag server-side; we do
-      // NOT set it optimistically.
-      if (isCommission && auctionId) {
+      // 4. Native Stripe success is not enough for an auction fee: explicitly
+      // verify the exact PaymentIntent and apply buyerFeePaid before presenting
+      // CarMazium's success state. This mirrors the web checkout fallback.
+      if (isWonAuctionFee) {
+        setPendingConfirmationId(sheet.transactionId);
         try {
-          await apiClient(`/auctions/${auctionId}`);
+          const confirmed = await reconcilePendingAuctionFee(sheet.transactionId);
+          if (!confirmed) {
+            Alert.alert(
+              'Payment submitted — confirmation pending',
+              'Stripe accepted your payment, but CarMazium is still confirming the auction update. Do not pay again. Use Confirm Payment Status to retry this same transaction.',
+            );
+          }
         } catch {
-          // Non-fatal — user still sees success. Auction screen will
-          // refetch on its own mount.
+          Alert.alert(
+            'Payment submitted — confirmation pending',
+            'Your card payment was submitted, but CarMazium could not confirm the auction update yet. Do not pay again. Use Confirm Payment Status to retry this same transaction.',
+          );
         }
+        return;
       }
+
+      setPaid(true);
     } catch (err: any) {
       Alert.alert('Payment error', err?.message ?? 'Something went wrong. Please try again.');
     } finally {
       setPaying(false);
     }
-  }, [listingId, total, paymentType, initPaymentSheet, presentPaymentSheet, isCommission, auctionId]);
+  }, [
+    listingId,
+    total,
+    paymentType,
+    initPaymentSheet,
+    presentPaymentSheet,
+    isWonAuctionFee,
+    pendingConfirmationId,
+    reconcilePendingAuctionFee,
+  ]);
 
   // ── Success screen ────────────────────────────────────────────────
   if (paid) {
@@ -347,6 +407,15 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
         <Text style={styles.bottomNote}>
           Payment is processed securely via Stripe. The seller will be notified to arrange handover once payment is received.
         </Text>
+
+        {pendingConfirmationId ? (
+          <View style={styles.paymentNote}>
+            <Ionicons name="time-outline" size={16} color={Colors.warning} />
+            <Text style={styles.paymentNoteText}>
+              Your card payment was submitted. Do not pay again — confirm the same payment status below.
+            </Text>
+          </View>
+        ) : null}
       </ScrollView>
 
       {/* Floating CTA */}
@@ -365,9 +434,11 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
           <Text style={styles.mainBtnText}>
             {paying
               ? 'PROCESSING…'
-              : isCommission
-                ? `PAY FEE · ${fmt(total)}`
-                : `CONFIRM PURCHASE · ${fmt(total)}`}
+              : pendingConfirmationId
+                ? 'CONFIRM PAYMENT STATUS'
+                : isCommission
+                  ? `PAY FEE · ${fmt(total)}`
+                  : `CONFIRM PURCHASE · ${fmt(total)}`}
           </Text>
         </TouchableOpacity>
       </View>
