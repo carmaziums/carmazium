@@ -259,6 +259,8 @@ const mobileProviderJobs = read('carmazium app/carmazium app/src/screens/main/Pr
 const mobileProviderJobDetail = read('carmazium app/carmazium app/src/screens/main/ProviderJobDetailScreen.tsx');
 const mobileProviderLeads = read('carmazium app/carmazium app/src/screens/main/ProviderLeadsScreen.tsx');
 const mobileProviderLeadDetail = read('carmazium app/carmazium app/src/screens/main/ProviderLeadDetailScreen.tsx');
+const mobileProviderMessages = read('carmazium app/carmazium app/src/screens/main/ProviderMessagesScreen.tsx');
+const mobileChatScreen = read('carmazium app/carmazium app/src/screens/main/ChatScreen.tsx');
 const mobileServicesApi = read('carmazium app/carmazium app/src/lib/servicesApi.ts');
 const mobileChatApi = read('carmazium app/carmazium app/src/lib/chatApi.ts');
 const mobileMainNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
@@ -390,6 +392,23 @@ if (
   fail('Native Partner Leads must preserve Finance/Warranty inbox, detail and response parity');
 } else {
   ok('Native Partner Leads preserve matched enquiry and provider response parity');
+}
+
+// Partner/provider messaging parity: native must expose the backend room
+// context/service-job metadata, provide a provider-focused workspace and reuse
+// the existing realtime ChatScreen rather than creating a second chat product.
+if (
+  !mobileChatApi.includes("'SERVICE_JOB'") ||
+  !mobileChatApi.includes('serviceJob?: ChatServiceJob | null') ||
+  !mobileProviderMessages.includes("room.context === 'SERVICE_JOB'") ||
+  !mobileProviderMessages.includes("navigation.navigate('ChatScreen'") ||
+  !mobileProviderMessages.includes("navigation.navigate('ProviderJobs')") ||
+  !mobileChatScreen.includes('refreshRooms().catch(() => {})') ||
+  !mobilePartnerDashboard.includes("navigation.navigate('ProviderMessages')")
+) {
+  fail('Native Partner Messages must preserve service-job room context and the shared realtime chat contract');
+} else {
+  ok('Native Partner Messages reuse authorized service-job rooms and the shared realtime ChatScreen');
 }
 
 // Dealer business identity / RBAC: staff must act under one dealership identity
