@@ -76,6 +76,11 @@ export const linking: LinkingOptions<RootStackParamList> = {
           Notifications: 'notifications',
           Messages: 'messages',
           Settings: 'settings',
+          CustomerServiceJobs: 'services/jobs',
+          CustomerServiceJobDetail: {
+            path: 'services/jobs/:jobId',
+            parse: { jobId: (jobId: string) => jobId },
+          },
           SellerListings: 'dashboard/listings',
           SellerAuctions: 'dashboard/auctions',
           BuyerOffers: 'dashboard/offers',
