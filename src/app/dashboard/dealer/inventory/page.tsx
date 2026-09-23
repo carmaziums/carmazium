@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/Input"
 import {
     Car, Search, PlusCircle, MoreVertical,
     Loader2, Upload, TrendingUp, Trash2, Eye, RefreshCcw, Pencil,
-    X, CheckCircle2, ChevronRight, Gavel, Tag, MapPin
+    X, XCircle, CheckCircle2, ChevronRight, Gavel, Tag, MapPin
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
