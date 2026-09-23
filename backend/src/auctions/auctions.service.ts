@@ -456,7 +456,13 @@ export class AuctionsService {
 
         const seller = auction.listing?.seller as any;
         if (seller) {
-            const canSeeContactDetails = !!viewerId && viewerId === auction.winnerId && !!auction.buyerFeePaid;
+            const viewerBusinessId = viewerId
+                ? await resolveBusinessBuyerId(this.prisma, viewerId)
+                : null;
+            const canSeeContactDetails =
+                !!viewerBusinessId
+                && viewerBusinessId === auction.winnerId
+                && !!auction.buyerFeePaid;
             (auction.listing as any).seller = this.gateSellerContactDetails(seller, canSeeContactDetails);
         }
 
@@ -464,8 +470,9 @@ export class AuctionsService {
     }
 
     async findMyAuctions(userId: string, page = 1, limit = 20): Promise<{ data: any[]; total: number }> {
+        const sellerId = await this.resolveSellerBusinessId(userId, 'VIEW_INVENTORY');
         const skip = (page - 1) * limit;
-        const where = { deletedAt: null, listing: { sellerId: userId } };
+        const where = { deletedAt: null, listing: { sellerId } };
         const [data, total] = await Promise.all([
             this.prisma.auction.findMany({
                 where,
@@ -541,8 +548,9 @@ export class AuctionsService {
     // readiness-plan.md F43. Includes `listing.seller` (unlike findMyAuctions,
     // which has no reason to — the buyer needs to know who to contact).
     async findWonAuctions(userId: string, page = 1, limit = 20): Promise<{ data: any[]; total: number }> {
+        const buyerId = await this.resolveBuyerBusinessId(userId, 'VIEW_PURCHASES');
         const skip = (page - 1) * limit;
-        const where = { deletedAt: null, winnerId: userId };
+        const where = { deletedAt: null, winnerId: buyerId };
         const [data, total] = await Promise.all([
             this.prisma.auction.findMany({
                 where,
