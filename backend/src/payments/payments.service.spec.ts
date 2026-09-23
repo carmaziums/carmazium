@@ -393,6 +393,168 @@ describe('PaymentsService — reconcileAuctionFeeIntent', () => {
     });
 });
 
+describe('PaymentsService — hosted Checkout recovery ownership', () => {
+    let service: PaymentsService;
+    let prisma: any;
+
+    beforeEach(async () => {
+        mockCheckoutSessionsRetrieve.mockReset();
+        prisma = buildPrismaMock();
+        const module: TestingModule = await buildModule(prisma);
+        service = module.get<PaymentsService>(PaymentsService);
+    });
+
+    it('lets the session owner read their own Checkout status', async () => {
+        mockCheckoutSessionsRetrieve.mockResolvedValue({
+            id: 'cs_owner',
+            status: 'complete',
+            payment_status: 'paid',
+            customer_details: { email: 'buyer@example.com' },
+            metadata: {
+                type: 'HPI_REPORT_EMAIL',
+                userId: 'user-1',
+                listingId: 'listing-1',
+            },
+            amount_total: 999,
+            currency: 'gbp',
+        });
+
+        await expect(
+            service.getSessionStatus('cs_owner', 'user-1'),
+        ).resolves.toEqual({
+            status: 'complete',
+            paymentStatus: 'paid',
+            customerEmail: 'buyer@example.com',
+            metadata: {
+                type: 'HPI_REPORT_EMAIL',
+                userId: 'user-1',
+                listingId: 'listing-1',
+            },
+            amountTotal: 999,
+            currency: 'gbp',
+        });
+    });
+
+    it('does not expose another users Checkout session by session id alone', async () => {
+        mockCheckoutSessionsRetrieve.mockResolvedValue({
+            id: 'cs_other',
+            status: 'complete',
+            payment_status: 'paid',
+            metadata: {
+                type: 'HPI_REPORT_EMAIL',
+                userId: 'buyer-2',
+                listingId: 'listing-1',
+            },
+        });
+
+        await expect(
+            service.getSessionStatus('cs_other', 'buyer-1'),
+        ).rejects.toThrow(/permission/i);
+    });
+
+    it('allows verified FINANCE_MANAGER to inspect the dealerships auction-fee Checkout', async () => {
+        mockCheckoutSessionsRetrieve.mockResolvedValue({
+            id: 'cs_commission',
+            status: 'complete',
+            payment_status: 'paid',
+            metadata: {
+                type: 'COMMISSION',
+                userId: 'owner-1',
+                listingId: 'listing-auction',
+            },
+            amount_total: 12500,
+            currency: 'gbp',
+        });
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'FINANCE_MANAGER',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+            },
+        });
+
+        await expect(
+            service.getSessionStatus('cs_commission', 'finance-1'),
+        ).resolves.toEqual(expect.objectContaining({
+            status: 'complete',
+            paymentStatus: 'paid',
+            amountTotal: 12500,
+        }));
+    });
+
+    it('blocks SALES_AGENT from auction-fee Checkout recovery', async () => {
+        mockCheckoutSessionsRetrieve.mockResolvedValue({
+            id: 'cs_commission',
+            status: 'complete',
+            payment_status: 'paid',
+            metadata: {
+                type: 'COMMISSION',
+                userId: 'owner-1',
+                listingId: 'listing-auction',
+            },
+        });
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'SALES_AGENT',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+            },
+        });
+
+        await expect(
+            service.getSessionStatus('cs_commission', 'sales-1'),
+        ).rejects.toThrow(/does not allow this payment action/i);
+    });
+
+    it('keeps KYC Checkout recovery owner-only even for dealer ADMIN staff', async () => {
+        mockCheckoutSessionsRetrieve.mockResolvedValue({
+            id: 'cs_kyc',
+            status: 'complete',
+            payment_status: 'paid',
+            metadata: {
+                type: 'KYC_VERIFICATION',
+                userId: 'owner-1',
+                kycId: 'kyc-1',
+            },
+        });
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'ADMIN',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+            },
+        });
+
+        await expect(
+            service.getSessionStatus('cs_kyc', 'admin-staff-1'),
+        ).rejects.toThrow(/does not allow this payment action/i);
+    });
+
+    it('blocks another user from applying an HPI email entitlement before any Stripe or HPI side effect', async () => {
+        prisma.transaction.findFirst.mockResolvedValue({
+            id: 'txn-hpi-email',
+            userId: 'buyer-2',
+            listingId: 'listing-1',
+            type: 'HPI_REPORT_EMAIL',
+            status: 'PENDING',
+            stripePaymentId: 'cs_hpi_email',
+        });
+
+        await expect(
+            service.applyHpiEmailFee('cs_hpi_email', 'buyer-1'),
+        ).rejects.toThrow(/permission/i);
+
+        expect(mockCheckoutSessionsRetrieve).not.toHaveBeenCalled();
+        expect(prisma.transaction.update).not.toHaveBeenCalled();
+    });
+});
+
 describe('PaymentsService — createPaymentSheet (F2: server-side amount, ignores client amount)', () => {
     let service: PaymentsService;
     let prisma: any;
