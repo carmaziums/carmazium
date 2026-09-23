@@ -466,9 +466,12 @@ export default function DealerCRMPage() {
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
                     ) : (
-                        <div className="flex gap-4 overflow-x-auto pb-6 -mx-2 px-2 custom-scrollbar">
+                        <div className="flex gap-4 overflow-x-hidden lg:overflow-x-auto pb-6 -mx-2 px-2 custom-scrollbar">
                             {COLUMNS.map(col => (
-                                <div key={col.key} className="flex-shrink-0 w-80">
+                                <div
+                                    key={col.key}
+                                    className={`flex-shrink-0 w-full lg:w-80 ${mobileStatus !== col.key ? "hidden lg:block" : ""}`}
+                                >
                                     <div className={`border-t-4 ${col.color} rounded-t-2xl shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.5)]`}>
                                         <div className={`flex items-center gap-2 px-5 py-4 bg-gradient-to-b ${col.bg} to-transparent rounded-t-2xl border-x border-[var(--border-default)]`}>
                                             <div className={`w-2.5 h-2.5 rounded-full ${col.dotColor} animate-pulse shadow-[0_0_8px_currentColor]`} />
@@ -526,7 +529,7 @@ export default function DealerCRMPage() {
                                                             </div>
                                                             <div>
                                                                 <p className="font-black text-sm tracking-tight">{lead.buyerName}</p>
-                                                                <p className="text-xs font-bold text-primary uppercase tracking-widest">{lead.source?.replace(/_/g, ' ') || 'Unknown source'}</p>
+                                                                <p className="text-xs font-bold text-primary uppercase tracking-widest">{SOURCE_LABELS[lead.source] || lead.source?.replace(/_/g, ' ') || 'Unknown source'}</p>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -576,6 +579,25 @@ export default function DealerCRMPage() {
                                                                 }
                                                             </button>
                                                         )}
+                                                    </div>
+
+                                                    <div className="mb-4 flex items-center justify-between gap-2 text-[10px] text-[var(--text-muted)]">
+                                                        <span className="flex items-center gap-1.5">
+                                                            <Activity size={11} />
+                                                            {formatActivityTime(lead.lastActivityAt || lead.updatedAt)}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => lead.nextFollowUpAt ? setLeadFollowUp(lead.id, null) : followUpTomorrow(lead.id)}
+                                                            className={`flex items-center gap-1 rounded-lg px-2 py-1 font-black ${
+                                                                isFollowUpOverdue(lead)
+                                                                    ? "bg-red-500/10 text-red-500"
+                                                                    : "bg-[var(--bg-card)] text-[var(--text-muted)]"
+                                                            }`}
+                                                        >
+                                                            <Clock3 size={10} />
+                                                            {lead.nextFollowUpAt ? (isFollowUpOverdue(lead) ? "Overdue" : "Reminder") : "Follow up"}
+                                                        </button>
                                                     </div>
 
                                                     {/* Status selector */}
