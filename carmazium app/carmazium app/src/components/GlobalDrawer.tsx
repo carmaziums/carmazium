@@ -25,6 +25,8 @@ import { MainStackParamList } from '../navigation/MainStackNavigator';
 import { TabParamList } from '../navigation/TabNavigator';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
+import { useDealerAccess } from '../hooks/useDealerAccess';
+import type { DealerPermission } from '../lib/dealerAccessApi';
 
 import { IconButton } from './IconButton';
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
@@ -42,6 +44,7 @@ interface MenuItem {
   action?: 'alert';
   alertTitle?: string;
   alertMsg?: string;
+  requiredPermission?: DealerPermission;
 }
 
 const ITEMS: MenuItem[] = [
@@ -163,14 +166,16 @@ const USER_ITEMS: MenuItem[] = [
 
 const DEALER_ITEMS: MenuItem[] = [
   { 
-    id: 'dealer-onboarding', 
+    id: 'dealer-onboarding',
+    requiredPermission: 'MANAGE_KYC', 
     label: 'Dealer onboarding', 
     icon: 'trail-sign-outline', 
     iconLib: 'ion', 
     stackScreen: 'DealerOnboarding',
   },
   { 
-    id: 'dealer-kyc', 
+    id: 'dealer-kyc',
+    requiredPermission: 'MANAGE_KYC', 
     label: 'KYC Verified identity', 
     icon: 'shield-checkmark-outline', 
     iconLib: 'ion', 
@@ -183,13 +188,15 @@ const DEALER_ITEMS: MenuItem[] = [
     // entry used to show a "Coming Soon" alert that was stale by the time
     // those two entry points shipped (mobile-production-readiness-plan.md F17).
     id: 'dealer-auctions',
+    requiredPermission: 'MANAGE_INVENTORY',
     label: 'Dealer auction manager',
     icon: 'gavel',
     iconLib: 'mci',
     stackScreen: 'SellerAuctions',
   },
   { 
-    id: 'dealer-leads', 
+    id: 'dealer-leads',
+    requiredPermission: 'MANAGE_CRM', 
     label: 'Dealer leads', 
     icon: 'people-outline', 
     iconLib: 'ion', 
@@ -197,6 +204,7 @@ const DEALER_ITEMS: MenuItem[] = [
   },
   {
     id: 'dealer-inventory',
+    requiredPermission: 'VIEW_INVENTORY',
     label: 'Dealer inventory',
     icon: 'albums-outline',
     iconLib: 'ion',
@@ -215,6 +223,7 @@ const DEALER_ITEMS: MenuItem[] = [
   },
   {
     id: 'dealer-analytics',
+    requiredPermission: 'VIEW_ANALYTICS',
     label: 'Dealer Analytics',
     icon: 'bar-chart-outline',
     iconLib: 'ion',
@@ -222,6 +231,7 @@ const DEALER_ITEMS: MenuItem[] = [
   },
   {
     id: 'dealer-team',
+    requiredPermission: 'MANAGE_TEAM',
     label: 'Team Management',
     icon: 'people-outline',
     iconLib: 'ion',
@@ -229,6 +239,7 @@ const DEALER_ITEMS: MenuItem[] = [
   },
   {
     id: 'dealer-offers',
+    requiredPermission: 'MANAGE_OFFERS',
     label: 'Direct offers',
     icon: 'pricetag-outline',
     iconLib: 'ion',
@@ -236,6 +247,7 @@ const DEALER_ITEMS: MenuItem[] = [
   },
   {
     id: 'dealer-my-offers',
+    requiredPermission: 'MANAGE_OFFERS',
     label: 'My offers',
     icon: 'send-outline',
     iconLib: 'ion',
@@ -243,6 +255,7 @@ const DEALER_ITEMS: MenuItem[] = [
   },
   {
     id: 'dealer-purchases',
+    requiredPermission: 'VIEW_PURCHASES',
     label: 'Purchases',
     icon: 'receipt-outline',
     iconLib: 'ion',
@@ -254,6 +267,7 @@ const DEALER_ITEMS: MenuItem[] = [
   // to the money side, one item further down the same menu.
   {
     id: 'dealer-earnings',
+    requiredPermission: 'VIEW_ANALYTICS',
     label: 'Earnings',
     icon: 'wallet-outline',
     iconLib: 'ion',
@@ -304,6 +318,16 @@ export const GlobalDrawer: React.FC = () => {
   // (mobile-production-readiness-plan.md F38's accountRole fix, extended to
   // this file too).
   const isActualDealer = accountRole === 'dealer';
+  const isDealerStaff = !!user?.isDealerStaff;
+  const {
+    loading: dealerAccessLoading,
+    hasPermission: hasDealerPermission,
+  } = useDealerAccess(isActualDealer || isDealerStaff);
+  const visibleDealerItems = DEALER_ITEMS.filter(
+    (item) =>
+      !item.requiredPermission
+      || (!dealerAccessLoading && hasDealerPermission(item.requiredPermission)),
+  );
   const [switchingDealer, setSwitchingDealer] = React.useState(false);
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
@@ -524,7 +548,7 @@ export const GlobalDrawer: React.FC = () => {
             <>
               <View style={styles.divider} />
               <Text style={[styles.groupLabel, styles.groupLabelDealer]}>DEALER CONTROLS</Text>
-              {DEALER_ITEMS.map((item) => (
+              {visibleDealerItems.map((item) => (
                 <TouchableOpacity
                   key={item.id}
                   style={styles.row}

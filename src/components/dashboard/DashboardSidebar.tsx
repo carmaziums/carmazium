@@ -39,6 +39,7 @@ import { useChat } from "@/context/ChatContext"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { getPendingOffersCount, getBuyerActionCount } from "@/lib/listingApi"
 import { getOrCreateSupportRoom } from "@/lib/chatApi"
+import { useDealerAccess } from "@/context/DealerAccessContext"
 
 /** Where each role's messages inbox lives, so "Contact Support" can land the
  *  new/existing room straight in view via the same `?room=` auto-select
@@ -70,6 +71,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
     const [pendingOffersCount, setPendingOffersCount] = React.useState(0)
     const [contactingSupport, setContactingSupport] = React.useState(false)
+    const { loading: dealerAccessLoading, hasPermission: hasDealerPermission } = useDealerAccess()
 
     React.useEffect(() => {
         if (!user) return
@@ -182,13 +184,21 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/dashboard/insurance/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
             { href: "/dashboard/insurance/settings", label: "Settings", icon: Settings },
         ],
-        dealer: DEALER_ROUTE_CONFIG.filter(r => !r.hidden).map(route => ({
-            href: route.href,
-            label: route.label,
-            icon: route.icon,
-            section: route.section,
-            badge: route.href === '/dashboard/dealer/messages' ? unreadCount : undefined,
-        })),
+        dealer: DEALER_ROUTE_CONFIG
+            .filter(route =>
+                !route.hidden
+                && (
+                    !route.requiredPermission
+                    || (!dealerAccessLoading && hasDealerPermission(route.requiredPermission))
+                )
+            )
+            .map(route => ({
+                href: route.href,
+                label: route.label,
+                icon: route.icon,
+                section: route.section,
+                badge: route.href === '/dashboard/dealer/messages' ? unreadCount : undefined,
+            })),
         admin: [
             { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard, section: "Workspace" },
             { href: "/dashboard/admin/messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Workspace" },

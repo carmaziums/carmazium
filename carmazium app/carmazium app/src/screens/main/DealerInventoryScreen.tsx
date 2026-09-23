@@ -33,6 +33,7 @@ import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useDealerAccess } from '../../hooks/useDealerAccess';
 
 const VIEW_MODE_STORAGE_KEY = 'czm_dealer_inventory_view_mode';
 
@@ -93,7 +94,8 @@ const ListingDetail: React.FC<{
   onBack: () => void;
   navigation?: any;
   onSold: () => void;
-}> = ({ listing, onBack, navigation, onSold }) => {
+  canManageInventory: boolean;
+}> = ({ listing, onBack, navigation, onSold, canManageInventory }) => {
   const insets = useSafeAreaInsets();
   const [selectedImg, setSelectedImg] = useState(0);
   const [offersStatus, setOffersStatus] = useState(listing.offersStatus);
@@ -270,9 +272,10 @@ const ListingDetail: React.FC<{
               style={styles.detailRowRight}
               onPress={() => handleEdit('price')}
               activeOpacity={0.7}
+              disabled={!canManageInventory}
             >
               <Text style={styles.detailRowValue}>{listing.price}</Text>
-              <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />
+              {canManageInventory && <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />}
             </TouchableOpacity>
           </View>
           <View style={styles.detailDivider} />
@@ -284,6 +287,7 @@ const ListingDetail: React.FC<{
               style={styles.detailRowRight}
               onPress={() => handleEdit('offers')}
               activeOpacity={0.7}
+              disabled={!canManageInventory}
             >
               <Text style={[
                 styles.detailRowValue,
@@ -292,7 +296,7 @@ const ListingDetail: React.FC<{
               ]}>
                 {offersStatus}
               </Text>
-              <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />
+              {canManageInventory && <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />}
             </TouchableOpacity>
           </View>
           <View style={styles.detailDivider} />
@@ -304,9 +308,10 @@ const ListingDetail: React.FC<{
               style={styles.detailRowRight}
               onPress={() => handleEdit('visibility')}
               activeOpacity={0.7}
+              disabled={!canManageInventory}
             >
               <Text style={styles.detailRowValue}>{listing.visibility}</Text>
-              <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />
+              {canManageInventory && <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />}
             </TouchableOpacity>
           </View>
           <View style={styles.detailDivider} />
@@ -324,7 +329,7 @@ const ListingDetail: React.FC<{
         {/* Put on Auction — only ACTIVE listings can be converted; the
             destination screen (SellerAuctionsScreen) re-validates eligibility
             itself, so this is a convenience shortcut, not the only gate. */}
-        {listing.status === 'LIVE' && (
+        {canManageInventory && listing.status === 'LIVE' && (
           <TouchableOpacity
             style={styles.putOnAuctionBtn}
             activeOpacity={0.85}
@@ -334,6 +339,7 @@ const ListingDetail: React.FC<{
             <Text style={styles.putOnAuctionBtnText}>PUT ON AUCTION</Text>
           </TouchableOpacity>
         )}
+        {canManageInventory && (
         <View style={styles.detailFooter}>
         <TouchableOpacity
           style={[styles.boostBtn, boosting && { opacity: 0.6 }]}
@@ -362,6 +368,7 @@ const ListingDetail: React.FC<{
           </Text>
         </TouchableOpacity>
         </View>
+        )}
       </View>
 
       {/* Featured boost checkout — hosted Stripe checkout in-app */}
@@ -427,11 +434,12 @@ const InventoryRow: React.FC<{
   onPress: (id: string) => void;
   onPutOnAuction?: (id: string) => void;
   onOpenLinkedAuction?: (linkedId: string) => void;
-}> = React.memo(({ listing, onPress, onPutOnAuction, onOpenLinkedAuction }) => {
+  canManageInventory: boolean;
+}> = React.memo(({ listing, onPress, onPutOnAuction, onOpenLinkedAuction, canManageInventory }) => {
   const s = STATUS_STYLE[listing.status];
   const hasLinkedAuction = !!listing.linkedListingId;
   const linkedAuctionLive = listing.linkedAuctionStatus === 'ACTIVE';
-  const canPutOnAuction = listing.status === 'LIVE' && !hasLinkedAuction;
+  const canPutOnAuction = canManageInventory && listing.status === 'LIVE' && !hasLinkedAuction;
   return (
     <TouchableOpacity
       style={styles.listingCard}
@@ -537,6 +545,8 @@ const InventoryGridCard: React.FC<{ listing: Listing; onPress: (id: string) => v
 // ─── MAIN INVENTORY SCREEN ───────────────────────────────────────────────────
 export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { hasPermission } = useDealerAccess(true);
+  const canManageInventory = hasPermission('MANAGE_INVENTORY');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
@@ -611,11 +621,12 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       <InventoryRow
         listing={item}
         onPress={handleRowPress}
-        onPutOnAuction={handlePutOnAuction}
-        onOpenLinkedAuction={handleOpenLinkedAuction}
+        onPutOnAuction={canManageInventory ? handlePutOnAuction : undefined}
+        onOpenLinkedAuction={canManageInventory ? handleOpenLinkedAuction : undefined}
+        canManageInventory={canManageInventory}
       />
     ),
-    [handleRowPress, handlePutOnAuction, handleOpenLinkedAuction],
+    [handleRowPress, handlePutOnAuction, handleOpenLinkedAuction, canManageInventory],
   );
   const renderInventoryGrid = useCallback(
     ({ item }: { item: Listing }) => <InventoryGridCard listing={item} onPress={handleRowPress} />,
@@ -628,6 +639,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         listing={selectedListing}
         onBack={() => setSelectedListing(null)}
         navigation={navigation}
+        canManageInventory={canManageInventory}
         onSold={() => {
           setSelectedListing(null);
           fetchListings();
@@ -752,6 +764,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       )}
 
       {/* ── Add listing CTA ──────────────────────────────────────────────── */}
+      {canManageInventory && (
       <View style={[styles.addListingWrap, { paddingBottom: insets.bottom + 12 }]}>
         <TouchableOpacity
           style={[styles.addListingBtn, { flex: 1, marginRight: 8 }]}
@@ -784,16 +797,19 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
           <Text style={styles.bulkImportText}>CSV</Text>
         </TouchableOpacity>
       </View>
+      )}
 
       {/* Bulk CSV Import Modal */}
+      {canManageInventory && (
       <BulkImportModal
         isOpen={showBulkImportModal}
         onClose={() => setShowBulkImportModal(false)}
         onComplete={() => setShowBulkImportModal(false)}
       />
+      )}
 
       {/* Import Listing Modal */}
-      {showImportModal && (
+      {canManageInventory && showImportModal && (
         <ImportListingModal
           onClose={() => setShowImportModal(false)}
           onImported={() => { setShowImportModal(false); /* fetchListings called by onClose */ }}

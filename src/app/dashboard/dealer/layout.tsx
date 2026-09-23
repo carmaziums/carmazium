@@ -4,8 +4,11 @@ import React from "react"
 import { useAuth } from "@/context/AuthContext"
 import { KycOverlayForm, KYC_SKIP_KEY } from "@/components/dashboard/KycOverlayForm"
 import { Loader2, Lock, ShieldCheck, ArrowRight, Phone, AlertCircle } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { apiClient } from "@/lib/apiClient"
+import { DealerAccessProvider, useDealerAccess } from "@/context/DealerAccessContext"
+import { DealerPermissionGate } from "@/components/dealer/DealerPermissionGate"
+import type { DealerPermission } from "@/lib/dealerAccess"
 
 /**
  * Blocks the dealer dashboard until the dealership's contact phone is set.
@@ -88,18 +91,47 @@ function DealerPhoneGate({ onSaved }: { onSaved: () => void }) {
     )
 }
 
+function DealerRoutePermissionBoundary({ children }: { children: React.ReactNode }) {
+    const pathname = usePathname()
+
+    const routePermissions: Array<[string, DealerPermission]> = [
+        ["/dashboard/dealer/auctions/won", "VIEW_PURCHASES"],
+        ["/dashboard/dealer/add-listing", "MANAGE_INVENTORY"],
+        ["/dashboard/dealer/put-on-auction", "MANAGE_INVENTORY"],
+        ["/dashboard/dealer/inventory", "VIEW_INVENTORY"],
+        ["/dashboard/dealer/crm", "MANAGE_CRM"],
+        ["/dashboard/dealer/offers", "MANAGE_OFFERS"],
+        ["/dashboard/dealer/team", "MANAGE_TEAM"],
+        ["/dashboard/dealer/analytics", "VIEW_ANALYTICS"],
+        ["/dashboard/dealer/earnings", "VIEW_ANALYTICS"],
+        ["/dashboard/dealer/purchases", "VIEW_PURCHASES"],
+        ["/dashboard/dealer/bids", "VIEW_TRADE"],
+        ["/dashboard/dealer/auctions", "VIEW_TRADE"],
+    ]
+
+    const match = routePermissions.find(([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+    if (!match) return <>{children}</>
+
+    return (
+        <DealerPermissionGate permission={match[1]}>
+            {children}
+        </DealerPermissionGate>
+    )
+}
+
 /**
  * Dealer Dashboard Layout
  * Wraps all /dashboard/dealer/* pages and blocks access if unverified.
  * Unverified dealers can "Skip for now" — they get a limited-mode banner
  * and can change their account type from the Settings page.
  */
-export default function DealerDashboardLayout({
+function DealerDashboardLayoutContent({
     children,
 }: {
     children: React.ReactNode
 }) {
     const { user, profile, loading, refreshProfile } = useAuth()
+    const { access, loading: dealerAccessLoading } = useDealerAccess()
     const router = useRouter()
     const [skipped, setSkipped] = React.useState(false)
     const [switchingRole, setSwitchingRole] = React.useState(false)
@@ -130,7 +162,9 @@ export default function DealerDashboardLayout({
         }
     }, [])
 
-    if (loading) {
+    const isStaffMember = !!((profile as any)?.dealerStaffMemberships?.length)
+
+    if (loading || (isStaffMember && dealerAccessLoading)) {
         return (
             <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ background: 'var(--bg-body)' }}>
                 <Loader2 className="animate-spin text-primary mb-4" size={48} />
@@ -142,8 +176,9 @@ export default function DealerDashboardLayout({
     }
 
     const isEmailVerified = !!user?.email_confirmed_at
-    const isStaffMember = !!((profile as any)?.dealerStaffMemberships?.length)
-    const isVerifiedDealer = !!profile?.dealerProfile?.isVerified || isStaffMember
+    const isVerifiedDealer = isStaffMember
+        ? access?.isVerified === true
+        : !!profile?.dealerProfile?.isVerified
 
     // Show KYC overlay unless: verified, staff member, or user explicitly skipped
     if (isEmailVerified && !isVerifiedDealer && !skipped) {
@@ -223,5 +258,23 @@ export default function DealerDashboardLayout({
         return <DealerPhoneGate onSaved={refreshProfile} />
     }
 
-    return <>{children}</>
+    return (
+        <DealerRoutePermissionBoundary>
+            {children}
+        </DealerRoutePermissionBoundary>
+    )
+}
+
+export default function DealerDashboardLayout({
+    children,
+}: {
+    children: React.ReactNode
+}) {
+    return (
+        <DealerAccessProvider>
+            <DealerDashboardLayoutContent>
+                {children}
+            </DealerDashboardLayoutContent>
+        </DealerAccessProvider>
+    )
 }

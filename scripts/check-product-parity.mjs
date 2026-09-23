@@ -398,6 +398,53 @@ if (
   ok('Dealer bidding, inventory, offers and fee payments stay dealership-scoped');
 }
 
+// Dealer UI permissions must consume the same backend /dealers/access contract.
+// This guards against a future client silently reverting to role-name guesses
+// or exposing mutation controls to read-only finance staff.
+const webDealerAccess = read('src/lib/dealerAccess.ts');
+const webDealerAccessContext = read('src/context/DealerAccessContext.tsx');
+const webDealerGate = read('src/components/dealer/DealerPermissionGate.tsx');
+const webDealerLayout = read('src/app/dashboard/dealer/layout.tsx');
+const webDealerRoutes = read('src/config/dealerRouteConfig.ts');
+const webDealerInventory = read('src/app/dashboard/dealer/inventory/page.tsx');
+const mobileDealerAccess = read('carmazium app/carmazium app/src/lib/dealerAccessApi.ts');
+const mobileDealerHook = read('carmazium app/carmazium app/src/hooks/useDealerAccess.ts');
+const mobileDealerGate = read('carmazium app/carmazium app/src/components/DealerGate.tsx');
+const mobileDealerNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
+const mobileDealerDrawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
+const mobileDealerInventory = read('carmazium app/carmazium app/src/screens/main/DealerInventoryScreen.tsx');
+
+if (
+  !webDealerAccess.includes("('/dealers/access')") ||
+  !webDealerAccessContext.includes('hasPermission') ||
+  !webDealerGate.includes('DealerPermissionGate') ||
+  !webDealerLayout.includes('DealerRoutePermissionBoundary') ||
+  !webDealerLayout.includes('access?.isVerified === true') ||
+  !webDealerRoutes.includes('requiredPermission?: DealerPermission') ||
+  !webDealerRoutes.includes('requiredPermission: "MANAGE_TEAM"') ||
+  !webDealerInventory.includes("hasPermission('MANAGE_INVENTORY')")
+) {
+  fail('Web dealer UI is not bound to the backend dealership permission contract');
+} else {
+  ok('Web dealer routes, navigation and inventory controls consume dealership permissions');
+}
+
+if (
+  !mobileDealerAccess.includes("('/dealers/access')") ||
+  !mobileDealerHook.includes('hasPermission') ||
+  !mobileDealerGate.includes('requiredPermission?: DealerPermission') ||
+  !mobileDealerGate.includes('access?.isVerified === true') ||
+  !mobileDealerNavigator.includes("withDealerGate(DealerTeamScreen, 'MANAGE_TEAM')") ||
+  !mobileDealerNavigator.includes("withDealerGate(DealerKYCScreen, 'MANAGE_KYC', true)") ||
+  !mobileDealerDrawer.includes('visibleDealerItems') ||
+  !mobileDealerDrawer.includes("requiredPermission: 'MANAGE_OFFERS'") ||
+  !mobileDealerInventory.includes("hasPermission('MANAGE_INVENTORY')")
+) {
+  fail('Native dealer UI is not bound to the backend dealership permission contract');
+} else {
+  ok('Native dealer routes, drawer and inventory controls consume dealership permissions');
+}
+
 const webPricing = read('src/lib/pricingConfig.ts');
 const mobilePricing = read('carmazium app/carmazium app/src/constants/pricing.ts');
 const payments = read('backend/src/payments/payments.service.ts');

@@ -15,6 +15,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
 import { alsoListRetail } from "@/lib/listingApi"
+import { useDealerAccess } from "@/context/DealerAccessContext"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { BulkImportModal } from "@/components/dealer/BulkImportModal"
@@ -46,6 +47,8 @@ export default function DealerInventoryPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const router = useRouter()
     const searchParams = useSearchParams()
+    const { hasPermission } = useDealerAccess()
+    const canManageInventory = hasPermission('MANAGE_INVENTORY')
     // Featured Boost checkout redirects here with ?boost=success — the payment
     // itself already activates via webhook, but nothing ever confirmed it to
     // the user, who previously bounced through a dead redirect stub that
@@ -194,6 +197,8 @@ export default function DealerInventoryPage() {
                         title={DEALER_ROUTE_CONFIG[1].title}
                         subHeader={DEALER_ROUTE_CONFIG[1].subHeader}
                     >
+                        {canManageInventory && (
+                        <>
                         <Button
                             variant="outline"
                             className="border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all"
@@ -213,6 +218,8 @@ export default function DealerInventoryPage() {
                                 <PlusCircle size={18} /> Add Vehicle
                             </Button>
                         </Link>
+                        </>
+                        )}
                     </PageHeader>
 
                     {showBoostSuccess && (
@@ -292,6 +299,7 @@ export default function DealerInventoryPage() {
 
                                         <p className="text-xl font-black mt-3">£{listing.price?.toLocaleString()}</p>
 
+                                        {canManageInventory && (
                                         <div className="grid grid-cols-2 gap-2 mt-3">
                                             {listing.status === 'DRAFT' ? (
                                                 <button
@@ -326,6 +334,7 @@ export default function DealerInventoryPage() {
                                                 <Pencil size={16} /> Edit
                                             </Link>
                                         </div>
+                                        )}
 
                                         <button
                                             onClick={() => setActiveDropdown(isMenuOpen ? null : listing.id)}
@@ -340,6 +349,8 @@ export default function DealerInventoryPage() {
                                                 <Link href={`/buy-cars/${listing.slug}`} className="min-h-[46px] flex items-center gap-2.5 px-3 rounded-xl bg-[var(--bg-card)] font-bold text-sm">
                                                     <Eye size={16} /> View listing
                                                 </Link>
+                                                {canManageInventory && (
+                                                <>
                                                 {listing.status === 'ACTIVE' && (
                                                     <button
                                                         onClick={async () => {
@@ -386,6 +397,8 @@ export default function DealerInventoryPage() {
                                                 >
                                                     <Trash2 size={16} /> Delete listing
                                                 </button>
+                                                </>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -532,11 +545,13 @@ export default function DealerInventoryPage() {
                                                                 <div
                                                                     onClick={() => setActiveDropdown(null)}
                                                                     className={`absolute right-0 w-36 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg shadow-xl transition-all z-20 flex flex-col py-1 ${dropdownOpensUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
-                                                                    <Link href={`/dashboard/dealer/add-listing?editId=${listing.id}&editSlug=${encodeURIComponent(listing.slug)}`} className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white transition-colors">
-                                                                        <Pencil size={14} /> Edit
-                                                                    </Link>
                                                                     <Link href={`/buy-cars/${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white transition-colors">
                                                                         <Eye size={14} /> View
+                                                                    </Link>
+                                                                    {canManageInventory && (
+                                                                    <>
+                                                                    <Link href={`/dashboard/dealer/add-listing?editId=${listing.id}&editSlug=${encodeURIComponent(listing.slug)}`} className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white transition-colors">
+                                                                        <Pencil size={14} /> Edit
                                                                     </Link>
                                                                     {/* Dual-channel: AUCTION listing → add retail listing */}
                                                                     {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && !(listing as any).linkedListing && (
@@ -615,6 +630,8 @@ export default function DealerInventoryPage() {
                                                                     >
                                                                         <Trash2 size={14} /> Delete
                                                                     </button>
+                                                                    </>
+                                                                    )}
                                                                 </div>
                                                                 </>
                                                                 )}
@@ -633,7 +650,7 @@ export default function DealerInventoryPage() {
             </div>
 
             {/* ── Mark as Sold modal ─────────────────────────────────── */}
-            {soldModal && (
+            {canManageInventory && soldModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
                     <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
                         <div className="flex items-center justify-between">
@@ -684,13 +701,15 @@ export default function DealerInventoryPage() {
                 </div>
             )}
 
+            {canManageInventory && (
             <BulkImportModal
                 isOpen={isBulkImportOpen}
                 onClose={() => setIsBulkImportOpen(false)}
                 onComplete={() => fetchListings()}
             />
+            )}
 
-            {isImportModalOpen && (
+            {canManageInventory && isImportModalOpen && (
                 <ImportListingModal
                     onClose={() => setIsImportModalOpen(false)}
                     onImported={() => { setIsImportModalOpen(false); fetchListings() }}
@@ -698,7 +717,7 @@ export default function DealerInventoryPage() {
             )}
 
             {/* ── Also List for Retail modal ──────────────────────────────── */}
-            {alsoRetailListing && (
+            {canManageInventory && alsoRetailListing && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
                     <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
                         <div className="flex items-center justify-between">
