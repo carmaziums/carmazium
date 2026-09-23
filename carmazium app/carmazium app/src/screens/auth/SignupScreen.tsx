@@ -35,17 +35,13 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
-  // BUYER + DEALER only. Web's picker also offers FINANCE_PARTNER, and
-  // SELLER/CONTRACTOR/INSURANCE_PARTNER are reachable there via ?role= — all
-  // deliberately omitted here: mobile has no partner dashboard, so choosing one
-  // would create an account with nowhere to land (OQ-1/OQ-5, decision recorded
-  // on AUTH-005). Buyer and seller are one account on mobile, so SELLER is not
-  // a separate choice either.
+  // Public account choice matches web: Personal Account (BUYER) or Partner
+  // Account (DEALER compatibility role). SELLER is not a separate signup type:
+  // a Personal Account may both buy and sell. Additional Partner capabilities
+  // are additive and are granted/verified after signup.
   //
-  // Choosing DEALER sets the account role; it does **not** make them verified.
-  // A dealer still goes through DealerOnboarding -> KYC before withDealerGate
-  // lets them into dealer screens, which is the same road as before — just
-  // reachable now without registering as a buyer first.
+  // Choosing Partner Account does not make a dealer verified. Dealer bidding
+  // and other protected trade tools still require the normal KYC approval.
   const [role, setRole] = useState<'BUYER' | 'DEALER'>('BUYER');
 
   const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -208,7 +204,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               </View>
               {role === 'DEALER' && (
                 <Text style={styles.roleNote}>
-                  You&apos;ll complete dealer verification after signing up.
+                  You&apos;ll choose and verify your business services after signing up.
                 </Text>
               )}
             </View>
