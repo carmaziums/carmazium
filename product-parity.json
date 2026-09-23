@@ -435,6 +435,28 @@
       "status": "required"
     },
     {
+      "id": "notifications.tap_routing",
+      "web": [
+        "src/components/layout/NotificationBell.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/App.tsx",
+        "carmazium app/carmazium app/src/screens/main/NotificationsScreen.tsx",
+        "carmazium app/carmazium app/src/lib/notificationRouting.ts"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "chat.direct_open",
+      "web": [
+        "src/components/chat/ChatWindow.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/ChatScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
       "id": "admin.operations",
       "web": [
         "src/app/dashboard/admin/page.tsx"
