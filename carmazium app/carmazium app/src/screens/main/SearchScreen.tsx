@@ -211,7 +211,8 @@ export const SearchScreen: React.FC = () => {
   const [transmissions, setTransmissions] = useState<string[]>([]);
   // New filter dimensions
   const [conditions, setConditions] = useState<string[]>([]);
-  const [ulezCompliant, setUlezCompliant] = useState(false);
+  // Match web's three-state ULEZ filter: Any / compliant / not compliant.
+  const [ulezCompliant, setUlezCompliant] = useState<'' | 'yes' | 'no'>('');
   const [minBhp, setMinBhp] = useState('');
   const [maxBhp, setMaxBhp] = useState('');
   const [minEngine, setMinEngine] = useState('');
@@ -220,7 +221,8 @@ export const SearchScreen: React.FC = () => {
   const [deliveryAvailable, setDeliveryAvailable] = useState(false);
   const [sellerType, setSellerType] = useState<'' | 'DEALER' | 'PRIVATE'>('');
   const [listingType, setListingType] = useState<'' | 'CLASSIFIED' | 'AUCTION'>('');
-  const [vehicleType, setVehicleType] = useState<'' | 'CAR' | 'HGV' | 'MOTORCYCLE'>('');
+  // Public marketplace defaults to Cars on both web and mobile.
+  const [vehicleType, setVehicleType] = useState<'' | 'CAR' | 'HGV' | 'MOTORCYCLE'>('CAR');
   const [locationFilter, setLocationFilter] = useState('');
   const [modelFilter, setModelFilter] = useState('');
   const [colorFilter, setColorFilter] = useState('');
@@ -357,7 +359,7 @@ export const SearchScreen: React.FC = () => {
       maxMileage: parseMi(maxMiles),
       conditions: conditions.length ? conditions : undefined,
       transmissions: transmissions.length ? transmissions : undefined,
-      ulezCompliant: ulezCompliant ? true : undefined,
+      ulezCompliant: ulezCompliant === 'yes' ? true : ulezCompliant === 'no' ? false : undefined,
       minBhp: minBhp ? parseInt(minBhp) : undefined,
       maxBhp: maxBhp ? parseInt(maxBhp) : undefined,
       minEngine: minEngine ? parseInt(minEngine) : undefined,
@@ -449,14 +451,14 @@ export const SearchScreen: React.FC = () => {
     maxMiles !== 'Any',
     transmissions.length > 0,
     conditions.length > 0,
-    ulezCompliant,
+    !!ulezCompliant,
     !!minBhp || !!maxBhp,
     !!minEngine || !!maxEngine,
     !!maxCo2,
     deliveryAvailable,
     !!sellerType,
     !!listingType,
-    !!vehicleType,
+    vehicleType !== 'CAR',
     !!locationFilter,
     !!modelFilter,
     !!colorFilter,
@@ -480,7 +482,7 @@ export const SearchScreen: React.FC = () => {
     setMaxMiles('Any');
     setTransmissions([]);
     setConditions([]);
-    setUlezCompliant(false);
+    setUlezCompliant('');
     setMinBhp('');
     setMaxBhp('');
     setMinEngine('');
@@ -489,7 +491,7 @@ export const SearchScreen: React.FC = () => {
     setDeliveryAvailable(false);
     setSellerType('');
     setListingType('');
-    setVehicleType('');
+    setVehicleType('CAR');
     setLocationFilter('');
     setModelFilter('');
     setColorFilter('');
@@ -1346,20 +1348,31 @@ export const SearchScreen: React.FC = () => {
 
               <View style={s.divider} />
 
-              {/* Toggle filters */}
-              <View style={s.toggleRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.toggleLabel}>ULEZ COMPLIANT ONLY</Text>
-                  <Text style={s.toggleHint}>Meets London Ultra Low Emission Zone standards</Text>
-                </View>
-                <Switch
-                  value={ulezCompliant}
-                  onValueChange={setUlezCompliant}
-                  trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
-                  thumbColor={Colors.white}
-                />
+              {/* ULEZ — same tri-state choice as web */}
+              <Text style={s.filterLabel}>ULEZ / CAZ</Text>
+              <Text style={[s.toggleHint, { marginBottom: 10 }]}>
+                Filter by Ultra Low Emission Zone compliance
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {[
+                  { id: '' as const, label: 'Any' },
+                  { id: 'yes' as const, label: 'Compliant' },
+                  { id: 'no' as const, label: 'Not compliant' },
+                ].map(opt => (
+                  <TouchableOpacity
+                    key={opt.id}
+                    style={[s.segmentBtn, ulezCompliant === opt.id && s.segmentBtnActive]}
+                    onPress={() => setUlezCompliant(opt.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.segmentBtnText, ulezCompliant === opt.id && s.segmentBtnTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-              <View style={[s.toggleRow, { marginTop: 14 }]}>
+
+              <View style={[s.toggleRow, { marginTop: 18 }]}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.toggleLabel}>DELIVERY AVAILABLE ONLY</Text>
                   <Text style={s.toggleHint}>Only show listings where seller offers delivery</Text>
