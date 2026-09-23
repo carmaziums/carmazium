@@ -10,6 +10,7 @@ import { EmailService } from '../email/email.service';
 import { CreateKycDto } from './dto/create-kyc.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
+import { LeadStatus, Prisma } from '@prisma/client';
 import {
     assertDealerPermission,
     DealerPermission,
@@ -1108,6 +1109,227 @@ export class DealersService {
         return { data, total };
     }
 
+    private leadStatusRank(status: LeadStatus): number {
+        const ranks: Record<LeadStatus, number> = {
+            NEW: 0,
+            CONTACTED: 1,
+            QUALIFIED: 2,
+            NEGOTIATING: 3,
+            WON: 4,
+            LOST: 4,
+        };
+        return ranks[status] ?? 0;
+    }
+
+    /**
+     * Keep the dealer CRM in sync with real CarMazium buyer activity.
+     * One authenticated buyer + one retail listing = one lead, regardless of
+     * whether the buyer later messages, makes an offer, or returns to negotiate.
+     */
+    async syncRetailLeadActivity(input: {
+        listingId: string;
+        buyerId: string;
+        source: 'listing_enquiry' | 'chat' | 'offer';
+        status?: LeadStatus;
+    }) {
+        const listing = await this.prisma.listing.findFirst({
+            where: {
+                id: input.listingId,
+                deletedAt: null,
+                type: 'CLASSIFIED',
+            },
+            select: {
+                id: true,
+                sellerId: true,
+                title: true,
+            },
+        });
+
+        if (!listing?.sellerId || listing.sellerId === input.buyerId) {
+            return null;
+        }
+
+        const dealerProfile = await this.prisma.dealerProfile.findUnique({
+            where: { userId: listing.sellerId },
+            select: {
+                id: true,
+                staff: {
+                    where: { isActive: true },
+                    select: { userId: true },
+                },
+            },
+        });
+
+        // Private sellers do not use the dealer CRM. Also do not turn dealer
+        // staff activity on the dealership's own stock into a customer lead.
+        if (
+            !dealerProfile ||
+            dealerProfile.staff.some((staff) => staff.userId === input.buyerId)
+        ) {
+            return null;
+        }
+
+        const buyer = await this.prisma.user.findUnique({
+            where: { id: input.buyerId },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+            },
+        });
+        if (!buyer) return null;
+
+        const buyerName =
+            [buyer.firstName, buyer.lastName].filter(Boolean).join(' ').trim() ||
+            buyer.email.split('@')[0] ||
+            'CarMazium buyer';
+
+        const desiredStatus =
+            input.status ??
+            (input.source === 'offer' ? LeadStatus.NEGOTIATING : LeadStatus.CONTACTED);
+
+        const existing = await this.prisma.lead.findFirst({
+            where: {
+                dealerProfileId: dealerProfile.id,
+                listingId: listing.id,
+                buyerId: buyer.id,
+            },
+            orderBy: { createdAt: 'asc' },
+        });
+
+        const nextStatus = existing
+            ? existing.status === LeadStatus.WON
+                ? LeadStatus.WON
+                : existing.status === LeadStatus.LOST
+                    ? desiredStatus
+                    : this.leadStatusRank(desiredStatus) > this.leadStatusRank(existing.status)
+                        ? desiredStatus
+                        : existing.status
+            : desiredStatus;
+
+        const activityData = {
+            buyerName,
+            buyerEmail: buyer.email,
+            buyerPhone: buyer.phone,
+            buyerId: buyer.id,
+            source: input.source,
+            status: nextStatus,
+            lastActivityAt: new Date(),
+        };
+
+        if (existing) {
+            return this.prisma.lead.update({
+                where: { id: existing.id },
+                data: activityData,
+                include: {
+                    listing: { select: { id: true, title: true, slug: true, images: true, price: true } },
+                    assignedTo: { select: { id: true, firstName: true, lastName: true, email: true } },
+                },
+            });
+        }
+
+        try {
+            return await this.prisma.lead.create({
+                data: {
+                    dealerProfileId: dealerProfile.id,
+                    listingId: listing.id,
+                    ...activityData,
+                },
+                include: {
+                    listing: { select: { id: true, title: true, slug: true, images: true, price: true } },
+                    assignedTo: { select: { id: true, firstName: true, lastName: true, email: true } },
+                },
+            });
+        } catch (error) {
+            // A chat and an offer can land at nearly the same instant. The
+            // compound unique index is the final dedupe guard.
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2002'
+            ) {
+                const racedLead = await this.prisma.lead.findFirst({
+                    where: {
+                        dealerProfileId: dealerProfile.id,
+                        listingId: listing.id,
+                        buyerId: buyer.id,
+                    },
+                });
+                if (racedLead) {
+                    return this.prisma.lead.update({
+                        where: { id: racedLead.id },
+                        data: activityData,
+                    });
+                }
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Close the matching dealer lead when a retail sale is recorded.
+     * Manual sales can still match an existing lead by buyer email when there is
+     * no authenticated CarMazium buyer ID.
+     */
+    async markRetailLeadWon(input: {
+        listingId: string;
+        buyerId?: string | null;
+        buyerEmail?: string | null;
+    }) {
+        if (input.buyerId) {
+            const synced = await this.syncRetailLeadActivity({
+                listingId: input.listingId,
+                buyerId: input.buyerId,
+                source: 'listing_enquiry',
+                status: LeadStatus.WON,
+            });
+            if (synced) {
+                return this.prisma.lead.update({
+                    where: { id: synced.id },
+                    data: {
+                        status: LeadStatus.WON,
+                        nextFollowUpAt: null,
+                        lastActivityAt: new Date(),
+                    },
+                });
+            }
+        }
+
+        if (!input.buyerEmail) return null;
+
+        const listing = await this.prisma.listing.findFirst({
+            where: { id: input.listingId, deletedAt: null },
+            select: { sellerId: true },
+        });
+        if (!listing?.sellerId) return null;
+
+        const dealerProfile = await this.prisma.dealerProfile.findUnique({
+            where: { userId: listing.sellerId },
+            select: { id: true },
+        });
+        if (!dealerProfile) return null;
+
+        const lead = await this.prisma.lead.findFirst({
+            where: {
+                dealerProfileId: dealerProfile.id,
+                listingId: input.listingId,
+                buyerEmail: { equals: input.buyerEmail, mode: 'insensitive' },
+            },
+            orderBy: { updatedAt: 'desc' },
+        });
+        if (!lead) return null;
+
+        return this.prisma.lead.update({
+            where: { id: lead.id },
+            data: {
+                status: LeadStatus.WON,
+                nextFollowUpAt: null,
+                lastActivityAt: new Date(),
+            },
+        });
+    }
+
     async createLead(userId: string, dto: CreateLeadDto) {
         const actor = await resolveDealerActor(this.prisma, userId);
         assertDealerPermission(actor, 'MANAGE_CRM');
@@ -1116,6 +1338,7 @@ export class DealersService {
         return this.prisma.lead.create({
             data: {
                 dealerProfileId: profile.id,
+                buyerId: dto.buyerId,
                 buyerName: dto.buyerName,
                 buyerEmail: dto.buyerEmail,
                 buyerPhone: dto.buyerPhone,
@@ -1123,6 +1346,8 @@ export class DealersService {
                 assignedToId: dto.assignedToId,
                 source: dto.source,
                 notes: dto.notes,
+                nextFollowUpAt: dto.nextFollowUpAt ? new Date(dto.nextFollowUpAt) : undefined,
+                lastActivityAt: new Date(),
             },
             include: {
                 listing: { select: { id: true, title: true } },
@@ -1147,6 +1372,10 @@ export class DealersService {
                 ...(dto.status && { status: dto.status as any }),
                 ...(dto.assignedToId !== undefined && { assignedToId: dto.assignedToId }),
                 ...(dto.notes !== undefined && { notes: dto.notes }),
+                ...(dto.nextFollowUpAt !== undefined && {
+                    nextFollowUpAt: dto.nextFollowUpAt ? new Date(dto.nextFollowUpAt) : null,
+                }),
+                lastActivityAt: new Date(),
             },
             include: {
                 listing: { select: { id: true, title: true } },
