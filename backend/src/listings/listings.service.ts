@@ -36,6 +36,7 @@ import { SellersService } from '../sellers/sellers.service';
 import { ScraperService } from '../scraper/scraper.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { DealersService } from '../dealers/dealers.service';
 import { buildListingActivationData } from './listing-activation';
 import { brandAdminSeller, brandListingSeller } from './admin-seller-branding';
 import { AUCTION_DURATION_MS, calculatePlatformOpeningBid } from '../auctions/auction-pricing';
@@ -128,6 +129,7 @@ export class ListingsService {
         private readonly scraper: ScraperService,
         private readonly notificationsService: NotificationsService,
         private readonly notificationsGateway: NotificationsGateway,
+        private readonly dealersService: DealersService,
     ) { }
 
     /**
@@ -2319,6 +2321,17 @@ export class ListingsService {
                 console.error(`recordSale: incrementSales failed for ${effectiveSellerId}:`, err?.message);
             });
         }
+
+        // A completed retail sale closes the corresponding dealer sales lead.
+        // This is deliberately best-effort so CRM bookkeeping can never block
+        // the actual sale transaction.
+        this.dealersService.markRetailLeadWon({
+            listingId: id,
+            buyerId: agreedBuyerId,
+            buyerEmail: agreedBuyerEmail,
+        }).catch((err) => {
+            console.error(`recordSale: dealer lead sync failed for ${id}:`, err?.message);
+        });
 
         return updated;
     }
