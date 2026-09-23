@@ -25,7 +25,12 @@ import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
 import { ThreeDVehicleViewer } from '../../components/damage/ThreeDVehicleViewer';
 import { DAMAGE_ZONES_3D, DAMAGE_ZONE_SECTIONS } from '../../components/damage/damageZones';
-import { getRawListingById } from '../../lib/listingsApi';
+import {
+  convertAuctionToRetail,
+  getRawListingById,
+  getRetailConversionCandidate,
+  type RetailConversionCandidate,
+} from '../../lib/listingsApi';
 import { CAR_MAKES, getModelsForMake } from '../../data/carData';
 import { BottomSheet } from '../../components/BottomSheet';
 import * as Location from 'expo-location';
@@ -1578,6 +1583,27 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     }
   }
 
+  // ─── Auction → Retail conversion confirmation ────────────────────────────────
+
+  function confirmAuctionToRetail(candidate: RetailConversionCandidate): Promise<boolean> {
+    const isRunning = candidate.auctionStatus === 'ACTIVE' || candidate.auctionStatus === 'SCHEDULED';
+    const message = isRunning
+      ? 'This vehicle is already in an auction. Switching to Retail will cancel that auction, stop further bidding and reuse the same vehicle listing. The Retail listing will still require its normal listing fee and admin review.'
+      : 'This vehicle already has an auction history. CarMazium will reuse the same vehicle listing as Retail instead of creating a duplicate. The Retail listing will still require its normal listing fee and admin review.';
+
+    return new Promise(resolve => {
+      Alert.alert(
+        'Switch auction to Retail?',
+        message,
+        [
+          { text: 'Keep Auction', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Switch to Retail', style: 'destructive', onPress: () => resolve(true) },
+        ],
+        { cancelable: true, onDismiss: () => resolve(false) },
+      );
+    });
+  }
+
   // ─── Publish ─────────────────────────────────────────────────────────────────
 
   async function handlePublish() {
@@ -1717,25 +1743,61 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         if (hpiDraftListingId) {
           await apiClient(`/listings/${hpiDraftListingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
           newListingId = hpiDraftListingId;
-        } else {
-          let createPayload: Record<string, any> = payload;
-          if (isAuction) {
-            const auctionStartTime = auctionStartMode === 'NOW'
-              ? new Date().toISOString()
-              : new Date(auctionStartDate).toISOString();
+        } else if (!isAuction) {
+          // Match web's ListingWizard: before creating a new Retail row, ask the
+          // backend whether this seller already owns the same VRM in an auction.
+          // A safe channel switch reuses that row; it must never create a
+          // duplicate vehicle just because the seller is using the app.
+          const conversion = await getRetailConversionCandidate(
+            String(payload.vrm ?? '').replace(/\s/g, '').toUpperCase(),
+          );
 
-            createPayload = {
+          if (conversion.candidate) {
+            if (!conversion.candidate.canConvert) {
+              Alert.alert(
+                'Cannot switch to Retail',
+                conversion.candidate.blockedReason
+                  || (conversion.candidate.existingRetailSlug
+                    ? 'This vehicle already has a Retail listing.'
+                    : 'This auction cannot be switched to Retail at the moment.'),
+              );
+              return;
+            }
+
+            const confirmed = await confirmAuctionToRetail(conversion.candidate);
+            if (!confirmed) return;
+
+            const converted = await convertAuctionToRetail(conversion.candidate.listingId, {
               ...payload,
-              auctionStartTime,
-              auctionReservePrice: parseFloat(reservePrice),
-              auctionMinIncrement: parseFloat(minIncrement),
-              auctionStartingBid: parseFloat(startingBid),
-              ...(buyItNowPrice.trim()
-                ? { auctionBuyItNowPrice: parseFloat(buyItNowPrice) }
-                : {}),
-            };
-            initialAuctionCreatedAtomically = true;
+              listingType: 'CLASSIFIED',
+              status: 'DRAFT',
+              badgeTier: badgeTier === 'FREE' ? 'BASIC' : badgeTier,
+              confirmAuctionCancellation: true,
+            });
+            newListingId = converted.listingId;
+          } else {
+            const res = await apiClient<{ success: boolean; data: { id: string } }>('/listings', {
+              method: 'POST',
+              body: JSON.stringify(payload),
+            });
+            newListingId = res?.data?.id;
           }
+        } else {
+          const auctionStartTime = auctionStartMode === 'NOW'
+            ? new Date().toISOString()
+            : new Date(auctionStartDate).toISOString();
+
+          const createPayload: Record<string, any> = {
+            ...payload,
+            auctionStartTime,
+            auctionReservePrice: parseFloat(reservePrice),
+            auctionMinIncrement: parseFloat(minIncrement),
+            auctionStartingBid: parseFloat(startingBid),
+            ...(buyItNowPrice.trim()
+              ? { auctionBuyItNowPrice: parseFloat(buyItNowPrice) }
+              : {}),
+          };
+          initialAuctionCreatedAtomically = true;
 
           const res = await apiClient<{ success: boolean; data: { id: string } }>('/listings', {
             method: 'POST',
