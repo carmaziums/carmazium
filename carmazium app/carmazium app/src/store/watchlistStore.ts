@@ -25,15 +25,26 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
   isLoading: false,
 
   hydrateFromApi: async () => {
-    // Fetches the whole watchlist in one page (limit 50) rather than
-    // paginating like web's watchlist page does — this store also drives
-    // every heart icon's saved/unsaved state across the app (Search, Home,
-    // VehicleDetail), so it needs the full set, not a page-scoped subset.
-    // 50 comfortably covers real-world watchlist sizes.
+    // This store drives every heart icon across Search, Home and VehicleDetail,
+    // so it must hydrate the complete watchlist rather than silently stopping
+    // at an arbitrary first-page limit.
     set({ isLoading: true });
     try {
-      const { items } = await getWatchlist(1, 50);
-      const listings: CarListing[] = items
+      const pageSize = 50;
+      let page = 1;
+      let total = 0;
+      const allItems: Awaited<ReturnType<typeof getWatchlist>>['items'] = [];
+
+      do {
+        const result = await getWatchlist(page, pageSize);
+        total = result.total;
+        allItems.push(...result.items);
+
+        if (result.items.length === 0) break;
+        page += 1;
+      } while (allItems.length < total);
+
+      const listings: CarListing[] = allItems
         .filter((item) => item.mappedListing != null)
         .map((item) => item.mappedListing!);
       const ids = new Set(listings.map((l) => l.id));
