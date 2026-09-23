@@ -18,6 +18,7 @@ import { SellersService } from '../sellers/sellers.service';
 import { ScraperService } from '../scraper/scraper.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { DealersService } from '../dealers/dealers.service';
 
 /**
  * Listings service guarantees:
@@ -88,6 +89,7 @@ describe('ListingsService', () => {
                 { provide: ScraperService, useValue: scraper },
                 { provide: NotificationsService, useValue: notifications },
                 { provide: NotificationsGateway, useValue: notificationsGateway },
+                { provide: DealersService, useValue: { markRetailLeadWon: jest.fn().mockResolvedValue(null) } },
             ],
         }).compile();
 
