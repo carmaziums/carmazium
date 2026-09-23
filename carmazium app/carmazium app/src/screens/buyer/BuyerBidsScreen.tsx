@@ -828,7 +828,7 @@ const styles = StyleSheet.create({
   },
   wonChatBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.size11,
+    fontSize: FontSize.xs,
     color: Colors.accentGreen,
     marginLeft: 6,
   },
