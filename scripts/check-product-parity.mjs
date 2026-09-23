@@ -305,13 +305,14 @@ if (
 
 if (
   !buyerPaymentsService.includes('async getPayableAuctionForWinner') ||
-  !buyerPaymentsService.includes("'Only the auction winner can pay the buyer fee'") ||
+  !buyerPaymentsService.includes("'Only the winning dealership can pay the buyer fee'") ||
   !buyerPaymentsService.includes("'The auction buyer fee has already been paid'") ||
-  !buyerPaymentsService.includes('winnerId: buyerId')
+  !buyerPaymentsService.includes('winnerId !== buyerId') ||
+  !buyerPaymentsService.includes("'PAY_AUCTION_FEE'")
 ) {
-  fail('Auction buyer fee charging must be winner-only and idempotently winner-bound');
+  fail('Auction buyer fee charging must be winner-only and idempotently business-bound');
 } else {
-  ok('Auction buyer fee charging is restricted to the recorded winner');
+  ok('Auction buyer fee charging is restricted to the recorded winning dealership');
 }
 
 if (
