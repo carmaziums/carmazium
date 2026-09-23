@@ -166,6 +166,9 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
   const isPartnerRole = profile?.role === 'DEALER' || accountRole === 'dealer';
   const byType = new Map((team?.capabilities ?? []).map((cap) => [cap.serviceType, cap]));
+  const hasApprovedLeadCapability =
+    byType.get('FINANCE')?.status === 'APPROVED'
+    || byType.get('WARRANTY')?.status === 'APPROVED';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -292,6 +295,27 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                   <Text style={styles.secondaryText}>OPEN PARTNER JOBS</Text>
                 </TouchableOpacity>
               </View>
+
+              {hasApprovedLeadCapability && (
+                <View style={styles.card}>
+                  <View style={styles.rowBetween}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardTitle}>Finance & warranty leads</Text>
+                      <Text style={styles.cardText}>
+                        Review matched customer enquiries and send or update provider responses from one inbox.
+                      </Text>
+                    </View>
+                    <Ionicons name="mail-unread-outline" size={26} color={Colors.warning} />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.secondaryButton}
+                    onPress={() => navigation.navigate('ProviderLeads')}
+                  >
+                    <Ionicons name="mail-open-outline" size={17} color={Colors.white} />
+                    <Text style={styles.secondaryText}>OPEN PROVIDER LEADS</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Business payouts</Text>
