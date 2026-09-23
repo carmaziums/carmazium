@@ -6,6 +6,7 @@ import { KycOverlayForm, KYC_SKIP_KEY } from "@/components/dashboard/KycOverlayF
 import { Loader2, Lock, ShieldCheck, ArrowRight, Phone, AlertCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/apiClient"
+import { DealerAccessProvider, useDealerAccess } from "@/context/DealerAccessContext"
 
 /**
  * Blocks the dealer dashboard until the dealership's contact phone is set.
@@ -94,12 +95,13 @@ function DealerPhoneGate({ onSaved }: { onSaved: () => void }) {
  * Unverified dealers can "Skip for now" — they get a limited-mode banner
  * and can change their account type from the Settings page.
  */
-export default function DealerDashboardLayout({
+function DealerDashboardGate({
     children,
 }: {
     children: React.ReactNode
 }) {
     const { user, profile, loading, refreshProfile } = useAuth()
+    const { access, loading: accessLoading } = useDealerAccess()
     const router = useRouter()
     const [skipped, setSkipped] = React.useState(false)
     const [switchingRole, setSwitchingRole] = React.useState(false)
@@ -130,7 +132,7 @@ export default function DealerDashboardLayout({
         }
     }, [])
 
-    if (loading) {
+    if (loading || accessLoading) {
         return (
             <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ background: 'var(--bg-body)' }}>
                 <Loader2 className="animate-spin text-primary mb-4" size={48} />
@@ -142,16 +144,18 @@ export default function DealerDashboardLayout({
     }
 
     const isEmailVerified = !!user?.email_confirmed_at
-    const isStaffMember = !!((profile as any)?.dealerStaffMemberships?.length)
-    const isVerifiedDealer = !!profile?.dealerProfile?.isVerified || isStaffMember
+    const isStaffMember = access ? !access.isOwner : !!((profile as any)?.dealerStaffMemberships?.length)
+    const isVerifiedDealer = access?.isVerified ?? !!profile?.dealerProfile?.isVerified
 
-    // Show KYC overlay unless: verified, staff member, or user explicitly skipped
-    if (isEmailVerified && !isVerifiedDealer && !skipped) {
+    // Only the dealership owner can enter KYC. Staff inherit the dealership's
+    // verification state and must never create a second DealerProfile/KYC flow.
+    if (isEmailVerified && !isVerifiedDealer && !skipped && !isStaffMember) {
         return <KycOverlayForm onSkip={() => setSkipped(true)} />
     }
 
-    // Show locked dashboard when user skipped — dealer features require KYC
-    if (skipped && !isVerifiedDealer) {
+    // Owners who skipped KYC and staff whose dealership is not yet verified
+    // see the same locked shell, but staff are told to contact their owner.
+    if ((skipped || isStaffMember) && !isVerifiedDealer) {
         const startKyc = () => {
             if (typeof window !== 'undefined') localStorage.removeItem(KYC_SKIP_KEY)
             setSkipped(false)
@@ -173,10 +177,12 @@ export default function DealerDashboardLayout({
                     Dealer Features Locked
                 </h1>
                 <p className="text-gray-300 max-w-md mb-2 leading-relaxed">
-                    Complete KYC verification to unlock your dealer dashboard and start listing vehicles, managing inventory, and accessing auction tools.
+                    {isStaffMember
+                        ? "Your dealership has not completed verification yet. The dealership owner must complete KYC before staff can use dealer tools."
+                        : "Complete KYC verification to unlock your dealer dashboard and start listing vehicles, managing inventory, and accessing auction tools."}
                 </p>
                 <p className="text-xs text-gray-400 uppercase tracking-widest mb-10">
-                    Verification typically takes less than 24 hours
+                    {isStaffMember ? "KYC is managed by the dealership owner" : "Verification typically takes less than 24 hours"}
                 </p>
 
                 {/* Feature list */}
@@ -196,23 +202,27 @@ export default function DealerDashboardLayout({
                     ))}
                 </div>
 
-                <button
-                    onClick={startKyc}
-                    className="flex items-center gap-2 px-10 py-4 bg-primary hover:bg-red-600 text-white font-bold rounded-2xl text-lg shadow-[0_4px_20px_rgba(237,28,36,0.4)] transition-all hover:scale-105 active:scale-95"
-                >
-                    Start KYC Verification <ArrowRight size={20} />
-                </button>
+                {!isStaffMember && (
+                    <>
+                        <button
+                            onClick={startKyc}
+                            className="flex items-center gap-2 px-10 py-4 bg-primary hover:bg-red-600 text-white font-bold rounded-2xl text-lg shadow-[0_4px_20px_rgba(237,28,36,0.4)] transition-all hover:scale-105 active:scale-95"
+                        >
+                            Start KYC Verification <ArrowRight size={20} />
+                        </button>
 
-                <p className="text-xs text-[var(--text-secondary)] mt-6">
-                    Changed your mind?{' '}
-                    <button
-                        onClick={handleSwitchToBuyer}
-                        disabled={switchingRole}
-                        className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline transition-colors disabled:opacity-50"
-                    >
-                        {switchingRole ? 'Switching...' : 'Go to buyer dashboard'}
-                    </button>
-                </p>
+                        <p className="text-xs text-[var(--text-secondary)] mt-6">
+                            Changed your mind?{' '}
+                            <button
+                                onClick={handleSwitchToBuyer}
+                                disabled={switchingRole}
+                                className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline transition-colors disabled:opacity-50"
+                            >
+                                {switchingRole ? 'Switching...' : 'Go to buyer dashboard'}
+                            </button>
+                        </p>
+                    </>
+                )}
             </div>
         )
     }
@@ -224,4 +234,16 @@ export default function DealerDashboardLayout({
     }
 
     return <>{children}</>
+}
+
+export default function DealerDashboardLayout({
+    children,
+}: {
+    children: React.ReactNode
+}) {
+    return (
+        <DealerAccessProvider>
+            <DealerDashboardGate>{children}</DealerDashboardGate>
+        </DealerAccessProvider>
+    )
 }
