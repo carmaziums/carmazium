@@ -610,9 +610,10 @@ export class AuctionsService {
     }
 
     async update(id: string, updateAuctionDto: UpdateAuctionDto, userId: string): Promise<Auction> {
+        const sellerId = await this.resolveSellerBusinessId(userId, 'MANAGE_INVENTORY');
         const auction = await this.findOne(id);
 
-        if (auction.listing.sellerId !== userId) {
+        if (auction.listing.sellerId !== sellerId) {
             throw new ForbiddenException('You do not own this auction');
         }
 
@@ -653,9 +654,10 @@ export class AuctionsService {
     // auction listing. Editable any time before the auction ends, unlike update() which
     // is restricted to SCHEDULED auctions since it recalculates timing/pricing.
     async updateDigest(id: string, dto: UpdateAuctionDigestDto, userId: string): Promise<Auction> {
+        const sellerId = await this.resolveSellerBusinessId(userId, 'MANAGE_INVENTORY');
         const auction = await this.findOne(id);
 
-        if (auction.listing.sellerId !== userId) {
+        if (auction.listing.sellerId !== sellerId) {
             throw new ForbiddenException('You do not own this auction');
         }
 
@@ -673,9 +675,10 @@ export class AuctionsService {
     }
 
     async cancel(id: string, userId: string): Promise<Auction> {
+        const sellerId = await this.resolveSellerBusinessId(userId, 'MANAGE_INVENTORY');
         const auction = await this.findOne(id);
 
-        if (auction.listing.sellerId !== userId) {
+        if (auction.listing.sellerId !== sellerId) {
             throw new ForbiddenException('You do not own this auction');
         }
 
@@ -825,8 +828,9 @@ export class AuctionsService {
     }
 
     async sellerClose(auctionId: string, userId: string): Promise<void> {
+        const sellerId = await this.resolveSellerBusinessId(userId, 'MANAGE_INVENTORY');
         const auction = await this.findOne(auctionId);
-        if (auction.listing.sellerId !== userId) {
+        if (auction.listing.sellerId !== sellerId) {
             throw new ForbiddenException('You do not own this auction');
         }
         if (auction.status !== 'ACTIVE') {
@@ -852,8 +856,9 @@ export class AuctionsService {
     }
 
     async acceptBid(auctionId: string, bidId: string, sellerId: string): Promise<void> {
+        const businessSellerId = await this.resolveSellerBusinessId(businessSellerId, 'MANAGE_INVENTORY');
         const auction = await this.findOne(auctionId);
-        if (auction.listing.sellerId !== sellerId) {
+        if (auction.listing.sellerId !== businessSellerId) {
             throw new ForbiddenException('You do not own this auction');
         }
         if (auction.status !== 'ACTIVE') {
@@ -909,11 +914,11 @@ export class AuctionsService {
                 }),
             ] : []),
             this.prisma.sale.create({
-                data: { listingId: auction.listingId, sellerId, buyerId: winnerId, soldPrice: bid.amount },
+                data: { listingId: auction.listingId, businessSellerId, buyerId: winnerId, soldPrice: bid.amount },
             }),
             this.prisma.sellerProfile.upsert({
-                where: { userId: sellerId },
-                create: { userId: sellerId, totalSales: 1 },
+                where: { userId: businessSellerId },
+                create: { userId: businessSellerId, totalSales: 1 },
                 update: { totalSales: { increment: 1 } },
             }),
         ]);
@@ -1341,9 +1346,10 @@ export class AuctionsService {
     }
 
     async remove(id: string, userId: string): Promise<Auction> {
+        const sellerId = await this.resolveSellerBusinessId(userId, 'MANAGE_INVENTORY');
         const auction = await this.findOne(id);
 
-        if (auction.listing.sellerId !== userId) {
+        if (auction.listing.sellerId !== sellerId) {
             throw new ForbiddenException('You do not own this auction');
         }
 
@@ -1390,6 +1396,7 @@ export class AuctionsService {
         userId: string,
         proof: { proofUrl?: string; proofPath?: string },
     ): Promise<any> {
+        const sellerId = await this.resolveSellerBusinessId(userId, 'MANAGE_INVENTORY');
         const auction = await this.prisma.auction.findUnique({
             where: { id: auctionId },
             include: { listing: { select: { sellerId: true, title: true } } },
@@ -1398,7 +1405,7 @@ export class AuctionsService {
         if (!auction || auction.deletedAt) {
             throw new NotFoundException('Auction not found');
         }
-        if (auction.listing.sellerId !== userId) {
+        if (auction.listing.sellerId !== sellerId) {
             throw new ForbiddenException('You do not own this auction');
         }
         if (auction.status !== 'ENDED') {
@@ -1423,7 +1430,7 @@ export class AuctionsService {
         });
 
         // Notify seller that proof is under review
-        this.notificationsGateway.sendNotification(userId, {
+        this.notificationsGateway.sendNotification(sellerId, {
             type: 'AUCTION_ENDED',
             title: 'Handover proof received',
             message: `Your proof for "${auction.listing.title}" is under review. Your £100 seller bonus will be released once verified.`,
@@ -1768,9 +1775,10 @@ export class AuctionsService {
      * Seller confirms the Buy It Now request — ends the auction with the pending buyer as winner.
      */
     async confirmBuyItNow(auctionId: string, sellerId: string): Promise<void> {
+        const businessSellerId = await this.resolveSellerBusinessId(businessSellerId, 'MANAGE_INVENTORY');
         const auction = await this.findOne(auctionId);
 
-        if (auction.listing.sellerId !== sellerId) {
+        if (auction.listing.sellerId !== businessSellerId) {
             throw new ForbiddenException('You do not own this auction');
         }
         if (!auction.buyItNowPendingBuyerId) {
@@ -1807,14 +1815,14 @@ export class AuctionsService {
             this.prisma.sale.create({
                 data: {
                     listingId: auction.listingId,
-                    sellerId,
+                    businessSellerId,
                     buyerId: pendingBuyerId,
                     soldPrice: binPrice,
                 },
             }),
             this.prisma.sellerProfile.upsert({
-                where: { userId: sellerId },
-                create: { userId: sellerId, totalSales: 1 },
+                where: { userId: businessSellerId },
+                create: { userId: businessSellerId, totalSales: 1 },
                 update: { totalSales: { increment: 1 } },
             }),
         ]);
@@ -1833,9 +1841,10 @@ export class AuctionsService {
      * Seller declines the Buy It Now request — clears pending state, notifies buyer, auction resumes.
      */
     async declineBuyItNow(auctionId: string, sellerId: string): Promise<void> {
+        const businessSellerId = await this.resolveSellerBusinessId(sellerId, 'MANAGE_INVENTORY');
         const auction = await this.findOne(auctionId);
 
-        if (auction.listing.sellerId !== sellerId) {
+        if (auction.listing.sellerId !== businessSellerId) {
             throw new ForbiddenException('You do not own this auction');
         }
 
