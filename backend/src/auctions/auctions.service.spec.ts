@@ -864,6 +864,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
     let prisma: any;
     let auctionGateway: any;
     let notificationsService: any;
+    let paymentsService: { issueFullRefundForAuctionInspection: jest.Mock };
 
     beforeEach(async () => {
         prisma = {
@@ -902,6 +903,9 @@ describe('AuctionsService — final lifecycle consistency', () => {
         notificationsService = {
             create: jest.fn().mockResolvedValue({ id: 'notification-1' }),
         };
+        paymentsService = {
+            issueFullRefundForAuctionInspection: jest.fn().mockResolvedValue(undefined),
+        };
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -928,7 +932,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
                     },
                 },
                 { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
-                { provide: PaymentsService, useValue: { issueFullRefundForAuctionInspection: jest.fn().mockResolvedValue(undefined) } },
+                { provide: PaymentsService, useValue: paymentsService },
             ],
         }).compile();
 
