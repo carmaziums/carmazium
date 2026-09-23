@@ -755,8 +755,16 @@ describe('Vehicle Inspection — end to end', () => {
         await svc.startJob(providerProfileId, inspectionJobId);
         expect(db.one('serviceJob', { id: inspectionJobId })!.status).toBe('IN_PROGRESS');
 
-        await svc.completeJob(providerProfileId, inspectionJobId);
-        expect(db.one('serviceJob', { id: inspectionJobId })!.status).toBe('COMPLETED');
+        await expect(svc.completeJob(providerProfileId, inspectionJobId)).rejects.toThrow(/outcome/i);
+        await svc.completeJob(providerProfileId, inspectionJobId, {
+            inspectionOutcome: 'PASS',
+            inspectionSummary: 'No refusal-triggering faults found.',
+        } as any);
+        expect(db.one('serviceJob', { id: inspectionJobId })!).toMatchObject({
+            status: 'COMPLETED',
+            inspectionOutcome: 'PASS',
+            inspectionSummary: 'No refusal-triggering faults found.',
+        });
 
         transfersCreate.mockResolvedValueOnce({ id: 'tr_inspection' });
         const released = await svc.confirmCompletion(CUSTOMER.id, inspectionJobId);
