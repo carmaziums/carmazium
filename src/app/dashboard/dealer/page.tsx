@@ -37,6 +37,7 @@ export default function DealerDashboard() {
 
     const [stats, setStats] = React.useState<any>(null)
     const [loading, setLoading] = React.useState(true)
+    const [statsError, setStatsError] = React.useState(false)
     const [resending, setResending] = React.useState(false)
     const [resendSuccess, setResendSuccess] = React.useState(false)
     const { loading: accessLoading, hasPermission } = useDealerAccess()
@@ -60,9 +61,10 @@ export default function DealerDashboard() {
 
     async function fetchDashboardData() {
         setLoading(true)
+        setStatsError(false)
         try {
             const [statsRes, leadsRes] = await Promise.all([
-                apiClient<{ data: any }>(`/dashboard/dealer?period=${period}`).catch(() => ({ data: null })),
+                apiClient<{ data: any }>(`/dashboard/dealer?period=${period}`),
                 canManageCrm
                     ? apiClient<{ data: any[]; meta?: any }>('/dealers/leads?limit=5').catch(() => ({ data: [] }))
                     : Promise.resolve({ data: [] }),
@@ -70,7 +72,7 @@ export default function DealerDashboard() {
 
             const s = statsRes?.data || {}
             setStats({
-                companyName: profile?.firstName ? `${profile.firstName}'s Dealership` : "Your Dealership",
+                companyName: s.companyName ?? (profile?.firstName ? `${profile.firstName}'s Dealership` : "Your Dealership"),
                 isVerified: s.isVerified ?? false,
                 activeListings: s.activeListings ?? 0,
                 totalViews: s.totalViews ?? 0,
@@ -82,17 +84,9 @@ export default function DealerDashboard() {
             })
         } catch (err) {
             console.error('Failed to load dashboard data:', err)
-            setStats({
-                companyName: profile?.firstName ? `${profile.firstName}'s Dealership` : "Your Dealership",
-                isVerified: false,
-                activeListings: 0,
-                totalViews: 0,
-                soldListings: 0,
-                activeLeads: 0,
-                totalRevenue: 0,
-                staffCount: 1,
-                recentLeads: [],
-            })
+            // Do not turn an API failure into convincing-looking zeroes.
+            setStats(null)
+            setStatsError(true)
         } finally {
             setLoading(false)
         }
@@ -276,7 +270,7 @@ export default function DealerDashboard() {
                                                 <div className="mt-1 flex items-center gap-1.5">
                                                     <ShieldCheck size={14} className="text-amber-400" />
                                                     <span className="text-xs font-bold uppercase tracking-widest metallic-foil">
-                                                        Platinum Partner
+                                                        Verified Dealer
                                                     </span>
                                                 </div>
                                             )}
@@ -289,57 +283,74 @@ export default function DealerDashboard() {
 
                     {/* ── Period Toggle ── */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <h2 className="text-2xl font-black font-heading uppercase tracking-tighter">Overview</h2>
+                        <div>
+                            <h2 className="text-2xl font-black font-heading uppercase tracking-tighter">Overview</h2>
+                            <p className="text-xs text-[var(--text-muted)] mt-1">
+                                Stock and active leads are current. Vehicle views and completed sales follow the selected period.
+                            </p>
+                        </div>
                         <PeriodToggle value={period} onChange={setPeriod} />
                     </div>
+
+                    {statsError && (
+                        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-500 font-semibold">
+                            Live dashboard statistics are temporarily unavailable. Values are hidden rather than replaced with zeroes.
+                        </div>
+                    )}
 
                     {/* ── KPI Stats Row ── */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <MetricCard
                             label="Active Stock"
-                            value={stats?.activeListings || 0}
+                            value={statsError ? "—" : (stats?.activeListings ?? 0)}
                             icon={Car}
                             color="text-primary"
                             bg="bg-primary/10"
                             border="border-primary/20"
-                            statusLabel="Live"
+                            statusLabel="Current"
                             loading={loading}
                             href="/dashboard/dealer/inventory?status=ACTIVE"
-                            subLabel={subLabel}
+                            subLabel="Live stock now"
+                            showSparkline={false}
                         />
                         <MetricCard
-                            label="Total Views"
-                            value={stats?.totalViews?.toLocaleString() || 0}
+                            label="Vehicle Views"
+                            value={statsError ? "—" : (stats?.totalViews?.toLocaleString() ?? 0)}
                             icon={Eye}
                             color="text-blue-400"
                             bg="bg-blue-500/10"
                             border="border-blue-500/20"
                             loading={loading}
+                            statusLabel="Tracked"
                             subLabel={subLabel}
+                            showSparkline={false}
                         />
                         {canManageCrm && (
                             <MetricCard
                                 label="Active Leads"
-                                value={stats?.activeLeads || 0}
+                                value={statsError ? "—" : (stats?.activeLeads ?? 0)}
                                 icon={Kanban}
                                 color="text-amber-400"
                                 bg="bg-amber-500/10"
                                 border="border-amber-500/20"
                                 loading={loading}
-                                subLabel={subLabel}
+                                statusLabel="Current"
+                                subLabel="Open pipeline"
+                                showSparkline={false}
                             />
                         )}
                         <MetricCard
                             label="Vehicles Sold"
-                            value={stats?.soldListings || 0}
+                            value={statsError ? "—" : (stats?.soldListings ?? 0)}
                             icon={TrendingUp}
                             color="text-emerald-400"
                             bg="bg-emerald-500/10"
                             border="border-emerald-500/20"
-                            statusLabel="MTD"
+                            statusLabel="Period"
                             loading={loading}
                             href="/dashboard/dealer/inventory?status=SOLD"
                             subLabel={subLabel}
+                            showSparkline={false}
                         />
                     </div>
 
