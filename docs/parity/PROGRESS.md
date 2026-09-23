@@ -2563,3 +2563,24 @@ Still explicit Block 7 gaps:
 - `service_provider.leads`: matched Finance/Warranty inbox, detail and provider responses.
 - `service_provider.messages`: provider-focused message workspace/list entry.
 
+## 2026-09-23 — Block 7: Native Partner/provider Leads
+
+**Block 7 checkpoint:** Finance/Warranty provider lead parity completed on native mobile; Block 7 remains in progress.
+
+Completed in this slice:
+
+- Native matched-enquiry inbox for Finance and Warranty providers.
+- All / Finance / Warranty filtering, cursor pagination and pull-to-refresh.
+- Matched lead detail exposes the same consented customer contact and vehicle information as web.
+- Finance requirements: deposit, preferred term, monthly budget, employment status and annual income.
+- Warranty requirements: requested duration and cover level.
+- Provider response create/update supports headline, product/plan, message and indicative price.
+- Finance responses additionally support representative APR and finance term months.
+- Existing provider responses are pre-filled for update rather than creating a second response path.
+- `service_provider.leads` moved from `gap` to `required` in `product-parity.json`.
+- Permanent parity checks now fail if the native matched inbox/detail or provider response contract disappears.
+
+Still explicit Block 7 gap:
+
+- `service_provider.messages`: provider-focused message workspace/list entry.
+
