@@ -25,6 +25,7 @@ import { GlobalToastContext } from '../../components/GlobalToastProvider';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { apiClient } from '../../lib/apiClient';
+import { DealerAccess, DealerPermission, getDealerAccess } from '../../lib/dealerAccess';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -91,6 +92,7 @@ export const DealerProfileScreen: React.FC = () => {
 
   const [stats, setStats] = useState<DealerStats | null>(null);
   const [analytics, setAnalytics] = useState<DealerAnalyticsSnapshot | null>(null);
+  const [dealerAccess, setDealerAccess] = useState<DealerAccess | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -145,6 +147,17 @@ export const DealerProfileScreen: React.FC = () => {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    getDealerAccess()
+      .then(setDealerAccess)
+      .catch(() => setDealerAccess(null));
+  }, []);
+
+  const can = useCallback(
+    (permission: DealerPermission) => Boolean(dealerAccess?.permissions?.includes(permission)),
+    [dealerAccess],
+  );
 
   const dealerDisplayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
 
