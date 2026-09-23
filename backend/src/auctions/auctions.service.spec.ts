@@ -1133,6 +1133,50 @@ describe('AuctionsService — final lifecycle consistency', () => {
         });
     });
 
+    it('returns a faulted linked retail listing to DRAFT instead of advertising it immediately', async () => {
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1',
+            status: 'ENDED',
+            deletedAt: null,
+            winnerId: 'buyer-1',
+            buyerFeePaid: true,
+            buyerFeeTransactionId: 'txn-1',
+            sellerBonusReleased: false,
+            buyerRefusedAt: null,
+            handoverProofPath: null,
+            handoverProofUrl: null,
+            listing: {
+                id: 'auction-listing-1',
+                title: 'BMW M3 2022',
+                sellerId: 'seller-1',
+                linkedListingId: 'retail-1',
+            },
+            serviceJobs: [{
+                id: 'inspection-1',
+                inspectionSummary: 'Oil leak and gearbox fault confirmed.',
+                completedAt: new Date(),
+            }],
+        });
+
+        await service.refuseAfterInspection('auction-1', 'buyer-1');
+
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'auction-listing-1' },
+            data: expect.objectContaining({
+                status: 'DRAFT',
+                linkedListingId: null,
+                deletedAt: expect.any(Date),
+            }),
+        });
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'retail-1' },
+            data: {
+                status: 'DRAFT',
+                linkedListingId: null,
+            },
+        });
+    });
+
     it('does not refund or unwind when no linked inspection recorded faults', async () => {
         prisma.auction.findUnique.mockResolvedValue({
             id: 'auction-1',
