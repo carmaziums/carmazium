@@ -23,6 +23,7 @@ import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
 import { IconButton } from '../../components/IconButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -186,7 +187,7 @@ const renderSkeletonRows = () => (
 export const MessagesScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
-  const { rooms, unreadCount, markAsRead, refreshRooms, isLoading, onlineUserIds } = useChat();
+  const { rooms, unreadCount, markAsRead, refreshRooms, isLoading, roomsError, onlineUserIds } = useChat();
 
   const [activeTab, setActiveTab] = useState<'all' | 'offers' | 'archived'>('all');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -338,10 +339,16 @@ export const MessagesScreen: React.FC = () => {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {roomsError ? (
+              <View style={styles.errorWrap}>
+                <ErrorBanner message={roomsError} onRetry={() => void refreshRooms()} />
+              </View>
+            ) : null}
           </>
         }
         ListEmptyComponent={
-          !isLoading ? (
+          !isLoading && !roomsError ? (
             <EmptyState
               icon="chatbubbles-outline"
               title="No messages yet"
@@ -433,6 +440,10 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size14,
     color: Colors.white,
     height: '100%',
+  },
+  errorWrap: {
+    paddingHorizontal: 24,
+    marginBottom: 16,
   },
   // Tabs
   tabsRow: {
