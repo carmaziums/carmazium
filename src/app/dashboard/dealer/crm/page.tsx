@@ -11,6 +11,8 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { useDealerAccess } from "@/context/DealerAccessContext"
+import { DealerPermissionGate } from "@/components/dealer/DealerPermissionGate"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { createChatRoom } from "@/lib/chatApi"
@@ -228,6 +230,7 @@ function AddLeadModal({
                 </form>
             </div>
         </div>
+        </DealerPermissionGate>
     )
 }
 
@@ -235,6 +238,8 @@ function AddLeadModal({
 
 export default function DealerCRMPage() {
     const { user, profile, loading: authLoading } = useAuth()
+    const { loading: accessLoading, has } = useDealerAccess()
+    const canManageCrm = has('MANAGE_CRM')
     const [leads, setLeads] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
     const [updatingLeadId, setUpdatingLeadId] = React.useState<string | null>(null)
@@ -244,10 +249,12 @@ export default function DealerCRMPage() {
     const router = useRouter()
 
     React.useEffect(() => {
-        if (!authLoading && user) {
+        if (!authLoading && !accessLoading && user && canManageCrm) {
             fetchLeads()
+        } else if (!accessLoading && !canManageCrm) {
+            setLoading(false)
         }
-    }, [user, authLoading])
+    }, [user, authLoading, accessLoading, canManageCrm])
 
     async function fetchLeads() {
         setLoading(true)
@@ -316,6 +323,11 @@ export default function DealerCRMPage() {
     const leadsByStatus = (status: string) => leads.filter(l => l.status === status)
 
     return (
+        <DealerPermissionGate
+            permission="MANAGE_CRM"
+            title="CRM access restricted"
+            description="Your dealership role does not include CRM lead management."
+        >
         <div className="min-h-screen pt-20 pb-12">
             {showAddModal && (
                 <AddLeadModal
