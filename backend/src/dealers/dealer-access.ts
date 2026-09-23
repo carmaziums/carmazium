@@ -40,6 +40,7 @@ const ROLE_PERMISSIONS: Record<DealerRole, ReadonlySet<DealerPermission>> = {
         'PLACE_BID',
         'MANAGE_CRM',
         'MANAGE_OFFERS',
+        'MANAGE_INVENTORY',
         'VIEW_PURCHASES',
         'VIEW_ANALYTICS',
     ]),
