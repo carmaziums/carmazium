@@ -364,6 +364,19 @@
       "status": "required"
     },
     {
+      "id": "dealer.auction_staff_permissions",
+      "web": [
+        "src/app/auctions/live/[id]/page.tsx",
+        "src/app/dashboard/dealer/auctions/won/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/vehicle/AuctionDetailScreen.tsx",
+        "carmazium app/carmazium app/src/screens/buyer/BuyerBidsScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/AuctionCompleteScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
       "id": "partner.dashboard",
       "web": [
         "src/app/dashboard/partner/page.tsx"
