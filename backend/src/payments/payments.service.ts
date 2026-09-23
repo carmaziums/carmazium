@@ -1625,13 +1625,20 @@ export class PaymentsService {
      * Transfer the seller payout (£100) to their connected Stripe Express account.
      * Called by AdminService after superadmin approves handover proof.
      */
-    async issueSellerPayout(stripeConnectAccountId: string, amountPence = 10000): Promise<string> {
+    async issueSellerPayout(
+        stripeConnectAccountId: string,
+        amountPence = 10000,
+        idempotencyKey?: string,
+    ): Promise<string> {
         const stripe = await this.getStripe();
-        const transfer = await stripe.transfers.create({
-            amount: amountPence,
-            currency: 'gbp',
-            destination: stripeConnectAccountId,
-        });
+        const transfer = await stripe.transfers.create(
+            {
+                amount: amountPence,
+                currency: 'gbp',
+                destination: stripeConnectAccountId,
+            },
+            idempotencyKey ? { idempotencyKey } : undefined,
+        );
         return transfer.id;
     }
 }
