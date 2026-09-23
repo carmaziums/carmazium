@@ -207,6 +207,68 @@ export interface CursorPage<T> {
   nextCursor: string | null;
 }
 
+export type ServiceLeadStatus = 'OPEN' | 'CLOSED' | 'CANCELLED' | 'EXPIRED';
+
+export interface ServiceLeadResponse {
+  id?: string;
+  recipientId?: string;
+  contractorId?: string;
+  status?: string;
+  headline: string | null;
+  message: string | null;
+  productName: string | null;
+  indicativePricePence: number | null;
+  representativeApr: number | null;
+  termMonths: number | null;
+  respondedAt?: string | null;
+}
+
+export interface ServiceLead {
+  id: string;
+  customerId: string;
+  serviceType: 'FINANCE' | 'WARRANTY';
+  status: ServiceLeadStatus;
+  listingId: string | null;
+  vehicleRegistration: string | null;
+  vehicleMake: string | null;
+  vehicleModel: string | null;
+  vehicleYear: number | null;
+  vehicleMileage: number | null;
+  vehicleValuePence: number | null;
+  fullName?: string | null;
+  email?: string | null;
+  phone: string | null;
+  postcode: string | null;
+  summary: string | null;
+  depositPence: number | null;
+  termMonths: number | null;
+  monthlyBudgetPence: number | null;
+  employmentStatus: string | null;
+  annualIncomePence: number | null;
+  warrantyMonths: number | null;
+  warrantyLevel: string | null;
+  expiresAt: string;
+  createdAt: string;
+  recipientId?: string;
+  recipientStatus?: string;
+  headline?: string | null;
+  message?: string | null;
+  productName?: string | null;
+  indicativePricePence?: number | null;
+  representativeApr?: number | null;
+  responseTermMonths?: number | null;
+  responses?: ServiceLeadResponse[];
+}
+
+export type ProviderLeadResponseInput = {
+  headline: string;
+  message: string;
+  productName?: string;
+  indicativePricePence?: number;
+  representativeApr?: number;
+  termMonths?: number;
+};
+
 export const formatPence = (p: number) =>
   `£${(p / 100).toLocaleString('en-GB', {
     minimumFractionDigits: 2,
@@ -353,5 +415,35 @@ export async function completeProviderJob(
     method: 'POST',
     body: JSON.stringify(input ?? {}),
   });
+}
+
+export async function getProviderLeadInboxPage(
+  serviceType?: 'FINANCE' | 'WARRANTY',
+  cursor?: string,
+  limit = 20,
+): Promise<CursorPage<ServiceLead>> {
+  const query = [
+    `limit=${encodeURIComponent(String(limit))}`,
+    serviceType ? `serviceType=${encodeURIComponent(serviceType)}` : null,
+    cursor ? `cursor=${encodeURIComponent(cursor)}` : null,
+  ].filter(Boolean).join('&');
+  const r = await apiClient<{ data: CursorPage<ServiceLead> }>(`/services/leads/inbox?${query}`);
+  return r.data;
+}
+
+export async function getProviderLead(id: string): Promise<ServiceLead> {
+  const r = await apiClient<{ data: ServiceLead }>(`/services/leads/inbox/${id}`);
+  return r.data;
+}
+
+export async function respondToProviderLead(
+  id: string,
+  input: ProviderLeadResponseInput,
+): Promise<ServiceLeadResponse> {
+  const r = await apiClient<{ data: ServiceLeadResponse }>(`/services/leads/${id}/respond`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
+  return r.data;
 }
 
