@@ -1129,6 +1129,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   <Text style={styles.handoverButtonText}>Upload Handover Proof</Text>
                 )}
               </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={{
                 minHeight: 42,
@@ -1147,7 +1148,6 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 Request Sale Cancellation
               </Text>
             </TouchableOpacity>
-            )}
           </View>
         ) : null}
       </View>
