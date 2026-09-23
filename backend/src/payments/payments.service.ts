@@ -1370,15 +1370,29 @@ export class PaymentsService {
         if (!transaction?.stripePaymentId) return;
 
         const stripe = await this.getStripe();
-        const session = await stripe.checkout.sessions.retrieve(transaction.stripePaymentId);
-        const paymentIntentId = session.payment_intent as string;
 
-        if (paymentIntentId) {
-            await stripe.refunds.create({
-                payment_intent: paymentIntentId,
-                amount: 10000, // £100 in pence — platform keeps the £25 fee
-            });
+        // Web stores a Checkout Session id (cs_...) while native Payment Sheet
+        // stores the PaymentIntent id (pi_...) directly. Refund the same buyer
+        // fee regardless of which client collected it.
+        let paymentIntentId: string | null = null;
+        if (transaction.stripePaymentId.startsWith('pi_')) {
+            paymentIntentId = transaction.stripePaymentId;
+        } else {
+            const session = await stripe.checkout.sessions.retrieve(transaction.stripePaymentId);
+            paymentIntentId =
+                typeof session.payment_intent === 'string'
+                    ? session.payment_intent
+                    : session.payment_intent?.id ?? null;
         }
+
+        if (!paymentIntentId) {
+            throw new BadRequestException('Buyer fee payment could not be resolved for refund');
+        }
+
+        await stripe.refunds.create({
+            payment_intent: paymentIntentId,
+            amount: 10000, // £100 in pence — platform keeps the £25 fee
+        });
 
         await this.prisma.transaction.update({
             where: { id: auction.buyerFeeTransactionId },
