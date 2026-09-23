@@ -44,12 +44,26 @@ export class DashboardController {
     @ApiOperation({ summary: 'Get dealer dashboard data' })
     async getDealerDashboard(
         @CurrentUser() user: User,
-        @Query('period') period: '7d' | '30d' = '30d',
+        @Query('period') period?: '7d' | '30d',
+        @Query('rangeValue') rangeValue?: string,
+        @Query('rangeUnit') rangeUnit?: 'days' | 'months' | 'years',
+        @Query('range') range?: 'all',
+        @Query('from') from?: string,
+        @Query('to') to?: string,
+        @Query('compare') compare?: string,
     ) {
         if (user.role !== UserRole.DEALER && user.role !== UserRole.ADMIN) {
             throw new ForbiddenException('Only dealers can access this dashboard');
         }
-        const data = await this.dashboardService.getDealerDashboard(user.id, period);
+        const data = await this.dashboardService.getDealerDashboard(user.id, {
+            period,
+            rangeValue: rangeValue ? Number(rangeValue) : undefined,
+            rangeUnit,
+            allTime: range === 'all',
+            from,
+            to,
+            compare: compare === '1' || compare === 'true',
+        });
         return new StandardResponse(data);
     }
 
