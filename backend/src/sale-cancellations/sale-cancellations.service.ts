@@ -161,7 +161,7 @@ export class SaleCancellationsService {
 
     private shouldRefundBuyerFee(request: any): boolean {
         return request.requestedByRole === 'SELLER'
-            || ['VEHICLE_FAULT', 'VEHICLE_MISDESCRIBED', 'VEHICLE_DAMAGED', 'PAYMENT_ISSUE']
+            || ['SELLER_UNABLE_TO_COMPLETE', 'VEHICLE_FAULT', 'VEHICLE_MISDESCRIBED', 'VEHICLE_DAMAGED', 'PAYMENT_ISSUE']
                 .includes(request.reason);
     }
 
@@ -554,7 +554,7 @@ export class SaleCancellationsService {
                         winnerId: null,
                         winningBidAmount: null,
                         wonAt: null,
-                        buyerFeePaid: false,
+                        buyerFeePaid: refundBuyerFee ? false : ctx.auction.buyerFeePaid,
                         handoverProofUrl: null,
                         handoverProofPath: null,
                         handoverSubmittedAt: null,
