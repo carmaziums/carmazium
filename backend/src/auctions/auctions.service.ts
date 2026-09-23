@@ -856,7 +856,7 @@ export class AuctionsService {
     }
 
     async acceptBid(auctionId: string, bidId: string, sellerId: string): Promise<void> {
-        const businessSellerId = await this.resolveSellerBusinessId(businessSellerId, 'MANAGE_INVENTORY');
+        const businessSellerId = await this.resolveSellerBusinessId(sellerId, 'MANAGE_INVENTORY');
         const auction = await this.findOne(auctionId);
         if (auction.listing.sellerId !== businessSellerId) {
             throw new ForbiddenException('You do not own this auction');
@@ -914,7 +914,7 @@ export class AuctionsService {
                 }),
             ] : []),
             this.prisma.sale.create({
-                data: { listingId: auction.listingId, businessSellerId, buyerId: winnerId, soldPrice: bid.amount },
+                data: { listingId: auction.listingId, sellerId: businessSellerId, buyerId: winnerId, soldPrice: bid.amount },
             }),
             this.prisma.sellerProfile.upsert({
                 where: { userId: businessSellerId },
@@ -1815,7 +1815,7 @@ export class AuctionsService {
             this.prisma.sale.create({
                 data: {
                     listingId: auction.listingId,
-                    businessSellerId,
+                    sellerId: businessSellerId,
                     buyerId: pendingBuyerId,
                     soldPrice: binPrice,
                 },
