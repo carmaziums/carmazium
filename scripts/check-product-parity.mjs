@@ -251,6 +251,12 @@ const mobileVehicleDetail = read('carmazium app/carmazium app/src/screens/vehicl
 const mobilePaymentsApi = read('carmazium app/carmazium app/src/lib/paymentsApi.ts');
 const mobilePurchaseFlow = read('carmazium app/carmazium app/src/screens/main/PurchaseFlowScreen.tsx');
 const mobileAuctionComplete = read('carmazium app/carmazium app/src/screens/main/AuctionCompleteScreen.tsx');
+const mobilePartnerDashboard = read('carmazium app/carmazium app/src/screens/main/PartnerDashboardScreen.tsx');
+const mobileProviderCapabilities = read('carmazium app/carmazium app/src/screens/main/ProviderCapabilitiesScreen.tsx');
+const mobileProviderVerification = read('carmazium app/carmazium app/src/screens/main/ProviderVerificationScreen.tsx');
+const mobileProviderMatching = read('carmazium app/carmazium app/src/screens/main/ProviderMatchingScreen.tsx');
+const mobileMainNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
+const mobileGlobalDrawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
 const mobileBuyerBids = read('carmazium app/carmazium app/src/screens/buyer/BuyerBidsScreen.tsx');
 const backendBidsService = read('backend/src/bids/bids.service.ts');
 const paymentsController = read('backend/src/payments/payments.controller.ts');
@@ -479,6 +485,31 @@ if (
   fail('Native dealer auction UI can drift from canonical dealership identity or staff permissions');
 } else {
   ok('Native dealer auction winner, bid and fee controls are dealership-permission aware');
+}
+
+// Block 7 provider foundation: one Partner business, service capabilities,
+ // secure verification evidence and matching rules must all be reachable in
+ // native mobile before these surfaces can be marked required.
+if (
+  !mobilePartnerDashboard.includes('getPartnerTeam') ||
+  !mobilePartnerDashboard.includes('applyPartnerCapability') ||
+  !mobilePartnerDashboard.includes('createStripeConnectOnboarding') ||
+  !mobileProviderCapabilities.includes("navigation.navigate('ProviderVerification'") ||
+  !mobileProviderCapabilities.includes("navigation.navigate('ProviderMatching'") ||
+  !mobileProviderVerification.includes('getCapabilityVerification') ||
+  !mobileProviderVerification.includes('uploadCapabilityAttachment') ||
+  !mobileProviderVerification.includes('deleteCapabilityAttachment') ||
+  !mobileProviderMatching.includes('updateJobMatching') ||
+  !mobileProviderMatching.includes('updateLeadMatching') ||
+  !mobileMainNavigator.includes('PartnerDashboard') ||
+  !mobileMainNavigator.includes('ProviderCapabilities') ||
+  !mobileMainNavigator.includes('ProviderVerification') ||
+  !mobileMainNavigator.includes('ProviderMatching') ||
+  !mobileGlobalDrawer.includes("stackScreen: 'PartnerDashboard'")
+) {
+  fail('Native Partner dashboard/capability foundation can drift from web TradeXchange provider contracts');
+} else {
+  ok('Native Partner dashboard, verification and matching foundation is present');
 }
 
 const webPricing = read('src/lib/pricingConfig.ts');
