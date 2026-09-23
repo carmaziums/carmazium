@@ -45,6 +45,12 @@ function buildPrismaMock() {
             findUnique: jest.fn().mockResolvedValue({ id: 'user-1', email: 'buyer@example.com', stripeCustomerId: 'cus_existing' }),
             update: jest.fn(),
         },
+        dealerProfile: {
+            findUnique: jest.fn().mockResolvedValue(null),
+        },
+        dealerStaff: {
+            findFirst: jest.fn().mockResolvedValue(null),
+        },
         transaction: {
             create: jest.fn().mockResolvedValue({ id: 'txn-1' }),
             findUnique: jest.fn(),
