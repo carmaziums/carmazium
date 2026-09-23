@@ -248,6 +248,9 @@ if (
 // intent and payment truth must survive the platform boundary unchanged.
 const webVehicleDetail = read('src/app/buy-cars/[slug]/VehicleDetailsPageClient.tsx');
 const mobileVehicleDetail = read('carmazium app/carmazium app/src/screens/vehicle/VehicleDetailScreen.tsx');
+const hpiController = read('backend/src/hpi/hpi.controller.ts');
+const hpiService = read('backend/src/hpi/hpi.service.ts');
+const webHpiReportModal = read('src/components/hpi/HpiReportModal.tsx');
 const mobilePaymentsApi = read('carmazium app/carmazium app/src/lib/paymentsApi.ts');
 const mobilePurchaseFlow = read('carmazium app/carmazium app/src/screens/main/PurchaseFlowScreen.tsx');
 const mobileAuctionComplete = read('carmazium app/carmazium app/src/screens/main/AuctionCompleteScreen.tsx');
@@ -397,6 +400,38 @@ if (
   fail('Auction seller bonus payout can drift back to duplicate Stripe/manual settlement');
 } else {
   ok('Auction seller bonus payout is atomically claimed and Stripe-idempotent');
+}
+
+// Block 8 closeout — HPI access/delivery parity and provider payout safety.
+if (
+  !hpiController.includes("listing/:listingId/summary") ||
+  !hpiController.includes("listing/:listingId/pdf") ||
+  !hpiController.includes('getMyEmailRequest(listingId, user.id)') ||
+  !hpiService.includes('where: { hpiReportId: report.id, buyerId }') ||
+  !hpiService.includes('requestEmailDelivery') ||
+  !webHpiReportModal.includes('createHpiEmailCheckout') ||
+  !webHpiReportModal.includes('getMyHpiEmailRequest') ||
+  !webHpiReportModal.includes('openHpiPdf') ||
+  !mobileVehicleDetail.includes("'/payments/hpi-checkout'") ||
+  !mobileVehicleDetail.includes('getHpiSummary') ||
+  !mobileVehicleDetail.includes('openHpiPdf')
+) {
+  fail('HPI report access or buyer-specific email entitlement can drift across web/mobile');
+} else {
+  ok('HPI report access and buyer-specific email entitlements remain server-bound');
+}
+
+if (
+  !buyerServicesService.includes('assertProviderPayoutReadyForNewWork') ||
+  !buyerServicesService.includes('claim:release:') ||
+  !buyerServicesService.includes('service-job-release-') ||
+  !buyerServicesService.includes('stripeTransferId: claimToken') ||
+  !buyerServicesService.includes('ServicePaymentStatus.RELEASED') ||
+  !buyerPaymentsService.includes('connectTransferReady')
+) {
+  fail('TradeXchange provider payout can drift from atomic claim/idempotent transfer safety');
+} else {
+  ok('TradeXchange provider payout remains readiness-checked, claimed and Stripe-idempotent');
 }
 
 // Partner/provider paid-job parity: native must keep the same authoritative
