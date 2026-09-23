@@ -346,7 +346,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         const bids = data.listing.bids ?? [];
         const topBid = bids[0] ? Number(bids[0].amount) : Number(data.startingBid);
         setCurrentBid(topBid);
-        setIsWinning(!!currentUser && bids[0]?.bidderId === currentUser.id);
+        setIsWinning(!!businessUserId && bids[0]?.bidderId === businessUserId);
         setBidHistory(bids.map(b => {
           const first = b.bidder?.firstName ?? '';
           const last = b.bidder?.lastName ?? '';
@@ -377,7 +377,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       })
       .catch(() => { if (!opts?.silent) setLoadError('Failed to load auction. Please try again.'); })
       .finally(() => { if (!opts?.silent) setLoading(false); });
-  }, [auctionId, currentUser]);
+  }, [auctionId, businessUserId]);
 
   useEffect(() => { loadAuction(); }, [loadAuction]);
 
@@ -449,7 +449,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       socket.on('bid:new', (payload: BidBroadcastPayload) => {
         if (payload.auctionId !== auctionId) return;
         setCurrentBid(payload.amount);
-        setIsWinning(!!currentUser && payload.bidderId === currentUser.id);
+        setIsWinning(!!businessUserId && payload.bidderId === businessUserId);
         setBidHistory(prev => [
           { id: payload.bidId, initials: payload.bidderInitials || '??', amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString('en-GB'), createdAt: payload.timestamp, bidderId: payload.bidderId, isNew: true },
           ...prev.map(b => ({ ...b, isNew: false })),
@@ -458,7 +458,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         // derived from bidHistory (see cancelableBids) — being outbid no
         // longer clears eligibility, since the 24h window applies
         // regardless of current ranking (server-side restriction removed).
-        if (currentUser && payload.bidderId === currentUser.id) {
+        if (businessUserId && payload.bidderId === businessUserId) {
           bidFlash.value = withSequence(
             withTiming(1, { duration: 120 }),
             withTiming(0, { duration: 400 }),
@@ -482,7 +482,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         setAuction(p => p ? { ...p, status: 'ENDED', winnerId: payload.winnerId, winningBidAmount: payload.winningBidAmount } : p);
 
         // Route winners to AuctionComplete screen
-        if (payload.winnerId && currentUser && payload.winnerId === currentUser.id) {
+        if (payload.winnerId && businessUserId && payload.winnerId === businessUserId) {
           haptics.success();
           const _auction = auction;
           navigation.navigate('AuctionComplete' as any, {
@@ -530,7 +530,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           const topAmount = next.length > 0 ? next[0].amount : Number(auction?.startingBid ?? 0);
           setCurrentBid(topAmount);
           // Recalculate winning status from the new top bidder
-          setIsWinning(!!currentUser && next.length > 0 && next[0].bidderId === currentUser.id);
+          setIsWinning(!!businessUserId && next.length > 0 && next[0].bidderId === businessUserId);
           return next;
         });
       });
@@ -547,7 +547,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // any change to the stored profile tore this socket down and reconnected it
   // mid-auction — dropping live bid updates for the duration of the
   // handshake, on the one screen where that matters most.
-  }, [auctionId, currentUser?.id]);
+  }, [auctionId, businessUserId]);
 
   // ─── Cancel bid countdown — 24h window, ticks every 30s (no need for
   // per-second precision over a day-long window). ─────────────────────────
@@ -561,8 +561,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // "must be highest bidder" restriction was removed server-side, so being
   // outbid no longer disqualifies a bid from cancellation, and more than one
   // can be eligible at once.
-  const cancelableBids = currentUser
-    ? bidHistory.filter(b => b.bidderId === currentUser.id && (nowMs - new Date(b.createdAt).getTime()) < BID_CANCEL_WINDOW_MS)
+  const cancelableBids = canPlaceBid && businessUserId
+    ? bidHistory.filter(b => b.bidderId === businessUserId && (nowMs - new Date(b.createdAt).getTime()) < BID_CANCEL_WINDOW_MS)
     : [];
 
   // ─── Anti-snipe timer ─────────────────────────────────────────────────────
