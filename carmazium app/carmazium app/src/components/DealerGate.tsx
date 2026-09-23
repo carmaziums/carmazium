@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
@@ -8,6 +8,12 @@ import { useAuthStore } from '../store/authStore';
 import { Colors } from '../constants/colors';
 import { Radius } from '../constants/spacing';
 import { FontFamily, FontSize } from '../constants/typography';
+import {
+  DealerAccess as DealerAccessContract,
+  DealerPermission,
+  getDealerAccess,
+  hasDealerPermission,
+} from '../lib/dealerAccess';
 
 const LOCKED_FEATURES = [
   'List Vehicles',
@@ -45,14 +51,100 @@ const LOCKED_FEATURES = [
  * security-meaningful part — no access to inventory, offers, leads, team,
  * earnings, finance, purchases or analytics — is fully enforced.
  */
-export const DealerGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const DealerGate: React.FC<{
+  children: React.ReactNode;
+  permission?: DealerPermission;
+}> = ({ children, permission }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const isVerified = useAuthStore((s) => s.user?.isVerified);
   const isDealerStaff = useAuthStore((s) => s.user?.isDealerStaff);
   const accountRole = useAuthStore((s) => s.accountRole);
+  const baseDealerAccess = isDealerStaff || (accountRole === 'dealer' && isVerified);
+  const [businessAccess, setBusinessAccess] = React.useState<DealerAccessContract | null>(null);
+  const [accessLoading, setAccessLoading] = React.useState(Boolean(permission));
+  const [accessError, setAccessError] = React.useState<string | null>(null);
 
-  if (isDealerStaff || (accountRole === 'dealer' && isVerified)) {
+  React.useEffect(() => {
+    let mounted = true;
+
+    if (!baseDealerAccess || !permission) {
+      setAccessLoading(false);
+      setAccessError(null);
+      return () => { mounted = false; };
+    }
+
+    setAccessLoading(true);
+    setAccessError(null);
+    getDealerAccess()
+      .then((access) => {
+        if (mounted) setBusinessAccess(access);
+      })
+      .catch((err: any) => {
+        if (mounted) {
+          setBusinessAccess(null);
+          setAccessError(err?.message || 'Could not load dealership permissions');
+        }
+      })
+      .finally(() => {
+        if (mounted) setAccessLoading(false);
+      });
+
+    return () => { mounted = false; };
+  }, [baseDealerAccess, permission]);
+
+  if (baseDealerAccess && !permission) {
+    return <>{children}</>;
+  }
+
+  if (baseDealerAccess && permission && accessLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.permissionLoading}>
+          <ActivityIndicator color={Colors.accent} />
+          <Text style={styles.permissionLoadingText}>Checking dealership access…</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (
+    baseDealerAccess
+    && permission
+    && (accessError || !hasDealerPermission(businessAccess, permission))
+  ) {
+    const roleLabel = businessAccess?.role?.replace(/_/g, ' ') ?? 'DEALER STAFF';
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingTop: insets.top + 40 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.lockOrb}>
+            <Ionicons name="shield-outline" size={34} color={Colors.warning} />
+          </View>
+          <Text style={styles.title}>
+            {accessError ? 'Could not confirm access' : 'Tool not included in your role'}
+          </Text>
+          <Text style={styles.blurb}>
+            {accessError
+              ? 'Your dealership permissions could not be confirmed, so this protected tool remains locked.'
+              : `You are signed in as ${roleLabel}. Ask the dealership owner or an Admin if your responsibilities have changed.`}
+          </Text>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.primaryBtn}
+            accessibilityRole="button"
+          >
+            <Text style={styles.primaryBtnText}>Go back</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  if (baseDealerAccess) {
     return <>{children}</>;
   }
 
@@ -119,9 +211,12 @@ export const DealerGate: React.FC<{ children: React.ReactNode }> = ({ children }
 /** Wraps a screen component in the gate — used at navigator registration so
  *  every entry path (drawer, deep link, notification tap) is covered, not just
  *  the ones that go through a menu. */
-export const withDealerGate = <P extends object>(Screen: React.ComponentType<P>) => {
+export const withDealerGate = <P extends object>(
+  Screen: React.ComponentType<P>,
+  permission?: DealerPermission,
+) => {
   const Gated: React.FC<P> = (props) => (
-    <DealerGate>
+    <DealerGate permission={permission}>
       <Screen {...props} />
     </DealerGate>
   );
@@ -131,6 +226,17 @@ export const withDealerGate = <P extends object>(Screen: React.ComponentType<P>)
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
+  permissionLoading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  permissionLoadingText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size12,
+    color: Colors.textMuted,
+  },
   content: {
     flexGrow: 1,
     alignItems: 'center',
