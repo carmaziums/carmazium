@@ -294,6 +294,28 @@ if (
   ok('Native auction buyer fee reconciles against Stripe before auction unlock');
 }
 
+// Block 8 — hosted Stripe Checkout recovery must not become a session-ID
+// bearer capability. Authenticated callers are checked against the transaction
+// owner, with only explicit dealership permissions allowed to delegate recovery.
+if (
+  !paymentsController.includes("getSessionStatus(sessionId, user.id)") ||
+  !paymentsController.includes("applyAuctionFee(sessionId, user.id)") ||
+  !paymentsController.includes("applyKycFee(sessionId, user.id)") ||
+  !paymentsController.includes("applyHpiFee(sessionId, user.id)") ||
+  !paymentsController.includes("applyHpiEmailFee(sessionId, user.id)") ||
+  !buyerPaymentsService.includes('async assertPaymentActorAccess(') ||
+  !buyerPaymentsService.includes('async assertCheckoutSessionAccess(') ||
+  !buyerPaymentsService.includes("metadata.type === 'COMMISSION'") ||
+  !buyerPaymentsService.includes("metadata.type === 'LISTING_FEE'") ||
+  !buyerPaymentsService.includes("metadata.type === 'KYC_VERIFICATION'") ||
+  !buyerPaymentsService.includes("metadata.boostId && metadata.sellerId") ||
+  !buyerPaymentsService.includes("assertPaymentActorAccess(transaction.userId, userId)")
+) {
+  fail('Hosted Checkout recovery can drift back to unowned session-ID reconciliation');
+} else {
+  ok('Hosted Checkout recovery is bound to the authenticated payment/dealership owner');
+}
+
 if (
   !backendBidsService.includes('wonAt: true') ||
   !backendBidsService.includes('buyerFeePaid: true') ||
