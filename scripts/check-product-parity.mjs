@@ -637,6 +637,8 @@ const mobileDealerGate = read('carmazium app/carmazium app/src/components/Dealer
 const mobileDealerNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
 const mobileDealerDrawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
 const mobileDealerInventory = read('carmazium app/carmazium app/src/screens/main/DealerInventoryScreen.tsx');
+const mobileDealerCustomers = read('carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx');
+const mobileDealerOffers = read('carmazium app/carmazium app/src/screens/main/DealerOffersScreen.tsx');
 const webDealerLiveAuction = read('src/app/auctions/live/[id]/page.tsx');
 const webDealerWonAuctions = read('src/app/dashboard/dealer/auctions/won/page.tsx');
 const mobileDealerLiveAuction = read('carmazium app/carmazium app/src/screens/vehicle/AuctionDetailScreen.tsx');
@@ -670,6 +672,34 @@ if (
   fail('Native dealer UI is not bound to the backend dealership permission contract');
 } else {
   ok('Native dealer routes, drawer and inventory controls consume dealership permissions');
+}
+
+// Block 9 — shared visible terminology. Internal model/API names may stay
+// technical (Lead, DealerProfile, ServiceJob), but the navigation and page
+// labels for equivalent web/native product surfaces must not drift.
+if (
+  !webDealerRoutes.includes('label: "Stock"') ||
+  !webDealerRoutes.includes('label: "Customers"') ||
+  !webDealerRoutes.includes('label: "Offers"') ||
+  !webDealerRoutes.includes('label: "Partner Account"') ||
+  !webDealerRoutes.includes('label: "Service Jobs"') ||
+  !webDealerRoutes.includes('label: "Service Enquiries"') ||
+  !mobileDealerDrawer.includes("label: 'Stock'") ||
+  !mobileDealerDrawer.includes("label: 'Customers'") ||
+  !mobileDealerDrawer.includes("label: 'Offers'") ||
+  !mobileDealerDrawer.includes("label: 'My Retail Offers'") ||
+  !mobileDealerDrawer.includes("label: 'Saved Cars'") ||
+  !mobileDealerDrawer.includes("label: 'Finance'") ||
+  !mobileDealerCustomers.includes('>Customers</Text>') ||
+  !mobileDealerOffers.includes('>Offers Received</Text>') ||
+  !mobilePartnerDashboard.includes('>Service Jobs</Text>') ||
+  !mobilePartnerDashboard.includes('>Finance & Warranty Enquiries</Text>') ||
+  !mobileProviderJobs.includes('>Service Jobs</Text>') ||
+  !mobileProviderLeads.includes('>Finance & Warranty Enquiries</Text>')
+) {
+  fail('Shared dealer/Partner terminology drifted between web and native clients');
+} else {
+  ok('Dealer and Partner navigation terminology is aligned across web and native');
 }
 
 // Dealer auction clients must use canonical dealership identity and the same

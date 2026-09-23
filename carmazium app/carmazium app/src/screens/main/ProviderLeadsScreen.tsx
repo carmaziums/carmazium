@@ -185,8 +185,8 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
           accessibilityLabel="Go back"
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Matched Enquiries</Text>
-          <Text style={styles.headerSub}>Finance & Warranty leads</Text>
+          <Text style={styles.headerTitle}>Finance & Warranty Enquiries</Text>
+          <Text style={styles.headerSub}>Matched customer enquiries</Text>
         </View>
         <HamburgerButton />
       </View>

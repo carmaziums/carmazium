@@ -605,7 +605,7 @@ export const DealerOffersScreen: React.FC = () => {
       <View style={styles.header}>
         <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>Direct Offers</Text>
+        <Text style={styles.headerTitle}>Offers Received</Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {pendingCount > 0 && (

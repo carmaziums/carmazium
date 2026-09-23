@@ -2721,3 +2721,27 @@ Still open in Block 9:
 - Accessibility and performance certification.
 - Universal-link/App-Link website association files still require the real Apple app identifier and Android signing SHA-256 fingerprint.
 
+## 2026-09-23 — Block 9: Shared dealer and Partner terminology
+
+**Checkpoint:** equivalent dealer/Partner features now use the same visible names across web and native. Block 9 remains in progress.
+
+Audit findings:
+- Web dealer navigation already uses the simplified product language: **Stock**, **Customers**, **Offers**, **Purchases**, **Team**, **Finance**, **Analytics**, **Service Jobs** and **Service Enquiries**.
+- Native dealer navigation still exposed implementation-oriented labels such as **Dealer inventory**, **Dealer leads**, **Direct offers**, **Team Management** and **Finance applications**.
+- The Partner provider journey used **Partner Jobs** / **Matched Enquiries** on native while web used **Service Jobs** / **Finance & Warranty Enquiries**.
+- The web Partner dashboard route label said **Partner Services** even though the product and page itself use **Partner Account**.
+
+Implemented:
+- Native dealer drawer now uses **Manage Auctions**, **Customers**, **Stock**, **Saved Cars**, **Analytics**, **Team**, **Offers**, **My Retail Offers** and **Finance**.
+- Native CRM page title is **Customers** and its top-level empty/create/message copy now uses customer-facing language while internal lead-status/API terminology stays unchanged.
+- Native received-offers title is **Offers Received**.
+- Web Partner route label/title is **Partner Account**.
+- Native Partner cards and provider screens now use **Service Jobs** and **Finance & Warranty Enquiries** consistently with web.
+- Added required parity surface `ui.shared_terminology`.
+- Product parity CI now fails if these shared visible terms drift across the clients.
+
+Still open in Block 9:
+- Loading / empty / error / offline consistency.
+- Accessibility and performance certification.
+- Universal-link/App-Link website association files still require the real Apple app identifier and Android signing SHA-256 fingerprint.
+

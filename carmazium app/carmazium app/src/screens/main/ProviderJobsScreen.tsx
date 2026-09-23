@@ -198,7 +198,7 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
           accessibilityLabel="Go back"
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Partner Jobs</Text>
+          <Text style={styles.headerTitle}>Service Jobs</Text>
           <Text style={styles.headerSub}>Delivery, Recovery & Inspection</Text>
         </View>
         <HamburgerButton />

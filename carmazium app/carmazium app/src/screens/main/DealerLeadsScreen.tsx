@@ -313,7 +313,7 @@ const LeadDetail: React.FC<{
               ) : (
                 <>
                   <Ionicons name="chatbubble-ellipses-outline" size={15} color={Colors.white} />
-                  <Text style={styles.messageCTAText}>Message Lead</Text>
+                  <Text style={styles.messageCTAText}>Message Customer</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -637,7 +637,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
             )}
             contentContainerStyle={{ paddingBottom: 12 }}
             showsVerticalScrollIndicator={false}
-            ListEmptyComponent={<Text style={styles.boardColumnEmpty}>No leads</Text>}
+            ListEmptyComponent={<Text style={styles.boardColumnEmpty}>No customers</Text>}
           />
         </View>
       );
@@ -689,8 +689,8 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
   const renderEmptyState = () => (
     <View style={styles.emptyWrap}>
       <Ionicons name="people-outline" size={40} color={Colors.iconMuted} />
-      <Text style={styles.emptyTitle}>{activeFilter === 'All' ? 'No leads yet' : `No ${activeFilter.toLowerCase()} leads`}</Text>
-      <Text style={styles.emptySub}>Buyer enquiries on your listings will show up here as leads.</Text>
+      <Text style={styles.emptyTitle}>{activeFilter === 'All' ? 'No customer enquiries yet' : `No ${activeFilter.toLowerCase()} customer enquiries`}</Text>
+      <Text style={styles.emptySub}>Buyer enquiries on your listings will show up here.</Text>
     </View>
   );
 
@@ -712,7 +712,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   <View style={styles.unreadDot} />
                   <Text style={styles.headerSub}>{newCount} NEW · {newThisWeek} THIS WEEK</Text>
                </View>
-               <Text style={styles.headerTitle}>Leads</Text>
+               <Text style={styles.headerTitle}>Customers</Text>
             </View>
          </View>
          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -734,7 +734,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   <Ionicons name="albums-outline" size={15} color={viewMode === 'board' ? Colors.white : Colors.textMuted} />
                </TouchableOpacity>
             </View>
-            <IconButton style={styles.addLeadBtn} icon={<Ionicons name="add" size={20} color={Colors.white} />} onPress={() => setCreateModalVisible(true)} accessibilityLabel="Add lead" />
+            <IconButton style={styles.addLeadBtn} icon={<Ionicons name="add" size={20} color={Colors.white} />} onPress={() => setCreateModalVisible(true)} accessibilityLabel="Add customer" />
             <HamburgerButton />
          </View>
       </View>
@@ -823,7 +823,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
       <BottomSheet
         visible={createModalVisible}
         onClose={() => setCreateModalVisible(false)}
-        title="New Lead"
+        title="New Customer"
         avoidKeyboard
       >
         <>
