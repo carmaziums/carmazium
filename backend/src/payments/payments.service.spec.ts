@@ -256,6 +256,11 @@ describe('PaymentsService — createPaymentSheet (LISTING_FEE)', () => {
     });
 
     it('omits badgeTier from metadata for non-listing-fee payment types', async () => {
+        prisma.auction.findFirst.mockResolvedValue({
+            id: 'auction-1',
+            winnerId: 'user-1',
+            buyerFeePaid: false,
+        });
         await service.createPaymentSheet('listing-1', 'user-1', 125, 'COMMISSION', 'gbp');
 
         const callArg = mockPaymentIntentsCreate.mock.calls[0][0];
@@ -420,11 +425,49 @@ describe('PaymentsService — createPaymentSheet (F2: server-side amount, ignore
 
     it('charges the fixed £125 auction buyer fee for COMMISSION regardless of client-supplied amount', async () => {
         prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
+        prisma.auction.findFirst.mockResolvedValue({
+            id: 'auction-1',
+            winnerId: 'user-1',
+            buyerFeePaid: false,
+        });
 
         await service.createPaymentSheet('listing-1', 'user-1', 1, 'COMMISSION', 'gbp');
 
         expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(expect.objectContaining({ amount: 12500 }));
+    })
+
+    it('rejects an auction buyer-fee PaymentSheet when the caller is not the recorded winner', async () => {
+        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
+        prisma.auction.findFirst.mockResolvedValue({
+            id: 'auction-1',
+            winnerId: 'different-user',
+            buyerFeePaid: false,
+        });
+
+        await expect(
+            service.createPaymentSheet('listing-1', 'user-1', 125, 'COMMISSION', 'gbp'),
+        ).rejects.toThrow(/only the auction winner/i);
+
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
+        expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
     });
+
+    it('rejects a second auction buyer-fee PaymentSheet after the auction is already paid', async () => {
+        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
+        prisma.auction.findFirst.mockResolvedValue({
+            id: 'auction-1',
+            winnerId: 'user-1',
+            buyerFeePaid: true,
+        });
+
+        await expect(
+            service.createPaymentSheet('listing-1', 'user-1', 125, 'COMMISSION', 'gbp'),
+        ).rejects.toThrow(/already been paid/i);
+
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
+        expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
+    });
+;
 
     it('charges the real LISTING_FEES[badgeTier] amount regardless of a lower client-supplied amount', async () => {
         prisma.listing.findUnique.mockResolvedValue(readyRetailListing({ badgeTier: 'PREMIUM' }));
@@ -698,6 +741,11 @@ describe('PaymentsService — createCheckoutSession (F6: server-side amount, sam
 
     it('charges the fixed £125 auction buyer fee for COMMISSION regardless of client-supplied amount', async () => {
         prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, make: 'BMW', model: 'M3', year: 2022, images: [], deletedAt: null });
+        prisma.auction.findFirst.mockResolvedValue({
+            id: 'auction-1',
+            winnerId: 'user-1',
+            buyerFeePaid: false,
+        });
 
         await service.createCheckoutSession('listing-1', 'user-1', 1, 'COMMISSION', 'gbp');
 
