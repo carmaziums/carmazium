@@ -39,6 +39,7 @@ import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { buildListingActivationData } from './listing-activation';
 import { brandAdminSeller, brandListingSeller } from './admin-seller-branding';
 import { AUCTION_DURATION_MS, calculatePlatformOpeningBid } from '../auctions/auction-pricing';
+import { canRevealListingContact } from '../core/listing-contact-visibility';
 import {
     downloadExternalImage,
     ImportedListingPlatform,
@@ -1682,21 +1683,28 @@ export class ListingsService {
             ? { ...listing.seller, listingCount: (listing.seller as any)._count?.listings ?? 0 }
             : listing.seller
 
-        // Gate contact phone numbers behind login — anonymous visitors get a
-        // `phoneAvailable` boolean instead of the real number so the frontend
-        // can render a "log in to view" blurred placeholder.
+        // One contact-visibility rule is shared by web and mobile:
+        // authenticated viewers may see the number, and ACTIVE PREMIUM retail
+        // listings deliberately expose contact publicly without login.
+        // Auction contact is never unlocked by the Premium retail rule.
         if (sellerWithCount) {
             const hasPersonalPhone = !!sellerWithCount.phone;
             const hasDealerPhone = !!sellerWithCount.dealerProfile?.phone;
+            const revealContact = canRevealListingContact({
+                viewerAuthenticated: !!viewerId,
+                listingType: listing.type,
+                listingStatus: listing.status,
+                badgeTier: listing.badgeTier,
+            });
 
             sellerWithCount = {
                 ...sellerWithCount,
-                phone: viewerId ? sellerWithCount.phone : null,
+                phone: revealContact ? sellerWithCount.phone : null,
                 phoneAvailable: hasPersonalPhone,
                 ...(sellerWithCount.dealerProfile ? {
                     dealerProfile: {
                         ...sellerWithCount.dealerProfile,
-                        phone: viewerId ? sellerWithCount.dealerProfile.phone : null,
+                        phone: revealContact ? sellerWithCount.dealerProfile.phone : null,
                         phoneAvailable: hasDealerPhone,
                     },
                 } : {}),
