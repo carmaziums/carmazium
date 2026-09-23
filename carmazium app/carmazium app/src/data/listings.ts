@@ -65,6 +65,8 @@ export interface CarListing {
     id: string;
     profileImage?: string | null;
     memberSince?: string | null;
+    /** True when the listing owner has a dealer profile, regardless of verification state. */
+    isDealer?: boolean;
     isVerifiedDealer?: boolean;
     companyName?: string | null;
     description?: string | null;
