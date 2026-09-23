@@ -129,7 +129,14 @@ export class NotificationsService {
                     await this.pushToExpo(expoPushToken, {
                         title: dto.title,
                         body: dto.message,
-                        data: { ...mergedData, notifId: notification.id },
+                        data: {
+                            ...mergedData,
+                            type: dto.type,
+                            ...(dto.entityType ? { entityType: dto.entityType } : {}),
+                            ...(dto.entityId ? { entityId: dto.entityId } : {}),
+                            ...(dto.actionType ? { actionType: dto.actionType } : {}),
+                            notifId: notification.id,
+                        },
                         channelId: this.getChannelId(dto.type),
                     });
                 }
