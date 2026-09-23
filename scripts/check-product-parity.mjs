@@ -281,6 +281,9 @@ const mobileCustomerServiceJobs = read('carmazium app/carmazium app/src/screens/
 const mobileCustomerServiceJobDetail = read('carmazium app/carmazium app/src/screens/main/CustomerServiceJobDetailScreen.tsx');
 const mobileServicesScreen = read('carmazium app/carmazium app/src/screens/main/ServicesScreen.tsx');
 const mobileLinkingConfig = read('carmazium app/carmazium app/src/navigation/linking.ts');
+const mobileVehicleDeepLink = read('carmazium app/carmazium app/src/screens/vehicle/VehicleDeepLinkScreen.tsx');
+const mobileAuctionDeepLink = read('carmazium app/carmazium app/src/screens/vehicle/AuctionDeepLinkScreen.tsx');
+const mobileAppConfig = read('carmazium app/carmazium app/app.json');
 
 if (
   !webVehicleDetail.includes('message || undefined') ||
@@ -374,6 +377,25 @@ if (
   ok('Auction inspection refusal is fault-verified and refunds the full £125 buyer fee');
 }
 
+
+if (
+  !mobileVehicleDeepLink.includes('getListingById(slug)') ||
+  !mobileVehicleDeepLink.includes("name: 'VehicleDetail'") ||
+  !mobileVehicleDeepLink.includes("name: 'Tabs'") ||
+  !mobileAuctionDeepLink.includes('getAuction(auctionId)') ||
+  !mobileAuctionDeepLink.includes('auctionToListingParam(auction)') ||
+  !mobileAuctionDeepLink.includes("name: 'LiveAuctionDetailed'") ||
+  !mobileAuctionDeepLink.includes("name: 'Tabs'") ||
+  !mobileLinkingConfig.includes("path: 'buy-cars/:slug'") ||
+  !mobileLinkingConfig.includes("path: 'auctions/live/:auctionId'") ||
+  !mobileAppConfig.includes('"applinks:carmazium.com"') ||
+  !mobileAppConfig.includes('"pathPrefix": "/buy-cars"') ||
+  !mobileAppConfig.includes('"pathPrefix": "/auctions/live"')
+) {
+  fail('Native public vehicle/auction links must hydrate safely and preserve a usable back stack');
+} else {
+  ok('Native public detail links hydrate authoritative data and reset to Tabs → Detail');
+}
 
 if (
   !mobileServicesApi.includes('createInspectionFromAuction') ||
