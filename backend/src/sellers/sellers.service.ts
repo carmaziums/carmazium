@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSellerReviewDto } from './dto/create-seller-review.dto';
+import { canRevealListingContact } from '../core/listing-contact-visibility';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -96,12 +97,18 @@ export class SellersService {
     }
 
     /**
-     * Returns the seller's contact phone (personal or dealership), gated by
-     * whether the caller is authenticated. Anonymous callers get `phone: null`
-     * with `phoneAvailable` so the frontend can render a "log in to view"
-     * blurred placeholder without a real number ever reaching the network response.
+     * Returns the seller's contact phone (personal or dealership).
+     *
+     * Anonymous access is listing-scoped: only an ACTIVE PREMIUM retail
+     * listing belonging to this seller may reveal the number. Calling this
+     * endpoint without a listing id keeps the public seller-profile behaviour
+     * login-gated.
      */
-    async getContactPhone(userId: string, viewerAuthenticated: boolean): Promise<{ phone: string | null; phoneAvailable: boolean }> {
+    async getContactPhone(
+        userId: string,
+        viewerAuthenticated: boolean,
+        listingId?: string,
+    ): Promise<{ phone: string | null; phoneAvailable: boolean }> {
         await this.ensureVerifiedPublicUser(userId);
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
@@ -115,9 +122,37 @@ export class SellersService {
             throw new NotFoundException('Seller profile not found');
         }
 
+        let listingContext: {
+            type: string;
+            status: string;
+            badgeTier: string;
+        } | null = null;
+
+        if (!viewerAuthenticated && listingId) {
+            listingContext = await this.prisma.listing.findFirst({
+                where: {
+                    id: listingId,
+                    sellerId: userId,
+                    deletedAt: null,
+                },
+                select: {
+                    type: true,
+                    status: true,
+                    badgeTier: true,
+                },
+            });
+        }
+
+        const revealContact = canRevealListingContact({
+            viewerAuthenticated,
+            listingType: listingContext?.type,
+            listingStatus: listingContext?.status,
+            badgeTier: listingContext?.badgeTier,
+        });
+
         const realPhone = user.dealerProfile?.phone || user.phone || null;
         return {
-            phone: viewerAuthenticated ? realPhone : null,
+            phone: revealContact ? realPhone : null,
             phoneAvailable: !!realPhone,
         };
     }
