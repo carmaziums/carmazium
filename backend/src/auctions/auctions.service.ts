@@ -1180,6 +1180,7 @@ export class AuctionsService {
         buyerId: string,
         reason?: string,
     ): Promise<{ refused: boolean; refundedAmount: number; inspectionJobId: string }> {
+        buyerId = await this.resolveBuyerBusinessId(buyerId, 'PAY_AUCTION_FEE');
         const auction = await this.prisma.auction.findUnique({
             where: { id: auctionId },
             include: {
@@ -1732,6 +1733,7 @@ export class AuctionsService {
      * Buyer triggers a Buy It Now request. Sets pending state, notifies seller, broadcasts to viewers.
      */
     async triggerBuyItNow(auctionId: string, buyerId: string): Promise<void> {
+        buyerId = await this.resolveBuyerBusinessId(buyerId, 'PLACE_BID');
         const auction = await this.findOne(auctionId);
 
         if (auction.status !== 'ACTIVE') {
