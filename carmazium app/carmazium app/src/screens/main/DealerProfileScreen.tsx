@@ -231,9 +231,11 @@ export const DealerProfileScreen: React.FC = () => {
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>TOP LISTINGS • 7D</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('DealerInventory')}>
-              <Text style={styles.sectionActionText}>See all</Text>
-            </TouchableOpacity>
+            {can('VIEW_INVENTORY') && (
+              <TouchableOpacity onPress={() => navigation.navigate('DealerInventory')}>
+                <Text style={styles.sectionActionText}>See all</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {topListings.length > 0 ? (
@@ -281,6 +283,8 @@ export const DealerProfileScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>NEEDS ATTENTION</Text>
 
           <View style={styles.attentionList}>
+            {can('MANAGE_CRM') && (
+              <>
             {/* Leads */}
             <TouchableOpacity
               style={styles.attentionRow}
@@ -296,7 +300,11 @@ export const DealerProfileScreen: React.FC = () => {
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
+              </>
+            )}
 
+            {can('MANAGE_OFFERS') && (
+              <>
             {/* Direct offers */}
             <TouchableOpacity
               style={styles.attentionRow}
@@ -312,7 +320,11 @@ export const DealerProfileScreen: React.FC = () => {
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
+              </>
+            )}
 
+            {can('MANAGE_OFFERS') && (
+              <>
             {/* My Offers */}
             <TouchableOpacity
               style={styles.attentionRow}
@@ -328,7 +340,11 @@ export const DealerProfileScreen: React.FC = () => {
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
+              </>
+            )}
 
+            {can('VIEW_PURCHASES') && (
+              <>
             {/* Purchases */}
             <TouchableOpacity
               style={styles.attentionRow}
@@ -344,7 +360,11 @@ export const DealerProfileScreen: React.FC = () => {
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
+              </>
+            )}
 
+            {can('VIEW_ANALYTICS') && (
+              <>
             {/* Earnings */}
             <TouchableOpacity
               style={styles.attentionRow}
@@ -360,7 +380,11 @@ export const DealerProfileScreen: React.FC = () => {
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
+              </>
+            )}
 
+            {can('VIEW_TRADE') && (
+              <>
             {/* Live auctions (watch) */}
             <TouchableOpacity
               style={styles.attentionRow}
@@ -376,7 +400,11 @@ export const DealerProfileScreen: React.FC = () => {
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
+              </>
+            )}
 
+            {can('MANAGE_INVENTORY') && (
+              <>
             {/* Manage auctions (create/schedule/cancel — was previously
                 watch-only for dealers; SellerAuctionsScreen's create flow
                 already works generically, it just had no dealer entry point) */}
@@ -394,7 +422,11 @@ export const DealerProfileScreen: React.FC = () => {
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
+              </>
+            )}
 
+            {can('VIEW_PURCHASES') && (
+              <>
             {/* Finance applications */}
             <TouchableOpacity
               style={styles.attentionRow}
@@ -410,7 +442,11 @@ export const DealerProfileScreen: React.FC = () => {
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
+              </>
+            )}
 
+            {can('MANAGE_TEAM') && (
+              <>
             {/* Team */}
             <TouchableOpacity
               style={styles.attentionRow}
@@ -426,6 +462,8 @@ export const DealerProfileScreen: React.FC = () => {
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
 
@@ -539,6 +577,8 @@ export const DealerProfileScreen: React.FC = () => {
           </View>
         </View>
 
+        {can('MANAGE_INVENTORY') && (
+          <>
         {/* ADD LISTING BUTTON */}
         <TouchableOpacity
           style={styles.addListingCTA}
@@ -548,6 +588,9 @@ export const DealerProfileScreen: React.FC = () => {
           <Ionicons name="add" size={20} color={Colors.white} style={{ marginRight: 6 }} />
           <Text style={styles.addListingCTAText}>ADD LISTING</Text>
         </TouchableOpacity>
+
+          </>
+        )}
 
         {/* SWITCH BUTTON (buyer/seller) */}
         <TouchableOpacity style={[styles.switchProfileBtn, { marginTop: 12 }]} onPress={handleViewBuyerProfile} activeOpacity={0.8}>
