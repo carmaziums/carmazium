@@ -38,6 +38,14 @@ describe('BidsService — incremental bidding', () => {
                 update: jest.fn(),
             },
             user: { findUnique: jest.fn().mockResolvedValue({ firstName: 'Test', lastName: 'User' }) },
+            dealerProfile: {
+                findUnique: jest.fn().mockImplementation(({ where }: any) => Promise.resolve({
+                    id: `dealer-${where.userId}`,
+                    userId: where.userId,
+                    isVerified: true,
+                })),
+            },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $queryRaw: jest.fn(),
         };
         notificationsService = { create: jest.fn().mockResolvedValue(null) };
@@ -207,6 +215,14 @@ describe('BidsService — cancelBid', () => {
                 update: jest.fn(),
             },
             user: { findUnique: jest.fn().mockResolvedValue({ firstName: 'Test', lastName: 'User' }) },
+            dealerProfile: {
+                findUnique: jest.fn().mockImplementation(({ where }: any) => Promise.resolve({
+                    id: `dealer-${where.userId}`,
+                    userId: where.userId,
+                    isVerified: true,
+                })),
+            },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $queryRaw: jest.fn(),
         };
 
@@ -356,6 +372,14 @@ describe('BidsService — current auction positions', () => {
                 update: jest.fn(),
             },
             user: { findUnique: jest.fn() },
+            dealerProfile: {
+                findUnique: jest.fn().mockImplementation(({ where }: any) => Promise.resolve({
+                    id: `dealer-${where.userId}`,
+                    userId: where.userId,
+                    isVerified: true,
+                })),
+            },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $queryRaw: jest.fn(),
         };
 
