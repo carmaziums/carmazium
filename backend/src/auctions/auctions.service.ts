@@ -21,6 +21,12 @@ import { Auction, Prisma, ServiceType, ServiceJobStatus, InspectionOutcome } fro
 import { AUCTION_DURATION_MS, calculatePlatformOpeningBid } from './auction-pricing';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
 import { PaymentsService } from '../payments/payments.service';
+import {
+    assertDealerPermission,
+    DealerPermission,
+    resolveBusinessBuyerId,
+    resolveDealerActor,
+} from '../dealers/dealer-access';
 
 const ANTI_SNIPE_MINUTES = 3;
 // Grace window a declared winner has to pay the £125 buyer fee before the win
@@ -50,7 +56,45 @@ export class AuctionsService {
         private readonly paymentsService: PaymentsService,
     ) { }
 
+    private async resolveSellerBusinessId(
+        userId: string,
+        permission: Extract<DealerPermission, 'VIEW_INVENTORY' | 'MANAGE_INVENTORY'>,
+    ): Promise<string> {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        if (!actor) return userId;
+
+        assertDealerPermission(
+            actor,
+            permission,
+            permission === 'VIEW_INVENTORY'
+                ? 'Your dealership role does not allow auction inventory access.'
+                : 'Your dealership role does not allow auction changes.',
+        );
+        return actor.ownerUserId;
+    }
+
+    private async resolveBuyerBusinessId(
+        userId: string,
+        permission?: Extract<
+            DealerPermission,
+            'VIEW_TRADE' | 'PLACE_BID' | 'VIEW_PURCHASES' | 'PAY_AUCTION_FEE'
+        >,
+    ): Promise<string> {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        if (!actor) return userId;
+
+        if (permission) {
+            assertDealerPermission(
+                actor,
+                permission,
+                'Your dealership role does not allow this auction purchase action.',
+            );
+        }
+        return actor.ownerUserId;
+    }
+
     async create(createAuctionDto: CreateAuctionDto, userId: string): Promise<Auction> {
+        const sellerId = await this.resolveSellerBusinessId(userId, 'MANAGE_INVENTORY');
         const now = new Date();
         const startTime = new Date(createAuctionDto.startTime);
 
@@ -68,7 +112,7 @@ export class AuctionsService {
         if (!listing || listing.deletedAt) {
             throw new NotFoundException('Listing not found');
         }
-        if (listing.sellerId !== userId) {
+        if (listing.sellerId !== sellerId) {
             throw new ForbiddenException('You do not own this listing');
         }
         if (listing.status === 'SOLD') {
@@ -122,7 +166,7 @@ export class AuctionsService {
                 || linkedRetailSource.deletedAt
                 || linkedRetailSource.type !== 'CLASSIFIED'
                 || linkedRetailSource.status !== 'ACTIVE'
-                || linkedRetailSource.sellerId !== userId
+                || linkedRetailSource.sellerId !== sellerId
                 || linkedRetailSource.linkedListingId !== listing.id
             ) {
                 throw new BadRequestException(
@@ -133,7 +177,7 @@ export class AuctionsService {
             const candidates = await this.prisma.listing.findMany({
                 where: {
                     id: { not: listing.id },
-                    sellerId: userId,
+                    sellerId,
                     type: 'CLASSIFIED',
                     status: 'ACTIVE',
                     deletedAt: null,
@@ -187,7 +231,7 @@ export class AuctionsService {
                     const claimed = await tx.listing.updateMany({
                         where: {
                             id: linkedRetailSource.id,
-                            sellerId: userId,
+                            sellerId,
                             type: 'CLASSIFIED',
                             status: 'ACTIVE',
                             deletedAt: null,
