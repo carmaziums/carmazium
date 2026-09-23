@@ -69,6 +69,7 @@ The repository currently contains a mature Next.js website and an Expo/React Nat
 - Retail purchase/enquiry.
 - Auction bidding, winner fee, inspection/refusal behaviour and post-win contact.
 - Offers, history, delivery and messages.
+- **Status (23 Sep 2026): buyer business-rule remediation complete.** The verified auction inspection/refusal contract is implemented in the backend and web customer/provider surfaces. Native mobile shares the auction/refusal API contract, while the full native TradeXchange customer/provider job UI remains explicitly assigned to Block 7 rather than duplicated here.
 
 ### Block 6 — Trader/dealer journey
 - KYC gate, bidding, inventory, CRM, offers, purchases, earnings, finance, analytics, team permissions and dealer listing tools.
