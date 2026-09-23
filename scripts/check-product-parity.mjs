@@ -268,6 +268,7 @@ const mobileBuyerBids = read('carmazium app/carmazium app/src/screens/buyer/Buye
 const backendBidsService = read('backend/src/bids/bids.service.ts');
 const paymentsController = read('backend/src/payments/payments.controller.ts');
 const buyerPaymentsService = read('backend/src/payments/payments.service.ts');
+const adminServiceForPayouts = read('backend/src/admin/admin.service.ts');
 const buyerAuctionsService = read('backend/src/auctions/auctions.service.ts');
 const buyerServicesService = read('backend/src/services/services.service.ts');
 const webAuctionApi = read('src/lib/auctionApi.ts');
@@ -378,6 +379,24 @@ if (
   fail('Mobile auction fee UX can drift into duplicate charge or missing deadline guidance');
 } else {
   ok('Every mobile auction fee path reuses the same payment and preserves 72-hour guidance');
+}
+
+// Block 8 — the £100 auction seller reward must be settled exactly once.
+// Approval, Stripe retry and manual fallback share an atomic DB claim; Stripe
+// receives one stable idempotency key for the auction.
+if (
+  !adminServiceForPayouts.includes("claim:seller-bonus:") ||
+  !adminServiceForPayouts.includes('sellerPayoutIdempotencyKey') ||
+  !adminServiceForPayouts.includes('sellerBonusReleased: false') ||
+  !adminServiceForPayouts.includes('stripePayoutTransferId: claimToken') ||
+  !adminServiceForPayouts.includes("startsWith: 'claim:seller-bonus:'") ||
+  !adminServiceForPayouts.includes('manualPayoutConfirmedAt: null') ||
+  !adminServiceForPayouts.includes('Use Retry via Stripe first') ||
+  !buyerPaymentsService.includes('idempotencyKey ? { idempotencyKey } : undefined')
+) {
+  fail('Auction seller bonus payout can drift back to duplicate Stripe/manual settlement');
+} else {
+  ok('Auction seller bonus payout is atomically claimed and Stripe-idempotent');
 }
 
 // Partner/provider paid-job parity: native must keep the same authoritative
