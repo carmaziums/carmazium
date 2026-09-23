@@ -812,8 +812,11 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const isScheduled = status === 'SCHEDULED';
   const isEnded = status === 'ENDED';
   const isCancelled = status === 'CANCELLED';
-  const isSeller = !!currentUser && auction?.listing?.sellerId === currentUser.id;
-  const userWon = isEnded && !!(endedPayload?.winnerId === currentUser?.id || (auction?.winnerId && auction.winnerId === currentUser?.id));
+  const isSeller = isBusinessSeller;
+  const userWon = isEnded && !!(
+    endedPayload?.winnerId === businessUserId
+    || (auction?.winnerId && auction.winnerId === businessUserId)
+  );
   const reservePrice = auction ? Number(auction.reservePrice) : 0;
   const reserveMet = currentBid > 0 && reservePrice > 0 && currentBid >= reservePrice;
   const minIncrement = auction ? Number(auction.minIncrement) : 100;
@@ -967,7 +970,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
       )}
       {/* Seller quick-close control — only when auction is actively running */}
-      {isSeller && isActive && !reserveMet && (
+      {canManageSellerAuction && isActive && !reserveMet && (
         <View style={s.sellerToolsRow}>
           <Ionicons name="settings-outline" size={13} color={Colors.warning} />
           <Text style={s.sellerToolsLabel}>Seller Tools</Text>
@@ -984,7 +987,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       )}
-      {isSeller && isActive && !reserveMet && bidHistory[0]?.id && (
+      {canManageSellerAuction && isActive && !reserveMet && bidHistory[0]?.id && (
         <View style={[s.binSellerPanel, { borderColor: Colors.accentGreenAlpha30, backgroundColor: Colors.accentGreenAlpha08 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="cash-outline" size={16} color={Colors.accentGreen} />
@@ -1028,7 +1031,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
       )}
       {/* ── Seller BIN confirmation panel ── */}
-      {isSeller && isActive && binPendingBuyerId && auction?.buyItNowPrice && (
+      {canManageSellerAuction && isActive && binPendingBuyerId && auction?.buyItNowPrice && (
         <View style={s.binSellerPanel}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <Ionicons name="pricetag" size={16} color={Colors.warning} />
@@ -1501,7 +1504,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                         <Text style={[s.bidAmt, { fontFamily: FontFamily.mono }]}>{fmt(bid.amount)}</Text>
                         <Text style={s.bidTime}>{bid.time}</Text>
                         {/* Seller-only "Accept" button — ends the auction at this bid */}
-                        {isSeller && isActive && !reserveMet && i === 0 && (
+                        {canManageSellerAuction && isActive && !reserveMet && i === 0 && (
                           <TouchableOpacity
                             style={[s.acceptBidBtn, acceptingBidId === bid.id && { opacity: 0.6 }]}
                             onPress={() => handleAcceptBid(bid)}
@@ -1620,7 +1623,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         )}
 
         {/* ── Buy It Now panel (buyer) — hidden when reserve met or auction not active ── */}
-        {isActive && !isSeller && !isEnded && !isCancelled && auction?.buyItNowPrice && !reserveMet && (
+        {isActive && !isSeller && canPlaceBid && !isEnded && !isCancelled && auction?.buyItNowPrice && !reserveMet && (
           binPendingBuyerId ? (
             // BIN is pending — show waiting state
             <View style={s.binPendingBanner}>
