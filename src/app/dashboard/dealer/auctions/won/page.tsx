@@ -15,6 +15,7 @@ import { getWonAuctions, type Auction } from "@/lib/auctionApi"
 import { getMyBids, type Bid } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { FUEL_TYPE_LABELS, BODY_TYPE_LABELS } from "@/lib/vehicleLabels"
+import { useDealerAccess } from "@/context/DealerAccessContext"
 
 // This page is the single stop for everything about a dealer's auction bidding —
 // bids currently in play and every won auction's handover status — instead of
@@ -230,7 +231,7 @@ const GRADE_LABELS = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Averag
 
 // ─── Section 1: Won auctions, grouped by handover stage ───────────────────────
 
-function WonAuctionRow({ auction }: { auction: Auction }) {
+function WonAuctionRow({ auction, canPayAuctionFee }: { auction: Auction; canPayAuctionFee: boolean }) {
     const l = auction.listing
     const stage = stageFor(auction)
     const s = STAGE_LABELS[stage]
@@ -295,9 +296,15 @@ function WonAuctionRow({ auction }: { auction: Auction }) {
             cta={
                 stage === "fee_due" ? (
                     <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-                        <PrimaryButton href={`/checkout?listing_id=${auction.listingId}&mode=auction_fee`} icon={CreditCard}>
-                            Pay the £125 fee
-                        </PrimaryButton>
+                        {canPayAuctionFee ? (
+                            <PrimaryButton href={`/checkout?listing_id=${auction.listingId}&mode=auction_fee`} icon={CreditCard}>
+                                Pay the £125 fee
+                            </PrimaryButton>
+                        ) : (
+                            <div className="max-w-xs rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-xs text-blue-200 font-bold">
+                                The £125 fee must be paid by the dealership Owner, Admin or Finance Manager.
+                            </div>
+                        )}
                         <CallSellerButton phone={sellerPhone} phoneAvailable={sellerPhoneAvailable} />
                     </div>
                 ) : noProofYet && l.sellerId ? (
@@ -318,7 +325,7 @@ function WonAuctionRow({ auction }: { auction: Auction }) {
 
 // ─── Section 2: Live auctions currently being bid on ──────────────────────────
 
-function ActiveBidRow({ bid, tick }: { bid: Bid; tick: number }) {
+function ActiveBidRow({ bid, tick, canPlaceBid }: { bid: Bid; tick: number; canPlaceBid: boolean }) {
     const l = bid.listing
     const auction = l.auction!
     void tick // re-renders the countdown text every second without changing its own state
@@ -350,7 +357,7 @@ function ActiveBidRow({ bid, tick }: { bid: Bid; tick: number }) {
                     </SecondaryButton>
                 ) : (
                     <PrimaryButton href={`/auctions/live/${auction.id}`} icon={Gavel}>
-                        Bid again
+                        {canPlaceBid ? "Bid again" : "View auction"}
                     </PrimaryButton>
                 )
             }
@@ -362,6 +369,9 @@ function ActiveBidRow({ bid, tick }: { bid: Bid; tick: number }) {
 
 export default function MyBidsPage() {
     const { user, loading: authLoading } = useAuth()
+    const { can } = useDealerAccess()
+    const canPayAuctionFee = can("PAY_AUCTION_FEE")
+    const canPlaceBid = can("PLACE_BID")
     const [wonAuctions, setWonAuctions] = React.useState<Auction[] | null>(null)
     const [activeBids, setActiveBids] = React.useState<Bid[] | null>(null)
     const [loadError, setLoadError] = React.useState<string | null>(null)
@@ -454,7 +464,7 @@ export default function MyBidsPage() {
                                         <span className="text-sm text-[var(--text-muted)] font-bold">{grouped.fee_due.length}</span>
                                     </div>
                                     <div className="space-y-3">
-                                        {grouped.fee_due.map(a => <WonAuctionRow key={a.id} auction={a} />)}
+                                        {grouped.fee_due.map(a => <WonAuctionRow key={a.id} auction={a} canPayAuctionFee={canPayAuctionFee} />)}
                                     </div>
                                 </section>
                             )}
@@ -467,7 +477,7 @@ export default function MyBidsPage() {
                                         <span className="text-sm text-[var(--text-muted)] font-bold">{activeBids.length}</span>
                                     </div>
                                     <div className="space-y-3">
-                                        {activeBids.map(b => <ActiveBidRow key={b.listingId} bid={b} tick={tick} />)}
+                                        {activeBids.map(b => <ActiveBidRow key={b.listingId} bid={b} tick={tick} canPlaceBid={canPlaceBid} />)}
                                     </div>
                                 </section>
                             )}
@@ -480,7 +490,7 @@ export default function MyBidsPage() {
                                         <span className="text-sm text-[var(--text-muted)] font-bold">{grouped.in_progress.length}</span>
                                     </div>
                                     <div className="space-y-3">
-                                        {grouped.in_progress.map(a => <WonAuctionRow key={a.id} auction={a} />)}
+                                        {grouped.in_progress.map(a => <WonAuctionRow key={a.id} auction={a} canPayAuctionFee={canPayAuctionFee} />)}
                                     </div>
                                 </section>
                             )}
@@ -493,7 +503,7 @@ export default function MyBidsPage() {
                                         <span className="text-sm text-[var(--text-muted)] font-bold">{grouped.denied.length}</span>
                                     </div>
                                     <div className="space-y-3">
-                                        {grouped.denied.map(a => <WonAuctionRow key={a.id} auction={a} />)}
+                                        {grouped.denied.map(a => <WonAuctionRow key={a.id} auction={a} canPayAuctionFee={canPayAuctionFee} />)}
                                     </div>
                                 </section>
                             )}
@@ -506,7 +516,7 @@ export default function MyBidsPage() {
                                         <span className="text-sm text-[var(--text-muted)] font-bold">{grouped.complete.length}</span>
                                     </div>
                                     <div className="space-y-3">
-                                        {grouped.complete.map(a => <WonAuctionRow key={a.id} auction={a} />)}
+                                        {grouped.complete.map(a => <WonAuctionRow key={a.id} auction={a} canPayAuctionFee={canPayAuctionFee} />)}
                                     </div>
                                 </section>
                             )}
