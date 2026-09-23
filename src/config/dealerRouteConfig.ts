@@ -14,6 +14,7 @@ import {
     Trophy,
     Briefcase,
     Wrench,
+    ShieldCheck,
     LucideIcon
 } from "lucide-react"
 
@@ -88,6 +89,14 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         subHeader: "Auction wins and next handover steps",
         icon: Trophy,
         hidden: true,
+        section: "Business"
+    },
+    {
+        href: "/dashboard/cancellations",
+        label: "Cancellations",
+        title: "Sale Cancellations",
+        subHeader: "Review buyer and seller cancellation requests",
+        icon: ShieldCheck,
         section: "Business"
     },
     {
