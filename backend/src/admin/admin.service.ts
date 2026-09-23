@@ -1179,8 +1179,11 @@ export class AdminService {
             where: {
                 deletedAt: null,
                 sellerBonusReleased: true,
-                stripePayoutTransferId: null,
                 manualPayoutConfirmedAt: null,
+                OR: [
+                    { stripePayoutTransferId: null },
+                    { stripePayoutTransferId: { startsWith: 'claim:seller-bonus:' } },
+                ],
             },
             orderBy: { sellerBonusReleasedAt: 'asc' },
             include: {
@@ -1305,8 +1308,16 @@ export class AdminService {
         if (!auction.sellerBonusReleased) {
             throw new BadRequestException('This handover has not been approved yet.');
         }
-        if (auction.stripePayoutTransferId || auction.manualPayoutConfirmedAt) {
-            return auction; // already paid — nothing to retry
+
+        const claimToken = this.sellerPayoutClaimToken(auctionId);
+        if (auction.manualPayoutConfirmedAt) {
+            return auction;
+        }
+        if (
+            auction.stripePayoutTransferId
+            && auction.stripePayoutTransferId !== claimToken
+        ) {
+            return auction;
         }
 
         const sellerId = auction.listing?.sellerId;
@@ -1324,11 +1335,12 @@ export class AdminService {
             throw new BadRequestException('Seller still has no connected Stripe payout method.');
         }
 
-        const transferId = await this.paymentsService.issueSellerPayout(seller.stripeConnectAccountId);
-        return this.prisma.auction.update({
-            where: { id: auctionId },
-            data: { stripePayoutTransferId: transferId, stripePayoutError: null },
-        });
+        await this.settleSellerBonusViaStripe(
+            auctionId,
+            seller.stripeConnectAccountId,
+        );
+
+        return this.prisma.auction.findUnique({ where: { id: auctionId } });
     }
 
     /**
@@ -1342,10 +1354,49 @@ export class AdminService {
         if (!auction.sellerBonusReleased) {
             throw new BadRequestException('This handover has not been approved yet.');
         }
-        return this.prisma.auction.update({
-            where: { id: auctionId },
-            data: { manualPayoutConfirmedAt: new Date(), stripePayoutError: null },
+
+        if (auction.manualPayoutConfirmedAt) return auction;
+        const claimToken = this.sellerPayoutClaimToken(auctionId);
+        if (
+            auction.stripePayoutTransferId
+            && auction.stripePayoutTransferId !== claimToken
+        ) {
+            return auction; // Stripe already paid it.
+        }
+
+        const paidAt = new Date();
+        const marked = await this.prisma.auction.updateMany({
+            where: {
+                id: auctionId,
+                sellerBonusReleased: true,
+                stripePayoutTransferId: null,
+                manualPayoutConfirmedAt: null,
+            },
+            data: {
+                manualPayoutConfirmedAt: paidAt,
+                stripePayoutError: null,
+            },
         });
+
+        if (marked.count === 1) {
+            return this.prisma.auction.findUnique({ where: { id: auctionId } });
+        }
+
+        const current = await this.prisma.auction.findUnique({ where: { id: auctionId } });
+        if (!current) throw new NotFoundException('Auction not found');
+        if (current.manualPayoutConfirmedAt) return current;
+        if (
+            current.stripePayoutTransferId
+            && current.stripePayoutTransferId !== claimToken
+        ) {
+            return current;
+        }
+        if (current.stripePayoutTransferId === claimToken) {
+            throw new ConflictException(
+                'Stripe payout is in progress or awaiting an idempotent retry. Verify/retry Stripe before marking this payout manually.',
+            );
+        }
+        throw new ConflictException('Seller bonus payout state changed. Refresh and try again.');
     }
 
     async denyHandover(auctionId: string) {
