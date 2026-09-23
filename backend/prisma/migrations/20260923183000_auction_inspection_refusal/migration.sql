@@ -10,5 +10,6 @@ ALTER TABLE "service_jobs"
 
 ALTER TABLE "auctions"
   ADD COLUMN IF NOT EXISTS "buyerRefusedAt" timestamp(3),
+  ADD COLUMN IF NOT EXISTS "buyerRefusedById" text,
   ADD COLUMN IF NOT EXISTS "buyerRefusalReason" text,
   ADD COLUMN IF NOT EXISTS "buyerRefusalInspectionJobId" text;
