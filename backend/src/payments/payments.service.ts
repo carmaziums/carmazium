@@ -947,7 +947,7 @@ export class PaymentsService {
         if (metadata.type === 'COMMISSION') return 'PAY_AUCTION_FEE';
         if (metadata.type === 'LISTING_FEE') return 'PAY_LISTING_FEE';
         if (metadata.type === 'KYC_VERIFICATION') return 'MANAGE_KYC';
-        if (metadata.boostId || metadata.sellerId) return 'MANAGE_INVENTORY';
+        if (metadata.boostId && metadata.sellerId) return 'MANAGE_INVENTORY';
         return undefined;
     }
 
