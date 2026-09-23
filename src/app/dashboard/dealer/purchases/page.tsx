@@ -320,9 +320,7 @@ export default function DealerPurchasesPage() {
                     listingId={cancelItem.listingId}
                     vehicleTitle={cancelItem.vehicleTitle}
                     onClose={() => setCancelItem(null)}
-                    onCreated={() => {
-                        setPurchases(current => current.filter(item => item.id !== cancelItem.id))
-                    }}
+                    onCreated={() => {}}
                 />
             )}
 
