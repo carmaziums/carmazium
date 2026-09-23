@@ -118,8 +118,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
 
     {
         href: "/dashboard/partner",
-        label: "Partner Services",
-        title: "Partner Services",
+        label: "Partner Account",
+        title: "Partner Account",
         subHeader: "Business details, payouts and service status",
         icon: LayoutDashboard,
         hidden: true,
