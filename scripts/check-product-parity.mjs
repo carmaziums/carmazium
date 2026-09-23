@@ -571,6 +571,51 @@ if (
   ok('Native Partner dashboard, verification and matching foundation is present');
 }
 
+// Block 8 — notification routing and direct-open chat reliability.
+// Expo pushes must carry the same routing identifiers the in-app notification
+// row exposes, and both tap surfaces must share one native resolver.
+const backendNotifications = read('backend/src/notifications/notifications.service.ts');
+const mobileAppRoot = read('carmazium app/carmazium app/App.tsx');
+const mobileNotificationsScreen = read('carmazium app/carmazium app/src/screens/main/NotificationsScreen.tsx');
+const mobileNotificationRouting = read('carmazium app/carmazium app/src/lib/notificationRouting.ts');
+const mobileChatScreen = read('carmazium app/carmazium app/src/screens/main/ChatScreen.tsx');
+
+if (
+  !backendNotifications.includes('type: dto.type') ||
+  !backendNotifications.includes('entityType: dto.entityType') ||
+  !backendNotifications.includes('entityId: dto.entityId') ||
+  !backendNotifications.includes('actionType: dto.actionType') ||
+  !backendNotifications.includes('notifId: notification.id')
+) {
+  fail('Expo push payload can drift from canonical notification routing metadata');
+} else {
+  ok('Expo pushes include canonical notification routing metadata');
+}
+
+if (
+  !mobileAppRoot.includes('resolveMobileNotificationTarget') ||
+  !mobileAppRoot.includes('markNotificationRead') ||
+  !mobileAppRoot.includes('auth.authInitialized') ||
+  !mobileNotificationsScreen.includes('resolveMobileNotificationTarget') ||
+  !mobileNotificationRouting.includes('auctionToListingParam') ||
+  !mobileNotificationRouting.includes("screen: 'ChatScreen'") ||
+  !mobileNotificationRouting.includes('routeFromLink')
+) {
+  fail('Native notification list taps and OS push taps are not sharing one routing contract');
+} else {
+  ok('Native notification list, background and cold-start taps share one routing contract');
+}
+
+if (
+  !mobileChatScreen.includes('roomRefreshAttemptRef') ||
+  !mobileChatScreen.includes('refreshRooms().catch(() => {})') ||
+  !mobileChatScreen.includes('[room, threadId, refreshRooms]')
+) {
+  fail('Native direct-open chat can regress to rendering before a newly created room is hydrated');
+} else {
+  ok('Native direct-open chat hydrates newly created rooms before relying on room metadata');
+}
+
 const webPricing = read('src/lib/pricingConfig.ts');
 const mobilePricing = read('carmazium app/carmazium app/src/constants/pricing.ts');
 const payments = read('backend/src/payments/payments.service.ts');
