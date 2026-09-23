@@ -1996,6 +1996,26 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     else navigation?.goBack();
   }
 
+  function handleStartFresh() {
+    if (editMode) return;
+    Alert.alert(
+      'Start a fresh listing?',
+      'This clears the unsaved vehicle details, photos, pricing and auction settings from this form. Existing server-side drafts are not deleted.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Start Fresh',
+          style: 'destructive',
+          onPress: () => {
+            clearDraft();
+            haptics.light();
+            navigation?.replace('SellCarFlow');
+          },
+        },
+      ],
+    );
+  }
+
   // Save-and-exit — useSellWizardStore already persists draft state (see the
   // resume-draft prompt above); this just surfaces an explicit exit point on
   // any step beyond the first instead of only auto-saving on Next (SE8).
@@ -3531,6 +3551,21 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         <>
           {renderStepper()}
 
+          {!editMode && (
+            <View style={s.freshActionRow}>
+              <TouchableOpacity
+                onPress={handleStartFresh}
+                activeOpacity={0.75}
+                style={s.freshActionBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Start a fresh vehicle listing"
+              >
+                <Ionicons name="refresh-outline" size={13} color={Colors.accent} />
+                <Text style={s.freshActionText}>START FRESH</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Step 3 (Pricing)'s Delivery section has TextInputs low enough on
               the page that, with no keyboard handling, the keyboard covers
               them with no resize on iOS — reads as the page "closing" behind
@@ -3614,6 +3649,9 @@ const s = StyleSheet.create({
   headerTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.md, color: Colors.white },
 
   // Stepper
+  freshActionRow: { alignItems: 'flex-end', paddingHorizontal: 16, marginTop: -6, marginBottom: 10 },
+  freshActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha25, backgroundColor: Colors.accentAlpha05 },
+  freshActionText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.accent, letterSpacing: 0.8 },
   stepperContainer: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', paddingHorizontal: 16, marginBottom: 16 },
   stepItem: { alignItems: 'center', width: 56 },
   stepCircle: { width: 26, height: 26, borderRadius: 13, backgroundColor: Colors.whiteAlpha05, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
