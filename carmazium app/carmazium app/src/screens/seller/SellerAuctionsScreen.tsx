@@ -499,49 +499,87 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     try {
       const res = await alsoListRetail(alsoRetailAuction.listingId, price, retailTier);
 
-      // Trigger Stripe payment for the listing fee
-      try {
-        const sheet = await createPaymentSheet({
-          listingId: res.linkedListingId,
-          amount: retailTier === 'BASIC' ? 1 : retailTier === 'STANDARD' ? 10 : 25,
-          type: 'LISTING_FEE',
-          currency: 'gbp',
-          badgeTier: retailTier,
-        });
-        const { error: initError } = await initPaymentSheet({
-          merchantDisplayName: 'Carmazium',
-          customerId: sheet.customerId,
-          customerEphemeralKeySecret: sheet.ephemeralKey,
-          paymentIntentClientSecret: sheet.clientSecret,
-          allowsDelayedPaymentMethods: false,
-          appearance: {
-            colors: {
-              primary: Colors.accent,
-              background: Colors.bgSecondaryAlt,
-              componentBackground: Colors.deepBlue_18181f,
-              componentBorder: Colors.whiteAlpha08Hex,
-              primaryText: Colors.white,
-              secondaryText: Colors.textSecondary,
-              componentText: Colors.white,
-              placeholderText: Colors.iconMuted,
-              icon: Colors.textSecondary,
-              error: Colors.accent,
-            },
+      // The linked Retail row is created as a draft. It is not public until its
+      // listing fee is paid and the normal admin-review gate has completed.
+      const sheet = await createPaymentSheet({
+        listingId: res.linkedListingId,
+        amount: retailTier === 'BASIC' ? 1 : retailTier === 'STANDARD' ? 10 : 25,
+        type: 'LISTING_FEE',
+        currency: 'gbp',
+        badgeTier: retailTier,
+      });
+      const { error: initError } = await initPaymentSheet({
+        merchantDisplayName: 'Carmazium',
+        customerId: sheet.customerId,
+        customerEphemeralKeySecret: sheet.ephemeralKey,
+        paymentIntentClientSecret: sheet.clientSecret,
+        allowsDelayedPaymentMethods: false,
+        appearance: {
+          colors: {
+            primary: Colors.accent,
+            background: Colors.bgSecondaryAlt,
+            componentBackground: Colors.deepBlue_18181f,
+            componentBorder: Colors.whiteAlpha08Hex,
+            primaryText: Colors.white,
+            secondaryText: Colors.textSecondary,
+            componentText: Colors.white,
+            placeholderText: Colors.iconMuted,
+            icon: Colors.textSecondary,
+            error: Colors.accent,
           },
-        });
-        if (initError) throw new Error(initError.message);
-        const { error: presentError } = await presentPaymentSheet();
-        if (presentError && presentError.code !== 'Canceled') throw new Error(presentError.message);
-      } catch (payErr: any) {
-        // Payment failed / cancelled — listing still created as draft, non-fatal
-        Alert.alert('Note', `Classified listing created as draft (payment not completed): ${payErr?.message ?? ''}`);
+        },
+      });
+      if (initError) throw new Error(initError.message);
+
+      const { error: presentError } = await presentPaymentSheet();
+      if (presentError) {
+        if (presentError.code === 'Canceled') {
+          setAlsoRetailAuction(null);
+          Alert.alert(
+            'Payment cancelled',
+            'The Retail listing was saved as a draft. Your auction is unchanged. You can publish the Retail listing later from My Listings.',
+            [{ text: 'OK' }],
+          );
+          return;
+        }
+        throw new Error(presentError.message);
       }
+
+      // Reconcile immediately instead of waiting for the webhook/UI refresh.
+      // /publish understands both Checkout Sessions and native PaymentIntents.
+      const publish = await apiClient<{
+        success: boolean;
+        data: { activated: boolean; pendingReview?: boolean; requiresPayment?: boolean };
+      }>(`/listings/${res.linkedListingId}/publish`, { method: 'POST' });
 
       haptics.success();
       setAlsoRetailAuction(null);
-      Alert.alert('Classified Listing Created!', 'The vehicle can now be found and bought without bidding, while the auction continues.');
+
+      if (publish?.data?.activated) {
+        Alert.alert(
+          'Retail listing published',
+          'The Retail listing is live and your auction remains available under its existing rules.',
+        );
+      } else if (publish?.data?.pendingReview) {
+        Alert.alert(
+          'Retail listing submitted for review',
+          'Payment was successful. The Retail listing will go live after admin review; your auction continues separately.',
+        );
+      } else {
+        Alert.alert(
+          'Payment received',
+          'Your Retail listing was created and the payment was received. CarMazium is confirming the review submission; check My Listings shortly.',
+        );
+      }
     } catch (err: any) {
-      setRetailError(err?.message ?? 'Could not create listing. Please try again.');
+      // alsoListRetail creates the linked row before payment. Never imply that
+      // a payment error made the vehicle public; the seller can safely resume
+      // from My Listings without creating another vehicle.
+      setAlsoRetailAuction(null);
+      Alert.alert(
+        'Retail listing saved as draft',
+        `${err?.message ?? 'Payment could not be completed.'} Your auction is unchanged. Publish the Retail draft from My Listings when ready.`,
+      );
     } finally {
       setRetailSubmitting(false);
     }
