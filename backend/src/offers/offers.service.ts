@@ -15,6 +15,7 @@ import { Offer, OfferStatus } from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
 import { AuctionsService, RetailDealAuctionCancellation } from '../auctions/auctions.service';
 import { assertDealerPermission, resolveDealerActor } from '../dealers/dealer-access';
+import { DealersService } from '../dealers/dealers.service';
 
 const PENDING_OFFER_LIFETIME_MS = 72 * 60 * 60 * 1000;
 const COUNTER_OFFER_LIFETIME_MS = 48 * 60 * 60 * 1000;
@@ -27,6 +28,7 @@ export class OffersService {
         private readonly notificationsGateway: NotificationsGateway,
         private readonly emailService: EmailService,
         private readonly auctionsService: AuctionsService,
+        private readonly dealersService: DealersService,
     ) { }
 
     private isPendingOfferExpired(updatedAt: Date): boolean {
@@ -295,6 +297,19 @@ export class OffersService {
         });
 
         if (listing.sellerId) {
+            // Retail offers are real purchase intent. Keep the dealer CRM in
+            // sync automatically instead of asking dealers to re-key the buyer.
+            try {
+                await this.dealersService.syncRetailLeadActivity({
+                    listingId: listing.id,
+                    buyerId,
+                    source: 'offer',
+                    status: 'NEGOTIATING' as any,
+                });
+            } catch (error) {
+                console.error('[OffersService] Failed to sync dealer CRM lead:', error);
+            }
+
             try {
                 const notification = await this.notificationsService.create({
                     userId: listing.sellerId,

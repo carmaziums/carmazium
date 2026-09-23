@@ -6,9 +6,10 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { AuthModule } from '../auth/auth.module';
 import { EmailModule } from '../email/email.module';
 import { AuctionsModule } from '../auctions/auctions.module';
+import { DealersModule } from '../dealers/dealers.module';
 
 @Module({
-    imports: [PrismaModule, NotificationsModule, AuthModule, EmailModule, AuctionsModule],
+    imports: [PrismaModule, NotificationsModule, AuthModule, EmailModule, AuctionsModule, DealersModule],
     controllers: [OffersController],
     providers: [OffersService],
     exports: [OffersService],

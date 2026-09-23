@@ -7,6 +7,7 @@ import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { messageInboxLink } from './chat-routing';
 import { ChatAttachmentService } from './chat-attachment.service';
 import { TradeTeamService } from '../services/trade-team.service';
+import { DealersService } from '../dealers/dealers.service';
 
 /**
  * Chat service handling all chat room and message operations
@@ -21,6 +22,7 @@ export class ChatService {
         private readonly notificationsGateway: NotificationsGateway,
         private readonly chatAttachmentService: ChatAttachmentService,
         private readonly tradeTeamService: TradeTeamService,
+        private readonly dealersService: DealersService,
     ) { }
 
     /**
@@ -2425,6 +2427,18 @@ export class ChatService {
             dto.content.substring(0, 50) + (dto.content.length > 50 ? '...' : ''),
         );
 
+        if (room.context === ChatContext.RETAIL && room.listingId) {
+            try {
+                await this.dealersService.syncRetailLeadActivity({
+                    listingId: room.listingId,
+                    buyerId: senderId,
+                    source: 'chat',
+                });
+            } catch (error) {
+                console.error('[ChatService] Failed to sync retail message to dealer CRM:', error);
+            }
+        }
+
         return { message, created: true };
     }
 
@@ -2540,6 +2554,18 @@ export class ChatService {
             preview,
             { hasAttachment: true },
         );
+
+        if (room.context === ChatContext.RETAIL && room.listingId) {
+            try {
+                await this.dealersService.syncRetailLeadActivity({
+                    listingId: room.listingId,
+                    buyerId: senderId,
+                    source: 'chat',
+                });
+            } catch (error) {
+                console.error('[ChatService] Failed to sync retail photo to dealer CRM:', error);
+            }
+        }
 
         return {
             message: await this.chatAttachmentService.hydrateMessage(message),

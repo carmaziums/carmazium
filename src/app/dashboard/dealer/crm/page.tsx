@@ -7,6 +7,7 @@ import {
     Kanban, PlusCircle, User, MessageSquare,
     Loader2, ChevronRight, Phone, Mail, ArrowUpRight,
     TrendingUp, ShieldCheck, Activity, X, Search, CheckCircle,
+    Clock3, Sparkles,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -18,8 +19,8 @@ import { useRouter } from "next/navigation"
 
 const COLUMNS = [
     { key: "NEW", label: "New Leads", color: "border-blue-500/40", dotColor: "bg-blue-400", bg: "from-blue-500/5" },
-    { key: "CONTACTED", label: "Discovery", color: "border-amber-500/40", dotColor: "bg-amber-400", bg: "from-amber-500/5" },
-    { key: "QUALIFIED", label: "Qualified", color: "border-purple-500/40", dotColor: "bg-purple-400", bg: "from-purple-500/5" },
+    { key: "CONTACTED", label: "Contacted", color: "border-amber-500/40", dotColor: "bg-amber-400", bg: "from-amber-500/5" },
+    { key: "QUALIFIED", label: "Viewing / Qualified", color: "border-purple-500/40", dotColor: "bg-purple-400", bg: "from-purple-500/5" },
     { key: "NEGOTIATING", label: "Negotiating", color: "border-cyan-500/40", dotColor: "bg-cyan-400", bg: "from-cyan-500/5" },
     { key: "WON", label: "Closed Won", color: "border-emerald-500/40", dotColor: "bg-emerald-400", bg: "from-emerald-500/5" },
     { key: "LOST", label: "Lost", color: "border-red-500/40", dotColor: "bg-red-400", bg: "from-red-500/5" },
@@ -30,6 +31,36 @@ const COLUMNS = [
 // documents (CreateLeadDto: "listing_enquiry, chat, offer, walk_in, phone"),
 // which is also what mobile's DealerLeadsScreen.tsx already sends.
 const SOURCES = ["listing_enquiry", "chat", "offer", "walk_in", "phone"] as const
+
+const SOURCE_LABELS: Record<string, string> = {
+    listing_enquiry: "Listing enquiry",
+    chat: "CarMazium message",
+    offer: "Retail offer",
+    walk_in: "Walk-in",
+    phone: "Phone",
+}
+
+function formatActivityTime(value?: string | null) {
+    if (!value) return "No activity yet"
+    const date = new Date(value)
+    const diff = Date.now() - date.getTime()
+    const mins = Math.max(0, Math.floor(diff / 60_000))
+    if (mins < 1) return "Just now"
+    if (mins < 60) return `${mins}m ago`
+    const hours = Math.floor(mins / 60)
+    if (hours < 24) return `${hours}h ago`
+    const days = Math.floor(hours / 24)
+    if (days < 7) return `${days}d ago`
+    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+}
+
+function isFollowUpOverdue(lead: any) {
+    return Boolean(
+        lead?.nextFollowUpAt &&
+        !["WON", "LOST"].includes(lead.status) &&
+        new Date(lead.nextFollowUpAt).getTime() < Date.now()
+    )
+}
 
 // ─── Add Lead Modal ────────────────────────────────────────────────────────────
 
@@ -241,6 +272,7 @@ export default function DealerCRMPage() {
     const [showAddModal, setShowAddModal] = React.useState(false)
     const [startingChat, setStartingChat] = React.useState<string | null>(null)
     const [toast, setToast] = React.useState<string | null>(null)
+    const [mobileStatus, setMobileStatus] = React.useState("NEW")
     const router = useRouter()
 
     React.useEffect(() => {
@@ -288,6 +320,27 @@ export default function DealerCRMPage() {
         }
     }
 
+    async function setLeadFollowUp(leadId: string, nextFollowUpAt: string | null) {
+        try {
+            const res = await apiClient<{ data: any }>(`/dealers/leads/${leadId}`, {
+                method: "PATCH",
+                body: JSON.stringify({ nextFollowUpAt }),
+            })
+            setLeads(prev => prev.map(lead => lead.id === leadId ? { ...lead, ...res.data } : lead))
+            showToast(nextFollowUpAt ? "Follow-up reminder set" : "Follow-up reminder cleared")
+        } catch (err) {
+            console.error("Failed to update follow-up reminder:", err)
+            showToast("Failed to update follow-up reminder")
+        }
+    }
+
+    function followUpTomorrow(leadId: string) {
+        const next = new Date()
+        next.setDate(next.getDate() + 1)
+        next.setHours(9, 0, 0, 0)
+        setLeadFollowUp(leadId, next.toISOString())
+    }
+
     async function handleMessageBuyer(lead: any) {
         if (!lead.buyerId) {
             showToast("This lead has no linked buyer account. Use email/phone to contact them.")
@@ -314,7 +367,8 @@ export default function DealerCRMPage() {
         : (user?.email?.split('@')[0] || "Dealer")
 
     const leadsByStatus = (status: string) => leads.filter(l => l.status === status)
-
+    const activeLeads = leads.filter(l => !["WON", "LOST"].includes(l.status))
+    const overdueLeads = activeLeads.filter(isFollowUpOverdue)
     return (
         <div className="min-h-screen pt-20 pb-12">
             {showAddModal && (
@@ -349,34 +403,67 @@ export default function DealerCRMPage() {
                                 className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-all"
                                 shape="default"
                             >
-                                <PlusCircle size={18} /> Add Lead
+                                <PlusCircle size={18} /> Add Customer
                             </Button>
                         </PageHeader>
                     </div>
 
-                    {/* Stats bar */}
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                            <Sparkles size={18} className="text-emerald-500" />
+                        </div>
+                        <div>
+                            <p className="font-black text-sm sm:text-base text-[var(--text-primary)]">Customer enquiries are automatic</p>
+                            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1 leading-relaxed">
+                                CarMazium retail messages and offers appear here automatically and stay linked to the vehicle.
+                                Add Customer is for phone calls, walk-ins and other off-platform enquiries.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                         {[
-                            { label: "Total", count: leads.length, color: "text-[var(--text-primary)]" },
-                            { label: "Active", count: leads.filter(l => !['WON','LOST'].includes(l.status)).length, color: "text-amber-400" },
-                            { label: "Won", count: leads.filter(l => l.status === 'WON').length, color: "text-emerald-400" },
+                            { label: "New", count: leadsByStatus("NEW").length, color: "text-blue-500" },
+                            { label: "Active", count: activeLeads.length, color: "text-amber-500" },
+                            { label: "Follow-up due", count: overdueLeads.length, color: overdueLeads.length ? "text-red-500" : "text-[var(--text-muted)]" },
+                            { label: "Sold", count: leadsByStatus("WON").length, color: "text-emerald-500" },
                         ].map(s => (
                             <div key={s.label} className="glass-card p-4 text-center">
                                 <p className={`text-2xl font-black ${s.color}`}>{s.count}</p>
-                                <p className="text-xs text-[var(--text-muted)] uppercase font-bold tracking-widest">{s.label}</p>
+                                <p className="text-[10px] sm:text-xs text-[var(--text-muted)] uppercase font-bold tracking-widest">{s.label}</p>
                             </div>
                         ))}
                     </div>
 
-                    {/* Kanban Board */}
+                    <div className="lg:hidden flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                        {COLUMNS.map(col => (
+                            <button
+                                key={col.key}
+                                type="button"
+                                onClick={() => setMobileStatus(col.key)}
+                                className={`shrink-0 min-h-[42px] rounded-xl px-3.5 py-2 text-xs font-black border transition-colors ${
+                                    mobileStatus === col.key
+                                        ? "bg-primary text-white border-primary"
+                                        : "bg-[var(--bg-card)] text-[var(--text-muted)] border-[var(--border-default)]"
+                                }`}
+                            >
+                                {col.label} <span className="ml-1 opacity-70">{leadsByStatus(col.key).length}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Sales pipeline */}
                     {loading ? (
                         <div className="flex items-center justify-center py-24">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
                     ) : (
-                        <div className="flex gap-4 overflow-x-auto pb-6 -mx-2 px-2 custom-scrollbar">
+                        <div className="flex gap-4 overflow-x-hidden lg:overflow-x-auto pb-6 -mx-2 px-2 custom-scrollbar">
                             {COLUMNS.map(col => (
-                                <div key={col.key} className="flex-shrink-0 w-80">
+                                <div
+                                    key={col.key}
+                                    className={`flex-shrink-0 w-full lg:w-80 ${mobileStatus !== col.key ? "hidden lg:block" : ""}`}
+                                >
                                     <div className={`border-t-4 ${col.color} rounded-t-2xl shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.5)]`}>
                                         <div className={`flex items-center gap-2 px-5 py-4 bg-gradient-to-b ${col.bg} to-transparent rounded-t-2xl border-x border-[var(--border-default)]`}>
                                             <div className={`w-2.5 h-2.5 rounded-full ${col.dotColor} animate-pulse shadow-[0_0_8px_currentColor]`} />
@@ -434,7 +521,7 @@ export default function DealerCRMPage() {
                                                             </div>
                                                             <div>
                                                                 <p className="font-black text-sm tracking-tight">{lead.buyerName}</p>
-                                                                <p className="text-xs font-bold text-primary uppercase tracking-widest">{lead.source?.replace(/_/g, ' ') || 'Unknown source'}</p>
+                                                                <p className="text-xs font-bold text-primary uppercase tracking-widest">{SOURCE_LABELS[lead.source] || lead.source?.replace(/_/g, ' ') || 'Unknown source'}</p>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -484,6 +571,25 @@ export default function DealerCRMPage() {
                                                                 }
                                                             </button>
                                                         )}
+                                                    </div>
+
+                                                    <div className="mb-4 flex items-center justify-between gap-2 text-[10px] text-[var(--text-muted)]">
+                                                        <span className="flex items-center gap-1.5">
+                                                            <Activity size={11} />
+                                                            {formatActivityTime(lead.lastActivityAt || lead.updatedAt)}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => lead.nextFollowUpAt ? setLeadFollowUp(lead.id, null) : followUpTomorrow(lead.id)}
+                                                            className={`flex items-center gap-1 rounded-lg px-2 py-1 font-black ${
+                                                                isFollowUpOverdue(lead)
+                                                                    ? "bg-red-500/10 text-red-500"
+                                                                    : "bg-[var(--bg-card)] text-[var(--text-muted)]"
+                                                            }`}
+                                                        >
+                                                            <Clock3 size={10} />
+                                                            {lead.nextFollowUpAt ? (isFollowUpOverdue(lead) ? "Overdue" : "Reminder") : "Follow up"}
+                                                        </button>
                                                     </div>
 
                                                     {/* Status selector */}

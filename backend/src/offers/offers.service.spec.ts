@@ -7,6 +7,7 @@ import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { EmailService } from '../email/email.service';
 import { OfferResponseStatus } from './dto/respond-offer.dto';
 import { AuctionsService } from '../auctions/auctions.service';
+import { DealersService } from '../dealers/dealers.service';
 
 /**
  * Retail offers are private negotiations. One buyer's amount must never create
@@ -79,6 +80,7 @@ describe('OffersService — private retail negotiations', () => {
                     },
                 },
                 { provide: AuctionsService, useValue: auctionsService },
+                { provide: DealersService, useValue: { syncRetailLeadActivity: jest.fn().mockResolvedValue(null) } },
             ],
         }).compile();
 
@@ -357,6 +359,7 @@ describe('OffersService — accepted offer remains visible after sale', () => {
                 { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
                 { provide: EmailService, useValue: { sendOfferReceivedEmail: jest.fn(), sendOfferAcceptedEmail: jest.fn(), sendOfferRejectedEmail: jest.fn(), sendOfferCounteredEmail: jest.fn(), sendCounterAcceptedEmail: jest.fn() } },
                 { provide: AuctionsService, useValue: { cancelLinkedAuctionForRetailDeal: jest.fn().mockResolvedValue(null), publishRetailDealAuctionCancellation: jest.fn().mockResolvedValue(undefined) } },
+                { provide: DealersService, useValue: { syncRetailLeadActivity: jest.fn().mockResolvedValue(null) } },
             ],
         }).compile();
 
