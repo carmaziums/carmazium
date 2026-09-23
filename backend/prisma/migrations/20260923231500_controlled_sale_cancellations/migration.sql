@@ -102,3 +102,10 @@ CREATE INDEX IF NOT EXISTS "sale_cancellation_evidence_requestId_idx"
   ON "sale_cancellation_evidence"("requestId");
 CREATE INDEX IF NOT EXISTS "sale_cancellation_evidence_uploadedById_idx"
   ON "sale_cancellation_evidence"("uploadedById");
+
+
+-- These audit tables are server-only. Keep them protected from the exposed
+-- Supabase Data API; the Nest backend authorizes access and returns signed
+-- evidence links.
+ALTER TABLE "sale_cancellation_requests" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "sale_cancellation_evidence" ENABLE ROW LEVEL SECURITY;
