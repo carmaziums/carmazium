@@ -108,6 +108,30 @@ export class SaleCancellationsService {
         return { listing, sale, auction, acceptedOffer, buyerId, sellerId };
     }
 
+    private async blockingServiceJobs(auctionId?: string | null, offerId?: string | null) {
+        if (!auctionId && !offerId) return [];
+        return this.prisma.serviceJob.findMany({
+            where: {
+                OR: [
+                    ...(auctionId ? [{ sourceAuctionId: auctionId }] : []),
+                    ...(offerId ? [{ sourceOfferId: offerId }] : []),
+                ],
+                status: {
+                    in: ['ACCEPTED', 'PAID', 'IN_PROGRESS', 'COMPLETED', 'DISPUTED'] as any,
+                },
+            },
+            select: {
+                id: true,
+                title: true,
+                serviceType: true,
+                status: true,
+                agreedAmountPence: true,
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+        });
+    }
+
     private assertBusinessPermission(
         dealerActor: Awaited<ReturnType<typeof resolveDealerActor>>,
         side: 'BUYER' | 'SELLER',
@@ -175,7 +199,7 @@ export class SaleCancellationsService {
 
     private async hydrate(request: any) {
         if (!request) return request;
-        const [listing, hydratedEvidence] = await Promise.all([
+        const [listing, hydratedEvidence, linkedServiceJobs] = await Promise.all([
             this.prisma.listing.findUnique({
                 where: { id: request.listingId },
                 select: {
@@ -189,11 +213,13 @@ export class SaleCancellationsService {
                 },
             }),
             this.evidence.hydrateEvidence(request.evidence ?? []),
+            this.blockingServiceJobs(request.auctionId, request.offerId),
         ]);
         return {
             ...request,
             listing,
             evidence: hydratedEvidence,
+            linkedServiceJobs,
         };
     }
 
@@ -409,7 +435,9 @@ export class SaleCancellationsService {
         }
 
         const ctx = await this.context(request.listingId);
+        const linkedServiceJobs = await this.blockingServiceJobs(request.auctionId, request.offerId);
         const needsAdmin =
+            linkedServiceJobs.length > 0 ||
             !!ctx.auction?.handoverSubmittedAt ||
             !!ctx.auction?.sellerBonusReleased ||
             !!ctx.auction?.stripePayoutTransferId ||
@@ -432,7 +460,9 @@ export class SaleCancellationsService {
             });
             await this.notifyAdmins(
                 'Agreed cancellation needs admin action',
-                `Buyer and seller agreed to cancel "${ctx.listing.title}", but handover/bonus activity prevents automatic reversal.`,
+                linkedServiceJobs.length > 0
+                    ? `Buyer and seller agreed to cancel "${ctx.listing.title}", but linked TradeXchange service work has already progressed and needs review.`
+                    : `Buyer and seller agreed to cancel "${ctx.listing.title}", but handover/bonus activity prevents automatic reversal.`,
                 id,
             );
             return this.hydrate(updated);
