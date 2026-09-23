@@ -280,7 +280,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
               <View style={styles.card}>
                 <View style={styles.rowBetween}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>Partner jobs</Text>
+                    <Text style={styles.cardTitle}>Service Jobs</Text>
                     <Text style={styles.cardText}>
                       Quote on matching Delivery, Recovery and Inspection work. Accepted jobs stay here through payment, chat, start and completion.
                     </Text>
@@ -292,16 +292,16 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                   onPress={() => navigation.navigate('ProviderJobs')}
                 >
                   <Ionicons name="construct-outline" size={17} color={Colors.white} />
-                  <Text style={styles.secondaryText}>OPEN PARTNER JOBS</Text>
+                  <Text style={styles.secondaryText}>OPEN SERVICE JOBS</Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.card}>
                 <View style={styles.rowBetween}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>Matched enquiries</Text>
+                    <Text style={styles.cardTitle}>Finance & Warranty Enquiries</Text>
                     <Text style={styles.cardText}>
-                      Review Finance and Warranty leads matched to your approved services, then send or update your response from the app.
+                      Review Finance and Warranty enquiries matched to your approved services, then send or update your response from the app.
                     </Text>
                   </View>
                   <Ionicons name="mail-unread-outline" size={26} color={Colors.infoBlueLight} />
@@ -311,7 +311,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                   onPress={() => navigation.navigate('ProviderLeads')}
                 >
                   <Ionicons name="document-text-outline" size={17} color={Colors.white} />
-                  <Text style={styles.secondaryText}>OPEN MATCHED ENQUIRIES</Text>
+                  <Text style={styles.secondaryText}>OPEN ENQUIRIES</Text>
                 </TouchableOpacity>
               </View>
 
