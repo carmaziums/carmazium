@@ -25,7 +25,9 @@ const ok = (message) => console.log(`PARITY OK: ${message}`);
 const warn = (message) => console.warn(`PARITY GAP: ${message}`);
 
 function objectBlock(source, key) {
-  const keyIndex = source.indexOf(`${key}:`);
+  const keyPattern = new RegExp(`\\b${key}\\s*(?::|=)`);
+  const match = keyPattern.exec(source);
+  const keyIndex = match?.index ?? -1;
   if (keyIndex < 0) throw new Error(`Could not find object key "${key}"`);
   const open = source.indexOf('{', keyIndex);
   if (open < 0) throw new Error(`Could not find opening brace for "${key}"`);
