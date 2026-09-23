@@ -54,7 +54,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
 
-  const { signup, isLoading } = useAuthStore();
+  const { signup, prepareOAuthSignupRole, isLoading } = useAuthStore();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -65,6 +65,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
     setFormError(null);
     setIsGoogleLoading(true);
     try {
+      await prepareOAuthSignupRole(role);
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -155,7 +156,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               <View style={styles.roleRow}>
                 {([
                   { value: 'BUYER' as const, label: 'Buyer / Seller', hint: 'Buy and sell vehicles', icon: 'person-outline' as const },
-                  { value: 'DEALER' as const, label: 'Dealer', hint: 'Trade, bid at auction', icon: 'business-outline' as const },
+                  { value: 'DEALER' as const, label: 'Partner Account', hint: 'Trade, bid and add business services', icon: 'business-outline' as const },
                 ]).map(opt => {
                   const selected = role === opt.value;
                   return (
