@@ -2699,3 +2699,25 @@ Still open in Block 9:
 - Loading/empty/error/offline consistency.
 - Accessibility and performance certification.
 
+## 2026-09-23 — Block 9: Cross-role navigation and authenticated back stack
+
+**Checkpoint:** buyer/seller/dealer/partner drawer targets are registered and authenticated dashboard deep links retain a usable native back stack. Block 9 remains in progress.
+
+Audit findings:
+- All current GlobalDrawer `stackScreen` targets resolve to registered `MainStackNavigator` screens.
+- Buyer Dashboard had one real dead route: **Make an Offer** called `navigation.navigate('Search')`, but Search is a child of Tabs rather than a MainStack route.
+- Authenticated dashboard URLs in `linking.ts` targeted MainStack screens directly without a linked-state initial route, allowing a cold-started linked screen to become the only MainStack entry.
+
+Implemented:
+- Buyer Dashboard now routes **Make an Offer** through `Tabs → Search`.
+- The linked Main stack declares `initialRouteName: 'Tabs'`, preserving a home/back destination beneath linked Notifications, Messages, Settings, services and dashboard screens.
+- Added required parity surface `navigation.cross_role_backstack`.
+- Product parity CI now parses every GlobalDrawer `stackScreen` target and fails if it is not registered in MainStack.
+- Product parity CI also rejects direct top-level Buyer Dashboard Search navigation or removal of the linked Tabs initial route.
+
+Still open in Block 9:
+- Theme and terminology parity.
+- Loading / empty / error / offline consistency.
+- Accessibility and performance certification.
+- Universal-link/App-Link website association files still require the real Apple app identifier and Android signing SHA-256 fingerprint.
+
