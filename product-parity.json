@@ -494,6 +494,20 @@
       "status": "required"
     },
     {
+      "id": "navigation.public_detail_deeplinks",
+      "web": [
+        "src/app/buy-cars/[slug]/page.tsx",
+        "src/app/auctions/live/[id]/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/navigation/linking.ts",
+        "carmazium app/carmazium app/src/screens/vehicle/VehicleDeepLinkScreen.tsx",
+        "carmazium app/carmazium app/src/screens/vehicle/AuctionDeepLinkScreen.tsx",
+        "carmazium app/carmazium app/app.json"
+      ],
+      "status": "required"
+    },
+    {
       "id": "admin.operations",
       "web": [
         "src/app/dashboard/admin/page.tsx"
