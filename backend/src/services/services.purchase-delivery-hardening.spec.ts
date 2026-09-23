@@ -72,7 +72,10 @@ describe('TradeXchange purchase-to-delivery integrity', () => {
                     vehicles: data.vehicles.create,
                 })),
             },
-            user: { findMany: jest.fn().mockResolvedValue([]) },
+            user: {
+                findUnique: jest.fn().mockResolvedValue({ role: 'BUYER' }),
+                findMany: jest.fn().mockResolvedValue([]),
+            },
         };
 
         service = new ServicesService(
