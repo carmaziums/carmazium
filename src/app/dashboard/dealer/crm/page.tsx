@@ -398,14 +398,32 @@ export default function DealerCRMPage() {
                             title={DEALER_ROUTE_CONFIG[2].title}
                             subHeader={DEALER_ROUTE_CONFIG[2].subHeader}
                         >
-                            <Button
-                                onClick={() => setShowAddModal(true)}
-                                className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-all"
-                                shape="default"
-                            >
-                                <PlusCircle size={18} /> Add Customer
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Link
+                                    href="/dashboard/dealer/offers"
+                                    className="hidden sm:inline-flex h-11 items-center gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-4 text-sm font-black text-[var(--text-primary)] hover:border-primary/30 transition-colors"
+                                >
+                                    Offers received
+                                    <ChevronRight size={15} />
+                                </Link>
+                                <Button
+                                    onClick={() => setShowAddModal(true)}
+                                    className="gap-2 h-11 px-5 sm:px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-all"
+                                    shape="default"
+                                >
+                                    <PlusCircle size={18} /> Add Customer
+                                </Button>
+                            </div>
                         </PageHeader>
+                        <div className="sm:hidden mt-2">
+                            <Link
+                                href="/dashboard/dealer/offers"
+                                className="flex min-h-[44px] items-center justify-between rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-4 text-sm font-black text-[var(--text-primary)]"
+                            >
+                                Offers received
+                                <ChevronRight size={15} />
+                            </Link>
+                        </div>
                     </div>
 
                     <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-start gap-3">
