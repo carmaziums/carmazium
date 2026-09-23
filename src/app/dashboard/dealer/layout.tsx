@@ -3,9 +3,11 @@
 import React from "react"
 import { useAuth } from "@/context/AuthContext"
 import { KycOverlayForm, KYC_SKIP_KEY } from "@/components/dashboard/KycOverlayForm"
-import { Loader2, Lock, ShieldCheck, ArrowRight, Phone, AlertCircle } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { Loader2, Lock, ShieldCheck, ShieldX, ArrowRight, Phone, AlertCircle } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
 import { apiClient } from "@/lib/apiClient"
+import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
+import { DealerAccessProvider, useDealerAccess } from "@/context/DealerAccessContext"
 
 /**
  * Blocks the dealer dashboard until the dealership's contact phone is set.
@@ -85,6 +87,71 @@ function DealerPhoneGate({ onSaved }: { onSaved: () => void }) {
                 </form>
             </div>
         </div>
+    )
+}
+
+function DealerPermissionBoundary({ children }: { children: React.ReactNode }) {
+    const pathname = usePathname()
+    const { access, loading, error, refresh, can } = useDealerAccess()
+
+    const matchedRoute = React.useMemo(
+        () => DEALER_ROUTE_CONFIG
+            .filter(route => route.href.startsWith("/dashboard/dealer"))
+            .sort((a, b) => b.href.length - a.href.length)
+            .find(route =>
+                pathname === route.href
+                || (route.href !== "/dashboard/dealer" && pathname.startsWith(`${route.href}/`))
+            ),
+        [pathname],
+    )
+
+    if (loading) {
+        return (
+            <div className="min-h-[60vh] flex items-center justify-center">
+                <Loader2 className="animate-spin text-primary" size={36} />
+            </div>
+        )
+    }
+
+    if (error || !access) {
+        return (
+            <div className="min-h-[60vh] flex flex-col items-center justify-center px-6 text-center">
+                <AlertCircle className="text-amber-400 mb-4" size={36} />
+                <h2 className="text-xl font-black mb-2">Could not load dealership access</h2>
+                <p className="text-sm text-[var(--text-muted)] max-w-md mb-5">
+                    Your dealership permissions could not be confirmed. No protected action has been enabled.
+                </p>
+                <button
+                    onClick={() => void refresh()}
+                    className="px-5 py-2.5 rounded-xl bg-primary text-white font-bold"
+                >
+                    Retry
+                </button>
+            </div>
+        )
+    }
+
+    if (matchedRoute?.permission && !can(matchedRoute.permission)) {
+        return (
+            <div className="min-h-[60vh] flex flex-col items-center justify-center px-6 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-5">
+                    <ShieldX className="text-amber-400" size={28} />
+                </div>
+                <h2 className="text-2xl font-black mb-2">This tool is not part of your dealership role</h2>
+                <p className="text-sm text-[var(--text-muted)] max-w-lg">
+                    You are signed in as <span className="font-bold text-[var(--text-secondary)]">{access.role.replaceAll("_", " ")}</span>.
+                    Ask the dealership owner or an Admin if your responsibilities have changed.
+                </p>
+            </div>
+        )
+    }
+
+    return (
+        <DealerAccessProvider>
+            <DealerPermissionBoundary>
+                {children}
+            </DealerPermissionBoundary>
+        </DealerAccessProvider>
     )
 }
 
