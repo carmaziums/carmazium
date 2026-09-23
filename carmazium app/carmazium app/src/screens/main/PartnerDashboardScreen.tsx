@@ -166,6 +166,9 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
   const isPartnerRole = profile?.role === 'DEALER' || accountRole === 'dealer';
   const byType = new Map((team?.capabilities ?? []).map((cap) => [cap.serviceType, cap]));
+  const hasApprovedJobCapability =
+    byType.get('DELIVERY')?.status === 'APPROVED'
+    || byType.get('INSPECTION')?.status === 'APPROVED';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -311,6 +314,27 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                   <Text style={styles.secondaryText}>OPEN MATCHED ENQUIRIES</Text>
                 </TouchableOpacity>
               </View>
+
+              {hasApprovedJobCapability && (
+                <View style={styles.card}>
+                  <View style={styles.rowBetween}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardTitle}>Service job messages</Text>
+                      <Text style={styles.cardText}>
+                        Keep Delivery, Recovery and Inspection customer conversations separate from your general CarMazium inbox.
+                      </Text>
+                    </View>
+                    <Ionicons name="chatbubbles-outline" size={26} color={Colors.accentGreen} />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.secondaryButton}
+                    onPress={() => navigation.navigate('ProviderMessages')}
+                  >
+                    <Ionicons name="chatbubble-ellipses-outline" size={17} color={Colors.white} />
+                    <Text style={styles.secondaryText}>OPEN JOB MESSAGES</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Business payouts</Text>
