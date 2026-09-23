@@ -1,14 +1,14 @@
 ﻿"use client"
 
 import * as React from "react"
-import { Button } from "@/components/ui/Button"
-import { DollarSign, FileText, Loader2, Clock, CheckCircle, XCircle, AlertCircle, ShieldCheck, TrendingUp, Activity, BarChart3 } from "lucide-react"
+import { DollarSign, FileText, Loader2, Clock, CheckCircle, XCircle, TrendingUp, Activity, ShieldCheck } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { MetricCard } from "@/components/dashboard/MetricCard"
+import { DealerPermissionGate } from "@/components/dealer/DealerPermissionGate"
 
 const STATUS_BADGES: Record<string, string> = {
     PENDING: "bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.1)]",
@@ -21,8 +21,6 @@ export default function DealerFinancePage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [applications, setApplications] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
-    const [updatingId, setUpdatingId] = React.useState<string | null>(null)
-    const [toast, setToast] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         if (!authLoading && user) {
@@ -42,44 +40,35 @@ export default function DealerFinancePage() {
         }
     }
 
-    async function updateStatus(id: string, status: string) {
-        setUpdatingId(id)
-        try {
-            const res = await apiClient<{ data: any }>(`/finance/${id}/status`, {
-                method: 'PATCH',
-                body: JSON.stringify({ status }),
-            })
-            const updated = res?.data
-            setApplications(prev => prev.map(a => a.id === id ? { ...a, ...updated } : a))
-            setToast(`✓ Application marked as ${status.toLowerCase()}`)
-            setTimeout(() => setToast(null), 3500)
-        } catch (err: any) {
-            setToast(err.message || 'Failed to update status')
-            setTimeout(() => setToast(null), 3500)
-        } finally {
-            setUpdatingId(null)
-        }
-    }
-
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`
         : (user?.email?.split('@')[0] || "Dealer")
 
     return (
+        <DealerPermissionGate
+            permission="VIEW_ANALYTICS"
+            title="Finance view restricted"
+            description="Your dealership role does not include business reporting."
+        >
         <div className="min-h-screen pt-20 pb-12">
-            {toast && (
-                <div className="fixed bottom-6 right-6 z-50 bg-[var(--bg-input)] border border-[var(--border-default)] px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in slide-in-from-bottom-4">
-                    {toast}
-                </div>
-            )}
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
                 <main className="flex-1 space-y-6 min-w-0">
                     <PageHeader 
                         title={DEALER_ROUTE_CONFIG[5].title}
-                        subHeader={DEALER_ROUTE_CONFIG[5].subHeader}
+                        subHeader="Read-only view of finance enquiries and provider decisions"
                     />
+
+                    <div className="flex items-start gap-3 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-300">
+                        <ShieldCheck size={18} className="shrink-0 mt-0.5" />
+                        <div>
+                            <p className="font-bold">Provider-controlled decisions</p>
+                            <p className="mt-1 text-blue-300/80">
+                                Dealers can monitor finance applications linked to their vehicles. Approval, review and rejection decisions are made by the finance provider, so this page is intentionally read-only.
+                            </p>
+                        </div>
+                    </div>
 
                     {/* Summary Cards */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -123,8 +112,7 @@ export default function DealerFinancePage() {
                                         <th className="px-6 py-5 text-right">Down Payment</th>
                                         <th className="px-6 py-5 text-center">Contract Term</th>
                                         <th className="px-6 py-5 text-right">P&I Monthly</th>
-                                        <th className="px-8 py-5 text-center">Risk Status</th>
-                                        <th className="px-6 py-5 text-center">Actions</th>
+                                        <th className="px-8 py-5 text-center">Provider Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/[0.03]">
@@ -170,41 +158,6 @@ export default function DealerFinancePage() {
                                                         {app.status}
                                                     </span>
                                                 </td>
-                                                {/* Action Buttons */}
-                                                <td className="px-6 py-6">
-                                                    <div className="flex items-center gap-2 justify-center">
-                                                        {updatingId === app.id ? (
-                                                            <Loader2 size={16} className="animate-spin text-primary" />
-                                                        ) : (
-                                                            <>
-                                                                {app.status !== 'APPROVED' && app.status !== 'FUNDED' && (
-                                                                    <button
-                                                                        onClick={() => updateStatus(app.id, 'APPROVED')}
-                                                                        className="px-3 py-1.5 text-xs font-black uppercase tracking-widest rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
-                                                                    >
-                                                                        Approve
-                                                                    </button>
-                                                                )}
-                                                                {app.status === 'PENDING' && (
-                                                                    <button
-                                                                        onClick={() => updateStatus(app.id, 'REVIEWING')}
-                                                                        className="px-3 py-1.5 text-xs font-black uppercase tracking-widest rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
-                                                                    >
-                                                                        Review
-                                                                    </button>
-                                                                )}
-                                                                {app.status !== 'REJECTED' && app.status !== 'FUNDED' && (
-                                                                    <button
-                                                                        onClick={() => updateStatus(app.id, 'REJECTED')}
-                                                                        className="px-3 py-1.5 text-xs font-black uppercase tracking-widest rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
-                                                                    >
-                                                                        Reject
-                                                                    </button>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </td>
                                             </tr>
                                         ))
                                     )}
@@ -215,5 +168,6 @@ export default function DealerFinancePage() {
                 </main>
             </div>
         </div>
+        </DealerPermissionGate>
     )
 }
