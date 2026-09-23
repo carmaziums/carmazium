@@ -419,6 +419,7 @@ if (
   !webDealerAccessContext.includes('hasPermission') ||
   !webDealerGate.includes('DealerPermissionGate') ||
   !webDealerLayout.includes('DealerRoutePermissionBoundary') ||
+  !webDealerLayout.includes('access?.isVerified === true') ||
   !webDealerRoutes.includes('requiredPermission?: DealerPermission') ||
   !webDealerRoutes.includes('requiredPermission: "MANAGE_TEAM"') ||
   !webDealerInventory.includes("hasPermission('MANAGE_INVENTORY')")
@@ -432,6 +433,7 @@ if (
   !mobileDealerAccess.includes("('/dealers/access')") ||
   !mobileDealerHook.includes('hasPermission') ||
   !mobileDealerGate.includes('requiredPermission?: DealerPermission') ||
+  !mobileDealerGate.includes('access?.isVerified === true') ||
   !mobileDealerNavigator.includes("withDealerGate(DealerTeamScreen, 'MANAGE_TEAM')") ||
   !mobileDealerNavigator.includes("withDealerGate(DealerKYCScreen, 'MANAGE_KYC', true)") ||
   !mobileDealerDrawer.includes('visibleDealerItems') ||
