@@ -1129,7 +1129,7 @@ export class DealersService {
     async syncRetailLeadActivity(input: {
         listingId: string;
         buyerId: string;
-        source: 'listing_enquiry' | 'chat' | 'offer';
+        source: 'listing_enquiry' | 'chat' | 'offer' | 'phone';
         status?: LeadStatus;
     }) {
         const listing = await this.prisma.listing.findFirst({
