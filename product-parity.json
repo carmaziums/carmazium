@@ -406,8 +406,11 @@
         "src/app/dashboard/service/jobs/page.tsx",
         "src/app/dashboard/service/jobs/[id]/page.tsx"
       ],
-      "mobile": [],
-      "status": "gap"
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/ProviderJobDetailScreen.tsx"
+      ],
+      "status": "required"
     },
     {
       "id": "service_provider.leads",
