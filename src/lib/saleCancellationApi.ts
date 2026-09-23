@@ -115,7 +115,7 @@ export async function respondToSaleCancellation(
 ): Promise<SaleCancellationRequest> {
     const response = await apiClient<{ data: SaleCancellationRequest }>(`/sale-cancellations/${id}/respond`, {
         method: 'POST',
-        body: JSON.stringify({ decision, note, refundBuyerFee }),
+        body: JSON.stringify({ decision, note }),
     });
     return response.data;
 }
