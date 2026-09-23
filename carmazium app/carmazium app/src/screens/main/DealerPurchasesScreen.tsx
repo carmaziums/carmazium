@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@/components/BrandIcon';
 import { BottomSheet } from '../../components/BottomSheet';
+import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
@@ -119,6 +120,7 @@ export const DealerPurchasesScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const [summaryItem, setSummaryItem] = useState<PurchaseItem | null>(null);
+  const [cancelItem, setCancelItem] = useState<PurchaseItem | null>(null);
 
   const totalSpent = purchases.reduce((sum, p) => sum + p.purchasePrice, 0);
 
@@ -295,6 +297,16 @@ export const DealerPurchasesScreen: React.FC = () => {
         />
       )}
 
+      {cancelItem && (
+        <SaleCancellationSheet
+          visible
+          listingId={cancelItem.listingId}
+          vehicleTitle={cancelItem.vehicleTitle}
+          onClose={() => setCancelItem(null)}
+          onCreated={() => void fetchData(true)}
+        />
+      )}
+
       {/* ── Purchase summary / seller contact modal ── */}
       <BottomSheet
         visible={summaryItem != null}
@@ -383,6 +395,28 @@ export const DealerPurchasesScreen: React.FC = () => {
                   <Text style={[styles.sellerActionText, !summaryItem.sellerPhone && { color: Colors.textMuted }]}>Call</Text>
                 </TouchableOpacity>
               </View>
+
+              <TouchableOpacity
+                style={{
+                  minHeight: 46,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: Colors.accentAlpha30,
+                  backgroundColor: Colors.accentAlpha08,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                activeOpacity={0.75}
+                onPress={() => {
+                  const item = summaryItem;
+                  setSummaryItem(null);
+                  setCancelItem(item);
+                }}
+              >
+                <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent }}>
+                  Request Sale Cancellation
+                </Text>
+              </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.modalCloseBtn}
