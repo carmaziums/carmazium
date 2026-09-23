@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsDateString } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateLeadDto {
@@ -16,4 +16,9 @@ export class UpdateLeadDto {
     @IsOptional()
     @IsString()
     notes?: string;
+
+    @ApiPropertyOptional({ description: 'Next follow-up reminder (ISO timestamp). Send null to clear it.', nullable: true })
+    @IsOptional()
+    @IsDateString()
+    nextFollowUpAt?: string | null;
 }
