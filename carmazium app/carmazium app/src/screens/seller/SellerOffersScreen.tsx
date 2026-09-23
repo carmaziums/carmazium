@@ -27,12 +27,13 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { CounterLedger } from '../../components/offers/CounterLedger';
 import { ReceivedDeliveryRequestsPanel } from '../../components/delivery/ReceivedDeliveryRequestsPanel';
+import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
 // ─────────────────────────── interfaces ───────────────────────────
 
-type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED' | 'WITHDRAWN';
+type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED' | 'WITHDRAWN' | 'CANCELLED';
 
 interface Offer {
   id: string;
@@ -145,6 +146,12 @@ const STATUS_CONFIG: Record<
     chipText: Colors.textMuted,
     chipLabel: 'WITHDRAWN',
   },
+  CANCELLED: {
+    leftBorder: Colors.whiteAlpha08,
+    chipBg: Colors.whiteAlpha05,
+    chipText: Colors.textMuted,
+    chipLabel: 'CANCELLED',
+  },
 };
 
 // ═══════════════════════════ COMPONENT ════════════════════════════
@@ -161,6 +168,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
   const [counterAmount, setCounterAmount] = useState('');
   const [toast, setToast] = useState<string | null>(null);
   const [messagingBuyerId, setMessagingBuyerId] = useState<string | null>(null);
+  const [cancelOffer, setCancelOffer] = useState<Offer | null>(null);
 
   // Mark as Sold — matches web's ACCEPTED-offer flow (recordSale, PATCH
   // /listings/:id/sold), which mobile's offers screen never had at all.
@@ -313,21 +321,6 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
     } finally {
       setMessagingBuyerId(null);
     }
-  };
-
-  const handleCancelAndRelist = (offer: Offer) => {
-    Alert.alert(
-      'Cancel & Relist',
-      'Are you sure you want to cancel this offer and relist?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          style: 'destructive',
-          onPress: () => handleRespond(offer, 'REJECTED'),
-        },
-      ],
-    );
   };
 
   const openSaleModal = (offer: Offer) => {
@@ -587,15 +580,18 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
               <Text style={[styles.actionBtnText, { color: Colors.white }]}>Mark as Sold</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnDecline]}
-              activeOpacity={0.75}
-              onPress={() => handleCancelAndRelist(offer)}
-              disabled={isActioning}
-            >
-              <Text style={[styles.actionBtnText, { color: Colors.accent }]}>Cancel & Relist</Text>
-            </TouchableOpacity>
           </View>
+        {offer.status === 'ACCEPTED' && (
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.actionBtnDecline, { marginTop: 4 }]}
+            activeOpacity={0.75}
+            onPress={() => setCancelOffer(offer)}
+            disabled={isActioning}
+          >
+            <Ionicons name="close-circle-outline" size={14} color={Colors.accent} style={{ marginRight: 6 }} />
+            <Text style={[styles.actionBtnText, { color: Colors.accent }]}>Request Cancellation</Text>
+          </TouchableOpacity>
+        )}
         )}
       </View>
     );
@@ -606,7 +602,6 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
     handleAccept,
     messagingBuyerId,
     handleMessageBuyer,
-    handleCancelAndRelist,
     openSaleModal,
   ]);
 
@@ -614,6 +609,15 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
 
   return (
     <View style={styles.container}>
+      {cancelOffer && (
+        <SaleCancellationSheet
+          visible={cancelOffer != null}
+          listingId={cancelOffer.listing?.id ?? cancelOffer.listingId ?? ''}
+          vehicleTitle={cancelOffer.listing?.title ?? 'Vehicle'}
+          onClose={() => setCancelOffer(null)}
+          onCreated={() => void fetchData(true)}
+        />
+      )}
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.warningAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
