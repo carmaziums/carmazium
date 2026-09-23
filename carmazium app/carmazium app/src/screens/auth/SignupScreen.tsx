@@ -50,7 +50,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
 
-  const { signup, prepareOAuthSignupRole, isLoading } = useAuthStore();
+  const { signup, prepareOAuthSignupRole, clearOAuthSignupRole, isLoading } = useAuthStore();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -77,6 +77,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
         throw new Error('Could not get sign-in URL. Is Google enabled in Supabase?');
       }
     } catch (err: any) {
+      await clearOAuthSignupRole();
       setFormError(err.message || 'Unable to start Google sign-in.');
     } finally {
       setIsGoogleLoading(false);
@@ -102,6 +103,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
         throw new Error('Could not get Apple sign-in URL.');
       }
     } catch (err: any) {
+      await clearOAuthSignupRole();
       setFormError(err.message || 'Unable to start Apple sign-in.');
     } finally {
       setIsAppleLoading(false);
@@ -204,7 +206,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               </View>
               {role === 'DEALER' && (
                 <Text style={styles.roleNote}>
-                  You&apos;ll choose and verify your business services after signing up.
+                  Your Partner Account uses one login for your verified business activity across CarMazium.
                 </Text>
               )}
             </View>
