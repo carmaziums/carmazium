@@ -1433,6 +1433,58 @@ export class PaymentsService {
     }
 
     /**
+     * Full £125 buyer-fee refund after a completed purchase-linked inspection
+     * records FAULTS_FOUND. The idempotency key makes a retry safe if Stripe
+     * succeeds but the subsequent auction-state transaction has to be retried.
+     */
+    async issueFullRefundForAuctionInspection(auctionId: string): Promise<void> {
+        const auction = await this.prisma.auction.findUnique({ where: { id: auctionId } });
+        if (!auction?.buyerFeeTransactionId) {
+            throw new BadRequestException('No paid auction buyer fee is recorded');
+        }
+
+        const transaction = await this.prisma.transaction.findUnique({
+            where: { id: auction.buyerFeeTransactionId },
+        });
+        if (!transaction?.stripePaymentId) {
+            throw new BadRequestException('Buyer fee payment reference is missing');
+        }
+
+        const stripe = await this.getStripe();
+        let paymentIntentId: string | null = null;
+        if (transaction.stripePaymentId.startsWith('pi_')) {
+            paymentIntentId = transaction.stripePaymentId;
+        } else {
+            const session = await stripe.checkout.sessions.retrieve(transaction.stripePaymentId);
+            paymentIntentId =
+                typeof session.payment_intent === 'string'
+                    ? session.payment_intent
+                    : session.payment_intent?.id ?? null;
+        }
+
+        if (!paymentIntentId) {
+            throw new BadRequestException('Buyer fee payment could not be resolved for refund');
+        }
+
+        await stripe.refunds.create(
+            {
+                payment_intent: paymentIntentId,
+                amount: 12500,
+            },
+            {
+                idempotencyKey: `auction-inspection-refusal-${transaction.id}`,
+            },
+        );
+
+        if (transaction.status !== ('REFUNDED' as any)) {
+            await this.prisma.transaction.update({
+                where: { id: transaction.id },
+                data: { status: 'REFUNDED' as any },
+            });
+        }
+    }
+
+    /**
      * Transfer the seller payout (£100) to their connected Stripe Express account.
      * Called by AdminService after superadmin approves handover proof.
      */
