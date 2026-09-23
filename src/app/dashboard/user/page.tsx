@@ -98,6 +98,7 @@ import {
 import { apiClient } from "@/lib/apiClient"
 import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
 import { ImportListingModal } from "@/components/features/ImportListingModal"
+import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 
 export default function UnifiedUserDashboard() {
     return (
@@ -516,6 +517,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [deleting, setDeleting] = React.useState<string | null>(null)
     const [boosting, setBoosting] = React.useState<string | null>(null)
     const [saleListing, setSaleListing] = React.useState<Listing | null>(null)
+    const [cancelListing, setCancelListing] = React.useState<Listing | null>(null)
     const [publishing, setPublishing] = React.useState<string | null>(null)
     const [showImportModal, setShowImportModal] = React.useState(false)
     const [openMenuId, setOpenMenuId] = React.useState<string | null>(null)
@@ -586,19 +588,6 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
             alert('Boost failed: ' + err.message)
         } finally {
             setBoosting(null)
-        }
-    }
-
-    const handleRelist = async (listingId: string) => {
-        try {
-            await apiClient(`/listings/${listingId}/status`, {
-                method: 'PATCH',
-                body: JSON.stringify({ status: 'ACTIVE' }),
-            })
-            fetchListings()
-            onRefreshStats()
-        } catch (err: any) {
-            alert('Failed to relist: ' + err.message)
         }
     }
 
@@ -688,10 +677,10 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                         </button>
                                     ) : listing.status === 'SOLD' ? (
                                         <button
-                                            onClick={() => handleRelist(listing.id)}
-                                            className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-blue-500 text-white font-bold text-sm"
+                                            onClick={() => setCancelListing(listing)}
+                                            className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 font-bold text-sm"
                                         >
-                                            <RefreshCw size={16} /> Relist
+                                            <XCircle size={16} /> Cancel sale
                                         </button>
                                     ) : listing.status === 'ACTIVE' || listing.status === 'OFFER_ACCEPTED' ? (
                                         <button
@@ -879,10 +868,10 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         )}
                                                         {listing.status === 'SOLD' && (
                                                             <button
-                                                                onClick={() => handleRelist(listing.id)}
-                                                                className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-blue-500/10 text-blue-400 w-full text-left font-bold"
+                                                                onClick={() => setCancelListing(listing)}
+                                                                className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-red-500/10 text-red-400 w-full text-left font-bold"
                                                             >
-                                                                <RefreshCw size={14} /> Relist
+                                                                <XCircle size={14} /> Cancel sale
                                                             </button>
                                                         )}
                                                         <button
@@ -915,6 +904,18 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                 )}
             </div>
 
+            {cancelListing && (
+                <SaleCancellationModal
+                    listingId={cancelListing.id}
+                    vehicleTitle={cancelListing.title}
+                    onClose={() => setCancelListing(null)}
+                    onCreated={() => {
+                        void fetchListings()
+                        onRefreshStats()
+                    }}
+                />
+            )}
+
             {saleListing && (
                 <RecordSaleModal 
                     listing={saleListing} 
@@ -941,6 +942,7 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [responding, setResponding] = React.useState<string | null>(null)
     const [countering, setCountering] = React.useState<{id: string, amount: string} | null>(null)
     const [saleContext, setSaleContext] = React.useState<{ listing: Listing; offer: Offer } | null>(null)
+    const [cancelOfferListing, setCancelOfferListing] = React.useState<Listing | null>(null)
     const router = useRouter()
     const { refreshRooms } = useChat()
 
@@ -1011,6 +1013,15 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {cancelOfferListing && (
+                <SaleCancellationModal
+                    listingId={cancelOfferListing.id}
+                    vehicleTitle={cancelOfferListing.title}
+                    onClose={() => setCancelOfferListing(null)}
+                    onCreated={() => void fetchOffers()}
+                />
+            )}
+
             {saleContext && (
                 <RecordSaleModal
                     listing={saleContext.listing}
@@ -1116,6 +1127,7 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                                     {offer.status === 'ACCEPTED' && (
                                                                         <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto mt-1 sm:mt-0">
                                                                             <button onClick={() => handleMessage(offer.buyerId, listing.id)} className="min-h-[44px] sm:h-8 sm:min-h-0 rounded-xl sm:rounded-md border border-blue-500/30 sm:border-0 text-blue-400 font-bold text-sm">Message</button>
+                                                                            <button onClick={() => setCancelOfferListing(listing)} className="min-h-[44px] sm:h-8 sm:min-h-0 rounded-xl sm:rounded-md border border-red-500/30 text-red-400 font-bold text-sm">Cancel sale</button>
                                                                             <button onClick={() => setSaleContext({ listing, offer })} className="min-h-[44px] sm:h-8 sm:min-h-0 rounded-xl sm:rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm">Mark as Sold</button>
                                                                         </div>
                                                                     )}
@@ -1211,6 +1223,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [buyerCountering, setBuyerCountering] = React.useState<string | null>(null)
     const [viewMode, setViewMode] = React.useState<'current' | 'history' | 'all'>('current')
     const [amendingOffer, setAmendingOffer] = React.useState<Offer | null>(null)
+    const [cancelPurchaseListing, setCancelPurchaseListing] = React.useState<{ id: string; title: string } | null>(null)
     const router = useRouter()
     const { refreshRooms } = useChat()
 
@@ -1326,6 +1339,15 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                     offer={amendingOffer}
                     onClose={() => setAmendingOffer(null)}
                     onSaved={async () => { await fetchData(); onRefreshStats() }}
+                />
+            )}
+
+            {cancelPurchaseListing && (
+                <SaleCancellationModal
+                    listingId={cancelPurchaseListing.id}
+                    vehicleTitle={cancelPurchaseListing.title}
+                    onClose={() => setCancelPurchaseListing(null)}
+                    onCreated={() => void fetchData()}
                 />
             )}
 
@@ -1466,6 +1488,15 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                 className="w-full min-h-[44px] mt-2 rounded-xl border border-red-500/20 text-red-400 font-bold text-sm disabled:opacity-60"
                                             >
                                                 {actioning === offer.id ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : 'Cancel bid'}
+                                            </button>
+                                        )}
+
+                                        {offer.status === 'ACCEPTED' && offer.listing?.id && (
+                                            <button
+                                                onClick={() => setCancelPurchaseListing({ id: offer.listing!.id, title: offer.listing!.title || "Vehicle" })}
+                                                className="w-full min-h-[46px] mt-3 rounded-xl border border-red-500/30 text-red-400 font-bold text-sm"
+                                            >
+                                                Request sale cancellation
                                             </button>
                                         )}
 
@@ -1620,6 +1651,17 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         </Button>
                                                     )}
                                                     {offer.status === 'ACCEPTED' && (
+                                                        <>
+                                                        {offer.listing?.id && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="h-8 text-red-400 text-xs font-black"
+                                                                onClick={() => setCancelPurchaseListing({ id: offer.listing!.id, title: offer.listing!.title || "Vehicle" })}
+                                                            >
+                                                                CANCEL SALE
+                                                            </Button>
+                                                        )}
                                                         <Button
                                                             size="sm"
                                                             variant="ghost"
@@ -1629,6 +1671,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         >
                                                             {startingChat === offer.listing?.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'MESSAGE'}
                                                         </Button>
+                                                        </>
                                                     )}
                                                 </div>
                                             </td>
