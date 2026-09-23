@@ -257,6 +257,8 @@ const mobileProviderVerification = read('carmazium app/carmazium app/src/screens
 const mobileProviderMatching = read('carmazium app/carmazium app/src/screens/main/ProviderMatchingScreen.tsx');
 const mobileProviderJobs = read('carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx');
 const mobileProviderJobDetail = read('carmazium app/carmazium app/src/screens/main/ProviderJobDetailScreen.tsx');
+const mobileProviderLeads = read('carmazium app/carmazium app/src/screens/main/ProviderLeadsScreen.tsx');
+const mobileProviderLeadDetail = read('carmazium app/carmazium app/src/screens/main/ProviderLeadDetailScreen.tsx');
 const mobileServicesApi = read('carmazium app/carmazium app/src/lib/servicesApi.ts');
 const mobileChatApi = read('carmazium app/carmazium app/src/lib/chatApi.ts');
 const mobileMainNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
@@ -372,6 +374,22 @@ if (
   fail('Native Partner Jobs must preserve feed/quote/work/inspection/chat parity with web');
 } else {
   ok('Native Partner Jobs preserve provider lifecycle and service-job chat parity');
+}
+
+// Partner/provider Finance & Warranty lead parity: native must keep the
+// authoritative matched inbox/detail contract and structured provider response.
+if (
+  !mobileServicesApi.includes('/services/leads/inbox?') ||
+  !mobileServicesApi.includes('/services/leads/inbox/${id}') ||
+  !mobileServicesApi.includes('/services/leads/${id}/respond') ||
+  !mobileProviderLeads.includes("navigation.navigate('ProviderLeadDetail'") ||
+  !mobileProviderLeadDetail.includes("lead.serviceType === 'FINANCE'") ||
+  !mobileProviderLeadDetail.includes('representativeApr') ||
+  !mobileProviderLeadDetail.includes('respondToProviderLead(lead.id')
+) {
+  fail('Native Partner Leads must preserve Finance/Warranty inbox, detail and response parity');
+} else {
+  ok('Native Partner Leads preserve matched enquiry and provider response parity');
 }
 
 // Dealer business identity / RBAC: staff must act under one dealership identity
