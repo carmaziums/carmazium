@@ -28,123 +28,71 @@ export interface DealerRoute {
     requiredPermission?: DealerPermission
 }
 
+/**
+ * Keep the persistent dealer navigation intentionally small.
+ * Secondary tools stay routable and are exposed from the Dealer Command
+ * Centre in job-based groups, instead of forcing dealers through a 15–20
+ * item sidebar / mobile More menu.
+ */
 export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     {
         href: "/dashboard/dealer",
-        label: "Dealer Home",
-        title: "Vehicle Dealer",
-        subHeader: "Dealer workspace",
-        icon: Car,
-        section: "Workspaces"
-    },
-    {
-        href: "/dashboard/partner",
-        label: "Partner Home",
-        title: "Partner Dashboard",
-        subHeader: "Manage your business add-ons",
+        label: "Home",
+        title: "Dealer Command Centre",
+        subHeader: "Run your dealership from one place",
         icon: LayoutDashboard,
-        section: "Workspaces"
-    },
-    {
-        href: "/dashboard/service/capabilities",
-        label: "Service Add-ons",
-        title: "Service Add-ons",
-        subHeader: "Delivery, inspection, finance and warranty services",
-        icon: Wrench,
-        section: "Workspaces"
-    },
-    {
-        href: "/dashboard/service/jobs",
-        label: "Service Jobs",
-        title: "Service Jobs",
-        subHeader: "TradeXchange work for your business",
-        icon: Briefcase,
-        section: "Workspaces"
-    },
-    {
-        href: "/dashboard/service/leads",
-        label: "Service Enquiries",
-        title: "Finance & Warranty Enquiries",
-        subHeader: "Matched TradeXchange customer enquiries",
-        icon: Briefcase,
-        section: "Workspaces"
+        section: "Main"
     },
     {
         href: "/dashboard/dealer/inventory",
         requiredPermission: "VIEW_INVENTORY",
-        label: "Inventory",
+        label: "Stock",
         title: "Inventory",
-        subHeader: "Curate and manage your high-end stock",
+        subHeader: "Manage live, draft and sold stock",
         icon: Car,
-        section: "Sales"
+        section: "Main"
     },
     {
         href: "/dashboard/dealer/crm",
         requiredPermission: "MANAGE_CRM",
         label: "Leads",
         title: "Leads",
-        subHeader: "Strategic lead management & conversion tracking",
+        subHeader: "Sales pipeline and buyer follow-up",
         icon: Kanban,
-        section: "Sales"
+        section: "Main"
     },
     {
         href: "/dashboard/dealer/offers",
         requiredPermission: "MANAGE_OFFERS",
-        label: "Offers Received",
-        title: "Offers",
-        subHeader: "Direct high-value vehicle acquisition review",
+        label: "Offers",
+        title: "Offers Received",
+        subHeader: "Review offers on your vehicles",
         icon: Tag,
-        section: "Sales"
-    },
-    {
-        href: "/dashboard/dealer/my-offers",
-        requiredPermission: "MANAGE_OFFERS",
-        label: "My Offers",
-        title: "My Offers",
-        subHeader: "Retail offers you've made on marketplace vehicles",
-        icon: Gavel,
-        section: "Buying"
-    },
-    {
-        href: "/dashboard/dealer/bids",
-        requiredPermission: "VIEW_TRADE",
-        label: "My Auction Bids",
-        title: "My Auction Bids",
-        subHeader: "Live auctions you're currently bidding on",
-        icon: Gavel,
-        section: "Buying"
+        section: "Main"
     },
     {
         href: "/dashboard/dealer/auctions",
         requiredPermission: "VIEW_TRADE",
         label: "Auctions",
         title: "Auctions",
-        subHeader: "Manage live vehicle auctions & bidding",
+        subHeader: "Browse, bid and manage auctions",
         icon: Gavel,
-        section: "Buying"
+        section: "Main"
     },
     {
         href: "/dashboard/dealer/auctions/won",
         requiredPermission: "VIEW_PURCHASES",
-        label: "Auction Purchases",
+        label: "Purchases",
         title: "Purchased from Auction",
-        subHeader: "Every auction you're bidding on or have won, and exactly what to do next",
+        subHeader: "Auction wins and next handover steps",
         icon: Trophy,
-        section: "Buying"
-    },
-    {
-        href: "/dashboard/dealer/wishlist",
-        label: "Saved Cars",
-        title: "Saved Cars",
-        subHeader: "Vehicles you've saved to review and make offers on",
-        icon: Heart,
-        section: "Buying"
+        section: "Business"
     },
     {
         href: "/dashboard/dealer/messages",
         label: "Messages",
         title: "Messages",
-        subHeader: "Direct bespoke communication",
+        subHeader: "Customer and support conversations",
         icon: MessageSquare,
         section: "Business"
     },
@@ -153,16 +101,91 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         requiredPermission: "MANAGE_TEAM",
         label: "Team",
         title: "Team",
-        subHeader: "Manage business personnel & service permissions",
+        subHeader: "Manage staff and permissions",
         icon: Users,
         section: "Business"
+    },
+    {
+        href: "/dashboard/dealer/settings",
+        label: "Settings",
+        title: "Settings",
+        subHeader: "Business profile and preferences",
+        icon: Settings,
+        section: "Business"
+    },
+
+    {
+        href: "/dashboard/partner",
+        label: "Partner Services",
+        title: "Partner Services",
+        subHeader: "Business details, payouts and service status",
+        icon: LayoutDashboard,
+        hidden: true,
+        section: "Services"
+    },
+    {
+        href: "/dashboard/service/capabilities",
+        label: "Service Add-ons",
+        title: "Service Add-ons",
+        subHeader: "Delivery, inspection, finance and warranty services",
+        icon: Wrench,
+        hidden: true,
+        section: "Services"
+    },
+    {
+        href: "/dashboard/service/jobs",
+        label: "Service Jobs",
+        title: "Service Jobs",
+        subHeader: "TradeXchange delivery and inspection work",
+        icon: Briefcase,
+        hidden: true,
+        section: "Services"
+    },
+    {
+        href: "/dashboard/service/leads",
+        label: "Service Enquiries",
+        title: "Finance & Warranty Enquiries",
+        subHeader: "Matched TradeXchange customer enquiries",
+        icon: Briefcase,
+        hidden: true,
+        section: "Services"
+    },
+    {
+        href: "/dashboard/dealer/my-offers",
+        requiredPermission: "MANAGE_OFFERS",
+        label: "My Retail Offers",
+        title: "My Offers",
+        subHeader: "Retail offers made on marketplace vehicles",
+        icon: Tag,
+        hidden: true,
+        section: "Buying"
+    },
+    {
+        href: "/dashboard/dealer/bids",
+        requiredPermission: "VIEW_TRADE",
+        label: "My Auction Bids",
+        title: "My Auction Bids",
+        subHeader: "Auctions you are currently bidding on",
+        icon: Gavel,
+        hidden: true,
+        section: "Buying"
+    },
+    {
+        href: "/dashboard/dealer/wishlist",
+        label: "Saved Cars",
+        title: "Saved Cars",
+        subHeader: "Vehicles saved for later",
+        icon: Heart,
+        hidden: true,
+        section: "Buying"
     },
     {
         href: "/dashboard/dealer/finance",
         label: "Finance",
         title: "Finance",
-        subHeader: "Strategic vehicle financing & liquidity oversight",
+        subHeader: "Dealership finance tools",
         icon: DollarSign,
+        hidden: true,
         section: "Business"
     },
     {
@@ -170,8 +193,9 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         requiredPermission: "VIEW_ANALYTICS",
         label: "Analytics",
         title: "Analytics",
-        subHeader: "Strategic market performance & predictive insights",
+        subHeader: "Dealership performance and insights",
         icon: BarChart3,
+        hidden: true,
         section: "Performance"
     },
     {
@@ -179,16 +203,9 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         requiredPermission: "VIEW_ANALYTICS",
         label: "Earnings",
         title: "Revenue & Earnings",
-        subHeader: "Strategic revenue tracking and platform sales history",
+        subHeader: "Revenue and platform sales history",
         icon: DollarSign,
+        hidden: true,
         section: "Performance"
-    },
-    {
-        href: "/dashboard/dealer/settings",
-        label: "Settings",
-        title: "Settings",
-        subHeader: "Manage your business profile and preferences",
-        icon: Settings,
-        section: "Account"
     }
 ]
