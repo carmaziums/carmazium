@@ -14,6 +14,8 @@ export interface MetricCardProps {
     loading?: boolean
     href?: string
     subLabel?: string
+    /** Decorative trend lines can imply data that is not actually measured. */
+    showSparkline?: boolean
 }
 
 export function MetricCard({
@@ -28,6 +30,7 @@ export function MetricCard({
     loading = false,
     href,
     subLabel,
+    showSparkline = true,
 }: MetricCardProps) {
     // Long formatted values (e.g. "£101,600.00") outgrow a fixed text-3xl on
     // narrower cards and butt right up against the card's edge — step the
@@ -56,10 +59,11 @@ export function MetricCard({
                 </p>
             )}
             <p className="text-[var(--text-muted)] text-xs mt-1 uppercase tracking-widest font-bold relative z-10">{label}</p>
-            {/* Synthetic Sparkline */}
-            <svg className="absolute bottom-0 left-0 w-full h-12 opacity-20 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100">
-                <path d="M0,100 L0,80 Q25,90 50,70 T100,50 L100,100 Z" fill="currentColor" className={color} />
-            </svg>
+            {showSparkline && (
+                <svg className="absolute bottom-0 left-0 w-full h-12 opacity-20 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100" aria-hidden="true">
+                    <path d="M0,100 L0,80 Q25,90 50,70 T100,50 L100,100 Z" fill="currentColor" className={color} />
+                </svg>
+            )}
         </>
     )
 
