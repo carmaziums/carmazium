@@ -5,11 +5,9 @@ import Link from "next/link"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import {
-    Car, Eye, TrendingUp, Users, Kanban, Gavel,
+    Car, Eye, TrendingUp, Kanban, Gavel,
     PlusCircle, Loader2, Building2, CheckCircle,
-    Mail, Activity, ShieldCheck, Zap, Tag, Trophy,
-    Heart, DollarSign, BarChart3, Briefcase, Wrench,
-    Settings, MessageSquare, ChevronRight
+    Mail, ShieldCheck, BarChart3, ChevronRight
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PeriodToggle } from "@/components/dashboard/PeriodToggle"
@@ -42,13 +40,9 @@ export default function DealerDashboard() {
     const [resendSuccess, setResendSuccess] = React.useState(false)
     const { loading: accessLoading, hasPermission } = useDealerAccess()
 
-    const canViewInventory = hasPermission('VIEW_INVENTORY')
     const canManageInventory = hasPermission('MANAGE_INVENTORY')
     const canManageCrm = hasPermission('MANAGE_CRM')
-    const canManageOffers = hasPermission('MANAGE_OFFERS')
     const canViewTrade = hasPermission('VIEW_TRADE')
-    const canViewPurchases = hasPermission('VIEW_PURCHASES')
-    const canManageTeam = hasPermission('MANAGE_TEAM')
     const canViewAnalytics = hasPermission('VIEW_ANALYTICS')
 
     const isEmailVerified = !!user?.email_confirmed_at
@@ -132,67 +126,43 @@ export default function DealerDashboard() {
         ? `${profile.firstName} ${profile.lastName || ""}`
         : (user?.email?.split('@')[0] || "Dealer")
 
-    const dealerToolGroups = [
+    const dashboardActions = [
         {
-            title: "Sell & stock",
-            description: "List cars, manage stock and turn enquiries into sales.",
-            eyebrow: "Sales",
-            accent: "bg-cyan-400",
-            header: "from-cyan-500/20 via-blue-500/10 to-transparent border-cyan-400/25",
-            iconBox: "bg-gradient-to-br from-cyan-400 to-blue-600 text-white",
-            tools: [
-                { href: "/dashboard/dealer/add-listing", title: "Add vehicle", description: "Create a new listing.", icon: PlusCircle, show: canManageInventory },
-                { href: "/dashboard/dealer/inventory", title: "Inventory", description: "Live, draft and sold stock.", icon: Car, show: canViewInventory },
-                { href: "/dashboard/dealer/crm", title: "Leads", description: "Buyer enquiries and follow-up.", icon: Kanban, show: canManageCrm },
-                { href: "/dashboard/dealer/offers", title: "Offers received", description: "Review offers on your vehicles.", icon: Tag, show: canManageOffers },
-            ].filter(tool => tool.show),
+            href: "/dashboard/dealer/add-listing",
+            title: "Add vehicle",
+            description: "Create one new retail or auction listing.",
+            icon: PlusCircle,
+            show: canManageInventory,
         },
         {
-            title: "Buy & auctions",
-            description: "See every buying action without searching through menus.",
-            eyebrow: "Buying",
-            accent: "bg-violet-400",
-            header: "from-violet-500/20 via-fuchsia-500/10 to-transparent border-violet-400/25",
-            iconBox: "bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white",
-            tools: [
-                { href: "/dashboard/dealer/auctions", title: "Auctions", description: "Browse and bid on live auctions.", icon: Gavel, show: canViewTrade },
-                { href: "/dashboard/dealer/bids", title: "My auction bids", description: "Auctions you are bidding on.", icon: Gavel, show: canViewTrade },
-                { href: "/dashboard/dealer/my-offers", title: "My retail offers", description: "Offers made on retail cars.", icon: Tag, show: canManageOffers },
-                { href: "/dashboard/dealer/auctions/won", title: "Purchases", description: "Auction wins and next steps.", icon: Trophy, show: canViewPurchases },
-                { href: "/dashboard/dealer/wishlist", title: "Saved cars", description: "Vehicles saved for later.", icon: Heart, show: true },
-            ].filter(tool => tool.show),
+            href: "/dashboard/dealer/crm",
+            title: "Customers",
+            description: "Enquiries, offers and follow-up in one sales workflow.",
+            icon: Kanban,
+            show: canManageCrm,
         },
         {
-            title: "Business",
-            description: "Communication, staff and account tools together.",
-            eyebrow: "Operations",
-            accent: "bg-emerald-400",
-            header: "from-emerald-500/20 via-teal-500/10 to-transparent border-emerald-400/25",
-            iconBox: "bg-gradient-to-br from-emerald-400 to-teal-600 text-white",
-            tools: [
-                { href: "/dashboard/dealer/messages", title: "Messages", description: "Customer and support conversations.", icon: MessageSquare, show: true },
-                { href: "/dashboard/dealer/team", title: "Team", description: "Staff access and permissions.", icon: Users, show: canManageTeam },
-                { href: "/dashboard/dealer/finance", title: "Finance", description: "Dealership finance tools.", icon: DollarSign, show: true },
-                { href: "/dashboard/dealer/settings", title: "Settings", description: "Business profile and preferences.", icon: Settings, show: true },
-            ].filter(tool => tool.show),
+            href: "/dashboard/dealer/auctions",
+            title: "Buy & bid",
+            description: "Live auctions, your bids and completed purchases.",
+            icon: Gavel,
+            show: canViewTrade,
         },
         {
-            title: "Services & performance",
-            description: "Partner services and performance tools in one section.",
-            eyebrow: "Growth",
-            accent: "bg-amber-400",
-            header: "from-amber-500/20 via-orange-500/10 to-transparent border-amber-400/25",
-            iconBox: "bg-gradient-to-br from-amber-400 to-orange-600 text-white",
-            tools: [
-                { href: "/dashboard/partner", title: "Partner services", description: "Business details, payouts and service status.", icon: Building2, show: true },
-                { href: "/dashboard/service/capabilities", title: "Service add-ons", description: "Delivery, inspection, finance and warranty.", icon: Wrench, show: true },
-                { href: "/dashboard/service/jobs", title: "Service jobs", description: "TradeXchange delivery and inspection work.", icon: Briefcase, show: true },
-                { href: "/dashboard/service/leads", title: "Service enquiries", description: "Finance and warranty enquiries.", icon: Briefcase, show: true },
-                { href: "/dashboard/dealer/analytics", title: "Analytics", description: "Dealership performance and insights.", icon: BarChart3, show: canViewAnalytics },
-                { href: "/dashboard/dealer/earnings", title: "Earnings", description: "Revenue and sales history.", icon: DollarSign, show: canViewAnalytics },
-            ].filter(tool => tool.show),
+            href: "/dashboard/partner",
+            title: "Partner services",
+            description: "Delivery, inspections, finance and warranty services.",
+            icon: Building2,
+            show: true,
         },
-    ].filter(group => group.tools.length > 0)
+        {
+            href: "/dashboard/dealer/analytics",
+            title: "Performance",
+            description: "Real dealership analytics, sales and revenue.",
+            icon: BarChart3,
+            show: canViewAnalytics,
+        },
+    ].filter(action => action.show)
 
     return (
         <div className="min-h-screen pt-20 pb-12">
@@ -354,118 +324,35 @@ export default function DealerDashboard() {
                         />
                     </div>
 
-                    {/* ── Quick Actions ── */}
-                    <div>
-                        <h2 className="text-lg font-black font-heading uppercase tracking-tight mb-3">Quick Actions</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {canViewInventory && (
-                        <Link href="/dashboard/dealer/inventory" className="dealer-glass-card p-5 group flex items-center justify-between col-span-1">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2.5 bg-primary/10 border border-primary/20 rounded-xl"><Car size={20} className="text-primary group-hover:scale-110 transition-transform" /></div>
-                                <div>
-                                    <p className="font-bold text-[var(--text-primary)] text-sm relative">Inventory<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all"></span></p>
-                                    <p className="text-[var(--text-muted)] text-xs uppercase font-bold tracking-wider mt-0.5">Manage Stock</p>
-                                </div>
-                            </div>
-                        </Link>
-                        )}
-                        {canManageCrm && (
-                        <Link href="/dashboard/dealer/crm" className="dealer-glass-card p-5 group flex items-center justify-between col-span-1">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl"><Kanban size={20} className="text-amber-400 group-hover:scale-110 transition-transform" /></div>
-                                <div>
-                                     <p className="font-bold text-[var(--text-primary)] text-sm relative">Leads<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-amber-400 group-hover:w-full transition-all"></span></p>
-                                     <p className="text-[var(--text-muted)] text-xs uppercase font-bold tracking-wider mt-0.5">Sales Pipeline</p>
-                                </div>
-                            </div>
-                        </Link>
-                        )}
-                        {canManageInventory && (
-                        <Link href="/dashboard/dealer/add-listing" className="dealer-glass-card p-5 group flex items-center justify-between col-span-1">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl"><PlusCircle size={20} className="text-emerald-400 group-hover:scale-110 transition-transform" /></div>
-                                <div>
-                                    <p className="font-bold text-[var(--text-primary)] text-sm">Add Vehicle</p>
-                                    <p className="text-[var(--text-muted)] text-xs uppercase font-bold tracking-wider mt-0.5">Create Listing</p>
-                                </div>
-                            </div>
-                        </Link>
-                        )}
-                        {canViewTrade && (
-                        <Link href="/dashboard/dealer/auctions" className="dealer-glass-card p-5 group flex items-center justify-between col-span-1">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl"><Gavel size={20} className="text-blue-400 group-hover:scale-110 transition-transform" /></div>
-                                <div>
-                                    <p className="font-bold text-[var(--text-primary)] text-sm">Auctions</p>
-                                    <p className="text-[var(--text-muted)] text-xs uppercase font-bold tracking-wider mt-0.5">Buy & Bid</p>
-                                </div>
-                            </div>
-                        </Link>
-                        )}
-                        </div>
-                    </div>
-
-                    {/* ── Dealer Command Centre Tool Map ── */}
-                    <section className="space-y-5">
+                    {/* ── Main jobs only: no duplicate route grids ── */}
+                    <section className="space-y-3">
                         <div>
-                            <div className="flex items-center gap-2 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] text-primary mb-1">
-                                <ShieldCheck size={14} /> Everything in one place
-                            </div>
-                            <h2 className="font-black text-xl sm:text-2xl text-[var(--text-primary)]">All dealer tools</h2>
-                            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-0.5">
-                                No hunting through menus — choose the job you want to do.
+                            <h2 className="text-lg font-black font-heading uppercase tracking-tight">Main actions</h2>
+                            <p className="text-xs text-[var(--text-muted)] mt-1">
+                                One entry point for each job. Related tools now live inside that area instead of repeating across the dashboard.
                             </p>
                         </div>
-
-                        {dealerToolGroups.map(group => (
-                            <div
-                                key={group.title}
-                                className="relative overflow-hidden border border-[var(--border-default)] rounded-[26px] bg-[var(--bg-card)] shadow-[0_18px_44px_rgba(15,23,42,0.08)]"
-                            >
-                                <div className={`relative overflow-hidden px-4 sm:px-6 py-5 border-b bg-gradient-to-r ${group.header}`}>
-                                    <div className="pointer-events-none absolute -right-10 -top-14 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
-                                    <div className="relative flex items-center justify-between gap-4">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1.5">
-                                                <span className={`h-2.5 w-2.5 rounded-full ${group.accent}`} />
-                                                <span className="text-[10px] sm:text-xs uppercase tracking-[0.18em] font-black text-[var(--text-muted)]">
-                                                    {group.eyebrow}
-                                                </span>
-                                            </div>
-                                            <h3 className="font-black text-base sm:text-lg text-[var(--text-primary)]">{group.title}</h3>
-                                            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-0.5">{group.description}</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                            {dashboardActions.map(action => {
+                                const Icon = action.icon
+                                return (
+                                    <Link
+                                        key={action.href}
+                                        href={action.href}
+                                        className="dealer-glass-card group flex items-center gap-4 p-5 hover:border-primary/30 transition-all"
+                                    >
+                                        <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                                            <Icon size={19} className="text-primary" />
                                         </div>
-                                        <div className="hidden sm:flex items-center rounded-full border border-white/40 dark:border-white/10 bg-white/50 dark:bg-white/5 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">
-                                            {group.tools.length} tools
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-black text-sm text-[var(--text-primary)]">{action.title}</p>
+                                            <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{action.description}</p>
                                         </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 sm:p-4">
-                                    {group.tools.map(tool => {
-                                        const Icon = tool.icon
-                                        return (
-                                            <Link
-                                                key={tool.href}
-                                                href={tool.href}
-                                                className="group flex items-center gap-3 sm:gap-4 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)]/80 px-4 py-4 sm:px-5 sm:py-5 shadow-[0_7px_18px_rgba(15,23,42,0.06)] hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-300"
-                                            >
-                                                <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl ${group.iconBox} flex items-center justify-center shrink-0 border border-white/30 shadow-sm`}>
-                                                    <Icon size={19} />
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="font-black text-sm sm:text-[15px] text-[var(--text-primary)]">{tool.title}</p>
-                                                    <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">{tool.description}</p>
-                                                </div>
-                                                <div className="w-8 h-8 rounded-xl bg-[var(--bg-card)] border border-[var(--border-default)] flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-all">
-                                                    <ChevronRight size={15} className="text-[var(--text-muted)]" />
-                                                </div>
-                                            </Link>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                        ))}
+                                        <ChevronRight size={17} className="text-[var(--text-muted)] shrink-0 group-hover:translate-x-1 transition-transform" />
+                                    </Link>
+                                )
+                            })}
+                        </div>
                     </section>
 
                 </main>
