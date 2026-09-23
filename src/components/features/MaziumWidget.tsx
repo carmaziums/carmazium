@@ -62,7 +62,6 @@ export function MaziumWidget() {
     const [quickReplies, setQuickReplies] = React.useState<QuickReply[]>([])
     const messagesEndRef = React.useRef<HTMLDivElement>(null)
     const greetingIntervalRef = React.useRef<NodeJS.Timeout | null>(null)
-    const [scrolled, setScrolled] = React.useState(false)
 
     // Set daily dynamic quick replies on mount
     React.useEffect(() => {
@@ -97,12 +96,6 @@ export function MaziumWidget() {
         return () => {
             if (greetingIntervalRef.current) clearInterval(greetingIntervalRef.current)
         }
-    }, [])
-
-    React.useEffect(() => {
-        const onScroll = () => setScrolled(window.scrollY > 400)
-        window.addEventListener('scroll', onScroll, { passive: true })
-        return () => window.removeEventListener('scroll', onScroll)
     }, [])
 
     const handleToggle = () => {
@@ -185,10 +178,7 @@ export function MaziumWidget() {
                     onClick={() => setIsOpen(false)}
                 />
             )}
-            <div className={cn(
-                "fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-24 right-4 sm:right-6 z-50 flex flex-col items-end transition-opacity duration-500",
-                scrolled && !isOpen ? "opacity-30 hover:opacity-100" : "opacity-100"
-            )}>
+            <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-24 right-4 sm:right-6 z-[60] flex flex-col items-end opacity-100">
             {/* Chat Window */}
             <div
                 className={cn(
@@ -206,7 +196,7 @@ export function MaziumWidget() {
                 <div className="shrink-0 bg-gradient-to-r from-slate-900 to-slate-800 p-4 text-white flex justify-between items-center">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 relative">
-                            <Image src="/assets/images/mazium-bot-3d-v2.png" alt="Mazium" width={40} height={40} className="w-full h-full object-contain" unoptimized />
+                            <Image src="/assets/images/mazium-bot-3d.png" alt="Mazium" width={40} height={40} className="w-full h-full object-contain" unoptimized />
                             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-slate-900" />
                         </div>
                         <div>
@@ -393,7 +383,7 @@ export function MaziumWidget() {
                     >
                         <div className="relative shrink-0">
                             <div className="w-2 h-2 bg-green-500 rounded-full absolute -top-1 -right-1 animate-pulse z-10" />
-                            <Image src="/assets/images/mazium-bot-3d-v2.png" alt="Mazium" width={32} height={32} className="object-contain" unoptimized />
+                            <Image src="/assets/images/mazium-bot-3d.png" alt="Mazium" width={32} height={32} className="object-contain" unoptimized />
                         </div>
                         <div className="min-w-0">
                             <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
@@ -432,6 +422,8 @@ export function MaziumWidget() {
 
             {/* Toggle Button */}
             <button
+                type="button"
+                aria-label={isOpen ? "Close Mazium AI assistant" : "Open Mazium AI assistant"}
                 onClick={handleToggle}
                 className={cn(
                     "flex items-center justify-center p-0 border-0",
@@ -445,11 +437,11 @@ export function MaziumWidget() {
                     <X size={24} className="text-white" />
                 ) : (
                     <Image
-                        src="/assets/images/mazium-bot-3d-v2.png"
+                        src="/assets/images/mazium-bot-3d.png"
                         alt="Mazium AI"
                         width={64}
                         height={64}
-                        className="block h-16 w-16 object-contain"
+                        className="block h-16 w-16 object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
                         priority
                         unoptimized
                         draggable={false}
