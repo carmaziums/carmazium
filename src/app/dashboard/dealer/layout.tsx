@@ -131,7 +131,13 @@ function DealerPermissionBoundary({ children }: { children: React.ReactNode }) {
         )
     }
 
-    if (matchedRoute?.permission && !can(matchedRoute.permission)) {
+    const requiredPermission =
+        pathname.startsWith("/dashboard/dealer/add-listing")
+        || pathname.startsWith("/dashboard/dealer/put-on-auction")
+            ? "MANAGE_INVENTORY"
+            : matchedRoute?.permission
+
+    if (requiredPermission && !can(requiredPermission)) {
         return (
             <div className="min-h-[60vh] flex flex-col items-center justify-center px-6 text-center">
                 <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-5">
