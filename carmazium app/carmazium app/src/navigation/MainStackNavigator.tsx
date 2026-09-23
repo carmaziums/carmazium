@@ -62,14 +62,15 @@ import { Colors } from '../constants/colors';
 // different screen — remounting it and discarding its state on every parent
 // render.
 
-const GatedDealerAnalyticsScreen = withDealerGate(DealerAnalyticsScreen);
-const GatedDealerInventoryScreen = withDealerGate(DealerInventoryScreen);
-const GatedDealerLeadsScreen = withDealerGate(DealerLeadsScreen);
-const GatedDealerTeamScreen = withDealerGate(DealerTeamScreen);
-const GatedDealerOffersScreen = withDealerGate(DealerOffersScreen);
-const GatedDealerMyOffersScreen = withDealerGate(DealerMyOffersScreen);
-const GatedDealerPurchasesScreen = withDealerGate(DealerPurchasesScreen);
-const GatedDealerEarningsScreen = withDealerGate(DealerEarningsScreen);
+const GatedDealerAnalyticsScreen = withDealerGate(DealerAnalyticsScreen, 'VIEW_ANALYTICS');
+const GatedDealerInventoryScreen = withDealerGate(DealerInventoryScreen, 'VIEW_INVENTORY');
+const GatedDealerLeadsScreen = withDealerGate(DealerLeadsScreen, 'MANAGE_CRM');
+const GatedDealerKYCScreen = withDealerGate(DealerKYCScreen, 'MANAGE_KYC', true);
+const GatedDealerTeamScreen = withDealerGate(DealerTeamScreen, 'MANAGE_TEAM');
+const GatedDealerOffersScreen = withDealerGate(DealerOffersScreen, 'MANAGE_OFFERS');
+const GatedDealerMyOffersScreen = withDealerGate(DealerMyOffersScreen, 'MANAGE_OFFERS');
+const GatedDealerPurchasesScreen = withDealerGate(DealerPurchasesScreen, 'VIEW_PURCHASES');
+const GatedDealerEarningsScreen = withDealerGate(DealerEarningsScreen, 'VIEW_ANALYTICS');
 const GatedDealerFinanceScreen = withDealerGate(DealerFinanceScreen);
 
 export type MainStackParamList = {
@@ -208,7 +209,7 @@ export const MainStackNavigator: React.FC = () => {
       />
       <Stack.Screen
         name="DealerKYC"
-        component={DealerKYCScreen}
+        component={GatedDealerKYCScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen
