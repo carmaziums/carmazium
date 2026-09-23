@@ -9,6 +9,7 @@ import {
     CheckCircle2,
     Clock3,
     CreditCard,
+    FileText,
     Loader2,
     ShieldCheck,
     Truck,
@@ -281,7 +282,9 @@ export default function PartnerDashboardPage() {
                                 active={delivery?.status === "APPROVED"}
                                 action={delivery?.status === "APPROVED"
                                     ? <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link>
-                                    : <Button size="sm" onClick={() => applyService("DELIVERY")} disabled={busy === "DELIVERY" || delivery?.status === "PENDING"}>{busy === "DELIVERY" ? <Loader2 className="animate-spin" size={14} /> : delivery?.status === "PENDING" ? "Application pending" : "Add service"}</Button>}
+                                    : delivery?.status === "PENDING"
+                                        ? <Link href={`/dashboard/service/capabilities/${delivery.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Upload verification documents</Button></Link>
+                                        : <Button size="sm" onClick={() => applyService("DELIVERY")} disabled={busy === "DELIVERY"}>{busy === "DELIVERY" ? <Loader2 className="animate-spin" size={14} /> : "Add service"}</Button>}
                             />
                             <AddonCard
                                 icon={Wrench}
@@ -291,7 +294,9 @@ export default function PartnerDashboardPage() {
                                 active={inspection?.status === "APPROVED"}
                                 action={inspection?.status === "APPROVED"
                                     ? <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link>
-                                    : <Button size="sm" onClick={() => applyService("INSPECTION")} disabled={busy === "INSPECTION" || inspection?.status === "PENDING"}>{busy === "INSPECTION" ? <Loader2 className="animate-spin" size={14} /> : inspection?.status === "PENDING" ? "Application pending" : "Add service"}</Button>}
+                                    : inspection?.status === "PENDING"
+                                        ? <Link href={`/dashboard/service/capabilities/${inspection.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Upload verification documents</Button></Link>
+                                        : <Button size="sm" onClick={() => applyService("INSPECTION")} disabled={busy === "INSPECTION"}>{busy === "INSPECTION" ? <Loader2 className="animate-spin" size={14} /> : "Add service"}</Button>}
                             />
                             <AddonCard
                                 icon={CreditCard}
@@ -301,7 +306,9 @@ export default function PartnerDashboardPage() {
                                 active={finance?.status === "APPROVED"}
                                 action={finance?.status === "APPROVED"
                                     ? <Link href="/dashboard/service/leads"><Button size="sm" variant="outline">Open enquiries</Button></Link>
-                                    : <Button size="sm" onClick={() => applyService("FINANCE")} disabled={busy === "FINANCE" || finance?.status === "PENDING"}>{busy === "FINANCE" ? <Loader2 className="animate-spin" size={14} /> : finance?.status === "PENDING" ? "Application pending" : "Add service"}</Button>}
+                                    : finance?.status === "PENDING"
+                                        ? <Link href={`/dashboard/service/capabilities/${finance.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Upload verification documents</Button></Link>
+                                        : <Button size="sm" onClick={() => applyService("FINANCE")} disabled={busy === "FINANCE"}>{busy === "FINANCE" ? <Loader2 className="animate-spin" size={14} /> : "Add service"}</Button>}
                             />
                             <AddonCard
                                 icon={ShieldCheck}
@@ -311,7 +318,9 @@ export default function PartnerDashboardPage() {
                                 active={warranty?.status === "APPROVED"}
                                 action={warranty?.status === "APPROVED"
                                     ? <Link href="/dashboard/service/leads"><Button size="sm" variant="outline">Open enquiries</Button></Link>
-                                    : <Button size="sm" onClick={() => applyService("WARRANTY")} disabled={busy === "WARRANTY" || warranty?.status === "PENDING"}>{busy === "WARRANTY" ? <Loader2 className="animate-spin" size={14} /> : warranty?.status === "PENDING" ? "Application pending" : "Add service"}</Button>}
+                                    : warranty?.status === "PENDING"
+                                        ? <Link href={`/dashboard/service/capabilities/${warranty.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Upload verification documents</Button></Link>
+                                        : <Button size="sm" onClick={() => applyService("WARRANTY")} disabled={busy === "WARRANTY"}>{busy === "WARRANTY" ? <Loader2 className="animate-spin" size={14} /> : "Add service"}</Button>}
                             />
                         </div>
                     </section>
