@@ -101,6 +101,23 @@ export default function AdminSaleCancellationsPage() {
                                         {request.counterpartResponseNote && <p className="text-xs text-[var(--text-muted)] mt-3">Counterparty: {request.counterpartResponseNote}</p>}
                                     </div>
 
+                                    {!!request.linkedServiceJobs?.length && (
+                                        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+                                            <p className="font-black text-sm text-red-400">Linked TradeXchange work needs separate handling</p>
+                                            <p className="text-xs text-[var(--text-muted)] mt-1">
+                                                Do not assume cancelling the vehicle sale cancels paid or progressed provider work. Review these jobs separately before approving.
+                                            </p>
+                                            <div className="mt-3 space-y-2">
+                                                {request.linkedServiceJobs.map(job => (
+                                                    <div key={job.id} className="flex items-center justify-between gap-3 rounded-lg bg-black/10 px-3 py-2 text-xs">
+                                                        <span className="font-bold truncate">{job.title}</span>
+                                                        <span className="shrink-0 font-black text-amber-400">{job.serviceType} · {job.status}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {request.evidence.length > 0 && (
                                         <div className="grid sm:grid-cols-2 gap-2">
                                             {request.evidence.map(item => (
