@@ -696,6 +696,30 @@ describe('PaymentsService — auction buyer-fee refunds', () => {
             amount: 10000,
         });
     });
+
+    it('refunds the full £125 after a faulted purchase-linked inspection', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({
+            id: 'txn-commission',
+            status: 'COMPLETED',
+            stripePaymentId: 'pi_native_commission',
+        });
+
+        await service.issueFullRefundForAuctionInspection('auction-1');
+
+        expect(mockRefundsCreate).toHaveBeenCalledWith(
+            {
+                payment_intent: 'pi_native_commission',
+                amount: 12500,
+            },
+            {
+                idempotencyKey: 'auction-inspection-refusal-txn-commission',
+            },
+        );
+        expect(prisma.transaction.update).toHaveBeenCalledWith({
+            where: { id: 'txn-commission' },
+            data: { status: 'REFUNDED' },
+        });
+    });
 });
 
 describe('PaymentsService — createCheckoutSession (F6: server-side amount, same fix as F2)', () => {
