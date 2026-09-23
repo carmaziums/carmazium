@@ -361,6 +361,7 @@ if (
   !dealerAccess.includes("'PAY_LISTING_FEE'") ||
   !dealerAccess.includes("'VIEW_INVENTORY'") ||
   !dealerAccess.includes("'MANAGE_INVENTORY'") ||
+  !dealerAccess.includes("'MANAGE_FINANCE'") ||
   !dealerAccess.includes("'MANAGE_TEAM'") ||
   !dealerAccess.includes("'MANAGE_KYC'") ||
   !dealerAccess.includes('ownerUserId: membership.dealerProfile.userId')
@@ -443,6 +444,40 @@ if (
   fail('Native dealer UI is not bound to the backend dealership permission contract');
 } else {
   ok('Native dealer routes, drawer and inventory controls consume dealership permissions');
+}
+
+// Dealer finance belongs to the dealership, not the individual staff login.
+// Dealers can view/submit their own business applications; only finance
+// providers may make underwriting decisions.
+const dealerFinanceService = read('backend/src/finance/finance.service.ts');
+const webDealerFinance = read('src/app/dashboard/dealer/finance/page.tsx');
+const mobileDealerFinance = read('carmazium app/carmazium app/src/screens/main/DealerFinanceScreen.tsx');
+
+if (
+  !dealerFinanceService.includes("'MANAGE_FINANCE'") ||
+  !dealerFinanceService.includes('return actor.ownerUserId') ||
+  !dealerFinanceService.includes('userId: applicantId') ||
+  !webDealerRoutes.includes('requiredPermission: "MANAGE_FINANCE"') ||
+  !mobileDealerNavigator.includes("withDealerGate(DealerFinanceScreen, 'MANAGE_FINANCE')") ||
+  !mobileDealerDrawer.includes("requiredPermission: 'MANAGE_FINANCE'")
+) {
+  fail('Dealer finance is not consistently dealership-owned and permission-gated');
+} else {
+  ok('Dealer finance uses canonical dealership identity and finance-role permissions');
+}
+
+if (
+  webDealerFinance.includes("'FUNDED'") ||
+  webDealerFinance.includes("'REVIEWING'") ||
+  webDealerFinance.includes('/status') ||
+  webDealerFinance.includes('Approve') ||
+  webDealerFinance.includes('Reject') ||
+  !webDealerFinance.includes('Finance providers control underwriting decisions') ||
+  !mobileDealerFinance.includes("FinanceApplicationStatus")
+) {
+  fail('Dealer finance UI must be read-only and use only real application statuses');
+} else {
+  ok('Dealer finance UI is read-only and schema-accurate on web and native');
 }
 
 const webPricing = read('src/lib/pricingConfig.ts');
