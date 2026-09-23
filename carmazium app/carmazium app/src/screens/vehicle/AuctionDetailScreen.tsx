@@ -34,6 +34,7 @@ import {
 } from '../../lib/auctionApi';
 import { createChatRoom } from '../../lib/chatApi';
 import { apiClient } from '../../lib/apiClient';
+import { DealerAccess, getDealerAccess } from '../../lib/dealerAccess';
 import { io } from 'socket.io-client';
 import { getAccessToken } from '../../lib/supabase';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -190,9 +191,49 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // ── Auction state ──
   const [auction, setAuction] = useState<AuctionDetail | null>(null);
+  const [dealerAccess, setDealerAccess] = useState<DealerAccess | null>(null);
+  const [dealerAccessLoading, setDealerAccessLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    if (role !== 'dealer' || !currentUser?.id) {
+      setDealerAccess(null);
+      setDealerAccessLoading(false);
+      return;
+    }
+
+    let mounted = true;
+    setDealerAccessLoading(true);
+    getDealerAccess()
+      .then((access) => {
+        if (mounted) setDealerAccess(access);
+      })
+      .catch(() => {
+        if (mounted) setDealerAccess(null);
+      })
+      .finally(() => {
+        if (mounted) setDealerAccessLoading(false);
+      });
+
+    return () => { mounted = false; };
+  }, [role, currentUser?.id]);
+
+  const businessUserId = dealerAccess?.ownerUserId ?? currentUser?.id;
+  const canPlaceBid =
+    role === 'dealer'
+    && Boolean(dealerAccess?.permissions?.includes('PLACE_BID'));
+  const canPayAuctionFee =
+    role === 'dealer'
+    && Boolean(dealerAccess?.permissions?.includes('PAY_AUCTION_FEE'));
+  const canManageDealerInventory =
+    role === 'dealer'
+    && Boolean(dealerAccess?.permissions?.includes('MANAGE_INVENTORY'));
+  const isDealerVerified =
+    role === 'dealer'
+    ? Boolean(dealerAccess?.isVerified)
+    : Boolean(currentUser?.isVerified);
 
   // ── Bid state ──
   const [currentBid, setCurrentBid] = useState<number>(listingObj.currentBid ?? listingObj.startingBid ?? 0);
