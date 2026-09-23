@@ -346,6 +346,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
                 },
                 { provide: EmailService, useValue: {} },
                 { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
+                { provide: PaymentsService, useValue: { issueFullRefundForAuctionInspection: jest.fn().mockResolvedValue(undefined) } },
             ],
         }).compile();
 
@@ -927,6 +928,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
                     },
                 },
                 { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
+                { provide: PaymentsService, useValue: { issueFullRefundForAuctionInspection: jest.fn().mockResolvedValue(undefined) } },
             ],
         }).compile();
 
