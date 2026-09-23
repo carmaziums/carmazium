@@ -20,6 +20,7 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { CounterLedger } from '../../components/offers/CounterLedger';
+import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -27,7 +28,7 @@ type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── interfaces ───────────────────────────
 
-type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED' | 'WITHDRAWN';
+type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED' | 'WITHDRAWN' | 'CANCELLED';
 
 interface Offer {
   id: string;
@@ -123,6 +124,12 @@ const STATUS_CONFIG: Record<
     chipText: Colors.textMuted,
     chipLabel: 'WITHDRAWN',
   },
+  CANCELLED: {
+    leftBorder: Colors.textMuted,
+    chipBg: Colors.whiteAlpha04,
+    chipText: Colors.textMuted,
+    chipLabel: 'CANCELLED',
+  },
 };
 
 // ═══════════════════════════ COMPONENT ════════════════════════════
@@ -134,6 +141,7 @@ export const DealerMyOffersScreen: React.FC = () => {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [cancelOffer, setCancelOffer] = useState<Offer | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -398,6 +406,14 @@ export const DealerMyOffersScreen: React.FC = () => {
                   Message Seller
                 </Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.actionBtnDeclineCounter, { flex: 1 }]}
+                activeOpacity={0.75}
+                onPress={() => setCancelOffer(offer)}
+                disabled={isActioning}
+              >
+                <Text style={[styles.actionBtnText, { color: Colors.accent }]}>Cancel Sale</Text>
+              </TouchableOpacity>
             </View>
           </>
         )}
@@ -431,7 +447,7 @@ export const DealerMyOffersScreen: React.FC = () => {
         {/* REJECTED / WITHDRAWN — terminal state, nothing above renders for
             it, which left the card ending on bare "Xh ago" text with no
             visual weight (matches the same gap fixed on BuyerOffersScreen). */}
-        {(offer.status === 'REJECTED' || offer.status === 'WITHDRAWN') && (
+        {(offer.status === 'REJECTED' || offer.status === 'WITHDRAWN' || offer.status === 'CANCELLED') && (
           <Text style={styles.closedStatusText}>
             {offer.status === 'REJECTED'
               ? 'This offer was declined by the seller.'
@@ -446,6 +462,15 @@ export const DealerMyOffersScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      {cancelOffer && (
+        <SaleCancellationSheet
+          visible={cancelOffer != null}
+          listingId={cancelOffer.listing?.id ?? cancelOffer.listingId ?? ''}
+          vehicleTitle={cancelOffer.listing?.title ?? 'Vehicle'}
+          onClose={() => setCancelOffer(null)}
+          onCreated={() => void fetchData()}
+        />
+      )}
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
