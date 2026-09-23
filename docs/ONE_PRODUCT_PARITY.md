@@ -87,6 +87,7 @@ The repository currently contains a mature Next.js website and an Expo/React Nat
 - Seller reward and service-provider payout lifecycle.
 - HPI purchase/entitlements.
 - Realtime chat, push/in-app notifications and tap routing.
+- **Status (23 Sep 2026): Block 8 complete.** Hosted Checkout recovery is bound to the authenticated payment/dealership owner; native PaymentIntent reconciliation remains transaction-bound; seller £100 rewards and TradeXchange provider payouts use atomic claims plus stable Stripe idempotency; Stripe Connect readiness is checked against the capabilities each flow actually needs; HPI report purchase/view and buyer-specific emailed-copy entitlements remain server-bound; and native notification-list/background/cold-start taps share one routing contract with direct-open chat room hydration. `payments.checkout_reconciliation`, `payments.seller_bonus_payout`, `hpi.report_entitlements`, `notifications.tap_routing` and `chat.direct_open` are required parity surfaces.
 
 ### Block 9 — Navigation, visual system, accessibility and performance
 - Equivalent reachable journeys.

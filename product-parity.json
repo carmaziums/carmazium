@@ -435,6 +435,39 @@
       "status": "required"
     },
     {
+      "id": "payments.checkout_reconciliation",
+      "web": [
+        "src/app/checkout/success/page.tsx",
+        "src/lib/paymentApi.ts"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/lib/paymentsApi.ts",
+        "carmazium app/carmazium app/src/screens/main/PurchaseFlowScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/AuctionCompleteScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "payments.seller_bonus_payout",
+      "web": [
+        "src/app/dashboard/seller/auctions/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/seller/SellerAuctionsScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "hpi.report_entitlements",
+      "web": [
+        "src/components/hpi/HpiReportModal.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/vehicle/VehicleDetailScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
       "id": "notifications.tap_routing",
       "web": [
         "src/components/layout/NotificationBell.tsx"
