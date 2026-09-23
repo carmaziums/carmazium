@@ -368,28 +368,15 @@ describe('DealersService — staff permission boundaries', () => {
     });
 
     it('allows dealer ADMIN staff to read the team but blocks FINANCE_MANAGER', async () => {
-        prisma.dealerStaff.findFirst
-            .mockResolvedValueOnce({
-                role: 'ADMIN',
-                dealerProfile: {
-                    id: 'dealer-1',
-                    userId: 'owner-1',
-                    isVerified: true,
-                },
-            })
-            .mockResolvedValueOnce({
-                role: 'ADMIN',
-                dealerProfile: {
-                    id: 'dealer-1',
-                    userId: 'owner-1',
-                    isVerified: true,
-                },
-            });
-        prisma.dealerProfile.findUnique.mockResolvedValue({
-            id: 'dealer-1',
-            userId: 'owner-1',
-            isVerified: true,
-            staff: [],
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'ADMIN',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+                staff: [],
+            },
         });
         prisma.dealerStaff.findMany = jest.fn().mockResolvedValue([]);
         (prisma as any).dealerInvite = { findMany: jest.fn().mockResolvedValue([]) };
@@ -399,13 +386,13 @@ describe('DealersService — staff permission boundaries', () => {
             pending: [],
         });
 
-        prisma.dealerProfile.findUnique.mockResolvedValue(null);
         prisma.dealerStaff.findFirst.mockResolvedValue({
             role: 'FINANCE_MANAGER',
             dealerProfile: {
                 id: 'dealer-1',
                 userId: 'owner-1',
                 isVerified: true,
+                staff: [],
             },
         });
 
