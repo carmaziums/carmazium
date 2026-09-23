@@ -8,6 +8,8 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { useDealerAccess } from "@/context/DealerAccessContext"
+import { DealerPermissionGate } from "@/components/dealer/DealerPermissionGate"
 import { recordSale } from "@/lib/listingApi"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { MetricCard } from "@/components/dashboard/MetricCard"
@@ -17,6 +19,8 @@ const UK_POSTCODE_RE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i
 
 export default function DealerOffersPage() {
     const { user, profile, loading: authLoading } = useAuth()
+    const { loading: accessLoading, has } = useDealerAccess()
+    const canManageOffers = has('MANAGE_OFFERS')
     const [offers, setOffers] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
     const [actionLoading, setActionLoading] = React.useState<Record<string, boolean>>({})
@@ -29,8 +33,12 @@ export default function DealerOffersPage() {
     const [confirmingSale, setConfirmingSale] = React.useState(false)
 
     React.useEffect(() => {
-        if (!authLoading && user) fetchOffers()
-    }, [user, authLoading])
+        if (!authLoading && !accessLoading && user && canManageOffers) {
+            fetchOffers()
+        } else if (!accessLoading && !canManageOffers) {
+            setLoading(false)
+        }
+    }, [user, authLoading, accessLoading, canManageOffers])
 
     async function fetchOffers() {
         setLoading(true)
@@ -108,6 +116,11 @@ export default function DealerOffersPage() {
     }, [toast])
 
     return (
+        <DealerPermissionGate
+            permission="MANAGE_OFFERS"
+            title="Offer management restricted"
+            description="Your dealership role does not include responding to buyer offers."
+        >
         <div className="min-h-screen pt-20 pb-12">
             {toast && (
                 <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-xl font-bold text-sm animate-in fade-in slide-in-from-bottom-2">
@@ -380,5 +393,6 @@ export default function DealerOffersPage() {
                 </main>
             </div>
         </div>
+        </DealerPermissionGate>
     )
 }
