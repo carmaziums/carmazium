@@ -22,6 +22,7 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
+import { getDealerAccess } from '../../lib/dealerAccess';
 import { haptics } from '../../lib/haptics';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -93,7 +94,8 @@ const ListingDetail: React.FC<{
   onBack: () => void;
   navigation?: any;
   onSold: () => void;
-}> = ({ listing, onBack, navigation, onSold }) => {
+  canManage: boolean;
+}> = ({ listing, onBack, navigation, onSold, canManage }) => {
   const insets = useSafeAreaInsets();
   const [selectedImg, setSelectedImg] = useState(0);
   const [offersStatus, setOffersStatus] = useState(listing.offersStatus);
@@ -209,6 +211,7 @@ const ListingDetail: React.FC<{
             </View>
             <Text style={styles.detailTitle} numberOfLines={1}>{listing.title}</Text>
           </View>
+          {canManage ? (
           <IconButton style={styles.backBtn} icon={<Ionicons name="ellipsis-horizontal" size={20} color={Colors.white} />} onPress={() =>
               Alert.alert('Options', '', [
                 { text: 'Edit listing', onPress: () => {} },
@@ -217,6 +220,10 @@ const ListingDetail: React.FC<{
                 { text: 'Cancel', style: 'cancel' },
               ])
             } accessibilityLabel="More options" />
+
+          ) : (
+            <View style={styles.backBtn} />
+          )}
         </View>
 
         {/* ── Image thumbnails ─────────────────────────────────────────────── */}
@@ -268,11 +275,12 @@ const ListingDetail: React.FC<{
             <Text style={styles.detailRowLabel}>List price</Text>
             <TouchableOpacity
               style={styles.detailRowRight}
-              onPress={() => handleEdit('price')}
-              activeOpacity={0.7}
+              onPress={() => canManage && handleEdit('price')}
+              activeOpacity={canManage ? 0.7 : 1}
+              disabled={!canManage}
             >
               <Text style={styles.detailRowValue}>{listing.price}</Text>
-              <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />
+              {canManage && <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />}
             </TouchableOpacity>
           </View>
           <View style={styles.detailDivider} />
@@ -282,8 +290,9 @@ const ListingDetail: React.FC<{
             <Text style={styles.detailRowLabel}>Offers</Text>
             <TouchableOpacity
               style={styles.detailRowRight}
-              onPress={() => handleEdit('offers')}
-              activeOpacity={0.7}
+              onPress={() => canManage && handleEdit('offers')}
+              activeOpacity={canManage ? 0.7 : 1}
+              disabled={!canManage}
             >
               <Text style={[
                 styles.detailRowValue,
@@ -292,7 +301,7 @@ const ListingDetail: React.FC<{
               ]}>
                 {offersStatus}
               </Text>
-              <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />
+              {canManage && <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />}
             </TouchableOpacity>
           </View>
           <View style={styles.detailDivider} />
@@ -302,11 +311,12 @@ const ListingDetail: React.FC<{
             <Text style={styles.detailRowLabel}>Visibility</Text>
             <TouchableOpacity
               style={styles.detailRowRight}
-              onPress={() => handleEdit('visibility')}
-              activeOpacity={0.7}
+              onPress={() => canManage && handleEdit('visibility')}
+              activeOpacity={canManage ? 0.7 : 1}
+              disabled={!canManage}
             >
               <Text style={styles.detailRowValue}>{listing.visibility}</Text>
-              <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />
+              {canManage && <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />}
             </TouchableOpacity>
           </View>
           <View style={styles.detailDivider} />
@@ -319,60 +329,72 @@ const ListingDetail: React.FC<{
         </View>
       </ScrollView>
 
-      {/* ── Bottom CTAs ─────────────────────────────────────────────────────── */}
-      <View style={[styles.detailFooterWrap, { paddingBottom: insets.bottom + 16 }]}>
-        {/* Put on Auction — only ACTIVE listings can be converted; the
-            destination screen (SellerAuctionsScreen) re-validates eligibility
-            itself, so this is a convenience shortcut, not the only gate. */}
-        {listing.status === 'LIVE' && (
-          <TouchableOpacity
-            style={styles.putOnAuctionBtn}
-            activeOpacity={0.85}
-            onPress={() => navigation?.navigate('SellerAuctions', { preselectListingId: listing.id })}
-          >
-            <MaterialCommunityIcons name="gavel" size={16} color={Colors.white} style={{ marginRight: 6 }} />
-            <Text style={styles.putOnAuctionBtnText}>PUT ON AUCTION</Text>
-          </TouchableOpacity>
-        )}
-        <View style={styles.detailFooter}>
-        <TouchableOpacity
-          style={[styles.boostBtn, boosting && { opacity: 0.6 }]}
-          activeOpacity={0.85}
-          onPress={handleBoost}
-          disabled={boosting}
-        >
-          {boosting ? (
-            <ActivityIndicator size="small" color={Colors.white} />
-          ) : (
-            <>
-              <MaterialCommunityIcons name="rocket-launch-outline" size={16} color={Colors.white} style={{ marginRight: 6 }} />
-              <Text style={styles.boostBtnText}>BOOST</Text>
-            </>
+      {canManage ? (
+        <>
+        {/* ── Bottom CTAs ─────────────────────────────────────────────────────── */}
+        <View style={[styles.detailFooterWrap, { paddingBottom: insets.bottom + 16 }]}>
+          {/* Put on Auction — only ACTIVE listings can be converted; the
+              destination screen (SellerAuctionsScreen) re-validates eligibility
+              itself, so this is a convenience shortcut, not the only gate. */}
+          {listing.status === 'LIVE' && (
+            <TouchableOpacity
+              style={styles.putOnAuctionBtn}
+              activeOpacity={0.85}
+              onPress={() => navigation?.navigate('SellerAuctions', { preselectListingId: listing.id })}
+            >
+              <MaterialCommunityIcons name="gavel" size={16} color={Colors.white} style={{ marginRight: 6 }} />
+              <Text style={styles.putOnAuctionBtnText}>PUT ON AUCTION</Text>
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.markSoldBtn, listing.status === 'SOLD' && styles.markSoldBtnDim]}
-          activeOpacity={0.85}
-          onPress={listing.status !== 'SOLD' ? openMarkSold : undefined}
-        >
-          <Ionicons name="checkmark-circle-outline" size={16} color={Colors.white} style={{ marginRight: 6 }} />
-          <Text style={styles.markSoldBtnText}>
-            {listing.status === 'SOLD' ? 'SOLD' : 'MARK SOLD'}
-          </Text>
-        </TouchableOpacity>
+          <View style={styles.detailFooter}>
+          <TouchableOpacity
+            style={[styles.boostBtn, boosting && { opacity: 0.6 }]}
+            activeOpacity={0.85}
+            onPress={handleBoost}
+            disabled={boosting}
+          >
+            {boosting ? (
+              <ActivityIndicator size="small" color={Colors.white} />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="rocket-launch-outline" size={16} color={Colors.white} style={{ marginRight: 6 }} />
+                <Text style={styles.boostBtnText}>BOOST</Text>
+              </>
+            )}
+          </TouchableOpacity>
+  
+          <TouchableOpacity
+            style={[styles.markSoldBtn, listing.status === 'SOLD' && styles.markSoldBtnDim]}
+            activeOpacity={0.85}
+            onPress={listing.status !== 'SOLD' ? openMarkSold : undefined}
+          >
+            <Ionicons name="checkmark-circle-outline" size={16} color={Colors.white} style={{ marginRight: 6 }} />
+            <Text style={styles.markSoldBtnText}>
+              {listing.status === 'SOLD' ? 'SOLD' : 'MARK SOLD'}
+            </Text>
+          </TouchableOpacity>
+          </View>
         </View>
-      </View>
+  
+        </>
+      ) : (
+        <View style={[styles.detailFooterWrap, { paddingBottom: insets.bottom + 16 }]}>
+          <View style={[styles.detailFooter, { justifyContent: 'center' }]}>
+            <Text style={styles.detailRowValue}>READ-ONLY INVENTORY</Text>
+          </View>
+        </View>
+      )}
+
 
       {/* Featured boost checkout — hosted Stripe checkout in-app */}
-      <StripeCheckoutModal
+      {canManage && <StripeCheckoutModal
         url={boostCheckoutUrl}
         title="Featured Boost Checkout"
         onSuccess={handleBoostSuccess}
         onCancel={() => setBoostCheckoutUrl(null)}
         onClose={() => setBoostCheckoutUrl(null)}
-      />
-      {boostToast && (
+      />}
+      {canManage && boostToast && (
         <View style={styles.boostToast} pointerEvents="none">
           <Ionicons name="checkmark-circle" size={16} color={Colors.white} />
           <Text style={styles.boostToastText}>{boostToast}</Text>
@@ -380,7 +402,7 @@ const ListingDetail: React.FC<{
       )}
 
       {/* Mark Sold — sale price confirmation */}
-      <BottomSheet
+      {canManage && <BottomSheet
         visible={markSoldVisible}
         onClose={() => setMarkSoldVisible(false)}
         title="Mark as Sold"
@@ -415,7 +437,7 @@ const ListingDetail: React.FC<{
             )}
           </TouchableOpacity>
         </View>
-      </BottomSheet>
+      </BottomSheet>}
     </View>
   );
 };
@@ -544,6 +566,13 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [canManageInventory, setCanManageInventory] = useState(false);
+
+  useEffect(() => {
+    getDealerAccess()
+      .then((access) => setCanManageInventory(access.permissions.includes('MANAGE_INVENTORY')))
+      .catch(() => setCanManageInventory(false));
+  }, []);
 
   // Persist the dealer's list/grid preference across sessions (SE8-style
   // affordance, mobile-ui-ux-audit.md §C9).
@@ -611,11 +640,11 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       <InventoryRow
         listing={item}
         onPress={handleRowPress}
-        onPutOnAuction={handlePutOnAuction}
+        onPutOnAuction={canManageInventory ? handlePutOnAuction : undefined}
         onOpenLinkedAuction={handleOpenLinkedAuction}
       />
     ),
-    [handleRowPress, handlePutOnAuction, handleOpenLinkedAuction],
+    [canManageInventory, handleRowPress, handlePutOnAuction, handleOpenLinkedAuction],
   );
   const renderInventoryGrid = useCallback(
     ({ item }: { item: Listing }) => <InventoryGridCard listing={item} onPress={handleRowPress} />,
@@ -628,6 +657,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         listing={selectedListing}
         onBack={() => setSelectedListing(null)}
         navigation={navigation}
+        canManage={canManageInventory}
         onSold={() => {
           setSelectedListing(null);
           fetchListings();
@@ -751,49 +781,53 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       />
       )}
 
-      {/* ── Add listing CTA ──────────────────────────────────────────────── */}
-      <View style={[styles.addListingWrap, { paddingBottom: insets.bottom + 12 }]}>
-        <TouchableOpacity
-          style={[styles.addListingBtn, { flex: 1, marginRight: 8 }]}
-          activeOpacity={0.85}
-          onPress={() => navigation?.navigate('SellCarFlow')}
-        >
-          <LinearGradient
-            colors={[Colors.accentGlow, Colors.accent]}
-            style={StyleSheet.absoluteFillObject}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
-          <Ionicons name="add" size={22} color={Colors.white} style={{ marginRight: 6 }} />
-          <Text style={styles.addListingText}>ADD LISTING</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bulkImportBtn}
-          activeOpacity={0.85}
-          onPress={() => setShowImportModal(true)}
-        >
-          <Ionicons name="link-outline" size={20} color={Colors.infoBlueLight} />
-          <Text style={[styles.bulkImportText, { color: Colors.infoBlueLight }]}>IMPORT</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bulkImportBtn}
-          activeOpacity={0.85}
-          onPress={() => setShowBulkImportModal(true)}
-        >
-          <Ionicons name="cloud-upload-outline" size={20} color={Colors.warning} />
-          <Text style={styles.bulkImportText}>CSV</Text>
-        </TouchableOpacity>
-      </View>
+      {canManageInventory && (
+        {/* ── Add listing CTA ──────────────────────────────────────────────── */}
+        <View style={[styles.addListingWrap, { paddingBottom: insets.bottom + 12 }]}>
+          <TouchableOpacity
+            style={[styles.addListingBtn, { flex: 1, marginRight: 8 }]}
+            activeOpacity={0.85}
+            onPress={() => navigation?.navigate('SellCarFlow')}
+          >
+            <LinearGradient
+              colors={[Colors.accentGlow, Colors.accent]}
+              style={StyleSheet.absoluteFillObject}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+            <Ionicons name="add" size={22} color={Colors.white} style={{ marginRight: 6 }} />
+            <Text style={styles.addListingText}>ADD LISTING</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.bulkImportBtn}
+            activeOpacity={0.85}
+            onPress={() => setShowImportModal(true)}
+          >
+            <Ionicons name="link-outline" size={20} color={Colors.infoBlueLight} />
+            <Text style={[styles.bulkImportText, { color: Colors.infoBlueLight }]}>IMPORT</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.bulkImportBtn}
+            activeOpacity={0.85}
+            onPress={() => setShowBulkImportModal(true)}
+          >
+            <Ionicons name="cloud-upload-outline" size={20} color={Colors.warning} />
+            <Text style={styles.bulkImportText}>CSV</Text>
+          </TouchableOpacity>
+        </View>
+  
+      )}
+
 
       {/* Bulk CSV Import Modal */}
       <BulkImportModal
-        isOpen={showBulkImportModal}
+        isOpen={canManageInventory && showBulkImportModal}
         onClose={() => setShowBulkImportModal(false)}
         onComplete={() => setShowBulkImportModal(false)}
       />
 
       {/* Import Listing Modal */}
-      {showImportModal && (
+      {canManageInventory && showImportModal && (
         <ImportListingModal
           onClose={() => setShowImportModal(false)}
           onImported={() => { setShowImportModal(false); /* fetchListings called by onClose */ }}
