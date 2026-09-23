@@ -38,9 +38,16 @@ export default function AdminSaleCancellationsPage() {
             ""
         )
         if (note === null) return
+        let refundBuyerFee: boolean | undefined
+        if (decision === "APPROVE" && request.auctionId) {
+            refundBuyerFee = window.confirm(
+                "Refund the £125 auction buyer fee as part of this cancellation?\n\nChoose OK to refund £125, or Cancel to approve the sale cancellation without refunding the platform fee."
+            )
+        }
+
         setBusy(request.id)
         try {
-            await adminReviewSaleCancellation(request.id, decision, note || undefined)
+            await adminReviewSaleCancellation(request.id, decision, note || undefined, refundBuyerFee)
             await load()
         } catch (err: any) {
             setError(err?.message || "Could not complete admin review.")
