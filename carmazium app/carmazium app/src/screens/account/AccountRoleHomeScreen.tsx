@@ -120,7 +120,7 @@ export const AccountRoleHomeScreen: React.FC<{ navigation?: any }> = ({ navigati
         </View>
 
         <Text style={styles.note}>
-          The native Partner/service-provider workspace is tracked as a product-parity gap and will use this same account as those screens are brought across.
+          Your account, verification and permissions stay the same whether you use CarMazium on the web or in the app.
         </Text>
       </ScrollView>
     </View>
