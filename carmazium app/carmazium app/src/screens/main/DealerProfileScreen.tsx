@@ -94,6 +94,7 @@ export const DealerProfileScreen: React.FC = () => {
   const canManageInventory = hasPermission('MANAGE_INVENTORY');
   const canViewPurchases = hasPermission('VIEW_PURCHASES');
   const canManageTeam = hasPermission('MANAGE_TEAM');
+  const canManageFinance = hasPermission('MANAGE_FINANCE');
   const [activeSubTab, setActiveSubTab] = useState<'today' | 'this_week'>('today');
 
   const [stats, setStats] = useState<DealerStats | null>(null);
@@ -414,6 +415,8 @@ export const DealerProfileScreen: React.FC = () => {
 
             )}
             {/* Finance applications */}
+            {canManageFinance && (
+
             <TouchableOpacity
               style={styles.attentionRow}
               activeOpacity={0.8}
@@ -429,6 +432,8 @@ export const DealerProfileScreen: React.FC = () => {
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
+
+            )}
             {/* Team */}
             {canManageTeam && (
 

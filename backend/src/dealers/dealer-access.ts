@@ -11,6 +11,7 @@ export type DealerPermission =
     | 'MANAGE_OFFERS'
     | 'VIEW_INVENTORY'
     | 'MANAGE_INVENTORY'
+    | 'MANAGE_FINANCE'
     | 'VIEW_PURCHASES'
     | 'VIEW_ANALYTICS'
     | 'MANAGE_TEAM'
@@ -35,6 +36,7 @@ const ROLE_PERMISSIONS: Record<DealerRole, ReadonlySet<DealerPermission>> = {
         'MANAGE_OFFERS',
         'VIEW_INVENTORY',
         'MANAGE_INVENTORY',
+        'MANAGE_FINANCE',
         'VIEW_PURCHASES',
         'VIEW_ANALYTICS',
         'MANAGE_TEAM',
@@ -53,6 +55,7 @@ const ROLE_PERMISSIONS: Record<DealerRole, ReadonlySet<DealerPermission>> = {
         'VIEW_TRADE',
         'PAY_AUCTION_FEE',
         'PAY_LISTING_FEE',
+        'MANAGE_FINANCE',
         'VIEW_INVENTORY',
         'VIEW_PURCHASES',
         'VIEW_ANALYTICS',

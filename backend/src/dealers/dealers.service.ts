@@ -35,6 +35,7 @@ export class DealersService {
         'MANAGE_OFFERS',
         'VIEW_INVENTORY',
         'MANAGE_INVENTORY',
+        'MANAGE_FINANCE',
         'VIEW_PURCHASES',
         'VIEW_ANALYTICS',
         'MANAGE_TEAM',

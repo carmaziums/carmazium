@@ -275,6 +275,7 @@ const DEALER_ITEMS: MenuItem[] = [
   },
   {
     id: 'dealer-finance',
+    requiredPermission: 'MANAGE_FINANCE',
     label: 'Finance applications',
     icon: 'calculator-outline',
     iconLib: 'ion',

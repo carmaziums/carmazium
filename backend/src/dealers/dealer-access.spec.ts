@@ -74,6 +74,7 @@ describe('dealer-access', () => {
         expect(hasDealerPermission(actor!, 'MANAGE_INVENTORY')).toBe(true);
         expect(hasDealerPermission(actor!, 'PAY_AUCTION_FEE')).toBe(false);
         expect(hasDealerPermission(actor!, 'PAY_LISTING_FEE')).toBe(false);
+        expect(hasDealerPermission(actor!, 'MANAGE_FINANCE')).toBe(false);
         expect(hasDealerPermission(actor!, 'MANAGE_TEAM')).toBe(false);
         expect(hasDealerPermission(actor!, 'MANAGE_KYC')).toBe(false);
     });
@@ -97,6 +98,7 @@ describe('dealer-access', () => {
         expect(hasDealerPermission(actor!, 'VIEW_TRADE')).toBe(true);
         expect(hasDealerPermission(actor!, 'PAY_AUCTION_FEE')).toBe(true);
         expect(hasDealerPermission(actor!, 'PAY_LISTING_FEE')).toBe(true);
+        expect(hasDealerPermission(actor!, 'MANAGE_FINANCE')).toBe(true);
         expect(hasDealerPermission(actor!, 'VIEW_INVENTORY')).toBe(true);
         expect(hasDealerPermission(actor!, 'VIEW_PURCHASES')).toBe(true);
         expect(hasDealerPermission(actor!, 'VIEW_ANALYTICS')).toBe(true);

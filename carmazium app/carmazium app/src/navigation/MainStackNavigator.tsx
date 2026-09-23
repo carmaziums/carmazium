@@ -71,7 +71,7 @@ const GatedDealerOffersScreen = withDealerGate(DealerOffersScreen, 'MANAGE_OFFER
 const GatedDealerMyOffersScreen = withDealerGate(DealerMyOffersScreen, 'MANAGE_OFFERS');
 const GatedDealerPurchasesScreen = withDealerGate(DealerPurchasesScreen, 'VIEW_PURCHASES');
 const GatedDealerEarningsScreen = withDealerGate(DealerEarningsScreen, 'VIEW_ANALYTICS');
-const GatedDealerFinanceScreen = withDealerGate(DealerFinanceScreen);
+const GatedDealerFinanceScreen = withDealerGate(DealerFinanceScreen, 'MANAGE_FINANCE');
 
 export type MainStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
