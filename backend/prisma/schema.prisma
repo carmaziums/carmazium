@@ -1794,6 +1794,7 @@ model SaleCancellationRequest {
   adminReviewedById        String?
   adminNote                String?
   buyerFeeRefunded         Boolean                @default(false)
+  sellerBonusRecoveryRequired Boolean              @default(false)
   resolvedAt               DateTime?
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
