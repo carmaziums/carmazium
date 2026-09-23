@@ -116,8 +116,11 @@ export class PaymentsController {
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
     @ApiOperation({ summary: 'Get Stripe Checkout Session status' })
-    async getSessionStatus(@Param('sessionId') sessionId: string) {
-        const status = await this.paymentsService.getSessionStatus(sessionId);
+    async getSessionStatus(
+        @Param('sessionId') sessionId: string,
+        @CurrentUser() user: any,
+    ) {
+        const status = await this.paymentsService.getSessionStatus(sessionId, user.id);
         return new StandardResponse(status);
     }
 
@@ -125,9 +128,12 @@ export class PaymentsController {
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
     @ApiOperation({ summary: 'Webhook fallback: apply auction buyer fee if webhook was delayed' })
-    async applyAuctionFee(@Body('sessionId') sessionId: string) {
+    async applyAuctionFee(
+        @Body('sessionId') sessionId: string,
+        @CurrentUser() user: any,
+    ) {
         if (!sessionId) throw new BadRequestException('sessionId is required');
-        const result = await this.paymentsService.applyAuctionFee(sessionId);
+        const result = await this.paymentsService.applyAuctionFee(sessionId, user.id);
         return new StandardResponse(result);
     }
 
@@ -151,9 +157,12 @@ export class PaymentsController {
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
     @ApiOperation({ summary: 'Webhook fallback: apply dealer KYC £1 fee if webhook was delayed' })
-    async applyKycFee(@Body('sessionId') sessionId: string) {
+    async applyKycFee(
+        @Body('sessionId') sessionId: string,
+        @CurrentUser() user: any,
+    ) {
         if (!sessionId) throw new BadRequestException('sessionId is required');
-        const result = await this.paymentsService.applyKycFee(sessionId);
+        const result = await this.paymentsService.applyKycFee(sessionId, user.id);
         return new StandardResponse(result);
     }
 
@@ -161,9 +170,12 @@ export class PaymentsController {
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
     @ApiOperation({ summary: 'Webhook fallback: generate the HPI report if the webhook was delayed' })
-    async applyHpiFee(@Body('sessionId') sessionId: string) {
+    async applyHpiFee(
+        @Body('sessionId') sessionId: string,
+        @CurrentUser() user: any,
+    ) {
         if (!sessionId) throw new BadRequestException('sessionId is required');
-        const result = await this.paymentsService.applyHpiFee(sessionId);
+        const result = await this.paymentsService.applyHpiFee(sessionId, user.id);
         return new StandardResponse(result);
     }
 
@@ -171,9 +183,12 @@ export class PaymentsController {
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
     @ApiOperation({ summary: "Webhook fallback: register the buyer's emailed HPI report request if the webhook was delayed" })
-    async applyHpiEmailFee(@Body('sessionId') sessionId: string) {
+    async applyHpiEmailFee(
+        @Body('sessionId') sessionId: string,
+        @CurrentUser() user: any,
+    ) {
         if (!sessionId) throw new BadRequestException('sessionId is required');
-        const result = await this.paymentsService.applyHpiEmailFee(sessionId);
+        const result = await this.paymentsService.applyHpiEmailFee(sessionId, user.id);
         return new StandardResponse(result);
     }
 
