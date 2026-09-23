@@ -909,7 +909,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             </AnimatePresence>
 
             {/* ── Mobile Sticky Bid Bar ─────────────────────────────────────── */}
-            {isLive && !isSeller && user && profile?.role === 'DEALER' && !isEnded && (
+            {isLive && !isSeller && user && canPlaceBid && !isEnded && (
                 <div className="lg:hidden sticky top-[80px] z-40 bg-[var(--bg-dropdown)] backdrop-blur-md border-b border-[var(--border-default)] px-4 py-2.5 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
                         <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-widest font-bold">Current Bid</p>
@@ -1568,8 +1568,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         <motion.div
                                             initial={bid.isNew ? { opacity: 0, y: -8 } : false}
                                             animate={{ opacity: 1, y: 0 }}
-                                            className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${i === 0 ? "bg-primary/5 border border-primary/15" : "hover:bg-[var(--bg-card)]"} ${isSeller && isLive && !reserveMet && i === 0 && bid.bidId ? "cursor-pointer" : ""}`}
-                                            onClick={isSeller && isLive && !reserveMet && i === 0 && bid.bidId ? () => { setAcceptingBid(bid); setAcceptError(null) } : undefined}
+                                            className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${i === 0 ? "bg-primary/5 border border-primary/15" : "hover:bg-[var(--bg-card)]"} ${canManageSellerAuction && isLive && !reserveMet && i === 0 && bid.bidId ? "cursor-pointer" : ""}`}
+                                            onClick={canManageSellerAuction && isLive && !reserveMet && i === 0 && bid.bidId ? () => { setAcceptingBid(bid); setAcceptError(null) } : undefined}
                                         >
                                             <div className="w-6 h-6 rounded-full bg-[var(--bg-card)] flex items-center justify-center shrink-0">
                                                 <span className="text-[9px] font-black text-[var(--text-muted)]">{bid.initials}</span>
@@ -1578,14 +1578,14 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             <span className="font-mono font-black text-[var(--text-primary)] text-xs">£{bid.amount.toLocaleString()}</span>
                                             {i === 0 && <TrendingUp size={10} className="text-emerald-400 shrink-0" />}
                                             <span className="ml-auto text-[9px] text-[var(--text-muted)] shrink-0">{bid.time}</span>
-                                            {isSeller && isLive && !reserveMet && i === 0 && bid.bidId && (
+                                            {canManageSellerAuction && isLive && !reserveMet && i === 0 && bid.bidId && (
                                                 <span className="hidden group-hover:flex items-center gap-1 absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[9px] font-black px-1.5 py-0.5 rounded-lg pointer-events-none">
                                                     <CheckCircle size={9} /> Accept
                                                 </span>
                                             )}
                                         </motion.div>
                                         {/* Cancel countdown — only visible to the bid owner, not sellers */}
-                                        {bid.bidId && cancelableBids.has(bid.bidId) && !isSeller && (() => {
+                                        {canPlaceBid && bid.bidId && cancelableBids.has(bid.bidId) && !isSeller && (() => {
                                             const expiresAt = cancelableBids.get(bid.bidId)!
                                             const remainingMs = Math.max(0, expiresAt - cancelNowTick)
                                             const isCancelling = cancellingBidId === bid.bidId
@@ -1667,11 +1667,17 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         You can accept the current highest offer and end the auction immediately, even before the reserve is met.
                                     </p>
                                 )}
-                                <Link href="/dashboard/seller/auctions">
-                                    <Button variant="outline" className="w-full mt-2 text-xs h-9 border-[var(--border-default)] text-[var(--text-muted)]">
-                                        Manage Auction
-                                    </Button>
-                                </Link>
+                                {canManageSellerAuction ? (
+                                    <Link href={profile?.role === 'DEALER' ? "/dashboard/dealer/auctions" : "/dashboard/seller/auctions"}>
+                                        <Button variant="outline" className="w-full mt-2 text-xs h-9 border-[var(--border-default)] text-[var(--text-muted)]">
+                                            Manage Auction
+                                        </Button>
+                                    </Link>
+                                ) : (
+                                    <p className="text-[var(--text-muted)] text-[10px]">
+                                        Your dealership role can monitor this auction but cannot change it.
+                                    </p>
+                                )}
                             </div>
                         ) : !user ? (
                             <div className="space-y-3">
@@ -1692,6 +1698,14 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 <Ban size={20} className="text-amber-400 mx-auto" />
                                 <p className="text-amber-300 text-xs font-bold">Dealer accounts only</p>
                                 <p className="text-[var(--text-muted)] text-xs leading-relaxed">Only verified dealers can place bids on CarMazium auctions. Upgrade your account to participate.</p>
+                            </div>
+                        ) : !canPlaceBid ? (
+                            <div className="text-center py-4 space-y-2">
+                                <Lock size={20} className="text-blue-400 mx-auto" />
+                                <p className="text-blue-300 text-xs font-bold">View-only auction access</p>
+                                <p className="text-[var(--text-muted)] text-xs leading-relaxed">
+                                    Your dealership role can follow Trade Exchange auctions, but it cannot place or cancel bids.
+                                </p>
                             </div>
                         ) : (
                             <>
@@ -1770,7 +1784,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     </div>
 
                     {/* Highest below-reserve bid is a live offer the seller can accept */}
-                    {isSeller && isLive && !reserveMet && bidHistory[0]?.bidId && (
+                    {canManageSellerAuction && isLive && !reserveMet && bidHistory[0]?.bidId && (
                         <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 p-4 space-y-3">
                             <div className="flex items-start gap-3">
                                 <div className="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
@@ -1819,7 +1833,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             Buy It Now pending — awaiting seller confirmation
                         </div>
                     )}
-                    {binPending && isSeller && (
+                    {binPending && canManageSellerAuction && (
                         <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
                             <p className="text-sm font-semibold text-amber-300">Buy It Now Request</p>
                             <p className="text-xs text-amber-300/80">
