@@ -2444,3 +2444,59 @@ handover approved** — an auction that merely ended is not enough, since the ba
 - The CSV export was not extended to include auction bonuses. Web's orphaned page has a separate
   Auction Sales tab; whether its export includes them was not traced. Possible follow-up.
 - Neither earnings screen was read in full — only the fetch, the summary block and the styles.
+
+---
+
+## 2026-09-23 — One Product Block 5: Buyer journey
+
+**Programme checkpoint:** Blocks 1–5 have now reached the buyer-business-rule checkpoint. The
+remaining native TradeXchange service-job screens are not hidden inside this completion claim:
+they remain the explicit Block 7 mobile surface gap.
+
+### PR #189 — core buyer parity
+
+- Mobile offer create/amend now preserves the optional seller message instead of dropping it.
+- Native £125 auction-fee payments are reconciled against the exact Stripe PaymentIntent before
+  CarMazium shows the fee as confirmed.
+- Both native fee screens reuse the same submitted transaction while confirmation is pending, so
+  a delayed webhook cannot invite a second £125 charge.
+- The 72-hour winner payment deadline uses backend `wonAt` state and the won-auction contact
+  actions use authoritative `buyerFeePaid`.
+- Buyer-fee charging is winner-only.
+- The existing £100 handover-denial refund supports both hosted Checkout (`cs_`) and native
+  PaymentIntent (`pi_`) payments.
+- Full repository CI passed and the merged main deployment completed successfully.
+
+### PR #190 — verified inspection/refusal rule
+
+The missing inspection/refusal rule is implemented against the real TradeXchange inspection job
+rather than a buyer-entered claim:
+
+1. A winner may create an INSPECTION job linked to that exact won auction.
+2. The approved inspection provider must complete the job with a structured outcome:
+   `PASS` or `FAULTS_FOUND`.
+3. `FAULTS_FOUND` requires a written inspection summary.
+4. Refusal is accepted only from the recorded winner, before approved handover, and only when a
+   completed/released linked inspection recorded `FAULTS_FOUND`.
+5. Stripe refunds the **full £125 buyer fee** first, using an idempotency key. If the refund
+   fails, the vehicle sale is not unwound.
+6. After a confirmed refund the auction sale is cancelled, the Sale record is removed, seller
+   sales count is reversed, and the vehicle returns to seller control.
+7. Standalone auction stock returns to CLASSIFIED/DRAFT. A linked retail listing returns to
+   DRAFT rather than ACTIVE so a vehicle just recorded as faulted is not automatically
+   advertised before repair/update.
+8. Buyer and seller receive explicit notifications.
+
+The web won-auction page can launch the linked inspection; the provider job page records the
+outcome; the customer job page displays it and exposes the eligible full-refund refusal action.
+Mobile now carries the same auction/refusal API contract, but mobile does not yet have the
+TradeXchange customer/provider job screens. That UI remains under Block 7
+(`service_provider.jobs` / Partner Account parity) and is recorded as a manifest gap.
+
+### Drift prevention added
+
+The parity guard now checks that the fault-verified inspection rule, full £125 refund and
+`/refuse-after-inspection` contract remain present in backend, web and mobile API layers.
+`product-parity.json` records `buyer.auction_inspection_refusal` as a gap until the Block 7
+native service-job UI is delivered.
+
