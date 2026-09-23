@@ -2097,6 +2097,11 @@ export class ListingsService {
 
         // Case 2: no COMPLETED transaction — verify each PENDING one against Stripe
         // until we find one that was actually paid (webhook-missed scenario).
+        //
+        // Web Checkout stores a Checkout Session id (cs_...) while the native
+        // Payment Sheet stores a PaymentIntent id (pi_...). Treat both as first-
+        // class payment references so an immediate mobile /publish retry can
+        // reconcile a successful payment even if the webhook has not arrived yet.
         let verifiedTxId: string | null = null;
         try {
             const Stripe = (await import('stripe')).default;
@@ -2106,9 +2111,28 @@ export class ListingsService {
             for (const tx of transactions) {
                 if (!tx.stripePaymentId) continue;
                 try {
+                    if (tx.stripePaymentId.startsWith('pi_')) {
+                        const paymentIntent = await stripe.paymentIntents.retrieve(tx.stripePaymentId);
+                        if (paymentIntent.status === 'succeeded') {
+                            await (this.prisma as any).transaction.update({
+                                where: { id: tx.id },
+                                data: {
+                                    status: 'COMPLETED',
+                                    stripePaymentId: paymentIntent.id,
+                                },
+                            });
+                            verifiedTxId = tx.id;
+                            break;
+                        }
+                        continue;
+                    }
+
+                    // Checkout Session ids are the browser/web payment path.
+                    // Legacy rows without a recognised prefix are still tried as
+                    // sessions for backwards compatibility with existing data.
                     const session = await stripe.checkout.sessions.retrieve(tx.stripePaymentId);
                     if (session.payment_status === 'paid') {
-                        // Heal this transaction so future calls are instant
+                        // Heal this transaction so future calls are instant.
                         await (this.prisma as any).transaction.update({
                             where: { id: tx.id },
                             data: {
@@ -2120,11 +2144,11 @@ export class ListingsService {
                         break;
                     }
                 } catch {
-                    // This specific session ID invalid/expired — try next
+                    // This specific reference is invalid/expired — try next.
                 }
             }
         } catch {
-            // Stripe SDK init failed — fall through to requiresPayment
+            // Stripe SDK init failed — fall through to requiresPayment.
         }
 
         if (!verifiedTxId) {
