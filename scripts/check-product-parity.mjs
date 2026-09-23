@@ -250,6 +250,7 @@ const webVehicleDetail = read('src/app/buy-cars/[slug]/VehicleDetailsPageClient.
 const mobileVehicleDetail = read('carmazium app/carmazium app/src/screens/vehicle/VehicleDetailScreen.tsx');
 const mobilePaymentsApi = read('carmazium app/carmazium app/src/lib/paymentsApi.ts');
 const mobilePurchaseFlow = read('carmazium app/carmazium app/src/screens/main/PurchaseFlowScreen.tsx');
+const mobileAuctionComplete = read('carmazium app/carmazium app/src/screens/main/AuctionCompleteScreen.tsx');
 const paymentsController = read('backend/src/payments/payments.controller.ts');
 const buyerPaymentsService = read('backend/src/payments/payments.service.ts');
 
@@ -278,11 +279,15 @@ if (
   !mobilePurchaseFlow.includes('setPendingConfirmationId(sheet.transactionId)') ||
   !mobilePurchaseFlow.includes('reconcilePendingAuctionFee(sheet.transactionId)') ||
   !mobilePurchaseFlow.includes('CONFIRM PAYMENT STATUS') ||
-  !mobilePurchaseFlow.includes('within 72 hours')
+  !mobilePurchaseFlow.includes('within 72 hours') ||
+  !mobileAuctionComplete.includes('setPendingConfirmationId(sheet.transactionId)') ||
+  !mobileAuctionComplete.includes('reconcileAuctionFeeIntent(sheet.transactionId)') ||
+  !mobileAuctionComplete.includes('CONFIRM PAYMENT STATUS') ||
+  !mobileAuctionComplete.includes('within 72 hours')
 ) {
   fail('Mobile auction fee UX can drift into duplicate charge or missing deadline guidance');
 } else {
-  ok('Mobile auction fee retry reuses the same payment and preserves 72-hour guidance');
+  ok('Every mobile auction fee path reuses the same payment and preserves 72-hour guidance');
 }
 
 const webPricing = read('src/lib/pricingConfig.ts');
