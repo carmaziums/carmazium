@@ -13,6 +13,11 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { Bid } from '@prisma/client';
 import { calculatePlatformOpeningBid } from '../auctions/auction-pricing';
+import {
+    assertDealerPermission,
+    resolveBusinessBuyerId,
+    resolveDealerActor,
+} from '../dealers/dealer-access';
 
 const BID_CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -50,18 +55,32 @@ export class BidsService {
             throw new BadRequestException('This auction is not currently active');
         }
 
-        // Prevent seller from bidding on their own auction
-        if (listing.sellerId === bidderId) {
-            throw new BadRequestException('You cannot bid on your own auction');
-        }
-
-        // Role must still be DEALER and KYC-verified — having a past dealerProfile after a role switch is not enough
+        // A dealer staff member bids as the dealership, not as a shadow
+        // personal buyer. This keeps the auction winner, purchase and buyer fee
+        // attached to one canonical business identity.
         const bidder = await this.prisma.user.findUnique({
             where: { id: bidderId },
-            select: { role: true, firstName: true, lastName: true, dealerProfile: { select: { isVerified: true } } },
+            select: { role: true, firstName: true, lastName: true },
         });
-        if (bidder?.role !== 'DEALER' || !bidder?.dealerProfile?.isVerified) {
+        if (bidder?.role !== 'DEALER') {
             throw new ForbiddenException('Only verified dealers can place bids on auctions.');
+        }
+
+        const dealerActor = await resolveDealerActor(this.prisma, bidderId);
+        if (!dealerActor?.isVerified) {
+            throw new ForbiddenException('Only verified dealers can place bids on auctions.');
+        }
+        assertDealerPermission(
+            dealerActor,
+            'PLACE_BID',
+            'Your dealership role does not allow auction bidding.',
+        );
+        const businessBidderId = dealerActor.ownerUserId;
+
+        // Staff acting for the seller's own dealership still cannot bid against
+        // that dealership's vehicle.
+        if (listing.sellerId === businessBidderId) {
+            throw new BadRequestException('You cannot bid on your own auction');
         }
 
         const minIncrement = Number(auction.minIncrement);
@@ -97,7 +116,7 @@ export class BidsService {
         const bid = await this.prisma.bid.create({
             data: {
                 listingId: createBidDto.listingId,
-                bidderId,
+                bidderId: businessBidderId,
                 amount: createBidDto.amount,
             },
         });
@@ -151,7 +170,7 @@ export class BidsService {
         }
 
         // Notify the displaced highest bidder they've been outbid
-        if (highestBid && highestBid.bidderId !== bidderId) {
+        if (highestBid && highestBid.bidderId !== businessBidderId) {
             this.notificationsService.create({
                 userId:     highestBid.bidderId,
                 type:       'OUTBID',
@@ -175,7 +194,7 @@ export class BidsService {
             listingId: bid.listingId,
             amount: Number(bid.amount),
             bidderInitials: initials,
-            bidderId,
+            bidderId: businessBidderId,
             timestamp: bid.timestamp.toISOString(),
             newEndTime: updatedAuction?.endTime?.toISOString(),
         });
@@ -184,9 +203,18 @@ export class BidsService {
     }
 
     async cancelBid(bidId: string, bidderId: string): Promise<void> {
+        const actor = await resolveDealerActor(this.prisma, bidderId);
+        if (actor) {
+            assertDealerPermission(
+                actor,
+                'PLACE_BID',
+                'Your dealership role does not allow auction bidding.',
+            );
+        }
+        const businessBidderId = await resolveBusinessBuyerId(this.prisma, bidderId);
         const bid = await this.prisma.bid.findUnique({ where: { id: bidId } });
 
-        if (!bid || bid.bidderId !== bidderId) {
+        if (!bid || bid.bidderId !== businessBidderId) {
             throw new ForbiddenException('Not your bid');
         }
 
@@ -220,9 +248,10 @@ export class BidsService {
     }
 
     async findMyActiveAuctionPositions(bidderId: string): Promise<any[]> {
+        const businessBidderId = await resolveBusinessBuyerId(this.prisma, bidderId);
         const myBids = await this.prisma.bid.findMany({
             where: {
-                bidderId,
+                bidderId: businessBidderId,
                 deletedAt: null,
                 cancelledAt: null,
                 archivedAt: null,
@@ -319,7 +348,7 @@ export class BidsService {
                     myBidId: myBid.id,
                     myBidCreatedAt: createdAt,
                     currentHighestBid,
-                    isLeading: highest?.bidderId === bidderId,
+                    isLeading: highest?.bidderId === businessBidderId,
                     nextMinimumBid: currentHighestBid + minIncrement,
                     bidCount: bidCountByListing.get(myBid.listingId) ?? 0,
                     canCancelCurrentBid: Date.now() < cancelDeadline.getTime(),
@@ -335,11 +364,12 @@ export class BidsService {
     }
 
     async findMyBids(bidderId: string, page = 1, limit = 20): Promise<{ data: any[]; total: number }> {
+        const businessBidderId = await resolveBusinessBuyerId(this.prisma, bidderId);
         const skip = (page - 1) * limit;
 
         const [bids, total] = await Promise.all([
             this.prisma.bid.findMany({
-                where: { bidderId, deletedAt: null, cancelledAt: null },
+                where: { bidderId: businessBidderId, deletedAt: null, cancelledAt: null },
                 include: {
                     listing: {
                         select: {
@@ -371,7 +401,7 @@ export class BidsService {
                 skip,
                 take: limit,
             }),
-            this.prisma.bid.count({ where: { bidderId, deletedAt: null, cancelledAt: null } }),
+            this.prisma.bid.count({ where: { bidderId: businessBidderId, deletedAt: null, cancelledAt: null } }),
         ]);
 
         const listingIds = [...new Set(bids.map(b => b.listingId))];
@@ -409,11 +439,12 @@ export class BidsService {
         watchlistCount: number;
         totalSpent: number;
     }> {
+        const businessBuyerId = await resolveBusinessBuyerId(this.prisma, userId);
         const [activeBids, wonAuctions, watchlistCount, totalSpentAgg] = await Promise.all([
             // Bids placed on currently ACTIVE auctions only
             this.prisma.bid.count({
                 where: {
-                    bidderId: userId,
+                    bidderId: businessBuyerId,
                     deletedAt: null,
                     cancelledAt: null,
                     archivedAt: null,
@@ -421,14 +452,14 @@ export class BidsService {
                 },
             }),
             this.prisma.auction.count({
-                where: { winnerId: userId, status: 'ENDED' },
+                where: { winnerId: businessBuyerId, status: 'ENDED' },
             }),
             this.prisma.watchlistItem.count({
                 where: { userId },
             }),
             // Sum of soldPrice for all purchases where this user is the buyer
             this.prisma.sale.aggregate({
-                where: { buyerId: userId },
+                where: { buyerId: businessBuyerId },
                 _sum: { soldPrice: true },
             }),
         ]);
