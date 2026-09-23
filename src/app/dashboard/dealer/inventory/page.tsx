@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
+import { useDealerAccess } from "@/context/DealerAccessContext"
 import { apiClient } from "@/lib/apiClient"
 import { alsoListRetail } from "@/lib/listingApi"
 import { PageHeader } from "@/components/dashboard/PageHeader"
@@ -46,6 +47,8 @@ export default function DealerInventoryPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const router = useRouter()
     const searchParams = useSearchParams()
+    const { can } = useDealerAccess()
+    const canManageInventory = can("MANAGE_INVENTORY")
     // Featured Boost checkout redirects here with ?boost=success — the payment
     // itself already activates via webhook, but nothing ever confirmed it to
     // the user, who previously bounced through a dead redirect stub that
@@ -191,29 +194,39 @@ export default function DealerInventoryPage() {
                 <main className="flex-1 space-y-6 min-w-0">
                     {/* Header */}
                     <PageHeader
-                        title={DEALER_ROUTE_CONFIG[1].title}
-                        subHeader={DEALER_ROUTE_CONFIG[1].subHeader}
+                        title={DEALER_ROUTE_CONFIG.find(route => route.href === "/dashboard/dealer/inventory")?.title || "Inventory"}
+                        subHeader={DEALER_ROUTE_CONFIG.find(route => route.href === "/dashboard/dealer/inventory")?.subHeader || "Dealership stock"}
                     >
-                        <Button
-                            variant="outline"
-                            className="border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all"
-                            onClick={() => setIsImportModalOpen(true)}
-                        >
-                            <ExternalLink size={16} /> Import Listing
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all"
-                            onClick={() => setIsBulkImportOpen(true)}
-                        >
-                            <Upload size={16} /> Bulk Import
-                        </Button>
-                        <Link href="/dashboard/dealer/add-listing">
-                            <Button className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-transform">
-                                <PlusCircle size={18} /> Add Vehicle
-                            </Button>
-                        </Link>
+                        {canManageInventory && (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    className="border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all"
+                                    onClick={() => setIsImportModalOpen(true)}
+                                >
+                                    <ExternalLink size={16} /> Import Listing
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all"
+                                    onClick={() => setIsBulkImportOpen(true)}
+                                >
+                                    <Upload size={16} /> Bulk Import
+                                </Button>
+                                <Link href="/dashboard/dealer/add-listing">
+                                    <Button className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-transform">
+                                        <PlusCircle size={18} /> Add Vehicle
+                                    </Button>
+                                </Link>
+                            </>
+                        )}
                     </PageHeader>
+
+                    {!canManageInventory && (
+                        <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 text-sm text-blue-200">
+                            Inventory is read-only for your dealership role. You can review stock and performance, while vehicle changes stay with Sales or Admin staff.
+                        </div>
+                    )}
 
                     {showBoostSuccess && (
                         <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
@@ -292,50 +305,62 @@ export default function DealerInventoryPage() {
 
                                         <p className="text-xl font-black mt-3">£{listing.price?.toLocaleString()}</p>
 
-                                        <div className="grid grid-cols-2 gap-2 mt-3">
-                                            {listing.status === 'DRAFT' ? (
-                                                <button
-                                                    onClick={() => handlePublish(listing)}
-                                                    className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-sm"
+                                        {canManageInventory ? (
+                                            <div className="grid grid-cols-2 gap-2 mt-3">
+                                                {listing.status === 'DRAFT' ? (
+                                                    <button
+                                                        onClick={() => handlePublish(listing)}
+                                                        className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-sm"
+                                                    >
+                                                        <Upload size={16} />
+                                                        Complete & Publish
+                                                    </button>
+                                                ) : listing.status === 'SOLD' ? (
+                                                    <button
+                                                        onClick={async () => {
+                                                            const res = await apiClient(`/listings/${listing.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'ACTIVE' }) }).catch(() => null)
+                                                            if (res !== null) fetchListings(searchQuery)
+                                                        }}
+                                                        className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-blue-500 text-white font-bold text-sm"
+                                                    >
+                                                        <RefreshCcw size={16} /> Relist
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => openSoldModal(listing)}
+                                                        className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-sm"
+                                                    >
+                                                        <CheckCircle2 size={16} /> Mark sold
+                                                    </button>
+                                                )}
+                                                <Link
+                                                    href={`/dashboard/dealer/add-listing?editId=${listing.id}&editSlug=${encodeURIComponent(listing.slug)}`}
+                                                    className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl border border-[var(--border-default)] font-bold text-sm hover:bg-white/5"
                                                 >
-                                                    <Upload size={16} />
-                                                    Complete & Publish
-                                                </button>
-                                            ) : listing.status === 'SOLD' ? (
-                                                <button
-                                                    onClick={async () => {
-                                                        const res = await apiClient(`/listings/${listing.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'ACTIVE' }) }).catch(() => null)
-                                                        if (res !== null) fetchListings(searchQuery)
-                                                    }}
-                                                    className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-blue-500 text-white font-bold text-sm"
+                                                    <Pencil size={16} /> Edit
+                                                </Link>
+                                            </div>
+    
+                                        ) : (
+                                            <div className="mt-3">
+                                                <Link
+                                                    href={`/buy-cars/${listing.slug}`}
+                                                    className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl border border-[var(--border-default)] font-bold text-sm hover:bg-white/5"
                                                 >
-                                                    <RefreshCcw size={16} /> Relist
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    onClick={() => openSoldModal(listing)}
-                                                    className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-sm"
-                                                >
-                                                    <CheckCircle2 size={16} /> Mark sold
-                                                </button>
-                                            )}
-                                            <Link
-                                                href={`/dashboard/dealer/add-listing?editId=${listing.id}&editSlug=${encodeURIComponent(listing.slug)}`}
-                                                className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl border border-[var(--border-default)] font-bold text-sm hover:bg-white/5"
-                                            >
-                                                <Pencil size={16} /> Edit
-                                            </Link>
-                                        </div>
+                                                    <Eye size={16} /> View listing
+                                                </Link>
+                                            </div>
+                                        )}
 
-                                        <button
+                                        {canManageInventory && <button
                                             onClick={() => setActiveDropdown(isMenuOpen ? null : listing.id)}
                                             className="w-full min-h-[44px] flex items-center justify-center gap-1.5 mt-2 text-sm font-bold text-[var(--text-muted)]"
                                         >
                                             {isMenuOpen ? 'Hide more options' : 'More options'}
                                             <ChevronRight size={15} className={`transition-transform ${isMenuOpen ? 'rotate-90' : ''}`} />
-                                        </button>
+                                        </button>}
 
-                                        {isMenuOpen && (
+                                        {canManageInventory && isMenuOpen && (
                                             <div className="mt-1 space-y-1.5 border-t border-[var(--border-default)] pt-3">
                                                 <Link href={`/buy-cars/${listing.slug}`} className="min-h-[46px] flex items-center gap-2.5 px-3 rounded-xl bg-[var(--bg-card)] font-bold text-sm">
                                                     <Eye size={16} /> View listing
@@ -498,128 +523,138 @@ export default function DealerInventoryPage() {
 
                                                     {/* Actions */}
                                                     <td className="px-8 py-6 text-right">
-                                                        <div className="flex items-center justify-end gap-2 transition-opacity">
-                                                            {listing.status === 'DRAFT' && (
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    title="Complete & publish in full listing wizard"
-                                                                    onClick={() => handlePublish(listing)}
-                                                                    className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20"
-                                                                >
-                                                                    <CheckCircle2 size={16} />
-                                                                </Button>
-                                                            )}
-
-                                                            <div className="relative">
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={(e) => {
-                                                                        e.preventDefault(); e.stopPropagation()
-                                                                        const rect = e.currentTarget.getBoundingClientRect()
-                                                                        setDropdownOpensUp(rect.bottom > window.innerHeight - 260)
-                                                                        setActiveDropdown(activeDropdown === listing.id ? null : listing.id)
-                                                                    }}
-                                                                    className="bg-[var(--bg-card)] hover:bg-white/10 text-[var(--text-muted)] hover:text-primary dark:hover:text-white border border-[var(--border-default)]"
-                                                                >
-                                                                    <MoreVertical size={16} />
-                                                                </Button>
-
-                                                                {activeDropdown === listing.id && (
-                                                                <>
-                                                                <div className="fixed inset-0 z-10" onClick={() => setActiveDropdown(null)} />
-                                                                <div
-                                                                    onClick={() => setActiveDropdown(null)}
-                                                                    className={`absolute right-0 w-36 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg shadow-xl transition-all z-20 flex flex-col py-1 ${dropdownOpensUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
-                                                                    <Link href={`/dashboard/dealer/add-listing?editId=${listing.id}&editSlug=${encodeURIComponent(listing.slug)}`} className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white transition-colors">
-                                                                        <Pencil size={14} /> Edit
-                                                                    </Link>
-                                                                    <Link href={`/buy-cars/${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white transition-colors">
-                                                                        <Eye size={14} /> View
-                                                                    </Link>
-                                                                    {/* Dual-channel: AUCTION listing → add retail listing */}
-                                                                    {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && !(listing as any).linkedListing && (
-                                                                        <button
-                                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAlsoRetailListing(listing); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
-                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 transition-colors w-full text-left"
-                                                                        >
-                                                                            <Tag size={14} /> Also List for Retail
-                                                                        </button>
-                                                                    )}
-                                                                    {/* A linked retail DRAFT must complete the full wizard before payment. */}
-                                                                    {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && (listing as any).linkedListing?.status === 'DRAFT' && (
-                                                                        <button
-                                                                            onClick={(e) => {
-                                                                                e.preventDefault(); e.stopPropagation()
-                                                                                const linked = (listing as any).linkedListing
-                                                                                router.push(`/dashboard/dealer/add-listing?editId=${linked.id}`)
-                                                                            }}
-                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-amber-400 hover:bg-amber-500/10 transition-colors w-full text-left"
-                                                                        >
-                                                                            <Tag size={14} /> Complete Linked Retail
-                                                                        </button>
-                                                                    )}
-                                                                    {/* Dual-channel: CLASSIFIED listing → create auction */}
-                                                                    {listing.type === 'CLASSIFIED' && listing.status === 'ACTIVE' && !listing.linkedListingId && (
-                                                                        <button
-                                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/dashboard/dealer/put-on-auction?listingId=${listing.id}`) }}
-                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-emerald-400 hover:bg-emerald-500/10 transition-colors w-full text-left"
-                                                                        >
-                                                                            <Gavel size={14} /> Put on Auction
-                                                                        </button>
-                                                                    )}
-                                                                    {listing.status === 'ACTIVE' && (
-                                                                        <button
-                                                                            onClick={async (e) => {
-                                                                                e.preventDefault()
-                                                                                try {
-                                                                                    const res = await apiClient<{ data: { url: string } }>(`/featured-boost/${listing.id}`, { method: 'POST' })
-                                                                                    if (res.data.url) window.location.href = res.data.url
-                                                                                } catch {
-                                                                                    alert("Failed to start boost payment.")
-                                                                                }
-                                                                            }}
-                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-amber-400 hover:bg-amber-500/10 transition-colors w-full text-left"
-                                                                        >
-                                                                            <TrendingUp size={14} /> Boost to Featured
-                                                                        </button>
-                                                                    )}
-                                                                    {listing.status !== 'SOLD' && (
-                                                                        <button
-                                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); openSoldModal(listing) }}
-                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors w-full text-left"
-                                                                        >
-                                                                            <CheckCircle2 size={14} /> Mark Sold
-                                                                        </button>
-                                                                    )}
-                                                                    {listing.status === 'SOLD' && (
-                                                                        <button
-                                                                            onClick={async (e) => {
-                                                                                e.preventDefault(); e.stopPropagation()
-                                                                                // Phase 10: relist via status PATCH (listing was already published)
-                                                                                const res = await apiClient(`/listings/${listing.id}/status`, {
-                                                                                    method: 'PATCH',
-                                                                                    body: JSON.stringify({ status: 'ACTIVE' })
-                                                                                }).catch(() => null)
-                                                                                if (res !== null) fetchListings(searchQuery)
-                                                                            }}
-                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-blue-500/10 hover:text-blue-400 transition-colors w-full text-left"
-                                                                        >
-                                                                            <RefreshCcw size={14} /> Relist
-                                                                        </button>
-                                                                    )}
-                                                                    <button
-                                                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteListing(listing.id) }}
-                                                                        className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-red-500/10 hover:text-red-400 transition-colors w-full text-left"
+                                                        {canManageInventory ? (
+                                                            <div className="flex items-center justify-end gap-2 transition-opacity">
+                                                                {listing.status === 'DRAFT' && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        title="Complete & publish in full listing wizard"
+                                                                        onClick={() => handlePublish(listing)}
+                                                                        className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20"
                                                                     >
-                                                                        <Trash2 size={14} /> Delete
-                                                                    </button>
-                                                                </div>
-                                                                </>
+                                                                        <CheckCircle2 size={16} />
+                                                                    </Button>
                                                                 )}
+    
+                                                                <div className="relative">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault(); e.stopPropagation()
+                                                                            const rect = e.currentTarget.getBoundingClientRect()
+                                                                            setDropdownOpensUp(rect.bottom > window.innerHeight - 260)
+                                                                            setActiveDropdown(activeDropdown === listing.id ? null : listing.id)
+                                                                        }}
+                                                                        className="bg-[var(--bg-card)] hover:bg-white/10 text-[var(--text-muted)] hover:text-primary dark:hover:text-white border border-[var(--border-default)]"
+                                                                    >
+                                                                        <MoreVertical size={16} />
+                                                                    </Button>
+    
+                                                                    {activeDropdown === listing.id && (
+                                                                    <>
+                                                                    <div className="fixed inset-0 z-10" onClick={() => setActiveDropdown(null)} />
+                                                                    <div
+                                                                        onClick={() => setActiveDropdown(null)}
+                                                                        className={`absolute right-0 w-36 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg shadow-xl transition-all z-20 flex flex-col py-1 ${dropdownOpensUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
+                                                                        <Link href={`/dashboard/dealer/add-listing?editId=${listing.id}&editSlug=${encodeURIComponent(listing.slug)}`} className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white transition-colors">
+                                                                            <Pencil size={14} /> Edit
+                                                                        </Link>
+                                                                        <Link href={`/buy-cars/${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white transition-colors">
+                                                                            <Eye size={14} /> View
+                                                                        </Link>
+                                                                        {/* Dual-channel: AUCTION listing → add retail listing */}
+                                                                        {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && !(listing as any).linkedListing && (
+                                                                            <button
+                                                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAlsoRetailListing(listing); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
+                                                                                className="flex items-center gap-2 px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 transition-colors w-full text-left"
+                                                                            >
+                                                                                <Tag size={14} /> Also List for Retail
+                                                                            </button>
+                                                                        )}
+                                                                        {/* A linked retail DRAFT must complete the full wizard before payment. */}
+                                                                        {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && (listing as any).linkedListing?.status === 'DRAFT' && (
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.preventDefault(); e.stopPropagation()
+                                                                                    const linked = (listing as any).linkedListing
+                                                                                    router.push(`/dashboard/dealer/add-listing?editId=${linked.id}`)
+                                                                                }}
+                                                                                className="flex items-center gap-2 px-3 py-2 text-sm text-amber-400 hover:bg-amber-500/10 transition-colors w-full text-left"
+                                                                            >
+                                                                                <Tag size={14} /> Complete Linked Retail
+                                                                            </button>
+                                                                        )}
+                                                                        {/* Dual-channel: CLASSIFIED listing → create auction */}
+                                                                        {listing.type === 'CLASSIFIED' && listing.status === 'ACTIVE' && !listing.linkedListingId && (
+                                                                            <button
+                                                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/dashboard/dealer/put-on-auction?listingId=${listing.id}`) }}
+                                                                                className="flex items-center gap-2 px-3 py-2 text-sm text-emerald-400 hover:bg-emerald-500/10 transition-colors w-full text-left"
+                                                                            >
+                                                                                <Gavel size={14} /> Put on Auction
+                                                                            </button>
+                                                                        )}
+                                                                        {listing.status === 'ACTIVE' && (
+                                                                            <button
+                                                                                onClick={async (e) => {
+                                                                                    e.preventDefault()
+                                                                                    try {
+                                                                                        const res = await apiClient<{ data: { url: string } }>(`/featured-boost/${listing.id}`, { method: 'POST' })
+                                                                                        if (res.data.url) window.location.href = res.data.url
+                                                                                    } catch {
+                                                                                        alert("Failed to start boost payment.")
+                                                                                    }
+                                                                                }}
+                                                                                className="flex items-center gap-2 px-3 py-2 text-sm text-amber-400 hover:bg-amber-500/10 transition-colors w-full text-left"
+                                                                            >
+                                                                                <TrendingUp size={14} /> Boost to Featured
+                                                                            </button>
+                                                                        )}
+                                                                        {listing.status !== 'SOLD' && (
+                                                                            <button
+                                                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); openSoldModal(listing) }}
+                                                                                className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors w-full text-left"
+                                                                            >
+                                                                                <CheckCircle2 size={14} /> Mark Sold
+                                                                            </button>
+                                                                        )}
+                                                                        {listing.status === 'SOLD' && (
+                                                                            <button
+                                                                                onClick={async (e) => {
+                                                                                    e.preventDefault(); e.stopPropagation()
+                                                                                    // Phase 10: relist via status PATCH (listing was already published)
+                                                                                    const res = await apiClient(`/listings/${listing.id}/status`, {
+                                                                                        method: 'PATCH',
+                                                                                        body: JSON.stringify({ status: 'ACTIVE' })
+                                                                                    }).catch(() => null)
+                                                                                    if (res !== null) fetchListings(searchQuery)
+                                                                                }}
+                                                                                className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-blue-500/10 hover:text-blue-400 transition-colors w-full text-left"
+                                                                            >
+                                                                                <RefreshCcw size={14} /> Relist
+                                                                            </button>
+                                                                        )}
+                                                                        <button
+                                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteListing(listing.id) }}
+                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-red-500/10 hover:text-red-400 transition-colors w-full text-left"
+                                                                        >
+                                                                            <Trash2 size={14} /> Delete
+                                                                        </button>
+                                                                    </div>
+                                                                    </>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                        </div>
+    
+                                                        ) : (
+                                                            <Link
+                                                                href={`/buy-cars/${listing.slug}`}
+                                                                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border-default)] text-sm font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"
+                                                            >
+                                                                <Eye size={14} /> View
+                                                            </Link>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             )
@@ -633,7 +668,7 @@ export default function DealerInventoryPage() {
             </div>
 
             {/* ── Mark as Sold modal ─────────────────────────────────── */}
-            {soldModal && (
+            {canManageInventory && soldModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
                     <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
                         <div className="flex items-center justify-between">
@@ -685,12 +720,12 @@ export default function DealerInventoryPage() {
             )}
 
             <BulkImportModal
-                isOpen={isBulkImportOpen}
+                isOpen={canManageInventory && isBulkImportOpen}
                 onClose={() => setIsBulkImportOpen(false)}
                 onComplete={() => fetchListings()}
             />
 
-            {isImportModalOpen && (
+            {canManageInventory && isImportModalOpen && (
                 <ImportListingModal
                     onClose={() => setIsImportModalOpen(false)}
                     onImported={() => { setIsImportModalOpen(false); fetchListings() }}
@@ -698,7 +733,7 @@ export default function DealerInventoryPage() {
             )}
 
             {/* ── Also List for Retail modal ──────────────────────────────── */}
-            {alsoRetailListing && (
+            {canManageInventory && alsoRetailListing && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
                     <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
                         <div className="flex items-center justify-between">
