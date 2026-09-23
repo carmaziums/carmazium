@@ -31,10 +31,9 @@ const LOCKED_FEATURES = [
  * Two things this deliberately gets right, either of which would otherwise
  * lock out legitimate users:
  *
- * 1. Staff members pass. Someone who works for a verified dealership has no
- *    dealerProfile of their own, so their own `isVerified` is false. Gating on
- *    that alone would bar every employee of every verified dealer. Web uses
- *    `dealerProfile.isVerified || isStaffMember` and so does this.
+ * 1. Staff inherit the dealership's verification state from /dealers/access.
+ *    A staff user's personal `isVerified` is not authoritative, and membership
+ *    alone must not unlock an unverified dealership.
  * 2. There is always a way out. The wall offers Start KYC and a route back to
  *    the buyer side, so a user who reaches it by mistake — including through a
  *    field misread — is inconvenienced rather than trapped.
@@ -59,19 +58,37 @@ export const DealerGate: React.FC<{
   const accountRole = useAuthStore((s) => s.accountRole);
 
   const dealerIdentity = accountRole === 'dealer' || !!isDealerStaff;
-  const basicDealerAccess =
-    dealerIdentity && (allowUnverifiedOwner || !!isDealerStaff || !!isVerified);
-  const permissionCheckEnabled = basicDealerAccess && !!requiredPermission;
+  // Staff must resolve the business even for screens without a role-specific
+  // permission so membership alone never stands in for dealership KYC.
+  const accessCheckEnabled = dealerIdentity && (!!isDealerStaff || !!requiredPermission);
   const {
     access,
     loading: permissionLoading,
     error: permissionError,
     hasPermission,
     refresh,
-  } = useDealerAccess(permissionCheckEnabled);
+  } = useDealerAccess(accessCheckEnabled);
 
   const wrongAccountType = !dealerIdentity;
-  const kycLocked = !wrongAccountType && !allowUnverifiedOwner && !isDealerStaff && !isVerified;
+  const ownerVerified = allowUnverifiedOwner || !!isVerified;
+  const staffVerified =
+    !!isDealerStaff
+    && !permissionLoading
+    && !permissionError
+    && access?.isVerified === true;
+  const basicDealerAccess =
+    dealerIdentity && (isDealerStaff ? staffVerified : ownerVerified);
+  const kycLocked =
+    !wrongAccountType
+    && !allowUnverifiedOwner
+    && !isDealerStaff
+    && !isVerified;
+  const staffVerificationLocked =
+    !wrongAccountType
+    && !!isDealerStaff
+    && !permissionLoading
+    && !permissionError
+    && access?.isVerified === false;
   const permissionDenied =
     basicDealerAccess
     && !!requiredPermission
@@ -107,30 +124,34 @@ export const DealerGate: React.FC<{
         <Text style={styles.title}>
           {wrongAccountType
             ? 'Dealer Account Required'
-            : permissionDenied
-              ? 'Role Access Restricted'
-              : permissionLoading
-                ? 'Checking Dealer Access'
-                : permissionError
-                  ? 'Access Check Unavailable'
-                  : 'Dealer Features Locked'}
+            : permissionLoading
+              ? 'Checking Dealer Access'
+              : permissionError
+                ? 'Access Check Unavailable'
+                : staffVerificationLocked
+                  ? 'Dealership Verification Required'
+                  : permissionDenied
+                    ? 'Role Access Restricted'
+                    : 'Dealer Features Locked'}
         </Text>
         <Text style={styles.blurb}>
           {wrongAccountType
             ? 'These tools belong to a Dealer capability. Your current CarMazium account role does not grant dealer access.'
-            : permissionDenied
-              ? `Your ${access?.role?.replace(/_/g, ' ') || 'staff'} role does not include this dealership tool.`
-              : permissionLoading
-                ? 'Checking the permissions assigned to your dealership role.'
-                : permissionError
-                  ? 'CarMazium could not confirm your dealership permissions. Retry the access check.'
-                  : 'Complete KYC verification to unlock your dealer dashboard and start listing vehicles, managing inventory, and accessing auction tools.'}
+            : permissionLoading
+              ? 'Checking the verification and permissions assigned to your dealership role.'
+              : permissionError
+                ? 'CarMazium could not confirm your dealership permissions. Retry the access check.'
+                : staffVerificationLocked
+                  ? 'Your dealership has not completed business verification yet. The dealership owner must complete KYC before staff can use dealer tools.'
+                  : permissionDenied
+                    ? `Your ${access?.role?.replace(/_/g, ' ') || 'staff'} role does not include this dealership tool.`
+                    : 'Complete KYC verification to unlock your dealer dashboard and start listing vehicles, managing inventory, and accessing auction tools.'}
         </Text>
         {kycLocked && (
           <Text style={styles.eta}>Verification typically takes less than 24 hours</Text>
         )}
 
-        {(wrongAccountType || kycLocked) && (
+        {(wrongAccountType || kycLocked || staffVerificationLocked) && (
           <View style={styles.featureGrid}>
             {LOCKED_FEATURES.map((f) => (
               <View key={f} style={styles.featureChip}>
