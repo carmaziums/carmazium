@@ -1,8 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole, ServiceJobStatus } from '@prisma/client';
-import { subDays } from 'date-fns';
+import { subDays, subMonths, subYears } from 'date-fns';
 import { assertDealerPermission, resolveDealerActor } from '../dealers/dealer-access';
+
+type DealerDashboardRangeOptions = {
+    period?: '7d' | '30d';
+    rangeValue?: number;
+    rangeUnit?: 'days' | 'months' | 'years';
+    allTime?: boolean;
+    from?: string;
+    to?: string;
+    compare?: boolean;
+};
 
 @Injectable()
 export class DashboardService {
@@ -293,8 +303,10 @@ export class DashboardService {
         };
     }
 
-    async getDealerDashboard(userId: string, period: '7d' | '30d' = '30d') {
-        const dateFilter = this.buildPeriodFilter(period);
+    async getDealerDashboard(userId: string, options: DealerDashboardRangeOptions | '7d' | '30d' = {}) {
+        const rangeOptions: DealerDashboardRangeOptions =
+            typeof options === 'string' ? { period: options } : options;
+
         const actor = await resolveDealerActor(this.prisma, userId);
         assertDealerPermission(actor, 'VIEW_ANALYTICS');
 
@@ -302,8 +314,68 @@ export class DashboardService {
         const dealerProfileId = actor.dealerProfileId;
         const now = new Date();
 
+        const dealerProfile = await this.prisma.dealerProfile.findUnique({
+            where: { id: dealerProfileId },
+            select: {
+                companyName: true,
+                createdAt: true,
+                staff: {
+                    where: { isActive: true },
+                    select: { id: true },
+                },
+            },
+        });
+
+        const accountCreatedAt = dealerProfile?.createdAt ?? now;
+        const safeDate = (value?: string) => {
+            if (!value) return null;
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        };
+        const requestedTo = safeDate(rangeOptions.to);
+        const rangeEnd = requestedTo && requestedTo < now ? requestedTo : now;
+
+        let rangeStart: Date;
+        let rangeLabel: string;
+
+        const requestedFrom = safeDate(rangeOptions.from);
+        if (requestedFrom) {
+            rangeStart = requestedFrom;
+            rangeLabel = 'Custom range';
+        } else if (rangeOptions.allTime) {
+            rangeStart = accountCreatedAt;
+            rangeLabel = 'All time';
+        } else {
+            const legacyDays = rangeOptions.period === '7d' ? 7 : rangeOptions.period === '30d' ? 30 : undefined;
+            const rawValue = rangeOptions.rangeValue ?? legacyDays ?? 30;
+            const value = Math.min(Math.max(Math.floor(rawValue || 1), 1), 10000);
+            const unit = rangeOptions.rangeUnit ?? 'days';
+
+            if (unit === 'months') {
+                rangeStart = subMonths(rangeEnd, value);
+                rangeLabel = `Last ${value} month${value === 1 ? '' : 's'}`;
+            } else if (unit === 'years') {
+                rangeStart = subYears(rangeEnd, value);
+                rangeLabel = `Last ${value} year${value === 1 ? '' : 's'}`;
+            } else {
+                rangeStart = subDays(rangeEnd, value);
+                rangeLabel = `Last ${value} day${value === 1 ? '' : 's'}`;
+            }
+        }
+
+        if (rangeStart < accountCreatedAt) {
+            rangeStart = accountCreatedAt;
+            if (!rangeOptions.from && !rangeOptions.allTime) {
+                rangeLabel = 'Since account creation';
+            }
+        }
+        if (rangeStart > rangeEnd) {
+            rangeStart = rangeEnd;
+        }
+
+        const dateFilter = { gte: rangeStart, lte: rangeEnd };
+
         const [
-            dealerProfile,
             activeListings,
             activeAuctions,
             soldListings,
@@ -311,21 +383,8 @@ export class DashboardService {
             allTimeViewAgg,
             totalRevenue,
             trackedViewsRaw,
+            leadsCreated,
         ] = await Promise.all([
-            this.prisma.dealerProfile.findUnique({
-                where: { id: dealerProfileId },
-                select: {
-                    companyName: true,
-                    staff: {
-                        where: { isActive: true },
-                        select: { id: true },
-                    },
-                },
-            }),
-
-            // Current stock is a snapshot, not an acquisition metric. Do not
-            // hide an older car just because it was uploaded before the
-            // selected 7/30-day reporting window.
             this.prisma.listing.count({
                 where: {
                     sellerId: ownerUserId,
@@ -333,9 +392,6 @@ export class DashboardService {
                     deletedAt: null,
                 },
             }),
-
-            // Same principle for live auctions: this is the number available
-            // to act on now, regardless of when the auction was created.
             this.prisma.auction.count({
                 where: {
                     listing: { sellerId: ownerUserId, deletedAt: null },
@@ -343,31 +399,22 @@ export class DashboardService {
                     status: 'ACTIVE',
                 },
             }),
-
-            // Completed sales are a period metric.
             this.prisma.sale.count({
                 where: {
                     sellerId: ownerUserId,
                     createdAt: dateFilter,
                 },
             }),
-
-            // CRM stages describe the current sales pipeline.
             this.prisma.lead.groupBy({
                 by: ['status'],
                 where: { dealerProfileId },
                 _count: { status: true },
             }),
-
-            // Keep the all-time listing counter for backwards compatibility
-            // and for the average-views figure used by other dashboard clients.
             this.prisma.listing.aggregate({
                 where: { sellerId: ownerUserId, deletedAt: null },
                 _sum: { viewCount: true },
                 _count: { id: true },
             }),
-
-            // Revenue follows the same selected period as completed sales.
             this.prisma.sale.aggregate({
                 where: {
                     sellerId: ownerUserId,
@@ -375,21 +422,23 @@ export class DashboardService {
                 },
                 _sum: { soldPrice: true },
             }),
-
-            // VehicleViewTracker records one first-party view_item event per
-            // mounted listing page after analytics consent. Joining the event's
-            // item_id back to listings makes this a dealership-scoped,
-            // date-bounded view count instead of reusing a cumulative counter.
             this.prisma.$queryRaw<Array<{ views: bigint }>>`
                 SELECT COUNT(*)::bigint AS views
                 FROM analytics_events ae
                 INNER JOIN listings l
                     ON l.id = ae.payload->>'item_id'
                 WHERE ae.type = 'view_item'
-                  AND ae."createdAt" >= ${dateFilter.gte}
+                  AND ae."createdAt" >= ${rangeStart}
+                  AND ae."createdAt" <= ${rangeEnd}
                   AND l."sellerId" = ${ownerUserId}
                   AND l."deletedAt" IS NULL
             `,
+            this.prisma.lead.count({
+                where: {
+                    dealerProfileId,
+                    createdAt: dateFilter,
+                },
+            }),
         ]);
 
         const funnelMap: Record<string, number> = {};
@@ -404,11 +453,90 @@ export class DashboardService {
         const totalViews = Number(trackedViewsRaw?.[0]?.views ?? 0);
         const allTimeViews = Number(allTimeViewAgg._sum.viewCount ?? 0);
         const totalListings = Number(allTimeViewAgg._count?.id ?? 0);
+        const revenue = Number(totalRevenue._sum.soldPrice ?? 0);
+
+        let comparison: any = null;
+        if (rangeOptions.compare) {
+            const durationMs = Math.max(1, rangeEnd.getTime() - rangeStart.getTime());
+            const previousEnd = new Date(rangeStart.getTime() - 1);
+            const previousStart = new Date(Math.max(
+                accountCreatedAt.getTime(),
+                previousEnd.getTime() - durationMs,
+            ));
+
+            if (previousEnd >= accountCreatedAt && previousStart <= previousEnd) {
+                const previousFilter = { gte: previousStart, lte: previousEnd };
+                const [previousSold, previousRevenue, previousViewsRaw, previousLeadsCreated] = await Promise.all([
+                    this.prisma.sale.count({
+                        where: { sellerId: ownerUserId, createdAt: previousFilter },
+                    }),
+                    this.prisma.sale.aggregate({
+                        where: { sellerId: ownerUserId, createdAt: previousFilter },
+                        _sum: { soldPrice: true },
+                    }),
+                    this.prisma.$queryRaw<Array<{ views: bigint }>>`
+                        SELECT COUNT(*)::bigint AS views
+                        FROM analytics_events ae
+                        INNER JOIN listings l
+                            ON l.id = ae.payload->>'item_id'
+                        WHERE ae.type = 'view_item'
+                          AND ae."createdAt" >= ${previousStart}
+                          AND ae."createdAt" <= ${previousEnd}
+                          AND l."sellerId" = ${ownerUserId}
+                          AND l."deletedAt" IS NULL
+                    `,
+                    this.prisma.lead.count({
+                        where: { dealerProfileId, createdAt: previousFilter },
+                    }),
+                ]);
+
+                const previousViews = Number(previousViewsRaw?.[0]?.views ?? 0);
+                const previousRevenueValue = Number(previousRevenue._sum.soldPrice ?? 0);
+                const percentChange = (current: number, previous: number) => {
+                    if (previous === 0) return current === 0 ? 0 : null;
+                    return Math.round(((current - previous) / previous) * 1000) / 10;
+                };
+
+                comparison = {
+                    available: true,
+                    from: previousStart.toISOString(),
+                    to: previousEnd.toISOString(),
+                    totalViews: {
+                        current: totalViews,
+                        previous: previousViews,
+                        percentChange: percentChange(totalViews, previousViews),
+                    },
+                    soldListings: {
+                        current: soldListings,
+                        previous: previousSold,
+                        percentChange: percentChange(soldListings, previousSold),
+                    },
+                    totalRevenue: {
+                        current: revenue,
+                        previous: previousRevenueValue,
+                        percentChange: percentChange(revenue, previousRevenueValue),
+                    },
+                    leadsCreated: {
+                        current: leadsCreated,
+                        previous: previousLeadsCreated,
+                        percentChange: percentChange(leadsCreated, previousLeadsCreated),
+                    },
+                };
+            } else {
+                comparison = { available: false };
+            }
+        }
 
         return {
-            period,
             companyName: dealerProfile?.companyName ?? 'Your Dealership',
             isVerified: actor.isVerified,
+            accountCreatedAt: accountCreatedAt.toISOString(),
+            range: {
+                from: rangeStart.toISOString(),
+                to: rangeEnd.toISOString(),
+                label: rangeLabel,
+                allTime: rangeOptions.allTime === true,
+            },
 
             // Current snapshot KPIs
             activeListings,
@@ -416,11 +544,13 @@ export class DashboardService {
             activeLeads,
             staffCount: (dealerProfile?.staff?.length ?? 0) + 1,
 
-            // Selected-period KPIs
+            // Selected-range KPIs
             totalViews,
             soldListings,
-            soldThisMonth: soldListings, // legacy alias kept for older clients
-            totalRevenue: Number(totalRevenue._sum.soldPrice ?? 0),
+            soldThisMonth: soldListings,
+            totalRevenue: revenue,
+            leadsCreated,
+            comparison,
 
             // Supporting analytics
             allTimeViews,
