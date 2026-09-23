@@ -1,0 +1,69 @@
+name: One Product Parity
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'backend/src/**'
+      - 'backend/prisma/**'
+      - 'carmazium app/carmazium app/src/**'
+      - 'product-parity.json'
+      - 'scripts/check-product-parity.mjs'
+      - '.github/workflows/product-parity.yml'
+
+jobs:
+  parity-contract:
+    name: Product contract parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check web/mobile/backend business-rule parity
+        run: node scripts/check-product-parity.mjs
+
+  web-typecheck:
+    name: Web typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+  mobile-typecheck:
+    name: Mobile typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 'carmazium app/carmazium app'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
+      - run: npm ci
+      - run: npm run typescript
+
+  backend-typecheck:
+    name: Backend typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
