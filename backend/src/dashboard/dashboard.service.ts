@@ -303,7 +303,10 @@ export class DashboardService {
         };
     }
 
-    async getDealerDashboard(userId: string, options: DealerDashboardRangeOptions = {}) {
+    async getDealerDashboard(userId: string, options: DealerDashboardRangeOptions | '7d' | '30d' = {}) {
+        const rangeOptions: DealerDashboardRangeOptions =
+            typeof options === 'string' ? { period: options } : options;
+
         const actor = await resolveDealerActor(this.prisma, userId);
         assertDealerPermission(actor, 'VIEW_ANALYTICS');
 
@@ -329,24 +332,24 @@ export class DashboardService {
             const parsed = new Date(value);
             return Number.isNaN(parsed.getTime()) ? null : parsed;
         };
-        const requestedTo = safeDate(options.to);
+        const requestedTo = safeDate(rangeOptions.to);
         const rangeEnd = requestedTo && requestedTo < now ? requestedTo : now;
 
         let rangeStart: Date;
         let rangeLabel: string;
 
-        const requestedFrom = safeDate(options.from);
+        const requestedFrom = safeDate(rangeOptions.from);
         if (requestedFrom) {
             rangeStart = requestedFrom;
             rangeLabel = 'Custom range';
-        } else if (options.allTime) {
+        } else if (rangeOptions.allTime) {
             rangeStart = accountCreatedAt;
             rangeLabel = 'All time';
         } else {
-            const legacyDays = options.period === '7d' ? 7 : options.period === '30d' ? 30 : undefined;
-            const rawValue = options.rangeValue ?? legacyDays ?? 30;
+            const legacyDays = rangeOptions.period === '7d' ? 7 : rangeOptions.period === '30d' ? 30 : undefined;
+            const rawValue = rangeOptions.rangeValue ?? legacyDays ?? 30;
             const value = Math.min(Math.max(Math.floor(rawValue || 1), 1), 10000);
-            const unit = options.rangeUnit ?? 'days';
+            const unit = rangeOptions.rangeUnit ?? 'days';
 
             if (unit === 'months') {
                 rangeStart = subMonths(rangeEnd, value);
@@ -362,7 +365,7 @@ export class DashboardService {
 
         if (rangeStart < accountCreatedAt) {
             rangeStart = accountCreatedAt;
-            if (!options.from && !options.allTime) {
+            if (!rangeOptions.from && !rangeOptions.allTime) {
                 rangeLabel = 'Since account creation';
             }
         }
@@ -453,7 +456,7 @@ export class DashboardService {
         const revenue = Number(totalRevenue._sum.soldPrice ?? 0);
 
         let comparison: any = null;
-        if (options.compare) {
+        if (rangeOptions.compare) {
             const durationMs = Math.max(1, rangeEnd.getTime() - rangeStart.getTime());
             const previousEnd = new Date(rangeStart.getTime() - 1);
             const previousStart = new Date(Math.max(
@@ -532,7 +535,7 @@ export class DashboardService {
                 from: rangeStart.toISOString(),
                 to: rangeEnd.toISOString(),
                 label: rangeLabel,
-                allTime: options.allTime === true,
+                allTime: rangeOptions.allTime === true,
             },
 
             // Current snapshot KPIs
