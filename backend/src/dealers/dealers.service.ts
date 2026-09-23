@@ -32,6 +32,7 @@ export class DealersService {
         'PAY_AUCTION_FEE',
         'MANAGE_CRM',
         'MANAGE_OFFERS',
+        'MANAGE_INVENTORY',
         'VIEW_PURCHASES',
         'VIEW_ANALYTICS',
         'MANAGE_TEAM',
