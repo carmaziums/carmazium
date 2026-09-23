@@ -31,6 +31,7 @@ import { getWebSocketUrl, createChatRoom, getAccessToken } from "@/lib/chatApi"
 import { getSessionStatus, applyHpiEmailFee } from "@/lib/paymentApi"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { TRADE_EXCHANGE_ROLES } from "@/lib/tradeAccess"
+import { DealerAccess, getDealerAccess } from "@/lib/dealerAccess"
 
 const ThreeDVehicleViewer = dynamic(
     () => import("@/components/listing/ThreeDVehicleViewer").then(m => m.ThreeDVehicleViewer),
@@ -87,6 +88,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const searchParams = useSearchParams()
 
     const [auction, setAuction] = React.useState<Auction | null>(null)
+    const [dealerAccess, setDealerAccess] = React.useState<DealerAccess | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [loadError, setLoadError] = React.useState<string | null>(null)
 
@@ -111,6 +113,27 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
     const [selectedDamageZone, setSelectedDamageZone] = React.useState<string | null>(null)
     const [showHpiModal, setShowHpiModal] = React.useState(false)
+
+    React.useEffect(() => {
+        if (!user || profile?.role !== 'DEALER') {
+            setDealerAccess(null)
+            return
+        }
+
+        let mounted = true
+        getDealerAccess()
+            .then(access => { if (mounted) setDealerAccess(access) })
+            .catch(() => { if (mounted) setDealerAccess(null) })
+        return () => { mounted = false }
+    }, [user?.id, profile?.role])
+
+    const businessUserId = dealerAccess?.ownerUserId ?? user?.id
+    const canPlaceBid =
+        profile?.role === 'DEALER'
+        && Boolean(dealerAccess?.permissions?.includes('PLACE_BID'))
+    const canManageDealerInventory =
+        profile?.role === 'DEALER'
+        && Boolean(dealerAccess?.permissions?.includes('MANAGE_INVENTORY'))
 
     // Returning from Stripe after paying to have the HPI report emailed —
     // verify the session actually completed, apply the fallback in case the
@@ -173,7 +196,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 const bids = data.listing.bids ?? []
                 const top = bids[0] ? Number(bids[0].amount) : Number(data.startingBid)
                 setCurrentBid(top)
-                setIsWinning(!!user && bids[0]?.bidderId === user.id)
+                setIsWinning(!!businessUserId && bids[0]?.bidderId === businessUserId)
                 setBidHistory(bids.map(b => ({
                     initials: `${b.bidder?.firstName?.[0] ?? "?"}${b.bidder?.lastName?.[0] ?? ""}`.toUpperCase(),
                     amount: Number(b.amount),
@@ -183,11 +206,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 setAntiSnipeActive(new Date(data.endTime).getTime() - Date.now() <= 3 * 60 * 1000)
                 setBinPending(!!data.buyItNowPendingBuyerId)
                 // Rehydrate cancel eligibility from real bid data (survives refresh/navigation)
-                if (user) {
+                if (businessUserId) {
                     const now = Date.now()
                     const ownCancelable = new Map<string, number>()
                     for (const b of bids) {
-                        if (b.bidderId !== user.id) continue
+                        if (b.bidderId !== businessUserId) continue
                         const expiresAt = new Date(b.createdAt).getTime() + BID_CANCEL_WINDOW_MS
                         if (expiresAt > now) ownCancelable.set(b.id, expiresAt)
                     }
@@ -206,7 +229,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             })
             .catch(() => setLoadError("Failed to load auction. Please refresh."))
             .finally(() => setLoading(false))
-    }, [params.id, user])
+    }, [params.id, businessUserId])
 
     React.useEffect(() => { loadAuction() }, [loadAuction])
 
