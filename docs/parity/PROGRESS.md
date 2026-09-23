@@ -2653,3 +2653,25 @@ Completed/audited in Block 8:
 
 **Block 8 result:** Stripe/Connect, seller/provider payout lifecycle, HPI entitlements, realtime chat, notifications and tap routing have been audited against the authoritative backend. No explicit Block 8 business-rule gap remains.
 
+## 2026-09-23 — Block 9: Native customer service-job reachability
+
+**Block 9 checkpoint:** the explicit native buyer auction-inspection/refusal gap is closed; Block 9 remains in progress.
+
+Implemented:
+- Added native customer service-job API coverage for linked auction inspections, customer job listing/detail, quote acceptance, completion confirmation, dispute/cancel and review contracts.
+- Added `CustomerServiceJobsScreen` and `CustomerServiceJobDetailScreen`.
+- Services hub now exposes **My service jobs**.
+- Native deep links resolve `/services/jobs` and `/services/jobs/:jobId`.
+- A paid auction winner can choose **Inspect Before Handover**; the backend returns the existing active linked inspection if one already exists, preventing duplicate jobs.
+- Customer job detail compares active provider quotes, opens secure hosted checkout, exposes provider contact/chat after payment, shows structured inspection outcome and supports completion/dispute/cancel.
+- A completed/released linked inspection with `FAULTS_FOUND` exposes **Refuse Vehicle & Refund £125**, calling the same verified backend refusal contract as web.
+- `buyer.auction_inspection_refusal` moved from `gap` to `required` in `product-parity.json`.
+- Product parity CI now verifies the full native reachability chain: Services hub → customer jobs → linked inspection → verified-fault refusal.
+
+Still open in Block 9:
+- Cross-role navigation/back-stack certification beyond this customer service journey.
+- Theme/terminology parity pass.
+- Loading/empty/error/offline consistency audit.
+- Accessibility and performance checks.
+- `admin.operations` remains the only manifest `gap`; final treatment belongs to Block 10 certification because the native product does not currently expose an admin application.
+
