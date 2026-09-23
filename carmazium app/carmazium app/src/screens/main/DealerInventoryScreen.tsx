@@ -782,8 +782,9 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       )}
 
       {canManageInventory && (
-        {/* ── Add listing CTA ──────────────────────────────────────────────── */}
-        <View style={[styles.addListingWrap, { paddingBottom: insets.bottom + 12 }]}>
+        <>
+          {/* ── Add listing CTA ────────────────────────────────────────────── */}
+          <View style={[styles.addListingWrap, { paddingBottom: insets.bottom + 12 }]}>
           <TouchableOpacity
             style={[styles.addListingBtn, { flex: 1, marginRight: 8 }]}
             activeOpacity={0.85}
@@ -814,10 +815,9 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
             <Ionicons name="cloud-upload-outline" size={20} color={Colors.warning} />
             <Text style={styles.bulkImportText}>CSV</Text>
           </TouchableOpacity>
-        </View>
-  
+          </View>
+        </>
       )}
-
 
       {/* Bulk CSV Import Modal */}
       <BulkImportModal
