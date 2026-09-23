@@ -8,7 +8,6 @@ import {
   Platform,
   ScrollView,
   StatusBar,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -40,14 +39,16 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   const { login, isLoading } = useAuthStore();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const handleGoogleLogin = async () => {
+  const handleOAuthLogin = async (provider: 'google' | 'apple') => {
     setFormError(null);
-    setIsGoogleLoading(true);
+    const setProviderLoading = provider === 'google' ? setIsGoogleLoading : setIsAppleLoading;
+    setProviderLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider,
         options: {
           redirectTo: 'carmazium://auth/callback',
           skipBrowserRedirect: true,
@@ -57,12 +58,14 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       if (data?.url) {
         await Linking.openURL(data.url);
       } else {
-        throw new Error('Could not get sign-in URL. Is Google enabled in Supabase?');
+        throw new Error(`Could not get ${provider === 'google' ? 'Google' : 'Apple'} sign-in URL.`);
       }
     } catch (err: any) {
-      setFormError(err.message || 'Unable to start Google sign-in.');
+      setFormError(
+        err.message || `Unable to start ${provider === 'google' ? 'Google' : 'Apple'} sign-in.`,
+      );
     } finally {
-      setIsGoogleLoading(false);
+      setProviderLoading(false);
     }
   };
 
@@ -217,8 +220,8 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
               <TouchableOpacity
                 style={[styles.socialBtn, isGoogleLoading && styles.socialBtnDisabled]}
                 activeOpacity={0.8}
-                onPress={handleGoogleLogin}
-                disabled={isGoogleLoading || isLoading}
+                onPress={() => handleOAuthLogin('google')}
+                disabled={isGoogleLoading || isAppleLoading || isLoading}
               >
                 {isGoogleLoading ? (
                   <ActivityIndicator size="small" color={Colors.white} />
@@ -229,11 +232,16 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.socialBtn}
+                style={[styles.socialBtn, isAppleLoading && styles.socialBtnDisabled]}
                 activeOpacity={0.8}
-                onPress={() => Alert.alert('Coming Soon', 'Apple sign-in will be available in an upcoming update.')}
+                onPress={() => handleOAuthLogin('apple')}
+                disabled={isGoogleLoading || isAppleLoading || isLoading}
               >
-                <AppleIcon size={18} color={Colors.white} />
+                {isAppleLoading ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <AppleIcon size={18} color={Colors.white} />
+                )}
                 <Text style={styles.socialBtnText}>APPLE</Text>
               </TouchableOpacity>
             </View>

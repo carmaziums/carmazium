@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
-import { Ionicons, GoogleIcon } from '@/components/BrandIcon';
+import { Ionicons, GoogleIcon, AppleIcon } from '@/components/BrandIcon';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { useAuthStore } from '../../store/authStore';
@@ -35,17 +35,13 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
-  // BUYER + DEALER only. Web's picker also offers FINANCE_PARTNER, and
-  // SELLER/CONTRACTOR/INSURANCE_PARTNER are reachable there via ?role= — all
-  // deliberately omitted here: mobile has no partner dashboard, so choosing one
-  // would create an account with nowhere to land (OQ-1/OQ-5, decision recorded
-  // on AUTH-005). Buyer and seller are one account on mobile, so SELLER is not
-  // a separate choice either.
+  // Public account choice matches web: Personal Account (BUYER) or Partner
+  // Account (DEALER compatibility role). SELLER is not a separate signup type:
+  // a Personal Account may both buy and sell. Additional Partner capabilities
+  // are additive and are granted/verified after signup.
   //
-  // Choosing DEALER sets the account role; it does **not** make them verified.
-  // A dealer still goes through DealerOnboarding -> KYC before withDealerGate
-  // lets them into dealer screens, which is the same road as before — just
-  // reachable now without registering as a buyer first.
+  // Choosing Partner Account does not make a dealer verified. Dealer bidding
+  // and other protected trade tools still require the normal KYC approval.
   const [role, setRole] = useState<'BUYER' | 'DEALER'>('BUYER');
 
   const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -54,8 +50,9 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
 
-  const { signup, isLoading } = useAuthStore();
+  const { signup, prepareOAuthSignupRole, isLoading } = useAuthStore();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const passwordsMatch = confirmPassword.length > 0 && confirmPassword === password;
@@ -65,6 +62,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
     setFormError(null);
     setIsGoogleLoading(true);
     try {
+      await prepareOAuthSignupRole(role);
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -82,6 +80,31 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
       setFormError(err.message || 'Unable to start Google sign-in.');
     } finally {
       setIsGoogleLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    setFormError(null);
+    setIsAppleLoading(true);
+    try {
+      await prepareOAuthSignupRole(role);
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+          redirectTo: 'carmazium://auth/callback',
+          skipBrowserRedirect: true,
+        },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        await Linking.openURL(data.url);
+      } else {
+        throw new Error('Could not get Apple sign-in URL.');
+      }
+    } catch (err: any) {
+      setFormError(err.message || 'Unable to start Apple sign-in.');
+    } finally {
+      setIsAppleLoading(false);
     }
   };
 
@@ -155,7 +178,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               <View style={styles.roleRow}>
                 {([
                   { value: 'BUYER' as const, label: 'Buyer / Seller', hint: 'Buy and sell vehicles', icon: 'person-outline' as const },
-                  { value: 'DEALER' as const, label: 'Dealer', hint: 'Trade, bid at auction', icon: 'business-outline' as const },
+                  { value: 'DEALER' as const, label: 'Partner Account', hint: 'Trade, bid and add business services', icon: 'business-outline' as const },
                 ]).map(opt => {
                   const selected = role === opt.value;
                   return (
@@ -181,7 +204,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               </View>
               {role === 'DEALER' && (
                 <Text style={styles.roleNote}>
-                  You&apos;ll complete dealer verification after signing up.
+                  You&apos;ll choose and verify your business services after signing up.
                 </Text>
               )}
             </View>
@@ -379,7 +402,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               style={[styles.googleBtn, isGoogleLoading && styles.googleBtnDisabled]}
               activeOpacity={0.8}
               onPress={handleGoogleSignIn}
-              disabled={isGoogleLoading || isLoading}
+              disabled={isGoogleLoading || isAppleLoading || isLoading}
             >
               {isGoogleLoading ? (
                 <ActivityIndicator size="small" color={Colors.white} />
@@ -387,6 +410,20 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                 <GoogleIcon size={18} />
               )}
               <Text style={styles.googleBtnText}>CONTINUE WITH GOOGLE</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.googleBtn, isAppleLoading && styles.googleBtnDisabled]}
+              activeOpacity={0.8}
+              onPress={handleAppleSignIn}
+              disabled={isGoogleLoading || isAppleLoading || isLoading}
+            >
+              {isAppleLoading ? (
+                <ActivityIndicator size="small" color={Colors.white} />
+              ) : (
+                <AppleIcon size={18} color={Colors.white} />
+              )}
+              <Text style={styles.googleBtnText}>CONTINUE WITH APPLE</Text>
             </TouchableOpacity>
 
             {/* Login Link */}

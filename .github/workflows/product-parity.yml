@@ -67,3 +67,5 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm run typecheck
+      - name: Test self-service account role boundary
+        run: npm test -- --runInBand src/core/account-roles.spec.ts

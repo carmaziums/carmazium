@@ -91,6 +91,65 @@ for (const feature of manifest.features) {
   }
 }
 
+// Authentication / account-role contract. The backend enum contains privileged
+// roles, but only the four self-service roles may ever be selected by a public
+// registration, Supabase metadata, or the self-elevation endpoint.
+const accountRoles = read('backend/src/core/account-roles.ts');
+const registerDto = read('backend/src/auth/dto/register.dto.ts');
+const authService = read('backend/src/auth/auth.service.ts');
+const mobileAuthStore = read('carmazium app/carmazium app/src/store/authStore.ts');
+
+const selfServiceMatch = accountRoles.match(/SELF_SERVICE_USER_ROLES[^=]*=\s*\[([\s\S]*?)\];/);
+if (!selfServiceMatch) {
+  fail('Could not read canonical SELF_SERVICE_USER_ROLES');
+} else {
+  const roleBody = selfServiceMatch[1];
+  for (const role of ['BUYER', 'SELLER', 'DEALER', 'CONTRACTOR']) {
+    if (!roleBody.includes(`UserRole.${role}`)) {
+      fail(`Self-service role contract is missing ${role}`);
+    }
+  }
+  for (const role of ['ADMIN', 'FINANCE_PARTNER', 'INSURANCE_PARTNER']) {
+    if (roleBody.includes(`UserRole.${role}`)) {
+      fail(`Privileged role ${role} must never be self-service`);
+    }
+  }
+  ok('Self-service account roles exclude all privileged roles');
+}
+
+if (!registerDto.includes('IsIn([...SELF_SERVICE_USER_ROLES])')) {
+  fail('Direct registration is not constrained by SELF_SERVICE_USER_ROLES');
+} else {
+  ok('Direct registration uses the canonical self-service role allowlist');
+}
+
+if (!authService.includes('isSelfServiceUserRole(meta.role)')) {
+  fail('Supabase role metadata is not constrained by the self-service role allowlist');
+} else {
+  ok('Supabase role metadata cannot self-grant privileged roles');
+}
+
+const mobileAccountRoleMatch = mobileAuthStore.match(/export type AccountRole\s*=([\s\S]*?);/);
+if (!mobileAccountRoleMatch) {
+  fail('Could not read the mobile AccountRole union');
+} else {
+  const mobileRoles = mobileAccountRoleMatch[1];
+  for (const role of [
+    'buyer',
+    'seller',
+    'dealer',
+    'contractor',
+    'finance_partner',
+    'insurance_partner',
+    'admin',
+  ]) {
+    if (!mobileRoles.includes(`'${role}'`)) {
+      fail(`Mobile AccountRole is missing backend role mapping for ${role}`);
+    }
+  }
+  ok('Mobile recognizes every backend account role without buyer fallback');
+}
+
 const webPricing = read('src/lib/pricingConfig.ts');
 const mobilePricing = read('carmazium app/carmazium app/src/constants/pricing.ts');
 const payments = read('backend/src/payments/payments.service.ts');

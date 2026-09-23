@@ -21,12 +21,14 @@ import { SavedScreen } from '../screens/main/SavedScreen';
 import { DealerProfileScreen } from '../screens/main/DealerProfileScreen';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
 import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
+import { AccountRoleHomeScreen } from '../screens/account/AccountRoleHomeScreen';
 import { useAuthStore } from '../store/authStore';
 
 // Stable wrapper so the Profile tab's component prop never changes reference,
 // preventing React Navigation from unmounting + remounting the tab when role loads.
 const ProfileTabScreen: React.FC<any> = React.memo((props) => {
   const role = useAuthStore((s) => s.role);
+  const accountRole = useAuthStore((s) => s.accountRole);
   // Buyers get the buyer-specific dashboard (DASH-004 / OQ-29). It was fully
   // built and completely unreachable — zero navigate() call sites and absent
   // from the drawer's 33 stackScreen targets — while carrying the richer tile
@@ -36,6 +38,23 @@ const ProfileTabScreen: React.FC<any> = React.memo((props) => {
   // Sellers keep UnifiedDashboard, which is where the inventory/revenue tiles
   // live. A buyer-role user who also lists still reaches every seller screen
   // from the drawer — only the tiles differ, not the access.
+  // Business/platform roles must never be silently presented as a personal
+  // Buyer simply because the mobile preview role is intentionally narrower.
+  // Their native operational workspaces are tracked separately in the parity
+  // programme, but their identity is preserved here today.
+  if (
+    accountRole === 'contractor' ||
+    accountRole === 'finance_partner' ||
+    accountRole === 'insurance_partner' ||
+    accountRole === 'admin'
+  ) {
+    return <AccountRoleHomeScreen {...props} />;
+  }
+
+  // DEALER can deliberately preview the personal buyer experience via the
+  // existing "View my profile" control, so the preview role still wins for
+  // buyer/dealer presentation while accountRole remains authoritative for
+  // permissions.
   if (role === 'dealer') return <DealerProfileScreen {...props} />;
   if (role === 'buyer') return <BuyerDashboardScreen {...props} />;
   return <UnifiedDashboardScreen {...props} />;

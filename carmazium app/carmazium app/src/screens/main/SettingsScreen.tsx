@@ -45,7 +45,9 @@ const FieldLabel: React.FC<{ label: string }> = ({ label }) => (
 export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
-  const { user, role, updateUser, initializeAuth, logout } = useAuthStore();
+  const { user, accountRole, updateUser, initializeAuth, logout } = useAuthStore();
+  const isDealerAccount = accountRole === 'dealer';
+  const isDealerStaff = !!user?.isDealerStaff;
 
   // ── Profile state ──────────────────────────────────────────────
   const [profileEmail] = useState(user?.email ?? '');
@@ -558,7 +560,7 @@ export const SettingsScreen: React.FC = () => {
         </View>
 
         {/* ── 2. DEALERSHIP PROFILE (dealers only) ── */}
-        {role === 'dealer' && (
+        {isDealerAccount && (
           <>
             <SectionHeader icon="storefront-outline" label="DEALERSHIP PROFILE" />
             <View style={styles.card}>
@@ -688,7 +690,7 @@ export const SettingsScreen: React.FC = () => {
         {/* Web's invite email links to a plain https:// page mobile can't
             intercept (no Universal/App Links configured) — this gives
             invited users a reachable way in: paste the link/code here. */}
-        {role !== 'dealer' && (
+        {!isDealerAccount && !isDealerStaff && (
           <TouchableOpacity
             style={styles.inviteRow}
             activeOpacity={0.8}

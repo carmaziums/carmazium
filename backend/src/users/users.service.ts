@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import * as bcrypt from 'bcrypt';
+import { SELF_SERVICE_USER_ROLES, isSelfServiceUserRole } from '../core/account-roles';
 
 const VERIFICATION_CODE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const MAX_VERIFICATION_ATTEMPTS = 5;
@@ -240,13 +241,6 @@ export class UsersService {
      * Connect onboarding. The role is the door to the application form, not
      * to the work.
      */
-    private static readonly SELF_SERVICE_ROLES: readonly UserRole[] = [
-        UserRole.BUYER,
-        UserRole.SELLER,
-        UserRole.DEALER,
-        UserRole.CONTRACTOR,
-    ];
-
     /**
      * Switch the caller's own account between self-service roles.
      *
@@ -265,7 +259,7 @@ export class UsersService {
             throw new NotFoundException('User not found');
         }
 
-        if (!UsersService.SELF_SERVICE_ROLES.includes(newRole)) {
+        if (!SELF_SERVICE_USER_ROLES.includes(newRole)) {
             // Deliberately vague to the caller, loud in the logs: probing this
             // endpoint for privileged roles is not something a real user does.
             this.logger.warn(
@@ -394,7 +388,7 @@ export class UsersService {
         // FINANCE_PARTNER and INSURANCE_PARTNER are privileged and set by staff,
         // never self-declared through the sync payload.
         const requestedRole =
-            data.role && UsersService.SELF_SERVICE_ROLES.includes(data.role) ? data.role : undefined;
+            data.role && isSelfServiceUserRole(data.role) ? data.role : undefined;
 
         // Check if user already exists
         const userExists = await this.prisma.user.findUnique({
