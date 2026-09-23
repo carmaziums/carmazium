@@ -160,9 +160,17 @@ export class SaleCancellationsService {
     }
 
     private shouldRefundBuyerFee(request: any): boolean {
-        return request.requestedByRole === 'SELLER'
-            || ['SELLER_UNABLE_TO_COMPLETE', 'VEHICLE_FAULT', 'VEHICLE_MISDESCRIBED', 'VEHICLE_DAMAGED', 'PAYMENT_ISSUE']
-                .includes(request.reason);
+        // Do not decide a £125 refund from who clicked "cancel": that could let
+        // buyer and seller collude to turn a buyer-change-of-mind cancellation
+        // into an automatic platform-fee refund. Auto-refund only where the
+        // cancellation reason points to seller/vehicle failure. Admin can
+        // explicitly override this for escalated edge cases.
+        return [
+            'SELLER_UNABLE_TO_COMPLETE',
+            'VEHICLE_FAULT',
+            'VEHICLE_MISDESCRIBED',
+            'VEHICLE_DAMAGED',
+        ].includes(request.reason);
     }
 
     private async hydrate(request: any) {
@@ -402,6 +410,7 @@ export class SaleCancellationsService {
 
         const ctx = await this.context(request.listingId);
         const needsAdmin =
+            !!ctx.auction?.handoverSubmittedAt ||
             !!ctx.auction?.sellerBonusReleased ||
             !!ctx.auction?.stripePayoutTransferId ||
             !!ctx.auction?.manualPayoutConfirmedAt ||
@@ -461,6 +470,7 @@ export class SaleCancellationsService {
         adminId: string,
         decision: AdminDecision,
         note?: string,
+        refundBuyerFee?: boolean,
     ) {
         if (!['APPROVE', 'REJECT'].includes(decision)) {
             throw new BadRequestException('Choose APPROVE or REJECT.');
@@ -489,10 +499,15 @@ export class SaleCancellationsService {
             return this.hydrate(updated);
         }
 
-        return this.finalize(id, adminId, note);
+        return this.finalize(id, adminId, note, refundBuyerFee);
     }
 
-    private async finalize(id: string, adminId?: string, adminNote?: string) {
+    private async finalize(
+        id: string,
+        adminId?: string,
+        adminNote?: string,
+        refundBuyerFeeOverride?: boolean,
+    ) {
         const request = await this.prisma.saleCancellationRequest.findUnique({
             where: { id },
             include: { evidence: true },
@@ -503,7 +518,7 @@ export class SaleCancellationsService {
         const refundBuyerFee =
             !!ctx.auction?.buyerFeePaid &&
             !!ctx.auction?.buyerFeeTransactionId &&
-            this.shouldRefundBuyerFee(request);
+            (refundBuyerFeeOverride ?? this.shouldRefundBuyerFee(request));
 
         if (refundBuyerFee && ctx.auction) {
             await this.payments.issueFullRefundForAuctionCancellation(ctx.auction.id);
