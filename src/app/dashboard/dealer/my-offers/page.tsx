@@ -12,6 +12,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { AmendOfferModal } from "@/components/offers/AmendOfferModal"
+import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { useAuth } from "@/context/AuthContext"
 import {
     getMyOffers,
@@ -27,6 +28,7 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; border: string; 
     ACCEPTED: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20", label: "Accepted" },
     REJECTED: { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/20", label: "Declined" },
     WITHDRAWN: { bg: "bg-slate-500/10", text: "text-[var(--text-muted)]", border: "border-[var(--border-default)]", label: "Withdrawn" },
+    CANCELLED: { bg: "bg-slate-500/10", text: "text-[var(--text-muted)]", border: "border-[var(--border-default)]", label: "Cancelled" },
     COUNTERED: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20", label: "Countered" },
 }
 
@@ -38,6 +40,7 @@ export default function DealerMyOffersPage() {
     const [searchTerm, setSearchTerm] = React.useState("")
     const [viewMode, setViewMode] = React.useState<'current' | 'history' | 'all'>('current')
     const [amendingOffer, setAmendingOffer] = React.useState<Offer | null>(null)
+    const [cancelListing, setCancelListing] = React.useState<{ id: string; title: string } | null>(null)
     const [activeAuctionBidCount, setActiveAuctionBidCount] = React.useState(0)
 
     const fetchOffers = React.useCallback(async () => {
@@ -131,6 +134,15 @@ export default function DealerMyOffersPage() {
                             offer={amendingOffer}
                             onClose={() => setAmendingOffer(null)}
                             onSaved={async () => { await fetchOffers() }}
+                        />
+                    )}
+
+                    {cancelListing && (
+                        <SaleCancellationModal
+                            listingId={cancelListing.id}
+                            vehicleTitle={cancelListing.title}
+                            onClose={() => setCancelListing(null)}
+                            onCreated={() => void fetchOffers()}
                         />
                     )}
 
@@ -306,6 +318,15 @@ export default function DealerMyOffersPage() {
                                                         <span className="text-xs font-bold text-blue-400">Awaiting seller</span>
                                                         <button onClick={() => handleWithdraw(offer.id)} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 border border-red-500/20 text-red-400 rounded-xl">Cancel bid</button>
                                                     </>}
+                                                    {offer.status === 'ACCEPTED' && offer.listing?.id && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setCancelListing({ id: offer.listing!.id, title: offer.listing!.title || "Vehicle" })}
+                                                            className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl"
+                                                        >
+                                                            Cancel purchase
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
