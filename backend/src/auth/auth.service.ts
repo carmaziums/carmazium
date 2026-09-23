@@ -2,6 +2,7 @@ import {
     Injectable,
     ConflictException,
     UnauthorizedException,
+    BadRequestException,
     Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -11,6 +12,7 @@ import { LoginDto } from './dto/login.dto';
 import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { isSelfServiceUserRole } from '../core/account-roles';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -85,6 +87,13 @@ export class AuthService {
 
         if (existing) {
             throw new ConflictException('An account with this email already exists');
+        }
+
+        if (dto.role && !isSelfServiceUserRole(dto.role)) {
+            this.logger.warn(
+                `Blocked privileged role during direct registration: ${dto.email} requested ${dto.role}`,
+            );
+            throw new BadRequestException('That account type cannot be self-registered.');
         }
 
         // Hash the password
@@ -324,10 +333,19 @@ export class AuthService {
                     // Only treat role as explicitly set when it's actually in Supabase metadata.
                     // For OAuth providers (Google, etc.) meta.role is undefined — we must NOT
                     // overwrite a role that /users/sync already set correctly (e.g. DEALER).
+                    // Supabase user_metadata is client-editable. Never trust it
+                    // for privileged roles such as ADMIN / finance / insurance.
+                    // Only the same self-service roles allowed by /users/sync
+                    // may be adopted when auto-creating a local account.
                     const metaRole =
-                        meta?.role && Object.values(UserRole).includes(meta.role as UserRole)
+                        meta?.role && isSelfServiceUserRole(meta.role)
                             ? (meta.role as UserRole)
                             : undefined;
+                    if (meta?.role && !metaRole) {
+                        this.logger.warn(
+                            `Ignored non-self-service Supabase role metadata for ${emailNorm}: ${meta.role}`,
+                        );
+                    }
                     const createRole = metaRole ?? UserRole.BUYER;
                     // Resolve name across our signup metadata AND Google/Apple OAuth keys
                     const fullNameFallback = (meta.full_name || meta.name || '').trim();
