@@ -7,6 +7,7 @@ const mockConstructEvent = jest.fn();
 const mockCheckoutSessionsCreate = jest.fn();
 const mockCheckoutSessionsRetrieve = jest.fn();
 const mockRefundsCreate = jest.fn();
+const mockRefundsList = jest.fn();
 const mockHpiCreatePendingReport = jest.fn();
 
 jest.mock('stripe', () => {
@@ -16,7 +17,7 @@ jest.mock('stripe', () => {
         ephemeralKeys: { create: mockEphemeralKeysCreate },
         webhooks: { constructEvent: mockConstructEvent },
         checkout: { sessions: { create: mockCheckoutSessionsCreate, retrieve: mockCheckoutSessionsRetrieve } },
-        refunds: { create: mockRefundsCreate },
+        refunds: { create: mockRefundsCreate, list: mockRefundsList },
     }));
     // `payments.service.ts` loads Stripe via a dynamic `await import('stripe')`
     // (unlike dealers.service.ts's static import) — __esModule: true is required
@@ -650,6 +651,8 @@ describe('PaymentsService — auction buyer-fee refunds', () => {
     beforeEach(async () => {
         mockCheckoutSessionsRetrieve.mockReset();
         mockRefundsCreate.mockReset();
+        mockRefundsList.mockReset();
+        mockRefundsList.mockResolvedValue({ data: [] });
         prisma = buildPrismaMock();
         const module: TestingModule = await buildModule(prisma);
         service = module.get<PaymentsService>(PaymentsService);
@@ -712,7 +715,7 @@ describe('PaymentsService — auction buyer-fee refunds', () => {
                 amount: 12500,
             },
             {
-                idempotencyKey: 'auction-inspection-refusal-txn-commission',
+                idempotencyKey: 'auction-inspection-refusal-txn-commission-12500',
             },
         );
         expect(prisma.transaction.update).toHaveBeenCalledWith({
@@ -720,6 +723,47 @@ describe('PaymentsService — auction buyer-fee refunds', () => {
             data: { status: 'REFUNDED' },
         });
     });
+
+    it('tops up an earlier £100 handover refund with only the remaining £25', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({
+            id: 'txn-commission',
+            status: 'REFUNDED',
+            stripePaymentId: 'pi_native_commission',
+        });
+        mockRefundsList.mockResolvedValue({
+            data: [{ id: 're_partial', amount: 10000, status: 'succeeded' }],
+        });
+
+        await service.issueFullRefundForAuctionInspection('auction-1');
+
+        expect(mockRefundsCreate).toHaveBeenCalledWith(
+            {
+                payment_intent: 'pi_native_commission',
+                amount: 2500,
+            },
+            {
+                idempotencyKey: 'auction-inspection-refusal-txn-commission-2500',
+            },
+        );
+        expect(prisma.transaction.update).not.toHaveBeenCalled();
+    });
+
+    it('does not create another refund when Stripe already shows the full £125 refunded', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({
+            id: 'txn-commission',
+            status: 'REFUNDED',
+            stripePaymentId: 'pi_native_commission',
+        });
+        mockRefundsList.mockResolvedValue({
+            data: [{ id: 're_full', amount: 12500, status: 'succeeded' }],
+        });
+
+        await service.issueFullRefundForAuctionInspection('auction-1');
+
+        expect(mockRefundsCreate).not.toHaveBeenCalled();
+        expect(prisma.transaction.update).not.toHaveBeenCalled();
+    });
+
 });
 
 describe('PaymentsService — createCheckoutSession (F6: server-side amount, same fix as F2)', () => {
