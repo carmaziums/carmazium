@@ -1,3 +1,14 @@
+const mockListingCheckoutSessionRetrieve = jest.fn();
+const mockListingPaymentIntentRetrieve = jest.fn();
+
+jest.mock('stripe', () => {
+    const MockStripe = jest.fn().mockImplementation(() => ({
+        checkout: { sessions: { retrieve: mockListingCheckoutSessionRetrieve } },
+        paymentIntents: { retrieve: mockListingPaymentIntentRetrieve },
+    }));
+    return { __esModule: true, default: MockStripe };
+});
+
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -24,6 +35,8 @@ describe('ListingsService', () => {
     let scraper: any;
 
     beforeEach(async () => {
+        mockListingCheckoutSessionRetrieve.mockReset();
+        mockListingPaymentIntentRetrieve.mockReset();
         prisma = {
             listing: {
                 findUnique: jest.fn(),
@@ -42,7 +55,7 @@ describe('ListingsService', () => {
             },
             dealerStaff: { findFirst: jest.fn() },
             user: { findUnique: jest.fn() },
-            transaction: { findMany: jest.fn() },
+            transaction: { findMany: jest.fn(), update: jest.fn() },
             hpiReport: { findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }) },
             auction: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
             bid: {
@@ -752,6 +765,46 @@ describe('ListingsService', () => {
                     data: expect.objectContaining({ status: 'PENDING_REVIEW' }),
                 }),
             );
+        });
+
+        it('reconciles a successful native PaymentIntent when the webhook is delayed', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-native-paid',
+                sellerId: 'seller-1',
+                type: 'CLASSIFIED',
+                badgeTier: 'BASIC',
+                status: 'DRAFT',
+                ...submissionReady,
+                deletedAt: null,
+            });
+            prisma.user.findUnique.mockResolvedValue({ role: 'USER' });
+            prisma.transaction.findMany.mockResolvedValue([{
+                id: 'txn-native',
+                status: 'PENDING',
+                stripePaymentId: 'pi_native_paid',
+            }]);
+            mockListingPaymentIntentRetrieve.mockResolvedValue({
+                id: 'pi_native_paid',
+                status: 'succeeded',
+            });
+            prisma.listing.update.mockResolvedValue({});
+
+            const result = await service.publishListing('listing-native-paid', 'seller-1');
+
+            expect(mockListingPaymentIntentRetrieve).toHaveBeenCalledWith('pi_native_paid');
+            expect(mockListingCheckoutSessionRetrieve).not.toHaveBeenCalled();
+            expect(prisma.transaction.update).toHaveBeenCalledWith({
+                where: { id: 'txn-native' },
+                data: {
+                    status: 'COMPLETED',
+                    stripePaymentId: 'pi_native_paid',
+                },
+            });
+            expect(prisma.listing.update).toHaveBeenCalledWith({
+                where: { id: 'listing-native-paid' },
+                data: { status: 'PENDING_REVIEW', rejectionReason: null },
+            });
+            expect(result).toEqual({ activated: false, pendingReview: true });
         });
 
         it('keeps FREE auction listings free and submits them for review', async () => {

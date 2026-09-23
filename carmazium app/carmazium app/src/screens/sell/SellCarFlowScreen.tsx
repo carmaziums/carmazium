@@ -25,7 +25,12 @@ import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
 import { ThreeDVehicleViewer } from '../../components/damage/ThreeDVehicleViewer';
 import { DAMAGE_ZONES_3D, DAMAGE_ZONE_SECTIONS } from '../../components/damage/damageZones';
-import { getRawListingById } from '../../lib/listingsApi';
+import {
+  convertAuctionToRetail,
+  getRawListingById,
+  getRetailConversionCandidate,
+  type RetailConversionCandidate,
+} from '../../lib/listingsApi';
 import { CAR_MAKES, getModelsForMake } from '../../data/carData';
 import { BottomSheet } from '../../components/BottomSheet';
 import * as Location from 'expo-location';
@@ -1516,6 +1521,21 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     try {
       let listingId = editListingId ?? hpiDraftListingId;
       if (!listingId) {
+        // Do not let the optional HPI purchase create a duplicate Retail row
+        // before the seller has confirmed an auction → Retail channel switch.
+        if (listingType === 'CLASSIFIED') {
+          const conversion = await getRetailConversionCandidate(vrm);
+          if (conversion.candidate) {
+            Alert.alert(
+              conversion.candidate.canConvert ? 'Switch to Retail first' : 'HPI unavailable for this draft',
+              conversion.candidate.canConvert
+                ? 'This registration already belongs to your auction listing. Publish this Retail form first so CarMazium can safely reuse and switch that listing; then you can add the optional HPI check from the Retail draft.'
+                : (conversion.candidate.blockedReason || 'This vehicle cannot be changed to a Retail listing at the moment.'),
+            );
+            return;
+          }
+        }
+
         const draft = await apiClient<{ success: boolean; data: { id: string } }>('/listings', {
           method: 'POST',
           body: JSON.stringify({
@@ -1576,6 +1596,27 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     } finally {
       setHpiUnlocking(false);
     }
+  }
+
+  // ─── Auction → Retail conversion confirmation ────────────────────────────────
+
+  function confirmAuctionToRetail(candidate: RetailConversionCandidate): Promise<boolean> {
+    const isRunning = candidate.auctionStatus === 'ACTIVE' || candidate.auctionStatus === 'SCHEDULED';
+    const message = isRunning
+      ? 'This vehicle is already in an auction. Switching to Retail will cancel that auction, stop further bidding and reuse the same vehicle listing. The Retail listing will still require its normal listing fee and admin review.'
+      : 'This vehicle already has an auction history. CarMazium will reuse the same vehicle listing as Retail instead of creating a duplicate. The Retail listing will still require its normal listing fee and admin review.';
+
+    return new Promise(resolve => {
+      Alert.alert(
+        'Switch auction to Retail?',
+        message,
+        [
+          { text: 'Keep Auction', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Switch to Retail', style: 'destructive', onPress: () => resolve(true) },
+        ],
+        { cancelable: true, onDismiss: () => resolve(false) },
+      );
+    });
   }
 
   // ─── Publish ─────────────────────────────────────────────────────────────────
@@ -1717,25 +1758,61 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         if (hpiDraftListingId) {
           await apiClient(`/listings/${hpiDraftListingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
           newListingId = hpiDraftListingId;
-        } else {
-          let createPayload: Record<string, any> = payload;
-          if (isAuction) {
-            const auctionStartTime = auctionStartMode === 'NOW'
-              ? new Date().toISOString()
-              : new Date(auctionStartDate).toISOString();
+        } else if (!isAuction) {
+          // Match web's ListingWizard: before creating a new Retail row, ask the
+          // backend whether this seller already owns the same VRM in an auction.
+          // A safe channel switch reuses that row; it must never create a
+          // duplicate vehicle just because the seller is using the app.
+          const conversion = await getRetailConversionCandidate(
+            String(payload.vrm ?? '').replace(/\s/g, '').toUpperCase(),
+          );
 
-            createPayload = {
+          if (conversion.candidate) {
+            if (!conversion.candidate.canConvert) {
+              Alert.alert(
+                'Cannot switch to Retail',
+                conversion.candidate.blockedReason
+                  || (conversion.candidate.existingRetailSlug
+                    ? 'This vehicle already has a Retail listing.'
+                    : 'This auction cannot be switched to Retail at the moment.'),
+              );
+              return;
+            }
+
+            const confirmed = await confirmAuctionToRetail(conversion.candidate);
+            if (!confirmed) return;
+
+            const converted = await convertAuctionToRetail(conversion.candidate.listingId, {
               ...payload,
-              auctionStartTime,
-              auctionReservePrice: parseFloat(reservePrice),
-              auctionMinIncrement: parseFloat(minIncrement),
-              auctionStartingBid: parseFloat(startingBid),
-              ...(buyItNowPrice.trim()
-                ? { auctionBuyItNowPrice: parseFloat(buyItNowPrice) }
-                : {}),
-            };
-            initialAuctionCreatedAtomically = true;
+              listingType: 'CLASSIFIED',
+              status: 'DRAFT',
+              badgeTier: badgeTier === 'FREE' ? 'BASIC' : badgeTier,
+              confirmAuctionCancellation: true,
+            });
+            newListingId = converted.listingId;
+          } else {
+            const res = await apiClient<{ success: boolean; data: { id: string } }>('/listings', {
+              method: 'POST',
+              body: JSON.stringify(payload),
+            });
+            newListingId = res?.data?.id;
           }
+        } else {
+          const auctionStartTime = auctionStartMode === 'NOW'
+            ? new Date().toISOString()
+            : new Date(auctionStartDate).toISOString();
+
+          const createPayload: Record<string, any> = {
+            ...payload,
+            auctionStartTime,
+            auctionReservePrice: parseFloat(reservePrice),
+            auctionMinIncrement: parseFloat(minIncrement),
+            auctionStartingBid: parseFloat(startingBid),
+            ...(buyItNowPrice.trim()
+              ? { auctionBuyItNowPrice: parseFloat(buyItNowPrice) }
+              : {}),
+          };
+          initialAuctionCreatedAtomically = true;
 
           const res = await apiClient<{ success: boolean; data: { id: string } }>('/listings', {
             method: 'POST',
@@ -3359,9 +3436,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           )}
         </SectionBox>
 
-        {/* HPI Check Callout — was a static, non-pressable promo card; now
-            actually triggers the £9.99 Payment Sheet and shows the unlocked
-            badge, matching web's HpiPaymentModal flow. */}
+        {/* HPI is optional. Standard/Premium already include it in the
+            listing package, so never offer those sellers a second £9.99 charge. */}
         {hpiUnlocked ? (
           <View style={s.hpiCallout}>
             <View style={s.hpiCalloutIcon}>
@@ -3374,6 +3450,21 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   ? 'This vehicle has records on file — full report available to buyers.'
                   : 'No adverse history found — a Verified badge will show on your listing.'}
               </Text>
+            </View>
+          </View>
+        ) : !isAuction && (badgeTier === 'STANDARD' || badgeTier === 'PREMIUM') ? (
+          <View style={s.hpiCallout}>
+            <View style={s.hpiCalloutIcon}>
+              <Ionicons name="shield-checkmark-outline" size={22} color={Colors.infoBlue} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.hpiCalloutTitle}>HPI Check Included</Text>
+              <Text style={s.hpiCalloutSub}>
+                Your {badgeTier === 'PREMIUM' ? 'Premium' : 'Standard'} package includes the HPI report. It is requested automatically after the listing fee is paid.
+              </Text>
+            </View>
+            <View style={s.hpiCalloutBadge}>
+              <Text style={s.hpiCalloutPrice}>INCLUDED</Text>
             </View>
           </View>
         ) : (
@@ -3389,8 +3480,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 : <Ionicons name="shield-checkmark-outline" size={22} color={Colors.infoBlue} />}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.hpiCalloutTitle}>Add HPI Vehicle Check</Text>
-              <Text style={s.hpiCalloutSub}>Verified HPI badge increases buyer trust and helps cars sell 2× faster</Text>
+              <Text style={s.hpiCalloutTitle}>Add Optional HPI Vehicle Check</Text>
+              <Text style={s.hpiCalloutSub}>Add a vehicle-history report if you want one; it is not required to publish.</Text>
             </View>
             <View style={s.hpiCalloutBadge}>
               <Text style={s.hpiCalloutPrice}>{hpiUnlocking ? '...' : '£9.99'}</Text>

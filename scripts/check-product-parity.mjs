@@ -163,6 +163,68 @@ if (mobileAuthStore.includes('PENDING_SIGNUP_ROLE_KEY')) {
   ok('Mobile OAuth signup account type is callback-scoped and non-persistent');
 }
 
+// Seller journey parity: both clients must use the same backend channel-switch
+// and review/payment lifecycle rather than creating client-specific shortcuts.
+const webListingWizard = read('src/components/listing/ListingWizard.tsx');
+const mobileSellFlow = read('carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx');
+const mobileListingsScreen = read('carmazium app/carmazium app/src/screens/seller/SellerListingsScreen.tsx');
+const mobileAuctionsScreen = read('carmazium app/carmazium app/src/screens/seller/SellerAuctionsScreen.tsx');
+const mobileListingsApi = read('carmazium app/carmazium app/src/lib/listingsApi.ts');
+const backendListings = read('backend/src/listings/listings.service.ts');
+
+for (const [surface, source] of [
+  ['web seller wizard', webListingWizard],
+  ['mobile seller flow', mobileSellFlow],
+]) {
+  if (
+    !source.includes('getRetailConversionCandidate') ||
+    !source.includes('convertAuctionToRetail')
+  ) {
+    fail(`${surface} must use the shared auction → Retail conversion contract`);
+  }
+}
+if (
+  !mobileListingsApi.includes('/retail-conversion-candidate?vrm=') ||
+  !mobileListingsApi.includes('/convert-to-retail')
+) {
+  fail('Mobile listing API is missing the shared auction → Retail endpoints');
+} else {
+  ok('Web and mobile use the same auction → Retail conversion contract');
+}
+
+if (
+  !mobileListingsScreen.includes('pendingReview') ||
+  !mobileListingsScreen.includes("status: 'PENDING_REVIEW'")
+) {
+  fail('Mobile My Listings must recognise PENDING_REVIEW as a successful seller submission');
+} else {
+  ok('Mobile seller publish flow recognises admin-review state');
+}
+
+if (
+  mobileAuctionsScreen.includes('The vehicle can now be found and bought without bidding') ||
+  !mobileAuctionsScreen.includes('Retail listing submitted for review')
+) {
+  fail('Mobile dual-channel Retail flow must not claim a paid draft is already public');
+} else {
+  ok('Mobile dual-channel Retail flow respects the review gate');
+}
+
+if (!backendListings.includes('stripe.paymentIntents.retrieve(tx.stripePaymentId)')) {
+  fail('Backend publish reconciliation must support native PaymentIntent listing fees');
+} else {
+  ok('Backend publish reconciliation supports web Checkout Sessions and native PaymentIntents');
+}
+
+if (
+  !mobileSellFlow.includes("badgeTier === 'STANDARD' || badgeTier === 'PREMIUM'") ||
+  !mobileSellFlow.includes('HPI Check Included')
+) {
+  fail('Mobile must not offer an extra HPI charge on Standard/Premium packages');
+} else {
+  ok('Mobile HPI add-on respects Standard/Premium HPI inclusion');
+}
+
 const webPricing = read('src/lib/pricingConfig.ts');
 const mobilePricing = read('carmazium app/carmazium app/src/constants/pricing.ts');
 const payments = read('backend/src/payments/payments.service.ts');
