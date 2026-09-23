@@ -10,6 +10,12 @@ import { EmailService } from '../email/email.service';
 import { CreateKycDto } from './dto/create-kyc.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
+import {
+    assertDealerPermission,
+    DealerPermission,
+    hasDealerPermission,
+    resolveDealerActor,
+} from './dealer-access';
 
 @Injectable()
 export class DealersService {
@@ -19,6 +25,43 @@ export class DealersService {
         private readonly notificationsService: NotificationsService,
         private readonly config: ConfigService,
     ) {}
+
+    private readonly allDealerPermissions: DealerPermission[] = [
+        'VIEW_TRADE',
+        'PLACE_BID',
+        'PAY_AUCTION_FEE',
+        'MANAGE_CRM',
+        'MANAGE_OFFERS',
+        'VIEW_PURCHASES',
+        'VIEW_ANALYTICS',
+        'MANAGE_TEAM',
+        'MANAGE_KYC',
+    ];
+
+    async getDealerAccess(userId: string) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        if (!actor) throw new NotFoundException('Dealer profile not found');
+
+        return {
+            ownerUserId: actor.ownerUserId,
+            dealerProfileId: actor.dealerProfileId,
+            isOwner: actor.isOwner,
+            role: actor.role,
+            isVerified: actor.isVerified,
+            permissions: this.allDealerPermissions.filter((permission) =>
+                hasDealerPermission(actor, permission),
+            ),
+        };
+    }
+
+    async assertDealerOwner(userId: string): Promise<void> {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        if (actor && !actor.isOwner) {
+            throw new ForbiddenException(
+                'Only the dealership owner can manage business verification.',
+            );
+        }
+    }
 
     // ─── Stripe helper ───────────────────────────────────────────────
 
