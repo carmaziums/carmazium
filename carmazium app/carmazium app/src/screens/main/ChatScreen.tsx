@@ -323,11 +323,17 @@ export const ChatScreen: React.FC = () => {
 
   const { user } = useAuthStore();
   const room = rooms.find((r) => r.id === threadId);
+  const roomRefreshAttemptRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!room && threadId) {
-      refreshRooms().catch(() => {});
+    if (room) {
+      roomRefreshAttemptRef.current = null;
+      return;
     }
+    if (!threadId || roomRefreshAttemptRef.current === threadId) return;
+
+    roomRefreshAttemptRef.current = threadId;
+    refreshRooms().catch(() => {});
   }, [room, threadId, refreshRooms]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
