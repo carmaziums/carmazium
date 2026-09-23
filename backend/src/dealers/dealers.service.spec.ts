@@ -341,3 +341,76 @@ describe('DealersService — KYC: submitKyc', () => {
         expect(mockSessionsRetrieve).not.toHaveBeenCalled();
     });
 });
+
+describe('DealersService — staff permission boundaries', () => {
+    let service: DealersService;
+    let prisma: any;
+
+    beforeEach(async () => {
+        prisma = buildPrismaMock();
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        const module: TestingModule = await buildModule(prisma);
+        service = module.get<DealersService>(DealersService);
+    });
+
+    it('prevents staff from entering the dealership owner KYC flow', async () => {
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'ADMIN',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+            },
+        });
+
+        await expect(service.getKyc('admin-staff-1'))
+            .rejects.toThrow(/only the dealership owner/i);
+    });
+
+    it('allows dealer ADMIN staff to read the team but blocks FINANCE_MANAGER', async () => {
+        prisma.dealerStaff.findFirst
+            .mockResolvedValueOnce({
+                role: 'ADMIN',
+                dealerProfile: {
+                    id: 'dealer-1',
+                    userId: 'owner-1',
+                    isVerified: true,
+                },
+            })
+            .mockResolvedValueOnce({
+                role: 'ADMIN',
+                dealerProfile: {
+                    id: 'dealer-1',
+                    userId: 'owner-1',
+                    isVerified: true,
+                },
+            });
+        prisma.dealerProfile.findUnique.mockResolvedValue({
+            id: 'dealer-1',
+            userId: 'owner-1',
+            isVerified: true,
+            staff: [],
+        });
+        prisma.dealerStaff.findMany = jest.fn().mockResolvedValue([]);
+        (prisma as any).dealerInvite = { findMany: jest.fn().mockResolvedValue([]) };
+
+        await expect(service.getStaff('admin-staff-1')).resolves.toEqual({
+            active: [],
+            pending: [],
+        });
+
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'FINANCE_MANAGER',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+            },
+        });
+
+        await expect(service.getStaff('finance-1'))
+            .rejects.toThrow(/permission/i);
+    });
+});
+
