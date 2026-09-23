@@ -1561,6 +1561,22 @@ export class PaymentsService {
      * succeeds but the subsequent auction-state transaction has to be retried.
      */
     async issueFullRefundForAuctionInspection(auctionId: string): Promise<void> {
+        return this.issueFullAuctionBuyerFeeRefund(auctionId, 'auction-inspection-refusal');
+    }
+
+    /**
+     * Full £125 buyer-fee refund for an approved post-sale cancellation.
+     * Kept separate from inspection refusal so Stripe idempotency keys and
+     * operational audit trails state why the refund happened.
+     */
+    async issueFullRefundForAuctionCancellation(auctionId: string): Promise<void> {
+        return this.issueFullAuctionBuyerFeeRefund(auctionId, 'auction-sale-cancellation');
+    }
+
+    private async issueFullAuctionBuyerFeeRefund(
+        auctionId: string,
+        idempotencyPrefix: string,
+    ): Promise<void> {
         const auction = await this.prisma.auction.findUnique({ where: { id: auctionId } });
         if (!auction?.buyerFeeTransactionId) {
             throw new BadRequestException('No paid auction buyer fee is recorded');
@@ -1608,7 +1624,7 @@ export class PaymentsService {
                     amount: remainingPence,
                 },
                 {
-                    idempotencyKey: `auction-inspection-refusal-${transaction.id}-${remainingPence}`,
+                    idempotencyKey: `${idempotencyPrefix}-${transaction.id}-${remainingPence}`,
                 },
             );
         }
