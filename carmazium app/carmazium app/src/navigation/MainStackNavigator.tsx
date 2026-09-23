@@ -30,6 +30,8 @@ import { ProviderVerificationScreen } from '../screens/main/ProviderVerification
 import { ProviderMatchingScreen } from '../screens/main/ProviderMatchingScreen';
 import { ProviderJobsScreen } from '../screens/main/ProviderJobsScreen';
 import { ProviderJobDetailScreen } from '../screens/main/ProviderJobDetailScreen';
+import { ProviderLeadsScreen } from '../screens/main/ProviderLeadsScreen';
+import { ProviderLeadDetailScreen } from '../screens/main/ProviderLeadDetailScreen';
 import { TermsScreen } from '../screens/main/TermsScreen';
 import { HowItWorksScreen } from '../screens/main/HowItWorksScreen';
 import { AboutScreen } from '../screens/main/AboutScreen';
@@ -111,6 +113,8 @@ export type MainStackParamList = {
   ProviderMatching: { capabilityId: string };
   ProviderJobs: undefined;
   ProviderJobDetail: { jobId: string };
+  ProviderLeads: undefined;
+  ProviderLeadDetail: { leadId: string };
   Terms: undefined;
   HowItWorks: undefined;
   About: undefined;
@@ -266,6 +270,8 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="ProviderMatching" component={ProviderMatchingScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ProviderJobs" component={ProviderJobsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ProviderJobDetail" component={ProviderJobDetailScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ProviderLeads" component={ProviderLeadsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ProviderLeadDetail" component={ProviderLeadDetailScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Terms" component={TermsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="HowItWorks" component={HowItWorksScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="About" component={AboutScreen} options={{ animation: 'slide_from_right' }} />
