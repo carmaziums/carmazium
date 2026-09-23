@@ -119,6 +119,10 @@ export interface Auction {
     stripePayoutTransferId?: string | null;
     stripePayoutError?: string | null;
     stripeRefundError?: string | null;
+    buyerRefusedAt?: string | null;
+    buyerRefusedById?: string | null;
+    buyerRefusalReason?: string | null;
+    buyerRefusalInspectionJobId?: string | null;
     manualPayoutConfirmedAt?: string | null;
     createdAt: string;
     updatedAt: string;
@@ -240,6 +244,19 @@ export async function cancelAuction(id: string): Promise<Auction> {
     return res.data;
 }
 
+export async function refuseAuctionAfterInspection(
+    auctionId: string,
+    reason?: string,
+): Promise<{ refused: boolean; refundedAmount: number; inspectionJobId: string }> {
+    const res = await apiClient<{ data: { refused: boolean; refundedAmount: number; inspectionJobId: string } }>(
+        `${API}/auctions/${auctionId}/refuse-after-inspection`,
+        {
+            method: 'POST',
+            body: JSON.stringify({ reason }),
+        },
+    );
+    return res.data;
+}
 export async function closeAuctionEarly(id: string): Promise<void> {
     await apiClient<any>(`${API}/auctions/${id}/close`, { method: 'POST' });
 }
