@@ -26,6 +26,7 @@ import { trackMetaEvent } from "@/components/analytics/MetaPixel"
 import { useChat } from "@/context/ChatContext"
 import { useRouter } from "next/navigation"
 import { SellerVerificationBadge } from "@/components/listing/SellerVerificationBadge"
+import { trackDealerPhoneClick } from "@/lib/dealerApi"
 
 // ─── Offer Status Chip ───────────────────────────────────────────────────────
 
@@ -462,6 +463,13 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
     const [shareToast, setShareToast] = React.useState(false)
     const [enquiring, setEnquiring] = React.useState(false)
 
+    const handleDealerPhoneClick = React.useCallback(() => {
+        if (!user || !listing || listing.seller?.role !== 'DEALER') return
+        void trackDealerPhoneClick(listing.id).catch((error) => {
+            console.warn('[DealerCallTracking] Could not record phone click', error)
+        })
+    }, [user, listing])
+
     const router = useRouter()
 
     const handleEnquire = async () => {
@@ -812,6 +820,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                                     <BlurredPhone
                                         phone={listing.seller.dealerProfile.phone}
                                         phoneAvailable={listing.seller.dealerProfile.phoneAvailable ?? !!listing.seller.dealerProfile.phone}
+                                        onPhoneClick={handleDealerPhoneClick}
                                     />
                                     {listing.seller.dealerProfile.website && (
                                         <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group">
