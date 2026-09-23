@@ -1354,7 +1354,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   style={[styles.sellerChatBtn, { backgroundColor: Colors.successAlpha06, borderColor: Colors.successAlpha20 }]}
                   onPress={(e) => {
                     e.stopPropagation();
-                    if (currentUser && listing.seller?.role === 'DEALER') {
+                    if (currentUser && listing.seller?.dealerProfile) {
                       void apiClient('/dealers/leads/activity/call', {
                         method: 'POST',
                         body: JSON.stringify({ listingId: listing.id }),
