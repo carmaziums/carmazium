@@ -403,7 +403,7 @@ export class DashboardService {
         const activeLeads = Math.max(0, totalLeads - wonLeads - lostLeads);
         const totalViews = Number(trackedViewsRaw?.[0]?.views ?? 0);
         const allTimeViews = Number(allTimeViewAgg._sum.viewCount ?? 0);
-        const totalListings = Number(allTimeViewAgg._count.id ?? 0);
+        const totalListings = Number(allTimeViewAgg._count?.id ?? 0);
 
         return {
             period,
@@ -414,7 +414,7 @@ export class DashboardService {
             activeListings,
             activeAuctions,
             activeLeads,
-            staffCount: (dealerProfile?.staff.length ?? 0) + 1,
+            staffCount: (dealerProfile?.staff?.length ?? 0) + 1,
 
             // Selected-period KPIs
             totalViews,
