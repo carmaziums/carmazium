@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "purpose": "CarMazium one-product parity contract",
   "policy": {
     "backend_is_source_of_truth": true,
@@ -7,6 +7,50 @@
     "undocumented_client_only_business_rules_forbidden": true
   },
   "features": [
+    {
+      "id": "seller.auction_handover_reward",
+      "web": [
+        "src/app/dashboard/seller/auctions/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/seller/SellerAuctionsScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "seller.draft_reset_resume",
+      "web": [
+        "src/components/listing/ListingWizard.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx",
+        "carmazium app/carmazium app/src/lib/sellWizardStore.ts"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "seller.publish_review_gate",
+      "web": [
+        "src/components/listing/ListingWizard.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx",
+        "carmazium app/carmazium app/src/screens/seller/SellerListingsScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "seller.channel_conversion",
+      "web": [
+        "src/components/listing/ListingWizard.tsx",
+        "src/lib/listingApi.ts"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx",
+        "carmazium app/carmazium app/src/lib/listingsApi.ts"
+      ],
+      "status": "required"
+    },
     {
       "id": "auth.dealer_staff_invite",
       "web": [

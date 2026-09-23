@@ -235,6 +235,15 @@ if (
   ok('Web HPI add-on is available for both Auction and Basic Retail listings');
 }
 
+if (
+  !webListingWizard.includes('Start Fresh') ||
+  !mobileSellFlow.includes('START FRESH')
+) {
+  fail('Seller draft reset is not available on both web and mobile');
+} else {
+  ok('Seller draft reset is available on both clients');
+}
+
 const webPricing = read('src/lib/pricingConfig.ts');
 const mobilePricing = read('carmazium app/carmazium app/src/constants/pricing.ts');
 const payments = read('backend/src/payments/payments.service.ts');
