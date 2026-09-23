@@ -359,6 +359,7 @@ describe('OffersService — accepted offer remains visible after sale', () => {
                 { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
                 { provide: EmailService, useValue: { sendOfferReceivedEmail: jest.fn(), sendOfferAcceptedEmail: jest.fn(), sendOfferRejectedEmail: jest.fn(), sendOfferCounteredEmail: jest.fn(), sendCounterAcceptedEmail: jest.fn() } },
                 { provide: AuctionsService, useValue: { cancelLinkedAuctionForRetailDeal: jest.fn().mockResolvedValue(null), publishRetailDealAuctionCancellation: jest.fn().mockResolvedValue(undefined) } },
+                { provide: DealersService, useValue: { syncRetailLeadActivity: jest.fn().mockResolvedValue(null) } },
             ],
         }).compile();
 
