@@ -35,7 +35,11 @@
         "NSCameraUsageDescription": "Camera access for vehicle photo uploads",
         "NSPhotoLibraryUsageDescription": "Photo library access for vehicle photos",
         "NSLocationWhenInUseUsageDescription": "Location access to show vehicles near you"
-      }
+      },
+      "associatedDomains": [
+        "applinks:carmazium.com",
+        "applinks:www.carmazium.com"
+      ]
     },
     "android": {
       "package": "uk.carmazium.app",
@@ -68,8 +72,118 @@
             },
             {
               "scheme": "https",
+              "host": "carmazium.com",
+              "pathPrefix": "/buy-cars"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "pathPrefix": "/auctions/live"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "pathPrefix": "/services/jobs"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "pathPrefix": "/notifications"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "pathPrefix": "/messages"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "pathPrefix": "/settings"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "pathPrefix": "/dashboard/listings"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "pathPrefix": "/dashboard/auctions"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "pathPrefix": "/dashboard/offers"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "pathPrefix": "/dashboard/bids"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "pathPrefix": "/dashboard/earnings"
+            },
+            {
+              "scheme": "https",
               "host": "www.carmazium.com",
               "pathPrefix": "/auth/accept-invite"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "pathPrefix": "/buy-cars"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "pathPrefix": "/auctions/live"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "pathPrefix": "/services/jobs"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "pathPrefix": "/notifications"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "pathPrefix": "/messages"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "pathPrefix": "/settings"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "pathPrefix": "/dashboard/listings"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "pathPrefix": "/dashboard/auctions"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "pathPrefix": "/dashboard/offers"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "pathPrefix": "/dashboard/bids"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "pathPrefix": "/dashboard/earnings"
             }
           ],
           "category": [
