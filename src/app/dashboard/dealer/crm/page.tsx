@@ -369,14 +369,6 @@ export default function DealerCRMPage() {
     const leadsByStatus = (status: string) => leads.filter(l => l.status === status)
     const activeLeads = leads.filter(l => !["WON", "LOST"].includes(l.status))
     const overdueLeads = activeLeads.filter(isFollowUpOverdue)
-    const mobileLeads = leadsByStatus(mobileStatus).sort((a, b) => {
-        const aOverdue = isFollowUpOverdue(a) ? 1 : 0
-        const bOverdue = isFollowUpOverdue(b) ? 1 : 0
-        if (aOverdue !== bOverdue) return bOverdue - aOverdue
-        return new Date(b.lastActivityAt || b.updatedAt || b.createdAt).getTime() -
-            new Date(a.lastActivityAt || a.updatedAt || a.createdAt).getTime()
-    })
-
     return (
         <div className="min-h-screen pt-20 pb-12">
             {showAddModal && (
