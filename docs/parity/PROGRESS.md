@@ -2500,3 +2500,69 @@ The parity guard now checks that the fault-verified inspection rule, full £125 
 `product-parity.json` records `buyer.auction_inspection_refusal` as a gap until the Block 7
 native service-job UI is delivered.
 
+---
+
+## 2026-09-23 — One Product Block 6: Dealer business identity + RBAC foundation
+
+**Status:** backend authorization/business-identity foundation complete and fully tested; role-aware
+web/mobile presentation is intentionally a separate follow-up PR.
+
+### Canonical dealership identity
+
+`DealerProfile.userId` is now the single business identity for dealership-owned activity.
+Active staff resolve to that owner for stock, bids, purchases, dashboard data and business
+transactions instead of creating personal shadow records.
+
+This fixes the highest-risk dealer parity defect: staff could previously be members of a verified
+dealership while auction verification, purchases and payment ownership still treated them as
+independent users.
+
+### Staff permissions
+
+The backend now owns an explicit permission matrix rather than treating DealerRole as display
+metadata:
+
+- **ADMIN:** trade/bidding, auction and listing fee payment, CRM, offers, inventory,
+  purchases/analytics and team administration.
+- **SALES_AGENT:** trade/bidding, CRM, offers, inventory and purchases/analytics; cannot spend via
+  business-fee flows or administer team/KYC.
+- **FINANCE_MANAGER:** trade visibility, inventory visibility, fee payment and
+  purchases/analytics; cannot bid, mutate stock/CRM/offers, or administer team/KYC.
+- **Owner:** all dealership permissions; KYC remains owner-only.
+
+### Business flows corrected
+
+- Verified staff inherit dealership KYC state for Trade Exchange access.
+- Staff bids are stored against the dealership owner identity.
+- Staff bid history/live positions and buyer statistics resolve to dealership activity.
+- £125 auction-winner fees and Retail listing fees can be paid only by authorized business roles;
+  Stripe transaction metadata stays on the canonical dealership and records the acting staff user
+  separately.
+- Dealer dashboard and purchases resolve to dealership records.
+- Staff-created/imported/converted listings remain dealership inventory.
+- CRM, received-offer management and team administration enforce role permissions server-side.
+- Staff cannot enter or upload into a second owner-style KYC flow.
+
+### Quality gates
+
+PR #194 branch checks:
+
+- Backend typecheck: PASS
+- Web typecheck: PASS
+- Mobile typecheck: PASS
+- Product contract parity: PASS
+- Chat CI: PASS
+- Full backend suite: **586 / 586 tests PASS**
+- Backend build: PASS
+
+A permanent product-parity guard now checks the central dealer permission contract, canonical
+business bidder identity, dealership-scoped inventory/offers/payments and owner-only KYC/team
+boundaries.
+
+### Next Block 6 unit
+
+Web and mobile dealer surfaces will consume `GET /dealers/access` and present only actions the
+current staff role can actually perform. In particular: Team/KYC ownership controls, inventory
+mutation actions, CRM, received offers, purchases/analytics visibility, bid/payment controls and
+the misleading mutable dealer-finance UI will be aligned to the backend contract.
+
