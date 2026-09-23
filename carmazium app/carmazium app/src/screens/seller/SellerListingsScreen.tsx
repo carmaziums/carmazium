@@ -626,6 +626,14 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               Listed on {new Date(item.createdAt).toLocaleDateString('en-GB')}
             </Text>
           )}
+          {statusKey === 'REJECTED' && !!item.rejectionReason && (
+            <Text
+              style={{ marginTop: 4, fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.error }}
+              numberOfLines={2}
+            >
+              {item.rejectionReason}
+            </Text>
+          )}
         </View>
 
         {/* Right */}
