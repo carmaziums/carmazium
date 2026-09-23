@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
-import { Ionicons, GoogleIcon } from '@/components/BrandIcon';
+import { Ionicons, GoogleIcon, AppleIcon } from '@/components/BrandIcon';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { useAuthStore } from '../../store/authStore';
@@ -56,6 +56,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
   const { signup, prepareOAuthSignupRole, isLoading } = useAuthStore();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const passwordsMatch = confirmPassword.length > 0 && confirmPassword === password;
@@ -83,6 +84,31 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
       setFormError(err.message || 'Unable to start Google sign-in.');
     } finally {
       setIsGoogleLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    setFormError(null);
+    setIsAppleLoading(true);
+    try {
+      await prepareOAuthSignupRole(role);
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+          redirectTo: 'carmazium://auth/callback',
+          skipBrowserRedirect: true,
+        },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        await Linking.openURL(data.url);
+      } else {
+        throw new Error('Could not get Apple sign-in URL.');
+      }
+    } catch (err: any) {
+      setFormError(err.message || 'Unable to start Apple sign-in.');
+    } finally {
+      setIsAppleLoading(false);
     }
   };
 
@@ -380,7 +406,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               style={[styles.googleBtn, isGoogleLoading && styles.googleBtnDisabled]}
               activeOpacity={0.8}
               onPress={handleGoogleSignIn}
-              disabled={isGoogleLoading || isLoading}
+              disabled={isGoogleLoading || isAppleLoading || isLoading}
             >
               {isGoogleLoading ? (
                 <ActivityIndicator size="small" color={Colors.white} />
@@ -388,6 +414,20 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                 <GoogleIcon size={18} />
               )}
               <Text style={styles.googleBtnText}>CONTINUE WITH GOOGLE</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.googleBtn, isAppleLoading && styles.googleBtnDisabled]}
+              activeOpacity={0.8}
+              onPress={handleAppleSignIn}
+              disabled={isGoogleLoading || isAppleLoading || isLoading}
+            >
+              {isAppleLoading ? (
+                <ActivityIndicator size="small" color={Colors.white} />
+              ) : (
+                <AppleIcon size={18} color={Colors.white} />
+              )}
+              <Text style={styles.googleBtnText}>CONTINUE WITH APPLE</Text>
             </TouchableOpacity>
 
             {/* Login Link */}
