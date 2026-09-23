@@ -560,6 +560,8 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
             const result = await publishListing(listing.id)
             if (result.activated) {
                 setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'ACTIVE' as const } : l))
+            } else if (result.pendingReview) {
+                setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'PENDING_REVIEW' as const } : l))
             } else if (result.requiresPayment) {
                 const checkout = await createListingCheckoutSession(listing.id, listing.badgeTier || 'BASIC')
                 window.location.href = checkout.url
@@ -675,14 +677,14 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                 <p className="text-xs text-[var(--text-muted)] mt-1">Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB')}</p>
 
                                 <div className="grid grid-cols-2 gap-2 mt-3">
-                                    {listing.status === 'DRAFT' ? (
+                                    {(listing.status === 'DRAFT' || listing.status === 'REJECTED') ? (
                                         <button
                                             onClick={() => handlePublish(listing)}
                                             disabled={publishing === listing.id}
                                             className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-sm disabled:opacity-60"
                                         >
                                             {publishing === listing.id ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                                            Publish
+                                            {listing.status === 'REJECTED' ? 'Resubmit' : 'Publish'}
                                         </button>
                                     ) : listing.status === 'SOLD' ? (
                                         <button
@@ -691,13 +693,17 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                         >
                                             <RefreshCw size={16} /> Relist
                                         </button>
-                                    ) : (
+                                    ) : listing.status === 'ACTIVE' || listing.status === 'OFFER_ACCEPTED' ? (
                                         <button
                                             onClick={() => setSaleListing(listing)}
                                             className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-sm"
                                         >
                                             <CheckCircle2 size={16} /> Mark Sold
                                         </button>
+                                    ) : (
+                                        <div className="min-h-[48px] flex items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-400 font-bold text-sm">
+                                            Under Review
+                                        </div>
                                     )}
                                     <Link
                                         href={`/dashboard/seller/add-listing?editId=${listing.id}`}
@@ -846,13 +852,13 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         <div className="absolute right-0 top-full mt-1 w-44 bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-xl shadow-2xl z-50 py-2"
                                                             onClick={() => setOpenMenuId(null)}
                                                         >
-                                                        {listing.status === 'DRAFT' && (
+                                                        {(listing.status === 'DRAFT' || listing.status === 'REJECTED') && (
                                                             <button
                                                                 onClick={() => handlePublish(listing)}
                                                                 disabled={publishing === listing.id}
                                                                 className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-emerald-500/10 text-emerald-400 w-full text-left font-bold"
                                                             >
-                                                                <Upload size={14} /> Publish Listing
+                                                                <Upload size={14} /> {listing.status === 'REJECTED' ? 'Resubmit for Review' : 'Publish Listing'}
                                                             </button>
                                                         )}
                                                         <Link href={`/dashboard/seller/add-listing?editId=${listing.id}`} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-[var(--bg-card)]">
@@ -863,7 +869,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                                 <Gavel size={14} /> Put to Auction
                                                             </Link>
                                                         )}
-                                                        {listing.status !== 'SOLD' && (
+                                                        {(listing.status === 'ACTIVE' || listing.status === 'OFFER_ACCEPTED') && (
                                                             <button
                                                                 onClick={() => setSaleListing(listing)}
                                                                 className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-emerald-500/10 text-emerald-400 w-full text-left"
