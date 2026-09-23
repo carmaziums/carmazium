@@ -251,6 +251,7 @@ const mobileVehicleDetail = read('carmazium app/carmazium app/src/screens/vehicl
 const mobilePaymentsApi = read('carmazium app/carmazium app/src/lib/paymentsApi.ts');
 const mobilePurchaseFlow = read('carmazium app/carmazium app/src/screens/main/PurchaseFlowScreen.tsx');
 const paymentsController = read('backend/src/payments/payments.controller.ts');
+const buyerPaymentsService = read('backend/src/payments/payments.service.ts');
 
 if (
   !webVehicleDetail.includes('message || undefined') ||
@@ -265,8 +266,8 @@ if (
 if (
   !mobilePaymentsApi.includes('/payments/reconcile-auction-fee-intent') ||
   !paymentsController.includes("@Post('reconcile-auction-fee-intent')") ||
-  !payments.includes('async reconcileAuctionFeeIntent(') ||
-  !payments.includes('stripe.paymentIntents.retrieve(transaction.stripePaymentId)')
+  !buyerPaymentsService.includes('async reconcileAuctionFeeIntent(') ||
+  !buyerPaymentsService.includes('stripe.paymentIntents.retrieve(transaction.stripePaymentId)')
 ) {
   fail('Native auction buyer-fee payment is missing authoritative PaymentIntent reconciliation');
 } else {
