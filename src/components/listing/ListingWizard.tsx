@@ -3497,7 +3497,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     )}
                                 </div>
 
-                                {!isAuction && formData.vrm && formData.badgeTier === 'BASIC' && (
+                                {formData.vrm && (isAuction || formData.badgeTier === 'BASIC') && (
                                     <HpiBaitSection
                                         isUnlocked={isHpiUnlocked}
                                         onUnlock={() => setShowHpiModal(true)}
