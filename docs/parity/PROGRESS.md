@@ -2675,3 +2675,27 @@ Still open in Block 9:
 - Accessibility and performance checks.
 - `admin.operations` remains the only manifest `gap`; final treatment belongs to Block 10 certification because the native product does not currently expose an admin application.
 
+## 2026-09-23 — Block 9: Native public detail deep links and back stack
+
+**Checkpoint:** vehicle and auction public URLs are now safe native entry points; Block 9 remains in progress.
+
+Implemented:
+- Added lightweight `VehicleDeepLinkScreen` and `AuctionDeepLinkScreen` hydrators.
+- `/buy-cars/:slug` resolves the backend listing first, then opens `VehicleDetail`.
+- `/auctions/live/:auctionId` resolves the auction and uses the shared `auctionToListingParam` adapter before opening `LiveAuctionDetailed`.
+- Both cold-start wrappers reset the stack to `Tabs → Detail`, so Back returns to the native app rather than exiting from a one-screen deep-link stack.
+- React Navigation linking now maps those two public website routes instead of intentionally excluding them.
+- iOS app config declares `applinks:carmazium.com` and `applinks:www.carmazium.com`.
+- Android app config declares verified HTTPS intent paths for the currently supported CarMazium web routes.
+- Added required parity surface `navigation.public_detail_deeplinks` and a CI guard for hydration + back-stack behavior.
+
+External production prerequisite:
+- The repository does not contain the Apple Team/app identifier needed for `apple-app-site-association` or the Android release signing SHA-256 fingerprint needed for `.well-known/assetlinks.json`.
+- Those values must come from the real App Store / EAS signing credentials. They were deliberately not guessed. Universal-link/App-Link verification cannot be certified until the website association files are published with those real identifiers.
+
+Still open in Block 9:
+- Cross-role navigation/back-stack audit beyond public detail links and customer service jobs.
+- Theme/terminology parity.
+- Loading/empty/error/offline consistency.
+- Accessibility and performance certification.
+
