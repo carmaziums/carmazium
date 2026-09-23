@@ -6,7 +6,7 @@ import { KycOverlayForm, KYC_SKIP_KEY } from "@/components/dashboard/KycOverlayF
 import { Loader2, Lock, ShieldCheck, ArrowRight, Phone, AlertCircle } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import { apiClient } from "@/lib/apiClient"
-import { DealerAccessProvider } from "@/context/DealerAccessContext"
+import { DealerAccessProvider, useDealerAccess } from "@/context/DealerAccessContext"
 import { DealerPermissionGate } from "@/components/dealer/DealerPermissionGate"
 import type { DealerPermission } from "@/lib/dealerAccess"
 
@@ -125,12 +125,13 @@ function DealerRoutePermissionBoundary({ children }: { children: React.ReactNode
  * Unverified dealers can "Skip for now" — they get a limited-mode banner
  * and can change their account type from the Settings page.
  */
-export default function DealerDashboardLayout({
+function DealerDashboardLayoutContent({
     children,
 }: {
     children: React.ReactNode
 }) {
     const { user, profile, loading, refreshProfile } = useAuth()
+    const { access, loading: dealerAccessLoading } = useDealerAccess()
     const router = useRouter()
     const [skipped, setSkipped] = React.useState(false)
     const [switchingRole, setSwitchingRole] = React.useState(false)
@@ -161,7 +162,9 @@ export default function DealerDashboardLayout({
         }
     }, [])
 
-    if (loading) {
+    const isStaffMember = !!((profile as any)?.dealerStaffMemberships?.length)
+
+    if (loading || (isStaffMember && dealerAccessLoading)) {
         return (
             <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ background: 'var(--bg-body)' }}>
                 <Loader2 className="animate-spin text-primary mb-4" size={48} />
@@ -173,8 +176,9 @@ export default function DealerDashboardLayout({
     }
 
     const isEmailVerified = !!user?.email_confirmed_at
-    const isStaffMember = !!((profile as any)?.dealerStaffMemberships?.length)
-    const isVerifiedDealer = !!profile?.dealerProfile?.isVerified || isStaffMember
+    const isVerifiedDealer = isStaffMember
+        ? access?.isVerified === true
+        : !!profile?.dealerProfile?.isVerified
 
     // Show KYC overlay unless: verified, staff member, or user explicitly skipped
     if (isEmailVerified && !isVerifiedDealer && !skipped) {
@@ -255,10 +259,22 @@ export default function DealerDashboardLayout({
     }
 
     return (
+        <DealerRoutePermissionBoundary>
+            {children}
+        </DealerRoutePermissionBoundary>
+    )
+}
+
+export default function DealerDashboardLayout({
+    children,
+}: {
+    children: React.ReactNode
+}) {
+    return (
         <DealerAccessProvider>
-            <DealerRoutePermissionBoundary>
+            <DealerDashboardLayoutContent>
                 {children}
-            </DealerRoutePermissionBoundary>
+            </DealerDashboardLayoutContent>
         </DealerAccessProvider>
     )
 }
