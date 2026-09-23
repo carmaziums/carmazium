@@ -66,13 +66,17 @@ export const linking: LinkingOptions<RootStackParamList> = {
             path: 'auth/accept-invite',
             parse: { token: (token: string) => token },
           },
-          // NOT linkable, deliberately: VehicleDetail and LiveAuctionDetailed
-          // both take a fully-hydrated `listing: CarListing` param, and a URL
-          // can only supply a slug or id. Mapping them would hand the screen
-          // `{ slug }` where it reads `route.params.listing`, i.e. a crash on
-          // every inbound vehicle link. Making them linkable means first
-          // giving them an id-only entry path that self-fetches — a real
-          // change to two large screens, and out of scope here. Logged.
+          // Public detail URLs hydrate through lightweight wrapper screens.
+          // The wrappers fetch the authoritative listing/auction first, then reset
+          // the stack to Tabs → Detail so cold-start back navigation stays native.
+          VehicleDeepLink: {
+            path: 'buy-cars/:slug',
+            parse: { slug: (slug: string) => slug },
+          },
+          AuctionDeepLink: {
+            path: 'auctions/live/:auctionId',
+            parse: { auctionId: (auctionId: string) => auctionId },
+          },
           Notifications: 'notifications',
           Messages: 'messages',
           Settings: 'settings',
