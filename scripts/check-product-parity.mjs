@@ -244,6 +244,46 @@ if (
   ok('Seller draft reset is available on both clients');
 }
 
+// Buyer journey parity: native UX may differ from the browser, but buyer
+// intent and payment truth must survive the platform boundary unchanged.
+const webVehicleDetail = read('src/app/buy-cars/[slug]/VehicleDetailsPageClient.tsx');
+const mobileVehicleDetail = read('carmazium app/carmazium app/src/screens/vehicle/VehicleDetailScreen.tsx');
+const mobilePaymentsApi = read('carmazium app/carmazium app/src/lib/paymentsApi.ts');
+const mobilePurchaseFlow = read('carmazium app/carmazium app/src/screens/main/PurchaseFlowScreen.tsx');
+const paymentsController = read('backend/src/payments/payments.controller.ts');
+
+if (
+  !webVehicleDetail.includes('message || undefined') ||
+  !mobileVehicleDetail.includes('message: offerMessage.trim() || undefined') ||
+  !mobileVehicleDetail.includes('maxLength={500}')
+) {
+  fail('Buyer offer message must be preserved on web and mobile create/amend flows');
+} else {
+  ok('Buyer offers preserve the optional seller message across clients');
+}
+
+if (
+  !mobilePaymentsApi.includes('/payments/reconcile-auction-fee-intent') ||
+  !paymentsController.includes("@Post('reconcile-auction-fee-intent')") ||
+  !payments.includes('async reconcileAuctionFeeIntent(') ||
+  !payments.includes('stripe.paymentIntents.retrieve(transaction.stripePaymentId)')
+) {
+  fail('Native auction buyer-fee payment is missing authoritative PaymentIntent reconciliation');
+} else {
+  ok('Native auction buyer fee reconciles against Stripe before auction unlock');
+}
+
+if (
+  !mobilePurchaseFlow.includes('setPendingConfirmationId(sheet.transactionId)') ||
+  !mobilePurchaseFlow.includes('reconcilePendingAuctionFee(sheet.transactionId)') ||
+  !mobilePurchaseFlow.includes('CONFIRM PAYMENT STATUS') ||
+  !mobilePurchaseFlow.includes('within 72 hours')
+) {
+  fail('Mobile auction fee UX can drift into duplicate charge or missing deadline guidance');
+} else {
+  ok('Mobile auction fee retry reuses the same payment and preserves 72-hour guidance');
+}
+
 const webPricing = read('src/lib/pricingConfig.ts');
 const mobilePricing = read('carmazium app/carmazium app/src/constants/pricing.ts');
 const payments = read('backend/src/payments/payments.service.ts');
