@@ -73,6 +73,7 @@ The repository currently contains a mature Next.js website and an Expo/React Nat
 
 ### Block 6 — Trader/dealer journey
 - KYC gate, bidding, inventory, CRM, offers, purchases, earnings, finance, analytics, team permissions and dealer listing tools.
+- **Status (23 Sep 2026): dealer business-rule and role-permission remediation complete.** Dealer staff act through one canonical dealership identity. Backend permissions cover bidding, platform-fee payment, inventory, CRM/offers, purchases/analytics, team and KYC; web and native clients consume the same `/dealers/access` contract. Auction winner/bid/seller state now uses the dealership identity on both clients, with Sales, Finance, Admin and Owner controls matching backend permissions. Full native Partner/TradeXchange provider UI remains Block 7.
 
 ### Block 7 — Partner / TradeXchange provider journey
 - Partner Account.
