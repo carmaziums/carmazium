@@ -416,21 +416,51 @@ export default function DealerCRMPage() {
                         </PageHeader>
                     </div>
 
-                    {/* Stats bar */}
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                            <Sparkles size={18} className="text-emerald-500" />
+                        </div>
+                        <div>
+                            <p className="font-black text-sm sm:text-base text-[var(--text-primary)]">Customer enquiries are automatic</p>
+                            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1 leading-relaxed">
+                                CarMazium retail messages and offers appear here automatically and stay linked to the vehicle.
+                                Add Customer is for phone calls, walk-ins and other off-platform enquiries.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                         {[
-                            { label: "Total", count: leads.length, color: "text-[var(--text-primary)]" },
-                            { label: "Active", count: leads.filter(l => !['WON','LOST'].includes(l.status)).length, color: "text-amber-400" },
-                            { label: "Won", count: leads.filter(l => l.status === 'WON').length, color: "text-emerald-400" },
+                            { label: "New", count: leadsByStatus("NEW").length, color: "text-blue-500" },
+                            { label: "Active", count: activeLeads.length, color: "text-amber-500" },
+                            { label: "Follow-up due", count: overdueLeads.length, color: overdueLeads.length ? "text-red-500" : "text-[var(--text-muted)]" },
+                            { label: "Sold", count: leadsByStatus("WON").length, color: "text-emerald-500" },
                         ].map(s => (
                             <div key={s.label} className="glass-card p-4 text-center">
                                 <p className={`text-2xl font-black ${s.color}`}>{s.count}</p>
-                                <p className="text-xs text-[var(--text-muted)] uppercase font-bold tracking-widest">{s.label}</p>
+                                <p className="text-[10px] sm:text-xs text-[var(--text-muted)] uppercase font-bold tracking-widest">{s.label}</p>
                             </div>
                         ))}
                     </div>
 
-                    {/* Kanban Board */}
+                    <div className="lg:hidden flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                        {COLUMNS.map(col => (
+                            <button
+                                key={col.key}
+                                type="button"
+                                onClick={() => setMobileStatus(col.key)}
+                                className={`shrink-0 min-h-[42px] rounded-xl px-3.5 py-2 text-xs font-black border transition-colors ${
+                                    mobileStatus === col.key
+                                        ? "bg-primary text-white border-primary"
+                                        : "bg-[var(--bg-card)] text-[var(--text-muted)] border-[var(--border-default)]"
+                                }`}
+                            >
+                                {col.label} <span className="ml-1 opacity-70">{leadsByStatus(col.key).length}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Sales pipeline */}
                     {loading ? (
                         <div className="flex items-center justify-center py-24">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
