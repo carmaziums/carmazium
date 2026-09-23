@@ -11,6 +11,7 @@ import { apiClient } from "@/lib/apiClient"
 import { recordSale } from "@/lib/listingApi"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { MetricCard } from "@/components/dashboard/MetricCard"
+import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 
 // ─── UK postcode validation (loose — accepts formatted or unformatted) ────────
 const UK_POSTCODE_RE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i
@@ -26,6 +27,7 @@ export default function DealerOffersPage() {
 
     // Postcode capture state — set to offer ID when dealer clicks "Mark as Sold"
     const [postcodeCapture, setPostcodeCapture] = React.useState<{ offerId: string; postcode: string } | null>(null)
+    const [cancelListing, setCancelListing] = React.useState<{ id: string; title: string } | null>(null)
     const [confirmingSale, setConfirmingSale] = React.useState(false)
 
     React.useEffect(() => {
@@ -109,6 +111,14 @@ export default function DealerOffersPage() {
 
     return (
         <div className="min-h-screen pt-20 pb-12">
+            {cancelListing && (
+                <SaleCancellationModal
+                    listingId={cancelListing.id}
+                    vehicleTitle={cancelListing.title}
+                    onClose={() => setCancelListing(null)}
+                    onCreated={() => void fetchOffers()}
+                />
+            )}
             {toast && (
                 <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-xl font-bold text-sm animate-in fade-in slide-in-from-bottom-2">
                     {toast}
@@ -178,6 +188,15 @@ export default function DealerOffersPage() {
                                                 {offer.status === "PENDING" ? "Pending" : offer.status === "ACCEPTED" ? "Accepted" : offer.status === "REJECTED" ? "Rejected" : offer.status === "COUNTERED" ? "Countered" : offer.status}
                                             </span>
 
+                                            {offer.status === 'ACCEPTED' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCancelListing({ id: offer.listingId, title: offer.listing?.title || "Vehicle" })}
+                                                    className="w-full min-h-[46px] rounded-xl border border-red-500/30 bg-red-500/5 text-red-400 font-bold text-sm"
+                                                >
+                                                    Cancel agreed sale
+                                                </button>
+                                            )}
                                             {isPending && !isCountering && (
                                                 <div className="mt-3 space-y-2">
                                                     <button onClick={() => handleRespond(offer.id, 'ACCEPTED')} className="w-full min-h-[46px] rounded-xl bg-emerald-500 text-white font-bold text-sm">Accept offer</button>
@@ -330,6 +349,14 @@ export default function DealerOffersPage() {
                                                                     onClick={() => setPostcodeCapture({ offerId: offer.id, postcode: '' })}
                                                                     className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-emerald-500/20 rounded-xl transition-all gap-1.5">
                                                                     <CheckCircle size={12} /> Mark as Sold
+                                                                </Button>
+                                                            )}
+
+                                                            {!isPending && offer.status === 'ACCEPTED' && (
+                                                                <Button variant="ghost" size="sm"
+                                                                    onClick={() => setCancelListing({ id: offer.listingId, title: offer.listing?.title || "Vehicle" })}
+                                                                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-red-500/20 rounded-xl transition-all gap-1.5">
+                                                                    <XCircle size={12} /> Request cancellation
                                                                 </Button>
                                                             )}
 
