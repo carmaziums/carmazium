@@ -21,8 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
-import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
-import { useAuthStore } from '../../store/authStore';
+import { convertAndCompress } from '../../lib/storageHelper';
 import { haptics } from '../../lib/haptics';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Colors } from '../../constants/colors';
@@ -142,7 +141,6 @@ function fmtDate(iso: string) {
 export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const route = useRoute<any>();
-  const userId = useAuthStore((state) => state.user?.id) ?? 'anon';
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   // Dealers reach this screen from a specific listing's "Put on Auction"
   // action (DealerInventoryScreen) rather than the "CREATE AUCTION" button
@@ -332,12 +330,13 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     setHandoverError(prev => ({ ...prev, [auctionId]: null }));
     try {
       const jpegUri = await convertAndCompress(result.assets[0].uri);
-      // Owner-first path matches the hardened Storage RLS used by web and
-      // vehicle-photo uploads. 'handover' remains a folder inside listings.
-      const proofUrl = await uploadToStorage(
-        jpegUri, 'listings', `${userId}/handover/${auctionId}-${Date.now()}.jpg`, 'image/jpeg',
-      );
-      await submitHandoverProof(auctionId, proofUrl);
+      // Uploaded through the backend into a private bucket — not into the
+      // public `listings` bucket. The object key is generated server-side.
+      await submitHandoverProof(auctionId, {
+        uri: jpegUri,
+        name: `${auctionId}-${Date.now()}.jpg`,
+        type: 'image/jpeg',
+      });
       haptics.success();
       setHandoverUploaded(prev => ({ ...prev, [auctionId]: true }));
       Alert.alert(

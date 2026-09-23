@@ -44,9 +44,9 @@ export function legacyPublicHandoverKey(url: string | null | undefined): string 
  * object key is built server-side so a caller cannot choose where their file
  * lands, and reads are 10-minute signed URLs issued after authorisation.
  *
- * The released mobile app still uploads to its own public path and still POSTs a
- * URL; that route is untouched so those users keep working. Their proof stays
- * public until the app ships an update pointing at this endpoint.
+ * The URL-based route this replaces is still mounted, but nothing calls it: the
+ * mobile app was never released and now posts a file here like the web client.
+ * It can be dropped once that is confirmed in staging.
  */
 @Injectable()
 export class HandoverDocumentsService {
@@ -134,10 +134,9 @@ export class HandoverDocumentsService {
      * Replace a stored object key with a viewable URL on an auction record.
      *
      * Resolves to a signed URL when a private key exists, otherwise the legacy
-     * public URL so proof submitted before this change — and proof still coming
-     * from released mobile clients — keeps opening in admin review. The `*Path`
-     * column is stripped: an internal storage key is not something an API hands
-     * out.
+     * public URL so any record predating this change still opens in admin
+     * review. The `*Path` column is stripped: an internal storage key is not
+     * something an API hands out.
      */
     async hydrateProof<T extends Record<string, any>>(auction: T | null): Promise<T | null> {
         if (!auction) return auction;

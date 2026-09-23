@@ -231,12 +231,24 @@ export async function declineBuyItNow(auctionId: string): Promise<void> {
 
 // ─── Handover proof ──────────────────────────────────────────────────────────
 
+/**
+ * Submit handover proof.
+ *
+ * The file goes to the backend, which stores it in a PRIVATE bucket and issues
+ * short-lived signed URLs on read. It used to be uploaded straight to the
+ * public `listings` bucket, which left the proof — and in at least one live
+ * case a signed handover document with both parties' names and addresses —
+ * readable by anyone holding the URL.
+ */
 export async function submitHandoverProof(
   auctionId: string,
-  proofUrl: string,
+  file: { uri: string; name: string; type: string },
 ): Promise<void> {
-  await apiClient(`/auctions/${auctionId}/handover-proof`, {
+  const body = new FormData();
+  // React Native's FormData takes the {uri,name,type} shape rather than a Blob.
+  body.append('file', file as any);
+  await apiClient(`/auctions/${auctionId}/handover-proof/document`, {
     method: 'POST',
-    body: JSON.stringify({ proofUrl }),
+    body,
   });
 }

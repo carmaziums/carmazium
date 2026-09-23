@@ -67,3 +67,20 @@ CREATE POLICY "Block public handover uploads"
 --   FROM storage.objects
 --   WHERE bucket_id = 'listings'
 --     AND (name LIKE 'handover/%' OR name LIKE '%/handover/%');
+
+-- ── Follow-up 2026-09-23 ───────────────────────────────────────────────────
+-- The carve-out in step 4 existed for "already-released mobile clients". There
+-- are none: the mobile app is still in development and has never shipped. The
+-- app now uploads through POST /auctions/:id/handover-proof/document like the
+-- web client, so nothing writes to the public bucket any more and the mobile
+-- prefix can be blocked too.
+--
+-- Existing objects are untouched; only new inserts are refused.
+DROP POLICY IF EXISTS "Block public handover uploads" ON storage.objects;
+CREATE POLICY "Block public handover uploads"
+    ON storage.objects
+    FOR INSERT
+    WITH CHECK (
+        bucket_id <> 'listings'
+        OR (name NOT LIKE 'handover/%' AND name NOT LIKE '%/handover/%')
+    );

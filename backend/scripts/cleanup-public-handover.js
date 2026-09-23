@@ -19,8 +19,9 @@
  * An auction whose private path is missing is never touched: deleting there
  * would leave an admin with no proof at all and a £100 payout undecidable.
  *
- * Covers both the web prefix (`handover/`) and the one the released mobile app
- * writes (`<userId>/handover/`).
+ * Covers the web prefix (`handover/`) and the mobile shape
+ * (`<userId>/handover/`). The mobile app never shipped and now uploads through
+ * the backend like the web client, so nothing is left writing to either.
  *
  *   node scripts/cleanup-public-handover.js            # dry run
  *   node scripts/cleanup-public-handover.js --apply    # quarantine + delete
@@ -89,7 +90,15 @@ async function main() {
         if (key) referenced.set(key, { auctionId: row.id, privatePath: row.handoverProofPath });
     }
 
+    // Everything under the web prefix, plus any mobile-shaped key
+    // (`<userId>/handover/...`) a record points at. The mobile ones come from
+    // the database rather than a storage walk: they live under arbitrary
+    // per-user folders, so listing them would mean enumerating the whole
+    // bucket. Both groups go through the same private-copy verification.
     const objects = await listPrefix(supabase, 'handover');
+    for (const key of referenced.keys()) {
+        if (!key.startsWith('handover/') && !objects.includes(key)) objects.push(key);
+    }
 
     const toDelete = [];
     const kept = [];
@@ -154,26 +163,13 @@ async function main() {
     }
 
     console.log('\n--- summary ---');
-    console.log(`  objects under handover/            ${objects.length}`);
+    console.log(`  public handover objects found      ${objects.length}`);
     console.log(`  referenced, private copy verified  ${toDelete.length}`);
     console.log(`  unreferenced, quarantined first    ${apply ? quarantined.length : toQuarantine.length}`);
     console.log(apply ? `  DELETED from public bucket         ${deletable.length}` : `  would delete                       ${deletable.length}`);
     if (kept.length) {
         console.log(`  KEPT (not safe to delete)          ${kept.length}`);
         for (const k of kept) console.log(`      ${k.key}\n          ${k.why}`);
-    }
-
-    // Mobile proof lives under `<userId>/handover/` and is NOT swept here: the
-    // released app still writes there, so deleting is a moving target. Report it
-    // so the size of the remaining exposure is visible.
-    const mobile = rows
-        .map((r) => publicObjectKey(r.handoverProofUrl))
-        .filter((k) => k && !k.startsWith('handover/'));
-    if (mobile.length) {
-        console.log(`\n  mobile-client proof still public   ${mobile.length}`);
-        console.log('  These stay until the mobile app ships against');
-        console.log('  POST /auctions/:id/handover-proof/document.');
-        for (const k of mobile.slice(0, 20)) console.log(`      ${k}`);
     }
 
     if (!apply) {

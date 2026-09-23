@@ -60,8 +60,12 @@ export async function apiClient<T>(
 
   const { timeoutMs = 10_000, ...fetchOptions } = options;
 
+  // FormData has to set its own Content-Type — it carries the multipart
+  // boundary, and overriding it makes the server unable to parse the body.
+  const isFormData = typeof FormData !== 'undefined' && fetchOptions.body instanceof FormData;
+
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token && { 'Authorization': `Bearer ${token}` }),
     ...fetchOptions.headers,
   };
