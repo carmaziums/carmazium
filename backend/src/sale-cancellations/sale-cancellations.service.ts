@@ -136,6 +136,7 @@ export class SaleCancellationsService {
         title: string,
         message: string,
         requestId: string,
+        link = '/dashboard/cancellations',
     ): Promise<void> {
         if (!userId) return;
         const notification = await this.notifications.create({
@@ -145,7 +146,7 @@ export class SaleCancellationsService {
             message,
             entityType: 'SALE_CANCELLATION',
             entityId: requestId,
-            link: '/dashboard/cancellations',
+            link,
             actionType: 'SALE_CANCELLATION',
         }).catch(() => null);
         if (notification) this.notificationsGateway.sendNotification(userId, notification);
@@ -156,7 +157,9 @@ export class SaleCancellationsService {
             where: { role: 'ADMIN', deletedAt: null },
             select: { id: true },
         });
-        await Promise.all(admins.map((admin) => this.notifyUser(admin.id, title, message, requestId)));
+        await Promise.all(admins.map((admin) =>
+            this.notifyUser(admin.id, title, message, requestId, '/dashboard/admin/cancellations')
+        ));
     }
 
     private shouldRefundBuyerFee(request: any): boolean {
@@ -299,7 +302,19 @@ export class SaleCancellationsService {
             orderBy: { createdAt: 'desc' },
             take: 100,
         });
-        return Promise.all(rows.map((row) => this.hydrate(row)));
+        return Promise.all(rows.map(async (row) => {
+            const hydrated = await this.hydrate(row);
+            const counterpartId = row.requestedByRole === 'SELLER' ? row.buyerId : row.sellerId;
+            return {
+                ...hydrated,
+                viewer: {
+                    isRequester: row.requestedById === canonicalId,
+                    canRespond: row.status === ('PENDING_COUNTERPARTY' as any) && counterpartId === canonicalId,
+                    canWithdraw: ['PENDING_COUNTERPARTY', 'PENDING_ADMIN'].includes(row.status as any)
+                        && row.requestedById === canonicalId,
+                },
+            };
+        }));
     }
 
     async findOne(id: string, userId: string, isAdmin = false) {
@@ -314,7 +329,19 @@ export class SaleCancellationsService {
                 throw new ForbiddenException('You cannot view this cancellation request.');
             }
         }
-        return this.hydrate(row);
+        const hydrated = await this.hydrate(row);
+        if (isAdmin) return { ...hydrated, viewer: { canAdminReview: row.status === ('PENDING_ADMIN' as any) } };
+        const { canonicalId } = await this.actor(userId);
+        const counterpartId = row.requestedByRole === 'SELLER' ? row.buyerId : row.sellerId;
+        return {
+            ...hydrated,
+            viewer: {
+                isRequester: row.requestedById === canonicalId,
+                canRespond: row.status === ('PENDING_COUNTERPARTY' as any) && counterpartId === canonicalId,
+                canWithdraw: ['PENDING_COUNTERPARTY', 'PENDING_ADMIN'].includes(row.status as any)
+                    && row.requestedById === canonicalId,
+            },
+        };
     }
 
     async pendingAdmin() {
@@ -324,7 +351,10 @@ export class SaleCancellationsService {
             orderBy: { createdAt: 'asc' },
             take: 100,
         });
-        return Promise.all(rows.map((row) => this.hydrate(row)));
+        return Promise.all(rows.map(async (row) => ({
+            ...(await this.hydrate(row)),
+            viewer: { canAdminReview: true },
+        })));
     }
 
     async respond(
