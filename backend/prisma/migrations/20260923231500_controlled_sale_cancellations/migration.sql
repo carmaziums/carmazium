@@ -1,3 +1,21 @@
+-- Private evidence bucket. Files are written with the server-side service role and
+-- are only returned through short-lived signed URLs after authorization.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'sale-cancellation-evidence',
+  'sale-cancellation-evidence',
+  FALSE,
+  26214400,
+  ARRAY[
+    'image/jpeg','image/png','image/webp','image/heic','image/heif',
+    'video/mp4','video/quicktime','video/webm'
+  ]::text[]
+)
+ON CONFLICT (id) DO UPDATE SET
+  public = FALSE,
+  file_size_limit = EXCLUDED.file_size_limit,
+  allowed_mime_types = EXCLUDED.allowed_mime_types;
+
 -- Controlled post-purchase sale cancellation workflow.
 -- Keeps the request/evidence audit trail separate from the Sale row, which may
 -- be removed when a deal is successfully unwound.
