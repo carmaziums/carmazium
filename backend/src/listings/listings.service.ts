@@ -56,6 +56,11 @@ import {
     searchLiveUkVehicleMarket,
     LiveUkMarketSearchResult,
 } from './live-market-search';
+import {
+    assertDealerPermission,
+    DealerPermission,
+    resolveDealerActor,
+} from '../dealers/dealer-access';
 
 // ─── Enum mappers ─────────────────────────────────────────────────────────────
 
@@ -439,6 +444,46 @@ export class ListingsService {
 
     private normalizeVrm(vrm: string | null | undefined): string {
         return (vrm ?? '').replace(/\s+/g, '').trim().toUpperCase();
+    }
+
+    /**
+     * Dealer staff operate one dealership inventory. Private sellers keep their
+     * own identity; dealer staff resolve to DealerProfile.userId.
+     */
+    private async resolveInventorySellerId(
+        userId: string,
+        permission: Extract<DealerPermission, 'VIEW_INVENTORY' | 'MANAGE_INVENTORY'>,
+    ): Promise<string> {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        if (!actor) return userId;
+
+        assertDealerPermission(
+            actor,
+            permission,
+            permission === 'VIEW_INVENTORY'
+                ? 'Your dealership role does not allow inventory access.'
+                : 'Your dealership role does not allow inventory changes.',
+        );
+        return actor.ownerUserId;
+    }
+
+    private async assertListingManagement(
+        userId: string,
+        sellerId: string | null | undefined,
+        message: string,
+    ): Promise<string> {
+        if (!sellerId || sellerId === userId) return sellerId ?? userId;
+
+        const actor = await resolveDealerActor(this.prisma, userId);
+        if (!actor || actor.ownerUserId !== sellerId) {
+            throw new ForbiddenException(message);
+        }
+        assertDealerPermission(
+            actor,
+            'MANAGE_INVENTORY',
+            'Your dealership role does not allow inventory changes.',
+        );
+        return actor.ownerUserId;
     }
 
     /**
@@ -1094,6 +1139,9 @@ export class ListingsService {
         const slug = this.generateSlug(createListingDto.title);
         const normalizedVrm = this.normalizeVrm(createListingDto.vrm);
         const originalImages = createListingDto.images ?? [];
+        const sellerId = userId
+            ? await this.resolveInventorySellerId(userId, 'MANAGE_INVENTORY')
+            : undefined;
 
         this.assertListingImageUrls(originalImages, userId);
 
@@ -1196,10 +1244,10 @@ export class ListingsService {
         // pre-insert lookup.
         const createResult = await this.prisma.$transaction(async (tx) => {
             if (userId && normalizedVrm) {
-                await this.lockVehicleCreation(tx, userId, normalizedVrm);
+                await this.lockVehicleCreation(tx, sellerId!, normalizedVrm);
                 const existing = await this.resolveExistingCreate(
                     tx,
-                    userId,
+                    sellerId!,
                     normalizedVrm,
                     {
                         type: listingType,
@@ -1266,7 +1314,7 @@ export class ListingsService {
                 isFeatured: false,
                 featuredUntil: null,
                 // Seller
-                sellerId: userId ?? null,
+                sellerId: sellerId ?? null,
                 // Vehicle type & import status
                 vehicleType: createListingDto.vehicleType ?? 'CAR',
                 isImported: createListingDto.isImported ?? false,
@@ -1340,7 +1388,7 @@ export class ListingsService {
         // retained for any non-auction create flow that legitimately starts in
         // PENDING_REVIEW.
         if (listingStatus === 'PENDING_REVIEW') {
-            this.notifySubmittedForReview({ id: listing.id, title: listing.title, sellerId: userId ?? listing.sellerId }).catch(() => { });
+            this.notifySubmittedForReview({ id: listing.id, title: listing.title, sellerId: sellerId ?? listing.sellerId }).catch(() => { });
         }
 
         return listing;
@@ -1751,10 +1799,11 @@ export class ListingsService {
         // First, fetch the listing to verify ownership
         const listing = await this.findById(id);
 
-        // Ownership check (skip if no sellerId - for development)
-        if (listing.sellerId && listing.sellerId !== userId) {
-            throw new ForbiddenException('You do not have permission to update this listing');
-        }
+        await this.assertListingManagement(
+            userId,
+            listing.sellerId,
+            'You do not have permission to update this listing',
+        );
 
         // Build update data with proper type mapping
         const updateData: any = {};
@@ -1864,21 +1913,11 @@ export class ListingsService {
     ): Promise<Listing> {
         const listing = await this.findById(id);
 
-        if (listing.sellerId && listing.sellerId !== userId) {
-            // Allow active dealer staff of the listing's owner to update status as well
-            const staffMember = listing.sellerId
-                ? await this.prisma.dealerStaff.findFirst({
-                    where: {
-                        userId,
-                        dealerProfile: { userId: listing.sellerId },
-                        isActive: true,
-                    },
-                })
-                : null;
-            if (!staffMember) {
-                throw new ForbiddenException('You do not have permission to update this listing');
-            }
-        }
+        await this.assertListingManagement(
+            userId,
+            listing.sellerId,
+            'You do not have permission to update this listing',
+        );
 
         // Going live must always go through payment + admin review (publishListing()
         // then an admin approval) — this generic status endpoint may only relist a
@@ -1948,9 +1987,14 @@ export class ListingsService {
     async publishListing(id: string, userId: string): Promise<{ activated: boolean; requiresPayment?: boolean; pendingReview?: boolean }> {
         const listing = await this.findById(id);
 
-        if (!listing || listing.sellerId !== userId) {
-            throw new ForbiddenException('You do not have permission to publish this listing');
+        if (!listing) {
+            throw new NotFoundException('Listing not found');
         }
+        await this.assertListingManagement(
+            userId,
+            listing.sellerId,
+            'You do not have permission to publish this listing',
+        );
 
         // HPI is an optional paid add-on for both Retail and Auction listings.
         // Submission readiness is based on listing completeness only.
@@ -2175,18 +2219,11 @@ export class ListingsService {
     ): Promise<Listing> {
         const listing = await this.findById(id);
 
-        if (listing.sellerId && listing.sellerId !== userId) {
-            const staffMember = await this.prisma.dealerStaff.findFirst({
-                where: {
-                    userId,
-                    dealerProfile: { userId: listing.sellerId },
-                    isActive: true,
-                },
-            });
-            if (!staffMember) {
-                throw new ForbiddenException('You do not have permission to mark this listing as sold');
-            }
-        }
+        await this.assertListingManagement(
+            userId,
+            listing.sellerId,
+            'You do not have permission to mark this listing as sold',
+        );
 
         if (listing.status === 'SOLD') {
             throw new BadRequestException('This listing is already marked as sold');
@@ -2580,10 +2617,11 @@ export class ListingsService {
         // First, fetch the listing to verify ownership
         const listing = await this.findById(id);
 
-        // Ownership check (skip if no sellerId - for development)
-        if (listing.sellerId && listing.sellerId !== userId) {
-            throw new ForbiddenException('You do not have permission to delete this listing');
-        }
+        await this.assertListingManagement(
+            userId,
+            listing.sellerId,
+            'You do not have permission to delete this listing',
+        );
 
         // Soft delete by setting deletedAt
         const deletedListing = await this.prisma.listing.update({
@@ -2605,6 +2643,7 @@ export class ListingsService {
      * should pass `includeSold = true`.
      */
     async findMyListings(sellerId: string, filterDto?: ListingFilterDto): Promise<{ data: Listing[]; total: number }> {
+        sellerId = await this.resolveInventorySellerId(sellerId, 'VIEW_INVENTORY');
         const page = filterDto?.page || 1;
         const limit = filterDto?.limit || 20;
         const skip = (page - 1) * limit;
