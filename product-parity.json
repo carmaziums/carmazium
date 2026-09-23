@@ -418,8 +418,11 @@
         "src/app/dashboard/service/leads/page.tsx",
         "src/app/dashboard/service/leads/[id]/page.tsx"
       ],
-      "mobile": [],
-      "status": "gap"
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/ProviderLeadsScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/ProviderLeadDetailScreen.tsx"
+      ],
+      "status": "required"
     },
     {
       "id": "service_provider.messages",
