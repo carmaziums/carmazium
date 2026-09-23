@@ -155,7 +155,7 @@ if (!mobileAccountRoleMatch) {
 if (mobileAuthStore.includes('PENDING_SIGNUP_ROLE_KEY')) {
   fail('Mobile OAuth signup role must not be persisted on-device');
 } else if (
-  !mobileSignup.includes('auth/callback?role=\\${encodeURIComponent(role)}') ||
+  !mobileSignup.includes('auth/callback?role=${encodeURIComponent(role)}') ||
   !mobileApp.includes('reinitializeAuth(callbackRole)')
 ) {
   fail('Mobile OAuth signup account type is not bound to the callback URL');
