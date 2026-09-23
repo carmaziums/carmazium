@@ -2601,3 +2601,55 @@ Completed in this slice:
 
 **Block 7 result:** `partner.dashboard`, `service_provider.capabilities`, `service_provider.jobs`, `service_provider.leads` and `service_provider.messages` are now represented on web and native mobile. No explicit Partner/provider UI gap remains in Block 7.
 
+## 2026-09-23 — Block 8: Payments, HPI, chat and notifications complete
+
+**Programme checkpoint:** Blocks 1–8 have now reached the business-rule parity checkpoint.
+
+Completed/audited in Block 8:
+
+- **Notification and chat routing (#217):**
+  - Expo push payloads carry canonical `type`, entity/action metadata, link/data and notification id.
+  - In-app notification taps, foreground/background responses and cold-start push taps share one native resolver.
+  - Cold-start routing waits for authentication/navigation readiness and falls back to Notifications rather than dropping the tap.
+  - Push taps mark the persisted notification read.
+  - Direct-open chat refreshes room state once when a newly created service-job/support room has not reached ChatContext yet.
+  - Required parity surfaces: `notifications.tap_routing` and `chat.direct_open`.
+
+- **Hosted Checkout reconciliation ownership (#218):**
+  - `session-status`, auction-fee, KYC, HPI and HPI-email recovery paths now receive the authenticated user id.
+  - A Stripe Checkout session id is no longer sufficient by itself to read/reconcile a payment.
+  - Personal/HPI/TradeXchange sessions remain exact-user.
+  - Explicit dealership delegation is limited to the existing RBAC contract: auction fee, listing fee, owner-only KYC and Featured Boost inventory authority.
+  - Native auction PaymentIntent reconciliation remains transaction/metadata-bound and unchanged.
+
+- **Seller £100 reward settlement (#220):**
+  - Handover approval uses an atomic false → true claim.
+  - Stripe settlement uses `claim:seller-bonus:<auctionId>` plus the stable idempotency key `auction-seller-bonus-<auctionId>`.
+  - Stripe rejection releases the claim; Stripe-success/DB-finalization ambiguity retains it for a safe retry.
+  - Retained claims remain visible in Pending Payouts.
+  - Manual payout cannot race a Stripe claim/transfer.
+  - Admin messaging explicitly directs ambiguous Stripe cases to idempotent retry before any manual payment.
+
+- **TradeXchange provider payouts audited:**
+  - Paid-job release already uses an atomic payment claim (`claim:release:<paymentId>`) and stable Stripe idempotency key.
+  - A failed Stripe transfer releases the claim; a post-Stripe DB failure deliberately retains it for safe retry.
+  - Provider readiness is refreshed from Stripe before accepting new paid work and checks the transfer capability actually needed by separate charges/transfers.
+
+- **Stripe Connect audited:**
+  - Seller/Partner onboarding is user-owned and reuses the same Express account.
+  - Seller status checks the full set of capabilities requested for seller accounts.
+  - Provider paid-work readiness deliberately does not require provider-side card charging because CarMazium creates the customer charge on the platform account.
+
+- **HPI purchase/entitlement audit:**
+  - Listing-level HPI reports are authenticated shared listing content once purchased/prepared.
+  - Mobile can purchase the listing-level £9.99 report and uses the same summary/PDF backend.
+  - Web additionally offers a separate buyer-specific £9.99 emailed-copy service; its request state is keyed to the current buyer and its Checkout fallback is ownership-bound.
+  - This difference is an intentional delivery product, not a report-access parity gap.
+  - Required parity surface: `hpi.report_entitlements`.
+
+- **Payment client parity represented:**
+  - `payments.checkout_reconciliation` covers hosted web recovery and native PaymentIntent reconciliation.
+  - `payments.seller_bonus_payout` covers seller-facing reward state across web/native while backend settlement remains exactly-once.
+
+**Block 8 result:** Stripe/Connect, seller/provider payout lifecycle, HPI entitlements, realtime chat, notifications and tap routing have been audited against the authoritative backend. No explicit Block 8 business-rule gap remains.
+
