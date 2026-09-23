@@ -32,6 +32,7 @@ import { trackMetaEvent } from '@/components/analytics/MetaPixel'
 import { SellerVerificationBadge } from "@/components/listing/SellerVerificationBadge"
 import { parseVehicleImagePresentation } from "@/lib/vehicleImagePresentation"
 import { deliveryServiceEnabled } from "@/lib/featureFlags"
+import { trackDealerPhoneClick } from "@/lib/dealerApi"
 
 function VehicleDeliveryInlineCta({ listing }: { listing: Pick<Listing, 'id' | 'title' | 'status' | 'vrm' | 'make' | 'model' | 'year' | 'location'> }) {
     if (!deliveryServiceEnabled || String(listing.status) !== 'ACTIVE') return null
@@ -288,6 +289,13 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
     const [selectedDamageZone, setSelectedDamageZone] = React.useState<string | null>(null)
     const [deliveryDistanceInfo, setDeliveryDistanceInfo] = React.useState<{ distanceMiles: number } | null>(null)
+
+    const handleDealerPhoneClick = React.useCallback(() => {
+        if (!user || !listing || listing.seller?.role !== 'DEALER') return
+        void trackDealerPhoneClick(listing.id).catch((error) => {
+            console.warn('[DealerCallTracking] Could not record phone click', error)
+        })
+    }, [user, listing])
 
     const { location: userLoc } = useLocation()
     const { addToCompare } = useCompare()
@@ -1365,6 +1373,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                             <BlurredPhone
                                                 phone={listing.seller.dealerProfile.phone}
                                                 phoneAvailable={listing.seller.dealerProfile.phoneAvailable ?? !!listing.seller.dealerProfile.phone}
+                                                onPhoneClick={handleDealerPhoneClick}
                                             />
                                             {listing.seller.dealerProfile.website && (
                                                 <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group">
@@ -1574,6 +1583,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                         return sellerPhone ? (
                             <a
                                 href={`tel:${sellerPhone}`}
+                                onClick={listing.seller?.role === 'DEALER' ? handleDealerPhoneClick : undefined}
                                 className="flex-1 min-w-0 flex items-center justify-center gap-2 h-11 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors"
                             >
                                 <Phone size={16} className="shrink-0" />
