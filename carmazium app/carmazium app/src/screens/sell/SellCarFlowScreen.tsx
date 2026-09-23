@@ -1521,6 +1521,21 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     try {
       let listingId = editListingId ?? hpiDraftListingId;
       if (!listingId) {
+        // Do not let the optional HPI purchase create a duplicate Retail row
+        // before the seller has confirmed an auction → Retail channel switch.
+        if (listingType === 'CLASSIFIED') {
+          const conversion = await getRetailConversionCandidate(vrm);
+          if (conversion.candidate) {
+            Alert.alert(
+              conversion.candidate.canConvert ? 'Switch to Retail first' : 'HPI unavailable for this draft',
+              conversion.candidate.canConvert
+                ? 'This registration already belongs to your auction listing. Publish this Retail form first so CarMazium can safely reuse and switch that listing; then you can add the optional HPI check from the Retail draft.'
+                : (conversion.candidate.blockedReason || 'This vehicle cannot be changed to a Retail listing at the moment.'),
+            );
+            return;
+          }
+        }
+
         const draft = await apiClient<{ success: boolean; data: { id: string } }>('/listings', {
           method: 'POST',
           body: JSON.stringify({
@@ -3421,9 +3436,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           )}
         </SectionBox>
 
-        {/* HPI Check Callout — was a static, non-pressable promo card; now
-            actually triggers the £9.99 Payment Sheet and shows the unlocked
-            badge, matching web's HpiPaymentModal flow. */}
+        {/* HPI is optional. Standard/Premium already include it in the
+            listing package, so never offer those sellers a second £9.99 charge. */}
         {hpiUnlocked ? (
           <View style={s.hpiCallout}>
             <View style={s.hpiCalloutIcon}>
@@ -3436,6 +3450,21 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   ? 'This vehicle has records on file — full report available to buyers.'
                   : 'No adverse history found — a Verified badge will show on your listing.'}
               </Text>
+            </View>
+          </View>
+        ) : !isAuction && (badgeTier === 'STANDARD' || badgeTier === 'PREMIUM') ? (
+          <View style={s.hpiCallout}>
+            <View style={s.hpiCalloutIcon}>
+              <Ionicons name="shield-checkmark-outline" size={22} color={Colors.infoBlue} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.hpiCalloutTitle}>HPI Check Included</Text>
+              <Text style={s.hpiCalloutSub}>
+                Your {badgeTier === 'PREMIUM' ? 'Premium' : 'Standard'} package includes the HPI report. It is requested automatically after the listing fee is paid.
+              </Text>
+            </View>
+            <View style={s.hpiCalloutBadge}>
+              <Text style={s.hpiCalloutPrice}>INCLUDED</Text>
             </View>
           </View>
         ) : (
@@ -3451,8 +3480,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 : <Ionicons name="shield-checkmark-outline" size={22} color={Colors.infoBlue} />}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.hpiCalloutTitle}>Add HPI Vehicle Check</Text>
-              <Text style={s.hpiCalloutSub}>Verified HPI badge increases buyer trust and helps cars sell 2× faster</Text>
+              <Text style={s.hpiCalloutTitle}>Add Optional HPI Vehicle Check</Text>
+              <Text style={s.hpiCalloutSub}>Add a vehicle-history report if you want one; it is not required to publish.</Text>
             </View>
             <View style={s.hpiCalloutBadge}>
               <Text style={s.hpiCalloutPrice}>{hpiUnlocking ? '...' : '£9.99'}</Text>
