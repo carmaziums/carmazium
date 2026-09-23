@@ -42,8 +42,19 @@ export interface ChatMessage {
   deliveryStatus?: 'sending' | 'failed';
 }
 
+export interface ChatServiceJob {
+  id: string;
+  customerId?: string | null;
+  serviceType?: string | null;
+  title?: string | null;
+  status?: string | null;
+  contractor?: { id?: string; businessName?: string | null } | null;
+}
+
 export interface ChatRoom {
   id: string;
+  context?: string | null;
+  serviceJob?: ChatServiceJob | null;
   otherUser: ChatUser;
   listing: ChatListing | null;
   lastMessage: {
@@ -110,6 +121,14 @@ export async function getChatRooms(): Promise<ChatRoom[]> {
 /**
  * Creates or retrieves a chat room with another user
  */
+export async function getOrCreateServiceJobRoom(jobId: string): Promise<ChatRoom> {
+  const response = await apiClient<{ data: { room: ChatRoom; inboxUrl: string } }>(
+    `/chat/service-jobs/${jobId}`,
+    { method: 'POST' },
+  );
+  return response.data.room;
+}
+
 export async function createChatRoom(participantId: string, listingId?: string): Promise<ChatRoom> {
   const response = await apiClient<{ data: ChatRoom }>('/chat/rooms', {
     method: 'POST',
