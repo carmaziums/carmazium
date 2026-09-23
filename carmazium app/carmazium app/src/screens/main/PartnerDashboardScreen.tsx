@@ -313,6 +313,25 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
               </View>
 
               <View style={styles.card}>
+                <View style={styles.rowBetween}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>Partner messages</Text>
+                    <Text style={styles.cardText}>
+                      Keep customer conversations together with your paid service jobs, while retaining access to all other authorized CarMazium messages.
+                    </Text>
+                  </View>
+                  <Ionicons name="chatbubbles-outline" size={26} color={Colors.accentGreen} />
+                </View>
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={() => navigation.navigate('ProviderMessages')}
+                >
+                  <Ionicons name="chatbubble-ellipses-outline" size={17} color={Colors.white} />
+                  <Text style={styles.secondaryText}>OPEN PARTNER MESSAGES</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.card}>
                 <Text style={styles.cardTitle}>Business payouts</Text>
                 <Text style={styles.cardText}>
                   Delivery and Inspection customers pay through CarMazium. CarMazium deducts 9% and 91% is paid to the Partner business Stripe Connect account.
