@@ -23,6 +23,8 @@ describe('AuctionGateway Trade Exchange access', () => {
         prisma = {
             auction: { findUnique: jest.fn() },
             user: { findUnique: jest.fn() },
+            dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
         };
         gateway = new AuctionGateway(authService, prisma);
         server = {
@@ -45,9 +47,11 @@ describe('AuctionGateway Trade Exchange access', () => {
             deletedAt: null,
             listing: { sellerId: 'seller-1' },
         });
-        prisma.user.findUnique.mockResolvedValue({
-            role: 'DEALER',
-            dealerProfile: { isVerified: false },
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER' });
+        prisma.dealerProfile.findUnique.mockResolvedValue({
+            id: 'dealer-profile-1',
+            userId: 'dealer-1',
+            isVerified: false,
         });
 
         await gateway.handleJoin(client as any, { auctionId: 'auction-1' });
@@ -75,9 +79,11 @@ describe('AuctionGateway Trade Exchange access', () => {
             deletedAt: null,
             listing: { sellerId: 'seller-1' },
         });
-        prisma.user.findUnique.mockResolvedValue({
-            role: 'DEALER',
-            dealerProfile: { isVerified: true },
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER' });
+        prisma.dealerProfile.findUnique.mockResolvedValue({
+            id: 'dealer-profile-1',
+            userId: 'dealer-1',
+            isVerified: true,
         });
 
         await gateway.handleJoin(client as any, { auctionId: 'auction-1' });
