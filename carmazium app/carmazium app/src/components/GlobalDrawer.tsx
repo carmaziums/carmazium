@@ -190,7 +190,7 @@ const DEALER_ITEMS: MenuItem[] = [
     // those two entry points shipped (mobile-production-readiness-plan.md F17).
     id: 'dealer-auctions',
     requiredPermission: 'MANAGE_INVENTORY',
-    label: 'Dealer auction manager',
+    label: 'Manage Auctions',
     icon: 'gavel',
     iconLib: 'mci',
     stackScreen: 'SellerAuctions',
@@ -198,7 +198,7 @@ const DEALER_ITEMS: MenuItem[] = [
   { 
     id: 'dealer-leads',
     requiredPermission: 'MANAGE_CRM', 
-    label: 'Dealer leads', 
+    label: 'Customers', 
     icon: 'people-outline', 
     iconLib: 'ion', 
     stackScreen: 'DealerLeads',
@@ -206,7 +206,7 @@ const DEALER_ITEMS: MenuItem[] = [
   {
     id: 'dealer-inventory',
     requiredPermission: 'VIEW_INVENTORY',
-    label: 'Dealer inventory',
+    label: 'Stock',
     icon: 'albums-outline',
     iconLib: 'ion',
     stackScreen: 'DealerInventory',
@@ -217,7 +217,7 @@ const DEALER_ITEMS: MenuItem[] = [
     // web's dealer wishlist page reusing the same endpoints rather than
     // introducing a separate one. Both now land on the Saved tab.
     id: 'dealer-wishlist',
-    label: 'Wishlist',
+    label: 'Saved Cars',
     icon: 'heart-outline',
     iconLib: 'ion',
     tabName: 'Saved',
@@ -225,7 +225,7 @@ const DEALER_ITEMS: MenuItem[] = [
   {
     id: 'dealer-analytics',
     requiredPermission: 'VIEW_ANALYTICS',
-    label: 'Dealer Analytics',
+    label: 'Analytics',
     icon: 'bar-chart-outline',
     iconLib: 'ion',
     stackScreen: 'DealerAnalytics',
@@ -233,7 +233,7 @@ const DEALER_ITEMS: MenuItem[] = [
   {
     id: 'dealer-team',
     requiredPermission: 'MANAGE_TEAM',
-    label: 'Team Management',
+    label: 'Team',
     icon: 'people-outline',
     iconLib: 'ion',
     stackScreen: 'DealerTeam',
@@ -241,7 +241,7 @@ const DEALER_ITEMS: MenuItem[] = [
   {
     id: 'dealer-offers',
     requiredPermission: 'MANAGE_OFFERS',
-    label: 'Direct offers',
+    label: 'Offers',
     icon: 'pricetag-outline',
     iconLib: 'ion',
     stackScreen: 'DealerOffers',
@@ -249,7 +249,7 @@ const DEALER_ITEMS: MenuItem[] = [
   {
     id: 'dealer-my-offers',
     requiredPermission: 'MANAGE_OFFERS',
-    label: 'My offers',
+    label: 'My Retail Offers',
     icon: 'send-outline',
     iconLib: 'ion',
     stackScreen: 'DealerMyOffers',
@@ -276,7 +276,7 @@ const DEALER_ITEMS: MenuItem[] = [
   },
   {
     id: 'dealer-finance',
-    label: 'Finance applications',
+    label: 'Finance',
     icon: 'calculator-outline',
     iconLib: 'ion',
     stackScreen: 'DealerFinance',
