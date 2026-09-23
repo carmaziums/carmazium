@@ -207,7 +207,13 @@ export const PostSignupOnboardingScreen: React.FC = () => {
     setResendDisabled(true);
     setResendLabel('Sent!');
     try {
-      await supabase.auth.resend({ type: 'signup', email: user.email });
+      await apiClient('/auth/send-verification', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: user.email,
+          redirectTo: 'carmazium://auth/callback',
+        }),
+      });
     } catch {
       // silently ignore — user can try again after cooldown
     }
