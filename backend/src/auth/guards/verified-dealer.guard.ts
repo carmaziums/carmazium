@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { assertDealerPermission, resolveDealerActor } from '../../dealers/dealer-access';
 
 /**
  * Restricts a route to dealers whose KYC has been approved.
@@ -48,20 +49,21 @@ export class VerifiedDealerGuard implements CanActivate {
             );
         }
 
-        const profile = await this.prisma.dealerProfile.findUnique({
-            where: { userId: user.id },
-            select: { isVerified: true },
-        });
+        const actor = await resolveDealerActor(this.prisma, user.id);
 
-        if (!profile?.isVerified) {
-            // Distinct message from the wrong-role one on purpose: this dealer
-            // has the right account and an unfinished application, and the UI
-            // sends them to KYC rather than telling them to sign up again.
+        if (!actor?.isVerified) {
+            // Staff inherit the dealership's KYC state; they must never be
+            // forced to create a second DealerProfile/KYC record of their own.
             throw new ForbiddenException(
                 'Your dealer account is awaiting verification. Complete your KYC to access the Trade Exchange.',
             );
         }
 
+        assertDealerPermission(
+            actor,
+            'VIEW_TRADE',
+            'Your dealership role does not include Trade Exchange access.',
+        );
         return true;
     }
 }
