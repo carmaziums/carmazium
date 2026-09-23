@@ -38,6 +38,7 @@ import { DeliveryModule } from './delivery/delivery.module';
 import { ServicesModule } from './services/services.module';
 import { MarketingModule } from './marketing/marketing.module';
 import { BlogModule } from './blog/blog.module';
+import { SaleCancellationsModule } from './sale-cancellations/sale-cancellations.module';
 
 @Module({
   imports: [
@@ -82,6 +83,7 @@ import { BlogModule } from './blog/blog.module';
     ServicesModule,
     MarketingModule,
     BlogModule,
+    SaleCancellationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
