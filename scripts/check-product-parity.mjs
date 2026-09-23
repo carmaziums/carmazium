@@ -276,6 +276,11 @@ const buyerAuctionsService = read('backend/src/auctions/auctions.service.ts');
 const buyerServicesService = read('backend/src/services/services.service.ts');
 const webAuctionApi = read('src/lib/auctionApi.ts');
 const mobileAuctionApi = read('carmazium app/carmazium app/src/lib/auctionApi.ts');
+const mobileAuctionDetailForInspection = read('carmazium app/carmazium app/src/screens/vehicle/AuctionDetailScreen.tsx');
+const mobileCustomerServiceJobs = read('carmazium app/carmazium app/src/screens/main/CustomerServiceJobsScreen.tsx');
+const mobileCustomerServiceJobDetail = read('carmazium app/carmazium app/src/screens/main/CustomerServiceJobDetailScreen.tsx');
+const mobileServicesScreen = read('carmazium app/carmazium app/src/screens/main/ServicesScreen.tsx');
+const mobileLinkingConfig = read('carmazium app/carmazium app/src/navigation/linking.ts');
 
 if (
   !webVehicleDetail.includes('message || undefined') ||
@@ -367,6 +372,31 @@ if (
   fail('Auction inspection refusal must remain a verified, full-refund backend contract on both clients');
 } else {
   ok('Auction inspection refusal is fault-verified and refunds the full £125 buyer fee');
+}
+
+
+if (
+  !mobileServicesApi.includes('createInspectionFromAuction') ||
+  !mobileServicesApi.includes('getMyServiceJobsPage') ||
+  !mobileServicesApi.includes('acceptCustomerQuote') ||
+  !mobileServicesApi.includes('confirmCustomerServiceJob') ||
+  !mobileAuctionDetailForInspection.includes('createInspectionFromAuction') ||
+  !mobileAuctionDetailForInspection.includes("navigation.navigate('CustomerServiceJobDetail'") ||
+  !mobileCustomerServiceJobs.includes("navigation.navigate('CustomerServiceJobDetail'") ||
+  !mobileCustomerServiceJobDetail.includes('refuseAuctionAfterInspection') ||
+  !mobileCustomerServiceJobDetail.includes("job.inspectionOutcome === 'FAULTS_FOUND'") ||
+  !mobileCustomerServiceJobDetail.includes('REFUSE VEHICLE & REFUND £125') ||
+  !mobileCustomerServiceJobDetail.includes('acceptCustomerQuote') ||
+  !mobileCustomerServiceJobDetail.includes('getOrCreateServiceJobRoom') ||
+  !mobileServicesScreen.includes("navigation.navigate('CustomerServiceJobs')") ||
+  !mobileMainNavigator.includes('CustomerServiceJobs') ||
+  !mobileMainNavigator.includes('CustomerServiceJobDetail') ||
+  !mobileLinkingConfig.includes("CustomerServiceJobs: 'services/jobs'") ||
+  !mobileLinkingConfig.includes("path: 'services/jobs/:jobId'")
+) {
+  fail('Native customer inspection/refusal journey must remain reachable end-to-end');
+} else {
+  ok('Native customer service jobs make verified auction inspection/refusal reachable');
 }
 
 if (
