@@ -2584,3 +2584,20 @@ Still explicit Block 7 gap:
 
 - `service_provider.messages`: provider-focused message workspace/list entry.
 
+## 2026-09-23 — Block 7: Native Partner/provider Messages and completion
+
+**Block 7 checkpoint: complete.**
+
+Completed in this final slice:
+
+- Native Partner Messages workspace added and linked from Partner Account.
+- Service-job conversations are the default provider-focused view; an All view retains access to every other backend-authorized CarMazium room.
+- Native ChatRoom now carries the backend `context` and `serviceJob` metadata used by web.
+- Service-job rows show customer, job type/title, job status, payment status, unread count and online presence.
+- Tapping a room reuses the existing native realtime ChatScreen; no parallel chat implementation was introduced.
+- Newly created service-job rooms hydrate ChatContext on direct open, with a bounded one-attempt refresh per thread to avoid invalid-room refresh loops.
+- `service_provider.messages` moved from `gap` to `required` in `product-parity.json`.
+- Permanent parity checks now fail if service-job room metadata, Provider Messages navigation or shared ChatScreen hydration disappear.
+
+**Block 7 result:** Partner dashboard, capabilities/verification/matching, provider Jobs, Finance/Warranty Leads and provider Messages now have explicit web/native parity surfaces backed by the same authoritative backend contracts.
+
