@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabase"
 import { apiClient } from "@/lib/apiClient"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { MetricCard } from "@/components/dashboard/MetricCard"
+import { useDealerAccess } from "@/context/DealerAccessContext"
 
 export default function DealerDashboard() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -36,21 +37,29 @@ export default function DealerDashboard() {
     const [loading, setLoading] = React.useState(true)
     const [resending, setResending] = React.useState(false)
     const [resendSuccess, setResendSuccess] = React.useState(false)
+    const { loading: accessLoading, hasPermission } = useDealerAccess()
+
+    const canViewInventory = hasPermission('VIEW_INVENTORY')
+    const canManageInventory = hasPermission('MANAGE_INVENTORY')
+    const canManageCrm = hasPermission('MANAGE_CRM')
+    const canViewTrade = hasPermission('VIEW_TRADE')
 
     const isEmailVerified = !!user?.email_confirmed_at
 
     React.useEffect(() => {
-        if (!authLoading && user) {
+        if (!authLoading && !accessLoading && user) {
             fetchDashboardData()
         }
-    }, [user, authLoading, period])
+    }, [user, authLoading, accessLoading, period, canManageCrm])
 
     async function fetchDashboardData() {
         setLoading(true)
         try {
             const [statsRes, leadsRes] = await Promise.all([
                 apiClient<{ data: any }>(`/dashboard/dealer?period=${period}`).catch(() => ({ data: null })),
-                apiClient<{ data: any[]; meta?: any }>('/dealers/leads?limit=5').catch(() => ({ data: [] })),
+                canManageCrm
+                    ? apiClient<{ data: any[]; meta?: any }>('/dealers/leads?limit=5').catch(() => ({ data: [] }))
+                    : Promise.resolve({ data: [] }),
             ])
 
             const s = statsRes?.data || {}
@@ -128,11 +137,13 @@ export default function DealerDashboard() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
 
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account">
-                    <Link href="/dashboard/dealer/add-listing">
-                        <Button className="w-full flex items-center gap-2 shadow-neon h-12" shape="default">
-                            <PlusCircle size={18} /> Add Vehicle
-                        </Button>
-                    </Link>
+                    {canManageInventory && (
+                        <Link href="/dashboard/dealer/add-listing">
+                            <Button className="w-full flex items-center gap-2 shadow-neon h-12" shape="default">
+                                <PlusCircle size={18} /> Add Vehicle
+                            </Button>
+                        </Link>
+                    )}
                 </DashboardSidebar>
 
                 <main className="flex-1 space-y-8 min-w-0">
@@ -238,16 +249,18 @@ export default function DealerDashboard() {
                             loading={loading}
                             subLabel={subLabel}
                         />
-                        <MetricCard
-                            label="Active Leads"
-                            value={stats?.activeLeads || 0}
-                            icon={Kanban}
-                            color="text-amber-400"
-                            bg="bg-amber-500/10"
-                            border="border-amber-500/20"
-                            loading={loading}
-                            subLabel={subLabel}
-                        />
+                        {canManageCrm && (
+                            <MetricCard
+                                label="Active Leads"
+                                value={stats?.activeLeads || 0}
+                                icon={Kanban}
+                                color="text-amber-400"
+                                bg="bg-amber-500/10"
+                                border="border-amber-500/20"
+                                loading={loading}
+                                subLabel={subLabel}
+                            />
+                        )}
                         <MetricCard
                             label="Vehicles Sold"
                             value={stats?.soldListings || 0}
@@ -266,6 +279,7 @@ export default function DealerDashboard() {
                     <div>
                         <h2 className="text-lg font-black font-heading uppercase tracking-tight mb-3">Quick Actions</h2>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {canViewInventory && (
                         <Link href="/dashboard/dealer/inventory" className="dealer-glass-card p-5 group flex items-center justify-between col-span-1">
                             <div className="flex items-center gap-3">
                                 <div className="p-2.5 bg-primary/10 border border-primary/20 rounded-xl"><Car size={20} className="text-primary group-hover:scale-110 transition-transform" /></div>
@@ -275,6 +289,8 @@ export default function DealerDashboard() {
                                 </div>
                             </div>
                         </Link>
+                        )}
+                        {canManageCrm && (
                         <Link href="/dashboard/dealer/crm" className="dealer-glass-card p-5 group flex items-center justify-between col-span-1">
                             <div className="flex items-center gap-3">
                                 <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl"><Kanban size={20} className="text-amber-400 group-hover:scale-110 transition-transform" /></div>
@@ -284,6 +300,8 @@ export default function DealerDashboard() {
                                 </div>
                             </div>
                         </Link>
+                        )}
+                        {canManageInventory && (
                         <Link href="/dashboard/dealer/add-listing" className="dealer-glass-card p-5 group flex items-center justify-between col-span-1">
                             <div className="flex items-center gap-3">
                                 <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl"><PlusCircle size={20} className="text-emerald-400 group-hover:scale-110 transition-transform" /></div>
@@ -293,6 +311,8 @@ export default function DealerDashboard() {
                                 </div>
                             </div>
                         </Link>
+                        )}
+                        {canViewTrade && (
                         <Link href="/dashboard/dealer/auctions" className="dealer-glass-card p-5 group flex items-center justify-between col-span-1">
                             <div className="flex items-center gap-3">
                                 <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl"><Gavel size={20} className="text-blue-400 group-hover:scale-110 transition-transform" /></div>
@@ -302,10 +322,12 @@ export default function DealerDashboard() {
                                 </div>
                             </div>
                         </Link>
+                        )}
                         </div>
                     </div>
 
                     {/* ── Main Dashboard Bottom Area ── */}
+                    {canManageCrm && (
                     <div className="flex flex-col lg:flex-row gap-8">
                         {/* Recent Leads (Takes 2/3 width) */}
                         <div className="dealer-glass-card flex-[2] flex flex-col">
@@ -365,6 +387,7 @@ export default function DealerDashboard() {
                             {/* Added minimal valid child space since recent leads was placed out of grid layout properly before when the concierge took space */}
                         </div>
                     </div>
+                    )}
                 </main>
             </div>
         </div>
