@@ -118,6 +118,17 @@ export async function createChatRoom(participantId: string, listingId?: string):
   return response.data;
 }
 
+export async function getOrCreateServiceJobRoom(
+  jobId: string,
+): Promise<{ room: ChatRoom; inboxUrl: string }> {
+  const response = await apiClient<{
+    data: { room: ChatRoom; inboxUrl: string };
+  }>(`/chat/service-jobs/${jobId}`, {
+    method: 'POST',
+  });
+  return response.data;
+}
+
 /**
  * Fetches paginated chat messages for a specific room
  */
