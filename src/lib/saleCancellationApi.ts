@@ -115,7 +115,7 @@ export async function respondToSaleCancellation(
 ): Promise<SaleCancellationRequest> {
     const response = await apiClient<{ data: SaleCancellationRequest }>(`/sale-cancellations/${id}/respond`, {
         method: 'POST',
-        body: JSON.stringify({ decision, note }),
+        body: JSON.stringify({ decision, note, refundBuyerFee }),
     });
     return response.data;
 }
@@ -135,6 +135,7 @@ export async function adminReviewSaleCancellation(
     id: string,
     decision: 'APPROVE' | 'REJECT',
     note?: string,
+    refundBuyerFee?: boolean,
 ): Promise<SaleCancellationRequest> {
     const response = await apiClient<{ data: SaleCancellationRequest }>(`/sale-cancellations/${id}/admin-review`, {
         method: 'POST',
