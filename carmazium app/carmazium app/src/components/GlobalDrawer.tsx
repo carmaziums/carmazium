@@ -20,6 +20,12 @@ import { useDrawer } from '../context/DrawerContext';
 import { useAuthStore } from '../store/authStore';
 import { apiClient } from '../lib/apiClient';
 import { getOrCreateSupportRoom } from '../lib/chatApi';
+import {
+  DealerAccess,
+  DealerPermission,
+  getDealerAccess,
+  hasDealerPermission,
+} from '../lib/dealerAccess';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { MainStackParamList } from '../navigation/MainStackNavigator';
 import { TabParamList } from '../navigation/TabNavigator';
@@ -42,6 +48,8 @@ interface MenuItem {
   action?: 'alert';
   alertTitle?: string;
   alertMsg?: string;
+  dealerPermission?: DealerPermission;
+  dealerOwnerOnly?: boolean;
 }
 
 const ITEMS: MenuItem[] = [
@@ -168,6 +176,7 @@ const DEALER_ITEMS: MenuItem[] = [
     icon: 'trail-sign-outline', 
     iconLib: 'ion', 
     stackScreen: 'DealerOnboarding',
+    dealerOwnerOnly: true,
   },
   { 
     id: 'dealer-kyc', 
@@ -175,6 +184,7 @@ const DEALER_ITEMS: MenuItem[] = [
     icon: 'shield-checkmark-outline', 
     iconLib: 'ion', 
     stackScreen: 'DealerKYC',
+    dealerOwnerOnly: true,
   },
   {
     // SellerAuctionsScreen is role-agnostic (fetches /auctions/my/list) and
@@ -187,6 +197,7 @@ const DEALER_ITEMS: MenuItem[] = [
     icon: 'gavel',
     iconLib: 'mci',
     stackScreen: 'SellerAuctions',
+    dealerPermission: 'MANAGE_INVENTORY',
   },
   { 
     id: 'dealer-leads', 
@@ -194,6 +205,7 @@ const DEALER_ITEMS: MenuItem[] = [
     icon: 'people-outline', 
     iconLib: 'ion', 
     stackScreen: 'DealerLeads',
+    dealerPermission: 'MANAGE_CRM',
   },
   {
     id: 'dealer-inventory',
@@ -201,6 +213,7 @@ const DEALER_ITEMS: MenuItem[] = [
     icon: 'albums-outline',
     iconLib: 'ion',
     stackScreen: 'DealerInventory',
+    dealerPermission: 'VIEW_INVENTORY',
   },
   {
     // Same destination as the buyer/seller "Watchlist" entry above. The
@@ -212,6 +225,7 @@ const DEALER_ITEMS: MenuItem[] = [
     icon: 'heart-outline',
     iconLib: 'ion',
     tabName: 'Saved',
+    dealerPermission: 'VIEW_TRADE',
   },
   {
     id: 'dealer-analytics',
@@ -219,6 +233,7 @@ const DEALER_ITEMS: MenuItem[] = [
     icon: 'bar-chart-outline',
     iconLib: 'ion',
     stackScreen: 'DealerAnalytics',
+    dealerPermission: 'VIEW_ANALYTICS',
   },
   {
     id: 'dealer-team',
@@ -226,6 +241,7 @@ const DEALER_ITEMS: MenuItem[] = [
     icon: 'people-outline',
     iconLib: 'ion',
     stackScreen: 'DealerTeam',
+    dealerPermission: 'MANAGE_TEAM',
   },
   {
     id: 'dealer-offers',
@@ -233,6 +249,7 @@ const DEALER_ITEMS: MenuItem[] = [
     icon: 'pricetag-outline',
     iconLib: 'ion',
     stackScreen: 'DealerOffers',
+    dealerPermission: 'MANAGE_OFFERS',
   },
   {
     id: 'dealer-my-offers',
@@ -240,6 +257,7 @@ const DEALER_ITEMS: MenuItem[] = [
     icon: 'send-outline',
     iconLib: 'ion',
     stackScreen: 'DealerMyOffers',
+    dealerPermission: 'MANAGE_OFFERS',
   },
   {
     id: 'dealer-purchases',
@@ -247,6 +265,7 @@ const DEALER_ITEMS: MenuItem[] = [
     icon: 'receipt-outline',
     iconLib: 'ion',
     stackScreen: 'DealerPurchases',
+    dealerPermission: 'VIEW_PURCHASES',
   },
   // Earnings and Finance are both built and registered, but were the only two
   // dealer features missing from this list — reachable solely from a card on
@@ -258,6 +277,7 @@ const DEALER_ITEMS: MenuItem[] = [
     icon: 'wallet-outline',
     iconLib: 'ion',
     stackScreen: 'DealerEarnings',
+    dealerPermission: 'VIEW_ANALYTICS',
   },
   {
     id: 'dealer-finance',
@@ -265,6 +285,7 @@ const DEALER_ITEMS: MenuItem[] = [
     icon: 'calculator-outline',
     iconLib: 'ion',
     stackScreen: 'DealerFinance',
+    dealerPermission: 'VIEW_PURCHASES',
   },
   {
     id: 'dealer-notif-settings',
@@ -305,11 +326,23 @@ export const GlobalDrawer: React.FC = () => {
   // this file too).
   const isActualDealer = accountRole === 'dealer';
   const [switchingDealer, setSwitchingDealer] = React.useState(false);
+  const [dealerAccess, setDealerAccess] = React.useState<DealerAccess | null>(null);
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
   const translateX = useSharedValue(DRAWER_WIDTH);
   const backdropOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    if (!isActualDealer) {
+      setDealerAccess(null);
+      return;
+    }
+
+    getDealerAccess()
+      .then(setDealerAccess)
+      .catch(() => setDealerAccess(null));
+  }, [isActualDealer, isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -397,6 +430,18 @@ export const GlobalDrawer: React.FC = () => {
   const userName  = realName || (role === 'dealer' ? 'Dealer Account' : role === 'seller' ? 'Buyer/Seller Account' : 'Guest');
   const userEmail = user?.email || '';
   const initial   = userName.charAt(0).toUpperCase();
+
+  const visibleDealerItems = DEALER_ITEMS.filter((item) => {
+    if (item.dealerOwnerOnly) {
+      // Staff must never be directed into the owner KYC/onboarding flow.
+      if (user?.isDealerStaff) return false;
+      // A brand-new/unverified dealer may not have a DealerProfile yet, so
+      // owner onboarding must remain reachable even before /dealers/access resolves.
+      return dealerAccess?.isOwner !== false;
+    }
+    if (!item.dealerPermission) return true;
+    return hasDealerPermission(dealerAccess, item.dealerPermission);
+  });
 
   const renderIcon = (item: MenuItem, active: boolean, goldMode?: boolean, blueMode?: boolean) => {
     const color = active ? Colors.accent : goldMode ? Colors.warning : blueMode ? Colors.infoBlue : Colors.lightGrey;
@@ -524,7 +569,7 @@ export const GlobalDrawer: React.FC = () => {
             <>
               <View style={styles.divider} />
               <Text style={[styles.groupLabel, styles.groupLabelDealer]}>DEALER CONTROLS</Text>
-              {DEALER_ITEMS.map((item) => (
+              {visibleDealerItems.map((item) => (
                 <TouchableOpacity
                   key={item.id}
                   style={styles.row}
