@@ -52,6 +52,9 @@ function buildPrismaMock() {
             upsert: jest.fn(),
             update: jest.fn(),
         },
+        dealerStaff: {
+            findFirst: jest.fn().mockResolvedValue(null),
+        },
         contractorProfile: {
             updateMany: jest.fn().mockResolvedValue({ count: 0 }),
         },
