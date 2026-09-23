@@ -255,6 +255,10 @@ const mobilePartnerDashboard = read('carmazium app/carmazium app/src/screens/mai
 const mobileProviderCapabilities = read('carmazium app/carmazium app/src/screens/main/ProviderCapabilitiesScreen.tsx');
 const mobileProviderVerification = read('carmazium app/carmazium app/src/screens/main/ProviderVerificationScreen.tsx');
 const mobileProviderMatching = read('carmazium app/carmazium app/src/screens/main/ProviderMatchingScreen.tsx');
+const mobileProviderJobs = read('carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx');
+const mobileProviderJobDetail = read('carmazium app/carmazium app/src/screens/main/ProviderJobDetailScreen.tsx');
+const mobileServicesApi = read('carmazium app/carmazium app/src/lib/servicesApi.ts');
+const mobileChatApi = read('carmazium app/carmazium app/src/lib/chatApi.ts');
 const mobileMainNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
 const mobileGlobalDrawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
 const mobileBuyerBids = read('carmazium app/carmazium app/src/screens/buyer/BuyerBidsScreen.tsx');
@@ -349,6 +353,25 @@ if (
   fail('Mobile auction fee UX can drift into duplicate charge or missing deadline guidance');
 } else {
   ok('Every mobile auction fee path reuses the same payment and preserves 72-hour guidance');
+}
+
+// Partner/provider paid-job parity: native must keep the same authoritative
+// marketplace, job lifecycle, structured inspection outcome and service-job chat.
+if (
+  !mobileServicesApi.includes('/services/jobs/feed?') ||
+  !mobileServicesApi.includes('/services/jobs/assigned?') ||
+  !mobileServicesApi.includes('/services/jobs/${jobId}/quote') ||
+  !mobileServicesApi.includes('/services/jobs/${id}/start') ||
+  !mobileServicesApi.includes('/services/jobs/${id}/complete') ||
+  !mobileProviderJobs.includes("navigation.navigate('ProviderJobDetail'") ||
+  !mobileProviderJobDetail.includes("'FAULTS_FOUND'") ||
+  !mobileProviderJobDetail.includes('inspectionSummary.trim()') ||
+  !mobileProviderJobDetail.includes('getOrCreateServiceJobRoom(job.id)') ||
+  !mobileChatApi.includes('/chat/service-jobs/${jobId}')
+) {
+  fail('Native Partner Jobs must preserve feed/quote/work/inspection/chat parity with web');
+} else {
+  ok('Native Partner Jobs preserve provider lifecycle and service-job chat parity');
 }
 
 // Dealer business identity / RBAC: staff must act under one dealership identity

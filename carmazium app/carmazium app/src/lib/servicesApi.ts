@@ -107,6 +107,112 @@ export interface JobMatchingInput {
   jobPostcodeAreas?: string[];
 }
 
+export type ServiceJobStatus =
+  | 'OPEN' | 'ACCEPTED' | 'PAID' | 'IN_PROGRESS' | 'COMPLETED' | 'RELEASED'
+  | 'CANCELLED' | 'EXPIRED' | 'DISPUTED';
+
+export type ServiceQuoteStatus =
+  | 'ACTIVE' | 'ACCEPTED' | 'DECLINED' | 'WITHDRAWN' | 'EXPIRED';
+
+export interface ServiceMarketplaceSettings {
+  platformFeeRate: number;
+  providerShareRate: number;
+  acceptedPaymentTimeoutMinutes: number;
+}
+
+export interface JobVehicle {
+  id?: string;
+  registration?: string | null;
+  make?: string | null;
+  model?: string | null;
+  year?: number | null;
+  notes?: string | null;
+  listingId?: string | null;
+}
+
+export interface ServiceQuote {
+  id: string;
+  jobId: string;
+  contractorId: string;
+  amountPence: number;
+  message: string | null;
+  status: ServiceQuoteStatus;
+  validUntil: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ServicePayment {
+  id: string;
+  grossPence: number;
+  platformFeePence: number;
+  contractorPence: number;
+  platformFeeRate: string;
+  status: 'PENDING' | 'PAID' | 'RELEASED' | 'REFUNDED' | 'FAILED';
+  paidAt: string | null;
+  releasedAt: string | null;
+  refundedAt: string | null;
+}
+
+export interface ServiceJob {
+  id: string;
+  customerId?: string | null;
+  serviceType: ServiceType;
+  isRecovery: boolean;
+  status: ServiceJobStatus;
+  title: string;
+  description: string | null;
+  pickupPostcode: string | null;
+  pickupAddress: string | null;
+  deliveryPostcode: string | null;
+  deliveryAddress: string | null;
+  servicePostcode: string | null;
+  serviceAddress: string | null;
+  requestedFor: string | null;
+  expiresAt: string;
+  acceptedQuoteId: string | null;
+  contractorId: string | null;
+  agreedAmountPence: number | null;
+  platformFeeRate: string | null;
+  platformFeePence: number | null;
+  contractorAmountPence: number | null;
+  sourceOfferId: string | null;
+  sourceAuctionId: string | null;
+  acceptedAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  inspectionOutcome?: 'PASS' | 'FAULTS_FOUND' | null;
+  inspectionSummary?: string | null;
+  confirmedAt: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  vehicles: JobVehicle[];
+  customer?: {
+    id: string;
+    firstName: string | null;
+    lastName?: string | null;
+    email?: string;
+    phone?: string | null;
+  } | null;
+  quotes?: ServiceQuote[];
+  payment?: ServicePayment | null;
+  _count?: { quotes: number; vehicles?: number };
+  viewerRole?: 'customer' | 'contractor' | 'admin' | 'bidder';
+}
+
+export interface CursorPage<T> {
+  items: T[];
+  nextCursor: string | null;
+}
+
+export const formatPence = (p: number) =>
+  `£${(p / 100).toLocaleString('en-GB', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 export async function getPartnerProfile(): Promise<PartnerProfile> {
   const r = await apiClient<{ success: boolean; data: PartnerProfile }>('/users/me');
   return r.data;
@@ -184,3 +290,68 @@ export async function createStripeConnectOnboarding(): Promise<string> {
   if (!url) throw new Error('Stripe did not return an onboarding link');
   return url;
 }
+export async function getServiceSettings(): Promise<ServiceMarketplaceSettings> {
+  const r = await apiClient<{ data: ServiceMarketplaceSettings }>('/services/settings');
+  return r.data;
+}
+
+export async function getJobFeedPage(
+  serviceType?: ServiceType,
+  cursor?: string,
+  limit = 20,
+): Promise<CursorPage<ServiceJob>> {
+  const query = [
+    `limit=${encodeURIComponent(String(limit))}`,
+    serviceType ? `serviceType=${encodeURIComponent(serviceType)}` : null,
+    cursor ? `cursor=${encodeURIComponent(cursor)}` : null,
+  ].filter(Boolean).join('&');
+  const r = await apiClient<{ data: CursorPage<ServiceJob> }>(`/services/jobs/feed?${query}`);
+  return r.data;
+}
+
+export async function getAssignedJobsPage(
+  cursor?: string,
+  limit = 20,
+): Promise<CursorPage<ServiceJob>> {
+  const query = [
+    `limit=${encodeURIComponent(String(limit))}`,
+    cursor ? `cursor=${encodeURIComponent(cursor)}` : null,
+  ].filter(Boolean).join('&');
+  const r = await apiClient<{ data: CursorPage<ServiceJob> }>(`/services/jobs/assigned?${query}`);
+  return r.data;
+}
+
+export async function getProviderJob(id: string): Promise<ServiceJob> {
+  const r = await apiClient<{ data: ServiceJob }>(`/services/jobs/${id}`);
+  return r.data;
+}
+
+export async function upsertProviderQuote(
+  jobId: string,
+  input: { amountPence: number; message?: string; validUntil?: string },
+): Promise<ServiceQuote> {
+  const r = await apiClient<{ data: ServiceQuote }>(`/services/jobs/${jobId}/quote`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
+  return r.data;
+}
+
+export async function withdrawProviderQuote(jobId: string): Promise<void> {
+  await apiClient(`/services/jobs/${jobId}/quote`, { method: 'DELETE' });
+}
+
+export async function startProviderJob(id: string): Promise<void> {
+  await apiClient(`/services/jobs/${id}/start`, { method: 'POST' });
+}
+
+export async function completeProviderJob(
+  id: string,
+  input?: { inspectionOutcome?: 'PASS' | 'FAULTS_FOUND'; inspectionSummary?: string },
+): Promise<void> {
+  await apiClient(`/services/jobs/${id}/complete`, {
+    method: 'POST',
+    body: JSON.stringify(input ?? {}),
+  });
+}
+

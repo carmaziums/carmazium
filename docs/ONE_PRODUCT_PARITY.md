@@ -80,7 +80,7 @@ The repository currently contains a mature Next.js website and an Expo/React Nat
 - Delivery & Recovery, Inspection, Finance and Warranty capabilities.
 - Verification-document uploads.
 - Matching settings, jobs, leads, chat, Stripe payouts and team permissions.
-- **Status (23 Sep 2026): foundation partially complete.** Native mobile now has the Partner Account dashboard, service add-on application/status, Stripe Connect entry, secure provider verification evidence and Delivery/Inspection/Finance/Warranty matching settings using the same backend contracts as web. `partner.dashboard` and `service_provider.capabilities` are required parity surfaces. Native provider Jobs, Leads and Messages remain explicit manifest gaps and are the next Block 7 slice.
+- **Status (23 Sep 2026): provider foundation + Jobs complete; Block 7 remains in progress.** Native mobile now has the Partner Account dashboard, service add-on application/status, Stripe Connect entry, secure provider verification evidence, Delivery/Inspection/Finance/Warranty matching settings, and the full paid-job provider lifecycle. Provider Jobs now covers matching feed, quoting, assigned work, customer contact, service-job chat, start/complete and structured inspection outcomes using the same backend contracts as web. `partner.dashboard`, `service_provider.capabilities` and `service_provider.jobs` are required parity surfaces. Native Finance/Warranty Leads and the provider-focused Messages workspace remain the next Block 7 gaps.
 
 ### Block 8 — Payments, HPI, chat and notifications
 - Stripe checkout and Connect.

@@ -121,6 +121,14 @@ export async function createChatRoom(participantId: string, listingId?: string):
 /**
  * Fetches paginated chat messages for a specific room
  */
+export async function getOrCreateServiceJobRoom(jobId: string): Promise<ChatRoom> {
+  const response = await apiClient<{ data: { room: ChatRoom; inboxUrl: string } }>(
+    `/chat/service-jobs/${jobId}`,
+    { method: 'POST' },
+  );
+  return response.data.room;
+}
+
 export async function getChatMessages(
   roomId: string,
   page = 1,
