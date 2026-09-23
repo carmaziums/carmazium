@@ -982,6 +982,7 @@ model Auction {
   stripePayoutError       String? // Set when auto-payout didn't happen (no Connect account, Stripe error, or test-mode skip) — needs manual action
   stripeRefundError       String? // Set if a buyer-fee refund fails — needs manual action
   buyerRefusedAt         DateTime?
+  buyerRefusedById       String?
   buyerRefusalReason     String?
   buyerRefusalInspectionJobId String?
   // Set once an admin manually confirms they've paid the seller outside Stripe
