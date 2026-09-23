@@ -107,6 +107,149 @@ export interface JobMatchingInput {
   jobPostcodeAreas?: string[];
 }
 
+export type ServiceJobStatus =
+  | 'OPEN' | 'ACCEPTED' | 'PAID' | 'IN_PROGRESS' | 'COMPLETED' | 'RELEASED'
+  | 'CANCELLED' | 'EXPIRED' | 'DISPUTED';
+export type ServiceQuoteStatus = 'ACTIVE' | 'ACCEPTED' | 'DECLINED' | 'WITHDRAWN' | 'EXPIRED';
+export type ServicePaymentStatus = 'PENDING' | 'PAID' | 'RELEASED' | 'REFUNDED' | 'FAILED';
+export type ServiceLeadStatus = 'OPEN' | 'CLOSED' | 'CANCELLED' | 'EXPIRED';
+
+export interface JobVehicle {
+  id?: string;
+  registration?: string | null;
+  make?: string | null;
+  model?: string | null;
+  year?: number | null;
+  notes?: string | null;
+  listingId?: string | null;
+}
+
+export interface ServiceQuote {
+  id: string;
+  jobId: string;
+  contractorId: string;
+  amountPence: number;
+  message: string | null;
+  status: ServiceQuoteStatus;
+  validUntil: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ServicePayment {
+  id: string;
+  grossPence: number;
+  platformFeePence: number;
+  contractorPence: number;
+  platformFeeRate: string;
+  status: ServicePaymentStatus;
+  paidAt: string | null;
+  releasedAt: string | null;
+  refundedAt: string | null;
+}
+
+export interface ServiceJob {
+  id: string;
+  customerId?: string | null;
+  serviceType: ServiceType;
+  isRecovery: boolean;
+  status: ServiceJobStatus;
+  title: string;
+  description: string | null;
+  pickupPostcode: string | null;
+  pickupAddress: string | null;
+  deliveryPostcode: string | null;
+  deliveryAddress: string | null;
+  servicePostcode: string | null;
+  serviceAddress: string | null;
+  requestedFor: string | null;
+  expiresAt: string;
+  acceptedQuoteId: string | null;
+  contractorId: string | null;
+  agreedAmountPence: number | null;
+  platformFeeRate: string | null;
+  platformFeePence: number | null;
+  contractorAmountPence: number | null;
+  acceptedAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  inspectionOutcome?: 'PASS' | 'FAULTS_FOUND' | null;
+  inspectionSummary?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  vehicles: JobVehicle[];
+  customer?: {
+    id: string;
+    firstName: string | null;
+    lastName?: string | null;
+    email?: string;
+    phone?: string | null;
+  } | null;
+  quotes?: ServiceQuote[];
+  payment?: ServicePayment | null;
+  _count?: { quotes: number; vehicles?: number };
+  viewerRole?: 'customer' | 'contractor' | 'admin' | 'bidder';
+}
+
+export interface ServiceLeadResponse {
+  id?: string;
+  recipientId?: string;
+  status?: string;
+  headline: string | null;
+  message: string | null;
+  productName: string | null;
+  indicativePricePence: number | null;
+  representativeApr: number | null;
+  termMonths: number | null;
+  businessName?: string | null;
+  respondedAt?: string | null;
+}
+
+export interface ServiceLead {
+  id: string;
+  customerId: string;
+  serviceType: 'FINANCE' | 'WARRANTY';
+  status: ServiceLeadStatus;
+  listingId: string | null;
+  vehicleRegistration: string | null;
+  vehicleMake: string | null;
+  vehicleModel: string | null;
+  vehicleYear: number | null;
+  vehicleMileage: number | null;
+  vehicleValuePence: number | null;
+  fullName?: string | null;
+  email?: string | null;
+  phone: string | null;
+  postcode: string | null;
+  summary: string | null;
+  depositPence: number | null;
+  termMonths: number | null;
+  monthlyBudgetPence: number | null;
+  employmentStatus: string | null;
+  annualIncomePence: number | null;
+  warrantyMonths: number | null;
+  warrantyLevel: string | null;
+  expiresAt: string;
+  createdAt: string;
+  recipientId?: string;
+  recipientStatus?: string;
+  headline?: string | null;
+  message?: string | null;
+  productName?: string | null;
+  indicativePricePence?: number | null;
+  representativeApr?: number | null;
+  responseTermMonths?: number | null;
+  responses?: ServiceLeadResponse[];
+}
+
+export interface CursorPage<T> {
+  items: T[];
+  nextCursor: string | null;
+}
+
+export const formatPence = (p: number | null | undefined) =>
+  p == null ? '—' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 export async function getPartnerProfile(): Promise<PartnerProfile> {
   const r = await apiClient<{ success: boolean; data: PartnerProfile }>('/users/me');
   return r.data;
@@ -183,4 +326,96 @@ export async function createStripeConnectOnboarding(): Promise<string> {
   const url = r.data?.url ?? r.url;
   if (!url) throw new Error('Stripe did not return an onboarding link');
   return url;
+}
+
+
+export async function getJobFeedPage(
+  serviceType?: Extract<ServiceType, 'DELIVERY' | 'INSPECTION'>,
+  cursor?: string,
+  limit = 20,
+): Promise<CursorPage<ServiceJob>> {
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (serviceType) q.set('serviceType', serviceType);
+  if (cursor) q.set('cursor', cursor);
+  const r = await apiClient<{ data: CursorPage<ServiceJob> }>(`/services/jobs/feed?${q.toString()}`);
+  return r.data;
+}
+
+export async function getAssignedJobsPage(
+  cursor?: string,
+  limit = 20,
+): Promise<CursorPage<ServiceJob>> {
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (cursor) q.set('cursor', cursor);
+  const r = await apiClient<{ data: CursorPage<ServiceJob> }>(`/services/jobs/assigned?${q.toString()}`);
+  return r.data;
+}
+
+export async function getProviderJob(id: string): Promise<ServiceJob> {
+  const r = await apiClient<{ data: ServiceJob }>(`/services/jobs/${id}`);
+  return r.data;
+}
+
+export async function upsertQuote(
+  jobId: string,
+  input: { amountPence: number; message?: string; validUntil?: string },
+): Promise<ServiceQuote> {
+  const r = await apiClient<{ data: ServiceQuote }>(`/services/jobs/${jobId}/quote`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
+  return r.data;
+}
+
+export async function withdrawQuote(jobId: string): Promise<void> {
+  await apiClient(`/services/jobs/${jobId}/quote`, { method: 'DELETE' });
+}
+
+export async function startProviderJob(id: string): Promise<void> {
+  await apiClient(`/services/jobs/${id}/start`, { method: 'POST' });
+}
+
+export async function completeProviderJob(
+  id: string,
+  input?: { inspectionOutcome?: 'PASS' | 'FAULTS_FOUND'; inspectionSummary?: string },
+): Promise<void> {
+  await apiClient(`/services/jobs/${id}/complete`, {
+    method: 'POST',
+    body: JSON.stringify(input ?? {}),
+  });
+}
+
+export async function getLeadInboxPage(
+  serviceType?: 'FINANCE' | 'WARRANTY',
+  cursor?: string,
+  limit = 20,
+): Promise<CursorPage<ServiceLead>> {
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (serviceType) q.set('serviceType', serviceType);
+  if (cursor) q.set('cursor', cursor);
+  const r = await apiClient<{ data: CursorPage<ServiceLead> }>(`/services/leads/inbox?${q.toString()}`);
+  return r.data;
+}
+
+export async function getProviderServiceLead(id: string): Promise<ServiceLead> {
+  const r = await apiClient<{ data: ServiceLead }>(`/services/leads/inbox/${id}`);
+  return r.data;
+}
+
+type LeadResponseCommon = {
+  headline: string;
+  message: string;
+  productName?: string;
+  indicativePricePence?: number;
+};
+
+export async function respondToServiceLead(
+  id: string,
+  input: LeadResponseCommon & { representativeApr?: number; termMonths?: number },
+): Promise<ServiceLeadResponse> {
+  const r = await apiClient<{ data: ServiceLeadResponse }>(`/services/leads/${id}/respond`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
+  return r.data;
 }
