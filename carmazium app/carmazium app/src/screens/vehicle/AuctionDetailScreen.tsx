@@ -234,6 +234,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     role === 'dealer'
     ? Boolean(dealerAccess?.isVerified)
     : Boolean(currentUser?.isVerified);
+  const isBusinessSeller =
+    !!businessUserId
+    && auction?.listing?.sellerId === businessUserId;
+  const canManageSellerAuction =
+    isBusinessSeller
+    && (role !== 'dealer' || canManageDealerInventory);
 
   // ── Bid state ──
   const [currentBid, setCurrentBid] = useState<number>(listingObj.currentBid ?? listingObj.startingBid ?? 0);
@@ -590,23 +596,28 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // ─── Bid handling ─────────────────────────────────────────────────────────
 
   const handleBid = useCallback(async (amount: number) => {
-    // Only dealers can place bids
     if (role !== 'dealer') {
       setBidError('Only dealers can place bids in auctions.');
       return;
     }
-    // Dealer must be KYC verified
-    if (!currentUser?.isVerified) {
+    if (!canPlaceBid) {
+      setBidError('Your dealership role does not allow auction bidding.');
+      return;
+    }
+    if (!isDealerVerified) {
+      const actions: any[] = [{ text: 'OK', style: 'cancel' }];
+      if (dealerAccess?.isOwner) {
+        actions.push({
+          text: 'Go to Verification',
+          onPress: () => navigation.navigate('DealerKYC'),
+        });
+      }
       Alert.alert(
         'Verification Required',
-        'Verify your dealership to place bids. Complete KYC in Settings.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Go to Verification',
-            onPress: () => navigation.navigate('DealerKYC'),
-          },
-        ],
+        dealerAccess?.isOwner
+          ? 'Verify your dealership to place bids.'
+          : 'The dealership owner must complete verification before staff can bid.',
+        actions,
       );
       return;
     }
@@ -630,11 +641,15 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     } finally {
       setBidLoading(false);
     }
-  }, [auction, currentUser, currentBid]);
+  }, [auction, currentUser, currentBid, role, canPlaceBid, isDealerVerified, dealerAccess?.isOwner, navigation]);
 
   // ─── Cancel bid ──────────────────────────────────────────────────────────────
 
   const handleCancelBid = useCallback((bidId: string) => {
+    if (!canPlaceBid) {
+      Alert.alert('View-only access', 'Your dealership role does not allow auction bidding.');
+      return;
+    }
     Alert.alert(
       'Cancel your bid?',
       'Your bid will be removed. The auction continues with the previous highest bid.',
@@ -659,12 +674,15 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, []);
+  }, [canPlaceBid]);
 
   // ─── Buy It Now handlers ──────────────────────────────────────────────────────
 
   const handleTriggerBin = useCallback(() => {
-    if (!auction) return;
+    if (!auction || !canPlaceBid) {
+      Alert.alert('View-only access', 'Your dealership role does not allow Buy It Now requests.');
+      return;
+    }
     Alert.alert(
       'Buy It Now?',
       `The seller must confirm within 24 hours. The auction continues until they respond.\n\nBuy It Now price: ${fmt(Number(auction.buyItNowPrice))}`,
@@ -676,7 +694,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             setBinLoading(true);
             try {
               await triggerBuyItNow(auction.id);
-              setBinPendingBuyerId(currentUser?.id ?? 'pending');
+              setBinPendingBuyerId(businessUserId ?? 'pending');
               setBinBannerDismissed(false);
             } catch (err: any) {
               Alert.alert('Failed', err?.message ?? 'Could not request Buy It Now. Please try again.');
@@ -687,10 +705,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, [auction, currentUser]);
+  }, [auction, canPlaceBid, businessUserId]);
 
   const handleConfirmBin = useCallback(() => {
-    if (!auction) return;
+    if (!auction || !canManageSellerAuction) return;
     Alert.alert(
       'Confirm Buy It Now?',
       `This ends the auction immediately at ${fmt(Number(auction.buyItNowPrice))}.`,
@@ -712,10 +730,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, [auction]);
+  }, [auction, canManageSellerAuction]);
 
   const handleDeclineBin = useCallback(async () => {
-    if (!auction) return;
+    if (!auction || !canManageSellerAuction) return;
     setBinLoading(true);
     try {
       await declineBuyItNow(auction.id);
@@ -725,12 +743,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     } finally {
       setBinLoading(false);
     }
-  }, [auction]);
+  }, [auction, canManageSellerAuction]);
 
   // ─── Seller: accept a specific bid early ─────────────────────────────────────
 
   const handleAcceptBid = useCallback((bid: BidEntry) => {
-    if (!auction) return;
+    if (!auction || !canManageSellerAuction) return;
     Alert.alert(
       'Accept current highest offer?',
       `Accepting ${fmt(bid.amount)} will end the auction immediately, even if it is below your reserve. The bidder becomes the winner and this cannot be undone.`,
@@ -756,12 +774,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, [auction]);
+  }, [auction, canManageSellerAuction]);
 
   // ─── Seller: close auction early (uses current highest bid) ──────────────────
 
   const handleCloseEarly = useCallback(() => {
-    if (!auction) return;
+    if (!auction || !canManageSellerAuction) return;
     Alert.alert(
       'End auction without a sale?',
       'This closes the auction without accepting the current below-reserve offer. To sell at the current offer, use Accept Offer instead.',
@@ -785,7 +803,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, [auction]);
+  }, [auction, canManageSellerAuction]);
 
   // ─── Derived values ───────────────────────────────────────────────────────
 
