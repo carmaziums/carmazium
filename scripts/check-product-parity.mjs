@@ -225,6 +225,52 @@ if (
   ok('Mobile HPI add-on respects Standard/Premium HPI inclusion');
 }
 
+const webSellerWizard = read('src/components/listing/ListingWizard.tsx');
+const mobileSellerWizard = read('carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx');
+const mobileSellerListings = read('carmazium app/carmazium app/src/screens/seller/SellerListingsScreen.tsx');
+const mobileListingsApi = read('carmazium app/carmazium app/src/lib/listingsApi.ts');
+const listingService = read('backend/src/listings/listings.service.ts');
+
+if (
+  !webSellerWizard.includes('getRetailConversionCandidate') ||
+  !webSellerWizard.includes('convertAuctionToRetail') ||
+  !mobileSellerWizard.includes('getRetailConversionCandidate') ||
+  !mobileSellerWizard.includes('convertAuctionToRetail') ||
+  !mobileListingsApi.includes('/convert-to-retail')
+) {
+  fail('Auction → Retail conversion is not implemented across both seller clients');
+} else {
+  ok('Auction → Retail conversion uses the shared backend flow on web and mobile');
+}
+
+if (
+  !mobileSellerListings.includes('PENDING_REVIEW') ||
+  !mobileSellerListings.includes('REJECTED') ||
+  !mobileSellerWizard.includes('pendingReview')
+) {
+  fail('Mobile seller lifecycle does not expose review/rejection states');
+} else {
+  ok('Seller review/rejection lifecycle is represented on mobile');
+}
+
+if (
+  !listingService.includes("stripePaymentId.startsWith('pi_')") ||
+  !listingService.includes('stripe.paymentIntents.retrieve')
+) {
+  fail('Listing publish does not reconcile native PaymentIntent references');
+} else {
+  ok('Listing publish reconciles web Checkout Sessions and native PaymentIntents');
+}
+
+if (
+  !webSellerWizard.includes('Start Fresh') ||
+  !mobileSellerWizard.includes('START FRESH')
+) {
+  fail('Seller draft reset is not available on both web and mobile');
+} else {
+  ok('Seller draft reset is available on both clients');
+}
+
 const webPricing = read('src/lib/pricingConfig.ts');
 const mobilePricing = read('carmazium app/carmazium app/src/constants/pricing.ts');
 const payments = read('backend/src/payments/payments.service.ts');
