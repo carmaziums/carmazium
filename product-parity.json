@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "purpose": "CarMazium one-product parity contract",
   "policy": {
     "backend_is_source_of_truth": true,
@@ -7,6 +7,70 @@
     "undocumented_client_only_business_rules_forbidden": true
   },
   "features": [
+    {
+      "id": "auth.dealer_staff_invite",
+      "web": [
+        "src/app/auth/accept-invite/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/auth/AcceptInviteScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "auth.account_onboarding",
+      "web": [
+        "src/app/auth/onboarding/page.tsx",
+        "src/components/dashboard/ProfileCompletionGate.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/auth/PostSignupOnboardingScreen.tsx",
+        "carmazium app/carmazium app/src/store/authStore.ts"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "auth.email_verification",
+      "web": [
+        "src/app/auth/onboarding/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/auth/VerifyEmailScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "auth.password_recovery",
+      "web": [
+        "src/app/auth/forgot-password/page.tsx",
+        "src/app/auth/reset-password/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/auth/ForgotPasswordScreen.tsx",
+        "carmazium app/carmazium app/src/screens/auth/ResetPasswordScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "auth.signup_account_type",
+      "web": [
+        "src/app/auth/signup/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/auth/SignupScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "auth.login",
+      "web": [
+        "src/app/auth/login/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/auth/LoginScreen.tsx"
+      ],
+      "status": "required"
+    },
     {
       "id": "marketplace.search",
       "web": [
