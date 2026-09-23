@@ -191,6 +191,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // Was a flat `price - 2500`, which on a cheap car could open the modal already
   // below the 70% floor (BUY-022).
   const [offerAmount, setOfferAmount] = useState(Math.round(listing.price * 0.9));
+  // Web and backend both support an optional buyer note on create/amend.
+  // Keep it on mobile too so the same offer means the same thing everywhere.
+  const [offerMessage, setOfferMessage] = useState('');
   const [offerSubmitted, setOfferSubmitted] = useState(false);
   const [isSubmittingOffer, setIsSubmittingOffer] = useState(false);
 
@@ -366,11 +369,18 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       const response = isEditing
         ? await apiClient<{ data: any }>(`/offers/${myOffer.id}/amend`, {
             method: 'PATCH',
-            body: JSON.stringify({ amount: offerAmount }),
+            body: JSON.stringify({
+              amount: offerAmount,
+              message: offerMessage.trim() || undefined,
+            }),
           })
         : await apiClient<{ data: any }>('/offers', {
             method: 'POST',
-            body: JSON.stringify({ listingId: listing.id, amount: offerAmount }),
+            body: JSON.stringify({
+              listingId: listing.id,
+              amount: offerAmount,
+              message: offerMessage.trim() || undefined,
+            }),
           });
       if (response?.data) {
         setMyOffer({
@@ -1819,6 +1829,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   const value = Number(myOffer.amount);
                   setOfferAmount(value);
                   setOfferAmountDraft(String(value));
+                  setOfferMessage(myOffer.message ?? '');
+                } else {
+                  setOfferMessage('');
                 }
                 setOfferModalVisible(true);
               }}
@@ -1905,6 +1918,22 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   Minimum offer is {formatPrice(OFFER_MIN)} — 70% of the asking price
                 </Text>
               )}
+            </View>
+
+            <View style={styles.offerBoxContainer}>
+              <Text style={styles.offerLabel}>MESSAGE TO SELLER · OPTIONAL</Text>
+              <TextInput
+                style={styles.offerMessageInput}
+                value={offerMessage}
+                onChangeText={setOfferMessage}
+                placeholder="e.g. I can collect this weekend."
+                placeholderTextColor={Colors.textSecondary}
+                multiline
+                maxLength={500}
+                textAlignVertical="top"
+                accessibilityLabel="Optional message to seller"
+              />
+              <Text style={styles.offerMessageCount}>{offerMessage.length}/500</Text>
             </View>
 
             <TouchableOpacity
@@ -3272,6 +3301,26 @@ const styles = StyleSheet.create({
     minWidth: 90,
     padding: 0,
     textAlign: 'center',
+  },
+  offerMessageInput: {
+    minHeight: 88,
+    borderRadius: Radius.inline,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    backgroundColor: Colors.bgSecondaryAlt,
+    color: Colors.white,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.sm,
+    lineHeight: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  offerMessageCount: {
+    marginTop: 6,
+    textAlign: 'right',
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size9,
+    color: Colors.textMuted,
   },
   submitOfferBtn: {
     height: 48,
