@@ -3,6 +3,94 @@ import { apiClient } from './apiClient';
 export type ServiceType = 'DELIVERY' | 'INSPECTION' | 'FINANCE' | 'WARRANTY';
 export type CapabilityStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
 
+export type ServiceJobStatus =
+  | 'OPEN'
+  | 'ACCEPTED'
+  | 'PAID'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'RELEASED'
+  | 'CANCELLED'
+  | 'EXPIRED'
+  | 'DISPUTED';
+
+export type ServiceQuoteStatus = 'ACTIVE' | 'ACCEPTED' | 'DECLINED' | 'WITHDRAWN' | 'EXPIRED';
+
+export interface ServiceJobVehicle {
+  id?: string;
+  registration?: string | null;
+  make?: string | null;
+  model?: string | null;
+  year?: number | null;
+  notes?: string | null;
+}
+
+export interface ServiceQuote {
+  id: string;
+  jobId: string;
+  contractorId: string;
+  amountPence: number;
+  message: string | null;
+  status: ServiceQuoteStatus;
+  validUntil: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ServiceJob {
+  id: string;
+  serviceType: Extract<ServiceType, 'DELIVERY' | 'INSPECTION'>;
+  isRecovery: boolean;
+  status: ServiceJobStatus;
+  title: string;
+  description: string | null;
+  pickupPostcode: string | null;
+  pickupAddress: string | null;
+  deliveryPostcode: string | null;
+  deliveryAddress: string | null;
+  servicePostcode: string | null;
+  serviceAddress: string | null;
+  requestedFor: string | null;
+  expiresAt: string;
+  contractorId: string | null;
+  agreedAmountPence: number | null;
+  platformFeePence: number | null;
+  contractorAmountPence: number | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  inspectionOutcome?: 'PASS' | 'FAULTS_FOUND' | null;
+  inspectionSummary?: string | null;
+  createdAt: string;
+  vehicles: ServiceJobVehicle[];
+  customer?: {
+    id: string;
+    firstName: string | null;
+    lastName?: string | null;
+    email?: string;
+    phone?: string | null;
+  } | null;
+  quotes?: ServiceQuote[];
+  payment?: {
+    status: 'PENDING' | 'PAID' | 'RELEASED' | 'REFUNDED' | 'FAILED';
+    grossPence: number;
+    platformFeePence: number;
+    contractorPence: number;
+  } | null;
+  _count?: { quotes: number };
+  viewerRole?: 'customer' | 'contractor' | 'admin' | 'bidder';
+}
+
+export interface CursorPage<T> {
+  items: T[];
+  nextCursor: string | null;
+}
+
+export const formatPence = (pence: number) =>
+  `£${(pence / 100).toLocaleString('en-GB', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 export const SERVICE_LABELS: Record<ServiceType, string> = {
   DELIVERY: 'Delivery & Recovery',
   INSPECTION: 'Vehicle Inspections',
@@ -184,3 +272,65 @@ export async function createStripeConnectOnboarding(): Promise<string> {
   if (!url) throw new Error('Stripe did not return an onboarding link');
   return url;
 }
+
+export async function getProviderJobFeedPage(
+  cursor?: string,
+  limit = 20,
+): Promise<CursorPage<ServiceJob>> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set('cursor', cursor);
+  const r = await apiClient<{ data: CursorPage<ServiceJob> }>(
+    `/services/jobs/feed?${params.toString()}`,
+  );
+  return r.data;
+}
+
+export async function getAssignedProviderJobsPage(
+  cursor?: string,
+  limit = 20,
+): Promise<CursorPage<ServiceJob>> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set('cursor', cursor);
+  const r = await apiClient<{ data: CursorPage<ServiceJob> }>(
+    `/services/jobs/assigned?${params.toString()}`,
+  );
+  return r.data;
+}
+
+export async function getProviderJob(id: string): Promise<ServiceJob> {
+  const r = await apiClient<{ data: ServiceJob }>(`/services/jobs/${id}`);
+  return r.data;
+}
+
+export async function upsertProviderJobQuote(
+  jobId: string,
+  input: { amountPence: number; message?: string; validUntil?: string },
+): Promise<ServiceQuote> {
+  const r = await apiClient<{ data: ServiceQuote }>(
+    `/services/jobs/${jobId}/quote`,
+    { method: 'PUT', body: JSON.stringify(input) },
+  );
+  return r.data;
+}
+
+export async function withdrawProviderJobQuote(jobId: string): Promise<void> {
+  await apiClient(`/services/jobs/${jobId}/quote`, { method: 'DELETE' });
+}
+
+export async function startProviderJob(jobId: string): Promise<void> {
+  await apiClient(`/services/jobs/${jobId}/start`, { method: 'POST' });
+}
+
+export async function completeProviderJob(
+  jobId: string,
+  input?: {
+    inspectionOutcome?: 'PASS' | 'FAULTS_FOUND';
+    inspectionSummary?: string;
+  },
+): Promise<void> {
+  await apiClient(`/services/jobs/${jobId}/complete`, {
+    method: 'POST',
+    body: JSON.stringify(input ?? {}),
+  });
+}
+
