@@ -911,7 +911,7 @@ export class ServicesService {
             if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
                 const raced = await this.prisma.serviceJob.findFirst({
                     where: {
-                        purchaseCustomerId,
+                        customerId: purchaseCustomerId,
                         ...sourceWhere,
                         status: { notIn: [ServiceJobStatus.CANCELLED, ServiceJobStatus.EXPIRED] },
                     },
