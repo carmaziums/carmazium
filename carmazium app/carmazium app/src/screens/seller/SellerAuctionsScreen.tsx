@@ -24,6 +24,7 @@ import { getListingById } from '../../lib/listingsApi';
 import { convertAndCompress } from '../../lib/storageHelper';
 import { haptics } from '../../lib/haptics';
 import { BottomSheet } from '../../components/BottomSheet';
+import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 import { Colors } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -201,6 +202,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   // Auction Results modal (ENDED auctions)
   const [resultsAuction, setResultsAuction] = useState<AuctionItem | null>(null);
   const [connectingChat, setConnectingChat] = useState(false);
+  const [cancelAuction, setCancelAuction] = useState<AuctionItem | null>(null);
 
   // Create auction modal
   const [createModalVisible, setCreateModalVisible] = useState(false);
@@ -1127,6 +1129,24 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   <Text style={styles.handoverButtonText}>Upload Handover Proof</Text>
                 )}
               </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                minHeight: 42,
+                borderRadius: Radius.inline,
+                borderWidth: 1,
+                borderColor: Colors.accentAlpha30,
+                backgroundColor: Colors.accentAlpha08,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginTop: 10,
+              }}
+              activeOpacity={0.8}
+              onPress={() => setCancelAuction(item)}
+            >
+              <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent }}>
+                Request Sale Cancellation
+              </Text>
+            </TouchableOpacity>
             )}
           </View>
         ) : null}
@@ -1148,6 +1168,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     handoverError,
     handoverUploading,
     handleHandoverUpload,
+    setCancelAuction,
   ]);
 
   // Won auctions are a read-only, buyer-perspective list — none of the
@@ -1207,6 +1228,15 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   return (
     <View style={styles.container}>
+      {cancelAuction && (
+        <SaleCancellationSheet
+          visible={cancelAuction != null}
+          listingId={cancelAuction.listingId || cancelAuction.listing.id}
+          vehicleTitle={cancelAuction.listing.title || 'Vehicle'}
+          onClose={() => setCancelAuction(null)}
+          onCreated={() => void fetchAuctions(true)}
+        />
+      )}
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha04, Colors.infoBlueAlpha03, Colors.bgPrimary]}
