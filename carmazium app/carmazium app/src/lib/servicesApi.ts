@@ -193,6 +193,21 @@ export interface JobVehicle {
   listingId?: string | null;
 }
 
+export interface ContractorSummary {
+  id: string;
+  businessName: string | null;
+  phone?: string | null;
+  rating: number;
+  totalReviews: number;
+  serviceArea: string | null;
+  user: {
+    firstName: string | null;
+    lastName?: string | null;
+    email?: string;
+    phone?: string | null;
+  };
+}
+
 export interface ServiceQuote {
   id: string;
   jobId: string;
@@ -201,6 +216,18 @@ export interface ServiceQuote {
   message: string | null;
   status: ServiceQuoteStatus;
   validUntil: string | null;
+  createdAt: string;
+  updatedAt: string;
+  contractor?: ContractorSummary;
+}
+
+export interface ServiceReview {
+  id: string;
+  jobId: string;
+  customerId: string;
+  contractorId: string;
+  rating: number;
+  comment: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -259,8 +286,12 @@ export interface ServiceJob {
     email?: string;
     phone?: string | null;
   } | null;
+  contractor?: ContractorSummary | null;
   quotes?: ServiceQuote[];
   payment?: ServicePayment | null;
+  review?: ServiceReview | null;
+  canReview?: boolean;
+  eligibleProviderCount?: number | null;
   _count?: { quotes: number; vehicles?: number };
   viewerRole?: 'customer' | 'contractor' | 'admin' | 'bidder';
 }
@@ -355,6 +386,74 @@ export async function createStripeConnectOnboarding(): Promise<string> {
 }
 export async function getServiceSettings(): Promise<ServiceMarketplaceSettings> {
   const r = await apiClient<{ data: ServiceMarketplaceSettings }>('/services/settings');
+  return r.data;
+}
+
+
+export async function createInspectionFromAuction(input: {
+  auctionId: string;
+  servicePostcode?: string;
+  serviceAddress?: string;
+  requestedFor?: string;
+}): Promise<ServiceJob> {
+  const r = await apiClient<{ data: ServiceJob }>('/services/jobs/inspection/from-auction', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  return r.data;
+}
+
+export async function getMyServiceJobsPage(
+  cursor?: string,
+  limit = 20,
+): Promise<CursorPage<ServiceJob>> {
+  const query = [
+    `limit=${encodeURIComponent(String(limit))}`,
+    cursor ? `cursor=${encodeURIComponent(cursor)}` : null,
+  ].filter(Boolean).join('&');
+  const r = await apiClient<{ data: CursorPage<ServiceJob> }>(`/services/jobs/my?${query}`);
+  return r.data;
+}
+
+export async function getCustomerServiceJob(id: string): Promise<ServiceJob> {
+  const r = await apiClient<{ data: ServiceJob }>(`/services/jobs/${id}`);
+  return r.data;
+}
+
+export async function acceptCustomerQuote(jobId: string, quoteId: string): Promise<string> {
+  const r = await apiClient<{ data: { checkoutUrl: string } }>(
+    `/services/jobs/${jobId}/quotes/${quoteId}/accept`,
+    { method: 'POST' },
+  );
+  return r.data.checkoutUrl;
+}
+
+export async function cancelCustomerServiceJob(id: string, reason?: string): Promise<void> {
+  await apiClient(`/services/jobs/${id}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function confirmCustomerServiceJob(id: string): Promise<void> {
+  await apiClient(`/services/jobs/${id}/confirm`, { method: 'POST' });
+}
+
+export async function disputeCustomerServiceJob(id: string, reason?: string): Promise<void> {
+  await apiClient(`/services/jobs/${id}/dispute`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function createCustomerServiceReview(
+  id: string,
+  input: { rating: number; comment?: string },
+): Promise<ServiceReview> {
+  const r = await apiClient<{ data: ServiceReview }>(`/services/jobs/${id}/review`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
   return r.data;
 }
 
