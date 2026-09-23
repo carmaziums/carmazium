@@ -168,6 +168,37 @@ describe('AdminService — seller bonus payout idempotency', () => {
         );
     });
 
+    it('releases the payout claim when Stripe rejects the transfer so retry remains possible', async () => {
+        const { service, prisma, paymentsService } = makeHarness();
+
+        const before = makeAuction({
+            sellerBonusReleased: true,
+            stripePayoutTransferId: null,
+        });
+
+        prisma.auction.findUnique.mockResolvedValueOnce(before);
+        prisma.user.findUnique.mockResolvedValue({
+            stripeConnectAccountId: 'acct_seller',
+            stripeConnectOnboardingComplete: true,
+        });
+        prisma.auction.updateMany
+            .mockResolvedValueOnce({ count: 1 })
+            .mockResolvedValueOnce({ count: 1 });
+        paymentsService.issueSellerPayout.mockRejectedValue(new Error('Stripe unavailable'));
+
+        await expect(service.retryPayout('auction-1'))
+            .rejects.toThrow(/Stripe unavailable/i);
+
+        expect(prisma.auction.updateMany).toHaveBeenLastCalledWith({
+            where: {
+                id: 'auction-1',
+                stripePayoutTransferId: 'claim:seller-bonus:auction-1',
+                manualPayoutConfirmedAt: null,
+            },
+            data: { stripePayoutTransferId: null },
+        });
+    });
+
     it('blocks manual payment while a Stripe payout claim is active or awaiting retry', async () => {
         const { service, prisma } = makeHarness();
         const claim = 'claim:seller-bonus:auction-1';
