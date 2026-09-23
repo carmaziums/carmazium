@@ -9,8 +9,8 @@ const mockPrisma = {
   auction: { count: jest.fn().mockResolvedValue(0) },
   sale: { count: jest.fn().mockResolvedValue(0), findMany: jest.fn().mockResolvedValue([]), aggregate: jest.fn().mockResolvedValue({ _sum: { soldPrice: 0 } }) },
   listing: { count: jest.fn().mockResolvedValue(0), aggregate: jest.fn().mockResolvedValue({ _sum: { viewCount: 0 }, _count: { id: 0 } }), findMany: jest.fn().mockResolvedValue([]) },
-  lead: { groupBy: jest.fn().mockResolvedValue([]) },
-  dealerProfile: { findUnique: jest.fn().mockResolvedValue({ id: 'dp-1', userId: 'user-1', isVerified: true, companyName: 'Test Motors', staff: [] }) },
+  lead: { groupBy: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
+  dealerProfile: { findUnique: jest.fn().mockResolvedValue({ id: 'dp-1', userId: 'user-1', isVerified: true, companyName: 'Test Motors', createdAt: new Date('2025-01-01T00:00:00.000Z'), staff: [] }) },
   dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
   $queryRaw: jest.fn().mockResolvedValue([{ views: 0n }]),
 };
@@ -83,6 +83,7 @@ describe('DashboardService — period filter', () => {
       userId: 'user-1',
       isVerified: true,
       companyName: 'Test Motors',
+      createdAt: new Date('2025-01-01T00:00:00.000Z'),
       staff: [{ id: 'staff-1' }],
     });
 
@@ -101,6 +102,37 @@ describe('DashboardService — period filter', () => {
       allTimeViews: 120,
       avgViews: 30,
     }));
+  });
+
+  it('DEALER-RANGE-ALL: all-time range starts at dealer account creation', async () => {
+    await (service as any).getDealerDashboard('user-1', { allTime: true });
+    const callArg = mockPrisma.sale.count.mock.calls[0][0];
+    expect(callArg.where.createdAt.gte.toISOString()).toBe('2025-01-01T00:00:00.000Z');
+  });
+
+  it('DEALER-RANGE-COMPARE: custom month ranges can request a previous-period comparison', async () => {
+    mockPrisma.$queryRaw
+      .mockResolvedValueOnce([{ views: 12n }])
+      .mockResolvedValueOnce([{ views: 8n }]);
+    mockPrisma.sale.count
+      .mockResolvedValueOnce(3)
+      .mockResolvedValueOnce(2);
+    mockPrisma.sale.aggregate
+      .mockResolvedValueOnce({ _sum: { soldPrice: 30000 } })
+      .mockResolvedValueOnce({ _sum: { soldPrice: 20000 } });
+    mockPrisma.lead.count
+      .mockResolvedValueOnce(4)
+      .mockResolvedValueOnce(2);
+
+    const result = await (service as any).getDealerDashboard('user-1', {
+      rangeValue: 1,
+      rangeUnit: 'months',
+      compare: true,
+    });
+
+    expect(result.comparison.available).toBe(true);
+    expect(result.comparison.totalViews).toEqual(expect.objectContaining({ current: 12, previous: 8 }));
+    expect(result.comparison.soldListings).toEqual(expect.objectContaining({ current: 3, previous: 2 }));
   });
 
   it('DASH-FILTER-03: getDealerDashboard with 7d passes createdAt gte ~7 days ago to sale.count', async () => {
