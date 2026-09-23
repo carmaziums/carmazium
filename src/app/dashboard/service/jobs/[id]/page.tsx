@@ -33,12 +33,18 @@ export default function ContractorJobPage() {
     const [busy, setBusy] = React.useState<string | null>(null)
     const [amount, setAmount] = React.useState("")
     const [message, setMessage] = React.useState("")
+    const [inspectionOutcome, setInspectionOutcome] = React.useState<"" | "PASS" | "FAULTS_FOUND">("")
+    const [inspectionSummary, setInspectionSummary] = React.useState("")
 
     const load = React.useCallback(() => {
         getJob(id).then(j => {
             setJob(j)
             const mine = j.quotes?.[0]
             if (mine && mine.status === "ACTIVE") { setAmount((mine.amountPence / 100).toFixed(2)); setMessage(mine.message ?? "") }
+            if (j.serviceType === "INSPECTION") {
+                setInspectionOutcome(j.inspectionOutcome ?? "")
+                setInspectionSummary(j.inspectionSummary ?? "")
+            }
         }).catch(e => setError(e?.message || "Job not found"))
     }, [id])
     React.useEffect(() => { load() }, [load])
@@ -187,10 +193,63 @@ export default function ContractorJobPage() {
                                             </>
                                         )}
                                         {job.status === "IN_PROGRESS" && (
-                                            <Button className="w-full" disabled={busy === "complete"}
-                                                onClick={() => { if (confirm("Mark this job complete? The customer will be asked to confirm, and your payout releases on confirmation or after 48 hours.")) run("complete", () => completeJob(job.id), "Marked complete. Payout releases when the customer confirms, or in 48 hours.") }}>
-                                                {busy === "complete" ? <Loader2 className="animate-spin" size={16} /> : <><Flag size={16} className="mr-2" /> Mark complete</>}
-                                            </Button>
+                                            <>
+                                                {job.serviceType === "INSPECTION" && (
+                                                    <div className="space-y-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                                                        <div>
+                                                            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Inspection outcome</label>
+                                                            <select
+                                                                className={`${inputCls} mt-2`}
+                                                                value={inspectionOutcome}
+                                                                onChange={e => setInspectionOutcome(e.target.value as "" | "PASS" | "FAULTS_FOUND")}
+                                                            >
+                                                                <option value="">Choose outcome</option>
+                                                                <option value="PASS">No refusal-triggering faults found</option>
+                                                                <option value="FAULTS_FOUND">Faults found</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">
+                                                                Inspection summary {inspectionOutcome === "FAULTS_FOUND" ? "· required" : "· optional"}
+                                                            </label>
+                                                            <textarea
+                                                                className={`${inputCls} mt-2 resize-none`}
+                                                                rows={5}
+                                                                maxLength={4000}
+                                                                value={inspectionSummary}
+                                                                onChange={e => setInspectionSummary(e.target.value)}
+                                                                placeholder="Record the inspected condition and any faults found."
+                                                            />
+                                                        </div>
+                                                        {inspectionOutcome === "FAULTS_FOUND" && (
+                                                            <p className="text-[11px] text-amber-600 dark:text-amber-300">
+                                                                This outcome can make a linked auction purchase eligible for buyer refusal and a full £125 buyer-fee refund.
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                <Button
+                                                    className="w-full"
+                                                    disabled={
+                                                        busy === "complete"
+                                                        || (job.serviceType === "INSPECTION" && !inspectionOutcome)
+                                                        || (job.serviceType === "INSPECTION" && inspectionOutcome === "FAULTS_FOUND" && !inspectionSummary.trim())
+                                                    }
+                                                    onClick={() => {
+                                                        if (!confirm("Mark this job complete? The customer will be asked to confirm, and your payout releases on confirmation or after 48 hours.")) return
+                                                        run(
+                                                            "complete",
+                                                            () => completeJob(job.id, job.serviceType === "INSPECTION" ? {
+                                                                inspectionOutcome: inspectionOutcome || undefined,
+                                                                inspectionSummary: inspectionSummary.trim() || undefined,
+                                                            } : undefined),
+                                                            "Marked complete. Payout releases when the customer confirms, or in 48 hours.",
+                                                        )
+                                                    }}
+                                                >
+                                                    {busy === "complete" ? <Loader2 className="animate-spin" size={16} /> : <><Flag size={16} className="mr-2" /> Mark complete</>}
+                                                </Button>
+                                            </>
                                         )}
                                     </div>
                                 )}
