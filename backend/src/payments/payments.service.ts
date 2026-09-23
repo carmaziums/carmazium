@@ -622,6 +622,27 @@ export class PaymentsService {
         return { url: session.url };
     }
 
+    private async resolveListingFeeBusinessId(
+        listingSellerId: string | null | undefined,
+        userId: string,
+    ): Promise<string> {
+        if (!listingSellerId) {
+            throw new BadRequestException('Listing does not have a seller');
+        }
+        if (listingSellerId === userId) return userId;
+
+        const actor = await resolveDealerActor(this.prisma, userId);
+        if (!actor || actor.ownerUserId !== listingSellerId) {
+            throw new ForbiddenException('You do not have permission to pay for this listing');
+        }
+        assertDealerPermission(
+            actor,
+            'PAY_LISTING_FEE',
+            'Your dealership role does not allow listing fee payments.',
+        );
+        return actor.ownerUserId;
+    }
+
     /**
      * Create a Stripe Checkout Session for a Listing Badge Fee.
      */
@@ -642,9 +663,10 @@ export class PaymentsService {
                 'Admin listings are free — no listing fee is charged. Submit the listing directly.',
             );
         }
-        if (listing.sellerId !== userId) {
-            throw new ForbiddenException('You do not have permission to pay for this listing');
-        }
+        const transactionUserId = await this.resolveListingFeeBusinessId(
+            listing.sellerId,
+            userId,
+        );
         if (listing.type !== 'CLASSIFIED') {
             throw new BadRequestException('Auction listings do not require a retail listing fee');
         }
@@ -678,7 +700,7 @@ export class PaymentsService {
         // Create a pending transaction record
         const transaction = await this.prisma.transaction.create({
             data: {
-                userId,
+                userId: transactionUserId,
                 listingId,
                 amount,
                 type: 'LISTING_FEE' as any,
@@ -704,7 +726,8 @@ export class PaymentsService {
             ],
             metadata: {
                 transactionId: transaction.id,
-                userId,
+                userId: transactionUserId,
+                ...(transactionUserId !== userId ? { actorUserId: userId } : {}),
                 listingId,
                 badgeTier: chargeTier,
                 type: 'LISTING_FEE',
@@ -760,9 +783,10 @@ export class PaymentsService {
                 amount = Number(listing.price);
                 break;
             case 'LISTING_FEE': {
-                if (listing.sellerId !== userId) {
-                    throw new ForbiddenException('You do not have permission to pay for this listing');
-                }
+                transactionUserId = await this.resolveListingFeeBusinessId(
+                    listing.sellerId,
+                    userId,
+                );
                 if (listing.type !== 'CLASSIFIED') {
                     throw new BadRequestException('Auction listings do not require a retail listing fee');
                 }
