@@ -45,6 +45,12 @@ export class DealersController {
         private readonly kycDocuments: KycDocumentsService,
     ) {}
 
+    @Get('access')
+    @ApiOperation({ summary: 'Get canonical dealership identity and staff permissions' })
+    async getAccess(@CurrentUser() user: any): Promise<StandardResponse<any>> {
+        return new StandardResponse(await this.dealersService.getDealerAccess(user.id));
+    }
+
     // ─── Dashboard Stats ────────────────────────────────────────────
 
     @Get('stats')
@@ -194,6 +200,7 @@ export class DealersController {
         @Param('field') field: string,
         @UploadedFile() file: any,
     ): Promise<StandardResponse<any>> {
+        await this.dealersService.assertDealerOwner(user.id);
         if (!isKycDocumentField(field)) {
             throw new BadRequestException('Unknown KYC document type.');
         }

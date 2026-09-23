@@ -52,6 +52,9 @@ function buildPrismaMock() {
             upsert: jest.fn(),
             update: jest.fn(),
         },
+        dealerStaff: {
+            findFirst: jest.fn().mockResolvedValue(null),
+        },
         contractorProfile: {
             updateMany: jest.fn().mockResolvedValue({ count: 0 }),
         },
@@ -287,6 +290,13 @@ describe('DealersService — KYC: submitKyc', () => {
 
     it('synchronises the dealership business identity into an existing ContractorProfile projection', async () => {
         prisma.dealerProfile.findUnique
+            // assertDealerOwner()
+            .mockResolvedValueOnce({
+                id: 'profile-1',
+                userId: 'user-1',
+                isVerified: false,
+            })
+            // submitKyc() profile + current KYC
             .mockResolvedValueOnce({
                 id: 'profile-1',
                 userId: 'user-1',
@@ -296,6 +306,7 @@ describe('DealersService — KYC: submitKyc', () => {
                 kyc: null,
                 user: { id: 'user-1', role: 'DEALER', firstName: 'John', lastName: 'Doe' },
             })
+            // syncProfileFromKyc() business projection
             .mockResolvedValueOnce({
                 id: 'profile-1',
                 userId: 'user-1',
@@ -338,3 +349,63 @@ describe('DealersService — KYC: submitKyc', () => {
         expect(mockSessionsRetrieve).not.toHaveBeenCalled();
     });
 });
+
+describe('DealersService — staff permission boundaries', () => {
+    let service: DealersService;
+    let prisma: any;
+
+    beforeEach(async () => {
+        prisma = buildPrismaMock();
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        const module: TestingModule = await buildModule(prisma);
+        service = module.get<DealersService>(DealersService);
+    });
+
+    it('prevents staff from entering the dealership owner KYC flow', async () => {
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'ADMIN',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+            },
+        });
+
+        await expect(service.getKyc('admin-staff-1'))
+            .rejects.toThrow(/only the dealership owner/i);
+    });
+
+    it('allows dealer ADMIN staff to read the team but blocks FINANCE_MANAGER', async () => {
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'ADMIN',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+                staff: [],
+            },
+        });
+        prisma.dealerStaff.findMany = jest.fn().mockResolvedValue([]);
+        (prisma as any).dealerInvite = { findMany: jest.fn().mockResolvedValue([]) };
+
+        await expect(service.getStaff('admin-staff-1')).resolves.toEqual({
+            active: [],
+            pending: [],
+        });
+
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'FINANCE_MANAGER',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+                staff: [],
+            },
+        });
+
+        await expect(service.getStaff('finance-1'))
+            .rejects.toThrow(/permission/i);
+    });
+});
+

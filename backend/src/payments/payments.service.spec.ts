@@ -45,6 +45,12 @@ function buildPrismaMock() {
             findUnique: jest.fn().mockResolvedValue({ id: 'user-1', email: 'buyer@example.com', stripeCustomerId: 'cus_existing' }),
             update: jest.fn(),
         },
+        dealerProfile: {
+            findUnique: jest.fn().mockResolvedValue(null),
+        },
+        dealerStaff: {
+            findFirst: jest.fn().mockResolvedValue(null),
+        },
         transaction: {
             create: jest.fn().mockResolvedValue({ id: 'txn-1' }),
             findUnique: jest.fn(),
@@ -447,7 +453,7 @@ describe('PaymentsService — createPaymentSheet (F2: server-side amount, ignore
 
         await expect(
             service.createPaymentSheet('listing-1', 'user-1', 125, 'COMMISSION', 'gbp'),
-        ).rejects.toThrow(/only the auction winner/i);
+        ).rejects.toThrow(/winning dealership/i);
 
         expect(prisma.transaction.create).not.toHaveBeenCalled();
         expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
@@ -475,6 +481,115 @@ describe('PaymentsService — createPaymentSheet (F2: server-side amount, ignore
         await service.createPaymentSheet('listing-1', 'user-1', 1, 'LISTING_FEE', 'gbp', 'PREMIUM');
 
         expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(expect.objectContaining({ amount: 2500 })); // £25 PREMIUM fee, not the client's £1
+    });
+
+    it('lets FINANCE_MANAGER pay a dealership auction fee while keeping the transaction on the owner', async () => {
+        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
+        prisma.user.findUnique.mockResolvedValue({
+            id: 'finance-1',
+            email: 'finance@example.com',
+            firstName: 'Fran',
+            lastName: 'Finance',
+            stripeCustomerId: 'cus_finance',
+        });
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'FINANCE_MANAGER',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+            },
+        });
+        prisma.auction.findFirst.mockResolvedValue({
+            id: 'auction-1',
+            winnerId: 'owner-1',
+            buyerFeePaid: false,
+        });
+
+        await service.createPaymentSheet('listing-1', 'finance-1', 125, 'COMMISSION', 'gbp');
+
+        expect(prisma.transaction.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                listingId: 'listing-1',
+                userId: 'owner-1',
+                amount: 125,
+                type: 'COMMISSION',
+            }),
+        });
+        expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                metadata: expect.objectContaining({
+                    userId: 'owner-1',
+                    actorUserId: 'finance-1',
+                    type: 'COMMISSION',
+                }),
+            }),
+        );
+    });
+
+    it('blocks SALES_AGENT from paying the dealership auction fee', async () => {
+        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
+        prisma.user.findUnique.mockResolvedValue({
+            id: 'sales-1',
+            email: 'sales@example.com',
+            stripeCustomerId: 'cus_sales',
+        });
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'SALES_AGENT',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+            },
+        });
+
+        await expect(
+            service.createPaymentSheet('listing-1', 'sales-1', 125, 'COMMISSION', 'gbp'),
+        ).rejects.toThrow(/does not allow auction fee payments/i);
+
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
+    });
+
+    it('lets FINANCE_MANAGER pay a dealership listing fee without moving listing ownership', async () => {
+        prisma.listing.findUnique.mockResolvedValue(
+            readyRetailListing({ sellerId: 'owner-1', badgeTier: 'BASIC' }),
+        );
+        prisma.user.findUnique.mockResolvedValue({
+            id: 'finance-1',
+            email: 'finance@example.com',
+            stripeCustomerId: 'cus_finance',
+        });
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'FINANCE_MANAGER',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+            },
+        });
+
+        await service.createPaymentSheet('listing-1', 'finance-1', 1, 'LISTING_FEE', 'gbp', 'BASIC');
+
+        expect(prisma.transaction.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                listingId: 'listing-1',
+                userId: 'owner-1',
+                amount: 1,
+                type: 'LISTING_FEE',
+            }),
+        });
+        expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                metadata: expect.objectContaining({
+                    userId: 'owner-1',
+                    actorUserId: 'finance-1',
+                    type: 'LISTING_FEE',
+                }),
+            }),
+        );
     });
 });
 

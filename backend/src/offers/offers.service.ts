@@ -14,6 +14,7 @@ import { OfferResponseStatus } from './dto/respond-offer.dto';
 import { Offer, OfferStatus } from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
 import { AuctionsService, RetailDealAuctionCancellation } from '../auctions/auctions.service';
+import { assertDealerPermission, resolveDealerActor } from '../dealers/dealer-access';
 
 const PENDING_OFFER_LIFETIME_MS = 72 * 60 * 60 * 1000;
 const COUNTER_OFFER_LIFETIME_MS = 48 * 60 * 60 * 1000;
@@ -343,7 +344,15 @@ export class OffersService {
         }
 
         if (listing.sellerId && listing.sellerId !== sellerId) {
-            throw new ForbiddenException('You do not own this listing.');
+            const actor = await resolveDealerActor(this.prisma, sellerId);
+            if (!actor || actor.ownerUserId !== listing.sellerId) {
+                throw new ForbiddenException('You do not own this listing.');
+            }
+            assertDealerPermission(
+                actor,
+                'MANAGE_OFFERS',
+                'Your dealership role does not allow offer management.',
+            );
         }
 
         return this.prisma.offer.findMany({
@@ -427,18 +436,14 @@ export class OffersService {
         let isAuthorized = listingOwnerId === sellerId;
 
         if (!isAuthorized && listingOwnerId) {
-            const ownerDealerProfile = await this.prisma.dealerProfile.findUnique({
-                where: { userId: listingOwnerId },
-            });
-            if (ownerDealerProfile) {
-                const staffMember = await this.prisma.dealerStaff.findFirst({
-                    where: {
-                        userId: sellerId,
-                        dealerProfileId: ownerDealerProfile.id,
-                        isActive: true,
-                    },
-                });
-                if (staffMember) isAuthorized = true;
+            const actor = await resolveDealerActor(this.prisma, sellerId);
+            if (actor?.ownerUserId === listingOwnerId) {
+                assertDealerPermission(
+                    actor,
+                    'MANAGE_OFFERS',
+                    'Your dealership role does not allow offer management.',
+                );
+                isAuthorized = true;
             }
         }
 
@@ -744,14 +749,15 @@ export class OffersService {
      * Returns the total number of PENDING offers across all listings owned by the seller/dealer.
      */
     async getPendingOffersCount(userId: string): Promise<number> {
-        // Handle staff/owner logic to find the dealership
         let targetOwnerId = userId;
-        const staffRecord = await this.prisma.dealerStaff.findFirst({
-            where: { userId, isActive: true },
-            select: { dealerProfile: { select: { userId: true } } }
-        });
-        if (staffRecord) {
-            targetOwnerId = staffRecord.dealerProfile.userId;
+        const actor = await resolveDealerActor(this.prisma, userId);
+        if (actor) {
+            assertDealerPermission(
+                actor,
+                'MANAGE_OFFERS',
+                'Your dealership role does not allow offer management.',
+            );
+            targetOwnerId = actor.ownerUserId;
         }
 
         const listings = await this.prisma.listing.findMany({
@@ -1180,14 +1186,15 @@ export class OffersService {
      * Seller/Dealer: Get all offers received across all their listings
      */
     async getReceivedOffers(userId: string): Promise<Offer[]> {
-        // Handle staff/owner logic to find the dealership
         let targetOwnerId = userId;
-        const staffRecord = await this.prisma.dealerStaff.findFirst({
-            where: { userId, isActive: true },
-            select: { dealerProfile: { select: { userId: true } } }
-        });
-        if (staffRecord) {
-            targetOwnerId = staffRecord.dealerProfile.userId;
+        const actor = await resolveDealerActor(this.prisma, userId);
+        if (actor) {
+            assertDealerPermission(
+                actor,
+                'MANAGE_OFFERS',
+                'Your dealership role does not allow offer management.',
+            );
+            targetOwnerId = actor.ownerUserId;
         }
 
         const listings = await this.prisma.listing.findMany({

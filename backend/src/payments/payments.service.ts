@@ -8,6 +8,10 @@ import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { EmailService } from '../email/email.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
+import {
+    assertDealerPermission,
+    resolveDealerActor,
+} from '../dealers/dealer-access';
 
 @Injectable()
 export class PaymentsService {
@@ -311,19 +315,36 @@ export class PaymentsService {
      * safely without double-applying anything.
      */
     private async getPayableAuctionForWinner(listingId: string, userId: string) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        let buyerId = userId;
+
+        if (actor) {
+            if (!actor.isVerified) {
+                throw new ForbiddenException(
+                    'Your dealer account is awaiting verification. Complete KYC before paying an auction buyer fee.',
+                );
+            }
+            assertDealerPermission(
+                actor,
+                'PAY_AUCTION_FEE',
+                'Your dealership role does not allow auction fee payments.',
+            );
+            buyerId = actor.ownerUserId;
+        }
+
         const auction = await this.prisma.auction.findFirst({
             where: { listingId, status: 'ENDED', deletedAt: null },
         });
         if (!auction?.winnerId) {
             throw new BadRequestException('This listing does not have a payable auction win');
         }
-        if (auction.winnerId !== userId) {
-            throw new ForbiddenException('Only the auction winner can pay the buyer fee');
+        if (auction.winnerId !== buyerId) {
+            throw new ForbiddenException('Only the winning dealership can pay the buyer fee');
         }
         if (auction.buyerFeePaid) {
             throw new BadRequestException('The auction buyer fee has already been paid');
         }
-        return auction;
+        return { auction, buyerId };
     }
 
     private async markAuctionBuyerFeePaid(
@@ -371,8 +392,10 @@ export class PaymentsService {
             throw new NotFoundException(`Listing "${listingId}" not found`);
         }
 
+        let transactionUserId = userId;
         if (type === 'COMMISSION') {
-            await this.getPayableAuctionForWinner(listingId, userId);
+            const payable = await this.getPayableAuctionForWinner(listingId, userId);
+            transactionUserId = payable.buyerId;
         }
 
         // Re-derive the real charge amount server-side instead of trusting the
@@ -411,7 +434,7 @@ export class PaymentsService {
         const transaction = await this.prisma.transaction.create({
             data: {
                 listingId,
-                userId,
+                userId: transactionUserId,
                 amount,
                 type: type as any,
                 status: 'PENDING',
@@ -453,7 +476,8 @@ export class PaymentsService {
             metadata: {
                 transactionId: transaction.id,
                 listingId,
-                userId,
+                userId: transactionUserId,
+                ...(transactionUserId !== userId ? { actorUserId: userId } : {}),
                 type,
             },
             success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -598,6 +622,27 @@ export class PaymentsService {
         return { url: session.url };
     }
 
+    private async resolveListingFeeBusinessId(
+        listingSellerId: string | null | undefined,
+        userId: string,
+    ): Promise<string> {
+        if (!listingSellerId) {
+            throw new BadRequestException('Listing does not have a seller');
+        }
+        if (listingSellerId === userId) return userId;
+
+        const actor = await resolveDealerActor(this.prisma, userId);
+        if (!actor || actor.ownerUserId !== listingSellerId) {
+            throw new ForbiddenException('You do not have permission to pay for this listing');
+        }
+        assertDealerPermission(
+            actor,
+            'PAY_LISTING_FEE',
+            'Your dealership role does not allow listing fee payments.',
+        );
+        return actor.ownerUserId;
+    }
+
     /**
      * Create a Stripe Checkout Session for a Listing Badge Fee.
      */
@@ -618,9 +663,10 @@ export class PaymentsService {
                 'Admin listings are free — no listing fee is charged. Submit the listing directly.',
             );
         }
-        if (listing.sellerId !== userId) {
-            throw new ForbiddenException('You do not have permission to pay for this listing');
-        }
+        const transactionUserId = await this.resolveListingFeeBusinessId(
+            listing.sellerId,
+            userId,
+        );
         if (listing.type !== 'CLASSIFIED') {
             throw new BadRequestException('Auction listings do not require a retail listing fee');
         }
@@ -654,7 +700,7 @@ export class PaymentsService {
         // Create a pending transaction record
         const transaction = await this.prisma.transaction.create({
             data: {
-                userId,
+                userId: transactionUserId,
                 listingId,
                 amount,
                 type: 'LISTING_FEE' as any,
@@ -680,7 +726,8 @@ export class PaymentsService {
             ],
             metadata: {
                 transactionId: transaction.id,
-                userId,
+                userId: transactionUserId,
+                ...(transactionUserId !== userId ? { actorUserId: userId } : {}),
                 listingId,
                 badgeTier: chargeTier,
                 type: 'LISTING_FEE',
@@ -719,8 +766,10 @@ export class PaymentsService {
         const user = await this.prisma.user.findUnique({ where: { id: userId } });
         if (!user) throw new NotFoundException('User not found');
 
+        let transactionUserId = userId;
         if (type === 'COMMISSION') {
-            await this.getPayableAuctionForWinner(listingId, userId);
+            const payable = await this.getPayableAuctionForWinner(listingId, userId);
+            transactionUserId = payable.buyerId;
         }
 
         // Re-derive the real charge amount server-side instead of trusting the
@@ -734,9 +783,10 @@ export class PaymentsService {
                 amount = Number(listing.price);
                 break;
             case 'LISTING_FEE': {
-                if (listing.sellerId !== userId) {
-                    throw new ForbiddenException('You do not have permission to pay for this listing');
-                }
+                transactionUserId = await this.resolveListingFeeBusinessId(
+                    listing.sellerId,
+                    userId,
+                );
                 if (listing.type !== 'CLASSIFIED') {
                     throw new BadRequestException('Auction listings do not require a retail listing fee');
                 }
@@ -817,7 +867,7 @@ export class PaymentsService {
         const transaction = await this.prisma.transaction.create({
             data: {
                 listingId,
-                userId,
+                userId: transactionUserId,
                 amount,
                 type: type as any,
                 status: 'PENDING',
@@ -834,7 +884,8 @@ export class PaymentsService {
             metadata: {
                 transactionId: transaction.id,
                 listingId,
-                userId,
+                userId: transactionUserId,
+                ...(transactionUserId !== userId ? { actorUserId: userId } : {}),
                 type,
                 // Only present for LISTING_FEE — the payment_intent.succeeded webhook
                 // handler needs this to know which tier to activate the listing at.
@@ -1265,7 +1316,19 @@ export class PaymentsService {
             throw new NotFoundException('Payment transaction not found');
         }
         if (transaction.userId !== userId) {
-            throw new ForbiddenException('You do not have permission to reconcile this payment');
+            const actor = await resolveDealerActor(this.prisma, userId);
+            if (
+                !actor
+                || actor.ownerUserId !== transaction.userId
+                || !actor.isVerified
+            ) {
+                throw new ForbiddenException('You do not have permission to reconcile this payment');
+            }
+            assertDealerPermission(
+                actor,
+                'PAY_AUCTION_FEE',
+                'Your dealership role does not allow auction fee payments.',
+            );
         }
         if (transaction.type !== ('COMMISSION' as any)) {
             throw new BadRequestException('Transaction is not an auction buyer fee');
@@ -1280,7 +1343,7 @@ export class PaymentsService {
 
         if (
             metadata.transactionId !== transaction.id ||
-            metadata.userId !== userId ||
+            metadata.userId !== transaction.userId ||
             metadata.listingId !== transaction.listingId ||
             metadata.type !== 'COMMISSION'
         ) {

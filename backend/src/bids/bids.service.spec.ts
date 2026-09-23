@@ -38,6 +38,14 @@ describe('BidsService — incremental bidding', () => {
                 update: jest.fn(),
             },
             user: { findUnique: jest.fn().mockResolvedValue({ firstName: 'Test', lastName: 'User' }) },
+            dealerProfile: {
+                findUnique: jest.fn().mockImplementation(({ where }: any) => Promise.resolve({
+                    id: `dealer-${where.userId}`,
+                    userId: where.userId,
+                    isVerified: true,
+                })),
+            },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $queryRaw: jest.fn(),
         };
         notificationsService = { create: jest.fn().mockResolvedValue(null) };
@@ -189,6 +197,70 @@ describe('BidsService — incremental bidding', () => {
             service.create('bidder-A', { listingId: 'listing-1', amount: 6000 } as any),
         ).rejects.toBeInstanceOf(NotFoundException);
     });
+
+    it('records a verified SALES_AGENT bid against the dealership owner identity', async () => {
+        prisma.listing.findUnique.mockResolvedValue(auctionListing);
+        prisma.user.findUnique.mockResolvedValue({
+            role: 'DEALER',
+            firstName: 'Sally',
+            lastName: 'Sales',
+        });
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'SALES_AGENT',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+            },
+        });
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.bid.create.mockImplementation(({ data }: any) => Promise.resolve({
+            id: 'bid-staff',
+            ...data,
+            timestamp: new Date(),
+        }));
+
+        await service.create('sales-1', {
+            listingId: 'listing-1',
+            amount: 7000,
+        } as any);
+
+        expect(prisma.bid.create).toHaveBeenCalledWith({
+            data: {
+                listingId: 'listing-1',
+                bidderId: 'owner-1',
+                amount: 7000,
+            },
+        });
+    });
+
+    it('blocks a FINANCE_MANAGER from placing a dealership bid', async () => {
+        prisma.listing.findUnique.mockResolvedValue(auctionListing);
+        prisma.user.findUnique.mockResolvedValue({
+            role: 'DEALER',
+            firstName: 'Fran',
+            lastName: 'Finance',
+        });
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'FINANCE_MANAGER',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+            },
+        });
+
+        await expect(
+            service.create('finance-1', {
+                listingId: 'listing-1',
+                amount: 7000,
+            } as any),
+        ).rejects.toThrow(/does not allow auction bidding/i);
+
+        expect(prisma.bid.create).not.toHaveBeenCalled();
+    });
 });
 
 describe('BidsService — cancelBid', () => {
@@ -207,6 +279,14 @@ describe('BidsService — cancelBid', () => {
                 update: jest.fn(),
             },
             user: { findUnique: jest.fn().mockResolvedValue({ firstName: 'Test', lastName: 'User' }) },
+            dealerProfile: {
+                findUnique: jest.fn().mockImplementation(({ where }: any) => Promise.resolve({
+                    id: `dealer-${where.userId}`,
+                    userId: where.userId,
+                    isVerified: true,
+                })),
+            },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $queryRaw: jest.fn(),
         };
 
@@ -356,6 +436,14 @@ describe('BidsService — current auction positions', () => {
                 update: jest.fn(),
             },
             user: { findUnique: jest.fn() },
+            dealerProfile: {
+                findUnique: jest.fn().mockImplementation(({ where }: any) => Promise.resolve({
+                    id: `dealer-${where.userId}`,
+                    userId: where.userId,
+                    isVerified: true,
+                })),
+            },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $queryRaw: jest.fn(),
         };
 

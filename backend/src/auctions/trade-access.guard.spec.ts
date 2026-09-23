@@ -13,6 +13,8 @@ describe('Trade Exchange access guards', () => {
             auction: { findUnique: jest.fn() },
             listing: { findFirst: jest.fn() },
             user: { findUnique: jest.fn() },
+            dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
         };
     });
 
@@ -40,11 +42,21 @@ describe('Trade Exchange access guards', () => {
             await expect(guard.canActivate(httpContext({ params: { id: 'auction-1' }, user: { id: 'admin-1' } })))
                 .resolves.toBe(true);
 
-            prisma.user.findUnique.mockResolvedValueOnce({ role: 'DEALER', dealerProfile: { isVerified: true } });
+            prisma.user.findUnique.mockResolvedValueOnce({ role: 'DEALER' });
+            prisma.dealerProfile.findUnique.mockResolvedValueOnce({
+                id: 'dealer-profile-ok',
+                userId: 'dealer-ok',
+                isVerified: true,
+            });
             await expect(guard.canActivate(httpContext({ params: { id: 'auction-1' }, user: { id: 'dealer-ok' } })))
                 .resolves.toBe(true);
 
-            prisma.user.findUnique.mockResolvedValueOnce({ role: 'DEALER', dealerProfile: { isVerified: false } });
+            prisma.user.findUnique.mockResolvedValueOnce({ role: 'DEALER' });
+            prisma.dealerProfile.findUnique.mockResolvedValueOnce({
+                id: 'dealer-profile-pending',
+                userId: 'dealer-pending',
+                isVerified: false,
+            });
             await expect(guard.canActivate(httpContext({ params: { id: 'auction-1' }, user: { id: 'dealer-pending' } })))
                 .rejects.toMatchObject({ message: expect.stringMatching(/verification|KYC/i) });
         });

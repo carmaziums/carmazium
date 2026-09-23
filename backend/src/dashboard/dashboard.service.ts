@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole, ServiceJobStatus } from '@prisma/client';
 import { subDays } from 'date-fns';
+import { assertDealerPermission, resolveDealerActor } from '../dealers/dealer-access';
 
 @Injectable()
 export class DashboardService {
@@ -294,7 +295,10 @@ export class DashboardService {
 
     async getDealerDashboard(userId: string, period: '7d' | '30d' = '30d') {
         const dateFilter = this.buildPeriodFilter(period);
-        const dealerProfile = await this.prisma.dealerProfile.findUnique({ where: { userId } });
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'VIEW_ANALYTICS');
+        const ownerUserId = actor.ownerUserId;
+        const dealerProfileId = actor.dealerProfileId;
 
         const [
             activeListings,
@@ -304,22 +308,20 @@ export class DashboardService {
             viewAgg,
             totalListingsForViews,
         ] = await Promise.all([
-            this.prisma.listing.count({ where: { sellerId: userId, status: 'ACTIVE', deletedAt: null, createdAt: dateFilter } }),
-            this.prisma.auction.count({ where: { listing: { sellerId: userId }, endTime: { gt: new Date() }, createdAt: dateFilter } }),
-            this.prisma.sale.count({ where: { sellerId: userId, createdAt: dateFilter } }),
-            dealerProfile
-                ? this.prisma.lead.groupBy({
-                    by: ['status'],
-                    where: { dealerProfileId: dealerProfile.id },
-                    _count: { status: true },
-                })
-                : Promise.resolve([]),
+            this.prisma.listing.count({ where: { sellerId: ownerUserId, status: 'ACTIVE', deletedAt: null, createdAt: dateFilter } }),
+            this.prisma.auction.count({ where: { listing: { sellerId: ownerUserId }, endTime: { gt: new Date() }, createdAt: dateFilter } }),
+            this.prisma.sale.count({ where: { sellerId: ownerUserId, createdAt: dateFilter } }),
+            this.prisma.lead.groupBy({
+                by: ['status'],
+                where: { dealerProfileId },
+                _count: { status: true },
+            }),
             this.prisma.listing.aggregate({
-                where: { sellerId: userId, deletedAt: null },
+                where: { sellerId: ownerUserId, deletedAt: null },
                 _sum: { viewCount: true },
                 _count: { id: true },
             }),
-            this.prisma.listing.count({ where: { sellerId: userId, deletedAt: null } }),
+            this.prisma.listing.count({ where: { sellerId: ownerUserId, deletedAt: null } }),
         ]);
 
         const funnelMap: Record<string, number> = {};

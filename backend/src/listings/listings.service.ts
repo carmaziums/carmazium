@@ -56,6 +56,11 @@ import {
     searchLiveUkVehicleMarket,
     LiveUkMarketSearchResult,
 } from './live-market-search';
+import {
+    assertDealerPermission,
+    DealerPermission,
+    resolveDealerActor,
+} from '../dealers/dealer-access';
 
 // ─── Enum mappers ─────────────────────────────────────────────────────────────
 
@@ -442,6 +447,46 @@ export class ListingsService {
     }
 
     /**
+     * Dealer staff operate one dealership inventory. Private sellers keep their
+     * own identity; dealer staff resolve to DealerProfile.userId.
+     */
+    private async resolveInventorySellerId(
+        userId: string,
+        permission: Extract<DealerPermission, 'VIEW_INVENTORY' | 'MANAGE_INVENTORY'>,
+    ): Promise<string> {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        if (!actor) return userId;
+
+        assertDealerPermission(
+            actor,
+            permission,
+            permission === 'VIEW_INVENTORY'
+                ? 'Your dealership role does not allow inventory access.'
+                : 'Your dealership role does not allow inventory changes.',
+        );
+        return actor.ownerUserId;
+    }
+
+    private async assertListingManagement(
+        userId: string,
+        sellerId: string | null | undefined,
+        message: string,
+    ): Promise<string> {
+        if (!sellerId || sellerId === userId) return sellerId ?? userId;
+
+        const actor = await resolveDealerActor(this.prisma, userId);
+        if (!actor || actor.ownerUserId !== sellerId) {
+            throw new ForbiddenException(message);
+        }
+        assertDealerPermission(
+            actor,
+            'MANAGE_INVENTORY',
+            'Your dealership role does not allow inventory changes.',
+        );
+        return actor.ownerUserId;
+    }
+
+    /**
      * Serialize listing creation for one seller + normalized VRM across every
      * backend instance. The existing pre-create lookup alone is race-prone:
      * two requests can both observe "no listing" before either insert commits.
@@ -564,10 +609,11 @@ export class ListingsService {
      * an explicit cancellation warning before any auction state is changed.
      */
     async getRetailConversionCandidate(userId: string, vrm: string) {
+        const sellerId = await this.resolveInventorySellerId(userId, 'MANAGE_INVENTORY');
         const normalizedVrm = this.normalizeVrm(vrm);
         if (!normalizedVrm) return { candidate: null };
 
-        const matches = await this.findCurrentListingsForVrm(this.prisma, userId, normalizedVrm);
+        const matches = await this.findCurrentListingsForVrm(this.prisma, sellerId, normalizedVrm);
         for (const listing of matches) {
             const auction = await this.prisma.auction.findUnique({
                 where: { listingId: listing.id },
@@ -668,6 +714,7 @@ export class ListingsService {
         userId: string,
         dto: ConvertAuctionToRetailDto,
     ) {
+        const sellerId = await this.resolveInventorySellerId(userId, 'MANAGE_INVENTORY');
         if (dto.confirmAuctionCancellation !== true) {
             throw new BadRequestException('Confirm that the existing auction will be cancelled before switching to Retail.');
         }
@@ -698,14 +745,14 @@ export class ListingsService {
 
         const archivedAt = new Date();
         const result = await this.prisma.$transaction(async (tx) => {
-            await this.lockVehicleCreation(tx, userId, normalizedVrm);
+            await this.lockVehicleCreation(tx, sellerId, normalizedVrm);
 
             const source = await tx.listing.findUnique({
                 where: { id: listingId },
                 include: { auction: true },
             });
             if (!source || source.deletedAt) throw new NotFoundException('Auction listing not found');
-            if (source.sellerId !== userId) throw new ForbiddenException('You do not own this listing');
+            if (source.sellerId !== sellerId) throw new ForbiddenException('You do not own this listing');
             if (this.normalizeVrm(source.vrm) !== normalizedVrm) {
                 throw new BadRequestException('The retail form registration does not match the existing auction vehicle.');
             }
@@ -1094,6 +1141,9 @@ export class ListingsService {
         const slug = this.generateSlug(createListingDto.title);
         const normalizedVrm = this.normalizeVrm(createListingDto.vrm);
         const originalImages = createListingDto.images ?? [];
+        const sellerId = userId
+            ? await this.resolveInventorySellerId(userId, 'MANAGE_INVENTORY')
+            : undefined;
 
         this.assertListingImageUrls(originalImages, userId);
 
@@ -1196,10 +1246,10 @@ export class ListingsService {
         // pre-insert lookup.
         const createResult = await this.prisma.$transaction(async (tx) => {
             if (userId && normalizedVrm) {
-                await this.lockVehicleCreation(tx, userId, normalizedVrm);
+                await this.lockVehicleCreation(tx, sellerId!, normalizedVrm);
                 const existing = await this.resolveExistingCreate(
                     tx,
-                    userId,
+                    sellerId!,
                     normalizedVrm,
                     {
                         type: listingType,
@@ -1266,7 +1316,7 @@ export class ListingsService {
                 isFeatured: false,
                 featuredUntil: null,
                 // Seller
-                sellerId: userId ?? null,
+                sellerId: sellerId ?? null,
                 // Vehicle type & import status
                 vehicleType: createListingDto.vehicleType ?? 'CAR',
                 isImported: createListingDto.isImported ?? false,
@@ -1340,7 +1390,7 @@ export class ListingsService {
         // retained for any non-auction create flow that legitimately starts in
         // PENDING_REVIEW.
         if (listingStatus === 'PENDING_REVIEW') {
-            this.notifySubmittedForReview({ id: listing.id, title: listing.title, sellerId: userId ?? listing.sellerId }).catch(() => { });
+            this.notifySubmittedForReview({ id: listing.id, title: listing.title, sellerId: sellerId ?? listing.sellerId }).catch(() => { });
         }
 
         return listing;
@@ -1751,10 +1801,11 @@ export class ListingsService {
         // First, fetch the listing to verify ownership
         const listing = await this.findById(id);
 
-        // Ownership check (skip if no sellerId - for development)
-        if (listing.sellerId && listing.sellerId !== userId) {
-            throw new ForbiddenException('You do not have permission to update this listing');
-        }
+        await this.assertListingManagement(
+            userId,
+            listing.sellerId,
+            'You do not have permission to update this listing',
+        );
 
         // Build update data with proper type mapping
         const updateData: any = {};
@@ -1864,21 +1915,11 @@ export class ListingsService {
     ): Promise<Listing> {
         const listing = await this.findById(id);
 
-        if (listing.sellerId && listing.sellerId !== userId) {
-            // Allow active dealer staff of the listing's owner to update status as well
-            const staffMember = listing.sellerId
-                ? await this.prisma.dealerStaff.findFirst({
-                    where: {
-                        userId,
-                        dealerProfile: { userId: listing.sellerId },
-                        isActive: true,
-                    },
-                })
-                : null;
-            if (!staffMember) {
-                throw new ForbiddenException('You do not have permission to update this listing');
-            }
-        }
+        await this.assertListingManagement(
+            userId,
+            listing.sellerId,
+            'You do not have permission to update this listing',
+        );
 
         // Going live must always go through payment + admin review (publishListing()
         // then an admin approval) — this generic status endpoint may only relist a
@@ -1948,9 +1989,14 @@ export class ListingsService {
     async publishListing(id: string, userId: string): Promise<{ activated: boolean; requiresPayment?: boolean; pendingReview?: boolean }> {
         const listing = await this.findById(id);
 
-        if (!listing || listing.sellerId !== userId) {
-            throw new ForbiddenException('You do not have permission to publish this listing');
+        if (!listing) {
+            throw new NotFoundException('Listing not found');
         }
+        await this.assertListingManagement(
+            userId,
+            listing.sellerId,
+            'You do not have permission to publish this listing',
+        );
 
         // HPI is an optional paid add-on for both Retail and Auction listings.
         // Submission readiness is based on listing completeness only.
@@ -2175,18 +2221,11 @@ export class ListingsService {
     ): Promise<Listing> {
         const listing = await this.findById(id);
 
-        if (listing.sellerId && listing.sellerId !== userId) {
-            const staffMember = await this.prisma.dealerStaff.findFirst({
-                where: {
-                    userId,
-                    dealerProfile: { userId: listing.sellerId },
-                    isActive: true,
-                },
-            });
-            if (!staffMember) {
-                throw new ForbiddenException('You do not have permission to mark this listing as sold');
-            }
-        }
+        await this.assertListingManagement(
+            userId,
+            listing.sellerId,
+            'You do not have permission to mark this listing as sold',
+        );
 
         if (listing.status === 'SOLD') {
             throw new BadRequestException('This listing is already marked as sold');
@@ -2294,6 +2333,7 @@ export class ListingsService {
         userId: string,
         dto: { price: number; badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM' },
     ): Promise<{ linkedListingId: string }> {
+        const sellerId = await this.resolveInventorySellerId(userId, 'MANAGE_INVENTORY');
         const newListingId = randomUUID();
 
         return this.prisma.$transaction(async (tx) => {
@@ -2301,7 +2341,7 @@ export class ListingsService {
                 where: { id: listingId },
             });
             if (!source || source.deletedAt) throw new NotFoundException('Listing not found');
-            if (source.sellerId !== userId) throw new ForbiddenException('You do not own this listing');
+            if (source.sellerId !== sellerId) throw new ForbiddenException('You do not own this listing');
             if (source.type !== 'AUCTION') throw new BadRequestException('Source listing must be of type AUCTION');
 
             // A repeated request must resume the existing linked retail DRAFT,
@@ -2329,7 +2369,7 @@ export class ListingsService {
             const claimed = await tx.listing.updateMany({
                 where: {
                     id: listingId,
-                    sellerId: userId,
+                    sellerId,
                     type: 'AUCTION',
                     linkedListingId: null,
                     deletedAt: null,
@@ -2384,7 +2424,7 @@ export class ListingsService {
                     exteriorGrade: source.exteriorGrade,
                     bannerLabel: source.bannerLabel,
                     badgeTier: dto.badgeTier,
-                    sellerId: userId,
+                    sellerId,
                     vehicleType: source.vehicleType,
                     isImported: source.isImported,
                     stolenRecovered: source.stolenRecovered,
@@ -2409,6 +2449,7 @@ export class ListingsService {
         userId: string,
         dto: AlsoAuctionDto,
     ): Promise<{ linkedListingId: string; auctionId: string }> {
+        const sellerId = await this.resolveInventorySellerId(userId, 'MANAGE_INVENTORY');
         const startTime = new Date(dto.startTime);
         if (Number.isNaN(startTime.getTime()) || startTime.getTime() < Date.now() - 60_000) {
             throw new BadRequestException('Invalid or past startTime');
@@ -2431,7 +2472,7 @@ export class ListingsService {
             if (!source || source.deletedAt) {
                 throw new NotFoundException('Listing not found');
             }
-            if (source.sellerId !== userId) {
+            if (source.sellerId !== sellerId) {
                 throw new ForbiddenException('You do not own this listing');
             }
             if (source.type !== 'CLASSIFIED') {
@@ -2474,7 +2515,7 @@ export class ListingsService {
             const claimed = await tx.listing.updateMany({
                 where: {
                     id: listingId,
-                    sellerId: userId,
+                    sellerId,
                     type: 'CLASSIFIED',
                     status: 'ACTIVE',
                     linkedListingId: null,
@@ -2526,7 +2567,7 @@ export class ListingsService {
                     exteriorGrade: source.exteriorGrade,
                     bannerLabel: source.bannerLabel,
                     badgeTier: 'FREE',
-                    sellerId: userId,
+                    sellerId,
                     vehicleType: source.vehicleType,
                     isImported: source.isImported,
                     stolenRecovered: source.stolenRecovered,
@@ -2580,10 +2621,11 @@ export class ListingsService {
         // First, fetch the listing to verify ownership
         const listing = await this.findById(id);
 
-        // Ownership check (skip if no sellerId - for development)
-        if (listing.sellerId && listing.sellerId !== userId) {
-            throw new ForbiddenException('You do not have permission to delete this listing');
-        }
+        await this.assertListingManagement(
+            userId,
+            listing.sellerId,
+            'You do not have permission to delete this listing',
+        );
 
         // Soft delete by setting deletedAt
         const deletedListing = await this.prisma.listing.update({
@@ -2605,6 +2647,7 @@ export class ListingsService {
      * should pass `includeSold = true`.
      */
     async findMyListings(sellerId: string, filterDto?: ListingFilterDto): Promise<{ data: Listing[]; total: number }> {
+        sellerId = await this.resolveInventorySellerId(sellerId, 'VIEW_INVENTORY');
         const page = filterDto?.page || 1;
         const limit = filterDto?.limit || 20;
         const skip = (page - 1) * limit;
@@ -3081,6 +3124,7 @@ export class ListingsService {
             title?: string;
         },
     ): Promise<Listing> {
+        const sellerId = await this.resolveInventorySellerId(userId, 'MANAGE_INVENTORY');
         const scraped = await this.scraper.scrape(url);
 
         const title = overrides.title ?? scraped.title ?? 'Imported Listing';
@@ -3109,10 +3153,10 @@ export class ListingsService {
 
         const importResult = await this.prisma.$transaction(async (tx) => {
             if (normalizedVrm) {
-                await this.lockVehicleCreation(tx, userId, normalizedVrm);
+                await this.lockVehicleCreation(tx, sellerId, normalizedVrm);
                 const existing = await this.resolveExistingCreate(
                     tx,
-                    userId,
+                    sellerId,
                     normalizedVrm,
                     {
                         type: 'CLASSIFIED',
@@ -3155,7 +3199,7 @@ export class ListingsService {
                     bodyType: scraped.bodyType ? (bodyMap[scraped.bodyType] ?? null) : null,
                     location: scraped.location ?? null,
                     badgeTier,
-                    sellerId: userId,
+                    sellerId,
                     importedFromUrl: scraped.originalUrl,
                     importedSource: scraped.platform,
                 } as any,
