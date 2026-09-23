@@ -17,6 +17,7 @@ const ONBOARDING_KEY = 'czm_onboarding_complete';
  *  worst case is one extra viewing of the carousel, never a skipped wizard. */
 const INTRO_SEEN_KEY = 'czm_intro_seen';
 const PENDING_SIGNUP_ROLE_KEY = 'czm_pending_signup_role';
+const OAUTH_SIGNUP_INTENT_TTL_MS = 15 * 60 * 1000;
 
 export type AccountRole =
   | 'buyer'
@@ -29,6 +30,42 @@ export type AccountRole =
 
 type PreviewRole = 'buyer' | 'seller' | 'dealer';
 type SignupRole = 'BUYER' | 'DEALER';
+
+type PendingSignupRoleIntent = {
+  role: SignupRole;
+  createdAt: number;
+};
+
+const savePendingSignupRoleIntent = async (role: SignupRole) => {
+  const intent: PendingSignupRoleIntent = { role, createdAt: Date.now() };
+  await SecureStore.setItemAsync(PENDING_SIGNUP_ROLE_KEY, JSON.stringify(intent));
+};
+
+const clearPendingSignupRoleIntent = async () => {
+  await SecureStore.deleteItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => {});
+};
+
+const readPendingSignupRoleIntent = async (): Promise<SignupRole | null> => {
+  const raw = await SecureStore.getItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => null);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<PendingSignupRoleIntent>;
+    const validRole = parsed.role === 'BUYER' || parsed.role === 'DEALER';
+    const validCreatedAt = typeof parsed.createdAt === 'number' && Number.isFinite(parsed.createdAt);
+    const age = validCreatedAt ? Date.now() - parsed.createdAt! : Number.POSITIVE_INFINITY;
+    if (!validRole || age < 0 || age > OAUTH_SIGNUP_INTENT_TTL_MS) {
+      await clearPendingSignupRoleIntent();
+      return null;
+    }
+    return parsed.role!;
+  } catch {
+    // Older builds stored the bare role string. Treat that value as stale
+    // rather than allowing an indefinitely-lived intent to affect a new login.
+    await clearPendingSignupRoleIntent();
+    return null;
+  }
+};
 
 const mapAccountRole = (role?: string | null): AccountRole => {
   switch ((role ?? '').toUpperCase()) {
@@ -188,11 +225,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   prepareOAuthSignupRole: async (role: SignupRole) => {
-    await SecureStore.setItemAsync(PENDING_SIGNUP_ROLE_KEY, role);
+    await savePendingSignupRoleIntent(role);
   },
 
   clearOAuthSignupRole: async () => {
-    await SecureStore.deleteItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => {});
+    await clearPendingSignupRoleIntent();
   },
 
   completeIntro: async () => {
@@ -349,8 +386,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           // into provider metadata. Preserve the explicit Partner Account
           // choice made on the mobile signup screen and apply it only through
           // the backend's self-service role-elevation endpoint.
-          const pendingSignupRole = await SecureStore.getItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => null);
-          if (pendingSignupRole === 'DEALER' && profile.role !== 'DEALER') {
+          const pendingSignupRole = await readPendingSignupRoleIntent();
+          const canApplyPartnerIntent =
+            pendingSignupRole === 'DEALER' &&
+            (profile.role === 'BUYER' || profile.role === 'SELLER');
+
+          if (canApplyPartnerIntent) {
             try {
               await apiClient('/users/elevate', {
                 method: 'POST',
@@ -363,7 +404,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             }
           }
           if (pendingSignupRole) {
-            await SecureStore.deleteItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => {});
+            await clearPendingSignupRoleIntent();
           }
 
           const accountRole = mapAccountRole(profile.role);
@@ -413,7 +454,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     // A normal login is never a continuation of a previously abandoned
     // OAuth signup. Clear any stale account-type intent before authenticating.
-    await SecureStore.deleteItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => {});
+    await clearPendingSignupRoleIntent();
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -505,7 +546,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     // Password signup carries its role explicitly in this request; a stale
     // OAuth intent from a cancelled browser flow must not survive alongside it.
-    await SecureStore.deleteItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => {});
+    await clearPendingSignupRoleIntent();
     try {
       const parts = fullName.trim().split(/\s+/);
       const firstName = parts[0] || '';
@@ -649,7 +690,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         console.warn('Backend logout failed:', e);
       }
       await supabase.auth.signOut();
-      await SecureStore.deleteItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => {});
+      await clearPendingSignupRoleIntent();
     } catch (e) {
       console.warn('Supabase logout error:', e);
     } finally {
