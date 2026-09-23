@@ -37,13 +37,14 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [passwordFocused, setPasswordFocused] = useState(false);
   const passwordRef = useRef<TextInput>(null);
 
-  const { login, isLoading } = useAuthStore();
+  const { login, clearOAuthSignupRole, isLoading } = useAuthStore();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const handleOAuthLogin = async (provider: 'google' | 'apple') => {
     setFormError(null);
+    await clearOAuthSignupRole();
     const setProviderLoading = provider === 'google' ? setIsGoogleLoading : setIsAppleLoading;
     setProviderLoading(true);
     try {
