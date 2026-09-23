@@ -43,6 +43,17 @@ function publicObjectKey(url) {
     return key.startsWith('handover/') || key.includes('/handover/') ? key : null;
 }
 
+/** True when the object is still present in the public bucket. */
+async function objectExists(supabase, key) {
+    const at = key.lastIndexOf('/');
+    const dir = at === -1 ? '' : key.slice(0, at);
+    const name = at === -1 ? key : key.slice(at + 1);
+    const { data, error } = await supabase.storage.from(PUBLIC_BUCKET)
+        .list(dir, { limit: 100, search: name });
+    if (error) throw new Error(`stat ${key}: ${error.message}`);
+    return (data || []).some((entry) => entry.name === name);
+}
+
 /** Every object under a prefix, recursing one level into per-auction folders. */
 async function listPrefix(supabase, prefix) {
     const out = [];
@@ -97,7 +108,11 @@ async function main() {
     // bucket. Both groups go through the same private-copy verification.
     const objects = await listPrefix(supabase, 'handover');
     for (const key of referenced.keys()) {
-        if (!key.startsWith('handover/') && !objects.includes(key)) objects.push(key);
+        if (key.startsWith('handover/') || objects.includes(key)) continue;
+        // Confirm it is actually still there. Without this the audit reports a
+        // key forever, because handoverProofUrl stays set after the object is
+        // deleted — an audit that always shows exposure is worse than none.
+        if (await objectExists(supabase, key)) objects.push(key);
     }
 
     const toDelete = [];
@@ -175,8 +190,10 @@ async function main() {
     if (!apply) {
         console.log('\nDry run. Re-run with --apply to quarantine and delete.');
     } else {
-        console.log('\nUnreferenced proof was copied to auction-handover-documents/orphaned/');
-        console.log('before deletion, so nothing was destroyed — only made non-public.');
+        if (quarantined.length) {
+            console.log('\nUnreferenced proof was copied to auction-handover-documents/orphaned/');
+            console.log('before deletion, so nothing was destroyed — only made non-public.');
+        }
     }
 
     await prisma.$disconnect();
