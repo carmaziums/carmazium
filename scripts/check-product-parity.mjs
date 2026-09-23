@@ -255,6 +255,10 @@ const mobileBuyerBids = read('carmazium app/carmazium app/src/screens/buyer/Buye
 const backendBidsService = read('backend/src/bids/bids.service.ts');
 const paymentsController = read('backend/src/payments/payments.controller.ts');
 const buyerPaymentsService = read('backend/src/payments/payments.service.ts');
+const buyerAuctionsService = read('backend/src/auctions/auctions.service.ts');
+const buyerServicesService = read('backend/src/services/services.service.ts');
+const webAuctionApi = read('src/lib/auctionApi.ts');
+const mobileAuctionApi = read('carmazium app/carmazium app/src/lib/auctionApi.ts');
 
 if (
   !webVehicleDetail.includes('message || undefined') ||
@@ -308,6 +312,20 @@ if (
   fail('Auction buyer fee charging must be winner-only and idempotently winner-bound');
 } else {
   ok('Auction buyer fee charging is restricted to the recorded winner');
+}
+
+if (
+  !buyerServicesService.includes('InspectionOutcome.FAULTS_FOUND') ||
+  !buyerServicesService.includes('createInspectionFromAuction') ||
+  !buyerAuctionsService.includes('async refuseAfterInspection(') ||
+  !buyerAuctionsService.includes('issueFullRefundForAuctionInspection') ||
+  !buyerPaymentsService.includes('amount: 12500') ||
+  !webAuctionApi.includes('/refuse-after-inspection') ||
+  !mobileAuctionApi.includes('/refuse-after-inspection')
+) {
+  fail('Auction inspection refusal must remain a verified, full-refund backend contract on both clients');
+} else {
+  ok('Auction inspection refusal is fault-verified and refunds the full £125 buyer fee');
 }
 
 if (
