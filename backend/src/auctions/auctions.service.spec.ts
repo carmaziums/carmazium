@@ -498,6 +498,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
 describe('AuctionsService — create', () => {
     let service: AuctionsService;
     let prisma: any;
+    let paymentsService: { issueFullRefundForAuctionInspection: jest.Mock };
 
     const makeDto = (overrides: Record<string, any> = {}) => ({
         listingId: 'listing-1',
@@ -553,9 +554,19 @@ describe('AuctionsService — create', () => {
             hpiReport: {
                 findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }),
             },
+            sale: {
+                deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+            },
+            sellerProfile: {
+                update: jest.fn().mockResolvedValue({}),
+            },
             $transaction: jest.fn(async (arg: any) =>
                 typeof arg === 'function' ? arg(prisma) : Promise.all(arg)
             ),
+        };
+
+        paymentsService = {
+            issueFullRefundForAuctionInspection: jest.fn().mockResolvedValue(undefined),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -564,7 +575,7 @@ describe('AuctionsService — create', () => {
                 { provide: PrismaService, useValue: prisma },
                 { provide: NotificationsService, useValue: { create: jest.fn() } },
                 { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
-                { provide: AuctionGateway, useValue: {} },
+                { provide: AuctionGateway, useValue: { broadcastAuctionEnd: jest.fn() } },
                 {
                     provide: HandoverDocumentsService,
                     useValue: {
@@ -578,6 +589,7 @@ describe('AuctionsService — create', () => {
                 },
                 { provide: EmailService, useValue: {} },
                 { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
+                { provide: PaymentsService, useValue: paymentsService },
             ],
         }).compile();
 
