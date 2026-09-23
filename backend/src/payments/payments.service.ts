@@ -305,6 +305,35 @@ export class PaymentsService {
     private readonly AUCTION_SELLER_BONUS = 100;
     private readonly AUCTION_PLATFORM_FEE = 25;
 
+    /**
+     * Apply a confirmed auction buyer-fee transaction to the ended auction.
+     * Idempotent so webhook delivery and explicit client reconciliation can race
+     * safely without double-applying anything.
+     */
+    private async markAuctionBuyerFeePaid(
+        transactionId: string,
+        listingId: string | null | undefined,
+    ): Promise<boolean> {
+        if (!listingId) return false;
+
+        const auction = await this.prisma.auction.findFirst({
+            where: { listingId, status: 'ENDED', deletedAt: null },
+        });
+        if (!auction) return false;
+
+        if (!auction.buyerFeePaid || auction.buyerFeeTransactionId !== transactionId) {
+            await this.prisma.auction.update({
+                where: { id: auction.id },
+                data: {
+                    buyerFeePaid: true,
+                    buyerFeeTransactionId: transactionId,
+                },
+            });
+        }
+
+        return true;
+    }
+
     async createCheckoutSession(
         listingId: string,
         userId: string,
@@ -974,20 +1003,11 @@ export class PaymentsService {
                     }
                 }
 
-                // Auction buyer fee paid — mark auction and record transaction ID
-                if (type === 'COMMISSION') {
-                    const auction = await this.prisma.auction.findFirst({
-                        where: { listingId, status: 'ENDED', deletedAt: null },
-                    });
-                    if (auction) {
-                        await this.prisma.auction.update({
-                            where: { id: auction.id },
-                            data: {
-                                buyerFeePaid: true,
-                                buyerFeeTransactionId: transactionId,
-                            },
-                        });
-                    }
+                // Auction buyer fee paid — mark auction and record transaction ID.
+                // Shared with native PaymentIntent reconciliation so the two
+                // clients cannot drift on the post-payment side effect.
+                if (type === 'COMMISSION' && transactionId) {
+                    await this.markAuctionBuyerFeePaid(transactionId, listingId);
                 }
                 break;
             }
@@ -1047,19 +1067,8 @@ export class PaymentsService {
                     });
                 }
 
-                if (type === 'COMMISSION' && listingId) {
-                    const auction = await this.prisma.auction.findFirst({
-                        where: { listingId, status: 'ENDED', deletedAt: null },
-                    });
-                    if (auction) {
-                        await this.prisma.auction.update({
-                            where: { id: auction.id },
-                            data: {
-                                buyerFeePaid: true,
-                                buyerFeeTransactionId: transactionId,
-                            },
-                        });
-                    }
+                if (type === 'COMMISSION' && transactionId) {
+                    await this.markAuctionBuyerFeePaid(transactionId, listingId);
                 }
 
                 if (type === 'HPI_REPORT' && listingId) {
@@ -1187,30 +1196,85 @@ export class PaymentsService {
             where: { stripePaymentId: sessionId, type: 'COMMISSION' as any },
         });
         if (!transaction) return { applied: false };
-        if (transaction.status === 'COMPLETED') return { applied: true };
+
+        if (transaction.status !== 'COMPLETED') {
+            const stripe = await this.getStripe();
+            const session = await stripe.checkout.sessions.retrieve(sessionId);
+            if (session.payment_status !== 'paid') return { applied: false };
+
+            await this.prisma.transaction.update({
+                where: { id: transaction.id },
+                data: { status: 'COMPLETED' },
+            });
+        }
+
+        const applied = await this.markAuctionBuyerFeePaid(
+            transaction.id,
+            transaction.listingId,
+        );
+        return { applied };
+    }
+
+    /**
+     * Native Payment Sheet equivalent of applyAuctionFee().
+     *
+     * React Native receives a successful PaymentSheet result before our Stripe
+     * webhook is guaranteed to have reached Fly. Reconcile the exact
+     * PaymentIntent created for this user/transaction before mobile is allowed
+     * to show the auction fee as confirmed.
+     */
+    async reconcileAuctionFeeIntent(
+        transactionId: string,
+        userId: string,
+    ): Promise<{ applied: boolean; status: string }> {
+        const transaction = await this.prisma.transaction.findUnique({
+            where: { id: transactionId },
+        });
+        if (!transaction) {
+            throw new NotFoundException('Payment transaction not found');
+        }
+        if (transaction.userId !== userId) {
+            throw new ForbiddenException('You do not have permission to reconcile this payment');
+        }
+        if (transaction.type !== ('COMMISSION' as any)) {
+            throw new BadRequestException('Transaction is not an auction buyer fee');
+        }
+        if (!transaction.stripePaymentId?.startsWith('pi_')) {
+            throw new BadRequestException('Transaction does not reference a native PaymentIntent');
+        }
 
         const stripe = await this.getStripe();
-        const session = await stripe.checkout.sessions.retrieve(sessionId);
-        if (session.payment_status !== 'paid') return { applied: false };
+        const paymentIntent = await stripe.paymentIntents.retrieve(transaction.stripePaymentId);
+        const metadata = paymentIntent.metadata ?? {};
 
-        await this.prisma.transaction.update({
-            where: { id: transaction.id },
-            data: { status: 'COMPLETED' },
-        });
-
-        const listingId = session.metadata?.listingId;
-        if (listingId) {
-            const auction = await this.prisma.auction.findFirst({
-                where: { listingId, status: 'ENDED', deletedAt: null },
-            });
-            if (auction && !auction.buyerFeePaid) {
-                await this.prisma.auction.update({
-                    where: { id: auction.id },
-                    data: { buyerFeePaid: true, buyerFeeTransactionId: transaction.id },
-                });
-            }
+        if (
+            metadata.transactionId !== transaction.id ||
+            metadata.userId !== userId ||
+            metadata.listingId !== transaction.listingId ||
+            metadata.type !== 'COMMISSION'
+        ) {
+            throw new BadRequestException('PaymentIntent metadata does not match this auction fee');
         }
-        return { applied: true };
+
+        if (paymentIntent.status !== 'succeeded') {
+            return { applied: false, status: paymentIntent.status };
+        }
+
+        if (transaction.status !== 'COMPLETED') {
+            await this.prisma.transaction.update({
+                where: { id: transaction.id },
+                data: {
+                    status: 'COMPLETED',
+                    stripePaymentId: paymentIntent.id,
+                },
+            });
+        }
+
+        const applied = await this.markAuctionBuyerFeePaid(
+            transaction.id,
+            transaction.listingId,
+        );
+        return { applied, status: paymentIntent.status };
     }
 
     /**
