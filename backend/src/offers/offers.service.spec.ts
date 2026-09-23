@@ -7,6 +7,7 @@ import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { EmailService } from '../email/email.service';
 import { OfferResponseStatus } from './dto/respond-offer.dto';
 import { AuctionsService } from '../auctions/auctions.service';
+import { DealersService } from '../dealers/dealers.service';
 
 /**
  * Retail offers are private negotiations. One buyer's amount must never create
@@ -79,6 +80,7 @@ describe('OffersService — private retail negotiations', () => {
                     },
                 },
                 { provide: AuctionsService, useValue: auctionsService },
+                { provide: DealersService, useValue: { syncRetailLeadActivity: jest.fn().mockResolvedValue(null) } },
             ],
         }).compile();
 
