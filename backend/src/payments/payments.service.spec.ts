@@ -8,6 +8,7 @@ const mockCheckoutSessionsCreate = jest.fn();
 const mockCheckoutSessionsRetrieve = jest.fn();
 const mockRefundsCreate = jest.fn();
 const mockRefundsList = jest.fn();
+const mockTransfersCreate = jest.fn();
 const mockHpiCreatePendingReport = jest.fn();
 
 jest.mock('stripe', () => {
@@ -18,6 +19,7 @@ jest.mock('stripe', () => {
         webhooks: { constructEvent: mockConstructEvent },
         checkout: { sessions: { create: mockCheckoutSessionsCreate, retrieve: mockCheckoutSessionsRetrieve } },
         refunds: { create: mockRefundsCreate, list: mockRefundsList },
+        transfers: { create: mockTransfersCreate },
     }));
     // `payments.service.ts` loads Stripe via a dynamic `await import('stripe')`
     // (unlike dealers.service.ts's static import) — __esModule: true is required
@@ -1041,6 +1043,39 @@ describe('PaymentsService — auction buyer-fee refunds', () => {
         expect(prisma.transaction.update).not.toHaveBeenCalled();
     });
 
+});
+
+describe('PaymentsService — seller bonus Stripe idempotency', () => {
+    let service: PaymentsService;
+    let prisma: any;
+
+    beforeEach(async () => {
+        mockTransfersCreate.mockReset();
+        prisma = buildPrismaMock();
+        const module: TestingModule = await buildModule(prisma);
+        service = module.get<PaymentsService>(PaymentsService);
+    });
+
+    it('uses the supplied idempotency key for the £100 Connect transfer', async () => {
+        mockTransfersCreate.mockResolvedValue({ id: 'tr_seller_bonus' });
+
+        await expect(
+            service.issueSellerPayout(
+                'acct_seller',
+                10000,
+                'auction-seller-bonus-auction-1',
+            ),
+        ).resolves.toBe('tr_seller_bonus');
+
+        expect(mockTransfersCreate).toHaveBeenCalledWith(
+            {
+                amount: 10000,
+                currency: 'gbp',
+                destination: 'acct_seller',
+            },
+            { idempotencyKey: 'auction-seller-bonus-auction-1' },
+        );
+    });
 });
 
 describe('PaymentsService — createCheckoutSession (F6: server-side amount, same fix as F2)', () => {

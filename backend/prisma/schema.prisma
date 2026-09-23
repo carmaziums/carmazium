@@ -989,7 +989,7 @@ model Auction {
   handoverSubmittedAt     DateTime?
   sellerBonusReleased     Boolean   @default(false)
   sellerBonusReleasedAt   DateTime?
-  stripePayoutTransferId  String? // Set when Stripe transfer succeeds
+  stripePayoutTransferId  String? // Stripe transfer id, or transient claim:seller-bonus:<auctionId> while an idempotent payout is being finalized
   stripePayoutError       String? // Set when auto-payout didn't happen (no Connect account, Stripe error, or test-mode skip) — needs manual action
   stripeRefundError       String? // Set if a buyer-fee refund fails — needs manual action
   buyerRefusedAt         DateTime?
