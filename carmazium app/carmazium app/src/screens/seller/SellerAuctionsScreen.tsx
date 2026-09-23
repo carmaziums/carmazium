@@ -202,7 +202,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   // Auction Results modal (ENDED auctions)
   const [resultsAuction, setResultsAuction] = useState<AuctionItem | null>(null);
   const [connectingChat, setConnectingChat] = useState(false);
-  const [cancelAuction, setCancelAuction] = useState<AuctionItem | null>(null);
+  const [cancelSaleAuction, setCancelSaleAuction] = useState<AuctionItem | null>(null);
 
   // Create auction modal
   const [createModalVisible, setCreateModalVisible] = useState(false);
@@ -1142,7 +1142,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 marginTop: 10,
               }}
               activeOpacity={0.8}
-              onPress={() => setCancelAuction(item)}
+              onPress={() => setCancelSaleAuction(item)}
             >
               <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent }}>
                 Request Sale Cancellation
@@ -1168,7 +1168,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     handoverError,
     handoverUploading,
     handleHandoverUpload,
-    setCancelAuction,
+    setCancelSaleAuction,
   ]);
 
   // Won auctions are a read-only, buyer-perspective list — none of the
@@ -1228,12 +1228,12 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   return (
     <View style={styles.container}>
-      {cancelAuction && (
+      {cancelSaleAuction && (
         <SaleCancellationSheet
-          visible={cancelAuction != null}
-          listingId={cancelAuction.listingId || cancelAuction.listing.id}
-          vehicleTitle={cancelAuction.listing.title || 'Vehicle'}
-          onClose={() => setCancelAuction(null)}
+          visible={cancelSaleAuction != null}
+          listingId={cancelSaleAuction.listingId || cancelSaleAuction.listing.id}
+          vehicleTitle={cancelSaleAuction.listing.title || 'Vehicle'}
+          onClose={() => setCancelSaleAuction(null)}
           onCreated={() => void fetchAuctions(true)}
         />
       )}
