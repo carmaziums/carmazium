@@ -102,6 +102,7 @@ export class DealersService {
 
     /** Get the KYC record for a dealer — auto-creates profile for new DEALER registrations */
     async getKyc(userId: string) {
+        await this.assertDealerOwner(userId);
         let profileResult = await this.prisma.dealerProfile.findUnique({
             where: { userId },
             include: { kyc: true },
@@ -138,6 +139,7 @@ export class DealersService {
 
     /** Submit/Update the KYC record for a dealer — auto-creates profile for new DEALER registrations */
     async submitKyc(userId: string, dto: CreateKycDto) {
+        await this.assertDealerOwner(userId);
         let profileResult = await this.prisma.dealerProfile.findUnique({
             where: { userId },
             include: { kyc: true, user: true },
@@ -333,6 +335,7 @@ export class DealersService {
 
     /** Create a Stripe Checkout Session for the £1 KYC verification fee (hosted, redirect-based) */
     async createKycCheckoutSession(userId: string): Promise<{ url?: string; alreadyPaid: boolean; chargedAt?: Date }> {
+        await this.assertDealerOwner(userId);
         const profileResult = await this.prisma.dealerProfile.findUnique({
             where: { userId },
             include: { kyc: true },
@@ -530,6 +533,8 @@ export class DealersService {
     // ─── Dashboard KPIs ─────────────────────────────────────────────
 
     async getStats(userId: string) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'VIEW_ANALYTICS');
         const profile = await this.getDealerProfile(userId);
 
         // The dealership owner's userId is the canonical sellerId for all listings/sales
@@ -603,6 +608,8 @@ export class DealersService {
     }
 
     async getAnalytics(userId: string, range = '30d', from?: string, to?: string) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'VIEW_ANALYTICS');
         const profile = await this.getDealerProfile(userId);
         const ownerUserId = (profile as any).userId ?? userId;
 
@@ -1074,6 +1081,8 @@ export class DealersService {
     // ─── Leads (CRM) ───────────────────────────────────────────────
 
     async getLeads(userId: string, status?: string, page = 1, limit = 20) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'MANAGE_CRM');
         const profile = await this.getDealerProfile(userId);
 
         const where: any = { dealerProfileId: profile.id };
@@ -1097,6 +1106,8 @@ export class DealersService {
     }
 
     async createLead(userId: string, dto: CreateLeadDto) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'MANAGE_CRM');
         const profile = await this.getDealerProfile(userId);
 
         return this.prisma.lead.create({
@@ -1118,6 +1129,8 @@ export class DealersService {
     }
 
     async updateLead(userId: string, leadId: string, dto: UpdateLeadDto) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'MANAGE_CRM');
         const profile = await this.getDealerProfile(userId);
 
         const lead = await this.prisma.lead.findFirst({
@@ -1142,6 +1155,8 @@ export class DealersService {
     // ─── Staff (RBAC) ───────────────────────────────────────────────
 
     async getStaff(userId: string) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'MANAGE_TEAM');
         const profile = await this.getDealerProfile(userId);
         
         const [activeStaff, pendingInvites] = await Promise.all([
@@ -1171,6 +1186,8 @@ export class DealersService {
     }
 
     async inviteStaff(userId: string, dto: InviteStaffDto) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'MANAGE_TEAM');
         const profile = await this.getDealerProfile(userId);
         const email = dto.email.toLowerCase().trim();
 
@@ -1297,6 +1314,8 @@ export class DealersService {
     }
 
     async removeStaff(userId: string, staffId: string) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'MANAGE_TEAM');
         const profile = await this.getDealerProfile(userId);
 
         const staff = await this.prisma.dealerStaff.findFirst({
@@ -1331,11 +1350,14 @@ export class DealersService {
     // ─── Purchases ────────────────────────────────────────────────────
 
     async getDealerPurchases(userId: string, page = 1, limit = 20) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'VIEW_PURCHASES');
+        const buyerId = actor.ownerUserId;
         const skip = (page - 1) * limit;
 
         const [sales, total] = await Promise.all([
             this.prisma.sale.findMany({
-                where: { buyerId: userId },
+                where: { buyerId },
                 include: {
                     listing: {
                         select: {
@@ -1365,7 +1387,7 @@ export class DealersService {
                 skip,
                 take: limit,
             }),
-            this.prisma.sale.count({ where: { buyerId: userId } }),
+            this.prisma.sale.count({ where: { buyerId } }),
         ]);
 
         const data = sales.map((sale) => {
