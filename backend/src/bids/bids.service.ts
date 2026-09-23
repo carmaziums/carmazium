@@ -360,6 +360,8 @@ export class BidsService {
                                     endTime: true,
                                     winnerId: true,
                                     winningBidAmount: true,
+                                    wonAt: true,
+                                    buyerFeePaid: true,
                                 },
                             },
                         },
