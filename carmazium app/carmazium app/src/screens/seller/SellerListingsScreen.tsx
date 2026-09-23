@@ -408,14 +408,27 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             return;
           }
 
-          const second = await publish();
+          let second: { success: boolean; data: PublishState } | null = null;
+          try {
+            second = await publish();
+          } catch {
+            // The charge is already confirmed by the native Payment Sheet. A
+            // transient API failure here must never send the seller back to pay.
+            Alert.alert(
+              'Payment received',
+              'Your payment was successful. CarMazium is confirming the listing submission; pull to refresh My Listings in a moment. You will not be charged again for this listing.',
+            );
+            await fetchListings(true);
+            return;
+          }
+
           if (applyPublishResult(second?.data)) return;
 
           // This should be rare (e.g. Stripe is still reconciling), but never
           // tell the seller that a correct review submission "failed to activate".
           Alert.alert(
             'Payment received',
-            'Your payment was successful. CarMazium is confirming the listing submission; pull to refresh My Listings in a moment.',
+            'Your payment was successful. CarMazium is confirming the listing submission; pull to refresh My Listings in a moment. You will not be charged again for this listing.',
           );
           await fetchListings(true);
         }
