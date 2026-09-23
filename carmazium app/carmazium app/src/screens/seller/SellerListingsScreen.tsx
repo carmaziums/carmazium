@@ -46,6 +46,7 @@ interface ApiListing {
   year?: number;
   price?: number;
   status?: string;
+  rejectionReason?: string | null;
   images?: string[];
   viewCount?: number;
   badgeTier?: string;
@@ -78,6 +79,20 @@ const STATUS_CONFIG: Record<string, { label: string; chipBg: string; chipText: s
     chipText: Colors.warning,
     chipBorder: 'rgba(245,158,11,0.35)',
     leftBorder: Colors.warning,
+  },
+  PENDING_REVIEW: {
+    label: 'UNDER REVIEW',
+    chipBg: 'rgba(245,158,11,0.18)',
+    chipText: Colors.warning,
+    chipBorder: 'rgba(245,158,11,0.35)',
+    leftBorder: Colors.warning,
+  },
+  REJECTED: {
+    label: 'REJECTED',
+    chipBg: Colors.errorAlpha14,
+    chipText: Colors.error,
+    chipBorder: Colors.errorAlpha25,
+    leftBorder: Colors.error,
   },
   SOLD: {
     label: 'SOLD',
@@ -163,6 +178,18 @@ const getActionsForStatus = (status?: string): ActionItem[] => {
     return [
       { key: 'edit', icon: 'pencil-outline', label: 'Edit listing', tone: Colors.infoBlue, toneBg: Colors.infoBlueAlpha14 },
       { key: 'publish', icon: 'rocket-outline', label: 'Publish', tone: Colors.success, toneBg: Colors.successAlpha14 },
+      { key: 'delete', icon: 'trash-outline', label: 'Delete', tone: Colors.error, toneBg: Colors.errorAlpha14, isDestructive: true },
+    ];
+  }
+  if (s === 'PENDING_REVIEW') {
+    return [
+      { key: 'edit', icon: 'pencil-outline', label: 'Edit listing', tone: Colors.infoBlue, toneBg: Colors.infoBlueAlpha14 },
+    ];
+  }
+  if (s === 'REJECTED') {
+    return [
+      { key: 'edit', icon: 'pencil-outline', label: 'Fix listing', tone: Colors.infoBlue, toneBg: Colors.infoBlueAlpha14 },
+      { key: 'publish', icon: 'rocket-outline', label: 'Resubmit for review', tone: Colors.success, toneBg: Colors.successAlpha14 },
       { key: 'delete', icon: 'trash-outline', label: 'Delete', tone: Colors.error, toneBg: Colors.errorAlpha14, isDestructive: true },
     ];
   }
@@ -329,24 +356,39 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     }
 
     if (key === 'publish') {
-      // Was a bare PATCH /status — the same status field the backend's own
-      // /publish endpoint gates on LISTING_FEE payment, so this let sellers
-      // publish paid-tier (BASIC/STANDARD/PREMIUM) listings for free (mobile-audit.md
-      // critical finding). Now mirrors SellCarFlowScreen.tsx's own publish flow:
-      // call /publish first, and only if it reports requiresPayment, run the
-      // real Stripe Payment Sheet before calling /publish again to activate.
+      // The backend owns the listing lifecycle. A normal seller submission goes
+      // to PENDING_REVIEW — ACTIVE is reserved for admin approval. Native Stripe
+      // payments are reconciled by /publish as well, so both app and web use the
+      // same review gate.
       setActionLoading(true);
       try {
-        const first = await apiClient<{ success: boolean; data: { activated: boolean; requiresPayment?: boolean } }>(
+        type PublishState = { activated: boolean; requiresPayment?: boolean; pendingReview?: boolean };
+        const publish = () => apiClient<{ success: boolean; data: PublishState }>(
           `/listings/${listing.id}/publish`,
           { method: 'POST' },
         );
 
-        if (first?.data?.activated) {
-          haptics.success();
-          setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'ACTIVE' } : l));
-          return;
-        }
+        const applyPublishResult = (result?: PublishState): boolean => {
+          if (result?.activated) {
+            haptics.success();
+            setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'ACTIVE' } : l));
+            Alert.alert('Published', 'This listing is now live.');
+            return true;
+          }
+          if (result?.pendingReview) {
+            haptics.success();
+            setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'PENDING_REVIEW' } : l));
+            Alert.alert(
+              'Submitted for review',
+              'Your listing goes live once our team has reviewed it. We’ll notify you when it does.',
+            );
+            return true;
+          }
+          return false;
+        };
+
+        const first = await publish();
+        if (applyPublishResult(first?.data)) return;
 
         if (first?.data?.requiresPayment) {
           const tier = ((listing.badgeTier as 'BASIC' | 'STANDARD' | 'PREMIUM') || 'BASIC');
@@ -357,20 +399,25 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             Alert.alert('Payment Failed', payErr.message || 'Could not process payment.');
             return;
           }
+
           if (!paid) {
-            Alert.alert('Payment cancelled', 'This listing is still a draft. Publish again to complete payment.');
+            Alert.alert(
+              'Payment cancelled',
+              'Your listing is still saved. Publish it again when you are ready to complete the listing fee.',
+            );
             return;
           }
-          haptics.success();
-          const second = await apiClient<{ success: boolean; data: { activated: boolean } }>(
-            `/listings/${listing.id}/publish`,
-            { method: 'POST' },
+
+          const second = await publish();
+          if (applyPublishResult(second?.data)) return;
+
+          // This should be rare (e.g. Stripe is still reconciling), but never
+          // tell the seller that a correct review submission "failed to activate".
+          Alert.alert(
+            'Payment received',
+            'Your payment was successful. CarMazium is confirming the listing submission; pull to refresh My Listings in a moment.',
           );
-          if (second?.data?.activated) {
-            setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'ACTIVE' } : l));
-          } else {
-            Alert.alert('Almost there!', 'Payment succeeded but the listing could not be activated automatically. Pull to refresh in a moment.');
-          }
+          await fetchListings(true);
         }
       } catch (err: any) {
         Alert.alert('Error', err.message || 'Could not publish listing.');
