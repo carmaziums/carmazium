@@ -5,6 +5,8 @@ const mockCustomersCreate = jest.fn();
 const mockEphemeralKeysCreate = jest.fn();
 const mockConstructEvent = jest.fn();
 const mockCheckoutSessionsCreate = jest.fn();
+const mockCheckoutSessionsRetrieve = jest.fn();
+const mockRefundsCreate = jest.fn();
 const mockHpiCreatePendingReport = jest.fn();
 
 jest.mock('stripe', () => {
@@ -13,7 +15,8 @@ jest.mock('stripe', () => {
         customers: { create: mockCustomersCreate },
         ephemeralKeys: { create: mockEphemeralKeysCreate },
         webhooks: { constructEvent: mockConstructEvent },
-        checkout: { sessions: { create: mockCheckoutSessionsCreate } },
+        checkout: { sessions: { create: mockCheckoutSessionsCreate, retrieve: mockCheckoutSessionsRetrieve } },
+        refunds: { create: mockRefundsCreate },
     }));
     // `payments.service.ts` loads Stripe via a dynamic `await import('stripe')`
     // (unlike dealers.service.ts's static import) — __esModule: true is required
@@ -52,6 +55,7 @@ function buildPrismaMock() {
             create: jest.fn(),
         },
         auction: {
+            findUnique: jest.fn(),
             findFirst: jest.fn(),
             update: jest.fn(),
         },
@@ -593,6 +597,61 @@ describe('PaymentsService — handleWebhook payment_intent.succeeded (LISTING_FE
                 status: 'PENDING_REVIEW',
                 badgeTier: 'BASIC',
             }),
+        });
+    });
+});
+
+describe('PaymentsService — auction buyer-fee refunds', () => {
+    let service: PaymentsService;
+    let prisma: any;
+
+    beforeEach(async () => {
+        mockCheckoutSessionsRetrieve.mockReset();
+        mockRefundsCreate.mockReset();
+        prisma = buildPrismaMock();
+        const module: TestingModule = await buildModule(prisma);
+        service = module.get<PaymentsService>(PaymentsService);
+
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1',
+            buyerFeeTransactionId: 'txn-commission',
+        });
+    });
+
+    it('refunds a native PaymentSheet commission directly from its PaymentIntent id', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({
+            id: 'txn-commission',
+            stripePaymentId: 'pi_native_commission',
+        });
+
+        await service.issueRefundForAuction('auction-1');
+
+        expect(mockCheckoutSessionsRetrieve).not.toHaveBeenCalled();
+        expect(mockRefundsCreate).toHaveBeenCalledWith({
+            payment_intent: 'pi_native_commission',
+            amount: 10000,
+        });
+        expect(prisma.transaction.update).toHaveBeenCalledWith({
+            where: { id: 'txn-commission' },
+            data: { status: 'REFUNDED' },
+        });
+    });
+
+    it('keeps hosted web Checkout refunds working through the session PaymentIntent', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({
+            id: 'txn-commission',
+            stripePaymentId: 'cs_web_commission',
+        });
+        mockCheckoutSessionsRetrieve.mockResolvedValue({
+            payment_intent: 'pi_from_checkout',
+        });
+
+        await service.issueRefundForAuction('auction-1');
+
+        expect(mockCheckoutSessionsRetrieve).toHaveBeenCalledWith('cs_web_commission');
+        expect(mockRefundsCreate).toHaveBeenCalledWith({
+            payment_intent: 'pi_from_checkout',
+            amount: 10000,
         });
     });
 });
