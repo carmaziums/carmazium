@@ -37,6 +37,7 @@ type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED' | 'WITHDRAW
 interface Offer {
   id: string;
   amount: number;
+  finalAmount?: number | null;
   status: OfferStatus;
   // Canonical counter fields — prefer these; fall back to counterAmount for old records
   sellerCounterAmount?: number | null;
