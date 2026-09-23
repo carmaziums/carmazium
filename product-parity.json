@@ -381,17 +381,24 @@
       "web": [
         "src/app/dashboard/partner/page.tsx"
       ],
-      "mobile": [],
-      "status": "gap"
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/PartnerDashboardScreen.tsx"
+      ],
+      "status": "required"
     },
     {
       "id": "service_provider.capabilities",
       "web": [
         "src/app/dashboard/service/capabilities/page.tsx",
-        "src/app/dashboard/service/capabilities/[id]/verification/page.tsx"
+        "src/app/dashboard/service/capabilities/[id]/verification/page.tsx",
+        "src/app/dashboard/service/capabilities/[id]/matching/page.tsx"
       ],
-      "mobile": [],
-      "status": "gap"
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/ProviderCapabilitiesScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/ProviderVerificationScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/ProviderMatchingScreen.tsx"
+      ],
+      "status": "required"
     },
     {
       "id": "service_provider.jobs",
