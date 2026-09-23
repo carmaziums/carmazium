@@ -7,7 +7,6 @@ import {
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { PaymentsService } from '../payments/payments.service';
 import { HandoverDocumentsService } from '../auctions/handover-documents.service';
 import {
@@ -55,7 +54,6 @@ export class SaleCancellationsService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly notifications: NotificationsService,
-        private readonly notificationsGateway: NotificationsGateway,
         private readonly payments: PaymentsService,
         private readonly handoverDocuments: HandoverDocumentsService,
         private readonly evidence: SaleCancellationEvidenceService,
@@ -139,7 +137,7 @@ export class SaleCancellationsService {
         link = '/dashboard/cancellations',
     ): Promise<void> {
         if (!userId) return;
-        const notification = await this.notifications.create({
+        await this.notifications.create({
             userId,
             type: 'SYSTEM',
             title,
@@ -149,7 +147,6 @@ export class SaleCancellationsService {
             link,
             actionType: 'SALE_CANCELLATION',
         }).catch(() => null);
-        if (notification) this.notificationsGateway.sendNotification(userId, notification);
     }
 
     private async notifyAdmins(title: string, message: string, requestId: string): Promise<void> {
