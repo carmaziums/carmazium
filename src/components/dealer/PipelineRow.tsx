@@ -12,12 +12,14 @@ import {
     Truck,
     ChevronRight,
     X,
+    Ban,
 } from "lucide-react"
 
 export type PurchaseStatus = "awaiting_confirmation" | "reviewing_docs" | "checks_complete" | "delivery_requested"
 
 export interface PurchaseItem {
     id: string
+    listingId: string
     vehicleTitle: string
     vehicleSubtitle?: string
     imageUrl?: string
@@ -67,9 +69,10 @@ interface PipelineRowProps {
     item: PurchaseItem
     onViewSummary?: (item: PurchaseItem) => void
     onViewSeller?: (item: PurchaseItem) => void
+    onRequestCancellation?: (item: PurchaseItem) => void
 }
 
-export function PipelineRow({ item, onViewSummary, onViewSeller }: PipelineRowProps) {
+export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancellation }: PipelineRowProps) {
     const [menuOpen, setMenuOpen] = React.useState(false)
     const menuRef = React.useRef<HTMLDivElement>(null)
 
@@ -181,6 +184,15 @@ export function PipelineRow({ item, onViewSummary, onViewSeller }: PipelineRowPr
                                     Seller Details
                                     <ChevronRight size={12} className="ml-auto text-[var(--text-muted)]" />
                                 </button>
+                                {onRequestCancellation && (
+                                    <button
+                                        onClick={() => { onRequestCancellation(item); setMenuOpen(false) }}
+                                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                                    >
+                                        <Ban size={14} />
+                                        Request cancellation
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}
