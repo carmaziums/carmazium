@@ -37,6 +37,7 @@ import {
 import { TradeTeamService } from './trade-team.service';
 import { parseFutureRequestedFor, postcodeArea, requireUkPostcode } from './service-validation';
 import { boundedServiceLimit, decodeServiceCursor, makeServicePage } from './service-pagination';
+import { resolveBusinessBuyerId } from '../dealers/dealer-access';
 
 /**
  * Service areas that run the job/quote/payment engine, and those that are
@@ -733,6 +734,10 @@ export class ServicesService {
             throw new BadRequestException('Provide exactly one purchase source: offerId or auctionId.');
         }
 
+        const purchaseCustomerId = hasAuction
+            ? await resolveBusinessBuyerId(this.prisma, customerId)
+            : customerId;
+
         let listing: any = null;
         let vehicle: { registration?: string | null; make?: string | null; model?: string | null; year?: number | null } | null = null;
         const sourceWhere = dto.offerId
@@ -769,14 +774,14 @@ export class ServicesService {
                 },
             });
             if (!offer) throw new NotFoundException('Offer not found');
-            if (offer.buyerId !== customerId) throw new ForbiddenException('Not your purchase');
+            if (offer.buyerId !== purchaseCustomerId) throw new ForbiddenException('Not your purchase');
             if (offer.status !== 'ACCEPTED') {
                 throw new BadRequestException('Only an accepted retail offer can create a delivery job.');
             }
             if (offer.listing.deletedAt || !['OFFER_ACCEPTED', 'SOLD'].includes(String(offer.listing.status))) {
                 throw new BadRequestException('This retail purchase is not in a delivery-eligible state.');
             }
-            if (offer.listing.sale && offer.listing.sale.buyerId !== customerId) {
+            if (offer.listing.sale && offer.listing.sale.buyerId !== purchaseCustomerId) {
                 throw new ForbiddenException('This vehicle was sold to a different buyer.');
             }
 
@@ -817,14 +822,14 @@ export class ServicesService {
                 },
             });
             if (!auction) throw new NotFoundException('Auction not found');
-            if (auction.winnerId !== customerId) throw new ForbiddenException('Not your purchase');
+            if (auction.winnerId !== purchaseCustomerId) throw new ForbiddenException('Not your purchase');
             if (auction.status !== 'ENDED' || auction.listing.status !== 'SOLD' || auction.listing.deletedAt) {
                 throw new BadRequestException('This auction purchase is not in a completed sale state.');
             }
             if (!auction.buyerFeePaid) {
                 throw new BadRequestException('Pay the auction buyer fee before arranging TradeXchange delivery.');
             }
-            if (!auction.listing.sale || auction.listing.sale.buyerId !== customerId) {
+            if (!auction.listing.sale || auction.listing.sale.buyerId !== purchaseCustomerId) {
                 throw new ForbiddenException('The auction sale record does not belong to this buyer.');
             }
 
@@ -863,7 +868,7 @@ export class ServicesService {
 
         const existing = await this.prisma.serviceJob.findFirst({
             where: {
-                customerId,
+                purchaseCustomerId,
                 ...sourceWhere,
                 status: { notIn: [ServiceJobStatus.CANCELLED, ServiceJobStatus.EXPIRED] },
             },
@@ -872,9 +877,9 @@ export class ServicesService {
         if (existing) return existing;
 
         try {
-            return await this.withActiveJobSlot(customerId, async (tx) => tx.serviceJob.create({
+            return await this.withActiveJobSlot(purchaseCustomerId, async (tx) => tx.serviceJob.create({
                 data: {
-                    customerId,
+                    purchaseCustomerId,
                     serviceType: ServiceType.DELIVERY,
                     title: `Deliver ${listing.title}`.slice(0, 120),
                     pickupPostcode: sellerPostcode,
@@ -906,7 +911,7 @@ export class ServicesService {
             if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
                 const raced = await this.prisma.serviceJob.findFirst({
                     where: {
-                        customerId,
+                        purchaseCustomerId,
                         ...sourceWhere,
                         status: { notIn: [ServiceJobStatus.CANCELLED, ServiceJobStatus.EXPIRED] },
                     },
@@ -924,6 +929,7 @@ export class ServicesService {
      */
     async createInspectionFromAuction(customerId: string, dto: InspectionFromAuctionDto) {
         assertServiceAcceptingNewRequests(ServiceType.INSPECTION);
+        customerId = await resolveBusinessBuyerId(this.prisma, customerId);
 
         const auction = await this.prisma.auction.findUnique({
             where: { id: dto.auctionId },
