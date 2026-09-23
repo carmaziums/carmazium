@@ -294,6 +294,25 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
               </View>
 
               <View style={styles.card}>
+                <View style={styles.rowBetween}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>Matched enquiries</Text>
+                    <Text style={styles.cardText}>
+                      Review Finance and Warranty leads matched to your approved services, then send or update your response from the app.
+                    </Text>
+                  </View>
+                  <Ionicons name="mail-unread-outline" size={26} color={Colors.infoBlueLight} />
+                </View>
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={() => navigation.navigate('ProviderLeads')}
+                >
+                  <Ionicons name="document-text-outline" size={17} color={Colors.white} />
+                  <Text style={styles.secondaryText}>OPEN MATCHED ENQUIRIES</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.card}>
                 <Text style={styles.cardTitle}>Business payouts</Text>
                 <Text style={styles.cardText}>
                   Delivery and Inspection customers pay through CarMazium. CarMazium deducts 9% and 91% is paid to the Partner business Stripe Connect account.
