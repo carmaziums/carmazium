@@ -55,9 +55,9 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     {
         href: "/dashboard/dealer/crm",
         requiredPermission: "MANAGE_CRM",
-        label: "Leads",
-        title: "Leads",
-        subHeader: "Sales pipeline and buyer follow-up",
+        label: "Customers",
+        title: "Customers",
+        subHeader: "Enquiries, offers and buyer follow-up",
         icon: Kanban,
         section: "Main"
     },
@@ -68,14 +68,15 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Offers Received",
         subHeader: "Review offers on your vehicles",
         icon: Tag,
+        hidden: true,
         section: "Main"
     },
     {
         href: "/dashboard/dealer/auctions",
         requiredPermission: "VIEW_TRADE",
-        label: "Auctions",
-        title: "Auctions",
-        subHeader: "Browse, bid and manage auctions",
+        label: "Buy & Bid",
+        title: "Auctions & Buying",
+        subHeader: "Live auctions, bids and purchases",
         icon: Gavel,
         section: "Main"
     },
@@ -86,6 +87,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Purchased from Auction",
         subHeader: "Auction wins and next handover steps",
         icon: Trophy,
+        hidden: true,
         section: "Business"
     },
     {
