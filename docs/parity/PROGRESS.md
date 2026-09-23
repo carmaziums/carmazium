@@ -2517,3 +2517,26 @@ Completed in Block 6:
 - Permanent parity coverage: `dealer.auction_staff_permissions` is a required manifest surface and `scripts/check-product-parity.mjs` guards against staff-ID winner checks or role-control drift.
 
 **Explicit boundary:** full native Partner/TradeXchange provider job UI remains Block 7 and is not counted as a Block 6 gap.
+
+
+## 2026-09-23 — Block 7: Native Partner/provider foundation
+
+**Block 7 checkpoint:** Partner/provider foundation implemented; Block 7 remains in progress.
+
+Completed in this slice:
+
+- Native Partner Account dashboard under the same DEALER/Partner business identity as web.
+- Partner business setup and account elevation reuse `/users/elevate` and `/users/dealer-profile`.
+- Delivery & Recovery, Inspection, Finance and Warranty capability application/status under one Partner business.
+- Stripe Connect onboarding entry for paid-job services and app-resume refresh.
+- Native provider verification checklist with private PDF/image upload, 10 MB client guard, evidence metadata/history and pending-document deletion.
+- Native matching settings for paid jobs and Finance/Warranty enquiries, including postcode/nationwide and service-specific filters.
+- Partner Account is reachable from the native global drawer and Service Hub.
+- Permanent product-parity guard covers native Partner dashboard, verification and matching navigation/contracts.
+- `partner.dashboard` and `service_provider.capabilities` moved from `gap` to `required`.
+
+Still explicit Block 7 gaps:
+
+- `service_provider.jobs`: open job feed, quoting, assigned work, start/complete, inspection outcomes and job chat.
+- `service_provider.leads`: matched Finance/Warranty inbox, detail and provider responses.
+- `service_provider.messages`: provider-focused message workspace/list entry.
