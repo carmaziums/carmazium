@@ -4,6 +4,8 @@ import { NavigatorScreenParams } from '@react-navigation/native';
 import { TabNavigator, TabParamList } from './TabNavigator';
 import { VehicleDetailScreen } from '../screens/vehicle/VehicleDetailScreen';
 import { AuctionDetailScreen } from '../screens/vehicle/AuctionDetailScreen';
+import { VehicleDeepLinkScreen } from '../screens/vehicle/VehicleDeepLinkScreen';
+import { AuctionDeepLinkScreen } from '../screens/vehicle/AuctionDeepLinkScreen';
 import { MessagesScreen } from '../screens/main/MessagesScreen';
 import { ChatScreen } from '../screens/main/ChatScreen';
 import { CompareScreen } from '../screens/main/CompareScreen';
@@ -87,6 +89,8 @@ const GatedDealerFinanceScreen = withDealerGate(DealerFinanceScreen);
 export type MainStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
   VehicleDetail: { listing: CarListing };
+  VehicleDeepLink: { slug: string };
+  AuctionDeepLink: { auctionId: string };
   // `auctionId` is what `AuctionDetailScreen` actually reads to find its auction
   // (`AuctionDetailScreen.tsx:261`), but the param was typed as a bare
   // CarListing, so every caller reached it through an `as any` cast
@@ -184,6 +188,16 @@ export const MainStackNavigator: React.FC = () => {
       }}
     >
       <Stack.Screen name="Tabs" component={TabNavigator} />
+      <Stack.Screen
+        name="VehicleDeepLink"
+        component={VehicleDeepLinkScreen}
+        options={{ animation: 'fade' }}
+      />
+      <Stack.Screen
+        name="AuctionDeepLink"
+        component={AuctionDeepLinkScreen}
+        options={{ animation: 'fade' }}
+      />
       <Stack.Screen
         name="VehicleDetail"
         component={VehicleDetailScreen}
