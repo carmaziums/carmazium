@@ -259,21 +259,8 @@ export const SearchScreen: React.FC = () => {
   const handleCardPress = useCallback((id: string) => {
     const item = listingsRef.current.find(l => l.id === id);
     if (!item) return;
-    // An AUCTION result used to open the retail detail screen like everything
-    // else, so filtering to Auction and tapping a result landed on the wrong
-    // screen with no bidding console (BUY-017). HomeScreen has always routed
-    // auctions correctly (`HomeScreen.tsx:418-419`); search could not, because
-    // `GET /listings` did not return the auction id. It does now.
-    //
-    // Falls through to retail detail when the id is absent rather than blocking
-    // the tap: an auction-typed listing whose auction has not been created yet
-    // is a real state, and the retail screen renders it acceptably.
-    if (item.listingType === 'AUCTION' && item.auction?.id) {
-      navigation.navigate('LiveAuctionDetailed', {
-        listing: { ...item, auctionId: item.auction.id },
-      });
-      return;
-    }
+    // Public Search is the retail marketplace. Trade Exchange auctions use the
+    // verified-Trader auction screens and endpoints instead.
     navigation.navigate('VehicleDetail', { listing: item });
   }, [navigation]);
   const renderListingItem = useCallback(
