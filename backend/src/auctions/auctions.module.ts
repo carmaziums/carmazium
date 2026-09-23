@@ -10,6 +10,7 @@ import { EmailModule } from '../email/email.module';
 import { ChatModule } from '../chat/chat.module';
 import { TradeAuctionAccessGuard } from './trade-access.guard';
 import { HandoverDocumentsService } from './handover-documents.service';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
     imports: [
@@ -19,6 +20,7 @@ import { HandoverDocumentsService } from './handover-documents.service';
         forwardRef(() => BidsModule),
         EmailModule,
         forwardRef(() => ChatModule),
+        PaymentsModule,
     ],
     controllers: [AuctionsController],
     providers: [AuctionsService, AuctionGateway, TradeAuctionAccessGuard, HandoverDocumentsService],
