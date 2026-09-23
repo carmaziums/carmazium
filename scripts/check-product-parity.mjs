@@ -344,6 +344,59 @@ if (
   ok('Every mobile auction fee path reuses the same payment and preserves 72-hour guidance');
 }
 
+// Dealer business identity / RBAC: staff must act under one dealership identity
+// and permissions must be enforced server-side, not just hidden in navigation.
+const dealerAccess = read('backend/src/dealers/dealer-access.ts');
+const dealerService = read('backend/src/dealers/dealers.service.ts');
+const dealerController = read('backend/src/dealers/dealers.controller.ts');
+const dealerBids = read('backend/src/bids/bids.service.ts');
+const dealerListings = read('backend/src/listings/listings.service.ts');
+const dealerOffers = read('backend/src/offers/offers.service.ts');
+const dealerDashboard = read('backend/src/dashboard/dashboard.service.ts');
+
+if (
+  !dealerAccess.includes("'PLACE_BID'") ||
+  !dealerAccess.includes("'PAY_AUCTION_FEE'") ||
+  !dealerAccess.includes("'PAY_LISTING_FEE'") ||
+  !dealerAccess.includes("'VIEW_INVENTORY'") ||
+  !dealerAccess.includes("'MANAGE_INVENTORY'") ||
+  !dealerAccess.includes("'MANAGE_TEAM'") ||
+  !dealerAccess.includes("'MANAGE_KYC'") ||
+  !dealerAccess.includes('ownerUserId: membership.dealerProfile.userId')
+) {
+  fail('Dealer staff RBAC or canonical dealership identity contract is missing');
+} else {
+  ok('Dealer staff permissions and canonical dealership identity are defined centrally');
+}
+
+if (
+  !dealerController.includes("@Get('access')") ||
+  !dealerService.includes("assertDealerPermission(actor, 'MANAGE_TEAM')") ||
+  !dealerService.includes('Only the dealership owner can manage business verification.') ||
+  !dealerService.includes("assertDealerPermission(actor, 'VIEW_PURCHASES')") ||
+  !dealerDashboard.includes("assertDealerPermission(actor, 'VIEW_ANALYTICS')")
+) {
+  fail('Dealer dashboard/team/KYC/purchase routes are not enforcing the central business-access contract');
+} else {
+  ok('Dealer dashboard, team, KYC and purchases use the central business-access contract');
+}
+
+if (
+  !dealerBids.includes("assertDealerPermission(") ||
+  !dealerBids.includes("'PLACE_BID'") ||
+  !dealerBids.includes('bidderId: businessBidderId') ||
+  !dealerListings.includes("'MANAGE_INVENTORY'") ||
+  !dealerListings.includes("'VIEW_INVENTORY'") ||
+  !dealerOffers.includes("'MANAGE_OFFERS'") ||
+  !buyerPaymentsService.includes("'PAY_AUCTION_FEE'") ||
+  !buyerPaymentsService.includes("'PAY_LISTING_FEE'") ||
+  !buyerPaymentsService.includes('userId: transactionUserId')
+) {
+  fail('Dealer staff actions can drift back to personal identities or unguarded role access');
+} else {
+  ok('Dealer bidding, inventory, offers and fee payments stay dealership-scoped');
+}
+
 const webPricing = read('src/lib/pricingConfig.ts');
 const mobilePricing = read('carmazium app/carmazium app/src/constants/pricing.ts');
 const payments = read('backend/src/payments/payments.service.ts');
