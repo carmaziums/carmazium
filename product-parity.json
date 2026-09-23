@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "purpose": "CarMazium one-product parity contract",
   "policy": {
     "backend_is_source_of_truth": true,
@@ -517,6 +517,23 @@
         "carmazium app/carmazium app/src/navigation/linking.ts",
         "carmazium app/carmazium app/src/components/GlobalDrawer.tsx",
         "carmazium app/carmazium app/src/screens/buyer/BuyerDashboardScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "ui.shared_terminology",
+      "web": [
+        "src/config/dealerRouteConfig.ts",
+        "src/app/dashboard/partner/page.tsx",
+        "src/app/dashboard/service/leads/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/components/GlobalDrawer.tsx",
+        "carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/DealerOffersScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/PartnerDashboardScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/ProviderLeadsScreen.tsx"
       ],
       "status": "required"
     },
