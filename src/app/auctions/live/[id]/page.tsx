@@ -31,6 +31,7 @@ import { getWebSocketUrl, createChatRoom, getAccessToken } from "@/lib/chatApi"
 import { getSessionStatus, applyHpiEmailFee } from "@/lib/paymentApi"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { TRADE_EXCHANGE_ROLES } from "@/lib/tradeAccess"
+import { DealerAccess, getDealerAccess } from "@/lib/dealerAccess"
 
 const ThreeDVehicleViewer = dynamic(
     () => import("@/components/listing/ThreeDVehicleViewer").then(m => m.ThreeDVehicleViewer),
@@ -87,6 +88,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const searchParams = useSearchParams()
 
     const [auction, setAuction] = React.useState<Auction | null>(null)
+    const [dealerAccess, setDealerAccess] = React.useState<DealerAccess | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [loadError, setLoadError] = React.useState<string | null>(null)
 
@@ -111,6 +113,30 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
     const [selectedDamageZone, setSelectedDamageZone] = React.useState<string | null>(null)
     const [showHpiModal, setShowHpiModal] = React.useState(false)
+
+    React.useEffect(() => {
+        if (!user || profile?.role !== 'DEALER') {
+            setDealerAccess(null)
+            return
+        }
+
+        let mounted = true
+        getDealerAccess()
+            .then(access => { if (mounted) setDealerAccess(access) })
+            .catch(() => { if (mounted) setDealerAccess(null) })
+        return () => { mounted = false }
+    }, [user?.id, profile?.role])
+
+    const businessUserId = dealerAccess?.ownerUserId ?? user?.id
+    const canPlaceBid =
+        profile?.role === 'DEALER'
+        && Boolean(dealerAccess?.permissions?.includes('PLACE_BID'))
+    const canPayAuctionFee =
+        profile?.role === 'DEALER'
+        && Boolean(dealerAccess?.permissions?.includes('PAY_AUCTION_FEE'))
+    const canManageDealerInventory =
+        profile?.role === 'DEALER'
+        && Boolean(dealerAccess?.permissions?.includes('MANAGE_INVENTORY'))
 
     // Returning from Stripe after paying to have the HPI report emailed —
     // verify the session actually completed, apply the fallback in case the
@@ -173,7 +199,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 const bids = data.listing.bids ?? []
                 const top = bids[0] ? Number(bids[0].amount) : Number(data.startingBid)
                 setCurrentBid(top)
-                setIsWinning(!!user && bids[0]?.bidderId === user.id)
+                setIsWinning(!!businessUserId && bids[0]?.bidderId === businessUserId)
                 setBidHistory(bids.map(b => ({
                     initials: `${b.bidder?.firstName?.[0] ?? "?"}${b.bidder?.lastName?.[0] ?? ""}`.toUpperCase(),
                     amount: Number(b.amount),
@@ -183,11 +209,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 setAntiSnipeActive(new Date(data.endTime).getTime() - Date.now() <= 3 * 60 * 1000)
                 setBinPending(!!data.buyItNowPendingBuyerId)
                 // Rehydrate cancel eligibility from real bid data (survives refresh/navigation)
-                if (user) {
+                if (businessUserId) {
                     const now = Date.now()
                     const ownCancelable = new Map<string, number>()
                     for (const b of bids) {
-                        if (b.bidderId !== user.id) continue
+                        if (b.bidderId !== businessUserId) continue
                         const expiresAt = new Date(b.createdAt).getTime() + BID_CANCEL_WINDOW_MS
                         if (expiresAt > now) ownCancelable.set(b.id, expiresAt)
                     }
@@ -206,7 +232,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             })
             .catch(() => setLoadError("Failed to load auction. Please refresh."))
             .finally(() => setLoading(false))
-    }, [params.id, user])
+    }, [params.id, businessUserId])
 
     React.useEffect(() => { loadAuction() }, [loadAuction])
 
@@ -241,9 +267,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         socket.on("auction:viewers", ({ count }: { count: number }) => setWatchers(count))
 
         socket.on("bid:new", (payload: BidBroadcastPayload) => {
-            const wasWinning = user && payload.bidderId !== user.id
+            const wasWinning = !!businessUserId && isWinning && payload.bidderId !== businessUserId
             setCurrentBid(payload.amount)
-            setIsWinning(!!user && payload.bidderId === user.id)
+            setIsWinning(!!businessUserId && payload.bidderId === businessUserId)
             setBidHistory(prev => [
                 { initials: payload.bidderInitials, amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString("en-GB"), bidId: payload.bidId, isNew: true },
                 ...prev.map(b => ({ ...b, isNew: false })),
@@ -261,7 +287,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             // Track cancel window for own bids — being outbid does NOT remove
             // cancel eligibility, since the 24h window no longer requires being
             // the current highest bidder to cancel
-            if (payload.bidderId === user?.id) {
+            if (payload.bidderId === businessUserId) {
                 const expiresAt = new Date(payload.timestamp).getTime() + BID_CANCEL_WINDOW_MS
                 setCancelableBids(prev => new Map(prev).set(payload.bidId, expiresAt))
             }
@@ -313,7 +339,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         })
 
         return () => { socket.disconnect() }
-    }, [auction?.id, user])
+    }, [auction?.id, businessUserId, isWinning])
 
     // ── Anti-snipe activation ─────────────────────────────────────────────────
     // Schedule a single timeout to fire exactly when we enter the anti-snipe window,
@@ -354,7 +380,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
     // ── Handle bid ────────────────────────────────────────────────────────────
     const handleBid = React.useCallback(async (amount: number) => {
-        if (!auction || !user) return
+        if (!auction || !user || !canPlaceBid) {
+            setBidError("Your dealership role does not allow auction bidding.")
+            return
+        }
 
         // Validate
         const parsed = Number(amount)
@@ -382,7 +411,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         } finally {
             setBidLoading(false)
         }
-    }, [auction, user, currentBid])
+    }, [auction, user, currentBid, canPlaceBid])
 
     // ── Accept bid (seller) ───────────────────────────────────────────────────
     const handleConfirmAccept = React.useCallback(async () => {
@@ -408,7 +437,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
     // ── Buy It Now ────────────────────────────────────────────────────────────
     async function handleBinTrigger() {
-        if (!auction?.id) return
+        if (!auction?.id || !canPlaceBid) return
         setBinLoading(true)
         try {
             await triggerBuyItNow(auction.id)
@@ -423,6 +452,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
     // ── Cancel Bid ────────────────────────────────────────────────────────────
     async function handleCancelBid(bidId: string) {
+        if (!canPlaceBid) {
+            setCancelError("Your dealership role does not allow auction bidding.")
+            return
+        }
         setCancellingBidId(bidId)
         setCancelError(null)
         try {
@@ -505,13 +538,20 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const isLive = auction.status === "ACTIVE"
     const isEnded = auction.status === "ENDED"
     const isCancelled = auction.status === "CANCELLED"
-    const isSeller = !!user && auction.listing.sellerId === user.id
-    // userWon: check both socket payload (real-time) and auction.winnerId (page load for ended auctions)
-    const userWon = isEnded && !!(endedPayload?.winnerId === user?.id || (auction.winnerId && auction.winnerId === user?.id))
+    const isSeller = !!businessUserId && auction.listing.sellerId === businessUserId
+    const canManageSellerAuction =
+        isSeller
+        && (profile?.role !== 'DEALER' || canManageDealerInventory)
+    // Compare with the canonical dealership buyer identity so staff see the
+    // same winner state as backend bids, sales and buyer-fee records.
+    const userWon = isEnded && !!(
+        endedPayload?.winnerId === businessUserId
+        || (auction.winnerId && auction.winnerId === businessUserId)
+    )
     const topBidAmount = bidHistory[0]?.amount ?? (auction.listing.bids?.[0] ? Number(auction.listing.bids[0].amount) : null)
     const reserveMet = !!(topBidAmount !== null && topBidAmount >= Number(auction.reservePrice))
     // BIN card visibility: live + buyer + BIN price set + reserve not met + no pending BIN
-    const showBin = isLive && !isSeller && !!auction.buyItNowPrice && !reserveMet && !binPending
+    const showBin = isLive && !isSeller && canPlaceBid && !!auction.buyItNowPrice && !reserveMet && !binPending
     const images = auction.listing.images?.length ? auction.listing.images : ["/assets/images/hero-bg.png"]
     const bidCount = bidHistory.length
 
@@ -805,11 +845,17 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             </div>
                                         )}
                                         {!auction.buyerFeePaid ? (
-                                            <Link href={`/checkout?listing_id=${auction.listingId}&mode=auction_fee`}>
-                                                <Button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black text-sm h-11 flex items-center gap-1.5">
-                                                    <CreditCard size={14} /> Pay the £125 fee
-                                                </Button>
-                                            </Link>
+                                            canPayAuctionFee ? (
+                                                <Link href={`/checkout?listing_id=${auction.listingId}&mode=auction_fee`}>
+                                                    <Button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black text-sm h-11 flex items-center gap-1.5">
+                                                        <CreditCard size={14} /> Pay the £125 fee
+                                                    </Button>
+                                                </Link>
+                                            ) : (
+                                                <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-2 text-xs text-blue-200 max-w-xs">
+                                                    The £125 buyer fee must be paid by the dealership Owner, Admin or Finance Manager.
+                                                </div>
+                                            )
                                         ) : (
                                             <Button
                                                 className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm h-11 flex items-center gap-1.5"
@@ -872,7 +918,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             </AnimatePresence>
 
             {/* ── Mobile Sticky Bid Bar ─────────────────────────────────────── */}
-            {isLive && !isSeller && user && profile?.role === 'DEALER' && !isEnded && (
+            {isLive && !isSeller && user && canPlaceBid && !isEnded && (
                 <div className="lg:hidden sticky top-[80px] z-40 bg-[var(--bg-dropdown)] backdrop-blur-md border-b border-[var(--border-default)] px-4 py-2.5 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
                         <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-widest font-bold">Current Bid</p>
@@ -1531,8 +1577,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         <motion.div
                                             initial={bid.isNew ? { opacity: 0, y: -8 } : false}
                                             animate={{ opacity: 1, y: 0 }}
-                                            className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${i === 0 ? "bg-primary/5 border border-primary/15" : "hover:bg-[var(--bg-card)]"} ${isSeller && isLive && !reserveMet && i === 0 && bid.bidId ? "cursor-pointer" : ""}`}
-                                            onClick={isSeller && isLive && !reserveMet && i === 0 && bid.bidId ? () => { setAcceptingBid(bid); setAcceptError(null) } : undefined}
+                                            className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${i === 0 ? "bg-primary/5 border border-primary/15" : "hover:bg-[var(--bg-card)]"} ${canManageSellerAuction && isLive && !reserveMet && i === 0 && bid.bidId ? "cursor-pointer" : ""}`}
+                                            onClick={canManageSellerAuction && isLive && !reserveMet && i === 0 && bid.bidId ? () => { setAcceptingBid(bid); setAcceptError(null) } : undefined}
                                         >
                                             <div className="w-6 h-6 rounded-full bg-[var(--bg-card)] flex items-center justify-center shrink-0">
                                                 <span className="text-[9px] font-black text-[var(--text-muted)]">{bid.initials}</span>
@@ -1541,14 +1587,14 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             <span className="font-mono font-black text-[var(--text-primary)] text-xs">£{bid.amount.toLocaleString()}</span>
                                             {i === 0 && <TrendingUp size={10} className="text-emerald-400 shrink-0" />}
                                             <span className="ml-auto text-[9px] text-[var(--text-muted)] shrink-0">{bid.time}</span>
-                                            {isSeller && isLive && !reserveMet && i === 0 && bid.bidId && (
+                                            {canManageSellerAuction && isLive && !reserveMet && i === 0 && bid.bidId && (
                                                 <span className="hidden group-hover:flex items-center gap-1 absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[9px] font-black px-1.5 py-0.5 rounded-lg pointer-events-none">
                                                     <CheckCircle size={9} /> Accept
                                                 </span>
                                             )}
                                         </motion.div>
                                         {/* Cancel countdown — only visible to the bid owner, not sellers */}
-                                        {bid.bidId && cancelableBids.has(bid.bidId) && !isSeller && (() => {
+                                        {canPlaceBid && bid.bidId && cancelableBids.has(bid.bidId) && !isSeller && (() => {
                                             const expiresAt = cancelableBids.get(bid.bidId)!
                                             const remainingMs = Math.max(0, expiresAt - cancelNowTick)
                                             const isCancelling = cancellingBidId === bid.bidId
@@ -1630,11 +1676,17 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         You can accept the current highest offer and end the auction immediately, even before the reserve is met.
                                     </p>
                                 )}
-                                <Link href="/dashboard/seller/auctions">
-                                    <Button variant="outline" className="w-full mt-2 text-xs h-9 border-[var(--border-default)] text-[var(--text-muted)]">
-                                        Manage Auction
-                                    </Button>
-                                </Link>
+                                {canManageSellerAuction ? (
+                                    <Link href={profile?.role === 'DEALER' ? "/dashboard/dealer/auctions" : "/dashboard/seller/auctions"}>
+                                        <Button variant="outline" className="w-full mt-2 text-xs h-9 border-[var(--border-default)] text-[var(--text-muted)]">
+                                            Manage Auction
+                                        </Button>
+                                    </Link>
+                                ) : (
+                                    <p className="text-[var(--text-muted)] text-[10px]">
+                                        Your dealership role can monitor this auction but cannot change it.
+                                    </p>
+                                )}
                             </div>
                         ) : !user ? (
                             <div className="space-y-3">
@@ -1655,6 +1707,14 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 <Ban size={20} className="text-amber-400 mx-auto" />
                                 <p className="text-amber-300 text-xs font-bold">Dealer accounts only</p>
                                 <p className="text-[var(--text-muted)] text-xs leading-relaxed">Only verified dealers can place bids on CarMazium auctions. Upgrade your account to participate.</p>
+                            </div>
+                        ) : !canPlaceBid ? (
+                            <div className="text-center py-4 space-y-2">
+                                <Lock size={20} className="text-blue-400 mx-auto" />
+                                <p className="text-blue-300 text-xs font-bold">View-only auction access</p>
+                                <p className="text-[var(--text-muted)] text-xs leading-relaxed">
+                                    Your dealership role can follow Trade Exchange auctions, but it cannot place or cancel bids.
+                                </p>
                             </div>
                         ) : (
                             <>
@@ -1733,7 +1793,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     </div>
 
                     {/* Highest below-reserve bid is a live offer the seller can accept */}
-                    {isSeller && isLive && !reserveMet && bidHistory[0]?.bidId && (
+                    {canManageSellerAuction && isLive && !reserveMet && bidHistory[0]?.bidId && (
                         <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 p-4 space-y-3">
                             <div className="flex items-start gap-3">
                                 <div className="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
@@ -1782,7 +1842,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             Buy It Now pending — awaiting seller confirmation
                         </div>
                     )}
-                    {binPending && isSeller && (
+                    {binPending && canManageSellerAuction && (
                         <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
                             <p className="text-sm font-semibold text-amber-300">Buy It Now Request</p>
                             <p className="text-xs text-amber-300/80">
