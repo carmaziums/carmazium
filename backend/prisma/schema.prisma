@@ -401,6 +401,7 @@ model User {
   offers                   Offer[]
   addressVerifications     AddressVerification[]
   assignedLeads            Lead[]                  @relation("AssignedAgent")
+  buyerLeads               Lead[]                  @relation("LeadBuyer")
   salesAsSeller            Sale[]                  @relation("SellerSales")
   purchasesAsBuyer         Sale[]                  @relation("BuyerPurchases")
   offersReceived           Offer[]                 @relation("SellerOffers")
@@ -607,6 +608,8 @@ model Lead {
   listingId       String?
   /// Sales agent assigned to this lead
   assignedToId    String?
+  /// Authenticated retail buyer linked to this lead when the lead was created automatically.
+  buyerId          String?
   buyerName       String
   buyerEmail      String?
   buyerPhone      String?
@@ -614,17 +617,25 @@ model Lead {
   /// Source of the lead: listing_enquiry, chat, offer, walk_in, phone
   source          String?
   notes           String?
+  /// Timestamp of the most recent buyer activity (message, offer or manual update).
+  lastActivityAt  DateTime   @default(now())
+  /// Optional dealer reminder for the next customer follow-up.
+  nextFollowUpAt  DateTime?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
   dealerProfile DealerProfile @relation(fields: [dealerProfileId], references: [id], onDelete: Cascade)
   listing       Listing?      @relation(fields: [listingId], references: [id])
   assignedTo    User?         @relation("AssignedAgent", fields: [assignedToId], references: [id])
+  buyer         User?         @relation("LeadBuyer", fields: [buyerId], references: [id], onDelete: SetNull)
 
   @@index([dealerProfileId])
   @@index([assignedToId])
   @@index([status])
   @@index([listingId])
+  @@index([buyerId])
+  @@index([nextFollowUpAt])
+  @@unique([dealerProfileId, listingId, buyerId], name: "lead_dealer_listing_buyer_unique")
   @@map("leads")
 }
 
