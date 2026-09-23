@@ -231,7 +231,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [damageLoading, setDamageLoading] = useState(true);
   const [damageError, setDamageError] = useState(false);
 
-  // Seller contact phone — gated by login server-side (see /sellers/:id/phone)
+  // Seller contact phone — server-side rule also exposes ACTIVE PREMIUM retail
+  // contact publicly, using this listing id as the entitlement context.
   const [sellerPhone, setSellerPhone] = useState<string | null>(null);
   const [sellerPhoneAvailable, setSellerPhoneAvailable] = useState(false);
 
@@ -476,7 +477,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   useEffect(() => {
     if (!listing.seller?.id) return;
     apiClient<{ success: boolean; data: { phone: string | null; phoneAvailable: boolean } }>(
-      `/sellers/${listing.seller.id}/phone`
+      `/sellers/${listing.seller.id}/phone?listingId=${encodeURIComponent(listing.id)}`
     )
       .then(res => {
         if (res.success && res.data) {
@@ -485,7 +486,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         }
       })
       .catch(() => {});
-  }, [listing.seller?.id]);
+  }, [listing.seller?.id, listing.id]);
 
   // Fetch the current user's offer status for this listing (to gate "Request Delivery")
   const { user: currentUser } = useAuthStore();

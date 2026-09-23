@@ -429,7 +429,8 @@ export async function searchListings(params: {
     if (params.maxMileage != null) query.set('maxMileage', String(params.maxMileage));
     if (params.conditions?.length) query.set('conditions', params.conditions.join(','));
     if (params.transmissions?.length) query.set('transmissions', params.transmissions.join(','));
-    if (params.ulezCompliant) query.set('ulezCompliant', 'true');
+    if (params.ulezCompliant === true) query.set('ulezCompliant', 'true');
+    else if (params.ulezCompliant === false) query.set('ulezCompliant', 'false');
     if (params.minBhp != null) query.set('minBhp', String(params.minBhp));
     if (params.maxBhp != null) query.set('maxBhp', String(params.maxBhp));
     if (params.minEngine != null) query.set('minEngine', String(params.minEngine));

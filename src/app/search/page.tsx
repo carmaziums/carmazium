@@ -119,7 +119,6 @@ interface FilterState {
     maxBhp: string
     sellerType: 'PRIVATE' | 'DEALER' | ''
     location: string
-    listingType: 'CLASSIFIED' | 'AUCTION' | ''
     sortBy: string
     features: string[]
     maxDistanceMi: number | null
@@ -139,7 +138,7 @@ const INITIAL_FILTERS: FilterState = {
     conditions: [], ulezCompliant: '', euroStandard: '',
     vehicleType: 'CAR',
     minBhp: '', maxBhp: '',
-    sellerType: '', location: '', listingType: '',
+    sellerType: '', location: '',
     sortBy: 'newest',
     features: [],
     maxDistanceMi: null,
@@ -243,7 +242,7 @@ function SearchPageContent() {
             vehicleType: p('vehicleType') || 'CAR',
             minBhp: p('minBhp'), maxBhp: p('maxBhp'),
             sellerType: (p('sellerType') as 'PRIVATE' | 'DEALER') || '',
-            location: p('location'), listingType: (p('listingType') as 'CLASSIFIED' | 'AUCTION') || '',
+            location: p('location'),
             sortBy: p('sortBy') || 'newest',
             features: searchParams.get('features')?.split(',').filter(Boolean) || [],
             maxDistanceMi: searchParams.get('maxDistanceMi') ? Number(searchParams.get('maxDistanceMi')) : null,
@@ -332,7 +331,6 @@ function SearchPageContent() {
         if (appliedFilters.minBhp || appliedFilters.maxBhp) count++
         if (appliedFilters.sellerType) count++
         if (appliedFilters.location) count++
-        if (appliedFilters.listingType) count++
         if (appliedFilters.maxDistanceMi) count++
         if (appliedFilters.deliveryAvailable) count++
         if (appliedFilters.isImported) count++
@@ -370,7 +368,6 @@ function SearchPageContent() {
         if (state.maxBhp) f.maxBhp = parseInt(state.maxBhp)
         if (state.sellerType) f.sellerType = state.sellerType
         if (state.location) f.location = state.location
-        if (state.listingType) f.listingType = state.listingType
         if (state.sortBy && state.sortBy !== 'newest') f.sortBy = state.sortBy
         if (state.features?.length) f.features = state.features
         if (state.deliveryAvailable) f.deliveryAvailable = true
@@ -966,22 +963,6 @@ function SearchPageContent() {
                                 </div>
                             </FilterSection>
 
-                            {/* Listing Type */}
-                            <FilterSection title="Listing Type">
-                                <div className="flex gap-2">
-                                    {([
-                                        { value: '' as const, label: 'All' },
-                                        { value: 'CLASSIFIED' as const, label: 'Buy Now' },
-                                        { value: 'AUCTION' as const, label: 'Auction' },
-                                    ]).map(opt => (
-                                        <button key={opt.value} type="button"
-                                            onClick={() => set('listingType', opt.value)}
-                                            className={`flex-1 py-1.5 rounded-md border text-xs font-semibold transition-all cursor-pointer ${filters.listingType === opt.value ? 'border-primary bg-primary/15 text-primary' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
-                                        >{opt.label}</button>
-                                    ))}
-                                </div>
-                            </FilterSection>
-
                             {/* Seller Type */}
                             <FilterSection title="Seller Type">
                                 <div className="flex gap-2">
@@ -1120,7 +1101,6 @@ function SearchPageContent() {
                             {appliedFilters.euroStandard && <FilterTag label={appliedFilters.euroStandard.replace('_', ' ')} onRemove={() => clearFilter({ euroStandard: '' })} />}
                             {(appliedFilters.minBhp || appliedFilters.maxBhp) && <FilterTag label={`BHP: ${appliedFilters.minBhp || '0'}–${appliedFilters.maxBhp || '∞'}`} onRemove={() => clearFilter({ minBhp: '', maxBhp: '' })} />}
                             {appliedFilters.location && <FilterTag label={`Near: ${appliedFilters.location}`} onRemove={() => clearFilter({ location: '' })} />}
-                            {appliedFilters.listingType && <FilterTag label={appliedFilters.listingType === 'AUCTION' ? 'Auction' : 'Buy Now'} onRemove={() => clearFilter({ listingType: '' })} />}
                             {appliedFilters.sellerType && <FilterTag label={appliedFilters.sellerType === 'DEALER' ? 'Dealer' : 'Private Seller'} onRemove={() => clearFilter({ sellerType: '' })} />}
                             {appliedFilters.maxDistanceMi && <FilterTag label={`Within ${appliedFilters.maxDistanceMi} mi`} onRemove={() => clearFilter({ maxDistanceMi: null })} />}
                             {appliedFilters.deliveryAvailable && (
