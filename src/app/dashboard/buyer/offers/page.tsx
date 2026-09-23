@@ -3,6 +3,7 @@
 import * as React from "react"
 import { getMyOffers, withdrawOffer, respondToCounterOffer, type Offer } from "@/lib/listingApi"
 import { AmendOfferModal } from "@/components/offers/AmendOfferModal"
+import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { getMyDeliveryRequests, createDeliveryRequest, cancelDeliveryRequest, completeDeliveryRequest, type DeliveryRequest, type DeliveryStatus } from "@/lib/deliveryApi"
 import { ArrangeDelivery } from "@/components/services/ArrangeDelivery"
 import { createChatRoom } from "@/lib/chatApi"
@@ -278,6 +279,7 @@ export default function BuyerOffersPage() {
     const [declining, setDeclining] = React.useState<string | null>(null)
     const [viewMode, setViewMode] = React.useState<'current' | 'history' | 'all'>('current')
     const [amendingOffer, setAmendingOffer] = React.useState<Offer | null>(null)
+    const [cancelListing, setCancelListing] = React.useState<{ id: string; title: string } | null>(null)
     const router = useRouter()
 
     const refreshDeliveryRequests = React.useCallback(() => {
@@ -406,6 +408,17 @@ export default function BuyerOffersPage() {
                             onClose={() => setAmendingOffer(null)}
                             onSaved={async (updated) => {
                                 setOffers(prev => prev.map(item => item.id === updated.id ? { ...item, ...updated } : item))
+                            }}
+                        />
+                    )}
+
+                    {cancelListing && (
+                        <SaleCancellationModal
+                            listingId={cancelListing.id}
+                            vehicleTitle={cancelListing.title}
+                            onClose={() => setCancelListing(null)}
+                            onCreated={() => {
+                                void getMyOffers().then(setOffers)
                             }}
                         />
                     )}
@@ -601,6 +614,15 @@ export default function BuyerOffersPage() {
                                                                         onClick={() => handleWithdraw(offer.id)}
                                                                     >
                                                                         {withdrawing === offer.id ? <Loader2 size={16} className="animate-spin" /> : "Cancel Bid"}
+                                                                    </button>
+                                                                )}
+                                                                {offer.status === 'ACCEPTED' && listing?.id && (
+                                                                    <button
+                                                                        onClick={() => setCancelListing({ id: listing.id, title: listing.title || "Vehicle" })}
+                                                                        className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-red-400 hover:bg-red-500/10 rounded-xl transition-all gap-1.5"
+                                                                        title="Request Sale Cancellation"
+                                                                    >
+                                                                        <XCircle size={14} /> Cancel sale
                                                                     </button>
                                                                 )}
                                                                 <button
