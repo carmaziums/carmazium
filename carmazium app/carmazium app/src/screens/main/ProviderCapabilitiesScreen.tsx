@@ -204,5 +204,5 @@ const styles = StyleSheet.create({
   actionButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 38, borderWidth: 1, borderColor: Colors.whiteAlpha10, borderRadius: 10, paddingHorizontal: 11, backgroundColor: Colors.whiteAlpha04 },
   actionText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size10 },
   error: { fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size12, lineHeight: 18 },
-  warning: { fontFamily: FontFamily.medium, color: Colors.warning, fontSize: FontSize.size11 },
+  warning: { fontFamily: FontFamily.medium, color: Colors.warning, fontSize: FontSize.xs },
 });
