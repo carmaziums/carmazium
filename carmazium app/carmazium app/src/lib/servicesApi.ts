@@ -300,10 +300,12 @@ export async function getJobFeedPage(
   cursor?: string,
   limit = 20,
 ): Promise<CursorPage<ServiceJob>> {
-  const q = new URLSearchParams({ limit: String(limit) });
-  if (serviceType) q.set('serviceType', serviceType);
-  if (cursor) q.set('cursor', cursor);
-  const r = await apiClient<{ data: CursorPage<ServiceJob> }>(`/services/jobs/feed?${q.toString()}`);
+  const query = [
+    `limit=${encodeURIComponent(String(limit))}`,
+    serviceType ? `serviceType=${encodeURIComponent(serviceType)}` : null,
+    cursor ? `cursor=${encodeURIComponent(cursor)}` : null,
+  ].filter(Boolean).join('&');
+  const r = await apiClient<{ data: CursorPage<ServiceJob> }>(`/services/jobs/feed?${query}`);
   return r.data;
 }
 
@@ -311,9 +313,11 @@ export async function getAssignedJobsPage(
   cursor?: string,
   limit = 20,
 ): Promise<CursorPage<ServiceJob>> {
-  const q = new URLSearchParams({ limit: String(limit) });
-  if (cursor) q.set('cursor', cursor);
-  const r = await apiClient<{ data: CursorPage<ServiceJob> }>(`/services/jobs/assigned?${q.toString()}`);
+  const query = [
+    `limit=${encodeURIComponent(String(limit))}`,
+    cursor ? `cursor=${encodeURIComponent(cursor)}` : null,
+  ].filter(Boolean).join('&');
+  const r = await apiClient<{ data: CursorPage<ServiceJob> }>(`/services/jobs/assigned?${query}`);
   return r.data;
 }
 
