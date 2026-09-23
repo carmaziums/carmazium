@@ -257,6 +257,8 @@ const mobileProviderVerification = read('carmazium app/carmazium app/src/screens
 const mobileProviderMatching = read('carmazium app/carmazium app/src/screens/main/ProviderMatchingScreen.tsx');
 const mobileProviderJobs = read('carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx');
 const mobileProviderJobDetail = read('carmazium app/carmazium app/src/screens/main/ProviderJobDetailScreen.tsx');
+const mobileProviderLeads = read('carmazium app/carmazium app/src/screens/main/ProviderLeadsScreen.tsx');
+const mobileProviderLeadDetail = read('carmazium app/carmazium app/src/screens/main/ProviderLeadDetailScreen.tsx');
 const mobileServicesApi = read('carmazium app/carmazium app/src/lib/servicesApi.ts');
 const mobileChatApi = read('carmazium app/carmazium app/src/lib/chatApi.ts');
 const mobileMainNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
@@ -372,6 +374,29 @@ if (
   fail('Native Partner Jobs must preserve feed/quote/work/inspection/chat parity with web');
 } else {
   ok('Native Partner Jobs preserve provider lifecycle and service-job chat parity');
+}
+
+// Partner/provider enquiry parity: native Finance/Warranty providers must use
+// the same matched inbox and response contract as web, including Finance-only
+// APR/term fields and customer-consent disclosure on the detail surface.
+if (
+  !mobileServicesApi.includes('/services/leads/inbox?') ||
+  !mobileServicesApi.includes('/services/leads/inbox/${id}') ||
+  !mobileServicesApi.includes('/services/leads/${id}/respond') ||
+  !mobileProviderLeads.includes('getProviderLeadInboxPage') ||
+  !mobileProviderLeads.includes("navigation.navigate('ProviderLeadDetail'") ||
+  !mobileProviderLeadDetail.includes('getProviderLead') ||
+  !mobileProviderLeadDetail.includes('respondToProviderLead') ||
+  !mobileProviderLeadDetail.includes('Representative APR must be between 0 and 100.') ||
+  !mobileProviderLeadDetail.includes('Finance term must be a whole number between 1 and 120 months.') ||
+  !mobileProviderLeadDetail.includes('customer consented to sharing this enquiry') ||
+  !mobileMainNavigator.includes('ProviderLeads') ||
+  !mobileMainNavigator.includes('ProviderLeadDetail') ||
+  !mobilePartnerDashboard.includes("navigation.navigate('ProviderLeads')")
+) {
+  fail('Native provider Leads can drift from the Finance/Warranty matched-enquiry contract');
+} else {
+  ok('Native provider Leads preserve matched inbox, detail, consent and response parity');
 }
 
 // Dealer business identity / RBAC: staff must act under one dealership identity
