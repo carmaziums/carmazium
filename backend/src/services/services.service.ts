@@ -868,7 +868,7 @@ export class ServicesService {
 
         const existing = await this.prisma.serviceJob.findFirst({
             where: {
-                purchaseCustomerId,
+                customerId: purchaseCustomerId,
                 ...sourceWhere,
                 status: { notIn: [ServiceJobStatus.CANCELLED, ServiceJobStatus.EXPIRED] },
             },
@@ -879,7 +879,7 @@ export class ServicesService {
         try {
             return await this.withActiveJobSlot(purchaseCustomerId, async (tx) => tx.serviceJob.create({
                 data: {
-                    purchaseCustomerId,
+                    customerId: purchaseCustomerId,
                     serviceType: ServiceType.DELIVERY,
                     title: `Deliver ${listing.title}`.slice(0, 120),
                     pickupPostcode: sellerPostcode,
