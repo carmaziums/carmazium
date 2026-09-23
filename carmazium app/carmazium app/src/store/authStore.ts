@@ -16,6 +16,54 @@ const ONBOARDING_KEY = 'czm_onboarding_complete';
  *  Absent on existing installs, which correctly means "not seen yet" — the
  *  worst case is one extra viewing of the carousel, never a skipped wizard. */
 const INTRO_SEEN_KEY = 'czm_intro_seen';
+const PENDING_SIGNUP_ROLE_KEY = 'czm_pending_signup_role';
+
+export type AccountRole =
+  | 'buyer'
+  | 'seller'
+  | 'dealer'
+  | 'contractor'
+  | 'finance_partner'
+  | 'insurance_partner'
+  | 'admin';
+
+type PreviewRole = 'buyer' | 'seller' | 'dealer';
+type SignupRole = 'BUYER' | 'DEALER';
+
+const mapAccountRole = (role?: string | null): AccountRole => {
+  switch ((role ?? '').toUpperCase()) {
+    case 'SELLER': return 'seller';
+    case 'DEALER': return 'dealer';
+    case 'CONTRACTOR': return 'contractor';
+    case 'FINANCE_PARTNER': return 'finance_partner';
+    case 'INSURANCE_PARTNER': return 'insurance_partner';
+    case 'ADMIN': return 'admin';
+    case 'BUYER':
+    default:
+      return 'buyer';
+  }
+};
+
+const previewRoleForAccount = (role: AccountRole): PreviewRole => {
+  if (role === 'dealer') return 'dealer';
+  if (role === 'seller') return 'seller';
+  return 'buyer';
+};
+
+const hasRequiredAccountDetails = (profile: {
+  firstName?: string | null;
+  lastName?: string | null;
+  phone?: string | null;
+  location?: string | null;
+  postcode?: string | null;
+} | null | undefined): boolean =>
+  Boolean(
+    profile?.firstName?.trim() &&
+    profile?.lastName?.trim() &&
+    profile?.phone?.trim() &&
+    profile?.location?.trim() &&
+    profile?.postcode?.trim()
+  );
 
 interface User {
   id: string;
@@ -29,6 +77,7 @@ interface User {
    *  can still be missing it — LocationPromptSheet exists to collect it. */
   postcode?: string | null;
   isAddressVerified?: boolean;
+  isEmailVerified?: boolean;
   isVerified?: boolean; // true if dealer KYC approved
   /**
    * True when this user is active staff on someone else's verified dealership.
@@ -54,6 +103,7 @@ interface UserProfileResponse {
     location?: string;
     postcode?: string;
     isAddressVerified?: boolean;
+    isEmailVerified?: boolean;
     dealerProfile?: {
       isVerified?: boolean;
     };
@@ -69,7 +119,7 @@ interface AuthState {
   pendingEmailVerification: boolean;
   user: User | null;
   isLoading: boolean;
-  role: 'buyer' | 'seller' | 'dealer';
+  role: PreviewRole;
   /** False until initializeAuth has finished once. RootNavigator must not
    *  decide which stack to show before this is true, or a signed-in user
    *  sees the Login screen flash while the session is still being restored
@@ -89,7 +139,7 @@ interface AuthState {
   // previewed) must read this instead of `role`
   // (mobile-production-readiness-plan.md F38 — a dealer previewing as buyer
   // could no longer be told apart from a real buyer using `role` alone).
-  accountRole: 'buyer' | 'seller' | 'dealer';
+  accountRole: AccountRole;
 
   completeOnboarding: () => Promise<void>;
   /** Tear down the local session without asking the backend — the session is
@@ -106,10 +156,11 @@ interface AuthState {
   hasSeenIntro: boolean;
   initializeAuth: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, fullName: string, role?: 'BUYER' | 'DEALER') => Promise<void>;
+  signup: (email: string, password: string, fullName: string, role?: SignupRole) => Promise<void>;
+  prepareOAuthSignupRole: (role: SignupRole) => Promise<void>;
   logout: () => Promise<void>;
   setLoading: (loading: boolean) => void;
-  setRole: (role: 'buyer' | 'seller' | 'dealer') => void;
+  setRole: (role: PreviewRole) => void;
   updateUser: (updates: Partial<User>) => void;
 }
 
@@ -124,12 +175,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   pendingEmailVerification: false,
   user: null,
   isLoading: false,
-  role: 'buyer' as 'buyer' | 'seller' | 'dealer',
-  accountRole: 'buyer' as 'buyer' | 'seller' | 'dealer',
+  role: 'buyer' as PreviewRole,
+  accountRole: 'buyer' as AccountRole,
 
   completeOnboarding: async () => {
+    if (!hasRequiredAccountDetails(get().user)) {
+      throw new Error('Complete your name, phone, location and postcode before continuing.');
+    }
     await SecureStore.setItemAsync(ONBOARDING_KEY, '1').catch(() => {});
     set({ hasCompletedOnboarding: true });
+  },
+
+  prepareOAuthSignupRole: async (role: SignupRole) => {
+    await SecureStore.setItemAsync(PENDING_SIGNUP_ROLE_KEY, role);
   },
 
   completeIntro: async () => {
@@ -235,7 +293,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   setLoading: (loading: boolean) => set({ isLoading: loading }),
-  setRole: (role: 'buyer' | 'seller' | 'dealer') => set({ role }),
+  setRole: (role: PreviewRole) => set({ role }),
   updateUser: (updates) => set((state) => ({ user: state.user ? { ...state.user, ...updates } : state.user })),
 
   initializeAuth: async () => {
@@ -248,6 +306,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user && session.access_token) {
+        // Match web: no dashboard session is considered complete until the
+        // Supabase email has actually been confirmed.
+        if (!session.user.email_confirmed_at) {
+          const pendingUser = session.user;
+          await supabase.auth.signOut().catch(() => {});
+          set({
+            isAuthenticated: false,
+            pendingEmailVerification: true,
+            hasCompletedOnboarding: false,
+            user: {
+              id: pendingUser.id,
+              email: pendingUser.email ?? '',
+              firstName: pendingUser.user_metadata?.first_name || null,
+              lastName: pendingUser.user_metadata?.last_name || null,
+            },
+          });
+          return;
+        }
+
         // Bridge the session with NestJS backend
         try {
           await apiClient('/auth/supabase-session', {
@@ -259,27 +336,41 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
 
         // Fetch user profile info
-        const response = await apiClient<UserProfileResponse>('/users/me');
+        let response = await apiClient<UserProfileResponse>('/users/me');
         if (response.success && response.data) {
-          const profile = response.data;
-          const mappedRole = profile.role === 'DEALER' ? 'dealer' : profile.role === 'SELLER' ? 'seller' : 'buyer';
+          let profile = response.data;
 
-          // Onboarding is complete if: the user has set a location (from any platform)
-          // OR if they explicitly completed it on this device before.
-          // Read this BEFORE setting isAuthenticated so both flip in one atomic set()
-          // and the RootNavigator never sees isAuthenticated:true + hasCompletedOnboarding:false.
-          const [storedFlag, profileLocation] = await Promise.all([
-            SecureStore.getItemAsync(ONBOARDING_KEY).catch(() => null),
-            Promise.resolve(profile.location || null),
-          ]);
-          const hasCompletedOnboarding = storedFlag === '1' || !!profileLocation;
+          // Google/Apple OAuth does not carry our signup account-type choice
+          // into provider metadata. Preserve the explicit Partner Account
+          // choice made on the mobile signup screen and apply it only through
+          // the backend's self-service role-elevation endpoint.
+          const pendingSignupRole = await SecureStore.getItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => null);
+          if (pendingSignupRole === 'DEALER' && profile.role !== 'DEALER') {
+            try {
+              await apiClient('/users/elevate', {
+                method: 'POST',
+                body: JSON.stringify({ newRole: 'DEALER' }),
+              });
+              response = await apiClient<UserProfileResponse>('/users/me');
+              profile = response.data;
+            } catch (roleErr) {
+              console.warn('Could not apply pending Partner Account role:', roleErr);
+            }
+          }
+          if (pendingSignupRole) {
+            await SecureStore.deleteItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => {});
+          }
+
+          const accountRole = mapAccountRole(profile.role);
+          const mappedRole = previewRoleForAccount(accountRole);
+          const hasCompletedOnboarding = hasRequiredAccountDetails(profile);
 
           set({
             isAuthenticated: true,
             pendingEmailVerification: false,
             hasCompletedOnboarding,
             role: mappedRole,
-            accountRole: mappedRole,
+            accountRole,
             user: {
               id: profile.id,
               email: profile.email,
@@ -290,6 +381,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               location: profile.location || null,
               postcode: profile.postcode || null,
               isAddressVerified: profile.isAddressVerified || false,
+              isEmailVerified: profile.isEmailVerified || false,
               isVerified: profile.dealerProfile?.isVerified ?? false,
               isDealerStaff: (profile.dealerStaffMemberships?.length ?? 0) > 0,
             },
@@ -362,12 +454,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const response = await apiClient<UserProfileResponse>('/users/me');
       if (response.success && response.data) {
         const profile = response.data;
-        const mappedRole = profile.role === 'DEALER' ? 'dealer' : profile.role === 'SELLER' ? 'seller' : 'buyer';
-        const [storedFlag, profileLocation] = await Promise.all([
-          SecureStore.getItemAsync(ONBOARDING_KEY).catch(() => null),
-          Promise.resolve(profile.location || null),
-        ]);
-        const hasCompletedOnboarding = storedFlag === '1' || !!profileLocation;
+        const accountRole = mapAccountRole(profile.role);
+        const mappedRole = previewRoleForAccount(accountRole);
+        const hasCompletedOnboarding = hasRequiredAccountDetails(profile);
 
         // A fresh session — re-arm the 401 latch so a later expiry in this
         // same app run is acted on rather than swallowed.
@@ -476,12 +565,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const response = await apiClient<UserProfileResponse>('/users/me');
         if (response.success && response.data) {
           const profile = response.data;
-          const mappedRole = profile.role === 'DEALER' ? 'dealer' : profile.role === 'SELLER' ? 'seller' : 'buyer';
+          const accountRole = mapAccountRole(profile.role);
+          const mappedRole = previewRoleForAccount(accountRole);
           set({
             isAuthenticated: true,
             hasCompletedOnboarding: false,
             role: mappedRole,
-            accountRole: mappedRole,
+            accountRole,
             user: {
               id: profile.id,
               email: profile.email,
@@ -492,6 +582,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               location: profile.location || null,
               postcode: profile.postcode || null,
               isAddressVerified: profile.isAddressVerified || false,
+              isEmailVerified: profile.isEmailVerified || false,
               isVerified: profile.dealerProfile?.isVerified ?? false,
               isDealerStaff: (profile.dealerStaffMemberships?.length ?? 0) > 0,
             },
