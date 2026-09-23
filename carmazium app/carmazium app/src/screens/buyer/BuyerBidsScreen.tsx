@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   ActivityIndicator,
@@ -27,6 +27,7 @@ import { Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { haptics } from '../../lib/haptics';
+import { DealerAccess, getDealerAccess } from '../../lib/dealerAccessApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -201,6 +202,30 @@ const STATUS_CFG: Record<AuctionStatus, StatusCfg> = {
 export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const currentUserId = useAuthStore((s) => s.user?.id);
+  const role = useAuthStore((s) => s.role);
+  const [dealerAccess, setDealerAccess] = useState<DealerAccess | null>(null);
+  const [dealerAccessLoading, setDealerAccessLoading] = useState(false);
+
+  useEffect(() => {
+    if (role !== 'dealer' || !currentUserId) {
+      setDealerAccess(null);
+      setDealerAccessLoading(false);
+      return;
+    }
+
+    let mounted = true;
+    setDealerAccessLoading(true);
+    getDealerAccess()
+      .then((access) => { if (mounted) setDealerAccess(access); })
+      .catch(() => { if (mounted) setDealerAccess(null); })
+      .finally(() => { if (mounted) setDealerAccessLoading(false); });
+
+    return () => { mounted = false; };
+  }, [role, currentUserId]);
+
+  const businessUserId = dealerAccess?.ownerUserId ?? currentUserId;
+  const canPlaceBid = Boolean(dealerAccess?.permissions?.includes('PLACE_BID'));
+  const canPayAuctionFee = Boolean(dealerAccess?.permissions?.includes('PAY_AUCTION_FEE'));
 
   const [bids, setBids] = useState<Bid[]>([]);
   const [loading, setLoading] = useState(true);
@@ -223,7 +248,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
     try {
       const res = await apiClient<BidsResponse>(`/bids/my?page=${page}&limit=${PAGE_SIZE}`);
       if (res.success) {
-        setBids((res.data || []).map((b) => mapRawBid(b, currentUserId)));
+        setBids((res.data || []).map((b) => mapRawBid(b, businessUserId)));
         setTotalPages(res.pagination?.totalPages ?? 1);
         setTotalCount(res.pagination?.total ?? (res.data || []).length);
       }
@@ -233,7 +258,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
       setLoading(false);
       setRefreshing(false);
     }
-  }, [page, currentUserId]);
+  }, [page, businessUserId]);
 
   // Re-read authoritative winner/payment state whenever the buyer returns
   // from AuctionComplete/Stripe. A plain mount-only effect left a stale
@@ -481,14 +506,25 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
         {isWon && (
           <View style={styles.wonCtaRow}>
             {!bid.buyerFeePaid ? (
-              <TouchableOpacity
-                style={[styles.wonCtaBtn, { flex: 1 }]}
-                activeOpacity={0.85}
-                onPress={handlePayFee}
-              >
-                <Ionicons name="lock-closed-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
-                <Text style={styles.wonCtaBtnText}>PAY BUYER FEE · £125</Text>
-              </TouchableOpacity>
+              dealerAccessLoading ? (
+                <View style={[styles.wonCtaBtn, { flex: 1, justifyContent: 'center' }]}>
+                  <ActivityIndicator size="small" color={Colors.white} />
+                </View>
+              ) : canPayAuctionFee ? (
+                <TouchableOpacity
+                  style={[styles.wonCtaBtn, { flex: 1 }]}
+                  activeOpacity={0.85}
+                  onPress={handlePayFee}
+                >
+                  <Ionicons name="lock-closed-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
+                  <Text style={styles.wonCtaBtnText}>PAY BUYER FEE · £125</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={[styles.wonCtaBtn, { flex: 1, opacity: 0.65 }]}>
+                  <Ionicons name="lock-closed-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
+                  <Text style={styles.wonCtaBtnText}>OWNER / ADMIN / FINANCE TO PAY</Text>
+                </View>
+              )
             ) : (
               <TouchableOpacity
                 style={[styles.wonChatBtn, { flex: 1 }]}
@@ -527,7 +563,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
 
         {/* Cancel bid — 24h window, any own bid on a still-ACTIVE auction
             regardless of current ranking (matches the live auction screen). */}
-        {isCancelable(bid) && (
+        {canPlaceBid && isCancelable(bid) && (
           <View style={styles.cancelRow}>
             <Text style={styles.cancelRowHint}>
               {formatCancelWindowRemaining(BID_CANCEL_WINDOW_MS - (Date.now() - new Date(bid.createdAt).getTime()))} left to cancel
@@ -548,7 +584,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
         )}
       </TouchableOpacity>
     );
-  }, [tappingId, handleViewAuction, connectingChatId, handleChatWithSeller, cancelingId]);
+  }, [tappingId, handleViewAuction, connectingChatId, handleChatWithSeller, cancelingId, dealerAccessLoading, canPayAuctionFee, canPlaceBid]);
 
   // ── main render ────────────────────────────────────────────────
   return (
