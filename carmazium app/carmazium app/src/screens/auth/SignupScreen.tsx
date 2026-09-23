@@ -50,7 +50,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
 
-  const { signup, prepareOAuthSignupRole, isLoading } = useAuthStore();
+  const { signup, isLoading } = useAuthStore();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -62,11 +62,10 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
     setFormError(null);
     setIsGoogleLoading(true);
     try {
-      await prepareOAuthSignupRole(role);
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: 'carmazium://auth/callback',
+          redirectTo: `carmazium://auth/callback?role=${encodeURIComponent(role)}`,
           skipBrowserRedirect: true,
         },
       });
@@ -87,11 +86,10 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
     setFormError(null);
     setIsAppleLoading(true);
     try {
-      await prepareOAuthSignupRole(role);
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: 'carmazium://auth/callback',
+          redirectTo: `carmazium://auth/callback?role=${encodeURIComponent(role)}`,
           skipBrowserRedirect: true,
         },
       });
@@ -204,7 +202,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               </View>
               {role === 'DEALER' && (
                 <Text style={styles.roleNote}>
-                  You&apos;ll choose and verify your business services after signing up.
+                  Your Partner Account uses one login for your verified business activity across CarMazium.
                 </Text>
               )}
             </View>

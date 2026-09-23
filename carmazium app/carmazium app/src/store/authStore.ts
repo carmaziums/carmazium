@@ -16,8 +16,6 @@ const ONBOARDING_KEY = 'czm_onboarding_complete';
  *  Absent on existing installs, which correctly means "not seen yet" — the
  *  worst case is one extra viewing of the carousel, never a skipped wizard. */
 const INTRO_SEEN_KEY = 'czm_intro_seen';
-const PENDING_SIGNUP_ROLE_KEY = 'czm_pending_signup_role';
-
 export type AccountRole =
   | 'buyer'
   | 'seller'
@@ -154,10 +152,9 @@ interface AuthState {
    *  see INTRO_SEEN_KEY. */
   completeIntro: () => Promise<void>;
   hasSeenIntro: boolean;
-  initializeAuth: () => Promise<void>;
+  initializeAuth: (signupRole?: SignupRole) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, fullName: string, role?: SignupRole) => Promise<void>;
-  prepareOAuthSignupRole: (role: SignupRole) => Promise<void>;
   logout: () => Promise<void>;
   setLoading: (loading: boolean) => void;
   setRole: (role: PreviewRole) => void;
@@ -184,10 +181,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     await SecureStore.setItemAsync(ONBOARDING_KEY, '1').catch(() => {});
     set({ hasCompletedOnboarding: true });
-  },
-
-  prepareOAuthSignupRole: async (role: SignupRole) => {
-    await SecureStore.setItemAsync(PENDING_SIGNUP_ROLE_KEY, role);
   },
 
   completeIntro: async () => {
@@ -296,7 +289,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setRole: (role: PreviewRole) => set({ role }),
   updateUser: (updates) => set((state) => ({ user: state.user ? { ...state.user, ...updates } : state.user })),
 
-  initializeAuth: async () => {
+  initializeAuth: async (signupRole) => {
     set({ isLoading: true });
     try {
       // Read first and unconditionally: the carousel gate matters precisely
@@ -340,12 +333,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (response.success && response.data) {
           let profile = response.data;
 
-          // Google/Apple OAuth does not carry our signup account-type choice
-          // into provider metadata. Preserve the explicit Partner Account
-          // choice made on the mobile signup screen and apply it only through
-          // the backend's self-service role-elevation endpoint.
-          const pendingSignupRole = await SecureStore.getItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => null);
-          if (pendingSignupRole === 'DEALER' && profile.role !== 'DEALER') {
+          // OAuth signup carries the selected account type on the callback URL,
+          // exactly like the web client. It is therefore single-use and bound
+          // to this callback rather than persisted on the device.
+          const canApplyPartnerIntent =
+            signupRole === 'DEALER' &&
+            (profile.role === 'BUYER' || profile.role === 'SELLER');
+
+          if (canApplyPartnerIntent) {
             try {
               await apiClient('/users/elevate', {
                 method: 'POST',
@@ -354,11 +349,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               response = await apiClient<UserProfileResponse>('/users/me');
               profile = response.data;
             } catch (roleErr) {
-              console.warn('Could not apply pending Partner Account role:', roleErr);
+              console.warn('Could not apply Partner Account role from OAuth callback:', roleErr);
             }
-          }
-          if (pendingSignupRole) {
-            await SecureStore.deleteItemAsync(PENDING_SIGNUP_ROLE_KEY).catch(() => {});
           }
 
           const accountRole = mapAccountRole(profile.role);

@@ -239,6 +239,11 @@ export default function App() {
       const refreshToken = hashParams.get('refresh_token');
       const type = hashParams.get('type');
       const code = queryParams.get('code');
+      const callbackRoleRaw = queryParams.get('role');
+      const callbackRole =
+        callbackRoleRaw === 'BUYER' || callbackRoleRaw === 'DEALER'
+          ? callbackRoleRaw
+          : undefined;
 
       // A link that reaches none of the branches below must not leave the user
       // staring at a splash screen forever — web keeps a 15s safety timer for
@@ -261,7 +266,7 @@ export default function App() {
               (navigationRef.current as any)?.navigate('Auth', { screen: 'ResetPassword' });
             }, 300);
           } else {
-            await reinitializeAuth();
+            await reinitializeAuth(callbackRole);
           }
           return;
         }
@@ -300,7 +305,7 @@ export default function App() {
               (navigationRef.current as any)?.navigate('Auth', { screen: 'ResetPassword' });
             }, 300);
           } else {
-            await reinitializeAuth();
+            await reinitializeAuth(callbackRole);
           }
           return;
         }
