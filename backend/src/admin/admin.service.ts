@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { UserRole } from '@prisma/client';
@@ -944,28 +944,145 @@ export class AdminService {
         );
     }
 
+    private sellerPayoutClaimToken(auctionId: string): string {
+        return `claim:seller-bonus:${auctionId}`;
+    }
+
+    private sellerPayoutIdempotencyKey(auctionId: string): string {
+        return `auction-seller-bonus-${auctionId}`;
+    }
+
+    /**
+     * Claim and settle the £100 seller bonus through Stripe.
+     *
+     * The claim lives in stripePayoutTransferId until the real transfer id is
+     * persisted. A retry reuses the same Stripe idempotency key, so even if
+     * Stripe accepted the transfer but the DB finalization failed, retrying
+     * cannot create a second £100 transfer.
+     */
+    private async settleSellerBonusViaStripe(
+        auctionId: string,
+        stripeConnectAccountId: string,
+    ): Promise<string> {
+        const claimToken = this.sellerPayoutClaimToken(auctionId);
+
+        const claimed = await this.prisma.auction.updateMany({
+            where: {
+                id: auctionId,
+                sellerBonusReleased: true,
+                manualPayoutConfirmedAt: null,
+                OR: [
+                    { stripePayoutTransferId: null },
+                    { stripePayoutTransferId: claimToken },
+                ],
+            },
+            data: { stripePayoutTransferId: claimToken },
+        });
+
+        if (claimed.count !== 1) {
+            const current = await this.prisma.auction.findUnique({
+                where: { id: auctionId },
+                select: {
+                    stripePayoutTransferId: true,
+                    manualPayoutConfirmedAt: true,
+                },
+            });
+            if (current?.manualPayoutConfirmedAt) {
+                throw new ConflictException('Seller bonus has already been paid manually.');
+            }
+            if (
+                current?.stripePayoutTransferId
+                && current.stripePayoutTransferId !== claimToken
+            ) {
+                return current.stripePayoutTransferId;
+            }
+            throw new ConflictException('Seller bonus payout is already being settled.');
+        }
+
+        let transferId: string;
+        try {
+            transferId = await this.paymentsService.issueSellerPayout(
+                stripeConnectAccountId,
+                10000,
+                this.sellerPayoutIdempotencyKey(auctionId),
+            );
+        } catch (error) {
+            // Stripe rejected the transfer, so release the claim for a clean
+            // retry. If Stripe succeeded and our later DB finalization fails,
+            // this catch is not entered and the claim deliberately remains.
+            await this.prisma.auction.updateMany({
+                where: {
+                    id: auctionId,
+                    stripePayoutTransferId: claimToken,
+                    manualPayoutConfirmedAt: null,
+                },
+                data: { stripePayoutTransferId: null },
+            });
+            throw error;
+        }
+
+        const finalized = await this.prisma.auction.updateMany({
+            where: {
+                id: auctionId,
+                sellerBonusReleased: true,
+                stripePayoutTransferId: claimToken,
+                manualPayoutConfirmedAt: null,
+            },
+            data: {
+                stripePayoutTransferId: transferId,
+                stripePayoutError: null,
+            },
+        });
+
+        if (finalized.count !== 1) {
+            const current = await this.prisma.auction.findUnique({
+                where: { id: auctionId },
+                select: {
+                    stripePayoutTransferId: true,
+                    manualPayoutConfirmedAt: true,
+                },
+            });
+            if (current?.stripePayoutTransferId === transferId) {
+                return transferId;
+            }
+            throw new ConflictException(
+                'Stripe accepted the seller payout but its local finalization needs retry.',
+            );
+        }
+
+        return transferId;
+    }
+
     async approveHandover(auctionId: string) {
         const auction = await this.prisma.auction.findUnique({
             where: { id: auctionId },
             include: { listing: { select: { sellerId: true, title: true } } },
         });
         if (!auction) throw new NotFoundException('Auction not found');
-        // Idempotency guard — prevents double-payout if called more than once
         if (auction.sellerBonusReleased) {
             return auction;
         }
 
-        const updated = await this.prisma.auction.update({
-            where: { id: auctionId },
+        // Atomic approval claim. Two admins can click Approve at the same time,
+        // but only one request may transition false -> true and enter payout.
+        const releasedAt = new Date();
+        const approved = await this.prisma.auction.updateMany({
+            where: {
+                id: auctionId,
+                sellerBonusReleased: false,
+            },
             data: {
                 sellerBonusReleased: true,
-                sellerBonusReleasedAt: new Date(),
+                sellerBonusReleasedAt: releasedAt,
             },
         });
 
+        if (approved.count !== 1) {
+            return this.prisma.auction.findUnique({ where: { id: auctionId } });
+        }
+
         const sellerId = auction.listing?.sellerId;
         if (sellerId) {
-            // Issue £100 payout to seller's connected Stripe account
             const seller = await this.prisma.user.findUnique({
                 where: { id: sellerId },
                 select: {
@@ -977,17 +1094,10 @@ export class AdminService {
             });
 
             let payoutSucceeded = false;
-            // Distinguishes "seller never connected a payout method" (their action needed)
-            // from "connected, but the transfer itself failed" (Carmazium's/Stripe's problem) —
-            // conflating these produced the wrong "connect your bank account" message below
-            // for sellers who'd already connected one.
             let payoutReason: 'not_connected' | 'transfer_failed' | 'test_mode' | null = null;
             const stripeInTestMode = this.paymentsService.isStripeInTestMode();
 
             if (stripeInTestMode) {
-                // Sandbox window: existing sellers' stripeConnectAccountId values are live-mode
-                // and can't accept a test-mode transfer. Skip the auto-transfer and route to
-                // manual payout so no one hits a spurious "transfer failed" every time.
                 payoutReason = 'test_mode';
                 await this.prisma.auction.update({
                     where: { id: auctionId },
@@ -1000,36 +1110,26 @@ export class AdminService {
                 );
             } else if (seller?.stripeConnectAccountId && seller?.stripeConnectOnboardingComplete) {
                 try {
-                    const transferId = await this.paymentsService.issueSellerPayout(
+                    await this.settleSellerBonusViaStripe(
+                        auctionId,
                         seller.stripeConnectAccountId,
                     );
-                    // Record transfer ID for audit trail
-                    await this.prisma.auction.update({
-                        where: { id: auctionId },
-                        data: { stripePayoutTransferId: transferId, stripePayoutError: null },
-                    });
                     payoutSucceeded = true;
                 } catch (err: any) {
                     const errMsg = err?.message || 'Unknown Stripe error';
-                    console.error(`[Admin] Stripe payout failed for auction ${auctionId}:`, errMsg);
+                    console.error(`[Admin] Stripe payout settlement failed for auction ${auctionId}:`, errMsg);
                     payoutReason = 'transfer_failed';
-                    // Persist error so admins can see it in the handovers view
                     await this.prisma.auction.update({
                         where: { id: auctionId },
                         data: { stripePayoutError: errMsg },
                     });
                     await this.notifyAdminsPayoutNeedsAction(
                         auctionId,
-                        '⚠️ Payout failed — manual action needed',
-                        `Auto-transfer of £100 to seller for "${auction.listing.title}" failed: ${errMsg}. Please pay manually.`,
+                        'Payout needs retry — manual action required',
+                        `The £100 seller payout for "${auction.listing.title}" could not be finalized: ${errMsg}. Use Retry via Stripe first; retries use the same Stripe idempotency key. Do not pay manually until the Stripe transfer state is verified.`,
                     );
                 }
             } else {
-                // Seller has no Stripe Connect account (or onboarding incomplete) — this used
-                // to fall through silently: no stripePayoutError, no admin notification, and
-                // the auction still disappeared from the pending-handovers queue the moment
-                // sellerBonusReleased flipped true, leaving no trace anywhere that £100 was
-                // still owed.
                 payoutReason = 'not_connected';
                 await this.prisma.auction.update({
                     where: { id: auctionId },
@@ -1049,18 +1149,22 @@ export class AdminService {
                     ? `Your handover proof for "${auction.listing.title}" has been approved. Your £100 bonus is on its way to your bank account.`
                     : payoutReason === 'not_connected'
                         ? `Your handover proof for "${auction.listing.title}" has been approved. Connect your bank account in Settings to receive your £100 bonus.`
-                        : `Your handover proof for "${auction.listing.title}" has been approved. Your £100 bonus is being processed manually — our team will be in touch shortly.`,
+                        : `Your handover proof for "${auction.listing.title}" has been approved. Your £100 bonus is pending payout review; our team will resolve it safely.`,
                 entityType: 'AUCTION',
                 entityId: auctionId,
                 link: '/dashboard/seller/auctions',
             });
 
             if (seller?.email) {
-                this.emailService.sendHandoverApprovedEmail(seller.email, seller.firstName || 'there', auction.listing.title).catch(console.error);
+                this.emailService.sendHandoverApprovedEmail(
+                    seller.email,
+                    seller.firstName || 'there',
+                    auction.listing.title,
+                ).catch(console.error);
             }
         }
 
-        return updated;
+        return this.prisma.auction.findUnique({ where: { id: auctionId } });
     }
 
     /**
