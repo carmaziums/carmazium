@@ -587,6 +587,51 @@ export async function importFromUrl(params: {
   return res.data;
 }
 
+// ─── Auction → Retail channel conversion ─────────────────────────────────────
+
+export interface RetailConversionCandidate {
+  listingId: string;
+  title: string;
+  listingStatus: string;
+  listingType: 'AUCTION' | 'CLASSIFIED';
+  auctionId: string | null;
+  auctionStatus: 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED' | string;
+  hasActiveBids: boolean;
+  reserveMet: boolean;
+  canConvert: boolean;
+  blockedReason: string | null;
+  existingRetailListingId: string | null;
+  existingRetailSlug: string | null;
+}
+
+export async function getRetailConversionCandidate(
+  vrm: string,
+): Promise<{ candidate: RetailConversionCandidate | null }> {
+  const res = await apiClient<ApiResponse<{ candidate: RetailConversionCandidate | null }>>(
+    `/listings/retail-conversion-candidate?vrm=${encodeURIComponent(vrm)}`,
+  );
+  return res.data;
+}
+
+export async function convertAuctionToRetail(
+  listingId: string,
+  input: Record<string, any> & { confirmAuctionCancellation: true },
+): Promise<{ listingId: string; slug: string; auctionCancelled: boolean; bidderCount: number }> {
+  const res = await apiClient<ApiResponse<{
+    listingId: string;
+    slug: string;
+    auctionCancelled: boolean;
+    bidderCount: number;
+  }>>(
+    `/listings/${listingId}/convert-to-retail`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+  );
+  return res.data;
+}
+
 // ─── Dual-channel ─────────────────────────────────────────────────────────────
 
 /** Creates a linked CLASSIFIED listing from an AUCTION listing */
