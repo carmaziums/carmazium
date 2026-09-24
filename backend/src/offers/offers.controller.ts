@@ -23,13 +23,17 @@ import { AmendOfferDto } from './dto/amend-offer.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
+import { ProductSyncGateway } from '../sync/product-sync.gateway';
 
 @ApiTags('Offers')
 @Controller('offers')
 @UseGuards(SessionAuthGuard)
 @ApiCookieAuth()
 export class OffersController {
-    constructor(private readonly offersService: OffersService) { }
+    constructor(
+        private readonly offersService: OffersService,
+        private readonly productSync: ProductSyncGateway,
+    ) { }
 
     /**
      * Buyer: Submit a price offer on a listing
@@ -46,6 +50,7 @@ export class OffersController {
         @CurrentUser() user: any,
     ): Promise<StandardResponse<any>> {
         const offer = await this.offersService.makeOffer(user.id, dto);
+        this.productSync.broadcast({ domain: 'offers', action: 'created' });
         return new StandardResponse(offer);
     }
 
@@ -108,6 +113,8 @@ export class OffersController {
         @CurrentUser() user: any,
     ): Promise<StandardResponse<any>> {
         const offer = await this.offersService.respondToOffer(id, user.id, dto.status, dto.counterAmount);
+        this.productSync.broadcast({ domain: 'offers', action: 'responded' });
+        this.productSync.broadcast({ domain: 'listings', action: 'offer-state-changed' });
         return new StandardResponse(offer);
     }
 
@@ -151,6 +158,7 @@ export class OffersController {
         @CurrentUser() user: any,
     ): Promise<StandardResponse<any>> {
         const offer = await this.offersService.amendOffer(id, user.id, dto);
+        this.productSync.broadcast({ domain: 'offers', action: 'amended' });
         return new StandardResponse(offer);
     }
 
@@ -168,6 +176,7 @@ export class OffersController {
         @CurrentUser() user: any,
     ): Promise<StandardResponse<any>> {
         const offer = await this.offersService.withdrawOffer(id, user.id);
+        this.productSync.broadcast({ domain: 'offers', action: 'withdrawn' });
         return new StandardResponse(offer);
     }
 
@@ -183,6 +192,8 @@ export class OffersController {
         @CurrentUser() user: any,
     ): Promise<StandardResponse<any>> {
         const offer = await this.offersService.respondToCounterOffer(id, user.id, dto.status, dto.counterAmount);
+        this.productSync.broadcast({ domain: 'offers', action: 'counter-responded' });
+        this.productSync.broadcast({ domain: 'listings', action: 'offer-state-changed' });
         return new StandardResponse(offer);
     }
 
