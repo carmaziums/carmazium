@@ -139,11 +139,12 @@ export class ListingsService {
      * legacy mock-scraper rows with example source URLs from an earlier
      * experiment and must not be presented to customers as real market data.
      *
-     * Every valuation combines CarMazium's own completed sales, accepted offers,
-     * auction outcomes and active classified asking prices with a fresh
-     * AI-assisted live UK market search. If the required live-market search is
-     * unavailable, the endpoint fails rather than silently returning an
-     * internal-only estimate.
+     * The endpoint always returns a numeric guide for valid vehicle input.
+     * CarMazium transaction/listing evidence is combined with a fresh live UK
+     * market check when available. The live search is enrichment, not a
+     * single point of failure: if it times out or is unavailable, the valuation
+     * engine falls back to CarMazium evidence and finally to the conservative
+     * age/mileage/transmission model with LOW confidence.
      */
     async estimateVehicleValue(dto: VehicleValuationDto) {
         const make = dto.make.trim();
@@ -325,17 +326,17 @@ export class ListingsService {
 
         const carmaziumComparableCount = comparables.length;
 
-        // Live AI-assisted UK market research is mandatory for every valuation.
-        // CarMazium's own evidence remains valuable, but it is always combined
-        // with a fresh external market check rather than replacing it.
+        // Live UK market research improves precision, but it must never be a
+        // customer-facing availability dependency. A timeout, provider outage,
+        // missing key or zero usable rows falls through to first-party evidence
+        // and then to the deterministic LOW-confidence model estimate.
         const liveMarket = await this.getLiveUkMarketComparables(valuationInput);
 
         // The live-market sanitizer has already rejected invalid, mismatched,
         // damaged/salvage and duplicate adverts. Keep 1-2 credible live rows
         // instead of discarding them: calculateVehicleValuation deliberately
-        // blends sparse evidence back toward the conservative fallback, so a
-        // seller gets useful LOW-confidence guidance rather than a dead end.
-        const usableLiveComparables = liveMarket.comparables;
+        // blends sparse evidence back toward the conservative fallback.
+        const usableLiveComparables = liveMarket?.comparables ?? [];
 
         const valuation = calculateVehicleValuation(
             valuationInput,
@@ -370,16 +371,14 @@ export class ListingsService {
 
     private async getLiveUkMarketComparables(
         input: VehicleValuationInput,
-    ): Promise<LiveUkMarketSearchResult> {
+    ): Promise<LiveUkMarketSearchResult | null> {
         const apiKey = this.config.get<string>('OPENAI_API_KEY');
 
-        // This is a required valuation dependency now. Do not silently fall back
-        // to an internal-only estimate if the AI/live-market service is missing.
         if (!apiKey) {
-            this.logger.error('OPENAI_API_KEY is missing; live market valuation cannot run');
-            throw new ServiceUnavailableException(
-                'Live market valuation is temporarily unavailable. Please try again shortly.',
+            this.logger.error(
+                'OPENAI_API_KEY is missing; continuing valuation with first-party/model fallback',
             );
+            return null;
         }
 
         try {
@@ -392,11 +391,9 @@ export class ListingsService {
             });
         } catch (error: any) {
             this.logger.warn(
-                `Live UK valuation search failed for ${input.make} ${input.model}: ${error?.message || error}`,
+                `Live UK valuation search failed for ${input.make} ${input.model}; continuing with fallback: ${error?.message || error}`,
             );
-            throw new ServiceUnavailableException(
-                'Live market valuation is temporarily unavailable. Please try again shortly.',
-            );
+            return null;
         }
     }
 
