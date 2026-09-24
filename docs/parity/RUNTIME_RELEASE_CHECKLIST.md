@@ -1,10 +1,23 @@
 # CarMazium One Product — Runtime Release Evidence Checklist
 
-**Programme checkpoint:** 90%  
+**Repository remediation checkpoint:** 100%  
 **Code-contract parity:** PASS  
-**Runtime release certification:** PENDING
+**Runtime release certification:** PENDING EXTERNAL EVIDENCE
 
 This document is the evidence ledger for the final 20%. A box is checked only when the named artifact or runtime observation exists. Repository code, CI, emulators and inferred configuration are not substitutes for signing/device/browser evidence.
+
+## Verified repository / PR evidence
+
+- [x] Exact PR code candidate: `7217c48471a477f303e1c221417ddff34685c6a4`.
+- [x] One Product parity workflow green on that exact code SHA.
+- [x] Backend full test/build CI green on that exact code SHA.
+- [x] Web production build green on that exact code SHA.
+- [x] Mobile TypeScript/build-preflight checks green on that exact code SHA.
+- [x] Both Vercel preview projects READY for that exact code SHA.
+- [x] Exact preview runtime error/fatal query returned no entries.
+- [x] Representative currently deployed public web routes return HTTP 200.
+- [x] Apple/Android association handlers exist in code and fail closed until real signing values are configured.
+- [x] Server-rendered Fly fetches use bounded timeout/retry/backoff after production telemetry showed transient resets/timeouts.
 
 ## 80% → 90% — Release candidate evidence
 
