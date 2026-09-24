@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/Input"
 import {
     Car, Search, PlusCircle, MoreVertical,
     Loader2, Upload, TrendingUp, Trash2, Eye, RefreshCcw, Pencil,
-    X, CheckCircle2, ChevronRight, Gavel, Tag, MapPin
+    X, XCircle, CheckCircle2, ChevronRight, Gavel, Tag, MapPin
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -20,6 +20,7 @@ import { PageHeader } from "@/components/dashboard/PageHeader"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { BulkImportModal } from "@/components/dealer/BulkImportModal"
 import { ImportListingModal } from "@/components/features/ImportListingModal"
+import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { ExternalLink } from "lucide-react"
 
 // ─── Status colours ─────────────────────────────────────────────────────────
@@ -54,6 +55,7 @@ export default function DealerInventoryPage() {
     // the user, who previously bounced through a dead redirect stub that
     // dropped this query param before they even got back here.
     const [showBoostSuccess, setShowBoostSuccess] = React.useState(false)
+    const [cancelListing, setCancelListing] = React.useState<{ id: string; title: string } | null>(null)
     React.useEffect(() => {
         if (searchParams.get('boost') === 'success') {
             setShowBoostSuccess(true)
@@ -311,13 +313,10 @@ export default function DealerInventoryPage() {
                                                 </button>
                                             ) : listing.status === 'SOLD' ? (
                                                 <button
-                                                    onClick={async () => {
-                                                        const res = await apiClient(`/listings/${listing.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'ACTIVE' }) }).catch(() => null)
-                                                        if (res !== null) fetchListings(searchQuery)
-                                                    }}
-                                                    className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-blue-500 text-white font-bold text-sm"
+                                                    onClick={() => setCancelListing({ id: listing.id, title: listing.title })}
+                                                    className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 font-bold text-sm"
                                                 >
-                                                    <RefreshCcw size={16} /> Relist
+                                                    <XCircle size={16} /> Cancel sale
                                                 </button>
                                             ) : (
                                                 <button
@@ -610,18 +609,13 @@ export default function DealerInventoryPage() {
                                                                     )}
                                                                     {listing.status === 'SOLD' && (
                                                                         <button
-                                                                            onClick={async (e) => {
+                                                                            onClick={(e) => {
                                                                                 e.preventDefault(); e.stopPropagation()
-                                                                                // Phase 10: relist via status PATCH (listing was already published)
-                                                                                const res = await apiClient(`/listings/${listing.id}/status`, {
-                                                                                    method: 'PATCH',
-                                                                                    body: JSON.stringify({ status: 'ACTIVE' })
-                                                                                }).catch(() => null)
-                                                                                if (res !== null) fetchListings(searchQuery)
+                                                                                setCancelListing({ id: listing.id, title: listing.title })
                                                                             }}
-                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-blue-500/10 hover:text-blue-400 transition-colors w-full text-left"
+                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
                                                                         >
-                                                                            <RefreshCcw size={14} /> Relist
+                                                                            <XCircle size={14} /> Cancel sale
                                                                         </button>
                                                                     )}
                                                                     <button
@@ -699,6 +693,15 @@ export default function DealerInventoryPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {cancelListing && (
+                <SaleCancellationModal
+                    listingId={cancelListing.id}
+                    vehicleTitle={cancelListing.title}
+                    onClose={() => setCancelListing(null)}
+                    onCreated={() => void fetchListings(searchQuery)}
+                />
             )}
 
             {canManageInventory && (

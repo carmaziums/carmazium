@@ -3,6 +3,7 @@
 import * as React from "react"
 import { getMyOffers, withdrawOffer, respondToCounterOffer, type Offer } from "@/lib/listingApi"
 import { AmendOfferModal } from "@/components/offers/AmendOfferModal"
+import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { getMyDeliveryRequests, createDeliveryRequest, cancelDeliveryRequest, completeDeliveryRequest, type DeliveryRequest, type DeliveryStatus } from "@/lib/deliveryApi"
 import { ArrangeDelivery } from "@/components/services/ArrangeDelivery"
 import { createChatRoom } from "@/lib/chatApi"
@@ -21,6 +22,7 @@ function StatusBadge({ status }: { status: Offer['status'] }) {
         ACCEPTED: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
         REJECTED: 'bg-red-500/15 text-red-300 border-red-500/30',
         WITHDRAWN: 'bg-gray-500/15 text-[var(--text-muted)] border-gray-500/30',
+        CANCELLED: 'bg-gray-500/15 text-[var(--text-muted)] border-gray-500/30',
         COUNTERED: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
     }
     const icons: Record<string, React.ReactNode> = {
@@ -28,6 +30,7 @@ function StatusBadge({ status }: { status: Offer['status'] }) {
         ACCEPTED: <CheckCircle size={11} />,
         REJECTED: <XCircle size={11} />,
         WITHDRAWN: <XCircle size={11} />,
+        CANCELLED: <XCircle size={11} />,
         COUNTERED: <Clock size={11} />,
     }
     return (
@@ -276,6 +279,7 @@ export default function BuyerOffersPage() {
     const [declining, setDeclining] = React.useState<string | null>(null)
     const [viewMode, setViewMode] = React.useState<'current' | 'history' | 'all'>('current')
     const [amendingOffer, setAmendingOffer] = React.useState<Offer | null>(null)
+    const [cancelListing, setCancelListing] = React.useState<{ id: string; title: string } | null>(null)
     const router = useRouter()
 
     const refreshDeliveryRequests = React.useCallback(() => {
@@ -404,6 +408,17 @@ export default function BuyerOffersPage() {
                             onClose={() => setAmendingOffer(null)}
                             onSaved={async (updated) => {
                                 setOffers(prev => prev.map(item => item.id === updated.id ? { ...item, ...updated } : item))
+                            }}
+                        />
+                    )}
+
+                    {cancelListing && (
+                        <SaleCancellationModal
+                            listingId={cancelListing.id}
+                            vehicleTitle={cancelListing.title}
+                            onClose={() => setCancelListing(null)}
+                            onCreated={() => {
+                                void getMyOffers().then(setOffers)
                             }}
                         />
                     )}
@@ -599,6 +614,15 @@ export default function BuyerOffersPage() {
                                                                         onClick={() => handleWithdraw(offer.id)}
                                                                     >
                                                                         {withdrawing === offer.id ? <Loader2 size={16} className="animate-spin" /> : "Cancel Bid"}
+                                                                    </button>
+                                                                )}
+                                                                {offer.status === 'ACCEPTED' && listing?.id && (
+                                                                    <button
+                                                                        onClick={() => setCancelListing({ id: listing.id, title: listing.title || "Vehicle" })}
+                                                                        className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-red-400 hover:bg-red-500/10 rounded-xl transition-all gap-1.5"
+                                                                        title="Request Sale Cancellation"
+                                                                    >
+                                                                        <XCircle size={14} /> Cancel sale
                                                                     </button>
                                                                 )}
                                                                 <button

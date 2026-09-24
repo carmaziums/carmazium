@@ -100,8 +100,32 @@ enum OfferStatus {
   REJECTED
   WITHDRAWN
   COUNTERED
+  CANCELLED
 
   @@map("offer_status")
+}
+
+enum SaleCancellationStatus {
+  PENDING_COUNTERPARTY
+  PENDING_ADMIN
+  APPROVED
+  REJECTED
+  WITHDRAWN
+
+  @@map("sale_cancellation_status")
+}
+
+enum SaleCancellationReason {
+  BUYER_CHANGED_MIND
+  SELLER_UNABLE_TO_COMPLETE
+  VEHICLE_FAULT
+  VEHICLE_MISDESCRIBED
+  VEHICLE_DAMAGED
+  PAYMENT_ISSUE
+  MUTUAL_AGREEMENT
+  OTHER
+
+  @@map("sale_cancellation_reason")
 }
 
 enum TransactionType {
@@ -1749,6 +1773,58 @@ model BlogPost {
 // ============================================================================
 // SALES RECORDS (Revenue Tracking)
 // ============================================================================
+
+model SaleCancellationRequest {
+  id                       String                 @id @default(uuid())
+  listingId                String
+  saleId                   String?
+  auctionId                String?
+  offerId                  String?
+  buyerId                  String?
+  sellerId                 String
+  requestedById            String
+  requestedByRole          String
+  reason                   SaleCancellationReason
+  details                  String?
+  status                   SaleCancellationStatus @default(PENDING_COUNTERPARTY)
+  evidenceRequired         Boolean                @default(false)
+  counterpartRespondedById String?
+  counterpartResponseNote  String?
+  counterpartRespondedAt   DateTime?
+  adminReviewedById        String?
+  adminNote                String?
+  buyerFeeRefunded         Boolean                @default(false)
+  sellerBonusRecoveryRequired Boolean              @default(false)
+  resolvedAt               DateTime?
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+
+  evidence SaleCancellationEvidence[]
+
+  @@index([listingId, status])
+  @@index([sellerId, status])
+  @@index([buyerId, status])
+  @@index([requestedById, status])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("sale_cancellation_requests")
+}
+
+model SaleCancellationEvidence {
+  id           String   @id @default(uuid())
+  requestId    String
+  uploadedById String
+  storagePath  String
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  createdAt    DateTime @default(now())
+
+  request SaleCancellationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@index([uploadedById])
+  @@map("sale_cancellation_evidence")
+}
 
 model Sale {
   id             String         @id @default(uuid())

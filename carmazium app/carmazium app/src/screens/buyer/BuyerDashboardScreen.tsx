@@ -527,6 +527,27 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <Text style={styles.quickLabel}>Delivery</Text>
             </TouchableOpacity>
           </View>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => navigation?.navigate('SaleCancellations')}
+            style={{
+              marginTop: 12,
+              minHeight: 48,
+              borderRadius: Radius.card,
+              borderWidth: 1,
+              borderColor: Colors.warningAlpha25,
+              backgroundColor: Colors.warningAlpha05,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+          >
+            <Ionicons name="shield-checkmark-outline" size={17} color={Colors.warning} />
+            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.warning }}>
+              Sale Cancellations
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* ── 6. Profile Card ── */}

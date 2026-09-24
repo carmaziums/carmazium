@@ -945,7 +945,7 @@ export interface LatestOffer {
     amount: string | number
     amountMin: string | number | null
     amountMax: string | number | null
-    status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN' | 'COUNTERED'
+    status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN' | 'COUNTERED' | 'CANCELLED'
     message: string | null
     buyerId: string
     counterAmount: string | number | null

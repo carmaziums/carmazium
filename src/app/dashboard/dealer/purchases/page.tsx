@@ -14,6 +14,7 @@ import {
 } from "@/components/dealer/PipelineRow"
 import type { PurchaseItem, PurchaseStatus } from "@/components/dealer/PipelineRow"
 import { apiClient } from "@/lib/apiClient"
+import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 
 const DB_STATUS_MAP: Record<string, PurchaseStatus> = {
     AWAITING_CONFIRMATION: "awaiting_confirmation",
@@ -63,6 +64,7 @@ export default function DealerPurchasesPage() {
     // Modal state
     const [summaryItem, setSummaryItem] = React.useState<PurchaseItem | null>(null)
     const [sellerItem, setSellerItem] = React.useState<PurchaseItem | null>(null)
+    const [cancelItem, setCancelItem] = React.useState<PurchaseItem | null>(null)
 
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`
@@ -207,6 +209,7 @@ export default function DealerPurchasesPage() {
                                                         item={item}
                                                         onViewSummary={setSummaryItem}
                                                         onViewSeller={setSellerItem}
+                                                        onRequestCancellation={setCancelItem}
                                                     />
                                                 ))}
                                             </div>
@@ -253,6 +256,12 @@ export default function DealerPurchasesPage() {
                                                             £{item.purchasePrice.toLocaleString()}
                                                         </span>
                                                         <div className="flex items-center gap-1">
+                                                            <button
+                                                                onClick={() => setCancelItem(item)}
+                                                                className="text-xs font-bold uppercase tracking-widest text-red-400 hover:bg-red-500/10 transition-colors px-2 py-1 rounded"
+                                                            >
+                                                                Cancel
+                                                            </button>
                                                             <button
                                                                 onClick={() => setSummaryItem(item)}
                                                                 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] hover:text-primary transition-colors px-2 py-1 rounded hover:bg-[var(--bg-card)]"
@@ -305,6 +314,15 @@ export default function DealerPurchasesPage() {
                     )}
                 </main>
             </div>
+
+            {cancelItem && (
+                <SaleCancellationModal
+                    listingId={cancelItem.listingId}
+                    vehicleTitle={cancelItem.vehicleTitle}
+                    onClose={() => setCancelItem(null)}
+                    onCreated={() => {}}
+                />
+            )}
 
             {/* Purchase Summary Modal */}
             <ModalOverlay

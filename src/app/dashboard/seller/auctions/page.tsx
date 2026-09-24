@@ -13,6 +13,7 @@ import {
 import { createChatRoom } from "@/lib/chatApi"
 import { AuctionResultsModal } from "@/components/auctions/AuctionResultsModal"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { useAuth } from "@/context/AuthContext"
@@ -368,6 +369,7 @@ function SellerAuctionsPage() {
     const [handoverUploading, setHandoverUploading] = React.useState<string | null>(null)
     const [handoverDone, setHandoverDone] = React.useState<Set<string>>(new Set())
     const [handoverError, setHandoverError] = React.useState<Record<string, string>>({})
+    const [cancelSaleAuction, setCancelSaleAuction] = React.useState<{ listingId: string; title: string } | null>(null)
 
     // Seed handoverDone from API data whenever auctions load
     React.useEffect(() => {
@@ -1034,6 +1036,17 @@ function SellerAuctionsPage() {
                                     <span className="text-xs font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">
                                         {paid ? "Complete" : "Processing"}
                                     </span>
+                                    <button
+                                        type="button"
+                                        title="Request cancellation for this completed auction sale"
+                                        onClick={() => setCancelSaleAuction({
+                                            listingId: auction.listingId,
+                                            title: auction.listing?.title || "Vehicle",
+                                        })}
+                                        className="rounded-lg border border-red-500/30 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-widest text-red-400 hover:bg-red-500/10"
+                                    >
+                                        Cancel sale
+                                    </button>
                                 </div>
                                 )
                             })}
@@ -1101,6 +1114,18 @@ function SellerAuctionsPage() {
                                             <p className="text-[var(--text-secondary)] text-xs">after handover verified</p>
                                         </div>
 
+                                        <button
+                                            type="button"
+                                            title="Request sale cancellation before handover"
+                                            onClick={() => setCancelSaleAuction({
+                                                listingId: auction.listingId,
+                                                title: auction.listing?.title || "Vehicle",
+                                            })}
+                                            className="w-full rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm font-black text-red-400 hover:bg-red-500/10 transition-colors"
+                                        >
+                                            Request sale cancellation
+                                        </button>
+
                                         {isDone ? (
                                             <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
                                                 <CheckCircle size={16} className="shrink-0" />
@@ -1165,6 +1190,14 @@ function SellerAuctionsPage() {
                 </main>
             </div>
         </div>
+
+        {cancelSaleAuction && (
+            <SaleCancellationModal
+                listingId={cancelSaleAuction.listingId}
+                vehicleTitle={cancelSaleAuction.title}
+                onClose={() => setCancelSaleAuction(null)}
+            />
+        )}
 
         {/* Auction Results Modal */}
 

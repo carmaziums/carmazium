@@ -313,13 +313,19 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
             onPress={() => isSeller ? nav('Earnings') : nav('BuyerPurchaseHistory')}
           />
 
-          {/* Row 5: Settings (wide) */}
+          {/* Row 5: Sale protection + Settings */}
+          <Tile
+            label="Cancellations"
+            icon="shield-checkmark-outline"
+            accentColor={Colors.warning}
+            sublabel="Buyer & seller protection"
+            onPress={() => nav('SaleCancellations')}
+          />
           <Tile
             label="Settings"
             icon="settings-outline"
             accentColor={Colors.midBlue_6b7280}
-            sublabel="Profile, password, payouts & bank details"
-            wide
+            sublabel="Profile & payouts"
             onPress={() => nav('Settings')}
           />
 

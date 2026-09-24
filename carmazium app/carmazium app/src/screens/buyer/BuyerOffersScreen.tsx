@@ -26,6 +26,7 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { CounterLedger } from '../../components/offers/CounterLedger';
+import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 import { haptics } from '../../lib/haptics';
 import {
   getMyDeliveryRequests,
@@ -40,7 +41,7 @@ import { IconButton } from '../../components/IconButton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // ─────────────────────────── interfaces ───────────────────────────
 
-type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED' | 'WITHDRAWN';
+type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED' | 'WITHDRAWN' | 'CANCELLED';
 
 interface Offer {
   id: string;
@@ -165,6 +166,12 @@ const STATUS_CONFIG: Record<
     chipText: Colors.textMuted,
     chipLabel: 'WITHDRAWN',
   },
+  CANCELLED: {
+    leftBorder: Colors.textMuted,
+    chipBg: Colors.whiteAlpha04,
+    chipText: Colors.textMuted,
+    chipLabel: 'CANCELLED',
+  },
 };
 
 // ═══════════════════════════ COMPONENT ════════════════════════════
@@ -181,6 +188,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
   const [counterBackAmount, setCounterBackAmount] = useState('');
   const [counterBackLoading, setCounterBackLoading] = useState(false);
   const [counterBackError, setCounterBackError] = useState<string | null>(null);
+  const [cancelOffer, setCancelOffer] = useState<Offer | null>(null);
 
   // Delivery request — inline on the offer instead of requiring a detour
   // through the listing detail screen (mobile-web parity audit, 2026-07-12:
@@ -623,6 +631,17 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   Message Seller
                 </Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, { borderColor: Colors.accent, backgroundColor: Colors.accentAlpha08 }]}
+                activeOpacity={0.75}
+                onPress={() => setCancelOffer(offer)}
+                disabled={isActioning}
+              >
+                <Ionicons name="close-circle-outline" size={14} color={Colors.accent} style={{ marginRight: 6 }} />
+                <Text style={[styles.actionBtnText, { color: Colors.accent }]}>
+                  Cancel Sale
+                </Text>
+              </TouchableOpacity>
             </View>
           </>
         )}
@@ -634,7 +653,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
             these on bare "23h ago" text made the card look cut off/unfinished
             (flagged in QA). A short closing line gives it the same kind of
             terminus the other statuses already have. */}
-        {(offer.status === 'REJECTED' || offer.status === 'WITHDRAWN') && (
+        {(offer.status === 'REJECTED' || offer.status === 'WITHDRAWN' || offer.status === 'CANCELLED') && (
           <Text style={styles.closedStatusText}>
             {offer.status === 'REJECTED'
               ? 'This offer was declined by the seller.'
@@ -887,6 +906,15 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
 
   return (
     <View style={styles.container}>
+      {cancelOffer && (
+        <SaleCancellationSheet
+          visible={cancelOffer != null}
+          listingId={cancelOffer.listing?.id ?? cancelOffer.listingId ?? ''}
+          vehicleTitle={cancelOffer.listing?.title ?? 'Vehicle'}
+          onClose={() => setCancelOffer(null)}
+          onCreated={() => void fetchData(true)}
+        />
+      )}
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}

@@ -27,6 +27,7 @@ import { useAuthStore } from '../../store/authStore';
 import { DealerAccess, getDealerAccess } from '../../lib/dealerAccessApi';
 
 import { IconButton } from '../../components/IconButton';
+import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─────────────────────────────── types ────────────────────────────────
@@ -203,6 +204,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewDone, setReviewDone] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   const handlePayFee = useCallback(async () => {
     if (dealerAccessLoading) return;
@@ -366,6 +368,14 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
   if (paid) {
     return (
       <View style={styles.container}>
+        {cancelOpen && (
+          <SaleCancellationSheet
+            visible
+            listingId={listingId}
+            vehicleTitle={listingTitle}
+            onClose={() => setCancelOpen(false)}
+          />
+        )}
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
         <LinearGradient
           colors={[Colors.accentGreenAlpha08, 'rgba(0,0,0,0)', Colors.bgPrimary]}
@@ -470,6 +480,25 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
           )}
 
           <TouchableOpacity
+            style={{
+              minHeight: 46,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: Colors.accentAlpha30,
+              backgroundColor: Colors.accentAlpha08,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 10,
+            }}
+            activeOpacity={0.8}
+            onPress={() => setCancelOpen(true)}
+          >
+            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent }}>
+              Request Sale Cancellation
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={styles.doneBtn}
             activeOpacity={0.8}
             onPress={() => navigation?.navigate('Tabs')}
@@ -484,6 +513,14 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
   // ── Main screen — pay buyer fee ───────────────────────────────────
   return (
     <View style={styles.container}>
+      {cancelOpen && (
+        <SaleCancellationSheet
+          visible
+          listingId={listingId}
+          vehicleTitle={listingTitle}
+          onClose={() => setCancelOpen(false)}
+        />
+      )}
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentGreenAlpha06, 'rgba(0,0,0,0)', Colors.bgPrimary]}
@@ -635,6 +672,15 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
                   : pendingConfirmationId
                     ? 'CONFIRM PAYMENT STATUS'
                     : `COMPLETE PAYMENT · ${fmt(buyerFee)}`}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={() => setCancelOpen(true)}
+          style={{ minHeight: 38, alignItems: 'center', justifyContent: 'center', marginTop: 6 }}
+        >
+          <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent }}>
+            Need to cancel this win? Request cancellation
           </Text>
         </TouchableOpacity>
         <Text style={styles.footerNote}>

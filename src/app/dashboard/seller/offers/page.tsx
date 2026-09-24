@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -40,6 +41,7 @@ function StatusBadge({ status }: { status: Offer['status'] }) {
         ACCEPTED: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
         REJECTED: 'bg-red-500/15 text-red-300 border-red-500/30',
         WITHDRAWN: 'bg-gray-500/15 text-[var(--text-muted)] border-gray-500/30',
+        CANCELLED: 'bg-gray-500/15 text-[var(--text-muted)] border-gray-500/30',
         COUNTERED: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
     }
     const icons: Record<string, React.ReactNode> = {
@@ -47,6 +49,7 @@ function StatusBadge({ status }: { status: Offer['status'] }) {
         ACCEPTED: <CheckCircle size={11} />,
         REJECTED: <XCircle size={11} />,
         WITHDRAWN: <XCircle size={11} />,
+        CANCELLED: <XCircle size={11} />,
         COUNTERED: <RefreshCw size={11} />,
     }
     return (
@@ -201,6 +204,7 @@ function OfferRow({
     onRespond,
     onMessage,
     onOpenSaleModal,
+    onRequestCancellation,
     startingChat,
     responding,
 }: {
@@ -209,6 +213,7 @@ function OfferRow({
     onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED' | 'COUNTERED', amount?: number) => void
     onMessage: (buyerId: string) => void
     onOpenSaleModal: (offer: Offer) => void
+    onRequestCancellation: () => void
     startingChat: string | null
     responding: string | null
 }) {
@@ -426,6 +431,14 @@ function OfferRow({
                     <Button
                         size="sm"
                         variant="outline"
+                        className="border-red-500/40 text-red-400 hover:bg-red-500/10 hover:border-red-500 gap-1"
+                        onClick={onRequestCancellation}
+                    >
+                        <XCircle size={13} /> Cancel sale
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="outline"
                         className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 gap-1"
                         onClick={() => onMessage(offer.buyerId)}
                         disabled={startingChat === offer.buyerId}
@@ -474,6 +487,7 @@ export default function SellerOffersPage() {
     const [toast, setToast] = React.useState<string | null>(null)
     // Sale modal state
     const [saleModal, setSaleModal] = React.useState<{ offer: Offer; listing: Listing } | null>(null)
+    const [cancelListing, setCancelListing] = React.useState<{ id: string; title: string } | null>(null)
     const [confirmingSale, setConfirmingSale] = React.useState(false)
     const router = useRouter()
 
@@ -673,6 +687,15 @@ export default function SellerOffersPage() {
                             />
                         )}
 
+                        {cancelListing && (
+                            <SaleCancellationModal
+                                listingId={cancelListing.id}
+                                vehicleTitle={cancelListing.title}
+                                onClose={() => setCancelListing(null)}
+                                onCreated={() => void silentRefreshOffers()}
+                            />
+                        )}
+
                         {/* Header */}
                         <div className="mb-8 flex items-start justify-between gap-4">
                             <div>
@@ -775,6 +798,7 @@ export default function SellerOffersPage() {
                                                                         onRespond={(id, status, amount) => handleRespond(id, listing.id, status, amount)}
                                                                         onMessage={(buyerId) => handleMessageBuyer(buyerId, listing.id)}
                                                                         onOpenSaleModal={(o) => setSaleModal({ offer: o, listing })}
+                                                                        onRequestCancellation={() => setCancelListing({ id: listing.id, title: listing.title })}
                                                                         startingChat={startingChat}
                                                                         responding={responding}
                                                                     />

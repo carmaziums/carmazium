@@ -17,6 +17,7 @@ import { useAuth } from "@/context/AuthContext"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { ArrangeDelivery } from "@/components/services/ArrangeDelivery"
 import { ArrangeInspection } from "@/components/services/ArrangeInspection"
+import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { TRADE_EXCHANGE_ROLES, canAccessTradeStock } from "@/lib/tradeAccess"
 import { getWonAuctionById, type Auction } from "@/lib/auctionApi"
 import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
@@ -77,6 +78,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
     const [galleryLightboxOpen, setGalleryLightboxOpen] = React.useState(false)
     const touchStartXRef = React.useRef<number | null>(null)
     const [showHpiModal, setShowHpiModal] = React.useState(false)
+    const [showCancelSale, setShowCancelSale] = React.useState(false)
 
     // Returning from Stripe after paying to have the HPI report emailed —
     // verify the session actually completed, apply the fallback in case the
@@ -569,6 +571,22 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                             <ArrangeInspection auctionId={auction.id} />
                         </div>
 
+                        <div className="rounded-2xl border border-red-500/25 bg-red-500/5 p-5 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <p className="font-heading font-bold text-sm">Need to cancel for another reason?</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                    Send the seller a formal cancellation request with the reason and any supporting photos, screenshots or video. Fault or misdescription cases require evidence and may also require CarMazium review.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowCancelSale(true)}
+                                className="shrink-0 rounded-xl border border-red-500/35 px-4 py-2.5 text-xs font-black text-red-400 hover:bg-red-500/10"
+                            >
+                                Request sale cancellation
+                            </button>
+                        </div>
+
                         {/* Handover status — mirrors the stage grouping on /dashboard/dealer/auctions/won */}
                         {(() => {
                             const stage = auction.sellerBonusReleased
@@ -638,6 +656,14 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                     </div>
                 </div>
             </div>
+
+            {showCancelSale && (
+                <SaleCancellationModal
+                    listingId={listing.id}
+                    vehicleTitle={listing.title}
+                    onClose={() => setShowCancelSale(false)}
+                />
+            )}
 
             {showHpiModal && (
                 <HpiReportModal listingId={listing.id} onClose={() => setShowHpiModal(false)} />

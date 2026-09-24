@@ -30,6 +30,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { CounterLedger } from '../../components/offers/CounterLedger';
 import { ReceivedDeliveryRequestsPanel } from '../../components/delivery/ReceivedDeliveryRequestsPanel';
+import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -154,6 +155,7 @@ export const DealerOffersScreen: React.FC = () => {
   const [counterModalOffer, setCounterModalOffer] = useState<Offer | null>(null);
   const [counterAmount, setCounterAmount] = useState('');
   const [messagingBuyerId, setMessagingBuyerId] = useState<string | null>(null);
+  const [cancelOffer, setCancelOffer] = useState<Offer | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   // Mark as Sold — same recordSale/PATCH /listings/:id/sold pattern as
@@ -304,21 +306,6 @@ export const DealerOffersScreen: React.FC = () => {
     } finally {
       setMessagingBuyerId(null);
     }
-  };
-
-  const handleCancelAndRelist = (offer: Offer) => {
-    Alert.alert(
-      'Cancel & Relist',
-      'Are you sure you want to cancel this offer and relist?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          style: 'destructive',
-          onPress: () => handleRespond(offer, 'REJECTED'),
-        },
-      ],
-    );
   };
 
   const openSaleModal = (offer: Offer) => {
@@ -563,15 +550,18 @@ export const DealerOffersScreen: React.FC = () => {
               <Text style={[styles.actionBtnText, { color: Colors.white }]}>Mark as Sold</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnDecline]}
-              activeOpacity={0.75}
-              onPress={() => handleCancelAndRelist(offer)}
-              disabled={isActioning}
-            >
-              <Text style={[styles.actionBtnText, { color: Colors.accent }]}>Cancel & Relist</Text>
-            </TouchableOpacity>
           </View>
+        )}
+        {offer.status === 'ACCEPTED' && (
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.actionBtnDecline, { marginTop: 4 }]}
+            activeOpacity={0.75}
+            onPress={() => setCancelOffer(offer)}
+            disabled={isActioning}
+          >
+            <Ionicons name="close-circle-outline" size={14} color={Colors.accent} style={{ marginRight: 6 }} />
+            <Text style={[styles.actionBtnText, { color: Colors.accent }]}>Request Cancellation</Text>
+          </TouchableOpacity>
         )}
       </View>
     );
@@ -582,7 +572,6 @@ export const DealerOffersScreen: React.FC = () => {
     handleAccept,
     messagingBuyerId,
     handleMessageBuyer,
-    handleCancelAndRelist,
     openSaleModal,
   ]);
 
@@ -590,6 +579,15 @@ export const DealerOffersScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      {cancelOffer && (
+        <SaleCancellationSheet
+          visible={cancelOffer != null}
+          listingId={cancelOffer.listing?.id ?? cancelOffer.listingId ?? ''}
+          vehicleTitle={cancelOffer.listing?.title ?? 'Vehicle'}
+          onClose={() => setCancelOffer(null)}
+          onCreated={() => void fetchData(true)}
+        />
+      )}
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.warningAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}

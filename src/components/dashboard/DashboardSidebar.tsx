@@ -148,6 +148,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         { href: "/dashboard/user?tab=stats", label: "Listing Performance", icon: BarChart3, section: "Selling" },
         { href: "/dashboard/user?tab=bids", label: "My Offers", icon: Gavel, section: "Buying" },
         { href: "/dashboard/user?tab=watchlist", label: "Saved Cars", icon: Heart, section: "Buying" },
+        { href: "/dashboard/cancellations", label: "Sale Cancellations", icon: ShieldCheck, section: "Account" },
         { href: "/dashboard/user?tab=messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account" },
         { href: "/dashboard/user?tab=settings", label: "Settings", icon: Settings, section: "Account" },
     ]
@@ -207,6 +208,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/dashboard/admin/listings", label: "Listings", icon: Car, section: "Marketplace" },
             { href: "/dashboard/admin/auctions", label: "Auctions", icon: Gavel, section: "Marketplace" },
             { href: "/dashboard/admin/handovers", label: "Handovers", icon: Handshake, section: "Marketplace" },
+            { href: "/dashboard/admin/cancellations", label: "Sale Cancellations", icon: ShieldCheck, section: "Marketplace" },
 
             { href: "/dashboard/admin/transactions", label: "Transactions", icon: Receipt, section: "Payments & reports" },
             { href: "/dashboard/admin/hpi", label: "HPI Reports", icon: ShieldCheck, section: "Payments & reports" },
