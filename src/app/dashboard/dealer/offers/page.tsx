@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Button } from "@/components/ui/Button"
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/AsyncState"
 import {
     Loader2, Trophy, XCircle, Clock, Tag, Mail, CheckCircle, MapPin,
 } from "lucide-react"
@@ -19,6 +20,7 @@ export default function DealerOffersPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [offers, setOffers] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
+    const [loadError, setLoadError] = React.useState<string | null>(null)
     const [actionLoading, setActionLoading] = React.useState<Record<string, boolean>>({})
     const [counteringOfferId, setCounteringOfferId] = React.useState<string | null>(null)
     const [counterAmount, setCounterAmount] = React.useState<number | undefined>(undefined)
@@ -34,11 +36,13 @@ export default function DealerOffersPage() {
 
     async function fetchOffers() {
         setLoading(true)
+        setLoadError(null)
         try {
             const res = await apiClient<{ data: any[] }>('/offers/received')
             setOffers(res?.data ?? [])
-        } catch {
+        } catch (err: any) {
             setOffers([])
+            setLoadError(err?.message || 'We could not load received offers. Check your connection and try again.')
         } finally {
             setLoading(false)
         }
@@ -85,9 +89,10 @@ export default function DealerOffersPage() {
                 body: JSON.stringify({ status, counterAmount }),
             })
             fetchOffers()
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to respond to offer:', err)
             setOffers(previousOffers)
+            setToast(err?.message || 'Failed to update the offer. Please try again.')
         } finally {
             setActionLoading(prev => ({ ...prev, [offerId]: false }))
         }
@@ -132,15 +137,16 @@ export default function DealerOffersPage() {
 
                     {/* Offers Table */}
                     {loading ? (
-                        <div className="flex items-center justify-center py-24">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
+                        <LoadingState label="Loading received offers…" className="py-24" />
+                    ) : loadError ? (
+                        <ErrorState message={loadError} onRetry={fetchOffers} />
                     ) : offers.length === 0 ? (
-                        <div className="dealer-glass-card p-16 text-center">
-                            <Mail className="h-12 w-12 text-[var(--text-muted)] mx-auto mb-3" />
-                            <p className="text-[var(--text-muted)] font-bold">No offers received yet</p>
-                            <p className="text-gray-600 text-sm mt-1">Offers from buyers on your listings will appear here</p>
-                        </div>
+                        <EmptyState
+                            icon={Mail}
+                            title="No offers received yet"
+                            description="Offers from buyers on your live retail listings will appear here."
+                            className="dealer-glass-card"
+                        />
                     ) : (
                         <div className="dealer-glass-card overflow-hidden">
                             <div className="p-6 border-b border-[var(--border-default)] bg-black/20">
