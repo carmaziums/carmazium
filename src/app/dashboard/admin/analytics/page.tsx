@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import {
     TrendingUp, Loader2, ArrowLeft, Users, Car, DollarSign, RefreshCw,
     Eye, Search, Globe, Monitor, Smartphone, Tablet, MousePointerClick,
-    Clock, BarChart3, Calendar, ShieldCheck, UserX, Building2, CheckCircle2, CreditCard,
+    Clock, BarChart3, Calendar, ShieldCheck, UserX, Building2, CheckCircle2, CreditCard, AlertTriangle,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -314,6 +314,49 @@ export default function AdminAnalyticsPage() {
                                     ))}
                                 </div>
 
+                                <div className="glass-card border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl overflow-hidden">
+                                    <div className="p-5 border-b border-[var(--border-default)]">
+                                        <div className="flex items-center gap-2">
+                                            <AlertTriangle size={15} className="text-amber-500" />
+                                            <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Valuation Reliability — Today</p>
+                                        </div>
+                                        <p className="mt-1 text-[11px] text-[var(--text-muted)]">Shows whether the valuation problem is isolated or recurring.</p>
+                                    </div>
+                                    <div className="p-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                        <StatCard label="Applied for Valuation" value={valuationLive.today.valuationAttempts} icon={Car} color="bg-blue-500/20" />
+                                        <StatCard label="Got Figures" value={valuationLive.today.figuresReturned} icon={CheckCircle2} color="bg-emerald-500/20" />
+                                        <StatCard label="No Figures Returned" value={valuationLive.today.withoutFigures} icon={AlertTriangle} color="bg-rose-500/20" />
+                                        <StatCard label="Figure Success Rate" value={`${valuationLive.today.figureSuccessRate.toFixed(1)}%`} icon={TrendingUp} color="bg-yellow-500/20" />
+                                    </div>
+                                    <div className="overflow-x-auto border-t border-[var(--border-default)]">
+                                        <table className="w-full text-xs">
+                                            <thead>
+                                                <tr className="border-b border-[var(--border-default)] text-left text-[var(--text-muted)]">
+                                                    <th className="px-4 py-3 font-bold">Date</th>
+                                                    <th className="px-4 py-3 font-bold text-right">Applied</th>
+                                                    <th className="px-4 py-3 font-bold text-right">Got Figures</th>
+                                                    <th className="px-4 py-3 font-bold text-right">No Figures</th>
+                                                    <th className="px-4 py-3 font-bold text-right">Success</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {valuationLive.last7Days.map(row => (
+                                                    <tr key={`valuation-health-${row.date}`} className="border-b border-[var(--border-default)]/60">
+                                                        <td className="px-4 py-3 font-bold whitespace-nowrap">{new Date(`${row.date}T12:00:00`).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums">{row.valuationAttempts}</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums font-black text-emerald-500">{row.figuresReturned}</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums font-black text-rose-500">{row.withoutFigures}</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums font-black">{row.figureSuccessRate.toFixed(1)}%</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="px-5 py-3 border-t border-[var(--border-default)] text-[11px] leading-5 text-[var(--text-muted)]">
+                                        Reliability tracking starts with this release. “No Figures Returned” counts confirmed customer-visible no-figure results. Very recent attempts can temporarily appear in Applied before their result event arrives.
+                                    </div>
+                                </div>
+
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
                                     <div className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                                         <div className="flex items-center gap-2 mb-4">
@@ -467,6 +510,7 @@ export default function AdminAnalyticsPage() {
                                                     <tr className="border-b border-[var(--border-default)] text-left text-[var(--text-muted)]">
                                                         <th className="px-4 py-3 font-bold">Time</th>
                                                         <th className="px-4 py-3 font-bold">Vehicle</th>
+                                                        <th className="px-4 py-3 font-bold">Valuation</th>
                                                         <th className="px-4 py-3 font-bold">Route</th>
                                                         <th className="px-4 py-3 font-bold">Outcome</th>
                                                         <th className="px-4 py-3 font-bold">Fuel</th>
@@ -482,6 +526,15 @@ export default function AdminAnalyticsPage() {
                                                             </td>
                                                             <td className="px-4 py-3 whitespace-nowrap">
                                                                 {[item.year, item.make, item.model].filter(Boolean).join(" ") || "Unknown"}
+                                                            </td>
+                                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                                {item.valuationResult === "figures_returned" ? (
+                                                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-black uppercase text-emerald-500">Figures</span>
+                                                                ) : item.valuationResult === "no_figures" ? (
+                                                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-1 font-black uppercase text-rose-500" title={item.noFigureReason || undefined}>No Figures</span>
+                                                                ) : (
+                                                                    <span className="text-[var(--text-muted)]">—</span>
+                                                                )}
                                                             </td>
                                                             <td className="px-4 py-3">
                                                                 <span className="rounded-full bg-primary/10 px-2 py-1 font-bold uppercase text-primary">

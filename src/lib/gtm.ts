@@ -55,7 +55,9 @@ export function pushToDataLayer(event: string, params: Record<string, unknown> =
 // GTM can't drift apart on spelling.
 
 export const SELLER_FUNNEL = {
-    /** Reg entered and DVLA/valuation data returned — top of the funnel */
+    /** Seller submitted valid details and asked CarMazium for a valuation. */
+    VALUATION_ATTEMPTED: 'valuation_attempted',
+    /** DVLA/valuation processing returned a customer-visible valuation result. */
     VALUATION_REQUESTED: 'valuation_requested',
     /** Seller picked Retail or Auction and entered the wizard */
     LISTING_STARTED: 'listing_started',

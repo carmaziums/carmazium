@@ -133,6 +133,9 @@ export class AnalyticsService {
                 anonymous_sessions: string;
                 auction_requests: string;
                 retail_requests: string;
+                valuation_attempts: string;
+                figures_returned: string;
+                confirmed_no_figures: string;
             }>>(`
                 WITH bounds AS (
                     SELECT
@@ -140,15 +143,27 @@ export class AnalyticsService {
                         ((date_trunc('day', now() AT TIME ZONE 'Europe/London') + interval '1 day') AT TIME ZONE 'Europe/London') AS end_utc
                 )
                 SELECT
-                    COUNT(*)::TEXT AS requests,
-                    COUNT(DISTINCT "sessionId") FILTER (WHERE "sessionId" IS NOT NULL)::TEXT AS unique_sessions,
-                    COUNT(DISTINCT "userId") FILTER (WHERE "userId" IS NOT NULL)::TEXT AS logged_in_users,
-                    COUNT(DISTINCT "sessionId") FILTER (WHERE "userId" IS NOT NULL AND "sessionId" IS NOT NULL)::TEXT AS logged_in_sessions,
-                    COUNT(DISTINCT "sessionId") FILTER (WHERE "userId" IS NULL AND "sessionId" IS NOT NULL)::TEXT AS anonymous_sessions,
-                    COUNT(*) FILTER (WHERE LOWER(COALESCE(payload->>'listing_type', '')) = 'auction')::TEXT AS auction_requests,
-                    COUNT(*) FILTER (WHERE LOWER(COALESCE(payload->>'listing_type', '')) = 'retail')::TEXT AS retail_requests
+                    COUNT(*) FILTER (WHERE type = 'valuation_requested')::TEXT AS requests,
+                    COUNT(DISTINCT "sessionId") FILTER (WHERE type = 'valuation_requested' AND "sessionId" IS NOT NULL)::TEXT AS unique_sessions,
+                    COUNT(DISTINCT "userId") FILTER (WHERE type = 'valuation_requested' AND "userId" IS NOT NULL)::TEXT AS logged_in_users,
+                    COUNT(DISTINCT "sessionId") FILTER (WHERE type = 'valuation_requested' AND "userId" IS NOT NULL AND "sessionId" IS NOT NULL)::TEXT AS logged_in_sessions,
+                    COUNT(DISTINCT "sessionId") FILTER (WHERE type = 'valuation_requested' AND "userId" IS NULL AND "sessionId" IS NOT NULL)::TEXT AS anonymous_sessions,
+                    COUNT(*) FILTER (WHERE type = 'valuation_requested' AND LOWER(COALESCE(payload->>'listing_type', '')) = 'auction')::TEXT AS auction_requests,
+                    COUNT(*) FILTER (WHERE type = 'valuation_requested' AND LOWER(COALESCE(payload->>'listing_type', '')) = 'retail')::TEXT AS retail_requests,
+                    COUNT(DISTINCT COALESCE(NULLIF(payload->>'valuation_id', ''), 'event:' || id))
+                        FILTER (WHERE type = 'valuation_attempted')::TEXT AS valuation_attempts,
+                    COUNT(DISTINCT COALESCE(NULLIF(payload->>'valuation_id', ''), 'event:' || id))
+                        FILTER (
+                            WHERE type = 'valuation_requested'
+                              AND LOWER(COALESCE(payload->>'valuation_result', '')) = 'figures_returned'
+                        )::TEXT AS figures_returned,
+                    COUNT(DISTINCT COALESCE(NULLIF(payload->>'valuation_id', ''), 'event:' || id))
+                        FILTER (
+                            WHERE type = 'valuation_requested'
+                              AND LOWER(COALESCE(payload->>'valuation_result', '')) = 'no_figures'
+                        )::TEXT AS confirmed_no_figures
                 FROM analytics_events, bounds
-                WHERE type = 'valuation_requested'
+                WHERE type IN ('valuation_requested', 'valuation_attempted')
                   AND "createdAt" >= bounds.start_utc
                   AND "createdAt" < bounds.end_utc
             `),
@@ -169,13 +184,34 @@ export class AnalyticsService {
                 GROUP BY date_trunc('hour', "createdAt" AT TIME ZONE 'Europe/London')
                 ORDER BY date_trunc('hour', "createdAt" AT TIME ZONE 'Europe/London') ASC
             `),
-            this.prisma.$queryRawUnsafe<Array<{ date: string; requests: string; sessions: string }>>(`
+            this.prisma.$queryRawUnsafe<Array<{
+                date: string;
+                requests: string;
+                sessions: string;
+                valuation_attempts: string;
+                figures_returned: string;
+                confirmed_no_figures: string;
+            }>>(`
                 SELECT
                     TO_CHAR(("createdAt" AT TIME ZONE 'Europe/London')::date, 'YYYY-MM-DD') AS date,
-                    COUNT(*)::TEXT AS requests,
-                    COUNT(DISTINCT "sessionId") FILTER (WHERE "sessionId" IS NOT NULL)::TEXT AS sessions
+                    COUNT(*) FILTER (WHERE type = 'valuation_requested')::TEXT AS requests,
+                    COUNT(DISTINCT "sessionId") FILTER (
+                        WHERE type = 'valuation_requested' AND "sessionId" IS NOT NULL
+                    )::TEXT AS sessions,
+                    COUNT(DISTINCT COALESCE(NULLIF(payload->>'valuation_id', ''), 'event:' || id))
+                        FILTER (WHERE type = 'valuation_attempted')::TEXT AS valuation_attempts,
+                    COUNT(DISTINCT COALESCE(NULLIF(payload->>'valuation_id', ''), 'event:' || id))
+                        FILTER (
+                            WHERE type = 'valuation_requested'
+                              AND LOWER(COALESCE(payload->>'valuation_result', '')) = 'figures_returned'
+                        )::TEXT AS figures_returned,
+                    COUNT(DISTINCT COALESCE(NULLIF(payload->>'valuation_id', ''), 'event:' || id))
+                        FILTER (
+                            WHERE type = 'valuation_requested'
+                              AND LOWER(COALESCE(payload->>'valuation_result', '')) = 'no_figures'
+                        )::TEXT AS confirmed_no_figures
                 FROM analytics_events
-                WHERE type = 'valuation_requested'
+                WHERE type IN ('valuation_requested', 'valuation_attempted')
                   AND "createdAt" >= (
                       ((date_trunc('day', now() AT TIME ZONE 'Europe/London') - interval '6 days') AT TIME ZONE 'Europe/London')
                   )
@@ -454,6 +490,9 @@ export class AnalyticsService {
             anonymous_sessions: '0',
             auction_requests: '0',
             retail_requests: '0',
+            valuation_attempts: '0',
+            figures_returned: '0',
+            confirmed_no_figures: '0',
         };
 
         const todayDate = new Intl.DateTimeFormat('en-CA', {
@@ -467,6 +506,10 @@ export class AnalyticsService {
         const todayConvertedJourneys = Number(todayFunnel?.converted_journeys ?? 0);
         const todayReachedReview = Number(todayFunnel?.reached_review ?? 0);
         const todayApprovedLive = Number(todayFunnel?.approved_live ?? 0);
+        const todayValuationAttempts = Number(overview.valuation_attempts ?? 0);
+        const todayFiguresReturned = Number(overview.figures_returned ?? 0);
+        const todayConfirmedNoFigures = Number(overview.confirmed_no_figures ?? 0);
+        const todayWithoutFigures = todayConfirmedNoFigures;
 
         return {
             timezone: 'Europe/London',
@@ -484,6 +527,13 @@ export class AnalyticsService {
                 anonymousSessions: Number(overview.anonymous_sessions ?? 0),
                 auctionRequests: Number(overview.auction_requests ?? 0),
                 retailRequests: Number(overview.retail_requests ?? 0),
+                valuationAttempts: todayValuationAttempts,
+                figuresReturned: todayFiguresReturned,
+                withoutFigures: todayWithoutFigures,
+                confirmedNoFigures: todayConfirmedNoFigures,
+                figureSuccessRate: todayValuationAttempts > 0
+                    ? Math.round((todayFiguresReturned / todayValuationAttempts) * 1000) / 10
+                    : 0,
                 valuationJourneys: todayValuationJourneys,
                 listingStarted: Number(todayFunnel?.started_journeys ?? 0),
                 listingCreated: todayConvertedJourneys,
@@ -515,10 +565,21 @@ export class AnalyticsService {
                 const funnel = funnelDailyRaw.find((item) => item.date === row.date);
                 const journeys = Number(funnel?.valuation_journeys ?? 0);
                 const converted = Number(funnel?.converted_journeys ?? 0);
+                const valuationAttempts = Number(row.valuation_attempts ?? 0);
+                const figuresReturned = Number(row.figures_returned ?? 0);
+                const confirmedNoFigures = Number(row.confirmed_no_figures ?? 0);
+                const withoutFigures = confirmedNoFigures;
                 return {
                     date: row.date,
                     requests: Number(row.requests),
                     sessions: Number(row.sessions),
+                    valuationAttempts,
+                    figuresReturned,
+                    withoutFigures,
+                    confirmedNoFigures,
+                    figureSuccessRate: valuationAttempts > 0
+                        ? Math.round((figuresReturned / valuationAttempts) * 1000) / 10
+                        : 0,
                     valuationJourneys: journeys,
                     listingStarted: Number(funnel?.started_journeys ?? 0),
                     listingCreated: converted,
@@ -557,6 +618,13 @@ export class AnalyticsService {
                     city: typeof payload.city === 'string' ? payload.city : null,
                     country: typeof payload.country === 'string' ? payload.country : null,
                     entryPoint: typeof payload.entry_point === 'string' ? payload.entry_point : null,
+                    valuationResult: typeof payload.valuation_result === 'string' ? payload.valuation_result : null,
+                    valuationSource: typeof payload.valuation_source === 'string' ? payload.valuation_source : null,
+                    noFigureReason: typeof payload.no_figure_reason === 'string' ? payload.no_figure_reason : null,
+                    valuationComparables: typeof payload.valuation_comparables === 'number'
+                        ? payload.valuation_comparables
+                        : Number(payload.valuation_comparables) || 0,
+                    liveMarketStatus: typeof payload.live_market_status === 'string' ? payload.live_market_status : null,
                     startedListing: Boolean(event.started),
                     createdListing: Boolean(event.converted),
                     listingId: event.listing_id,
