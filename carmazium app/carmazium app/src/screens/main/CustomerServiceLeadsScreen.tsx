@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   RefreshControl,
   ScrollView,
@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
 import { getMyServiceLeadsPage, ServiceLead, SERVICE_LABELS } from '../../lib/servicesApi';
+import { subscribeProductSync } from '../../lib/productSync';
 
 export const CustomerServiceLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -37,6 +38,9 @@ export const CustomerServiceLeadsScreen: React.FC<{ navigation?: any }> = ({ nav
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+  useEffect(() => subscribeProductSync(['services'], () => {
+    void load(true);
+  }), [load]);
 
   return (
     <View style={styles.container}>
