@@ -107,7 +107,15 @@ export function AdminBroadcastComposer() {
 
     const handleFile = async (file?: File) => {
         if (!file) return
-        const isImage = file.type.startsWith("image/")
+        const allowedImageTypes = new Set([
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/avif",
+            "image/heic",
+            "image/heif",
+        ])
+        const isImage = allowedImageTypes.has(file.type)
         const isVideo = file.type === "video/mp4" || file.type === "video/quicktime"
         if (!isImage && !isVideo) {
             setResult("Only picture files, MP4 videos or MOV videos can be sent.")
@@ -123,7 +131,7 @@ export function AdminBroadcastComposer() {
         try {
             setUploading(true)
             setResult(null)
-            const url = await uploadImage(file, "listings", "admin-messages")
+            const url = await uploadImage(file, "admin-broadcasts", "media")
             setMedia({
                 url,
                 kind: isImage ? "IMAGE" : "VIDEO",
@@ -295,7 +303,7 @@ export function AdminBroadcastComposer() {
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/*,video/mp4,video/quicktime"
+                        accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,video/mp4,video/quicktime"
                         className="hidden"
                         onChange={(e) => handleFile(e.target.files?.[0])}
                     />
