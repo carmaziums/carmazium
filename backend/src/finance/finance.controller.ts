@@ -27,13 +27,17 @@ import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
 import { FinanceApplication } from '@prisma/client';
+import { ProductSyncGateway } from '../sync/product-sync.gateway';
 
 @ApiTags('Finance')
 @Controller('finance')
 @ApiCookieAuth()
 @UseGuards(SessionAuthGuard)
 export class FinanceController {
-    constructor(private readonly financeService: FinanceService) { }
+    constructor(
+        private readonly financeService: FinanceService,
+        private readonly productSync: ProductSyncGateway,
+    ) { }
 
     @Post('apply')
     @HttpCode(HttpStatus.CREATED)
@@ -44,6 +48,7 @@ export class FinanceController {
         @CurrentUser() user: any,
     ): Promise<StandardResponse<FinanceApplication>> {
         const app = await this.financeService.create(user.id, dto);
+        this.productSync.broadcast({ domain: 'services', action: 'legacy-finance-created' });
         return new StandardResponse(app);
     }
 
@@ -100,6 +105,7 @@ export class FinanceController {
         }
 
         const app = await this.financeService.updateStatus(id, partnerId, dto);
+        this.productSync.broadcast({ domain: 'services', action: 'legacy-finance-updated' });
         return new StandardResponse(app);
     }
 }
