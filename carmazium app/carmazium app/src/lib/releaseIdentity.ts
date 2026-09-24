@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
+import { GENERATED_RELEASE_ID } from '../generated/releaseIdentity';
 
 export interface MobileReleaseIdentity {
   releaseId: string;
@@ -10,10 +11,9 @@ export interface MobileReleaseIdentity {
 
 export function getMobileReleaseIdentity(): MobileReleaseIdentity {
   const releaseId =
-    process.env.EXPO_PUBLIC_RELEASE_ID ||
-    Updates.updateId ||
-    Constants.expoConfig?.version ||
-    'unknown';
+    GENERATED_RELEASE_ID !== 'development'
+      ? GENERATED_RELEASE_ID
+      : (Updates.updateId || Constants.expoConfig?.version || 'development');
 
   return {
     releaseId,
