@@ -617,8 +617,15 @@ export class DealersService {
         const profile = await this.getDealerProfile(userId);
         const ownerUserId = (profile as any).userId ?? userId;
 
-        const dateFilter = this.buildDateFilter(range, from, to);
-        const prevFilter = this.getPreviousPeriodFilter(range, from, to);
+        const accountCreatedAt = (profile as any).createdAt
+            ? new Date((profile as any).createdAt)
+            : new Date();
+        const dateFilter = range === 'all'
+            ? { gte: accountCreatedAt }
+            : this.buildDateFilter(range, from, to);
+        const prevFilter = range === 'all'
+            ? { gte: accountCreatedAt, lte: accountCreatedAt }
+            : this.getPreviousPeriodFilter(range, from, to);
 
         // ─── Current Period KPIs ─────────────────────────────────────
 
