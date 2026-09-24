@@ -398,7 +398,7 @@ export function calculateVehicleValuation(
         source === 'CARMAZIUM_MODEL_PROFILE'
             ? 'CarMazium has limited live marketplace evidence for this exact vehicle, so this estimate uses a calibrated model-specific depreciation profile together with age, mileage and transmission.'
             : source === 'CARMAZIUM_MODEL'
-                ? 'CarMazium does not yet have enough reliable market evidence for this exact vehicle. The generic make-level fallback is not precise enough to present as a seller valuation.'
+                ? 'Exact-model market evidence is limited, so this LOW-confidence guide uses vehicle age, mileage, transmission and a conservative make-level depreciation model. It is a starting point rather than a guaranteed sale price.'
                 : strongEvidence > 0
                     ? `Based on ${usable.length} similar CarMazium vehicles, including ${strongEvidence} completed sale, accepted-offer or auction outcome signal${strongEvidence === 1 ? '' : 's'}.`
                     : `Based on ${usable.length} similar live CarMazium asking prices. Completed-sale evidence for this exact vehicle is still limited.`;

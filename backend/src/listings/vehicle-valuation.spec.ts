@@ -38,7 +38,7 @@ describe('calculateVehicleValuation', () => {
         expect(result.comparables).toBe(0);
         expect(result.low).toBeLessThan(result.mid);
         expect(result.high).toBeGreaterThan(result.mid);
-        expect(result.explanation).toMatch(/does not yet have enough reliable market evidence/i);
+        expect(result.explanation).toMatch(/Exact-model market evidence is limited/i);
     });
 
     it('calibrates a 2019 Jaguar XE automatic near the supplied retail benchmark', () => {

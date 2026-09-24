@@ -786,7 +786,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   ]);
 
   function applyValuationGuide(target: 'CLASSIFIED' | 'AUCTION') {
-    if (!valuation || (valuation.source === 'CARMAZIUM_MODEL' && valuation.comparables === 0)) return;
+    if (!valuation) return;
 
     setListingType(target);
     setBadgeTier(target === 'AUCTION' ? 'FREE' : 'BASIC');
@@ -2857,12 +2857,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <Ionicons name="information-circle-outline" size={16} color={Colors.warning} />
               <Text style={s.valuationNoticeText}>{valuationError}</Text>
             </View>
-          ) : valuation && !(valuation.source === 'CARMAZIUM_MODEL' && valuation.comparables === 0) ? (
+          ) : valuation ? (
             <>
               <Text style={s.fieldHint}>
                 {valuation.source === 'LIVE_UK_MARKET' || valuation.source === 'BLENDED_MARKET'
                   ? 'Live UK market guidance. Retail uses the stronger upper asking guide; auction uses the lower dealer-buy guide.'
-                  : 'CarMazium market guidance. Retail uses the stronger upper asking guide; auction uses the lower dealer-buy guide.'}
+                  : valuation.source === 'CARMAZIUM_MODEL' || valuation.source === 'CARMAZIUM_MODEL_PROFILE'
+                    ? 'Estimated guide with limited exact-model market evidence. Retail uses the upper guide; auction uses the lower dealer-buy guide.'
+                    : 'CarMazium market guidance. Retail uses the stronger upper asking guide; auction uses the lower dealer-buy guide.'}
               </Text>
               <View style={s.valuationGrid}>
                 <TouchableOpacity
@@ -2889,16 +2891,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <Text style={s.valuationEvidenceText}>
                 {valuation.comparables > 0
                   ? `Based on ${valuation.comparables} comparable market signal${valuation.comparables === 1 ? '' : 's'}. Guide only; condition, specification and demand can change the final sale price.`
-                  : 'Guide only; condition, specification and demand can change the final sale price.'}
+                  : 'LOW-confidence fallback guide based on age, mileage, transmission and conservative depreciation. You can adjust the price before listing.'}
               </Text>
             </>
-          ) : valuation ? (
-            <View style={s.valuationNotice}>
-              <Ionicons name="alert-circle-outline" size={16} color={Colors.warning} />
-              <Text style={s.valuationNoticeText}>
-                Not enough reliable exact-model market evidence yet. Enter your own price rather than relying on a generic make-level estimate.
-              </Text>
-            </View>
           ) : (
             <Text style={s.fieldHint}>Complete the vehicle make, model, year and mileage to see retail and auction guidance.</Text>
           )}

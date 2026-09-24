@@ -238,7 +238,7 @@ function finishEstimate(
             ? `Based on ${values.length} similar live CarMazium asking price${values.length === 1 ? '' : 's'}. Completed transaction evidence will be added when available.`
             : fallbackResult.calibratedModelProfile
                 ? 'CarMazium has limited live marketplace evidence for this exact vehicle, so this uses a calibrated model-specific depreciation profile with age, mileage and transmission.'
-                : 'CarMazium does not yet have enough reliable market evidence for this exact vehicle. Enter your own price rather than relying on a generic make-level estimate.',
+                : 'Exact-model market evidence is limited, so this LOW-confidence guide uses the vehicle age, mileage, transmission and a conservative make-level depreciation model. Use it as a starting point rather than a guaranteed sale price.',
         retail: {
             // Retail uses the upper market guide.
             suggestedAsking: high,
@@ -325,7 +325,27 @@ async function getBrowserFallbackValuation(
         })
         : values
 
-    return finishEstimate(request, cleaned)
+    const valuation = finishEstimate(request, cleaned)
+    valuation.marketEvidence = {
+        carmaziumComparables: cleaned.length,
+        liveUkComparables: 0,
+        liveUkSearchStatus: 'UNAVAILABLE',
+        rawLiveUkComparables: 0,
+    }
+    return valuation
+}
+
+function getDeterministicFallbackValuation(
+    request: VehicleValuationRequest,
+): VehicleValuation {
+    const valuation = finishEstimate(request, [])
+    valuation.marketEvidence = {
+        carmaziumComparables: 0,
+        liveUkComparables: 0,
+        liveUkSearchStatus: 'UNAVAILABLE',
+        rawLiveUkComparables: 0,
+    }
+    return valuation
 }
 
 export async function getVehicleValuation(
@@ -354,10 +374,15 @@ export async function getVehicleValuation(
         })
         return response.data
     } catch {
-        // The valuation API is deliberately non-blocking. If a backend deploy
-        // is temporarily behind the web deploy (or the endpoint is unavailable),
-        // sellers still get a conservative first-party estimate from currently
-        // live CarMazium adverts rather than hitting a dead end.
-        return getBrowserFallbackValuation(request)
+        // Never strand a seller because an enrichment dependency, deployment,
+        // rate-limit or network request failed. Try current CarMazium adverts
+        // first; if even that public-listings request is unavailable, the local
+        // deterministic age/mileage/transmission model still returns a numeric
+        // LOW-confidence guide.
+        try {
+            return await getBrowserFallbackValuation(request)
+        } catch {
+            return getDeterministicFallbackValuation(request)
+        }
     }
 }
