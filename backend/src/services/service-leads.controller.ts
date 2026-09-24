@@ -7,19 +7,25 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
 import { CreateServiceLeadDto, RespondToServiceLeadDto, ServiceLeadInboxQueryDto, ServiceLeadListQueryDto } from './service-leads.dto';
 import { ServiceLeadsService } from './service-leads.service';
+import { ProductSyncGateway } from '../sync/product-sync.gateway';
 
 @ApiTags('Trade Exchange service enquiries')
 @ApiCookieAuth()
 @Controller('services')
 @UseGuards(SessionAuthGuard, ThrottlerGuard)
 export class ServiceLeadsController {
-    constructor(private readonly leads: ServiceLeadsService) { }
+    constructor(
+        private readonly leads: ServiceLeadsService,
+        private readonly productSync: ProductSyncGateway,
+    ) { }
 
     @Post('leads')
     @Throttle({ default: { limit: 5, ttl: 60_000 } })
     @ApiOperation({ summary: 'Create a Vehicle Finance or Warranty enquiry and match approved providers' })
     async create(@CurrentUser() user: any, @Body() dto: CreateServiceLeadDto) {
-        return new StandardResponse(await this.leads.create(user.id, dto));
+        const result = await this.leads.create(user.id, dto);
+        this.productSync.broadcast({ domain: 'services', action: 'lead-created' });
+        return new StandardResponse(result);
     }
 
     // Static routes stay above /leads/:id so Nest never treats "my" or
@@ -52,13 +58,17 @@ export class ServiceLeadsController {
         @Param('id') id: string,
         @Body() dto: RespondToServiceLeadDto,
     ) {
-        return new StandardResponse(await this.leads.respond(user.id, id, dto));
+        const result = await this.leads.respond(user.id, id, dto);
+        this.productSync.broadcast({ domain: 'services', action: 'lead-responded' });
+        return new StandardResponse(result);
     }
 
     @Post('leads/:id/close')
     @ApiOperation({ summary: 'Close one of my open Finance/Warranty enquiries' })
     async close(@CurrentUser() user: any, @Param('id') id: string) {
-        return new StandardResponse(await this.leads.close(user.id, id));
+        const result = await this.leads.close(user.id, id);
+        this.productSync.broadcast({ domain: 'services', action: 'lead-closed' });
+        return new StandardResponse(result);
     }
 
     @Get('leads/:id')
