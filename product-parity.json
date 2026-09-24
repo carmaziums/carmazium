@@ -497,7 +497,10 @@
       "id": "navigation.public_detail_deeplinks",
       "web": [
         "src/app/buy-cars/[slug]/page.tsx",
-        "src/app/auctions/live/[id]/page.tsx"
+        "src/app/auctions/live/[id]/page.tsx",
+        "src/app/api/app-association/apple/route.ts",
+        "src/app/api/app-association/android/route.ts",
+        "next.config.ts"
       ],
       "mobile": [
         "carmazium app/carmazium app/src/navigation/linking.ts",
