@@ -2776,7 +2776,7 @@ Still requires release/runtime evidence:
 **Checkpoint:** code-contract parity is closed; runtime release evidence remains conditional.
 
 Manifest result:
-- 56 required web/native parity surfaces.
+- 57 required web/native parity surfaces.
 - 2 approved web-only surfaces.
 - 0 unresolved `gap` entries.
 - 0 unresolved `web_only_candidate` entries.
@@ -2810,7 +2810,7 @@ Evidence recorded:
 - Mobile Listing CI passed.
 - Backend Chat CI passed build plus chat regression tests.
 - Both Vercel preview projects reported the corrected code head as **READY**.
-- The stale Block 10 manifest count was corrected from 49 to the current **56 required** cross-platform features.
+- The stale Block 10 manifest count was corrected from 49 to the current **57 required** cross-platform features.
 
 Certification hardening:
 - `.github/workflows/product-parity.yml` now watches `docs/ONE_PRODUCT_PARITY.md` and `docs/parity/**` as well as code/config.
@@ -2823,3 +2823,30 @@ Still deliberately external:
 - authenticated Expo/store publication.
 
 **Programme checkpoint:** **80% complete.** No merge or production deployment was performed in this block.
+
+
+## 2026-09-24 — One Product 80% → 90% synchronized release checkpoint
+
+Implemented:
+- Added public web release identity endpoint backed by Vercel Git SHA.
+- Added backend release identity endpoint and Fly image SHA stamping.
+- Broadened parity-sensitive main pushes so backend release identity advances with a One Product release rather than only backend-source edits.
+- Added generated native release identity source for EAS Update/build artifacts.
+- Added `One Product Release Sync` workflow:
+  - validates an exact main SHA;
+  - detects native-config/dependency changes;
+  - waits for web + backend to report the exact release SHA;
+  - uploads convergence evidence;
+  - publishes a production EAS Update for JS-safe changes or starts production iOS/Android builds for native-config changes;
+  - requires explicit authenticated release enablement and therefore cannot silently publish from this PR.
+- Production EAS builds are explicitly pinned to the `production` environment and channel.
+- Added required parity feature `release.atomic_identity`.
+- Product parity CI now guards the release-identity and orchestration contract.
+
+External/admin blockers intentionally left for the final 10%:
+- GitHub branch-protection administration is not accessible to the connected GitHub App (403).
+- `EXPO_TOKEN` and `ONE_PRODUCT_AUTO_RELEASE` must be configured before automated native publication is enabled.
+- App Store Connect values in `eas.json` are still placeholders and were not invented.
+- Apple association identity, Android signing fingerprint, signed-device tests, runtime accessibility/performance measurements and actual store publication remain evidence tasks.
+
+**Programme checkpoint:** **90% complete.**
