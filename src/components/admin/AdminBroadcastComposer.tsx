@@ -172,14 +172,15 @@ export function AdminBroadcastComposer() {
                     scheduledDate.toISOString(),
                 )
                 setResult(
-                    `Broadcast scheduled for ${new Date(scheduled.scheduledAt).toLocaleString()} with ${scheduled.requested.toLocaleString()} locked recipient${scheduled.requested === 1 ? "" : "s"}.`,
+                    `Broadcast scheduled for ${new Date(scheduled.scheduledAt).toLocaleString()} with ${scheduled.requested.toLocaleString()} locked recipient${scheduled.requested === 1 ? "" : "s"}. Chat, in-app and email will dispatch together.`,
                 )
             } else {
                 const sent = await sendAdminAudienceMessage(messagePayload)
+                const channelFailures = sent.failed + sent.emailFailed
                 setResult(
-                    sent.failed > 0
-                        ? `Sent to ${sent.sent} of ${sent.requested} recipients. ${sent.failed} delivery failed.`
-                        : `Message sent successfully to ${sent.sent} recipient${sent.sent === 1 ? "" : "s"}.`,
+                    channelFailures > 0
+                        ? `Broadcast delivered to chat for ${sent.sent}/${sent.requested}. Email: ${sent.emailSent} sent, ${sent.emailSkipped} skipped, ${sent.emailFailed} failed.`
+                        : `Broadcast sent successfully. Chat: ${sent.sent}/${sent.requested}. Email: ${sent.emailSent} sent${sent.emailSkipped ? `, ${sent.emailSkipped} skipped by preference` : ""}.`,
                 )
             }
 
@@ -214,7 +215,7 @@ export function AdminBroadcastComposer() {
                         <Send size={14} /> Admin broadcast
                     </div>
                     <h3 className="text-2xl font-black text-[var(--text-primary)]">Send a CarMazium message</h3>
-                    <p className="text-sm text-[var(--text-muted)] mt-1">Send text, a picture or a video to a selected audience. Use New Conversation for one member.</p>
+                    <p className="text-sm text-[var(--text-muted)] mt-1">Send one broadcast to chat, in-app notifications and email inboxes. Use New Conversation for one member.</p>
                 </div>
 
                 <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 sm:p-5 shadow-lg">
