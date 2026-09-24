@@ -3,6 +3,7 @@ import { Poppins, Montserrat, Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { StagingBanner } from "@/components/layout/StagingBanner";
+import { OfflineBanner } from "@/components/layout/OfflineBanner";
 import { ConditionalFooter } from "@/components/layout/ConditionalFooter";
 import { MaziumWidgetLoader } from "@/components/features/MaziumWidgetLoader";
 import { MarketingPopup } from "@/components/features/MarketingPopup";
@@ -127,6 +128,7 @@ export default function RootLayout({
                           the first thing seen, before anything that looks like
                           the real site. Renders nothing on production. */}
                       <StagingBanner />
+                      <OfflineBanner />
                       <Header />
                       <main className="flex-grow pt-20">
                         {children}
