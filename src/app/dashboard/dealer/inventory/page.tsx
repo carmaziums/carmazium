@@ -6,6 +6,7 @@ import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/AsyncState"
 import {
     Car, Search, PlusCircle, MoreVertical,
     Loader2, Upload, TrendingUp, Trash2, Eye, RefreshCcw, Pencil,
@@ -65,6 +66,7 @@ export default function DealerInventoryPage() {
     }, [])
     const [listings,          setListings]          = React.useState<any[]>([])
     const [loading,           setLoading]           = React.useState(true)
+    const [loadError,         setLoadError]         = React.useState<string | null>(null)
     const [searchQuery,       setSearchQuery]       = React.useState("")
     const [statusFilter,      setStatusFilter]      = React.useState("ALL")
     const [isBulkImportOpen,  setIsBulkImportOpen]  = React.useState(false)
@@ -93,15 +95,17 @@ export default function DealerInventoryPage() {
 
     async function fetchListings(search = "") {
         setLoading(true)
+        setLoadError(null)
         try {
             const query = new URLSearchParams()
             if (search.trim()) query.set("search", search.trim())
             query.set("includeSold", "true")
             const res = await apiClient<{ data: any[] }>(`/listings/my?${query.toString()}`)
             setListings(res?.data ?? [])
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to load listings:', err)
             setListings([])
+            setLoadError(err?.message || 'We could not load your inventory. Check your connection and try again.')
         } finally {
             setLoading(false)
         }
@@ -264,12 +268,21 @@ export default function DealerInventoryPage() {
                         {/* ── Mobile cards (< sm) ── */}
                         <div className="sm:hidden divide-y divide-white/[0.03]">
                             {loading ? (
-                                <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                                <LoadingState label="Loading inventory…" className="py-12" />
+                            ) : loadError ? (
+                                <ErrorState message={loadError} onRetry={() => fetchListings(searchQuery)} className="m-4" />
                             ) : !filteredListings.length ? (
-                                <div className="flex flex-col items-center justify-center py-12 gap-2">
-                                    <Car className="h-10 w-10 text-gray-700" />
-                                    <p className="text-[var(--text-muted)] font-bold text-sm">No vehicles found</p>
-                                </div>
+                                <EmptyState
+                                    icon={Car}
+                                    title="No vehicles found"
+                                    description={searchQuery || statusFilter !== 'ALL'
+                                        ? 'Try adjusting your search or filters.'
+                                        : 'Add your first vehicle to start building your dealership inventory.'}
+                                    actionLabel={canManageInventory && !searchQuery && statusFilter === 'ALL' ? 'Add vehicle' : undefined}
+                                    onAction={canManageInventory && !searchQuery && statusFilter === 'ALL'
+                                        ? () => router.push('/dashboard/dealer/add-listing')
+                                        : undefined}
+                                />
                             ) : filteredListings.map((listing: any) => {
                                 const isMenuOpen = activeDropdown === listing.id
                                 return (
@@ -422,16 +435,28 @@ export default function DealerInventoryPage() {
                                 <tbody className="divide-y divide-white/[0.03]">
                                     {loading ? (
                                         <tr>
-                                            <td colSpan={6} className="px-6 py-12 text-center">
-                                                <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+                                            <td colSpan={6}><LoadingState label="Loading inventory…" /></td>
+                                        </tr>
+                                    ) : loadError ? (
+                                        <tr>
+                                            <td colSpan={6} className="p-4">
+                                                <ErrorState message={loadError} onRetry={() => fetchListings(searchQuery)} />
                                             </td>
                                         </tr>
                                     ) : !filteredListings.length ? (
                                         <tr>
-                                            <td colSpan={6} className="px-6 py-16 text-center">
-                                                <Car className="h-12 w-12 text-gray-700 mx-auto mb-3" />
-                                                <p className="text-[var(--text-muted)] font-bold">No vehicles found</p>
-                                                <p className="text-gray-600 text-sm mt-1">Try adjusting your filters or add a new vehicle</p>
+                                            <td colSpan={6}>
+                                                <EmptyState
+                                                    icon={Car}
+                                                    title="No vehicles found"
+                                                    description={searchQuery || statusFilter !== 'ALL'
+                                                        ? 'Try adjusting your search or filters.'
+                                                        : 'Add your first vehicle to start building your dealership inventory.'}
+                                                    actionLabel={canManageInventory && !searchQuery && statusFilter === 'ALL' ? 'Add vehicle' : undefined}
+                                                    onAction={canManageInventory && !searchQuery && statusFilter === 'ALL'
+                                                        ? () => router.push('/dashboard/dealer/add-listing')
+                                                        : undefined}
+                                                />
                                             </td>
                                         </tr>
                                     ) : (
