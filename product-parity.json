@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "purpose": "CarMazium one-product parity contract",
   "policy": {
     "backend_is_source_of_truth": true,
@@ -651,6 +651,26 @@
         "carmazium app/carmazium app/src/components/GlobalDrawer.tsx",
         "carmazium app/carmazium app/src/screens/main/MessagesScreen.tsx",
         "carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "runtime.cross_client_sync",
+      "web": [
+        "src/components/providers/ProductSyncBridge.tsx",
+        "src/lib/productSync.ts",
+        "src/app/dashboard/dealer/inventory/page.tsx",
+        "src/app/dashboard/dealer/crm/page.tsx",
+        "src/app/dashboard/dealer/offers/page.tsx",
+        "src/app/search/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/App.tsx",
+        "carmazium app/carmazium app/src/lib/productSync.ts",
+        "carmazium app/carmazium app/src/screens/main/DealerInventoryScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/DealerOffersScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/SearchScreen.tsx"
       ],
       "status": "required"
     }
