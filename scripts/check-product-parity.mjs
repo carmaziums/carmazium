@@ -742,6 +742,69 @@ if (
   ok('Representative cross-role journeys distinguish loading, empty and error states');
 }
 
+// Block 9 — accessibility hardening. Runtime screen-reader/browser
+// certification remains a release task, but these shared invariants must never
+// regress: visible keyboard focus, reduced motion, skip navigation and explicit
+// navigation/menu state on web, plus named icon-only controls on native.
+const webAccessibilityCss = read('src/app/globals.css');
+const webAccessibilityLayout = read('src/app/layout.tsx');
+const webHeaderAccessibility = read('src/components/layout/Header.tsx');
+const webSidebarAccessibility = read('src/components/dashboard/DashboardSidebar.tsx');
+const mobileIconButtonAccessibility = read('carmazium app/carmazium app/src/components/IconButton.tsx');
+
+if (
+  !webAccessibilityCss.includes(':focus-visible') ||
+  !webAccessibilityCss.includes('prefers-reduced-motion: reduce') ||
+  !webAccessibilityCss.includes('animation-duration: 0.01ms')
+) {
+  fail('Web keyboard focus or reduced-motion defaults regressed');
+} else {
+  ok('Web keeps visible keyboard focus and reduced-motion support');
+}
+
+if (
+  !webAccessibilityLayout.includes('href="#main-content"') ||
+  !webAccessibilityLayout.includes('id="main-content"') ||
+  !webAccessibilityLayout.includes('tabIndex={-1}') ||
+  !webAccessibilityLayout.includes('Skip to main content')
+) {
+  fail('Web skip-to-content navigation regressed');
+} else {
+  ok('Web keeps skip-to-content navigation');
+}
+
+if (
+  !webHeaderAccessibility.includes('aria-expanded={isUserMenuOpen}') ||
+  !webHeaderAccessibility.includes('aria-controls="account-menu"') ||
+  !webHeaderAccessibility.includes('aria-expanded={isMobileMenuOpen}') ||
+  !webHeaderAccessibility.includes('aria-controls="mobile-main-menu"') ||
+  !webHeaderAccessibility.includes('aria-current={activeLink === link.href ? "page" : undefined}')
+) {
+  fail('Header menu/current-page accessibility semantics regressed');
+} else {
+  ok('Header exposes menu expansion and current-page semantics');
+}
+
+if (
+  !webSidebarAccessibility.includes('aria-expanded={isMobileMenuOpen}') ||
+  !webSidebarAccessibility.includes('aria-controls="dashboard-mobile-menu"') ||
+  !webSidebarAccessibility.includes('aria-current={isActive ? "page" : undefined}')
+) {
+  fail('Dashboard navigation accessibility semantics regressed');
+} else {
+  ok('Dashboard navigation exposes expansion and current-page semantics');
+}
+
+if (
+  !mobileIconButtonAccessibility.includes('accessibilityLabel: string') ||
+  !mobileIconButtonAccessibility.includes('accessibilityLabel={accessibilityLabel}') ||
+  !mobileIconButtonAccessibility.includes('accessibilityRole="button"')
+) {
+  fail('Native icon-only controls are no longer required to have accessible names');
+} else {
+  ok('Native icon-only controls require accessible names');
+}
+
 // Block 9 — shared visible terminology. Internal model/API names may stay
 // technical (Lead, DealerProfile, ServiceJob), but the navigation and page
 // labels for equivalent web/native product surfaces must not drift.
