@@ -28,6 +28,8 @@ import { addNotificationListeners, registerForPushNotifications } from './src/li
 import { navigationRef } from './src/lib/navigationRef';
 import { markNotificationRead } from './src/lib/notificationsApi';
 import { resolveMobileNotificationTarget } from './src/lib/notificationRouting';
+import { io } from 'socket.io-client';
+import { emitProductSync, type ProductSyncEvent } from './src/lib/productSync';
 
 import { SplashScreen as AppSplashScreen } from './src/screens/loading/SplashScreen';
 
@@ -43,6 +45,24 @@ export default function App() {
   const authInitialized = useAuthStore((state) => state.authInitialized);
   const subscribeToAuthChanges = useAuthStore.getState().subscribeToAuthChanges;
   const reinitializeAuth = useAuthStore.getState().initializeAuth;
+
+  // ── Cross-client product synchronization ────────────────────
+  // The backend sends invalidation events only. Screens refetch their own
+  // authoritative REST data, so iOS/Android/web never maintain competing
+  // client-side copies of marketplace state.
+  useEffect(() => {
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
+    const socket = io(`${apiUrl}/sync`, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+    });
+    const handleChange = (event: ProductSyncEvent) => emitProductSync(event);
+    socket.on('product:changed', handleChange);
+    return () => {
+      socket.off('product:changed', handleChange);
+      socket.disconnect();
+    };
+  }, []);
 
   // ── OTA Updates ────────────────────────────────────────────────
   useEffect(() => {
