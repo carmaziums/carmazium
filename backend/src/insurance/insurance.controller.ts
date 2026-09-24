@@ -27,13 +27,17 @@ import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
 import { InsuranceQuote } from '@prisma/client';
+import { ProductSyncGateway } from '../sync/product-sync.gateway';
 
 @ApiTags('Insurance')
 @Controller('insurance')
 @ApiCookieAuth()
 @UseGuards(SessionAuthGuard)
 export class InsuranceController {
-    constructor(private readonly insuranceService: InsuranceService) { }
+    constructor(
+        private readonly insuranceService: InsuranceService,
+        private readonly productSync: ProductSyncGateway,
+    ) { }
 
     @Post('quote')
     @HttpCode(HttpStatus.CREATED)
@@ -44,6 +48,7 @@ export class InsuranceController {
         @CurrentUser() user: any,
     ): Promise<StandardResponse<InsuranceQuote>> {
         const quote = await this.insuranceService.create(user.id, dto);
+        this.productSync.broadcast({ domain: 'services', action: 'legacy-insurance-created' });
         return new StandardResponse(quote);
     }
 
@@ -100,6 +105,7 @@ export class InsuranceController {
         }
 
         const quote = await this.insuranceService.updateStatus(id, partnerId, dto);
+        this.productSync.broadcast({ domain: 'services', action: 'legacy-insurance-updated' });
         return new StandardResponse(quote);
     }
 }
