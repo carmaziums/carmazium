@@ -100,6 +100,7 @@ import { apiClient } from "@/lib/apiClient"
 import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
 import { ImportListingModal } from "@/components/features/ImportListingModal"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
+import { subscribeProductSync } from "@/lib/productSync"
 
 export default function UnifiedUserDashboard() {
     return (
@@ -123,6 +124,7 @@ function UnifiedUserDashboardContent() {
     // itself already activates via webhook, but nothing ever confirmed it to
     // the user, who just landed back on their listings with no feedback at all.
     const [showBoostSuccess, setShowBoostSuccess] = React.useState(false)
+    const [syncVersion, setSyncVersion] = React.useState(0)
 
     React.useEffect(() => {
         if (searchParams.get('boost') === 'success') {
@@ -159,6 +161,13 @@ function UnifiedUserDashboardContent() {
             refreshRooms()
         }
     }, [user, authLoading])
+
+    React.useEffect(() => subscribeProductSync(["listings", "offers"], () => {
+        if (user) {
+            void fetchStats()
+            setSyncVersion(version => version + 1)
+        }
+    }), [user])
 
     if (authLoading) {
         return <LoadingState label="Loading your account…" className="min-h-screen" />
@@ -216,9 +225,9 @@ function UnifiedUserDashboardContent() {
                                 setTab={setTab}
                             />
                         )}
-                        {activeTab === "inventory" && <InventoryTab onRefreshStats={fetchStats} />}
-                        {activeTab === "offers" && <OffersTab onRefreshStats={fetchStats} />}
-                        {activeTab === "bids" && <OutgoingOffersTab onRefreshStats={fetchStats} />}
+                        {activeTab === "inventory" && <InventoryTab key={`inventory-${syncVersion}`} onRefreshStats={fetchStats} />}
+                        {activeTab === "offers" && <OffersTab key={`offers-${syncVersion}`} onRefreshStats={fetchStats} />}
+                        {activeTab === "bids" && <OutgoingOffersTab key={`bids-${syncVersion}`} onRefreshStats={fetchStats} />}
                         {activeTab === "watchlist" && <WatchlistTab />}
                         {activeTab === "stats" && <StatsTab />}
                         {activeTab === "messages" && <MessagesTab rooms={rooms} refreshRooms={refreshRooms} />}
