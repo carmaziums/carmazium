@@ -538,6 +538,19 @@
       "status": "required"
     },
     {
+      "id": "ui.performance_baseline",
+      "web": [
+        "src/components/features/MaziumWidgetLoader.tsx",
+        "next.config.ts"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/onboarding/OnboardingScreen.tsx",
+        "carmazium app/carmazium app/app.json",
+        "carmazium app/carmazium app/plugins/withAndroidProguardRules.js"
+      ],
+      "status": "required"
+    },
+    {
       "id": "admin.operations",
       "web": [
         "src/app/dashboard/admin/page.tsx"
