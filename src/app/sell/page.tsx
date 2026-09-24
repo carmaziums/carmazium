@@ -116,6 +116,23 @@ function valuationQuality(valuation: VehicleValuation) {
     return "market_backed"
 }
 
+function isPlausibleVehicleModel(model: string, make: string, year: number) {
+    const normalize = (value: string) =>
+        value.trim().toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim()
+
+    const normalizedModel = normalize(model)
+    const normalizedMake = normalize(make)
+    if (!normalizedModel || normalizedModel.length < 2) return false
+    if (normalizedModel === String(year)) return false
+    if (normalizedModel === normalizedMake) return false
+
+    const modelTokens = normalizedModel.split(" ").filter(Boolean)
+    const makeTokens = normalizedMake.split(" ").filter(Boolean)
+    if (modelTokens.length === 1 && makeTokens.includes(modelTokens[0])) return false
+
+    return true
+}
+
 function QuickValuationForm() {
     const { trackEvent } = useAnalytics()
     const [vrm, setVrm] = React.useState("")
@@ -170,6 +187,10 @@ function QuickValuationForm() {
 
                 if (!make || !manualResolvedModel || !Number.isInteger(year) || year < 1950 || year > new Date().getFullYear() + 1) {
                     setError("Enter the vehicle make, model and a valid year to continue.")
+                    return
+                }
+                if (!isPlausibleVehicleModel(manualResolvedModel, make, year)) {
+                    setError("Enter the actual vehicle model, for example Corsa, Golf or Octavia.")
                     return
                 }
 
@@ -243,9 +264,19 @@ function QuickValuationForm() {
                 throw new Error("Vehicle details could not be confirmed")
             }
 
-            const resolvedModel = (vehicle.model || model).trim()
-            if (!resolvedModel) {
-                setPendingVehicle(vehicle)
+            const trustedVehicleModel = vehicle.model?.trim() && isPlausibleVehicleModel(
+                vehicle.model,
+                vehicle.make,
+                vehicle.year,
+            )
+                ? vehicle.model.trim()
+                : ""
+            const resolvedModel = (trustedVehicleModel || model).trim()
+
+            if (!resolvedModel || !isPlausibleVehicleModel(resolvedModel, vehicle.make, vehicle.year)) {
+                setPendingVehicle({ ...vehicle, model: undefined })
+                setModel("")
+                setError("Vehicle found. Enter the actual model, for example Corsa, Golf or Octavia, to complete the valuation.")
                 return
             }
 
