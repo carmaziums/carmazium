@@ -343,11 +343,45 @@ export interface AdminMessageScheduleResult {
 }
 
 export async function previewAdminMessageAudience(selection: AdminAudienceSelection): Promise<AdminAudiencePreview> {
-  const result = await apiClient<{ data: AdminAudiencePreview }>('/admin/messaging/preview', {
-    method: 'POST',
-    body: JSON.stringify(selection),
-  });
-  return result.data;
+  const delays = [0, 450, 1200];
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < delays.length; attempt += 1) {
+    if (delays[attempt] > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
+    }
+
+    try {
+      const result = await apiClient<{ data: AdminAudiencePreview }>('/admin/messaging/preview', {
+        method: 'POST',
+        body: JSON.stringify(selection),
+      });
+      return result.data;
+    } catch (error: any) {
+      if (error?.message === 'AUTH_REDIRECT') throw error;
+
+      lastError = error;
+      const message = String(error?.message || error || '').toLowerCase();
+      const retryable =
+        message.includes('failed to fetch') ||
+        message.includes('network') ||
+        message.includes('timed out') ||
+        message.includes('load failed') ||
+        message.includes('econnreset');
+
+      if (!retryable || attempt === delays.length - 1) break;
+    }
+  }
+
+  const message = String((lastError as any)?.message || lastError || '');
+  const networkFailure =
+    /failed to fetch|network|timed out|load failed|econnreset/i.test(message);
+
+  throw new Error(
+    networkFailure
+      ? 'Could not reach the CarMazium server to check recipients. Please tap Retry.'
+      : (message || 'Could not preview audience'),
+  );
 }
 
 export async function sendAdminAudienceMessage(payload: AdminMessagePayload): Promise<AdminMessageSendResult> {
