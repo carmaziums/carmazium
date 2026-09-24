@@ -24,11 +24,15 @@ import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
 import { TradeListingAccessGuard } from '../auctions/trade-access.guard';
+import { ProductSyncGateway } from '../sync/product-sync.gateway';
 
 @ApiTags('Bids')
 @Controller('bids')
 export class BidsController {
-    constructor(private readonly bidsService: BidsService) { }
+    constructor(
+        private readonly bidsService: BidsService,
+        private readonly productSync: ProductSyncGateway,
+    ) { }
 
     /**
      * Place a bid on an auction listing.
@@ -46,6 +50,7 @@ export class BidsController {
         @Body() createBidDto: CreateBidDto,
     ) {
         const bid = await this.bidsService.create(user.id, createBidDto);
+        this.productSync.broadcast({ domain: 'account', action: 'bid-created' });
         return new StandardResponse(bid);
     }
 
@@ -128,6 +133,7 @@ export class BidsController {
     @ApiResponse({ status: 403, description: 'Not your bid' })
     async cancelBid(@Param('id') id: string, @CurrentUser() user: any) {
         await this.bidsService.cancelBid(id, user.id);
+        this.productSync.broadcast({ domain: 'account', action: 'bid-cancelled' });
         return new StandardResponse({ message: 'Bid cancelled successfully' });
     }
 }
