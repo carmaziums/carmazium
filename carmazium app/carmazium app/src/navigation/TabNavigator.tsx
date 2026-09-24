@@ -22,6 +22,7 @@ import { DealerProfileScreen } from '../screens/main/DealerProfileScreen';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
 import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
 import { AccountRoleHomeScreen } from '../screens/account/AccountRoleHomeScreen';
+import { FinancePartnerDashboardScreen, InsurancePartnerDashboardScreen } from '../screens/account/LegacyPartnerDashboardScreen';
 import { useAuthStore } from '../store/authStore';
 
 // Stable wrapper so the Profile tab's component prop never changes reference,
@@ -42,12 +43,9 @@ const ProfileTabScreen: React.FC<any> = React.memo((props) => {
   // Buyer simply because the mobile preview role is intentionally narrower.
   // Their native operational workspaces are tracked separately in the parity
   // programme, but their identity is preserved here today.
-  if (
-    accountRole === 'contractor' ||
-    accountRole === 'finance_partner' ||
-    accountRole === 'insurance_partner' ||
-    accountRole === 'admin'
-  ) {
+  if (accountRole === 'finance_partner') return <FinancePartnerDashboardScreen {...props} />;
+  if (accountRole === 'insurance_partner') return <InsurancePartnerDashboardScreen {...props} />;
+  if (accountRole === 'contractor' || accountRole === 'admin') {
     return <AccountRoleHomeScreen {...props} />;
   }
 
