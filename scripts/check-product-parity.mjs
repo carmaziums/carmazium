@@ -109,6 +109,59 @@ for (const feature of manifest.features) {
   }
 }
 
+// Atomic release identity and synchronized publication contract.
+const webReleaseIdentity = read('src/app/api/release/route.ts');
+const backendReleaseIdentity = read('backend/src/health/health.controller.ts');
+const backendDockerRelease = read('backend/Dockerfile');
+const backendFlyRelease = read('.github/workflows/backend-fly.yml');
+const nativeReleaseIdentity = read('carmazium app/carmazium app/src/lib/releaseIdentity.ts');
+const nativeGeneratedRelease = read('carmazium app/carmazium app/src/generated/releaseIdentity.ts');
+const nativeEasConfig = read('carmazium app/carmazium app/eas.json');
+const oneProductReleaseWorkflow = read('.github/workflows/one-product-release.yml');
+
+if (
+  !webReleaseIdentity.includes('VERCEL_GIT_COMMIT_SHA') ||
+  !backendReleaseIdentity.includes("process.env.RELEASE_ID") ||
+  !backendDockerRelease.includes('ARG RELEASE_ID') ||
+  !backendFlyRelease.includes('--build-arg RELEASE_ID=${GITHUB_SHA}') ||
+  !nativeReleaseIdentity.includes('GENERATED_RELEASE_ID') ||
+  !nativeGeneratedRelease.includes('GENERATED_RELEASE_ID')
+) {
+  fail('Shared web/backend/native release identity contract drifted');
+} else {
+  ok('Web, backend and native expose/embed one shared release identity');
+}
+
+if (
+  !oneProductReleaseWorkflow.includes('Verify web/backend release SHA') ||
+  !oneProductReleaseWorkflow.includes('ONE_PRODUCT_AUTO_RELEASE') ||
+  !oneProductReleaseWorkflow.includes('eas-cli@latest update') ||
+  !oneProductReleaseWorkflow.includes('eas-cli@latest build') ||
+  !oneProductReleaseWorkflow.includes('native_config_changed') ||
+  !oneProductReleaseWorkflow.includes('GENERATED_RELEASE_ID')
+) {
+  fail('One Product synchronized release orchestration drifted');
+} else {
+  ok('Release orchestration waits for web/backend convergence before native publication');
+}
+
+const easJson = JSON.parse(nativeEasConfig);
+if (
+  easJson?.build?.production?.channel !== 'production' ||
+  easJson?.build?.production?.environment !== 'production' ||
+  easJson?.expo?.updates?.requestHeaders?.['expo-channel-name']
+) {
+  // eas.json has no expo object; app.json owns the update request header.
+}
+if (
+  easJson?.build?.production?.channel !== 'production' ||
+  easJson?.build?.production?.environment !== 'production'
+) {
+  fail('Production EAS build is not pinned to production channel/environment');
+} else {
+  ok('Production EAS build is pinned to production channel/environment');
+}
+
 // Certification record integrity. Keep human-readable release documents aligned
 // with the machine-readable manifest and retain an explicit runtime evidence ledger.
 const requiredFeatureCount = manifest.features.filter((feature) => feature.status === 'required').length;
