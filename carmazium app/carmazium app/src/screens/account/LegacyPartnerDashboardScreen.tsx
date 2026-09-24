@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   RefreshControl,
@@ -22,6 +22,7 @@ import {
   updateFinancePartnerApplication,
   updateInsurancePartnerQuote,
 } from '../../lib/legacyPartnerApi';
+import { subscribeProductSync } from '../../lib/productSync';
 
 type PartnerKind = 'finance' | 'insurance';
 
@@ -63,6 +64,9 @@ const PartnerDashboard: React.FC<{ navigation?: any; kind: PartnerKind }> = ({ n
   }, [isFinance]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+  useEffect(() => subscribeProductSync(['services', 'account'], () => {
+    void load(true);
+  }), [load]);
 
   const stats = useMemo(() => {
     if (isFinance) {
