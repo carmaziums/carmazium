@@ -509,10 +509,7 @@ export class AnalyticsService {
         const todayValuationAttempts = Number(overview.valuation_attempts ?? 0);
         const todayFiguresReturned = Number(overview.figures_returned ?? 0);
         const todayConfirmedNoFigures = Number(overview.confirmed_no_figures ?? 0);
-        const todayWithoutFigures = Math.max(
-            todayConfirmedNoFigures,
-            todayValuationAttempts - todayFiguresReturned,
-        );
+        const todayWithoutFigures = todayConfirmedNoFigures;
 
         return {
             timezone: 'Europe/London',
@@ -571,10 +568,7 @@ export class AnalyticsService {
                 const valuationAttempts = Number(row.valuation_attempts ?? 0);
                 const figuresReturned = Number(row.figures_returned ?? 0);
                 const confirmedNoFigures = Number(row.confirmed_no_figures ?? 0);
-                const withoutFigures = Math.max(
-                    confirmedNoFigures,
-                    valuationAttempts - figuresReturned,
-                );
+                const withoutFigures = confirmedNoFigures;
                 return {
                     date: row.date,
                     requests: Number(row.requests),
