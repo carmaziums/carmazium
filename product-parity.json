@@ -1,5 +1,5 @@
 {
-  "version": 8,
+  "version": 9,
   "purpose": "CarMazium one-product parity contract",
   "policy": {
     "backend_is_source_of_truth": true,
@@ -671,6 +671,19 @@
         "carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx",
         "carmazium app/carmazium app/src/screens/main/DealerOffersScreen.tsx",
         "carmazium app/carmazium app/src/screens/main/SearchScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "release.atomic_identity",
+      "web": [
+        "src/app/api/release/route.ts",
+        ".github/workflows/one-product-release.yml"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/lib/releaseIdentity.ts",
+        "carmazium app/carmazium app/src/generated/releaseIdentity.ts",
+        "carmazium app/carmazium app/eas.json"
       ],
       "status": "required"
     }
