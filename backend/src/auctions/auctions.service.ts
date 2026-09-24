@@ -1007,12 +1007,12 @@ export class AuctionsService {
         });
 
         if (auction.listing.sellerId) {
-            const reasonText = reason?.trim() ? ` Reason: ${reason.trim()}` : '';
+            const reasonText = reason?.trim() ? ` Admin note: ${reason.trim()}` : '';
             const notification = await this.notificationsService.create({
                 userId: auction.listing.sellerId,
                 type: 'AUCTION_UPDATED',
-                title: 'Auction reserve corrected',
-                message: `CarMazium corrected the reserve for "${auction.listing.title}" from £${oldReserve.toLocaleString('en-GB')} to £${reservePrice.toLocaleString('en-GB')}.${reasonText}`,
+                title: 'We’ve reviewed your auction reserve',
+                message: `Our team has reviewed "${auction.listing.title}" using the vehicle information available in your listing, including its age, mileage, history, number of keys and reported condition. We have adjusted the reserve price from £${oldReserve.toLocaleString('en-GB')} to £${reservePrice.toLocaleString('en-GB')} to better reflect its current market position. A realistic reserve can help attract stronger buyer interest and improve the chance of achieving a competitive sale price.${reasonText}`,
                 link: '/dashboard/seller/auctions',
                 entityType: 'Auction',
                 entityId: auctionId,
