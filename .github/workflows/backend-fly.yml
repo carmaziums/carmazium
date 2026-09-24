@@ -10,7 +10,15 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'src/**'
+      - 'carmazium app/carmazium app/src/**'
+      - 'carmazium app/carmazium app/app.json'
+      - 'carmazium app/carmazium app/eas.json'
+      - 'carmazium app/carmazium app/plugins/**'
+      - 'product-parity.json'
+      - 'scripts/check-product-parity.mjs'
       - '.github/workflows/backend-fly.yml'
+      - '.github/workflows/one-product-release.yml'
 
 permissions:
   contents: read
@@ -71,6 +79,6 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy existing Fly app
-        run: flyctl deploy --remote-only --config fly.toml
+        run: flyctl deploy --remote-only --config fly.toml --build-arg RELEASE_ID=${GITHUB_SHA}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

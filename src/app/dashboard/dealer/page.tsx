@@ -17,6 +17,7 @@ import { apiClient } from "@/lib/apiClient"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { useDealerAccess } from "@/context/DealerAccessContext"
+import { subscribeProductSync } from "@/lib/productSync"
 
 export default function DealerDashboard() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -81,6 +82,10 @@ export default function DealerDashboard() {
             fetchDashboardData()
         }
     }, [user, authLoading, accessLoading, rangeAllTime, rangeValue, rangeUnit, compareRange, canManageCrm])
+
+    React.useEffect(() => subscribeProductSync(["dealer", "listings", "offers"], () => {
+        if (user && !authLoading && !accessLoading) void fetchDashboardData()
+    }), [user, authLoading, accessLoading, rangeAllTime, rangeValue, rangeUnit, compareRange, canManageCrm])
 
     async function fetchDashboardData() {
         setLoading(true)

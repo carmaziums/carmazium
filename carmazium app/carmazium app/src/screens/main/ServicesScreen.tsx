@@ -50,7 +50,7 @@ const SERVICES: ServiceItem[] = [
     border: 'rgba(16,185,129,0.22)',
   },
   {
-    title: 'Warranty Coverage',
+    title: 'Warranty',
     desc: 'Extended third-party warranty options give you protection against unexpected mechanical or electrical failures after purchase.',
     icon: 'ribbon-outline',
     color: Colors.palePurple_c084fc,
@@ -58,7 +58,7 @@ const SERVICES: ServiceItem[] = [
     border: 'rgba(168,85,247,0.22)',
   },
   {
-    title: 'Vehicle Financing',
+    title: 'Vehicle Finance',
     desc: 'Get matched with finance providers offering structured payment plans and pre-approvals tailored to your budget.',
     icon: 'cash-outline',
     color: Colors.lightOrange_fbbf24,
@@ -139,6 +139,23 @@ export const ServicesScreen: React.FC = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
+          style={styles.customerJobsCard}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('CustomerServiceLeads')}
+        >
+          <View style={styles.customerJobsIcon}>
+            <Ionicons name="document-text-outline" size={22} color={Colors.infoBlueLight} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.partnerTitle}>My finance & warranty enquiries</Text>
+            <Text style={styles.partnerText}>
+              Submit enquiries, see matched providers and compare their responses from the same account you use on the website.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={styles.partnerCard}
           activeOpacity={0.85}
           onPress={() => navigation.navigate('PartnerDashboard')}
@@ -155,17 +172,38 @@ export const ServicesScreen: React.FC = () => {
           <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
         </TouchableOpacity>
 
-        {SERVICES.map((service) => (
-          <View key={service.title} style={styles.card}>
-            <View style={[styles.iconWrap, { backgroundColor: service.bg, borderColor: service.border }]}>
-              <Ionicons name={service.icon} size={22} color={service.color} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>{service.title}</Text>
-              <Text style={styles.cardDesc}>{service.desc}</Text>
-            </View>
-          </View>
-        ))}
+        {SERVICES.map((service) => {
+          const serviceType = service.title === 'Vehicle Finance'
+            ? 'FINANCE'
+            : service.title === 'Warranty'
+              ? 'WARRANTY'
+              : null;
+          const content = (
+            <>
+              <View style={[styles.iconWrap, { backgroundColor: service.bg, borderColor: service.border }]}>
+                <Ionicons name={service.icon} size={22} color={service.color} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitle}>{service.title}</Text>
+                <Text style={styles.cardDesc}>{service.desc}</Text>
+                {serviceType ? <Text style={styles.cardCta}>Start enquiry</Text> : null}
+              </View>
+              {serviceType ? <Ionicons name="chevron-forward" size={17} color={Colors.accent} /> : null}
+            </>
+          );
+          return serviceType ? (
+            <TouchableOpacity
+              key={service.title}
+              style={styles.card}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('ServiceLeadForm', { serviceType })}
+            >
+              {content}
+            </TouchableOpacity>
+          ) : (
+            <View key={service.title} style={styles.card}>{content}</View>
+          );
+        })}
 
         <View style={styles.noteCard}>
           <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
@@ -305,6 +343,7 @@ const styles = StyleSheet.create({
     color: Colors.white,
     marginBottom: 4,
   },
+  cardCta: { marginTop: 7, color: Colors.accent, fontSize: 12, fontWeight: '800' },
   cardDesc: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.size12,

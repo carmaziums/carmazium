@@ -13,6 +13,17 @@ export class HealthController {
         private prismaService: PrismaService,
     ) { }
 
+    @Get('release')
+    @ApiOperation({ summary: 'Return the deployed One Product release identity' })
+    release() {
+        const releaseId = process.env.RELEASE_ID || process.env.FLY_IMAGE_REF || 'unknown';
+        return {
+            releaseId,
+            environment: process.env.NODE_ENV || 'development',
+            service: 'backend',
+        };
+    }
+
     @Get()
     @HealthCheck()
     @ApiOperation({ summary: 'Check system health' })

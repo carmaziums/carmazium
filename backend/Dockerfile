@@ -20,9 +20,12 @@ RUN npx nest build
 # ── Stage 2: Production ────────────────────────────────────────
 FROM node:${NODE_VERSION}-alpine AS runner
 
+ARG RELEASE_ID=unknown
+
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV RELEASE_ID=${RELEASE_ID}
 ENV PORT=8080
 
 # Install postgresql-client for pg_dump (required by weekly backup cron)

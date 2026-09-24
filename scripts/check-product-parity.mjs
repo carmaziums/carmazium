@@ -109,6 +109,285 @@ for (const feature of manifest.features) {
   }
 }
 
+// Server-rendered web surfaces must tolerate short-lived Fly/API network faults.
+const resilientServerFetch = read('src/lib/serverBackendFetch.ts');
+const vehicleDetailServer = read('src/app/buy-cars/[slug]/page.tsx');
+const blogIndexServer = read('src/app/blog/page.tsx');
+const blogArticleServer = read('src/app/blog/[slug]/page.tsx');
+if (
+  !resilientServerFetch.includes('TRANSIENT_BACKEND_STATUS') ||
+  !resilientServerFetch.includes('timeoutMs') ||
+  !resilientServerFetch.includes('retryDelayMs * 2 ** attempt') ||
+  !vehicleDetailServer.includes('fetchBackendWithRetry') ||
+  !blogIndexServer.includes('fetchBackendWithRetry') ||
+  !blogArticleServer.includes('fetchBackendWithRetry')
+) {
+  fail('Server-side backend retry/backoff resilience drifted');
+} else {
+  ok('Server-rendered vehicle/blog surfaces use bounded backend retry/backoff');
+}
+
+// Platform association endpoints must stay wired but must never hard-code
+// guessed signing identities. Production values come from authenticated env.
+const appleAssociationRoute = read('src/app/api/app-association/apple/route.ts');
+const androidAssociationRoute = read('src/app/api/app-association/android/route.ts');
+const nextConfigAssociations = read('next.config.ts');
+
+if (
+  !nextConfigAssociations.includes("'/.well-known/apple-app-site-association'") ||
+  !nextConfigAssociations.includes("'/.well-known/assetlinks.json'") ||
+  !appleAssociationRoute.includes('process.env.APPLE_TEAM_ID') ||
+  !appleAssociationRoute.includes('uk.carmazium.app') ||
+  !androidAssociationRoute.includes('process.env.ANDROID_RELEASE_CERT_SHA256') ||
+  !androidAssociationRoute.includes('uk.carmazium.app')
+) {
+  fail('Universal/App Link website association contract drifted');
+} else {
+  ok('Universal/App Link website association handlers are wired to real signing env values');
+}
+
+if (
+  appleAssociationRoute.includes('FILL_IN_') ||
+  androidAssociationRoute.includes('FILL_IN_')
+) {
+  fail('Platform association handlers contain placeholder signing identities');
+}
+
+// Atomic release identity and synchronized publication contract.
+const webReleaseIdentity = read('src/app/api/release/route.ts');
+const backendReleaseIdentity = read('backend/src/health/health.controller.ts');
+const backendDockerRelease = read('backend/Dockerfile');
+const backendFlyRelease = read('.github/workflows/backend-fly.yml');
+const nativeReleaseIdentity = read('carmazium app/carmazium app/src/lib/releaseIdentity.ts');
+const nativeGeneratedRelease = read('carmazium app/carmazium app/src/generated/releaseIdentity.ts');
+const nativeEasConfig = read('carmazium app/carmazium app/eas.json');
+const oneProductReleaseWorkflow = read('.github/workflows/one-product-release.yml');
+
+if (
+  !webReleaseIdentity.includes('VERCEL_GIT_COMMIT_SHA') ||
+  !backendReleaseIdentity.includes("process.env.RELEASE_ID") ||
+  !backendDockerRelease.includes('ARG RELEASE_ID') ||
+  !backendFlyRelease.includes('--build-arg RELEASE_ID=${GITHUB_SHA}') ||
+  !nativeReleaseIdentity.includes('GENERATED_RELEASE_ID') ||
+  !nativeGeneratedRelease.includes('GENERATED_RELEASE_ID')
+) {
+  fail('Shared web/backend/native release identity contract drifted');
+} else {
+  ok('Web, backend and native expose/embed one shared release identity');
+}
+
+if (
+  !oneProductReleaseWorkflow.includes('Verify web/backend release SHA') ||
+  !oneProductReleaseWorkflow.includes('ONE_PRODUCT_AUTO_RELEASE') ||
+  !oneProductReleaseWorkflow.includes('eas-cli@latest update') ||
+  !oneProductReleaseWorkflow.includes('eas-cli@latest build') ||
+  !oneProductReleaseWorkflow.includes('native_config_changed') ||
+  !oneProductReleaseWorkflow.includes('GENERATED_RELEASE_ID')
+) {
+  fail('One Product synchronized release orchestration drifted');
+} else {
+  ok('Release orchestration waits for web/backend convergence before native publication');
+}
+
+const easJson = JSON.parse(nativeEasConfig);
+if (
+  easJson?.build?.production?.channel !== 'production' ||
+  easJson?.build?.production?.environment !== 'production' ||
+  easJson?.expo?.updates?.requestHeaders?.['expo-channel-name']
+) {
+  // eas.json has no expo object; app.json owns the update request header.
+}
+if (
+  easJson?.build?.production?.channel !== 'production' ||
+  easJson?.build?.production?.environment !== 'production'
+) {
+  fail('Production EAS build is not pinned to production channel/environment');
+} else {
+  ok('Production EAS build is pinned to production channel/environment');
+}
+
+// Certification record integrity. Keep human-readable release documents aligned
+// with the machine-readable manifest and retain an explicit runtime evidence ledger.
+const requiredFeatureCount = manifest.features.filter((feature) => feature.status === 'required').length;
+const finalCertification = read('docs/parity/FINAL_CERTIFICATION.md');
+const parityProgress = read('docs/parity/PROGRESS.md');
+const runtimeReleaseChecklist = read('docs/parity/RUNTIME_RELEASE_CHECKLIST.md');
+
+if (!finalCertification.includes(`**${requiredFeatureCount} required cross-platform features**`)) {
+  fail(`Final certification does not match manifest required feature count (${requiredFeatureCount})`);
+} else {
+  ok(`Final certification matches ${requiredFeatureCount} required features`);
+}
+
+if (!parityProgress.includes(`- ${requiredFeatureCount} required web/native parity surfaces.`)) {
+  fail(`Progress record does not match manifest required feature count (${requiredFeatureCount})`);
+} else {
+  ok('Progress record matches the live parity manifest');
+}
+
+if (
+  !runtimeReleaseChecklist.includes('Runtime release certification:') ||
+  !runtimeReleaseChecklist.includes('signed Android APK/AAB') ||
+  !runtimeReleaseChecklist.includes('assetlinks.json') ||
+  !runtimeReleaseChecklist.includes('apple-app-site-association')
+) {
+  fail('Runtime release evidence checklist is missing required certification evidence categories');
+} else {
+  ok('Runtime release evidence ledger is present and explicit');
+}
+
+// Runtime one-product synchronization. The backend emits only domain
+// invalidations; each client must refetch authoritative REST state.
+const backendProductSync = read('backend/src/sync/product-sync.gateway.ts');
+const backendListingsSync = read('backend/src/listings/listings.controller.ts');
+const backendOffersSync = read('backend/src/offers/offers.controller.ts');
+const backendBidsSync = read('backend/src/bids/bids.controller.ts');
+const backendDealerSync = read('backend/src/dealers/dealers.controller.ts');
+const backendServiceLeadSync = read('backend/src/services/service-leads.controller.ts');
+const backendServicesSync = read('backend/src/services/services.controller.ts');
+const webProductSyncBridge = read('src/components/providers/ProductSyncBridge.tsx');
+const webProductSync = read('src/lib/productSync.ts');
+const webRootForSync = read('src/app/layout.tsx');
+const mobileProductSync = read('carmazium app/carmazium app/src/lib/productSync.ts');
+const mobileAppForSync = read('carmazium app/carmazium app/App.tsx');
+
+if (
+  !backendProductSync.includes("namespace: '/sync'") ||
+  !backendProductSync.includes("emit('product:changed'") ||
+  !backendListingsSync.includes("domain: 'listings'") ||
+  !backendOffersSync.includes("domain: 'offers'") ||
+  !backendBidsSync.includes("domain: 'account'") ||
+  !backendDealerSync.includes("domain: 'dealer'") ||
+  !backendServiceLeadSync.includes("domain: 'services'") ||
+  !backendServicesSync.includes("domain: 'services'")
+) {
+  fail('Backend one-product invalidation coverage drifted');
+} else {
+  ok('Backend broadcasts generic invalidations for marketplace, bids, dealer and service mutations');
+}
+
+if (
+  !webProductSyncBridge.includes('/sync') ||
+  !webProductSyncBridge.includes('product:changed') ||
+  !webProductSyncBridge.includes('PRODUCT_SYNC_EVENT') ||
+  !webProductSync.includes('subscribeProductSync') ||
+  !webRootForSync.includes('<ProductSyncBridge />')
+) {
+  fail('Web one-product sync bridge is missing or no longer mounted');
+} else {
+  ok('Web connects once to the shared product sync channel');
+}
+
+if (
+  !mobileAppForSync.includes('/sync') ||
+  !mobileAppForSync.includes("socket.on('product:changed'") ||
+  !mobileAppForSync.includes('emitProductSync') ||
+  !mobileProductSync.includes('subscribeProductSync')
+) {
+  fail('Native one-product sync bridge is missing or no longer mounted');
+} else {
+  ok('Native iOS/Android app connects once to the shared product sync channel');
+}
+
+const webSyncScreens = [
+  ['dealer inventory', read('src/app/dashboard/dealer/inventory/page.tsx'), 'listings'],
+  ['dealer CRM', read('src/app/dashboard/dealer/crm/page.tsx'), 'dealer'],
+  ['dealer offers', read('src/app/dashboard/dealer/offers/page.tsx'), 'offers'],
+  ['marketplace search', read('src/app/search/page.tsx'), 'listings'],
+  ['customer service enquiries', read('src/app/services/leads/page.tsx'), 'services'],
+  ['provider jobs', read('src/app/dashboard/service/jobs/page.tsx'), 'services'],
+];
+for (const [surface, source, domain] of webSyncScreens) {
+  if (!source.includes('subscribeProductSync') || !source.includes(`"${domain}"`)) {
+    fail(`Web ${surface} is no longer subscribed to ${domain} invalidations`);
+  }
+}
+
+const mobileSyncScreens = [
+  ['seller listings', read('carmazium app/carmazium app/src/screens/seller/SellerListingsScreen.tsx'), 'listings'],
+  ['dealer inventory', read('carmazium app/carmazium app/src/screens/main/DealerInventoryScreen.tsx'), 'listings'],
+  ['buyer offers', read('carmazium app/carmazium app/src/screens/buyer/BuyerOffersScreen.tsx'), 'offers'],
+  ['dealer CRM', read('carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx'), 'dealer'],
+  ['marketplace search', read('carmazium app/carmazium app/src/screens/main/SearchScreen.tsx'), 'listings'],
+  ['customer service enquiries', read('carmazium app/carmazium app/src/screens/main/CustomerServiceLeadsScreen.tsx'), 'services'],
+  ['provider jobs', read('carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx'), 'services'],
+];
+for (const [surface, source, domain] of mobileSyncScreens) {
+  if (!source.includes('subscribeProductSync') || !source.includes(`'${domain}'`)) {
+    fail(`Native ${surface} is no longer subscribed to ${domain} invalidations`);
+  }
+}
+ok('Representative web/native data surfaces refetch on shared product invalidations');
+
+// Customer TradeXchange Finance/Warranty must remain a real native workflow,
+// not informational cards while web has actionable enquiry routes.
+const mobileServiceHubParity = read('carmazium app/carmazium app/src/screens/main/ServicesScreen.tsx');
+const mobileServiceLeadFormParity = read('carmazium app/carmazium app/src/screens/main/ServiceLeadFormScreen.tsx');
+const mobileCustomerLeadsParity = read('carmazium app/carmazium app/src/screens/main/CustomerServiceLeadsScreen.tsx');
+const mobileServicesApiParity = read('carmazium app/carmazium app/src/lib/servicesApi.ts');
+if (
+  !mobileServiceHubParity.includes("navigation.navigate('ServiceLeadForm'") ||
+  !mobileServiceHubParity.includes("navigation.navigate('CustomerServiceLeads'") ||
+  !mobileServiceLeadFormParity.includes('createServiceLead') ||
+  !mobileServicesApiParity.includes('getMyServiceLeadsPage') ||
+  !mobileCustomerLeadsParity.includes('CustomerServiceLeadDetail')
+) {
+  fail('Native Finance/Warranty customer enquiry journey drifted from web');
+} else {
+  ok('Finance/Warranty customer enquiries are actionable on web and native');
+}
+
+// Legacy privileged partner roles still exist in the backend/web and therefore
+// must remain operational on native until they are deliberately migrated away.
+const mobileLegacyPartnerDashboard = read('carmazium app/carmazium app/src/screens/account/LegacyPartnerDashboardScreen.tsx');
+const mobileLegacyPartnerApi = read('carmazium app/carmazium app/src/lib/legacyPartnerApi.ts');
+const mobileDrawerForLegacyPartners = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
+if (
+  !mobileLegacyPartnerDashboard.includes('FinancePartnerDashboardScreen') ||
+  !mobileLegacyPartnerDashboard.includes('InsurancePartnerDashboardScreen') ||
+  !mobileLegacyPartnerApi.includes('/finance/partner') ||
+  !mobileLegacyPartnerApi.includes('/insurance/partner') ||
+  !mobileDrawerForLegacyPartners.includes('FINANCE_PARTNER_ITEMS') ||
+  !mobileDrawerForLegacyPartners.includes('INSURANCE_PARTNER_ITEMS') ||
+  !mobileDrawerForLegacyPartners.includes("accountRole === 'buyer' || accountRole === 'seller'")
+) {
+  fail('Legacy Finance/Insurance Partner native operations or role isolation regressed');
+} else {
+  ok('Legacy Finance/Insurance Partner roles keep native operational dashboards without buyer fallback');
+}
+
+// Dealer reporting controls must expose the same flexible range model on native
+// as the web command centre: presets, arbitrary days/months/years, all-time
+// and an explicit previous-period comparison toggle.
+const webDealerRangeControl = read('src/components/dashboard/FlexiblePeriodControl.tsx');
+const mobileDealerAnalyticsRange = read('carmazium app/carmazium app/src/screens/main/DealerAnalyticsScreen.tsx');
+const backendDealerAnalyticsRange = read('backend/src/dealers/dealers.service.ts');
+if (
+  !webDealerRangeControl.includes('Compare previous') ||
+  !webDealerRangeControl.includes('<option value="years">') ||
+  !mobileDealerAnalyticsRange.includes("type RangeUnit = 'days' | 'months' | 'years'") ||
+  !mobileDealerAnalyticsRange.includes('applyCustomRange') ||
+  !mobileDealerAnalyticsRange.includes('Compare previous period') ||
+  !mobileDealerAnalyticsRange.includes("if (p === 'ALL') return { range: 'all' }") ||
+  !backendDealerAnalyticsRange.includes("range === 'all'")
+) {
+  fail('Dealer analytics range/comparison controls drifted between web and native');
+} else {
+  ok('Dealer analytics supports flexible days/months/years, all-time and comparison across clients');
+}
+
+// Public review copy must not diverge into fabricated platform metrics.
+const webReviewsParity = read('src/app/reviews/page.tsx');
+if (
+  webReviewsParity.includes('50k+') ||
+  webReviewsParity.includes('4.9/5') ||
+  webReviewsParity.includes('Absolutely fantastic service')
+) {
+  fail('Web reviews page reintroduced fabricated customer/rating/testimonial claims');
+} else {
+  ok('Web/native review surfaces avoid fabricated platform review statistics');
+}
+
 // Authentication / account-role contract. The backend enum contains privileged
 // roles, but only the four self-service roles may ever be selected by a public
 // registration, Supabase metadata, or the self-elevation endpoint.

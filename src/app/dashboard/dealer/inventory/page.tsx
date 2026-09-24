@@ -23,6 +23,7 @@ import { BulkImportModal } from "@/components/dealer/BulkImportModal"
 import { ImportListingModal } from "@/components/features/ImportListingModal"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { ExternalLink } from "lucide-react"
+import { subscribeProductSync } from "@/lib/productSync"
 
 // ─── Status colours ─────────────────────────────────────────────────────────
 
@@ -112,6 +113,10 @@ export default function DealerInventoryPage() {
             setLoading(false)
         }
     }
+
+    React.useEffect(() => subscribeProductSync(["listings", "offers"], () => {
+        if (user) void fetchListings(searchQuery)
+    }), [user, searchQuery])
 
     // Dealer drafts use the same full ListingWizard as every other seller flow.
     // Do not duplicate completeness/HPI/payment decisions in inventory: the

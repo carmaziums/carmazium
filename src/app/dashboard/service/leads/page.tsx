@@ -7,6 +7,7 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/ui/AsyncState
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { formatPence, getLeadInboxPage, SERVICE_LABELS, type ServiceLead } from "@/lib/servicesApi"
+import { subscribeProductSync } from "@/lib/productSync"
 
 const inputCls = "w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2.5 text-sm outline-none focus:border-primary"
 
@@ -45,6 +46,10 @@ export default function ProviderLeadInboxPage() {
     React.useEffect(() => {
         if (user) load()
     }, [user, load])
+
+    React.useEffect(() => subscribeProductSync(["services"], () => {
+        if (user) load()
+    }), [user, load])
 
     const loadMore = async () => {
         if (!nextCursor || loadingMore) return

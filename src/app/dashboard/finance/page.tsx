@@ -14,6 +14,7 @@ import {
     type FinanceApplication,
     type PartnerStats
 } from "@/lib/partnerApi"
+import { subscribeProductSync } from "@/lib/productSync"
 
 export default function FinanceDashboard() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -41,6 +42,16 @@ export default function FinanceDashboard() {
         }
         if (!authLoading && user) fetchData()
     }, [user, authLoading])
+
+    React.useEffect(() => subscribeProductSync(["services"], () => {
+        if (!user) return
+        void Promise.all([getFinanceStats(), getFinanceApplications(1, 5)])
+            .then(([statsData, appsData]) => {
+                setStats(statsData)
+                setApplications(appsData.data || [])
+            })
+            .catch(() => {})
+    }), [user])
 
     const handleStatusUpdate = async (id: string, status: string) => {
         try {

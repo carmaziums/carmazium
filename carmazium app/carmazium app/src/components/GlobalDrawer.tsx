@@ -290,6 +290,19 @@ const DEALER_ITEMS: MenuItem[] = [
   },
 ];
 
+const FINANCE_PARTNER_ITEMS: MenuItem[] = [
+  { id: 'finance-partner-dashboard', label: 'Finance Dashboard', icon: 'cash-outline', iconLib: 'ion', stackScreen: 'FinancePartnerDashboard' },
+  { id: 'finance-partner-messages', label: 'Messages', icon: 'chatbubbles-outline', iconLib: 'ion', stackScreen: 'Messages' },
+  { id: 'finance-partner-settings', label: 'Settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' },
+];
+
+const INSURANCE_PARTNER_ITEMS: MenuItem[] = [
+  { id: 'insurance-partner-dashboard', label: 'Insurance Dashboard', icon: 'shield-checkmark-outline', iconLib: 'ion', stackScreen: 'InsurancePartnerDashboard' },
+  { id: 'insurance-partner-messages', label: 'Messages', icon: 'chatbubbles-outline', iconLib: 'ion', stackScreen: 'Messages' },
+  { id: 'insurance-partner-settings', label: 'Settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' },
+];
+
+
 export const GlobalDrawer: React.FC = () => {
   const { isOpen, closeDrawer } = useDrawer();
   const user         = useAuthStore((s) => s.user);
@@ -419,7 +432,15 @@ export const GlobalDrawer: React.FC = () => {
   const realName  = user ? (`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email) : null;
   // Matches web's formatRole(): buyer and seller share the "Buyer/Seller Account"
   // label since they're the same unified entity across the platform.
-  const userName  = realName || (role === 'dealer' ? 'Dealer Account' : role === 'seller' ? 'Buyer/Seller Account' : 'Guest');
+  const fallbackName =
+    accountRole === 'finance_partner' ? 'Finance Partner'
+    : accountRole === 'insurance_partner' ? 'Insurance Partner'
+    : accountRole === 'contractor' ? 'Partner Account'
+    : accountRole === 'admin' ? 'Admin Account'
+    : role === 'dealer' ? 'Dealer Account'
+    : role === 'seller' ? 'Buyer/Seller Account'
+    : 'Guest';
+  const userName  = realName || fallbackName;
   const userEmail = user?.email || '';
   const initial   = userName.charAt(0).toUpperCase();
 
@@ -521,7 +542,7 @@ export const GlobalDrawer: React.FC = () => {
           {/* Unified Buyer/Seller toolset — web treats BUYER and SELLER as the
               same entity with one shared dashboard, so mobile does too now.
               Dealer keeps its own dedicated DEALER CONTROLS group below. */}
-          {(role === 'buyer' || role === 'seller') && (
+          {(accountRole === 'buyer' || accountRole === 'seller') && (
             <>
               <View style={styles.divider} />
               <Text style={[styles.groupLabel, styles.groupLabelSeller]}>MY DASHBOARD</Text>
@@ -539,6 +560,36 @@ export const GlobalDrawer: React.FC = () => {
                   <Text style={styles.rowLabelSeller}>
                     {item.label}
                   </Text>
+                  <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+
+          {accountRole === 'finance_partner' && (
+            <>
+              <View style={styles.divider} />
+              <Text style={styles.groupLabel}>FINANCE PARTNER</Text>
+              {FINANCE_PARTNER_ITEMS.map((item) => (
+                <TouchableOpacity key={item.id} style={styles.row} onPress={() => handleItem(item)} activeOpacity={0.7}>
+                  <View style={styles.bar} />
+                  <View style={styles.iconWrap}>{renderIcon(item, false)}</View>
+                  <Text style={styles.rowLabel}>{item.label}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+
+          {accountRole === 'insurance_partner' && (
+            <>
+              <View style={styles.divider} />
+              <Text style={styles.groupLabel}>INSURANCE PARTNER</Text>
+              {INSURANCE_PARTNER_ITEMS.map((item) => (
+                <TouchableOpacity key={item.id} style={styles.row} onPress={() => handleItem(item)} activeOpacity={0.7}>
+                  <View style={styles.bar} />
+                  <View style={styles.iconWrap}>{renderIcon(item, false)}</View>
+                  <Text style={styles.rowLabel}>{item.label}</Text>
                   <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
               ))}
@@ -583,7 +634,7 @@ export const GlobalDrawer: React.FC = () => {
           )}
 
           {/* ── Dealer toggle — visible for all non-dealer users ── */}
-          {role !== 'dealer' && (
+          {(accountRole === 'buyer' || accountRole === 'seller') && role !== 'dealer' && (
             <>
               <View style={styles.divider} />
               <TouchableOpacity

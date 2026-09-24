@@ -2,35 +2,11 @@ import type { Metadata } from "next"
 import { VehicleDetailsPageClient } from "./VehicleDetailsPageClient"
 import { formatPrice } from "@/lib/listingApi"
 import { VehicleViewTracker } from "@/components/analytics/VehicleViewTracker"
+import { fetchBackendWithRetry } from "@/lib/serverBackendFetch"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 // Canonical SEO origin. The apex domain permanently redirects to www.
 const SITE_URL = "https://www.carmazium.com"
-
-const TRANSIENT_BACKEND_STATUS = new Set([502, 503, 504])
-
-function retryUrl(url: string, attempt: number) {
-    const separator = url.includes("?") ? "&" : "?"
-    return `${url}${separator}_ssrRetry=${attempt}`
-}
-
-async function fetchBackend(url: string) {
-    let lastError: unknown = null
-
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-        try {
-            const target = attempt === 0 ? url : retryUrl(url, attempt)
-            const response = await fetch(target, { next: { revalidate: 60 } })
-            if (!TRANSIENT_BACKEND_STATUS.has(response.status) || attempt === 2) return response
-        } catch (error) {
-            lastError = error
-            if (attempt === 2) throw error
-        }
-    }
-
-    if (lastError instanceof Error) throw lastError
-    throw new Error("Backend request failed")
-}
 
 /**
  * Keep obvious seeded/test records out of search results while leaving the
@@ -42,7 +18,7 @@ function isLikelyTestListingSlug(slug: string): boolean {
 
 async function getListingBySlug(slug: string) {
     try {
-        const res = await fetchBackend(`${API_BASE}/listings/${slug}`)
+        const res = await fetchBackendWithRetry(`${API_BASE}/listings/${slug}`, { next: { revalidate: 60 } })
         if (!res.ok) return null
         const json = await res.json()
         return json.data ?? null

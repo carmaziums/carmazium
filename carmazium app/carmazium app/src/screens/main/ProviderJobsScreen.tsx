@@ -26,6 +26,7 @@ import {
 } from '../../lib/servicesApi';
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { subscribeProductSync } from '../../lib/productSync';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ProviderJobs'>;
 type Tab = 'open' | 'assigned';
@@ -110,6 +111,11 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
     // load intentionally changes with tab/filter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, serviceFilter]);
+
+  useEffect(() => subscribeProductSync(['services'], () => {
+    setNextCursor(null);
+    void load('reset');
+  }), [load]);
 
   const refresh = useCallback(() => {
     setRefreshing(true);

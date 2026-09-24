@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 9,
   "purpose": "CarMazium one-product parity contract",
   "policy": {
     "backend_is_source_of_truth": true,
@@ -497,7 +497,10 @@
       "id": "navigation.public_detail_deeplinks",
       "web": [
         "src/app/buy-cars/[slug]/page.tsx",
-        "src/app/auctions/live/[id]/page.tsx"
+        "src/app/auctions/live/[id]/page.tsx",
+        "src/app/api/app-association/apple/route.ts",
+        "src/app/api/app-association/android/route.ts",
+        "next.config.ts"
       ],
       "mobile": [
         "carmazium app/carmazium app/src/navigation/linking.ts",
@@ -567,6 +570,125 @@
       "mobile": [],
       "status": "web_only",
       "reason": "The public blog is a web SEO/content surface. It has no transactional app-only behaviour and remains accessible to mobile users through the public website."
+    },
+    {
+      "id": "public.services_hub",
+      "web": [
+        "src/app/services/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/ServicesScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "services.customer_finance_warranty",
+      "web": [
+        "src/app/services/finance/page.tsx",
+        "src/app/services/warranty/page.tsx",
+        "src/app/services/leads/page.tsx",
+        "src/app/services/leads/[id]/page.tsx",
+        "src/lib/servicesApi.ts"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/ServicesScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/ServiceLeadFormScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/CustomerServiceLeadsScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/CustomerServiceLeadDetailScreen.tsx",
+        "carmazium app/carmazium app/src/lib/servicesApi.ts"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "public.finance_entry",
+      "web": [
+        "src/app/finance/page.tsx",
+        "src/app/services/finance/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/FinanceScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/ServiceLeadFormScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "public.reviews",
+      "web": [
+        "src/app/reviews/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/ReviewsScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "legacy.finance_partner_dashboard",
+      "web": [
+        "src/app/dashboard/finance/page.tsx",
+        "src/app/dashboard/finance/applications/page.tsx",
+        "src/app/dashboard/finance/messages/page.tsx",
+        "src/app/dashboard/finance/settings/page.tsx",
+        "src/lib/partnerApi.ts"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/account/LegacyPartnerDashboardScreen.tsx",
+        "carmazium app/carmazium app/src/lib/legacyPartnerApi.ts",
+        "carmazium app/carmazium app/src/components/GlobalDrawer.tsx",
+        "carmazium app/carmazium app/src/screens/main/MessagesScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "legacy.insurance_partner_dashboard",
+      "web": [
+        "src/app/dashboard/insurance/page.tsx",
+        "src/app/dashboard/insurance/quotes/page.tsx",
+        "src/app/dashboard/insurance/messages/page.tsx",
+        "src/app/dashboard/insurance/settings/page.tsx",
+        "src/lib/partnerApi.ts"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/account/LegacyPartnerDashboardScreen.tsx",
+        "carmazium app/carmazium app/src/lib/legacyPartnerApi.ts",
+        "carmazium app/carmazium app/src/components/GlobalDrawer.tsx",
+        "carmazium app/carmazium app/src/screens/main/MessagesScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "runtime.cross_client_sync",
+      "web": [
+        "src/components/providers/ProductSyncBridge.tsx",
+        "src/lib/productSync.ts",
+        "src/app/dashboard/dealer/inventory/page.tsx",
+        "src/app/dashboard/dealer/crm/page.tsx",
+        "src/app/dashboard/dealer/offers/page.tsx",
+        "src/app/search/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/App.tsx",
+        "carmazium app/carmazium app/src/lib/productSync.ts",
+        "carmazium app/carmazium app/src/screens/main/DealerInventoryScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/DealerOffersScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/SearchScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "release.atomic_identity",
+      "web": [
+        "src/app/api/release/route.ts",
+        ".github/workflows/one-product-release.yml"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/lib/releaseIdentity.ts",
+        "carmazium app/carmazium app/src/generated/releaseIdentity.ts",
+        "carmazium app/carmazium app/eas.json"
+      ],
+      "status": "required"
     }
   ]
 }

@@ -39,6 +39,7 @@ import { ServicesModule } from './services/services.module';
 import { MarketingModule } from './marketing/marketing.module';
 import { BlogModule } from './blog/blog.module';
 import { SaleCancellationsModule } from './sale-cancellations/sale-cancellations.module';
+import { ProductSyncModule } from './sync/product-sync.module';
 
 @Module({
   imports: [
@@ -84,6 +85,7 @@ import { SaleCancellationsModule } from './sale-cancellations/sale-cancellations
     MarketingModule,
     BlogModule,
     SaleCancellationsModule,
+    ProductSyncModule,
   ],
   controllers: [AppController],
   providers: [AppService],

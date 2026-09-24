@@ -35,6 +35,7 @@ import { CreateKycDto } from './dto/create-kyc.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
+import { ProductSyncGateway } from '../sync/product-sync.gateway';
 
 @ApiTags('Dealers')
 @Controller('dealers')
@@ -44,6 +45,7 @@ export class DealersController {
     constructor(
         private readonly dealersService: DealersService,
         private readonly kycDocuments: KycDocumentsService,
+        private readonly productSync: ProductSyncGateway,
     ) {}
 
     @Get('access')
@@ -66,7 +68,7 @@ export class DealersController {
 
     @Get('analytics')
     @ApiOperation({ summary: 'Get dealer analytics data with charts and trends' })
-    @ApiQuery({ name: 'range', required: false, description: 'Date range preset', example: '30d', enum: ['7d', '30d', '90d', 'custom'] })
+    @ApiQuery({ name: 'range', required: false, description: 'Date range preset', example: '30d', enum: ['7d', '30d', '90d', 'custom', 'all'] })
     @ApiQuery({ name: 'from', required: false, description: 'Custom range start (YYYY-MM-DD)', example: '2026-01-01' })
     @ApiQuery({ name: 'to', required: false, description: 'Custom range end (YYYY-MM-DD)', example: '2026-05-12' })
     @ApiResponse({ status: 200, description: 'Analytics data with KPIs, trends, funnels, and charts' })
@@ -109,6 +111,7 @@ export class DealersController {
             buyerId: user.id,
             source: 'phone',
         });
+        if (lead) this.productSync.broadcast({ domain: 'dealer', action: 'lead-activity' });
         return new StandardResponse({ tracked: Boolean(lead), leadId: lead?.id ?? null });
     }
 
@@ -121,6 +124,7 @@ export class DealersController {
         @Body() dto: CreateLeadDto,
     ): Promise<StandardResponse<any>> {
         const lead = await this.dealersService.createLead(user.id, dto);
+        this.productSync.broadcast({ domain: 'dealer', action: 'lead-created' });
         return new StandardResponse(lead);
     }
 
@@ -133,6 +137,7 @@ export class DealersController {
         @Body() dto: UpdateLeadDto,
     ): Promise<StandardResponse<any>> {
         const lead = await this.dealersService.updateLead(user.id, id, dto);
+        this.productSync.broadcast({ domain: 'dealer', action: 'lead-updated' });
         return new StandardResponse(lead);
     }
 
@@ -154,6 +159,7 @@ export class DealersController {
         @Body() dto: InviteStaffDto,
     ): Promise<StandardResponse<any>> {
         const staff = await this.dealersService.inviteStaff(user.id, dto);
+        this.productSync.broadcast({ domain: 'dealer', action: 'staff-invited' });
         return new StandardResponse(staff);
     }
 
@@ -165,6 +171,7 @@ export class DealersController {
         @Param('id') id: string,
     ): Promise<StandardResponse<any>> {
         const result = await this.dealersService.removeStaff(user.id, id);
+        this.productSync.broadcast({ domain: 'dealer', action: 'staff-removed' });
         return new StandardResponse(result);
     }
 
@@ -177,6 +184,7 @@ export class DealersController {
         @CurrentUser() user: any,
     ): Promise<StandardResponse<any>> {
         const result = await this.dealersService.acceptInvite(token, user.id);
+        this.productSync.broadcast({ domain: 'dealer', action: 'staff-invite-accepted' });
         return new StandardResponse(result);
     }
 
@@ -224,6 +232,7 @@ export class DealersController {
             throw new BadRequestException('No document was uploaded.');
         }
         const storagePath = await this.kycDocuments.storeDocument(user.id, field, file);
+        this.productSync.broadcast({ domain: 'dealer', action: 'kyc-document-uploaded' });
         return new StandardResponse({
             field,
             // The caller gets a viewable link, never the storage key.
@@ -249,6 +258,7 @@ export class DealersController {
         @Body() dto: CreateKycDto,
     ): Promise<StandardResponse<any>> {
         const kyc = await this.dealersService.submitKyc(user.id, dto);
+        this.productSync.broadcast({ domain: 'dealer', action: 'kyc-submitted' });
         return new StandardResponse(kyc);
     }
 }

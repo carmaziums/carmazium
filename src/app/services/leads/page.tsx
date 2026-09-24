@@ -5,6 +5,7 @@ import Link from "next/link"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { getMyServiceLeadsPage, type ServiceLead, SERVICE_LABELS } from "@/lib/servicesApi"
+import { subscribeProductSync } from "@/lib/productSync"
 
 export default function MyServiceLeadsPage() {
     const { user, loading } = useAuth()
@@ -22,6 +23,13 @@ export default function MyServiceLeadsPage() {
             .catch(e => setError(e?.message || "Could not load enquiries"))
             .finally(() => setBusy(false))
     }, [user, loading])
+
+    React.useEffect(() => subscribeProductSync(["services"], () => {
+        if (!user) return
+        void getMyServiceLeadsPage()
+            .then(page => { setLeads(page.items); setNextCursor(page.nextCursor); setError(null) })
+            .catch(e => setError(e?.message || "Could not refresh enquiries"))
+    }), [user])
 
     const loadMore = async () => {
         if (!nextCursor || loadingMore) return

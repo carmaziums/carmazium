@@ -5,6 +5,7 @@ import { AuthService } from '../auth/auth.service';
 import { TradeListingAccessGuard } from '../auctions/trade-access.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ProductSyncGateway } from '../sync/product-sync.gateway';
 
 describe('ListingsController', () => {
     let controller: ListingsController;
@@ -32,6 +33,10 @@ describe('ListingsController', () => {
                 {
                     provide: TradeListingAccessGuard,
                     useValue: { canActivate: jest.fn().mockReturnValue(true) },
+                },
+                {
+                    provide: ProductSyncGateway,
+                    useValue: { broadcast: jest.fn() },
                 },
             ],
         }).compile();

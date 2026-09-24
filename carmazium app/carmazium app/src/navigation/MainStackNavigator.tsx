@@ -28,6 +28,9 @@ import { DealerFinanceScreen } from '../screens/main/DealerFinanceScreen';
 import { ServicesScreen } from '../screens/main/ServicesScreen';
 import { CustomerServiceJobsScreen } from '../screens/main/CustomerServiceJobsScreen';
 import { CustomerServiceJobDetailScreen } from '../screens/main/CustomerServiceJobDetailScreen';
+import { CustomerServiceLeadsScreen } from '../screens/main/CustomerServiceLeadsScreen';
+import { CustomerServiceLeadDetailScreen } from '../screens/main/CustomerServiceLeadDetailScreen';
+import { ServiceLeadFormScreen } from '../screens/main/ServiceLeadFormScreen';
 import { PartnerDashboardScreen } from '../screens/main/PartnerDashboardScreen';
 import { ProviderCapabilitiesScreen } from '../screens/main/ProviderCapabilitiesScreen';
 import { ProviderVerificationScreen } from '../screens/main/ProviderVerificationScreen';
@@ -63,6 +66,7 @@ import { SellerProfileScreen } from '../screens/seller/SellerProfileScreen';
 import { SellerPerformanceScreen } from '../screens/seller/SellerPerformanceScreen';
 import { PaymentHistoryScreen } from '../screens/account/PaymentHistoryScreen';
 import { SaleCancellationsScreen } from '../screens/account/SaleCancellationsScreen';
+import { FinancePartnerDashboardScreen, InsurancePartnerDashboardScreen } from '../screens/account/LegacyPartnerDashboardScreen';
 import { SellerListingsScreen } from '../screens/seller/SellerListingsScreen';
 import { SellerAuctionsScreen } from '../screens/seller/SellerAuctionsScreen';
 import { AcceptInviteScreen } from '../screens/main/AcceptInviteScreen';
@@ -117,6 +121,9 @@ export type MainStackParamList = {
   Services: undefined;
   CustomerServiceJobs: undefined;
   CustomerServiceJobDetail: { jobId: string };
+  CustomerServiceLeads: undefined;
+  CustomerServiceLeadDetail: { leadId: string };
+  ServiceLeadForm: { serviceType: 'FINANCE' | 'WARRANTY' };
   PartnerDashboard: undefined;
   ProviderCapabilities: undefined;
   ProviderVerification: { capabilityId: string };
@@ -173,6 +180,8 @@ export type MainStackParamList = {
   SellerPerformance: undefined;
   PaymentHistory: undefined;
   SaleCancellations: undefined;
+  FinancePartnerDashboard: undefined;
+  InsurancePartnerDashboard: undefined;
   // Was `undefined`, which is why the invite link could not be routed and the
   // screen asked the user to paste it instead (AUTH-030).
   AcceptInvite: { token?: string } | undefined;
@@ -288,6 +297,9 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="Services" component={ServicesScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="CustomerServiceJobs" component={CustomerServiceJobsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="CustomerServiceJobDetail" component={CustomerServiceJobDetailScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="CustomerServiceLeads" component={CustomerServiceLeadsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="CustomerServiceLeadDetail" component={CustomerServiceLeadDetailScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ServiceLeadForm" component={ServiceLeadFormScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PartnerDashboard" component={PartnerDashboardScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ProviderCapabilities" component={ProviderCapabilitiesScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ProviderVerification" component={ProviderVerificationScreen} options={{ animation: 'slide_from_right' }} />
@@ -373,6 +385,8 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="SellerPerformance" component={SellerPerformanceScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PaymentHistory" component={PaymentHistoryScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="SaleCancellations" component={SaleCancellationsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="FinancePartnerDashboard" component={FinancePartnerDashboardScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="InsurancePartnerDashboard" component={InsurancePartnerDashboardScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="AcceptInvite" component={AcceptInviteScreen} options={{ animation: 'slide_from_bottom' }} />
     </Stack.Navigator>
   );

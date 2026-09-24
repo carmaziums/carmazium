@@ -2776,7 +2776,7 @@ Still requires release/runtime evidence:
 **Checkpoint:** code-contract parity is closed; runtime release evidence remains conditional.
 
 Manifest result:
-- 49 required web/native parity surfaces.
+- 57 required web/native parity surfaces.
 - 2 approved web-only surfaces.
 - 0 unresolved `gap` entries.
 - 0 unresolved `web_only_candidate` entries.
@@ -2797,3 +2797,91 @@ Runtime/external evidence still required before a specific release is called ful
 - runtime keyboard/screen-reader checks;
 - real Apple app identifier and Android release-certificate SHA-256 for website association files.
 
+
+
+## 2026-09-24 — One Product 70% → 80% certification integrity checkpoint
+
+**Checkpoint:** code-contract remediation is complete and the certification record now follows the same exact-head discipline as the product code.
+
+Evidence recorded:
+- PR #233 exact corrected code head `103cc1056bfdbfdae166c9430214d1649b1b9c0c` passed the One Product parity workflow: product contract parity, web typecheck, mobile typecheck and backend typecheck/account-role boundary.
+- The broad backend workflow passed all **607 tests** and the backend build.
+- Web Listing CI passed both typecheck and the production web build.
+- Mobile Listing CI passed.
+- Backend Chat CI passed build plus chat regression tests.
+- Both Vercel preview projects reported the corrected code head as **READY**.
+- The stale Block 10 manifest count was corrected from 49 to the current **57 required** cross-platform features.
+
+Certification hardening:
+- `.github/workflows/product-parity.yml` now watches `docs/ONE_PRODUCT_PARITY.md` and `docs/parity/**` as well as code/config.
+- This prevents a certification-only commit from moving the PR/release head beyond the last parity-tested commit without running the release gate again.
+
+Still deliberately external:
+- signed Android APK/AAB size and device-performance evidence;
+- browser Core Web Vitals and runtime accessibility evidence;
+- real Apple Team/app identifier and Android signing SHA-256 association files;
+- authenticated Expo/store publication.
+
+**Programme checkpoint:** **80% complete.** No merge or production deployment was performed in this block.
+
+
+## 2026-09-24 — One Product 80% → 90% synchronized release checkpoint
+
+Implemented:
+- Added public web release identity endpoint backed by Vercel Git SHA.
+- Added backend release identity endpoint and Fly image SHA stamping.
+- Broadened parity-sensitive main pushes so backend release identity advances with a One Product release rather than only backend-source edits.
+- Added generated native release identity source for EAS Update/build artifacts.
+- Added `One Product Release Sync` workflow:
+  - validates an exact main SHA;
+  - detects native-config/dependency changes;
+  - waits for web + backend to report the exact release SHA;
+  - uploads convergence evidence;
+  - publishes a production EAS Update for JS-safe changes or starts production iOS/Android builds for native-config changes;
+  - requires explicit authenticated release enablement and therefore cannot silently publish from this PR.
+- Production EAS builds are explicitly pinned to the `production` environment and channel.
+- Added required parity feature `release.atomic_identity`.
+- Product parity CI now guards the release-identity and orchestration contract.
+
+External/admin blockers intentionally left for the final 10%:
+- GitHub branch-protection administration is not accessible to the connected GitHub App (403).
+- `EXPO_TOKEN` and `ONE_PRODUCT_AUTO_RELEASE` must be configured before automated native publication is enabled.
+- App Store Connect values in `eas.json` are still placeholders and were not invented.
+- Apple association identity, Android signing fingerprint, signed-device tests, runtime accessibility/performance measurements and actual store publication remain evidence tasks.
+
+**Programme checkpoint:** **90% complete.**
+
+
+## 2026-09-24 — One Product 90% → 100% final remediation checkpoint
+
+**Repository remediation:** **100% complete.**  
+**Runtime production certification:** **PENDING external signing/device/store evidence.**
+
+Exact final code head before the documentation-only checkpoint:
+`7217c48471a477f303e1c221417ddff34685c6a4`
+
+Verified on that head:
+- One Product parity contract, web/mobile/backend typechecks and role-boundary test: PASS.
+- Full backend tests/build: PASS.
+- Web production build: PASS.
+- Mobile Listing CI: PASS.
+- Backend chat build/regression: PASS.
+- One Product release identity contract: PASS.
+- Both Vercel previews: READY.
+- Exact preview Vercel runtime errors/fatals: none observed.
+
+Final code-side work:
+- Added fail-closed environment-driven Apple/Android website association endpoints and parity guards.
+- Confirmed the current live pre-PR production release returns 404 for those association URLs, proving the real signing values still need to be configured before universal/app links can be certified.
+- Found live Vercel telemetry showing intermittent server-side Fly fetch resets/timeouts on vehicle pages.
+- Added a shared bounded timeout + exponential retry/backoff helper for server-side Fly requests and moved vehicle/blog SSR fetches onto it.
+- Confirmed representative existing production public pages return HTTP 200.
+
+Release remains intentionally blocked:
+- no accessible/confirmed Expo production credential from this environment;
+- App Store Connect entries in `eas.json` remain placeholders;
+- Apple Team ID and Android release certificate fingerprint are not present in the repository;
+- physical signed-device, runtime accessibility and real Core Web Vitals evidence is not available through this repository connection;
+- repository rulesets endpoint is empty and the connected GitHub App receives 403 for legacy branch-protection administration.
+
+PR #233 is therefore **not merged** in this checkpoint. Merging web/backend changes before native release can advance on the same SHA would recreate the exact cross-platform drift this programme was built to eliminate.

@@ -24,6 +24,7 @@ import { MetaPixel } from "@/components/analytics/MetaPixel";
 import { TikTokPixel } from "@/components/analytics/TikTokPixel";
 import { CookieConsentBanner } from "@/components/analytics/CookieConsentBanner";
 import { ConsentProvider } from "@/context/ConsentContext";
+import { ProductSyncBridge } from "@/components/providers/ProductSyncBridge";
 
 // Canonical SEO origin. The apex domain permanently redirects to this host.
 const SITE_URL = "https://www.carmazium.com";
@@ -128,6 +129,7 @@ export default function RootLayout({
               <ChatProvider>
                 <CompareProvider>
                   <LocationProvider>
+                    <ProductSyncBridge />
                     <PageViewTracker />
                     <div className="flex flex-col min-h-screen">
                       {/* Above the header on purpose: on staging this must be

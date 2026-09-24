@@ -24,7 +24,7 @@ The repository currently contains a mature Next.js website and an Expo/React Nat
 - duplicated auction pricing helpers in web and mobile;
 - duplicated pricing configuration in web and mobile plus enforced values in backend payment services;
 - separate web/mobile API clients;
-- web Partner / TradeXchange provider dashboards with no native mobile equivalent yet;
+- historical web/native gaps are tracked through the parity manifest and CI rather than accepted as separate products;
 - older parity audit documents that require manual re-checking as the product evolves.
 
 `product-parity.json` is now the machine-readable feature map.
@@ -102,7 +102,7 @@ The repository currently contains a mature Next.js website and an Expo/React Nat
 - Verify all `gap` entries are closed or explicitly approved as platform-only.
 - Produce a final parity report.
 - Keep CI enforcement in place so parity does not regress.
-- **Checkpoint (24 Sep 2026): code-parity release gate established.** The manifest contains 49 required web/native features, 2 explicitly approved web-only surfaces and 0 unresolved gaps. CI now fails on any future `gap`, unresolved web-only candidate, missing required surface or invalid web-only exception. The final report is `docs/parity/FINAL_CERTIFICATION.md`. Runtime release certification remains conditional on a signed native build/device pass, production browser/accessibility measurements and the real Apple/Android association identifiers.
+- **Checkpoint (24 Sep 2026): code-parity, runtime-sync and synchronized release identity established.** The manifest contains 57 required web/native features, 2 explicitly approved web-only surfaces and 0 unresolved gaps. A shared `/sync` invalidation channel now causes open web/native marketplace, dashboard, CRM and TradeXchange surfaces to refetch authoritative backend state after relevant mutations; auctions and chat retain their dedicated realtime gateways. Native customer Finance/Warranty enquiries, legacy Finance/Insurance Partner operations and flexible dealer analytics are explicitly parity-guarded. CI now runs the contract/typecheck gate on PRs and parity-sensitive pushes to `main`. The final report is `docs/parity/FINAL_CERTIFICATION.md`. The common Git SHA is exposed by web/backend and embedded into native release artifacts; native publication waits for production web/backend convergence. Runtime release certification remains conditional on a signed native build/device pass, production browser/accessibility measurements, real Apple/Android association identifiers and authenticated Expo/store publication of the tested native bundle.
 
 ## Intent
 

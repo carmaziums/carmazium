@@ -25,6 +25,7 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { subscribeProductSync } from '../../lib/productSync';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -406,6 +407,9 @@ export const SearchScreen: React.FC = () => {
 
   // Initial load
   useEffect(() => { fetch(true); }, []);
+  useEffect(() => subscribeProductSync(['listings'], () => {
+    void fetch(true);
+  }), [fetch]);
 
   // Text query: debounce to avoid hitting the API on every keystroke.
   // All other filter/sort changes are instant (fired by the non-text useEffect below).

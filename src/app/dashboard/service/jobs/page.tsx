@@ -8,6 +8,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getJobFeedPage, getAssignedJobsPage, formatPence, type ServiceJob } from "@/lib/servicesApi"
 import { JobListCard } from "@/components/services/JobBits"
+import { subscribeProductSync } from "@/lib/productSync"
 
 /**
  * The provider marketplace: open jobs to quote on, and jobs the business has won.
@@ -48,6 +49,10 @@ export default function ContractorJobsPage() {
     React.useEffect(() => {
         void loadJobs()
     }, [loadJobs])
+
+    React.useEffect(() => subscribeProductSync(["services"], () => {
+        void loadJobs()
+    }), [loadJobs])
 
     const loadMore = async () => {
         if (loadingMore) return

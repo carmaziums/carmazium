@@ -13,6 +13,26 @@ on:
       - 'product-parity.json'
       - 'scripts/check-product-parity.mjs'
       - '.github/workflows/product-parity.yml'
+      - 'docs/ONE_PRODUCT_PARITY.md'
+      - 'docs/parity/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'backend/src/**'
+      - 'backend/prisma/**'
+      - 'carmazium app/carmazium app/src/**'
+      - 'carmazium app/carmazium app/app.json'
+      - 'carmazium app/carmazium app/eas.json'
+      - 'carmazium app/carmazium app/plugins/**'
+      - 'next.config.ts'
+      - 'product-parity.json'
+      - 'scripts/check-product-parity.mjs'
+      - '.github/workflows/product-parity.yml'
+      - 'docs/ONE_PRODUCT_PARITY.md'
+      - 'docs/parity/**'
+  workflow_dispatch:
 
 jobs:
   parity-contract:

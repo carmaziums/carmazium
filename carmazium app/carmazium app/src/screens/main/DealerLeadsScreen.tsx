@@ -27,6 +27,7 @@ import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { createChatRoom } from '../../lib/chatApi';
 import { haptics } from '../../lib/haptics';
+import { subscribeProductSync } from '../../lib/productSync';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { BottomSheet } from '../../components/BottomSheet';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
@@ -507,6 +508,10 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
   }, []);
 
   useEffect(() => { fetchLeads(); fetchStaff(); }, [fetchLeads, fetchStaff]);
+  useEffect(() => subscribeProductSync(['dealer', 'offers', 'listings'], () => {
+    void fetchLeads(true);
+    void fetchStaff();
+  }), [fetchLeads, fetchStaff]);
 
   const handleReassign = async (leadId: string, assignedToId: string | null) => {
     setUpdatingId(leadId);

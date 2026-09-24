@@ -13,6 +13,7 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { subscribeProductSync } from "@/lib/productSync"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { createChatRoom } from "@/lib/chatApi"
@@ -297,6 +298,10 @@ export default function DealerCRMPage() {
             setLoading(false)
         }
     }
+
+    React.useEffect(() => subscribeProductSync(["dealer", "offers", "listings"], () => {
+        if (user) void fetchLeads()
+    }), [user])
 
     async function updateLeadStatus(leadId: string, status: string) {
         // Optimistic update: Update the UI immediately

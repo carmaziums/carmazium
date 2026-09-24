@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
@@ -25,6 +26,7 @@ import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { subscribeProductSync } from '../../lib/productSync';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -32,7 +34,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 12;
 const HALF_CARD = (SCREEN_WIDTH - 48 - CARD_GAP) / 2;
 
-type Period = '7D' | '30D' | '90D' | 'YTD' | 'ALL';
+type Period = '7D' | '30D' | '90D' | 'YTD' | 'ALL' | 'CUSTOM';
+type RangeUnit = 'days' | 'months' | 'years';
 type SubView = 'analytics' | 'conversion';
 
 // ─── Real analytics response shape — GET /dealers/analytics?range=... ──────
@@ -70,15 +73,26 @@ interface AnalyticsData {
 // Maps a UI period to the backend's range/from/to query params. The backend
 // natively understands 7d/30d/90d (plus a default 30d); YTD and ALL have no
 // native range so we ask for a wide custom window instead.
-const periodToQuery = (p: Period): { range: string; from?: string; to?: string } => {
+const periodToQuery = (
+  p: Period,
+  customAmount = 30,
+  customUnit: RangeUnit = 'days',
+): { range: string; from?: string; to?: string } => {
   const now = new Date();
   if (p === '7D') return { range: '7d' };
   if (p === '30D') return { range: '30d' };
   if (p === '90D') return { range: '90d' };
+  if (p === 'ALL') return { range: 'all' };
   if (p === 'YTD') {
     return { range: 'custom', from: new Date(now.getFullYear(), 0, 1).toISOString(), to: now.toISOString() };
   }
-  return { range: 'custom', from: new Date(now.getFullYear() - 5, 0, 1).toISOString(), to: now.toISOString() };
+
+  const start = new Date(now);
+  const amount = Math.min(Math.max(Math.floor(customAmount || 1), 1), 10000);
+  if (customUnit === 'months') start.setMonth(start.getMonth() - amount);
+  else if (customUnit === 'years') start.setFullYear(start.getFullYear() - amount);
+  else start.setDate(start.getDate() - amount);
+  return { range: 'custom', from: start.toISOString(), to: now.toISOString() };
 };
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -224,6 +238,9 @@ const AnalyticsSkeleton: React.FC = () => (
 export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [period, setPeriod] = useState<Period>('30D');
+  const [customAmount, setCustomAmount] = useState('30');
+  const [customUnit, setCustomUnit] = useState<RangeUnit>('days');
+  const [comparePrevious, setComparePrevious] = useState(false);
   const [subView, setSubView] = useState<SubView>('analytics');
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -236,7 +253,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
   const doFetch = (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
-    const { range, from, to } = periodToQuery(period);
+    const { range, from, to } = periodToQuery(period, Number(customAmount), customUnit);
     const params = new URLSearchParams({ range });
     if (from) params.set('from', from);
     if (to) params.set('to', to);
@@ -255,7 +272,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
   useEffect(() => {
     doFetch();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period]);
+  }, [period, customAmount, customUnit]);
 
   const switchPeriod = (p: Period) => {
     Animated.sequence([
@@ -265,11 +282,24 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
     setPeriod(p);
   };
 
+  const applyCustomRange = () => {
+    const parsed = Math.min(Math.max(Math.floor(Number(customAmount) || 1), 1), 10000);
+    setCustomAmount(String(parsed));
+    switchPeriod('CUSTOM');
+  };
+
+  useEffect(() => subscribeProductSync(['dealer', 'listings', 'offers', 'account'], () => {
+    doFetch(true);
+  }), [period, customAmount, customUnit]);
+
   const kpis = analytics?.kpis;
   const revenueTrend = analytics?.revenueTrend ?? [];
   const chartW = SCREEN_WIDTH - 64;
 
   const PERIODS: Period[] = ['7D', '30D', '90D', 'YTD', 'ALL'];
+  const periodLabel = period === 'CUSTOM'
+    ? `${customAmount} ${customUnit}`
+    : period;
 
   // ── Conversion Deep Dive View ────────────────────────────────────────────
   const renderConversionView = () => {
@@ -322,7 +352,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
               <Text style={styles.convCardBig}>
                 {loading ? '–' : `${kpis?.leadConversionRate ?? 0}% of leads won`}
               </Text>
-              {!loading && kpis && (
+              {!loading && comparePrevious && kpis && (
                 <Text style={styles.convCardSub}>
                   {kpis.leadConversionRateTrend > 0 ? '+' : ''}{kpis.leadConversionRateTrend}% vs previous period
                 </Text>
@@ -435,7 +465,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
       <View style={styles.header}>
         <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <View style={styles.headerCenter}>
-          <Text style={styles.headerSub}>SALES · LAST {period}</Text>
+          <Text style={styles.headerSub}>SALES · {period === 'ALL' ? 'ALL TIME' : period === 'CUSTOM' ? periodLabel.toUpperCase() : `LAST ${period}`}</Text>
           <Text style={styles.headerTitleMain}>Analytics</Text>
         </View>
         <HamburgerButton />
@@ -453,6 +483,43 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
             <Text style={[styles.pillText, period === p && styles.pillTextActive]}>{p}</Text>
           </TouchableOpacity>
         ))}
+      </View>
+
+      <View style={styles.flexRangeCard}>
+        <View style={styles.flexRangeTop}>
+          <TextInput
+            value={customAmount}
+            onChangeText={setCustomAmount}
+            keyboardType="number-pad"
+            accessibilityLabel="Custom reporting range amount"
+            style={styles.rangeInput}
+          />
+          {(['days', 'months', 'years'] as RangeUnit[]).map((unit) => (
+            <TouchableOpacity
+              key={unit}
+              style={[styles.unitButton, customUnit === unit && styles.unitButtonActive]}
+              onPress={() => setCustomUnit(unit)}
+            >
+              <Text style={[styles.unitButtonText, customUnit === unit && styles.unitButtonTextActive]}>
+                {unit === 'days' ? 'Days' : unit === 'months' ? 'Months' : 'Years'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity style={styles.applyRangeButton} onPress={applyCustomRange}>
+            <Text style={styles.applyRangeText}>Apply</Text>
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity
+          style={styles.compareRow}
+          onPress={() => setComparePrevious((value) => !value)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: comparePrevious }}
+        >
+          <View style={[styles.compareBox, comparePrevious && styles.compareBoxActive]}>
+            {comparePrevious ? <Ionicons name="checkmark" size={14} color={Colors.white} /> : null}
+          </View>
+          <Text style={styles.compareText}>Compare previous period</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Skeleton while loading */}
@@ -478,11 +545,11 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
             />
             <View style={styles.revenueTop}>
               <View>
-                <Text style={styles.revLabel}>REVENUE · {period}</Text>
+                <Text style={styles.revLabel}>REVENUE · {periodLabel.toUpperCase()}</Text>
                 <Text style={styles.revValue}>
                   {formatGBP(kpis?.totalRevenue ?? 0)}
                 </Text>
-                {kpis && renderTrend(kpis.totalRevenueTrend, styles.revChangeText, styles.revChange, 12)}
+                {comparePrevious && kpis && renderTrend(kpis.totalRevenueTrend, styles.revChangeText, styles.revChange, 12)}
               </View>
             </View>
 
@@ -558,7 +625,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
               <Text style={styles.statValue}>
                 {String(kpis?.totalUnitsSold ?? 0)}
               </Text>
-              {kpis && renderTrend(kpis.totalUnitsSoldTrend, styles.statChangeGreen, styles.statChange, 11)}
+              {comparePrevious && kpis && renderTrend(kpis.totalUnitsSoldTrend, styles.statChangeGreen, styles.statChange, 11)}
             </View>
 
             {/* Avg Sell Time */}
@@ -567,7 +634,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
               <Text style={styles.statValue}>
                 {`${kpis?.avgDaysToSell ?? 0}d`}
               </Text>
-              {kpis && renderTrend(kpis.avgDaysToSellTrend, styles.statChangeGreen, styles.statChange, 11)}
+              {comparePrevious && kpis && renderTrend(kpis.avgDaysToSellTrend, styles.statChangeGreen, styles.statChange, 11)}
             </View>
 
             {/* Avg Views per Listing */}
@@ -576,7 +643,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
               <Text style={styles.statValue}>
                 {String(kpis?.avgViewsPerListing ?? 0)}
               </Text>
-              {kpis && renderTrend(kpis.avgViewsPerListingTrend, styles.statChangeGreen, styles.statChange, 11)}
+              {comparePrevious && kpis && renderTrend(kpis.avgViewsPerListingTrend, styles.statChangeGreen, styles.statChange, 11)}
             </View>
 
             {/* Listings Live */}
@@ -697,7 +764,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
               <Text style={styles.convCTALabel}>LEAD CONVERSION RATE</Text>
               <Text style={styles.convCTAValue}>
                 {`${kpis?.leadConversionRate ?? 0}%`}
-                {kpis && (
+                {comparePrevious && kpis && (
                   <Text style={styles.convCTABench}>
                     {'  '}{kpis.leadConversionRateTrend > 0 ? '+' : ''}{kpis.leadConversionRateTrend}% vs prev period
                   </Text>
@@ -813,6 +880,95 @@ const styles = StyleSheet.create({
   },
   pillTextActive: {
     color: Colors.white,
+  },
+
+  flexRangeCard: {
+    marginHorizontal: 24,
+    marginTop: -8,
+    marginBottom: 20,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha06,
+    backgroundColor: Colors.bgSecondaryAlt,
+    padding: 10,
+    gap: 10,
+  },
+  flexRangeTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  rangeInput: {
+    width: 54,
+    height: 36,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha08,
+    color: Colors.textPrimary,
+    textAlign: 'center',
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xs,
+    backgroundColor: Colors.whiteAlpha04,
+  },
+  unitButton: {
+    flex: 1,
+    height: 36,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.whiteAlpha04,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha06,
+  },
+  unitButtonActive: {
+    borderColor: Colors.accent,
+    backgroundColor: Colors.accentAlpha10,
+  },
+  unitButtonText: {
+    color: Colors.iconMuted,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+  },
+  unitButtonTextActive: {
+    color: Colors.accent,
+  },
+  applyRangeButton: {
+    height: 36,
+    borderRadius: 9,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.accent,
+  },
+  applyRangeText: {
+    color: Colors.white,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xs,
+  },
+  compareRow: {
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    paddingHorizontal: 2,
+  },
+  compareBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compareBoxActive: {
+    borderColor: Colors.accent,
+    backgroundColor: Colors.accent,
+  },
+  compareText: {
+    color: Colors.textSecondary,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size11_5,
   },
 
   // ── Revenue card ─────────────────────────────────────────────────────────
