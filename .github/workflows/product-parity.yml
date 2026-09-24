@@ -13,6 +13,8 @@ on:
       - 'product-parity.json'
       - 'scripts/check-product-parity.mjs'
       - '.github/workflows/product-parity.yml'
+      - 'docs/ONE_PRODUCT_PARITY.md'
+      - 'docs/parity/**'
   push:
     branches:
       - main
@@ -28,6 +30,8 @@ on:
       - 'product-parity.json'
       - 'scripts/check-product-parity.mjs'
       - '.github/workflows/product-parity.yml'
+      - 'docs/ONE_PRODUCT_PARITY.md'
+      - 'docs/parity/**'
   workflow_dispatch:
 
 jobs:
