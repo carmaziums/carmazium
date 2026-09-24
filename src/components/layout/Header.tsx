@@ -107,6 +107,7 @@ export function Header() {
                             key={link.name}
                             href={link.href}
                             prefetch={link.prefetch}
+                            aria-current={activeLink === link.href ? "page" : undefined}
                             className={cn(
                                 "text-[0.95rem] font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 relative group flex items-center gap-1.5",
                                 activeLink === link.href ? "text-primary" : "opacity-80 hover:opacity-100"
@@ -141,6 +142,10 @@ export function Header() {
                         <div className="relative">
                             <button
                                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                                aria-expanded={isUserMenuOpen}
+                                aria-haspopup="true"
+                                aria-controls="account-menu"
+                                aria-label={isUserMenuOpen ? "Close account menu" : "Open account menu"}
                                 className="flex items-center gap-2 lg:gap-3 px-2.5 py-2 lg:px-3 rounded-xl hover:opacity-90 border transition-all group"
                                 style={{
                                     background: 'var(--bg-card)',
@@ -159,6 +164,7 @@ export function Header() {
                             {/* User Dropdown */}
                             {isUserMenuOpen && (
                                 <div
+                                    id="account-menu"
                                     className="absolute top-full right-0 mt-2 w-56 border rounded-2xl shadow-2xl py-2 animate-in fade-in zoom-in-95 duration-200"
                                     style={{
                                         background: 'var(--bg-dropdown)',
@@ -228,9 +234,11 @@ export function Header() {
                     )}
 
                     <button
-                        className="lg:hidden text-2xl focus:outline-none ml-2"
+                        className="lg:hidden text-2xl ml-2"
                         onClick={toggleMenu}
-                        aria-label="Toggle Menu"
+                        aria-expanded={isMobileMenuOpen}
+                        aria-controls="mobile-main-menu"
+                        aria-label={isMobileMenuOpen ? "Close main menu" : "Open main menu"}
                     >
                         {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
                     </button>
@@ -240,6 +248,7 @@ export function Header() {
             {/* Mobile Menu */}
             {isMobileMenuOpen && (
                 <div
+                    id="mobile-main-menu"
                     className="lg:hidden absolute top-full left-0 w-full shadow-xl border-t animate-in slide-in-from-top-2 max-h-[calc(100vh-5rem)] overflow-y-auto"
                     style={{
                         background: 'var(--bg-dropdown)',
