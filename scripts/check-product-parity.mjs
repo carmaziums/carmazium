@@ -109,6 +109,138 @@ for (const feature of manifest.features) {
   }
 }
 
+// Runtime one-product synchronization. The backend emits only domain
+// invalidations; each client must refetch authoritative REST state.
+const backendProductSync = read('backend/src/sync/product-sync.gateway.ts');
+const backendListingsSync = read('backend/src/listings/listings.controller.ts');
+const backendOffersSync = read('backend/src/offers/offers.controller.ts');
+const backendBidsSync = read('backend/src/bids/bids.controller.ts');
+const backendDealerSync = read('backend/src/dealers/dealers.controller.ts');
+const backendServiceLeadSync = read('backend/src/services/service-leads.controller.ts');
+const backendServicesSync = read('backend/src/services/services.controller.ts');
+const webProductSyncBridge = read('src/components/providers/ProductSyncBridge.tsx');
+const webProductSync = read('src/lib/productSync.ts');
+const webRootForSync = read('src/app/layout.tsx');
+const mobileProductSync = read('carmazium app/carmazium app/src/lib/productSync.ts');
+const mobileAppForSync = read('carmazium app/carmazium app/App.tsx');
+
+if (
+  !backendProductSync.includes("namespace: '/sync'") ||
+  !backendProductSync.includes("emit('product:changed'") ||
+  !backendListingsSync.includes("domain: 'listings'") ||
+  !backendOffersSync.includes("domain: 'offers'") ||
+  !backendBidsSync.includes("domain: 'account'") ||
+  !backendDealerSync.includes("domain: 'dealer'") ||
+  !backendServiceLeadSync.includes("domain: 'services'") ||
+  !backendServicesSync.includes("domain: 'services'")
+) {
+  fail('Backend one-product invalidation coverage drifted');
+} else {
+  ok('Backend broadcasts generic invalidations for marketplace, bids, dealer and service mutations');
+}
+
+if (
+  !webProductSyncBridge.includes('/sync') ||
+  !webProductSyncBridge.includes('product:changed') ||
+  !webProductSyncBridge.includes('PRODUCT_SYNC_EVENT') ||
+  !webProductSync.includes('subscribeProductSync') ||
+  !webRootForSync.includes('<ProductSyncBridge />')
+) {
+  fail('Web one-product sync bridge is missing or no longer mounted');
+} else {
+  ok('Web connects once to the shared product sync channel');
+}
+
+if (
+  !mobileAppForSync.includes('/sync') ||
+  !mobileAppForSync.includes("socket.on('product:changed'") ||
+  !mobileAppForSync.includes('emitProductSync') ||
+  !mobileProductSync.includes('subscribeProductSync')
+) {
+  fail('Native one-product sync bridge is missing or no longer mounted');
+} else {
+  ok('Native iOS/Android app connects once to the shared product sync channel');
+}
+
+const webSyncScreens = [
+  ['dealer inventory', read('src/app/dashboard/dealer/inventory/page.tsx'), 'listings'],
+  ['dealer CRM', read('src/app/dashboard/dealer/crm/page.tsx'), 'dealer'],
+  ['dealer offers', read('src/app/dashboard/dealer/offers/page.tsx'), 'offers'],
+  ['marketplace search', read('src/app/search/page.tsx'), 'listings'],
+  ['customer service enquiries', read('src/app/services/leads/page.tsx'), 'services'],
+  ['provider jobs', read('src/app/dashboard/service/jobs/page.tsx'), 'services'],
+];
+for (const [surface, source, domain] of webSyncScreens) {
+  if (!source.includes('subscribeProductSync') || !source.includes(`"${domain}"`)) {
+    fail(`Web ${surface} is no longer subscribed to ${domain} invalidations`);
+  }
+}
+
+const mobileSyncScreens = [
+  ['seller listings', read('carmazium app/carmazium app/src/screens/seller/SellerListingsScreen.tsx'), 'listings'],
+  ['dealer inventory', read('carmazium app/carmazium app/src/screens/main/DealerInventoryScreen.tsx'), 'listings'],
+  ['buyer offers', read('carmazium app/carmazium app/src/screens/buyer/BuyerOffersScreen.tsx'), 'offers'],
+  ['dealer CRM', read('carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx'), 'dealer'],
+  ['marketplace search', read('carmazium app/carmazium app/src/screens/main/SearchScreen.tsx'), 'listings'],
+  ['customer service enquiries', read('carmazium app/carmazium app/src/screens/main/CustomerServiceLeadsScreen.tsx'), 'services'],
+  ['provider jobs', read('carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx'), 'services'],
+];
+for (const [surface, source, domain] of mobileSyncScreens) {
+  if (!source.includes('subscribeProductSync') || !source.includes(`'${domain}'`)) {
+    fail(`Native ${surface} is no longer subscribed to ${domain} invalidations`);
+  }
+}
+ok('Representative web/native data surfaces refetch on shared product invalidations');
+
+// Customer TradeXchange Finance/Warranty must remain a real native workflow,
+// not informational cards while web has actionable enquiry routes.
+const mobileServiceHubParity = read('carmazium app/carmazium app/src/screens/main/ServicesScreen.tsx');
+const mobileServiceLeadFormParity = read('carmazium app/carmazium app/src/screens/main/ServiceLeadFormScreen.tsx');
+const mobileCustomerLeadsParity = read('carmazium app/carmazium app/src/screens/main/CustomerServiceLeadsScreen.tsx');
+const mobileServicesApiParity = read('carmazium app/carmazium app/src/lib/servicesApi.ts');
+if (
+  !mobileServiceHubParity.includes("navigation.navigate('ServiceLeadForm'") ||
+  !mobileServiceHubParity.includes("navigation.navigate('CustomerServiceLeads'") ||
+  !mobileServiceLeadFormParity.includes('createServiceLead') ||
+  !mobileServicesApiParity.includes('getMyServiceLeadsPage') ||
+  !mobileCustomerLeadsParity.includes('CustomerServiceLeadDetail')
+) {
+  fail('Native Finance/Warranty customer enquiry journey drifted from web');
+} else {
+  ok('Finance/Warranty customer enquiries are actionable on web and native');
+}
+
+// Legacy privileged partner roles still exist in the backend/web and therefore
+// must remain operational on native until they are deliberately migrated away.
+const mobileLegacyPartnerDashboard = read('carmazium app/carmazium app/src/screens/account/LegacyPartnerDashboardScreen.tsx');
+const mobileLegacyPartnerApi = read('carmazium app/carmazium app/src/lib/legacyPartnerApi.ts');
+const mobileDrawerForLegacyPartners = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
+if (
+  !mobileLegacyPartnerDashboard.includes('FinancePartnerDashboardScreen') ||
+  !mobileLegacyPartnerDashboard.includes('InsurancePartnerDashboardScreen') ||
+  !mobileLegacyPartnerApi.includes('/finance/partner') ||
+  !mobileLegacyPartnerApi.includes('/insurance/partner') ||
+  !mobileDrawerForLegacyPartners.includes('FINANCE_PARTNER_ITEMS') ||
+  !mobileDrawerForLegacyPartners.includes('INSURANCE_PARTNER_ITEMS') ||
+  !mobileDrawerForLegacyPartners.includes("accountRole === 'buyer' || accountRole === 'seller'")
+) {
+  fail('Legacy Finance/Insurance Partner native operations or role isolation regressed');
+} else {
+  ok('Legacy Finance/Insurance Partner roles keep native operational dashboards without buyer fallback');
+}
+
+// Public review copy must not diverge into fabricated platform metrics.
+const webReviewsParity = read('src/app/reviews/page.tsx');
+if (
+  webReviewsParity.includes('50k+') ||
+  webReviewsParity.includes('4.9/5') ||
+  webReviewsParity.includes('Absolutely fantastic service')
+) {
+  fail('Web reviews page reintroduced fabricated customer/rating/testimonial claims');
+} else {
+  ok('Web/native review surfaces avoid fabricated platform review statistics');
+}
+
 // Authentication / account-role contract. The backend enum contains privileged
 // roles, but only the four self-service roles may ever be selected by a public
 // registration, Supabase metadata, or the self-elevation endpoint.
