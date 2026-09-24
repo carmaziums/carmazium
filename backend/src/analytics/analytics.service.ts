@@ -159,11 +159,14 @@ export class AnalyticsService {
                         )::TEXT AS figures_returned,
                     COUNT(DISTINCT COALESCE(NULLIF(payload->>'valuation_id', ''), 'event:' || id))
                         FILTER (
-                            WHERE type = 'valuation_requested'
-                              AND LOWER(COALESCE(payload->>'valuation_result', '')) = 'no_figures'
+                            WHERE type = 'valuation_failed'
+                               OR (
+                                   type = 'valuation_requested'
+                                   AND LOWER(COALESCE(payload->>'valuation_result', '')) = 'no_figures'
+                               )
                         )::TEXT AS confirmed_no_figures
                 FROM analytics_events, bounds
-                WHERE type IN ('valuation_requested', 'valuation_attempted')
+                WHERE type IN ('valuation_requested', 'valuation_attempted', 'valuation_failed')
                   AND "createdAt" >= bounds.start_utc
                   AND "createdAt" < bounds.end_utc
             `),
@@ -207,11 +210,14 @@ export class AnalyticsService {
                         )::TEXT AS figures_returned,
                     COUNT(DISTINCT COALESCE(NULLIF(payload->>'valuation_id', ''), 'event:' || id))
                         FILTER (
-                            WHERE type = 'valuation_requested'
-                              AND LOWER(COALESCE(payload->>'valuation_result', '')) = 'no_figures'
+                            WHERE type = 'valuation_failed'
+                               OR (
+                                   type = 'valuation_requested'
+                                   AND LOWER(COALESCE(payload->>'valuation_result', '')) = 'no_figures'
+                               )
                         )::TEXT AS confirmed_no_figures
                 FROM analytics_events
-                WHERE type IN ('valuation_requested', 'valuation_attempted')
+                WHERE type IN ('valuation_requested', 'valuation_attempted', 'valuation_failed')
                   AND "createdAt" >= (
                       ((date_trunc('day', now() AT TIME ZONE 'Europe/London') - interval '6 days') AT TIME ZONE 'Europe/London')
                   )
