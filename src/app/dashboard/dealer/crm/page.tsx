@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/Button"
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/AsyncState"
 import {
     Kanban, PlusCircle, User, MessageSquare,
     Loader2, ChevronRight, Phone, Mail, ArrowUpRight,
@@ -268,6 +269,7 @@ export default function DealerCRMPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [leads, setLeads] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
+    const [loadError, setLoadError] = React.useState<string | null>(null)
     const [updatingLeadId, setUpdatingLeadId] = React.useState<string | null>(null)
     const [showAddModal, setShowAddModal] = React.useState(false)
     const [startingChat, setStartingChat] = React.useState<string | null>(null)
@@ -283,12 +285,14 @@ export default function DealerCRMPage() {
 
     async function fetchLeads() {
         setLoading(true)
+        setLoadError(null)
         try {
             const res = await apiClient<{ data: any[] }>('/dealers/leads')
             setLeads(res?.data ?? [])
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to load leads:', err)
             setLeads([])
+            setLoadError(err?.message || 'We could not load your customers. Check your connection and try again.')
         } finally {
             setLoading(false)
         }
@@ -472,9 +476,18 @@ export default function DealerCRMPage() {
 
                     {/* Sales pipeline */}
                     {loading ? (
-                        <div className="flex items-center justify-center py-24">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
+                        <LoadingState label="Loading customers…" className="py-24" />
+                    ) : loadError ? (
+                        <ErrorState message={loadError} onRetry={fetchLeads} />
+                    ) : leads.length === 0 ? (
+                        <EmptyState
+                            icon={User}
+                            title="No customers yet"
+                            description="Customer enquiries and people you add manually will appear here."
+                            actionLabel="Add customer"
+                            onAction={() => setShowAddModal(true)}
+                            className="dealer-glass-card"
+                        />
                     ) : (
                         <div className="flex gap-4 overflow-x-hidden lg:overflow-x-auto pb-6 -mx-2 px-2 custom-scrollbar">
                             {COLUMNS.map(col => (

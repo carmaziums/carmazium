@@ -674,6 +674,74 @@ if (
   ok('Native dealer routes, drawer and inventory controls consume dealership permissions');
 }
 
+// Block 9 — loading / empty / error / offline state consistency.
+// Native already has app-wide network monitoring and shared state primitives;
+// web must keep equivalent global offline feedback plus retryable async states
+// on the highest-traffic cross-role dashboards.
+const webRootLayoutForStates = read('src/app/layout.tsx');
+const webAsyncStates = read('src/components/ui/AsyncState.tsx');
+const webOfflineBanner = read('src/components/layout/OfflineBanner.tsx');
+const webDealerInventoryStates = read('src/app/dashboard/dealer/inventory/page.tsx');
+const webDealerCustomersStates = read('src/app/dashboard/dealer/crm/page.tsx');
+const webDealerOffersStates = read('src/app/dashboard/dealer/offers/page.tsx');
+const webUnifiedDashboardStates = read('src/app/dashboard/user/page.tsx');
+const webProviderJobsStates = read('src/app/dashboard/service/jobs/page.tsx');
+const webProviderLeadsStates = read('src/app/dashboard/service/leads/page.tsx');
+const mobileOfflineBanner = read('carmazium app/carmazium app/src/components/OfflineBanner.tsx');
+const mobileEmptyState = read('carmazium app/carmazium app/src/components/ui/EmptyState.tsx');
+const mobileErrorBanner = read('carmazium app/carmazium app/src/components/ui/ErrorBanner.tsx');
+
+if (
+  !webRootLayoutForStates.includes('<OfflineBanner />') ||
+  !webOfflineBanner.includes('window.addEventListener("online"') ||
+  !webOfflineBanner.includes('window.addEventListener("offline"') ||
+  !webOfflineBanner.includes('aria-live="polite"') ||
+  !mobileApp.includes('<OfflineBanner />') ||
+  !mobileOfflineBanner.includes('subscribeToConnectivity')
+) {
+  fail('Web/mobile global offline feedback drifted');
+} else {
+  ok('Web and native clients keep app-wide offline feedback');
+}
+
+if (
+  !webAsyncStates.includes('export function LoadingState') ||
+  !webAsyncStates.includes('export function ErrorState') ||
+  !webAsyncStates.includes('export function EmptyState') ||
+  !webAsyncStates.includes('role="alert"') ||
+  !webAsyncStates.includes('aria-live="assertive"') ||
+  !mobileEmptyState.includes('export const EmptyState') ||
+  !mobileErrorBanner.includes('export const ErrorBanner')
+) {
+  fail('Shared async-state primitives are missing or inaccessible on one client');
+} else {
+  ok('Web and native clients keep shared loading/empty/error state primitives');
+}
+
+for (const [surface, source] of [
+  ['dealer inventory', webDealerInventoryStates],
+  ['dealer customers', webDealerCustomersStates],
+  ['dealer offers', webDealerOffersStates],
+  ['unified buyer/seller dashboard', webUnifiedDashboardStates],
+  ['provider jobs', webProviderJobsStates],
+  ['provider enquiries', webProviderLeadsStates],
+]) {
+  if (!source.includes('ErrorState') || !source.includes('LoadingState')) {
+    fail(`${surface} can no longer distinguish load failure from loading`);
+  }
+}
+if (
+  !webDealerInventoryStates.includes('EmptyState') ||
+  !webDealerCustomersStates.includes('EmptyState') ||
+  !webDealerOffersStates.includes('EmptyState') ||
+  !webProviderJobsStates.includes('EmptyState') ||
+  !webProviderLeadsStates.includes('EmptyState')
+) {
+  fail('Representative list journeys can no longer distinguish empty data from failure');
+} else {
+  ok('Representative cross-role journeys distinguish loading, empty and error states');
+}
+
 // Block 9 — shared visible terminology. Internal model/API names may stay
 // technical (Lead, DealerProfile, ServiceJob), but the navigation and page
 // labels for equivalent web/native product surfaces must not drift.
