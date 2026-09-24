@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -31,6 +31,7 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { CounterLedger } from '../../components/offers/CounterLedger';
 import { ReceivedDeliveryRequestsPanel } from '../../components/delivery/ReceivedDeliveryRequestsPanel';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
+import { subscribeProductSync } from '../../lib/productSync';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -203,6 +204,10 @@ export const DealerOffersScreen: React.FC = () => {
       }
     }, [fetchData]),
   );
+
+  useEffect(() => subscribeProductSync(['offers', 'listings'], () => {
+    void fetchData(true);
+  }), [fetchData]);
 
   const handleRetry = () => fetchData();
 
