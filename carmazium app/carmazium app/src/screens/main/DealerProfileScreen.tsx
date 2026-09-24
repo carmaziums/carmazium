@@ -27,6 +27,7 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
+import { subscribeProductSync } from '../../lib/productSync';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 import { useAuthStore } from '../../store/authStore';
@@ -156,6 +157,9 @@ export const DealerProfileScreen: React.FC = () => {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => subscribeProductSync(['dealer', 'listings', 'offers', 'account'], () => {
+    void loadData(true);
+  }), [loadData]);
 
   const dealerDisplayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
 
