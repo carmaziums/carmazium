@@ -805,6 +805,43 @@ if (
   ok('Native icon-only controls require accessible names');
 }
 
+// Block 9 — performance baseline. These are static invariants rather than
+// synthetic benchmark claims: runtime certification still belongs in the
+// release/device test pass, while CI prevents known first-load/binary-size
+// regressions from quietly returning.
+const webMaziumLoaderPerformance = read('src/components/features/MaziumWidgetLoader.tsx');
+const webNextConfigPerformance = read('next.config.ts');
+const mobileOnboardingPerformance = read('carmazium app/carmazium app/src/screens/onboarding/OnboardingScreen.tsx');
+const mobileAppConfigPerformance = read('carmazium app/carmazium app/app.json');
+const mobileProguardPerformance = read('carmazium app/carmazium app/plugins/withAndroidProguardRules.js');
+
+if (
+  !webMaziumLoaderPerformance.includes('requestIdleCallback') ||
+  !webMaziumLoaderPerformance.includes('{ timeout: 2000 }') ||
+  !webNextConfigPerformance.includes('optimizePackageImports')
+) {
+  fail('Web first-load performance baseline regressed');
+} else {
+  ok('Web defers non-critical Mazium code and keeps package-import optimization');
+}
+
+if (
+  !mobileOnboardingPerformance.includes("from 'expo-image'") ||
+  !mobileOnboardingPerformance.includes('initialNumToRender={1}') ||
+  !mobileOnboardingPerformance.includes('maxToRenderPerBatch={1}') ||
+  !mobileOnboardingPerformance.includes('windowSize={3}') ||
+  !mobileOnboardingPerformance.includes("cachePolicy=\"memory-disk\"") ||
+  !mobileAppConfigPerformance.includes('"assetBundlePatterns": [') ||
+  !mobileAppConfigPerformance.includes('"assets/**/*"') ||
+  !mobileAppConfigPerformance.includes('"enableProguardInReleaseBuilds": true') ||
+  !mobileAppConfigPerformance.includes('"enableShrinkResourcesInReleaseBuilds": true') ||
+  !mobileProguardPerformance.includes('-keep class expo.modules.kotlin.** { *; }')
+) {
+  fail('Native startup/release-size performance baseline regressed');
+} else {
+  ok('Native onboarding virtualization and Android release shrinking are guarded');
+}
+
 // Block 9 — shared visible terminology. Internal model/API names may stay
 // technical (Lead, DealerProfile, ServiceJob), but the navigation and page
 // labels for equivalent web/native product surfaces must not drift.
