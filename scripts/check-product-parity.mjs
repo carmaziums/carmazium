@@ -86,8 +86,26 @@ for (const feature of manifest.features) {
     } else {
       ok(`${feature.id} has web + mobile surfaces`);
     }
+  } else if (feature.status === 'web_only') {
+    if (!feature.web?.length || feature.mobile?.length) {
+      fail(`${feature.id} is web_only but its platform declaration is invalid`);
+      continue;
+    }
+    if (!feature.reason || !String(feature.reason).trim()) {
+      fail(`${feature.id} is web_only but has no explicit reason`);
+      continue;
+    }
+    if (webMissing.length) {
+      fail(`${feature.id} missing web-only files: ${webMissing.join(', ')}`);
+    } else {
+      ok(`${feature.id} is an approved web-only surface`);
+    }
   } else if (feature.status === 'gap') {
-    warn(`${feature.id} is still missing parity`);
+    fail(`${feature.id} still has an unresolved parity gap`);
+  } else if (feature.status === 'web_only_candidate') {
+    fail(`${feature.id} is still only a web-only candidate; approve or remediate it before release`);
+  } else {
+    fail(`${feature.id} has unknown parity status: ${feature.status}`);
   }
 }
 
