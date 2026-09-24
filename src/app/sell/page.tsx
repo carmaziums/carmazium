@@ -100,6 +100,22 @@ function formatGuidePrice(value: number) {
     }).format(value)
 }
 
+function valuationHasFigures(valuation: VehicleValuation) {
+    return [
+        valuation.low,
+        valuation.mid,
+        valuation.high,
+        valuation.retail.suggestedAsking,
+        valuation.auction.marketValue,
+    ].every((value) => Number.isFinite(value) && value > 0)
+}
+
+function valuationQuality(valuation: VehicleValuation) {
+    if (valuation.source === "CARMAZIUM_MODEL") return "model_fallback"
+    if (valuation.source === "CARMAZIUM_MODEL_PROFILE") return "model_profile"
+    return "market_backed"
+}
+
 function QuickValuationForm() {
     const { trackEvent } = useAnalytics()
     const [vrm, setVrm] = React.useState("")
@@ -165,7 +181,7 @@ function QuickValuationForm() {
                     mileage: mileageNumber,
                 })
 
-                const hasFigures = !(valuation.source === "CARMAZIUM_MODEL" && valuation.comparables === 0)
+                const hasFigures = valuationHasFigures(valuation)
                 setResult({
                     valuation,
                     dvlaVerified: false,
@@ -211,6 +227,7 @@ function QuickValuationForm() {
                     valuation_result: hasFigures ? "figures_returned" : "no_figures",
                     no_figure_reason: hasFigures ? undefined : "insufficient_market_evidence",
                     valuation_comparables: valuation.comparables,
+                    valuation_quality: valuationQuality(valuation),
                     live_market_status: valuation.marketEvidence?.liveUkSearchStatus,
                     dvla_verified: false,
                 })
@@ -243,7 +260,7 @@ function QuickValuationForm() {
                 variant: vehicle.variant,
             })
 
-            const hasFigures = !(valuation.source === "CARMAZIUM_MODEL" && valuation.comparables === 0)
+            const hasFigures = valuationHasFigures(valuation)
             setResult({
                 valuation,
                 dvlaVerified: true,
@@ -319,11 +336,12 @@ function QuickValuationForm() {
         window.setTimeout(scrollToSellerOptions, 0)
     }
 
-    const hasReliableGuide = result
-        ? !(result.valuation.source === "CARMAZIUM_MODEL" && result.valuation.comparables === 0)
-        : false
+    const hasGuide = result ? valuationHasFigures(result.valuation) : false
     const usesLiveUkMarket = result
         ? result.valuation.source === "LIVE_UK_MARKET" || result.valuation.source === "BLENDED_MARKET"
+        : false
+    const usesModelFallback = result
+        ? result.valuation.source === "CARMAZIUM_MODEL" || result.valuation.source === "CARMAZIUM_MODEL_PROFILE"
         : false
     const needsModel = !!pendingVehicle && !pendingVehicle.model && !result
     const needsManualDetails = manualMode && !result
@@ -459,10 +477,14 @@ function QuickValuationForm() {
                             <p className="text-xs font-black uppercase tracking-[0.14em] text-primary">
                                 {result.vehicle.year} {result.vehicle.make} {result.vehicle.model}
                             </p>
-                            {hasReliableGuide ? (
+                            {hasGuide && (
                                 <>
                                     <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--text-muted)]">
-                                        {usesLiveUkMarket ? "Live UK market guidance" : "CarMazium market guidance"}
+                                        {usesLiveUkMarket
+                                            ? "Live UK market guidance"
+                                            : usesModelFallback
+                                                ? "CarMazium estimated guide · Limited market evidence"
+                                                : "CarMazium market guidance"}
                                     </p>
                                     <div className="mt-3 grid grid-cols-2 gap-2 sm:max-w-xl">
                                         <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-3">
@@ -473,7 +495,7 @@ function QuickValuationForm() {
                                                 {formatGuidePrice(result.valuation.retail.suggestedAsking)}
                                             </p>
                                             <p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">
-                                                Upper market guidance for a retail advert.
+                                                Upper guide for a retail advert.
                                             </p>
                                         </div>
                                         <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.06] p-3">
@@ -488,25 +510,23 @@ function QuickValuationForm() {
                                             </p>
                                         </div>
                                     </div>
-                                    <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
-                                        Guide only. Exact specification, condition, demand and inspection can change the final sale price.
+                                    <p className="mt-2 max-w-xl text-xs leading-5 text-[var(--text-muted)]">
+                                        {usesModelFallback
+                                            ? "Exact-model market evidence is limited right now, so this is a LOW-confidence estimate based on vehicle age, mileage, transmission and conservative depreciation. You can adjust the price before listing."
+                                            : "Guide only. Exact specification, condition, demand and inspection can change the final sale price."}
                                     </p>
                                 </>
-                            ) : (
-                                <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--text-muted)]">
-                                    Vehicle found. CarMazium could not find enough reliable exact-model market evidence yet. You can still continue and set your own price.
-                                </p>
                             )}
                         </div>
                         <div className="grid shrink-0 grid-cols-1 gap-2 sm:min-w-[250px]">
                             <Button type="button" onClick={() => startListing("AUCTION")} className="bg-orange-600 hover:bg-orange-500">
                                 FREE Dealer Auction
-                                {hasReliableGuide && <span className="font-black">{formatGuidePrice(result.valuation.auction.marketValue)}</span>}
+                                {hasGuide && <span className="font-black">{formatGuidePrice(result.valuation.auction.marketValue)}</span>}
                                 <Gavel size={16} />
                             </Button>
                             <Button type="button" variant="outline" onClick={() => startListing("CLASSIFIED")}>
                                 £1 Retail Listing
-                                {hasReliableGuide && <span className="font-black">{formatGuidePrice(result.valuation.retail.suggestedAsking)}</span>}
+                                {hasGuide && <span className="font-black">{formatGuidePrice(result.valuation.retail.suggestedAsking)}</span>}
                                 <ArrowRight size={16} />
                             </Button>
                         </div>
