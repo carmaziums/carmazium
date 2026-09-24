@@ -4,6 +4,7 @@ import Image from "next/image"
 import { ArrowRight, BookOpen, Calendar, Clock, Newspaper } from "lucide-react"
 import { buttonVariants } from "@/components/ui/buttonVariants"
 import type { BlogPost } from "@/lib/blogApi"
+import { fetchBackendWithRetry } from "@/lib/serverBackendFetch"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 // Canonical SEO origin. The apex domain permanently redirects to www.
@@ -12,7 +13,7 @@ const PAGE_SIZE = 12
 
 async function getPosts(page: number): Promise<{ data: BlogPost[]; total: number; totalPages: number }> {
     try {
-        const res = await fetch(`${API_BASE}/blog?page=${page}&limit=${PAGE_SIZE}`, { next: { revalidate: 300 } })
+        const res = await fetchBackendWithRetry(`${API_BASE}/blog?page=${page}&limit=${PAGE_SIZE}`, { next: { revalidate: 300 } })
         if (!res.ok) return { data: [], total: 0, totalPages: 1 }
         const json = await res.json()
         return { data: json.data ?? [], total: json.pagination?.total ?? 0, totalPages: json.pagination?.totalPages ?? 1 }
