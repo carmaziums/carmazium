@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -28,6 +28,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { CounterLedger } from '../../components/offers/CounterLedger';
 import { ReceivedDeliveryRequestsPanel } from '../../components/delivery/ReceivedDeliveryRequestsPanel';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
+import { subscribeProductSync } from '../../lib/productSync';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -214,6 +215,10 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
       }
     }, [fetchData]),
   );
+
+  useEffect(() => subscribeProductSync(['offers', 'listings'], () => {
+    void fetchData(true);
+  }), [fetchData]);
 
   // ─────────────── actions ────────────────
 
