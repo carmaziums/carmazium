@@ -66,6 +66,7 @@ import { SellerProfileScreen } from '../screens/seller/SellerProfileScreen';
 import { SellerPerformanceScreen } from '../screens/seller/SellerPerformanceScreen';
 import { PaymentHistoryScreen } from '../screens/account/PaymentHistoryScreen';
 import { SaleCancellationsScreen } from '../screens/account/SaleCancellationsScreen';
+import { FinancePartnerDashboardScreen, InsurancePartnerDashboardScreen } from '../screens/account/LegacyPartnerDashboardScreen';
 import { SellerListingsScreen } from '../screens/seller/SellerListingsScreen';
 import { SellerAuctionsScreen } from '../screens/seller/SellerAuctionsScreen';
 import { AcceptInviteScreen } from '../screens/main/AcceptInviteScreen';
@@ -179,6 +180,8 @@ export type MainStackParamList = {
   SellerPerformance: undefined;
   PaymentHistory: undefined;
   SaleCancellations: undefined;
+  FinancePartnerDashboard: undefined;
+  InsurancePartnerDashboard: undefined;
   // Was `undefined`, which is why the invite link could not be routed and the
   // screen asked the user to paste it instead (AUTH-030).
   AcceptInvite: { token?: string } | undefined;
@@ -382,6 +385,8 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="SellerPerformance" component={SellerPerformanceScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PaymentHistory" component={PaymentHistoryScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="SaleCancellations" component={SaleCancellationsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="FinancePartnerDashboard" component={FinancePartnerDashboardScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="InsurancePartnerDashboard" component={InsurancePartnerDashboardScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="AcceptInvite" component={AcceptInviteScreen} options={{ animation: 'slide_from_bottom' }} />
     </Stack.Navigator>
   );
