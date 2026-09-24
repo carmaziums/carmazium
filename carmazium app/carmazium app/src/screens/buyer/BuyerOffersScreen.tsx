@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -18,6 +18,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+import { subscribeProductSync } from '../../lib/productSync';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -244,6 +245,10 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
       }
     }, [fetchData]),
   );
+
+  useEffect(() => subscribeProductSync(['offers', 'listings'], () => {
+    void fetchData(true);
+  }), [fetchData]);
 
   // ─────────────── actions ────────────────
 
