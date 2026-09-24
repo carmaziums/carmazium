@@ -39,13 +39,17 @@ import { OptionalSessionAuthGuard } from '../auth/guards/optional-session-auth.g
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { TradeListingAccessGuard } from '../auctions/trade-access.guard';
 import { ConvertAuctionToRetailDto } from './dto/convert-auction-to-retail.dto';
+import { ProductSyncGateway } from '../sync/product-sync.gateway';
 
 
 
 @ApiTags('Listings')
 @Controller('listings')
 export class ListingsController {
-    constructor(private readonly listingsService: ListingsService) { }
+    constructor(
+        private readonly listingsService: ListingsService,
+        private readonly productSync: ProductSyncGateway,
+    ) { }
 
     /**
      * Preview an import from an external listing URL (CarGurus, AutoTrader, CarWow).
@@ -156,6 +160,7 @@ export class ListingsController {
         @CurrentUser() user: any,
     ): Promise<StandardResponse<Listing>> {
         const listing = await this.listingsService.create(createListingDto, user.id);
+        this.productSync.broadcast({ domain: 'listings', action: 'created' });
         return new StandardResponse(listing);
     }
 
@@ -426,6 +431,7 @@ export class ListingsController {
         @CurrentUser() user: any,
     ): Promise<StandardResponse<Listing>> {
         const listing = await this.listingsService.update(id, user.id, updateListingDto);
+        this.productSync.broadcast({ domain: 'listings', action: 'updated' });
         return new StandardResponse(listing);
     }
 
@@ -442,9 +448,9 @@ export class ListingsController {
         @Body() dto: ConvertAuctionToRetailDto,
         @CurrentUser() user: any,
     ): Promise<StandardResponse<any>> {
-        return new StandardResponse(
-            await this.listingsService.convertAuctionToRetail(id, user.id, dto),
-        );
+        const result = await this.listingsService.convertAuctionToRetail(id, user.id, dto);
+        this.productSync.broadcast({ domain: 'listings', action: 'channel-converted' });
+        return new StandardResponse(result);
     }
 
     @Post(':id/also-list-retail')
@@ -463,6 +469,7 @@ export class ListingsController {
     ) {
         if (!price || !badgeTier) throw new BadRequestException('price and badgeTier are required');
         const result = await this.listingsService.alsoListRetail(id, user.id, { price, badgeTier });
+        this.productSync.broadcast({ domain: 'listings', action: 'linked-retail-created' });
         return new StandardResponse(result);
     }
 
@@ -480,6 +487,7 @@ export class ListingsController {
         @CurrentUser() user: any,
     ) {
         const result = await this.listingsService.alsoAuction(id, user.id, dto);
+        this.productSync.broadcast({ domain: 'listings', action: 'linked-auction-created' });
         return new StandardResponse(result);
     }
 
@@ -499,6 +507,7 @@ export class ListingsController {
         @CurrentUser() user: any,
     ): Promise<StandardResponse<{ activated: boolean; requiresPayment?: boolean }>> {
         const result = await this.listingsService.publishListing(id, user.id);
+        if (result.activated) this.productSync.broadcast({ domain: 'listings', action: 'published' });
         return new StandardResponse(result);
     }
 
@@ -522,6 +531,7 @@ export class ListingsController {
         @CurrentUser() user: any,
     ): Promise<StandardResponse<Listing>> {
         const listing = await this.listingsService.updateStatus(id, user.id, updateStatusDto.status, updateStatusDto.buyerPostcode);
+        this.productSync.broadcast({ domain: 'listings', action: 'status-updated' });
         return new StandardResponse(listing);
     }
 
@@ -545,6 +555,7 @@ export class ListingsController {
         @CurrentUser() user: any,
     ): Promise<StandardResponse<Listing>> {
         const listing = await this.listingsService.recordSale(id, user.id, recordSaleDto);
+        this.productSync.broadcast({ domain: 'listings', action: 'sold' });
         return new StandardResponse(listing);
     }
 
@@ -582,6 +593,7 @@ export class ListingsController {
         @CurrentUser() user: any,
     ): Promise<StandardResponse<Listing>> {
         const listing = await this.listingsService.softDelete(id, user.id);
+        this.productSync.broadcast({ domain: 'listings', action: 'deleted' });
         return new StandardResponse(listing);
     }
 }
