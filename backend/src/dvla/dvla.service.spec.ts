@@ -162,4 +162,54 @@ describe('DvlaService AI specification enrichment', () => {
         expect(result.bhp).toBeUndefined();
         expect(result.specEnrichment?.confidence).toBe('LOW');
     });
+
+    it('ignores an implausible MOT model instead of sending a year/make placeholder into valuation', async () => {
+        (global as any).fetch = jest.fn(async (url: string) => {
+            if (String(url).includes('driver-vehicle-licensing.api.gov.uk')) {
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({
+                        ...dvlaPayload,
+                        registrationNumber: 'AB14XYZ',
+                        make: 'VAUXHALL',
+                        yearOfManufacture: 2014,
+                    }),
+                    text: async () => '',
+                };
+            }
+
+            if (String(url).includes('check-mot.service.gov.uk')) {
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => [{
+                        model: '2014',
+                        primaryColour: 'BLACK',
+                        firstUsedDate: '2014-03-01',
+                        motTests: [],
+                    }],
+                    text: async () => '',
+                };
+            }
+
+            throw new Error(`Unexpected URL: ${url}`);
+        });
+
+        const aiService = {
+            enrichVehicleSpecification: jest.fn().mockResolvedValue(null),
+        };
+
+        const service = new DvlaService(config as any, aiService as any);
+        const result = await service.lookupVrm('AB14XYZ');
+
+        expect(result.model).toBeUndefined();
+        expect(aiService.enrichVehicleSpecification).toHaveBeenCalledWith(
+            expect.objectContaining({
+                make: 'VAUXHALL',
+                model: undefined,
+                year: 2014,
+            }),
+        );
+    });
 });
