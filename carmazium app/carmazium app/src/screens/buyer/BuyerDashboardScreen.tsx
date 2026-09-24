@@ -17,6 +17,7 @@ import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { getFeaturedListings } from '../../lib/listingsApi';
 import { getUnreadCount } from '../../lib/notificationsApi';
+import { subscribeProductSync } from '../../lib/productSync';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -209,6 +210,9 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
   }, [period]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => subscribeProductSync(['offers', 'listings', 'account'], () => {
+    void fetchData();
+  }), [fetchData]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
