@@ -23,6 +23,7 @@ import {
 } from '../../lib/servicesApi';
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { subscribeProductSync } from '../../lib/productSync';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ProviderLeads'>;
 type Filter = 'ALL' | 'FINANCE' | 'WARRANTY';
@@ -93,6 +94,11 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
     void load('reset');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serviceFilter]);
+
+  useEffect(() => subscribeProductSync(['services'], () => {
+    setNextCursor(null);
+    void load('reset');
+  }), [load]);
 
   const refresh = useCallback(() => {
     setRefreshing(true);
