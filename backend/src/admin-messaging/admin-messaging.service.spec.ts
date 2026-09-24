@@ -261,6 +261,11 @@ describe('AdminMessagingService', () => {
     it('skips broadcast email when the recipient disabled email notifications', async () => {
         const { service, emailService, notificationsService, prisma } = makeService();
         notificationsService.shouldSendEmail.mockResolvedValue(false);
+        prisma.broadcastDelivery.count.mockImplementation(({ where }: any) => {
+            if (where.status === BroadcastDeliveryStatus.SENT) return Promise.resolve(1);
+            if (where.emailStatus === BroadcastEmailStatus.SKIPPED) return Promise.resolve(1);
+            return Promise.resolve(0);
+        });
 
         const result = await service.send('admin-1', {
             audience: AdminMessageAudience.ALL,
