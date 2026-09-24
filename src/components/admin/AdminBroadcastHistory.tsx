@@ -7,6 +7,7 @@ import {
     CheckCircle2,
     Clock3,
     Loader2,
+    Mail,
     RefreshCw,
     Search,
     Send,
@@ -139,7 +140,7 @@ export function AdminBroadcastHistory() {
     }
 
     const retry = async () => {
-        if (!selected?.failed) return
+        if (!selected || selected.failed + selected.emailFailed === 0) return
         try {
             setActioning("retry")
             setError(null)
@@ -203,7 +204,7 @@ export function AdminBroadcastHistory() {
                 </div>
 
                 {analytics && (
-                    <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                    <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-6">
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4">
                             <p className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Campaigns</p>
                             <p className="mt-1 text-2xl font-black text-[var(--text-primary)]">{analytics.totalCampaigns.toLocaleString()}</p>
@@ -220,6 +221,16 @@ export function AdminBroadcastHistory() {
                             <p className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Success rate</p>
                             <p className="mt-1 text-2xl font-black text-[var(--text-primary)]">
                                 {analytics.deliverySuccessRate == null ? "—" : `${analytics.deliverySuccessRate.toFixed(2)}%`}
+                            </p>
+                        </div>
+                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4">
+                            <p className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Email sent</p>
+                            <p className="mt-1 text-2xl font-black text-emerald-400">{analytics.emailSentRecipients.toLocaleString()}</p>
+                        </div>
+                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4">
+                            <p className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Email success</p>
+                            <p className="mt-1 text-2xl font-black text-[var(--text-primary)]">
+                                {analytics.emailSuccessRate == null ? "—" : `${analytics.emailSuccessRate.toFixed(2)}%`}
                             </p>
                         </div>
                     </div>
@@ -303,18 +314,26 @@ export function AdminBroadcastHistory() {
                                         {loadingDetail === campaign.id && <Loader2 size={15} className="animate-spin text-primary" />}
                                     </div>
                                 </div>
-                                <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                                <div className="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-5">
                                     <div className="rounded-xl bg-[var(--bg-input)] px-2 py-2">
                                         <p className="text-lg font-black">{campaign.requested}</p>
                                         <p className="text-[10px] uppercase text-[var(--text-muted)]">Recipients</p>
                                     </div>
                                     <div className="rounded-xl bg-[var(--bg-input)] px-2 py-2">
                                         <p className="text-lg font-black text-emerald-400">{campaign.sent}</p>
-                                        <p className="text-[10px] uppercase text-[var(--text-muted)]">Sent</p>
+                                        <p className="text-[10px] uppercase text-[var(--text-muted)]">Chat sent</p>
                                     </div>
                                     <div className="rounded-xl bg-[var(--bg-input)] px-2 py-2">
                                         <p className="text-lg font-black text-red-400">{campaign.failed}</p>
-                                        <p className="text-[10px] uppercase text-[var(--text-muted)]">Failed</p>
+                                        <p className="text-[10px] uppercase text-[var(--text-muted)]">Chat failed</p>
+                                    </div>
+                                    <div className="rounded-xl bg-[var(--bg-input)] px-2 py-2">
+                                        <p className="text-lg font-black text-emerald-400">{campaign.emailSent}</p>
+                                        <p className="text-[10px] uppercase text-[var(--text-muted)]">Email sent</p>
+                                    </div>
+                                    <div className="rounded-xl bg-[var(--bg-input)] px-2 py-2">
+                                        <p className="text-lg font-black text-red-400">{campaign.emailFailed}</p>
+                                        <p className="text-[10px] uppercase text-[var(--text-muted)]">Email failed</p>
                                     </div>
                                 </div>
                             </button>
@@ -362,7 +381,7 @@ export function AdminBroadcastHistory() {
                                     </>
                                 )}
 
-                                {selected.failed > 0 && !["SCHEDULED", "CANCELLED"].includes(selected.status) && (
+                                {selected.failed + selected.emailFailed > 0 && !["SCHEDULED", "CANCELLED"].includes(selected.status) && (
                                     <button
                                         type="button"
                                         onClick={retry}
@@ -370,24 +389,36 @@ export function AdminBroadcastHistory() {
                                         className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-black text-white disabled:opacity-50"
                                     >
                                         {actioning === "retry" ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
-                                        Retry {selected.failed} failed
+                                        Retry {selected.failed + selected.emailFailed} failed channel{selected.failed + selected.emailFailed === 1 ? "" : "s"}
                                     </button>
                                 )}
                             </div>
                         </div>
 
-                        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                        <div className="mt-4 grid grid-cols-2 gap-2 text-center sm:grid-cols-6">
                             <div className="rounded-xl bg-[var(--bg-input)] px-2 py-2">
                                 <p className="text-lg font-black">{selected.requested}</p>
                                 <p className="text-[10px] uppercase text-[var(--text-muted)]">Locked</p>
                             </div>
                             <div className="rounded-xl bg-[var(--bg-input)] px-2 py-2">
                                 <p className="text-lg font-black text-emerald-400">{selected.sent}</p>
-                                <p className="text-[10px] uppercase text-[var(--text-muted)]">Sent</p>
+                                <p className="text-[10px] uppercase text-[var(--text-muted)]">Chat sent</p>
                             </div>
                             <div className="rounded-xl bg-[var(--bg-input)] px-2 py-2">
                                 <p className="text-lg font-black text-red-400">{selected.failed}</p>
-                                <p className="text-[10px] uppercase text-[var(--text-muted)]">Failed</p>
+                                <p className="text-[10px] uppercase text-[var(--text-muted)]">Chat failed</p>
+                            </div>
+                            <div className="rounded-xl bg-[var(--bg-input)] px-2 py-2">
+                                <p className="text-lg font-black text-emerald-400">{selected.emailSent}</p>
+                                <p className="text-[10px] uppercase text-[var(--text-muted)]">Email sent</p>
+                            </div>
+                            <div className="rounded-xl bg-[var(--bg-input)] px-2 py-2">
+                                <p className="text-lg font-black text-red-400">{selected.emailFailed}</p>
+                                <p className="text-[10px] uppercase text-[var(--text-muted)]">Email failed</p>
+                            </div>
+                            <div className="rounded-xl bg-[var(--bg-input)] px-2 py-2">
+                                <p className="text-lg font-black text-slate-400">{selected.emailSkipped}</p>
+                                <p className="text-[10px] uppercase text-[var(--text-muted)]">Email skipped</p>
                             </div>
                         </div>
 
@@ -406,9 +437,23 @@ export function AdminBroadcastHistory() {
                                             <p className="truncate text-xs text-[var(--text-muted)]">
                                                 {delivery.user.email} · {delivery.user.role.replaceAll("_", " ")}
                                             </p>
-                                            {delivery.error && <p className="mt-1 break-words text-xs text-red-300">{delivery.error}</p>}
+                                            {delivery.error && <p className="mt-1 break-words text-xs text-red-300">Chat: {delivery.error}</p>}
+                                            {delivery.emailError && <p className="mt-1 break-words text-xs text-red-300">Email: {delivery.emailError}</p>}
                                         </div>
-                                        <span className="text-[10px] font-black uppercase text-[var(--text-muted)]">{delivery.status}</span>
+                                        <div className="shrink-0 space-y-1 text-right">
+                                            <span className="block text-[10px] font-black uppercase text-[var(--text-muted)]">Chat {delivery.status}</span>
+                                            <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase ${
+                                                delivery.emailStatus === "SENT"
+                                                    ? "text-emerald-400"
+                                                    : delivery.emailStatus === "FAILED"
+                                                        ? "text-red-400"
+                                                        : delivery.emailStatus === "SKIPPED"
+                                                            ? "text-slate-400"
+                                                            : "text-amber-400"
+                                            }`}>
+                                                <Mail size={11} /> Email {delivery.emailStatus}
+                                            </span>
+                                        </div>
                                     </div>
                                 )
                             })}
