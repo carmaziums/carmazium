@@ -109,6 +109,32 @@ for (const feature of manifest.features) {
   }
 }
 
+// Platform association endpoints must stay wired but must never hard-code
+// guessed signing identities. Production values come from authenticated env.
+const appleAssociationRoute = read('src/app/api/app-association/apple/route.ts');
+const androidAssociationRoute = read('src/app/api/app-association/android/route.ts');
+const nextConfigAssociations = read('next.config.ts');
+
+if (
+  !nextConfigAssociations.includes("'/.well-known/apple-app-site-association'") ||
+  !nextConfigAssociations.includes("'/.well-known/assetlinks.json'") ||
+  !appleAssociationRoute.includes('process.env.APPLE_TEAM_ID') ||
+  !appleAssociationRoute.includes('uk.carmazium.app') ||
+  !androidAssociationRoute.includes('process.env.ANDROID_RELEASE_CERT_SHA256') ||
+  !androidAssociationRoute.includes('uk.carmazium.app')
+) {
+  fail('Universal/App Link website association contract drifted');
+} else {
+  ok('Universal/App Link website association handlers are wired to real signing env values');
+}
+
+if (
+  appleAssociationRoute.includes('FILL_IN_') ||
+  androidAssociationRoute.includes('FILL_IN_')
+) {
+  fail('Platform association handlers contain placeholder signing identities');
+}
+
 // Atomic release identity and synchronized publication contract.
 const webReleaseIdentity = read('src/app/api/release/route.ts');
 const backendReleaseIdentity = read('backend/src/health/health.controller.ts');
