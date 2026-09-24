@@ -836,8 +836,8 @@ export class AdminMessagingService {
             throw new BadRequestException('Media storage is not configured on the server.');
         }
         const allowedHost = new URL(supabaseUrl).host;
-        const allowedPath = '/storage/v1/object/public/listings/admin-messages/';
-        if (parsed.protocol !== 'https:' || parsed.host !== allowedHost || !parsed.pathname.includes(allowedPath)) {
+        const allowedPath = '/storage/v1/object/public/admin-broadcasts/';
+        if (parsed.protocol !== 'https:' || parsed.host !== allowedHost || !parsed.pathname.startsWith(allowedPath)) {
             throw new BadRequestException('Attachment must be uploaded through the CarMazium admin media uploader.');
         }
 
@@ -851,12 +851,12 @@ export class AdminMessagingService {
         if (dto.mediaSize) {
             const limit = dto.mediaKind === AdminMediaKind.IMAGE
                 ? 10 * 1024 * 1024
-                : 25 * 1024 * 1024;
+                : 100 * 1024 * 1024;
             if (dto.mediaSize > limit) {
                 throw new BadRequestException(
                     dto.mediaKind === AdminMediaKind.IMAGE
                         ? 'Pictures must be 10 MB or smaller.'
-                        : 'Videos must be 25 MB or smaller.',
+                        : 'Videos must be 100 MB or smaller.',
                 );
             }
         }
