@@ -4,6 +4,7 @@ import Image from "next/image"
 import { notFound } from "next/navigation"
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, Clock, Gavel, Search, User } from "lucide-react"
 import type { BlogPost } from "@/lib/blogApi"
+import { fetchBackendWithRetry } from "@/lib/serverBackendFetch"
 import type { Listing } from "@/lib/listingApi"
 import { formatPrice } from "@/lib/listingApi"
 import { BlogContent, blogHeadingId } from "@/components/blog/BlogContent"
@@ -14,7 +15,7 @@ const SITE_URL = "https://www.carmazium.com"
 
 async function getPostBySlug(slug: string): Promise<BlogPost | null> {
     try {
-        const res = await fetch(`${API_BASE}/blog/${slug}`, { next: { revalidate: 60 } })
+        const res = await fetchBackendWithRetry(`${API_BASE}/blog/${slug}`, { next: { revalidate: 60 } })
         if (!res.ok) return null
         const json = await res.json()
         return json.data ?? null
@@ -25,7 +26,7 @@ async function getPostBySlug(slug: string): Promise<BlogPost | null> {
 
 async function getRelatedPosts(slug: string): Promise<BlogPost[]> {
     try {
-        const res = await fetch(`${API_BASE}/blog/${slug}/related`, { next: { revalidate: 60 } })
+        const res = await fetchBackendWithRetry(`${API_BASE}/blog/${slug}/related`, { next: { revalidate: 60 } })
         if (!res.ok) return []
         const json = await res.json()
         return json.data ?? []
@@ -36,7 +37,7 @@ async function getRelatedPosts(slug: string): Promise<BlogPost[]> {
 
 async function getFeaturedListings(): Promise<Listing[]> {
     try {
-        const res = await fetch(`${API_BASE}/listings/featured`, { next: { revalidate: 60 } })
+        const res = await fetchBackendWithRetry(`${API_BASE}/listings/featured`, { next: { revalidate: 60 } })
         if (!res.ok) return []
         const json = await res.json()
         return (json.data ?? []).slice(0, 3)
