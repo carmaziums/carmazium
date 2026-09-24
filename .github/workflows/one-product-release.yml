@@ -1,0 +1,228 @@
+name: One Product Release Sync
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/one-product-release.yml'
+      - 'src/app/api/release/**'
+      - 'backend/src/health/**'
+      - 'backend/Dockerfile'
+      - 'backend/fly.toml'
+      - 'carmazium app/carmazium app/src/lib/releaseIdentity.ts'
+      - 'carmazium app/carmazium app/src/generated/releaseIdentity.ts'
+      - 'product-parity.json'
+      - 'scripts/check-product-parity.mjs'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'backend/**'
+      - 'carmazium app/carmazium app/src/**'
+      - 'carmazium app/carmazium app/app.json'
+      - 'carmazium app/carmazium app/eas.json'
+      - 'carmazium app/carmazium app/package.json'
+      - 'carmazium app/carmazium app/package-lock.json'
+      - 'carmazium app/carmazium app/plugins/**'
+      - 'product-parity.json'
+      - 'scripts/check-product-parity.mjs'
+      - '.github/workflows/one-product-release.yml'
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: 'Exact 40-character main-branch Git SHA to certify/release'
+        required: true
+        type: string
+      publish_mobile:
+        description: 'Publish the native production update/build after web/backend verification'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: one-product-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-contract:
+    name: Release identity contract
+    runs-on: ubuntu-latest
+    outputs:
+      release_sha: ${{ steps.context.outputs.release_sha }}
+      native_config_changed: ${{ steps.context.outputs.native_config_changed }}
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_sha || github.sha }}
+
+      - name: Resolve and validate release context
+        id: context
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="${{ github.event_name == 'workflow_dispatch' && inputs.release_sha || github.sha }}"
+          if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Release SHA must be an exact 40-character lowercase Git SHA." >&2
+            exit 1
+          fi
+          git cat-file -e "$SHA^{commit}"
+          git fetch origin main --quiet
+          if ! git merge-base --is-ancestor "$SHA" origin/main && [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "Release SHA is not contained in origin/main." >&2
+            exit 1
+          fi
+
+          BEFORE=""
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            BEFORE="${{ github.event.before }}"
+          else
+            BEFORE="$(git rev-parse "$SHA^" 2>/dev/null || true)"
+          fi
+
+          NATIVE_CONFIG_CHANGED=false
+          if [[ -n "$BEFORE" && "$BEFORE" != "0000000000000000000000000000000000000000" ]]; then
+            if git diff --name-only "$BEFORE" "$SHA" | grep -Eq '^carmazium app/carmazium app/(app\.json|eas\.json|package\.json|package-lock\.json|plugins/|ios/|android/)'; then
+              NATIVE_CONFIG_CHANGED=true
+            fi
+          fi
+
+          echo "release_sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "native_config_changed=$NATIVE_CONFIG_CHANGED" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check machine-readable One Product contract
+        run: node scripts/check-product-parity.mjs
+
+      - name: Verify release identity surfaces are present
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "VERCEL_GIT_COMMIT_SHA" src/app/api/release/route.ts
+          grep -q "RELEASE_ID" backend/src/health/health.controller.ts
+          grep -q "ARG RELEASE_ID" backend/Dockerfile
+          grep -q "GENERATED_RELEASE_ID" "carmazium app/carmazium app/src/lib/releaseIdentity.ts"
+
+  verify-production:
+    name: Verify web/backend release SHA
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_mobile == true)
+    needs: release-contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for production web and backend to report the exact SHA
+        env:
+          RELEASE_SHA: ${{ needs.release-contract.outputs.release_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          read_release_id() {
+            local url="$1"
+            curl -fsSL --max-time 15 "$url" | node -e "
+              let raw='';
+              process.stdin.on('data', c => raw += c);
+              process.stdin.on('end', () => {
+                try {
+                  const parsed = JSON.parse(raw);
+                  process.stdout.write(String(parsed.releaseId || ''));
+                } catch {
+                  process.exit(1);
+                }
+              });
+            "
+          }
+
+          WEB_ID=""
+          BACKEND_ID=""
+          for attempt in $(seq 1 45); do
+            WEB_ID="$(read_release_id 'https://www.carmazium.com/api/release' 2>/dev/null || true)"
+            BACKEND_ID="$(read_release_id 'https://carmazium-hjoh9w.fly.dev/health/release' 2>/dev/null || true)"
+
+            echo "Attempt $attempt: web=${WEB_ID:-unavailable} backend=${BACKEND_ID:-unavailable} expected=$RELEASE_SHA"
+            if [[ "$WEB_ID" == "$RELEASE_SHA" && "$BACKEND_ID" == "$RELEASE_SHA" ]]; then
+              printf '{"releaseId":"%s","webReleaseId":"%s","backendReleaseId":"%s","verifiedAt":"%s"}\n' \
+                "$RELEASE_SHA" "$WEB_ID" "$BACKEND_ID" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > release-evidence.json
+              exit 0
+            fi
+            sleep 20
+          done
+
+          echo "Production web/backend did not converge on release SHA $RELEASE_SHA." >&2
+          exit 1
+
+      - name: Upload release convergence evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: one-product-release-${{ needs.release-contract.outputs.release_sha }}
+          path: release-evidence.json
+          if-no-files-found: error
+
+  mobile-release:
+    name: Publish synchronized native release
+    needs: [release-contract, verify-production]
+    if: >-
+      needs.verify-production.result == 'success' &&
+      (
+        (github.event_name == 'push' && vars.ONE_PRODUCT_AUTO_RELEASE == 'true') ||
+        (github.event_name == 'workflow_dispatch' && inputs.publish_mobile == true)
+      )
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 'carmazium app/carmazium app'
+    steps:
+      - name: Check out exact release SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-contract.outputs.release_sha }}
+
+      - name: Embed shared release SHA in native source
+        env:
+          RELEASE_SHA: ${{ needs.release-contract.outputs.release_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p src/generated
+          printf "// Generated by One Product Release Sync.\nexport const GENERATED_RELEASE_ID = '%s' as const;\n" "$RELEASE_SHA" > src/generated/releaseIdentity.ts
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
+
+      - name: Install native dependencies
+        run: npm ci
+
+      - name: Typecheck exact native release source
+        run: npm run typescript
+
+      - name: Publish JS-safe production update
+        if: needs.release-contract.outputs.native_config_changed != 'true'
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: >-
+          npx --yes eas-cli@latest update
+          --channel production
+          --environment production
+          --message "CarMazium release ${{ needs.release-contract.outputs.release_sha }}"
+          --non-interactive
+
+      - name: Start signed production builds for native-config changes
+        if: needs.release-contract.outputs.native_config_changed == 'true'
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: >-
+          npx --yes eas-cli@latest build
+          --platform all
+          --profile production
+          --non-interactive
+          --no-wait
