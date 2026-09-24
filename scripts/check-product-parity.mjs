@@ -109,6 +109,24 @@ for (const feature of manifest.features) {
   }
 }
 
+// Server-rendered web surfaces must tolerate short-lived Fly/API network faults.
+const resilientServerFetch = read('src/lib/serverBackendFetch.ts');
+const vehicleDetailServer = read('src/app/buy-cars/[slug]/page.tsx');
+const blogIndexServer = read('src/app/blog/page.tsx');
+const blogArticleServer = read('src/app/blog/[slug]/page.tsx');
+if (
+  !resilientServerFetch.includes('TRANSIENT_BACKEND_STATUS') ||
+  !resilientServerFetch.includes('timeoutMs') ||
+  !resilientServerFetch.includes('retryDelayMs * 2 ** attempt') ||
+  !vehicleDetailServer.includes('fetchBackendWithRetry') ||
+  !blogIndexServer.includes('fetchBackendWithRetry') ||
+  !blogArticleServer.includes('fetchBackendWithRetry')
+) {
+  fail('Server-side backend retry/backoff resilience drifted');
+} else {
+  ok('Server-rendered vehicle/blog surfaces use bounded backend retry/backoff');
+}
+
 // Platform association endpoints must stay wired but must never hard-code
 // guessed signing identities. Production values come from authenticated env.
 const appleAssociationRoute = read('src/app/api/app-association/apple/route.ts');
