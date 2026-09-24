@@ -14,6 +14,7 @@ import {
     type InsuranceQuote,
     type PartnerStats
 } from "@/lib/partnerApi"
+import { subscribeProductSync } from "@/lib/productSync"
 
 export default function InsuranceDashboard() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -41,6 +42,16 @@ export default function InsuranceDashboard() {
         }
         if (!authLoading && user) fetchData()
     }, [user, authLoading])
+
+    React.useEffect(() => subscribeProductSync(["services"], () => {
+        if (!user) return
+        void Promise.all([getInsuranceStats(), getInsuranceQuotes(1, 5)])
+            .then(([statsData, quotesData]) => {
+                setStats(statsData)
+                setQuotes(quotesData.data || [])
+            })
+            .catch(() => {})
+    }), [user])
 
     const handleStatusUpdate = async (id: string, status: string) => {
         try {
