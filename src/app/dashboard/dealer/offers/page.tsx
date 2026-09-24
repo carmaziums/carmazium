@@ -13,6 +13,7 @@ import { recordSale } from "@/lib/listingApi"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
+import { subscribeProductSync } from "@/lib/productSync"
 
 // ─── UK postcode validation (loose — accepts formatted or unformatted) ────────
 const UK_POSTCODE_RE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i
@@ -49,6 +50,10 @@ export default function DealerOffersPage() {
             setLoading(false)
         }
     }
+
+    React.useEffect(() => subscribeProductSync(["offers", "listings"], () => {
+        if (user) void fetchOffers()
+    }), [user])
 
     async function confirmMarkSold() {
         if (!postcodeCapture) return
