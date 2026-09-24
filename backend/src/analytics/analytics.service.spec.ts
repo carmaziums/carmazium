@@ -20,14 +20,17 @@ describe('AnalyticsService live valuation analytics', () => {
                     anonymous_sessions: '2',
                     auction_requests: '15',
                     retail_requests: '3',
+                    valuation_attempts: '20',
+                    figures_returned: '17',
+                    confirmed_no_figures: '2',
                 }])
                 .mockResolvedValueOnce([
                     { hour: '18:00', requests: '4', sessions: '3' },
                     { hour: '19:00', requests: '2', sessions: '2' },
                 ])
                 .mockResolvedValueOnce([
-                    { date: '2026-09-20', requests: '9', sessions: '7' },
-                    { date: '2026-09-21', requests: '18', sessions: '13' },
+                    { date: '2026-09-20', requests: '9', sessions: '7', valuation_attempts: '10', figures_returned: '8', confirmed_no_figures: '1' },
+                    { date: '2026-09-21', requests: '18', sessions: '13', valuation_attempts: '20', figures_returned: '17', confirmed_no_figures: '2' },
                 ])
                 .mockResolvedValueOnce([
                     {
@@ -101,7 +104,12 @@ describe('AnalyticsService live valuation analytics', () => {
             anonymousSessions: 2,
             auctionRequests: 15,
             retailRequests: 3,
-            valuationJourneys: 13,
+            valuationAttempts: 20,
+            figuresReturned: 17,
+            withoutFigures: 3,
+            confirmedNoFigures: 2,
+            figureSuccessRate: 85,
+            valuationJourneys: 13.
             listingStarted: 8,
             listingCreated: 5,
             uniqueListingsCreated: 5,
@@ -122,7 +130,12 @@ describe('AnalyticsService live valuation analytics', () => {
             date: '2026-09-21',
             requests: 18,
             sessions: 13,
-            valuationJourneys: 13,
+            valuationAttempts: 20,
+            figuresReturned: 17,
+            withoutFigures: 3,
+            confirmedNoFigures: 2,
+            figureSuccessRate: 85,
+            valuationJourneys: 13.
             listingStarted: 8,
             listingCreated: 5,
             uniqueListingsCreated: 5,
