@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import {
     BroadcastCampaignStatus,
     BroadcastDeliveryStatus,
+    BroadcastEmailStatus,
     CapabilityStatus,
     ChatContext,
     Prisma,
@@ -16,6 +17,7 @@ import { ChatRateLimitService } from '../chat/chat-rate-limit.service';
 import { messageInboxLink } from '../chat/chat-routing';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { EmailService } from '../email/email.service';
 import {
     AdminAudienceDto,
     AdminMediaKind,
@@ -46,6 +48,7 @@ export class AdminMessagingService {
         private readonly notificationsService: NotificationsService,
         private readonly notificationsGateway: NotificationsGateway,
         private readonly chatRateLimit: ChatRateLimitService,
+        private readonly emailService: EmailService,
     ) {}
 
     async listChatReports(
@@ -199,12 +202,29 @@ export class AdminMessagingService {
         campaignId: string,
         targetStatuses: BroadcastDeliveryStatus[],
         senderAdminId?: string,
+        targetEmailStatuses?: BroadcastEmailStatus[],
     ) {
+        const emailStatuses = targetEmailStatuses ?? (
+            targetStatuses.includes(BroadcastDeliveryStatus.FAILED)
+                ? [BroadcastEmailStatus.FAILED]
+                : [BroadcastEmailStatus.PENDING]
+        );
+
+        const channelFilters: Prisma.BroadcastDeliveryWhereInput[] = [];
+        if (targetStatuses.length > 0) {
+            channelFilters.push({ status: { in: targetStatuses } });
+        }
+        if (emailStatuses.length > 0) {
+            channelFilters.push({ emailStatus: { in: emailStatuses } });
+        }
+
         const campaign = await this.prisma.broadcastCampaign.findUnique({
             where: { id: campaignId },
             include: {
                 deliveries: {
-                    where: { status: { in: targetStatuses } },
+                    where: channelFilters.length > 1
+                        ? { OR: channelFilters }
+                        : channelFilters[0],
                     include: {
                         user: {
                             select: {
@@ -227,49 +247,134 @@ export class AdminMessagingService {
 
         const adminId = senderAdminId || campaign.adminId;
         const content = this.buildCampaignContent(campaign);
-        const failures: Array<{ userId: string; error: string }> = [];
+        const failures: Array<{ userId: string; channel: 'chat' | 'email'; error: string }> = [];
 
         for (let i = 0; i < campaign.deliveries.length; i += SEND_BATCH_SIZE) {
             const batch = campaign.deliveries.slice(i, i + SEND_BATCH_SIZE);
-            const results = await Promise.allSettled(
-                batch.map((delivery) => this.deliverOne(
-                    delivery.id,
-                    adminId,
-                    delivery.user,
-                    content,
-                    campaign.text || '',
-                    campaign.mediaKind as AdminMediaKind | undefined,
-                )),
-            );
 
-            for (let index = 0; index < results.length; index += 1) {
-                const result = results[index];
-                const delivery = batch[index];
-                if (result.status === 'fulfilled') {
-                    await this.prisma.broadcastDelivery.update({
-                        where: { id: delivery.id },
-                        data: {
+            const results = await Promise.all(batch.map(async (delivery) => {
+                let chat:
+                    | { ok: true; roomId: string; messageId: string }
+                    | { ok: false; error: string }
+                    | null = null;
+                let email:
+                    | { status: BroadcastEmailStatus.SENT; messageId: string }
+                    | { status: BroadcastEmailStatus.SKIPPED; messageId: null }
+                    | { status: BroadcastEmailStatus.FAILED; messageId: null; error: string }
+                    | null = null;
+
+                if (targetStatuses.includes(delivery.status)) {
+                    try {
+                        const delivered = await this.deliverOne(
+                            delivery.id,
+                            adminId,
+                            delivery.user,
+                            content,
+                            campaign.text || '',
+                            campaign.mediaKind as AdminMediaKind | undefined,
+                        );
+                        chat = {
+                            ok: true,
+                            roomId: delivered.room.id,
+                            messageId: delivered.message.id,
+                        };
+                    } catch (error: any) {
+                        chat = {
+                            ok: false,
+                            error: String(error?.message || 'Chat delivery failed').slice(0, 1000),
+                        };
+                    }
+                }
+
+                if (emailStatuses.includes(delivery.emailStatus)) {
+                    try {
+                        email = await this.deliverEmailOne(delivery.user, {
+                            text: campaign.text,
+                            mediaUrl: campaign.mediaUrl,
+                            mediaKind: campaign.mediaKind,
+                        });
+                    } catch (error: any) {
+                        email = {
+                            status: BroadcastEmailStatus.FAILED,
+                            messageId: null,
+                            error: String(error?.message || 'Email delivery failed').slice(0, 1000),
+                        };
+                    }
+                }
+
+                return { delivery, chat, email };
+            }));
+
+            for (const result of results) {
+                const data: Prisma.BroadcastDeliveryUpdateInput = {};
+
+                if (result.chat) {
+                    if (result.chat.ok) {
+                        Object.assign(data, {
                             status: BroadcastDeliveryStatus.SENT,
-                            roomId: result.value.room.id,
-                            messageId: result.value.message.id,
+                            roomId: result.chat.roomId,
+                            messageId: result.chat.messageId,
                             error: null,
-                        },
-                    });
-                } else {
-                    const error = String(result.reason?.message || 'Delivery failed').slice(0, 1000);
-                    failures.push({ userId: delivery.userId, error });
-                    await this.prisma.broadcastDelivery.update({
-                        where: { id: delivery.id },
-                        data: {
+                        });
+                    } else {
+                        failures.push({
+                            userId: result.delivery.userId,
+                            channel: 'chat',
+                            error: result.chat.error,
+                        });
+                        Object.assign(data, {
                             status: BroadcastDeliveryStatus.FAILED,
-                            error,
-                        },
+                            error: result.chat.error,
+                        });
+                    }
+                }
+
+                if (result.email) {
+                    if (result.email.status === BroadcastEmailStatus.SENT) {
+                        Object.assign(data, {
+                            emailStatus: BroadcastEmailStatus.SENT,
+                            emailMessageId: result.email.messageId,
+                            emailError: null,
+                            emailSentAt: new Date(),
+                        });
+                    } else if (result.email.status === BroadcastEmailStatus.SKIPPED) {
+                        Object.assign(data, {
+                            emailStatus: BroadcastEmailStatus.SKIPPED,
+                            emailMessageId: null,
+                            emailError: null,
+                        });
+                    } else {
+                        failures.push({
+                            userId: result.delivery.userId,
+                            channel: 'email',
+                            error: result.email.error,
+                        });
+                        Object.assign(data, {
+                            emailStatus: BroadcastEmailStatus.FAILED,
+                            emailMessageId: null,
+                            emailError: result.email.error,
+                        });
+                    }
+                }
+
+                if (Object.keys(data).length > 0) {
+                    await this.prisma.broadcastDelivery.update({
+                        where: { id: result.delivery.id },
+                        data,
                     });
                 }
             }
         }
 
-        const [sent, failed, pending] = await Promise.all([
+        const [
+            sent,
+            failed,
+            pending,
+            emailSent,
+            emailFailed,
+            emailSkipped,
+            emailPending,
+        ] = await Promise.all([
             this.prisma.broadcastDelivery.count({
                 where: { campaignId, status: BroadcastDeliveryStatus.SENT },
             }),
@@ -279,28 +384,45 @@ export class AdminMessagingService {
             this.prisma.broadcastDelivery.count({
                 where: { campaignId, status: BroadcastDeliveryStatus.PENDING },
             }),
+            this.prisma.broadcastDelivery.count({
+                where: { campaignId, emailStatus: BroadcastEmailStatus.SENT },
+            }),
+            this.prisma.broadcastDelivery.count({
+                where: { campaignId, emailStatus: BroadcastEmailStatus.FAILED },
+            }),
+            this.prisma.broadcastDelivery.count({
+                where: { campaignId, emailStatus: BroadcastEmailStatus.SKIPPED },
+            }),
+            this.prisma.broadcastDelivery.count({
+                where: { campaignId, emailStatus: BroadcastEmailStatus.PENDING },
+            }),
         ]);
 
-        const finalStatus = pending > 0
+        const finalStatus = pending > 0 || emailPending > 0
             ? BroadcastCampaignStatus.SENDING
-            : this.broadcastStatus(sent, failed, campaign.requested);
+            : this.broadcastStatus(sent, failed, campaign.requested, emailSent, emailFailed);
 
         await this.prisma.broadcastCampaign.update({
             where: { id: campaignId },
             data: {
                 sent,
                 failed,
+                emailSent,
+                emailFailed,
+                emailSkipped,
                 status: finalStatus,
                 startedAt: campaign.startedAt || new Date(),
-                finishedAt: pending === 0 ? new Date() : null,
+                finishedAt: pending === 0 && emailPending === 0 ? new Date() : null,
             },
         });
 
         this.logger.log(
-            `Broadcast campaign ${campaignId} delivered to ${sent}/${campaign.requested} recipients`,
+            `Broadcast campaign ${campaignId}: chat ${sent}/${campaign.requested}, email ${emailSent} sent / ${emailSkipped} skipped / ${emailFailed} failed`,
         );
         if (failures.length > 0) {
-            this.logger.warn(`Broadcast campaign ${campaignId} had ${failures.length} delivery failure(s) in this attempt`);
+            this.logger.warn(
+                `Broadcast campaign ${campaignId} had ${failures.length} channel delivery failure(s) in this attempt`,
+            );
         }
 
         return {
@@ -309,6 +431,10 @@ export class AdminMessagingService {
             sent,
             failed,
             pending,
+            emailSent,
+            emailFailed,
+            emailSkipped,
+            emailPending,
             status: finalStatus,
             failures: failures.slice(0, 20),
         };
@@ -573,9 +699,60 @@ export class AdminMessagingService {
         return { message, room, duplicate: false };
     }
 
-    private broadcastStatus(sent: number, failed: number, requested: number): BroadcastCampaignStatus {
-        if (sent === requested && failed === 0) return BroadcastCampaignStatus.COMPLETED;
-        if (sent === 0) return BroadcastCampaignStatus.FAILED;
+    private async deliverEmailOne(
+        recipient: Recipient,
+        campaign: { text?: string | null; mediaUrl?: string | null; mediaKind?: string | null },
+    ): Promise<
+        | { status: BroadcastEmailStatus.SENT; messageId: string }
+        | { status: BroadcastEmailStatus.SKIPPED; messageId: null }
+    > {
+        const shouldSend = await this.notificationsService.shouldSendEmail(
+            recipient.id,
+            'MESSAGE_RECEIVED',
+        );
+        if (!shouldSend) {
+            return {
+                status: BroadcastEmailStatus.SKIPPED,
+                messageId: null,
+            };
+        }
+
+        const recipientName = [recipient.firstName, recipient.lastName]
+            .filter(Boolean)
+            .join(' ')
+            .trim();
+
+        const result = await this.emailService.sendAdminBroadcastEmail({
+            toEmail: recipient.email,
+            recipientName,
+            text: campaign.text,
+            mediaUrl: campaign.mediaUrl,
+            mediaKind: campaign.mediaKind,
+        });
+
+        if (!result?.id) {
+            throw new Error('Every configured email provider failed.');
+        }
+
+        return {
+            status: BroadcastEmailStatus.SENT,
+            messageId: result.id,
+        };
+    }
+
+    private broadcastStatus(
+        sent: number,
+        failed: number,
+        requested: number,
+        emailSent = 0,
+        emailFailed = 0,
+    ): BroadcastCampaignStatus {
+        if (sent === requested && failed === 0 && emailFailed === 0) {
+            return BroadcastCampaignStatus.COMPLETED;
+        }
+        if (sent === 0 && emailSent === 0) {
+            return BroadcastCampaignStatus.FAILED;
+        }
         return BroadcastCampaignStatus.PARTIAL;
     }
 
