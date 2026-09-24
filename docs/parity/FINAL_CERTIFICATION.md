@@ -8,7 +8,7 @@
 
 The repository now has a closed machine-readable parity manifest:
 
-- **56 required cross-platform features**
+- **57 required cross-platform features**
 - **2 approved web-only features**
 - **0 unresolved `gap` entries**
 - **0 `web_only_candidate` entries**
@@ -122,3 +122,18 @@ The repository deliberately does not guess the two signing identifiers.
 **Runtime release certification:** PENDING the device/browser/signing/store-release evidence above.
 
 A release may be treated as functionally one-product at the code-contract level only after the current parity workflow is green on its exact release commit. Runtime-performance, accessibility and universal-link claims should be made only after their corresponding external checks are recorded.
+
+
+## 80% → 90% release synchronization checkpoint
+
+A common Git SHA is now the One Product release identity:
+
+- web exposes the Vercel commit SHA through `/api/release`;
+- backend exposes the Fly image release SHA through `/health/release`;
+- Fly builds receive `RELEASE_ID=${GITHUB_SHA}`;
+- native EAS Update/build source receives the same approved SHA before bundling;
+- the release workflow waits until production web and backend both report the exact SHA before native publication can begin.
+
+Native publication is intentionally gated. Automatic production publication requires repository variable `ONE_PRODUCT_AUTO_RELEASE=true` plus an authenticated `EXPO_TOKEN`. JavaScript-safe releases use EAS Update; native configuration/dependency changes start signed production builds instead. Store submission remains outside this checkpoint because `eas.json` still contains placeholder App Store identifiers and the repository does not contain the real signing/store credentials.
+
+**Programme checkpoint:** **90% complete.** The remaining 10% is external production evidence: signed-device/store association, accessibility/performance runtime checks, and final production smoke/release verification.
