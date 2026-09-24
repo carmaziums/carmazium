@@ -1206,6 +1206,15 @@ enum BroadcastDeliveryStatus {
   @@map("broadcast_delivery_status")
 }
 
+enum BroadcastEmailStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+
+  @@map("broadcast_email_status")
+}
+
 model ChatRoom {
   id                     String      @id @default(uuid())
   initiatorId            String
@@ -1407,9 +1416,12 @@ model BroadcastCampaign {
   mediaMime   String?
   mediaSize   Int?
   requested   Int
-  sent        Int                     @default(0)
-  failed      Int                     @default(0)
-  status      BroadcastCampaignStatus @default(SENDING)
+  sent         Int                     @default(0)
+  failed       Int                     @default(0)
+  emailSent    Int                     @default(0)
+  emailFailed  Int                     @default(0)
+  emailSkipped Int                     @default(0)
+  status       BroadcastCampaignStatus @default(SENDING)
   scheduledAt DateTime?
   startedAt   DateTime?
   cancelledAt DateTime?
@@ -1431,9 +1443,13 @@ model BroadcastDelivery {
   userId     String
   roomId     String?
   messageId  String?
-  status     BroadcastDeliveryStatus @default(PENDING)
-  error      String?
-  createdAt  DateTime                @default(now())
+  status         BroadcastDeliveryStatus @default(PENDING)
+  error          String?
+  emailStatus    BroadcastEmailStatus    @default(PENDING)
+  emailMessageId String?
+  emailError     String?
+  emailSentAt    DateTime?
+  createdAt      DateTime                @default(now())
   updatedAt  DateTime                @updatedAt
 
   campaign BroadcastCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
@@ -1441,6 +1457,7 @@ model BroadcastDelivery {
 
   @@unique([campaignId, userId])
   @@index([campaignId, status])
+  @@index([campaignId, emailStatus])
   @@index([userId])
   @@map("broadcast_deliveries")
 }

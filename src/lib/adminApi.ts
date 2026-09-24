@@ -327,8 +327,12 @@ export interface AdminMessageSendResult {
   sent: number;
   failed: number;
   pending?: number;
+  emailSent: number;
+  emailFailed: number;
+  emailSkipped: number;
+  emailPending?: number;
   status?: BroadcastCampaignStatus;
-  failures: Array<{ userId: string; error: string }>;
+  failures: Array<{ userId: string; channel: 'chat' | 'email'; error: string }>;
 }
 
 export interface AdminMessageScheduleResult {
@@ -339,11 +343,45 @@ export interface AdminMessageScheduleResult {
 }
 
 export async function previewAdminMessageAudience(selection: AdminAudienceSelection): Promise<AdminAudiencePreview> {
-  const result = await apiClient<{ data: AdminAudiencePreview }>('/admin/messaging/preview', {
-    method: 'POST',
-    body: JSON.stringify(selection),
-  });
-  return result.data;
+  const delays = [0, 450, 1200];
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < delays.length; attempt += 1) {
+    if (delays[attempt] > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
+    }
+
+    try {
+      const result = await apiClient<{ data: AdminAudiencePreview }>('/admin/messaging/preview', {
+        method: 'POST',
+        body: JSON.stringify(selection),
+      });
+      return result.data;
+    } catch (error: any) {
+      if (error?.message === 'AUTH_REDIRECT') throw error;
+
+      lastError = error;
+      const message = String(error?.message || error || '').toLowerCase();
+      const retryable =
+        message.includes('failed to fetch') ||
+        message.includes('network') ||
+        message.includes('timed out') ||
+        message.includes('load failed') ||
+        message.includes('econnreset');
+
+      if (!retryable || attempt === delays.length - 1) break;
+    }
+  }
+
+  const message = String((lastError as any)?.message || lastError || '');
+  const networkFailure =
+    /failed to fetch|network|timed out|load failed|econnreset/i.test(message);
+
+  throw new Error(
+    networkFailure
+      ? 'Could not reach the CarMazium server to check recipients. Please tap Retry.'
+      : (message || 'Could not preview audience'),
+  );
 }
 
 export async function sendAdminAudienceMessage(payload: AdminMessagePayload): Promise<AdminMessageSendResult> {
@@ -469,6 +507,7 @@ export type BroadcastCampaignStatus =
   | 'FAILED'
   | 'CANCELLED';
 export type BroadcastDeliveryStatus = 'PENDING' | 'SENT' | 'FAILED';
+export type BroadcastEmailStatus = 'PENDING' | 'SENT' | 'FAILED' | 'SKIPPED';
 
 export interface AdminBroadcastCampaign {
   id: string;
@@ -484,6 +523,9 @@ export interface AdminBroadcastCampaign {
   requested: number;
   sent: number;
   failed: number;
+  emailSent: number;
+  emailFailed: number;
+  emailSkipped: number;
   status: BroadcastCampaignStatus;
   scheduledAt?: string | null;
   startedAt?: string | null;
@@ -506,6 +548,10 @@ export interface AdminBroadcastDelivery {
   messageId?: string | null;
   status: BroadcastDeliveryStatus;
   error?: string | null;
+  emailStatus: BroadcastEmailStatus;
+  emailMessageId?: string | null;
+  emailError?: string | null;
+  emailSentAt?: string | null;
   createdAt: string;
   updatedAt: string;
   user: {
@@ -543,6 +589,12 @@ export interface AdminBroadcastAnalytics {
   pendingRecipients: number;
   attemptedRecipients: number;
   deliverySuccessRate: number | null;
+  emailSentRecipients: number;
+  emailFailedRecipients: number;
+  emailSkippedRecipients: number;
+  emailPendingRecipients: number;
+  emailAttemptedRecipients: number;
+  emailSuccessRate: number | null;
 }
 
 export async function getAdminBroadcastCampaigns(

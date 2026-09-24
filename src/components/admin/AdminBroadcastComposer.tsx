@@ -7,6 +7,7 @@ import {
     CheckCircle2,
     FileImage,
     Loader2,
+    RefreshCw,
     Send,
     Upload,
     Users,
@@ -61,6 +62,7 @@ export function AdminBroadcastComposer() {
     const [preview, setPreview] = React.useState<AdminAudiencePreview | null>(null)
     const [previewing, setPreviewing] = React.useState(false)
     const [previewError, setPreviewError] = React.useState<string | null>(null)
+    const [previewRetryKey, setPreviewRetryKey] = React.useState(0)
     const [confirming, setConfirming] = React.useState(false)
     const [deliveryMode, setDeliveryMode] = React.useState<"now" | "schedule">("now")
     const [scheduledLocal, setScheduledLocal] = React.useState("")
@@ -97,7 +99,7 @@ export function AdminBroadcastComposer() {
             cancelled = true
             window.clearTimeout(timer)
         }
-    }, [selection])
+    }, [selection, previewRetryKey])
 
     const chooseAudience = (next: AdminMessageAudience) => {
         setAudience(next)
@@ -105,23 +107,31 @@ export function AdminBroadcastComposer() {
 
     const handleFile = async (file?: File) => {
         if (!file) return
-        const isImage = file.type.startsWith("image/")
-        const isVideo = file.type.startsWith("video/")
+        const allowedImageTypes = new Set([
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/avif",
+            "image/heic",
+            "image/heif",
+        ])
+        const isImage = allowedImageTypes.has(file.type)
+        const isVideo = file.type === "video/mp4" || file.type === "video/quicktime"
         if (!isImage && !isVideo) {
-            setResult("Only picture and video files can be sent.")
+            setResult("Only picture files, MP4 videos or MOV videos can be sent.")
             return
         }
 
-        const max = isImage ? 10 * 1024 * 1024 : 25 * 1024 * 1024
+        const max = isImage ? 10 * 1024 * 1024 : 100 * 1024 * 1024
         if (file.size > max) {
-            setResult(isImage ? "Pictures must be 10 MB or smaller." : "Videos must be 25 MB or smaller.")
+            setResult(isImage ? "Pictures must be 10 MB or smaller." : "Videos must be 100 MB or smaller.")
             return
         }
 
         try {
             setUploading(true)
             setResult(null)
-            const url = await uploadImage(file, "listings", "admin-messages")
+            const url = await uploadImage(file, "admin-broadcasts", "media")
             setMedia({
                 url,
                 kind: isImage ? "IMAGE" : "VIDEO",
@@ -172,14 +182,15 @@ export function AdminBroadcastComposer() {
                     scheduledDate.toISOString(),
                 )
                 setResult(
-                    `Broadcast scheduled for ${new Date(scheduled.scheduledAt).toLocaleString()} with ${scheduled.requested.toLocaleString()} locked recipient${scheduled.requested === 1 ? "" : "s"}.`,
+                    `Broadcast scheduled for ${new Date(scheduled.scheduledAt).toLocaleString()} with ${scheduled.requested.toLocaleString()} locked recipient${scheduled.requested === 1 ? "" : "s"}. Chat, in-app and email will dispatch together.`,
                 )
             } else {
                 const sent = await sendAdminAudienceMessage(messagePayload)
+                const channelFailures = sent.failed + sent.emailFailed
                 setResult(
-                    sent.failed > 0
-                        ? `Sent to ${sent.sent} of ${sent.requested} recipients. ${sent.failed} delivery failed.`
-                        : `Message sent successfully to ${sent.sent} recipient${sent.sent === 1 ? "" : "s"}.`,
+                    channelFailures > 0
+                        ? `Broadcast delivered to chat for ${sent.sent}/${sent.requested}. Email: ${sent.emailSent} sent, ${sent.emailSkipped} skipped, ${sent.emailFailed} failed.`
+                        : `Broadcast sent successfully. Chat: ${sent.sent}/${sent.requested}. Email: ${sent.emailSent} sent${sent.emailSkipped ? `, ${sent.emailSkipped} skipped by preference` : ""}.`,
                 )
             }
 
@@ -214,7 +225,7 @@ export function AdminBroadcastComposer() {
                         <Send size={14} /> Admin broadcast
                     </div>
                     <h3 className="text-2xl font-black text-[var(--text-primary)]">Send a CarMazium message</h3>
-                    <p className="text-sm text-[var(--text-muted)] mt-1">Send text, a picture or a video to a selected audience. Use New Conversation for one member.</p>
+                    <p className="text-sm text-[var(--text-muted)] mt-1">Send one broadcast to chat, in-app notifications and email inboxes. Use New Conversation for one member.</p>
                 </div>
 
                 <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 sm:p-5 shadow-lg">
@@ -261,7 +272,20 @@ export function AdminBroadcastComposer() {
                         </div>
                         {previewing ? <Loader2 className="animate-spin text-primary" /> : preview?.count ? <CheckCircle2 className="text-emerald-500" /> : <Users className="text-[var(--text-muted)]" />}
                     </div>
-                    {previewError && <p className="mt-2 text-sm text-red-500">{previewError}</p>}
+                    {previewError && (
+                        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2.5">
+                            <p className="min-w-0 flex-1 text-sm text-red-500">{previewError}</p>
+                            <button
+                                type="button"
+                                onClick={() => setPreviewRetryKey((value) => value + 1)}
+                                disabled={previewing}
+                                className="inline-flex items-center gap-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] px-3 py-2 text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--bg-input)] disabled:opacity-50"
+                            >
+                                {previewing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                                Retry recipient preview
+                            </button>
+                        </div>
+                    )}
                 </section>
 
                 <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 sm:p-5 shadow-lg">
@@ -279,7 +303,7 @@ export function AdminBroadcastComposer() {
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/*,video/*"
+                        accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,video/mp4,video/quicktime"
                         className="hidden"
                         onChange={(e) => handleFile(e.target.files?.[0])}
                     />
@@ -314,7 +338,7 @@ export function AdminBroadcastComposer() {
                             )}
                         </div>
                     )}
-                    <p className="text-xs text-[var(--text-muted)] mt-2">Pictures up to 10 MB · videos up to 25 MB.</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-2">Pictures up to 10 MB · MP4/MOV videos up to 100 MB. Large videos may take longer on mobile data.</p>
                 </section>
 
                 <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 sm:p-5 shadow-lg">
