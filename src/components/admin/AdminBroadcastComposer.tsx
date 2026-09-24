@@ -7,6 +7,7 @@ import {
     CheckCircle2,
     FileImage,
     Loader2,
+    RefreshCw,
     Send,
     Upload,
     Users,
@@ -61,6 +62,7 @@ export function AdminBroadcastComposer() {
     const [preview, setPreview] = React.useState<AdminAudiencePreview | null>(null)
     const [previewing, setPreviewing] = React.useState(false)
     const [previewError, setPreviewError] = React.useState<string | null>(null)
+    const [previewRetryKey, setPreviewRetryKey] = React.useState(0)
     const [confirming, setConfirming] = React.useState(false)
     const [deliveryMode, setDeliveryMode] = React.useState<"now" | "schedule">("now")
     const [scheduledLocal, setScheduledLocal] = React.useState("")
@@ -97,7 +99,7 @@ export function AdminBroadcastComposer() {
             cancelled = true
             window.clearTimeout(timer)
         }
-    }, [selection])
+    }, [selection, previewRetryKey])
 
     const chooseAudience = (next: AdminMessageAudience) => {
         setAudience(next)
@@ -262,7 +264,20 @@ export function AdminBroadcastComposer() {
                         </div>
                         {previewing ? <Loader2 className="animate-spin text-primary" /> : preview?.count ? <CheckCircle2 className="text-emerald-500" /> : <Users className="text-[var(--text-muted)]" />}
                     </div>
-                    {previewError && <p className="mt-2 text-sm text-red-500">{previewError}</p>}
+                    {previewError && (
+                        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2.5">
+                            <p className="min-w-0 flex-1 text-sm text-red-500">{previewError}</p>
+                            <button
+                                type="button"
+                                onClick={() => setPreviewRetryKey((value) => value + 1)}
+                                disabled={previewing}
+                                className="inline-flex items-center gap-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] px-3 py-2 text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--bg-input)] disabled:opacity-50"
+                            >
+                                {previewing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                                Retry recipient preview
+                            </button>
+                        </div>
+                    )}
                 </section>
 
                 <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 sm:p-5 shadow-lg">
