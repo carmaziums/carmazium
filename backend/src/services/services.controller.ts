@@ -12,6 +12,7 @@ import { ContractorGuard } from './guards/contractor.guard';
 import { TradeTeamService } from './trade-team.service';
 import { ACCEPTED_PAYMENT_TIMEOUT_MINUTES } from './services-lifecycle.service';
 import { serviceAvailabilitySnapshot } from './service-availability';
+import { ProductSyncGateway } from '../sync/product-sync.gateway';
 import {
     CreateJobDto, JobFromPurchaseDto, InspectionFromAuctionDto, CompleteJobDto, CancelJobDto, UpsertQuoteDto, ApplyCapabilityDto,
     UpdateLeadMatchingDto, UpdateJobMatchingDto, ServiceListQueryDto, ServiceJobFeedQueryDto, CreateServiceReviewDto,
@@ -35,6 +36,7 @@ export class ServicesController {
     constructor(
         private readonly services: ServicesService,
         private readonly tradeTeam: TradeTeamService,
+        private readonly productSync: ProductSyncGateway,
     ) { }
 
     // ── Shared marketplace settings ───────────────────────────────────────
@@ -55,7 +57,9 @@ export class ServicesController {
     @Post('capabilities')
     @ApiOperation({ summary: 'Apply to provide a service area (creates the contractor profile on first use)' })
     async apply(@CurrentUser() user: any, @Body() dto: ApplyCapabilityDto) {
-        return new StandardResponse(await this.services.applyCapability(user.id, dto));
+        const result = await this.services.applyCapability(user.id, dto);
+        this.productSync.broadcast({ domain: 'services', action: 'capability-applied' });
+        return new StandardResponse(result);
     }
 
     @Get('capabilities/my')
@@ -71,7 +75,9 @@ export class ServicesController {
         @Param('id') id: string,
         @Body() dto: UpdateLeadMatchingDto,
     ) {
-        return new StandardResponse(await this.services.updateLeadMatching(user.id, id, dto));
+        const result = await this.services.updateLeadMatching(user.id, id, dto);
+        this.productSync.broadcast({ domain: 'services', action: 'lead-matching-updated' });
+        return new StandardResponse(result);
     }
 
     @Patch('capabilities/:id/job-matching')
@@ -81,7 +87,9 @@ export class ServicesController {
         @Param('id') id: string,
         @Body() dto: UpdateJobMatchingDto,
     ) {
-        return new StandardResponse(await this.services.updateJobMatching(user.id, id, dto));
+        const result = await this.services.updateJobMatching(user.id, id, dto);
+        this.productSync.broadcast({ domain: 'services', action: 'job-matching-updated' });
+        return new StandardResponse(result);
     }
 
     // ── Customer ───────────────────────────────────────────────────────────
@@ -91,7 +99,9 @@ export class ServicesController {
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Post a job — any signed-in account' })
     async create(@CurrentUser() user: any, @Body() dto: CreateJobDto) {
-        return new StandardResponse(await this.services.createJob(user.id, dto));
+        const result = await this.services.createJob(user.id, dto);
+        this.productSync.broadcast({ domain: 'services', action: 'job-created' });
+        return new StandardResponse(result);
     }
 
     @Post('jobs/from-purchase')
@@ -99,7 +109,9 @@ export class ServicesController {
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Post a delivery job pre-filled from a won auction or accepted offer' })
     async fromPurchase(@CurrentUser() user: any, @Body() dto: JobFromPurchaseDto) {
-        return new StandardResponse(await this.services.createJobFromPurchase(user.id, dto));
+        const result = await this.services.createJobFromPurchase(user.id, dto);
+        this.productSync.broadcast({ domain: 'services', action: 'job-created-from-purchase' });
+        return new StandardResponse(result);
     }
 
     @Post('jobs/inspection/from-auction')
@@ -110,7 +122,9 @@ export class ServicesController {
         @CurrentUser() user: any,
         @Body() dto: InspectionFromAuctionDto,
     ) {
-        return new StandardResponse(await this.services.createInspectionFromAuction(user.id, dto));
+        const result = await this.services.createInspectionFromAuction(user.id, dto);
+        this.productSync.broadcast({ domain: 'services', action: 'inspection-created-from-auction' });
+        return new StandardResponse(result);
     }
 
     @Get('jobs/my')
@@ -168,6 +182,7 @@ export class ServicesController {
                 amountPence: dto.amountPence,
             });
         }
+        this.productSync.broadcast({ domain: 'services', action: 'quote-upserted' });
         return new StandardResponse(result);
     }
 
@@ -178,6 +193,7 @@ export class ServicesController {
         if (req.tradeActor) await this.tradeTeam.assertJobPermission(req.tradeActor, id, 'quote');
         const result = await this.services.withdrawQuote(req.contractorProfileId, id);
         if (req.tradeActor) await this.tradeTeam.logAction(req.tradeActor, id, 'QUOTE_WITHDRAWN');
+        this.productSync.broadcast({ domain: 'services', action: 'quote-withdrawn' });
         return new StandardResponse(result);
     }
 
@@ -188,6 +204,7 @@ export class ServicesController {
         if (req.tradeActor) await this.tradeTeam.assertJobPermission(req.tradeActor, id, 'manage');
         const result = await this.services.startJob(req.contractorProfileId, id);
         if (req.tradeActor) await this.tradeTeam.logAction(req.tradeActor, id, 'JOB_STARTED');
+        this.productSync.broadcast({ domain: 'services', action: 'job-started' });
         return new StandardResponse(result);
     }
 
@@ -198,6 +215,7 @@ export class ServicesController {
         if (req.tradeActor) await this.tradeTeam.assertJobPermission(req.tradeActor, id, 'complete');
         const result = await this.services.completeJob(req.contractorProfileId, id, dto);
         if (req.tradeActor) await this.tradeTeam.logAction(req.tradeActor, id, 'JOB_COMPLETED');
+        this.productSync.broadcast({ domain: 'services', action: 'job-completed' });
         return new StandardResponse(result);
     }
 
@@ -220,25 +238,33 @@ export class ServicesController {
     @Post('jobs/:id/cancel')
     @ApiOperation({ summary: 'Cancel an OPEN job' })
     async cancel(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: CancelJobDto) {
-        return new StandardResponse(await this.services.cancelJob(user.id, id, dto));
+        const result = await this.services.cancelJob(user.id, id, dto);
+        this.productSync.broadcast({ domain: 'services', action: 'job-cancelled' });
+        return new StandardResponse(result);
     }
 
     @Post('jobs/:id/quotes/:quoteId/accept')
     @ApiOperation({ summary: 'Accept a quote → Stripe Checkout URL' })
     async accept(@CurrentUser() user: any, @Param('id') id: string, @Param('quoteId') quoteId: string) {
-        return new StandardResponse(await this.services.acceptQuote(user.id, id, quoteId));
+        const result = await this.services.acceptQuote(user.id, id, quoteId);
+        this.productSync.broadcast({ domain: 'services', action: 'quote-accepted' });
+        return new StandardResponse(result);
     }
 
     @Post('jobs/:id/confirm')
     @ApiOperation({ summary: 'Confirm completion → releases the provider payout' })
     async confirm(@CurrentUser() user: any, @Param('id') id: string) {
-        return new StandardResponse(await this.services.confirmCompletion(user.id, id));
+        const result = await this.services.confirmCompletion(user.id, id);
+        this.productSync.broadcast({ domain: 'services', action: 'job-confirmed' });
+        return new StandardResponse(result);
     }
 
     @Post('jobs/:id/dispute')
     @ApiOperation({ summary: 'Freeze a paid job for admin review' })
     async dispute(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: CancelJobDto) {
-        return new StandardResponse(await this.services.openDispute(user.id, id, dto.reason));
+        const result = await this.services.openDispute(user.id, id, dto.reason);
+        this.productSync.broadcast({ domain: 'services', action: 'job-disputed' });
+        return new StandardResponse(result);
     }
 
     @Post('jobs/:id/review')
@@ -250,6 +276,8 @@ export class ServicesController {
         @Param('id') id: string,
         @Body() dto: CreateServiceReviewDto,
     ) {
-        return new StandardResponse(await this.services.createServiceReview(user.id, id, dto));
+        const result = await this.services.createServiceReview(user.id, id, dto);
+        this.productSync.broadcast({ domain: 'services', action: 'review-created' });
+        return new StandardResponse(result);
     }
 }
