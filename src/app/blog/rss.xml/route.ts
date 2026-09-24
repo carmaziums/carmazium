@@ -1,4 +1,5 @@
 import type { BlogPost } from "@/lib/blogApi"
+import { fetchBackendWithRetry } from "@/lib/serverBackendFetch"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 // Canonical SEO origin. The apex domain permanently redirects to www.
@@ -6,7 +7,7 @@ const SITE_URL = "https://www.carmazium.com"
 
 async function getLatestPosts(): Promise<BlogPost[]> {
     try {
-        const res = await fetch(`${API_BASE}/blog?page=1&limit=50`, { next: { revalidate: 600 } })
+        const res = await fetchBackendWithRetry(`${API_BASE}/blog?page=1&limit=50`, { next: { revalidate: 600 } })
         if (!res.ok) return []
         const json = await res.json()
         return json.data ?? []
