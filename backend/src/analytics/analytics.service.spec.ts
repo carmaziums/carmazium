@@ -109,7 +109,7 @@ describe('AnalyticsService live valuation analytics', () => {
             withoutFigures: 2,
             confirmedNoFigures: 2,
             figureSuccessRate: 85,
-            valuationJourneys: 13.
+            valuationJourneys: 13,
             listingStarted: 8,
             listingCreated: 5,
             uniqueListingsCreated: 5,
@@ -135,7 +135,7 @@ describe('AnalyticsService live valuation analytics', () => {
             withoutFigures: 2,
             confirmedNoFigures: 2,
             figureSuccessRate: 85,
-            valuationJourneys: 13.
+            valuationJourneys: 13,
             listingStarted: 8,
             listingCreated: 5,
             uniqueListingsCreated: 5,
