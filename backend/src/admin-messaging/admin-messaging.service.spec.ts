@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import {
     BroadcastCampaignStatus,
     BroadcastDeliveryStatus,
+    BroadcastEmailStatus,
     CapabilityStatus,
     ServiceType,
     UserRole,
@@ -81,6 +82,7 @@ describe('AdminMessagingService', () => {
                         campaignId: 'campaign-1',
                         userId: user.id,
                         status: BroadcastDeliveryStatus.PENDING,
+                        emailStatus: BroadcastEmailStatus.PENDING,
                         createdAt: new Date(),
                         user,
                     })),
@@ -95,6 +97,7 @@ describe('AdminMessagingService', () => {
                 updateMany: jest.fn().mockResolvedValue({ count: 0 }),
                 count: jest.fn().mockImplementation(({ where }: any) => {
                     if (where.status === BroadcastDeliveryStatus.SENT) return Promise.resolve(users.length);
+                    if (where.emailStatus === BroadcastEmailStatus.SENT) return Promise.resolve(users.length);
                     return Promise.resolve(0);
                 }),
             },
@@ -109,9 +112,13 @@ describe('AdminMessagingService', () => {
         } as any;
         const notificationsService = {
             create: jest.fn().mockResolvedValue({ id: 'notification-1' }),
+            shouldSendEmail: jest.fn().mockResolvedValue(true),
         } as any;
         const notificationsGateway = { sendNotification: jest.fn() } as any;
         const chatRateLimit = { consumeAdminBroadcast: jest.fn() } as any;
+        const emailService = {
+            sendAdminBroadcastEmail: jest.fn().mockResolvedValue({ id: 'email-1' }),
+        } as any;
 
         const service = new AdminMessagingService(
             prisma,
@@ -120,9 +127,10 @@ describe('AdminMessagingService', () => {
             notificationsService,
             notificationsGateway,
             chatRateLimit,
+            emailService,
         );
 
-        return { service, prisma, chatService, chatGateway, socketRoom, notificationsService, notificationsGateway };
+        return { service, prisma, chatService, chatGateway, socketRoom, notificationsService, notificationsGateway, emailService };
     };
 
     it('targets delivery drivers through an APPROVED DELIVERY capability', async () => {
@@ -213,6 +221,66 @@ describe('AdminMessagingService', () => {
         );
     });
 
+    it('delivers the same broadcast to the recipient email inbox', async () => {
+        const { service, emailService, notificationsService, prisma } = makeService();
+
+        const result = await service.send('admin-1', {
+            audience: AdminMessageAudience.ALL,
+            text: 'Platform update',
+            expectedRecipientCount: 1,
+        });
+
+        expect(notificationsService.shouldSendEmail).toHaveBeenCalledWith(
+            recipient.id,
+            'MESSAGE_RECEIVED',
+        );
+        expect(emailService.sendAdminBroadcastEmail).toHaveBeenCalledWith(
+            expect.objectContaining({
+                toEmail: recipient.email,
+                recipientName: 'Member One',
+                text: 'Platform update',
+            }),
+        );
+        expect(prisma.broadcastDelivery.update).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.objectContaining({
+                    emailStatus: BroadcastEmailStatus.SENT,
+                    emailMessageId: 'email-1',
+                    emailError: null,
+                    emailSentAt: expect.any(Date),
+                }),
+            }),
+        );
+        expect(result).toEqual(expect.objectContaining({
+            emailSent: 1,
+            emailFailed: 0,
+            emailSkipped: 0,
+        }));
+    });
+
+    it('skips broadcast email when the recipient disabled email notifications', async () => {
+        const { service, emailService, notificationsService, prisma } = makeService();
+        notificationsService.shouldSendEmail.mockResolvedValue(false);
+
+        const result = await service.send('admin-1', {
+            audience: AdminMessageAudience.ALL,
+            text: 'Platform update',
+            expectedRecipientCount: 1,
+        });
+
+        expect(emailService.sendAdminBroadcastEmail).not.toHaveBeenCalled();
+        expect(prisma.broadcastDelivery.update).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.objectContaining({
+                    emailStatus: BroadcastEmailStatus.SKIPPED,
+                    emailMessageId: null,
+                    emailError: null,
+                }),
+            }),
+        );
+        expect(result.emailSkipped).toBe(1);
+    });
+
     it('uses the delivery id as a message idempotency key', async () => {
         const { service, prisma, notificationsService } = makeService();
 
@@ -263,7 +331,12 @@ describe('AdminMessagingService', () => {
                 where: expect.objectContaining({
                     status: BroadcastCampaignStatus.SENDING,
                     deliveries: {
-                        some: { status: BroadcastDeliveryStatus.PENDING },
+                        some: {
+                            OR: [
+                                { status: BroadcastDeliveryStatus.PENDING },
+                                { emailStatus: BroadcastEmailStatus.PENDING },
+                            ],
+                        },
                     },
                 }),
             }),
@@ -417,7 +490,14 @@ describe('AdminMessagingService', () => {
         const { service, prisma } = makeService();
         prisma.broadcastCampaign.aggregate.mockResolvedValue({
             _count: { _all: 3 },
-            _sum: { requested: 10, sent: 8, failed: 1 },
+            _sum: {
+                requested: 10,
+                sent: 8,
+                failed: 1,
+                emailSent: 7,
+                emailFailed: 1,
+                emailSkipped: 1,
+            },
         });
         prisma.broadcastCampaign.groupBy.mockResolvedValue([
             { status: BroadcastCampaignStatus.COMPLETED, _count: { _all: 1 } },
@@ -437,6 +517,11 @@ describe('AdminMessagingService', () => {
             failedRecipients: 1,
             pendingRecipients: 1,
             deliverySuccessRate: 88.89,
+            emailSentRecipients: 7,
+            emailFailedRecipients: 1,
+            emailSkippedRecipients: 1,
+            emailPendingRecipients: 1,
+            emailSuccessRate: 87.5,
         }));
     });
 
