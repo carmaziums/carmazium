@@ -83,6 +83,22 @@ A shared `/sync` invalidation channel now covers listings, offers, bids/account 
 ### Block 9 — Navigation / states / accessibility / performance
 Native public-detail hydration, cross-role back-stack behaviour, shared terminology, loading/error/offline states and accessibility semantics are guarded. Performance hardening now includes idle-loaded Mazium, native onboarding virtualization and Android release minification/resource shrinking.
 
+## Exact-head certification evidence
+
+For PR #233, corrected code head `103cc1056bfdbfdae166c9430214d1649b1b9c0c` produced the following evidence before this certification-document checkpoint:
+
+- One Product parity workflow: **PASS** for product contract, web typecheck, mobile typecheck and backend typecheck/account-role boundary.
+- Broad backend CI: **607/607 tests passed** and backend build passed.
+- Web Listing CI: web typecheck and production build passed.
+- Mobile Listing CI: passed.
+- Backend Chat CI: backend build and chat regression passed.
+- Vercel preview project `carmazium`: corrected code head reported **READY**.
+- Vercel preview project `carmazium-final-unified-review`: corrected code head reported **READY**.
+
+Certification documents are now included in the One Product workflow path filters, so subsequent certification-only changes must rerun the parity gate on the new exact head.
+
+**Programme checkpoint:** **80% complete.** Code-contract parity is green; the final 20% is release/runtime evidence and controlled release completion, not hidden frontend parity work.
+
 ## Runtime and external evidence still required
 
 These items are **not code-parity gaps**, but they must be completed before calling a specific mobile/web release fully runtime-certified:
