@@ -12,6 +12,7 @@ import {
     RotateCcw, ChevronDown, ShieldCheck, Star, ArrowRight, MapPin, Truck, EyeOff,
 } from "lucide-react"
 import { getListings, getFeaturedListings, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type EuroStandardValue } from "@/lib/listingApi"
+import { subscribeProductSync } from "@/lib/productSync"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useLocation } from "@/context/LocationContext"
 import { haversineDistanceMiles } from "@/lib/distance"
@@ -408,6 +409,10 @@ function SearchPageContent() {
             setLoading(false)
         }
     }, [buildApiFilters])
+
+    React.useEffect(() => subscribeProductSync(["listings"], () => {
+        void fetchListings(appliedFilters, currentPage)
+    }), [fetchListings, appliedFilters, currentPage])
 
     React.useEffect(() => {
         if (!didInitialHydrate.current) {
