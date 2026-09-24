@@ -330,10 +330,12 @@ export class ListingsService {
         // with a fresh external market check rather than replacing it.
         const liveMarket = await this.getLiveUkMarketComparables(valuationInput);
 
-        const usableLiveComparables =
-            liveMarket.comparables.length >= 3
-                ? liveMarket.comparables
-                : [];
+        // The live-market sanitizer has already rejected invalid, mismatched,
+        // damaged/salvage and duplicate adverts. Keep 1-2 credible live rows
+        // instead of discarding them: calculateVehicleValuation deliberately
+        // blends sparse evidence back toward the conservative fallback, so a
+        // seller gets useful LOW-confidence guidance rather than a dead end.
+        const usableLiveComparables = liveMarket.comparables;
 
         const valuation = calculateVehicleValuation(
             valuationInput,
