@@ -28,6 +28,9 @@ import { DealerFinanceScreen } from '../screens/main/DealerFinanceScreen';
 import { ServicesScreen } from '../screens/main/ServicesScreen';
 import { CustomerServiceJobsScreen } from '../screens/main/CustomerServiceJobsScreen';
 import { CustomerServiceJobDetailScreen } from '../screens/main/CustomerServiceJobDetailScreen';
+import { CustomerServiceLeadsScreen } from '../screens/main/CustomerServiceLeadsScreen';
+import { CustomerServiceLeadDetailScreen } from '../screens/main/CustomerServiceLeadDetailScreen';
+import { ServiceLeadFormScreen } from '../screens/main/ServiceLeadFormScreen';
 import { PartnerDashboardScreen } from '../screens/main/PartnerDashboardScreen';
 import { ProviderCapabilitiesScreen } from '../screens/main/ProviderCapabilitiesScreen';
 import { ProviderVerificationScreen } from '../screens/main/ProviderVerificationScreen';
@@ -117,6 +120,9 @@ export type MainStackParamList = {
   Services: undefined;
   CustomerServiceJobs: undefined;
   CustomerServiceJobDetail: { jobId: string };
+  CustomerServiceLeads: undefined;
+  CustomerServiceLeadDetail: { leadId: string };
+  ServiceLeadForm: { serviceType: 'FINANCE' | 'WARRANTY' };
   PartnerDashboard: undefined;
   ProviderCapabilities: undefined;
   ProviderVerification: { capabilityId: string };
@@ -288,6 +294,9 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="Services" component={ServicesScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="CustomerServiceJobs" component={CustomerServiceJobsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="CustomerServiceJobDetail" component={CustomerServiceJobDetailScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="CustomerServiceLeads" component={CustomerServiceLeadsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="CustomerServiceLeadDetail" component={CustomerServiceLeadDetailScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ServiceLeadForm" component={ServiceLeadFormScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PartnerDashboard" component={PartnerDashboardScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ProviderCapabilities" component={ProviderCapabilitiesScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ProviderVerification" component={ProviderVerificationScreen} options={{ animation: 'slide_from_right' }} />
