@@ -390,6 +390,61 @@ export async function getServiceSettings(): Promise<ServiceMarketplaceSettings> 
 }
 
 
+export interface CreateServiceLeadInput {
+  serviceType: 'FINANCE' | 'WARRANTY';
+  listingId?: string;
+  vehicleRegistration?: string;
+  vehicleMake?: string;
+  vehicleModel?: string;
+  vehicleYear?: number;
+  vehicleMileage?: number;
+  vehicleValuePence?: number;
+  phone?: string;
+  postcode?: string;
+  summary?: string;
+  depositPence?: number;
+  termMonths?: number;
+  monthlyBudgetPence?: number;
+  employmentStatus?: string;
+  annualIncomePence?: number;
+  warrantyMonths?: number;
+  warrantyLevel?: string;
+  consentToProviderContact: boolean;
+}
+
+export async function createServiceLead(input: CreateServiceLeadInput): Promise<ServiceLead> {
+  const r = await apiClient<{ data: ServiceLead }>('/services/leads', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  return r.data;
+}
+
+export async function getMyServiceLeadsPage(
+  cursor?: string,
+  limit = 20,
+): Promise<CursorPage<ServiceLead>> {
+  const query = [
+    `limit=${encodeURIComponent(String(limit))}`,
+    cursor ? `cursor=${encodeURIComponent(cursor)}` : null,
+  ].filter(Boolean).join('&');
+  const r = await apiClient<{ data: CursorPage<ServiceLead> }>(`/services/leads/my?${query}`);
+  return r.data;
+}
+
+export async function getServiceLead(id: string): Promise<ServiceLead> {
+  const r = await apiClient<{ data: ServiceLead }>(`/services/leads/${id}`);
+  return r.data;
+}
+
+export async function closeServiceLead(id: string): Promise<ServiceLead> {
+  const r = await apiClient<{ data: ServiceLead }>(`/services/leads/${id}/close`, {
+    method: 'POST',
+  });
+  return r.data;
+}
+
+
 export async function createInspectionFromAuction(input: {
   auctionId: string;
   servicePostcode?: string;
