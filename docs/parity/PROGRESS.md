@@ -2776,7 +2776,7 @@ Still requires release/runtime evidence:
 **Checkpoint:** code-contract parity is closed; runtime release evidence remains conditional.
 
 Manifest result:
-- 49 required web/native parity surfaces.
+- 56 required web/native parity surfaces.
 - 2 approved web-only surfaces.
 - 0 unresolved `gap` entries.
 - 0 unresolved `web_only_candidate` entries.
@@ -2797,3 +2797,29 @@ Runtime/external evidence still required before a specific release is called ful
 - runtime keyboard/screen-reader checks;
 - real Apple app identifier and Android release-certificate SHA-256 for website association files.
 
+
+
+## 2026-09-24 — One Product 70% → 80% certification integrity checkpoint
+
+**Checkpoint:** code-contract remediation is complete and the certification record now follows the same exact-head discipline as the product code.
+
+Evidence recorded:
+- PR #233 exact corrected code head `103cc1056bfdbfdae166c9430214d1649b1b9c0c` passed the One Product parity workflow: product contract parity, web typecheck, mobile typecheck and backend typecheck/account-role boundary.
+- The broad backend workflow passed all **607 tests** and the backend build.
+- Web Listing CI passed both typecheck and the production web build.
+- Mobile Listing CI passed.
+- Backend Chat CI passed build plus chat regression tests.
+- Both Vercel preview projects reported the corrected code head as **READY**.
+- The stale Block 10 manifest count was corrected from 49 to the current **56 required** cross-platform features.
+
+Certification hardening:
+- `.github/workflows/product-parity.yml` now watches `docs/ONE_PRODUCT_PARITY.md` and `docs/parity/**` as well as code/config.
+- This prevents a certification-only commit from moving the PR/release head beyond the last parity-tested commit without running the release gate again.
+
+Still deliberately external:
+- signed Android APK/AAB size and device-performance evidence;
+- browser Core Web Vitals and runtime accessibility evidence;
+- real Apple Team/app identifier and Android signing SHA-256 association files;
+- authenticated Expo/store publication.
+
+**Programme checkpoint:** **80% complete.** No merge or production deployment was performed in this block.
