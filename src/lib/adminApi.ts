@@ -960,6 +960,11 @@ export interface ValuationLiveAnalytics {
     anonymousSessions: number;
     auctionRequests: number;
     retailRequests: number;
+    valuationAttempts: number;
+    figuresReturned: number;
+    withoutFigures: number;
+    confirmedNoFigures: number;
+    figureSuccessRate: number;
     valuationJourneys: number;
     listingStarted: number;
     listingCreated: number;
@@ -985,6 +990,11 @@ export interface ValuationLiveAnalytics {
     date: string;
     requests: number;
     sessions: number;
+    valuationAttempts: number;
+    figuresReturned: number;
+    withoutFigures: number;
+    confirmedNoFigures: number;
+    figureSuccessRate: number;
     valuationJourneys: number;
     listingStarted: number;
     listingCreated: number;
@@ -1013,6 +1023,11 @@ export interface ValuationLiveAnalytics {
     city: string | null;
     country: string | null;
     entryPoint: string | null;
+    valuationResult: string | null;
+    valuationSource: string | null;
+    noFigureReason: string | null;
+    valuationComparables: number;
+    liveMarketStatus: string | null;
     startedListing: boolean;
     createdListing: boolean;
     listingId: string | null;
