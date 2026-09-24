@@ -2771,3 +2771,29 @@ Still requires release/runtime evidence:
 - Run screen-reader/browser accessibility verification on real runtime surfaces.
 - Universal/App Link certification still requires the real Apple app identifier and Android signing SHA-256 fingerprint for the website association files.
 
+## 2026-09-24 — Block 10: Code-parity release certification
+
+**Checkpoint:** code-contract parity is closed; runtime release evidence remains conditional.
+
+Manifest result:
+- 49 required web/native parity surfaces.
+- 2 approved web-only surfaces.
+- 0 unresolved `gap` entries.
+- 0 unresolved `web_only_candidate` entries.
+
+Approved web-only boundaries:
+- `admin.operations`: privileged internal back-office tooling remains in the authenticated web admin console; native has no ADMIN application surface.
+- `blog.seo`: public SEO/content surface, accessible through the website, with no app-specific transactional behaviour.
+
+Release-gate changes:
+- Product parity CI now fails on any future `gap`, candidate-only exception, unknown status, missing required surface or undocumented/invalid web-only exception.
+- Performance-sensitive config paths (`next.config.ts`, native `app.json`, native Expo plugins) now trigger the parity workflow.
+- Final report added at `docs/parity/FINAL_CERTIFICATION.md`.
+
+Runtime/external evidence still required before a specific release is called fully certified:
+- signed Android APK/AAB build and size delta after R8/resource shrinking;
+- physical-device memory/jank journey pass;
+- production Core Web Vitals/browser performance measurement;
+- runtime keyboard/screen-reader checks;
+- real Apple app identifier and Android release-certificate SHA-256 for website association files.
+
