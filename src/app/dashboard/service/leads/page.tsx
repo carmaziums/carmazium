@@ -2,7 +2,8 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ArrowRight, Loader2 } from "lucide-react"
+import { ArrowRight, Inbox } from "lucide-react"
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/AsyncState"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { formatPence, getLeadInboxPage, SERVICE_LABELS, type ServiceLead } from "@/lib/servicesApi"
@@ -87,22 +88,18 @@ export default function ProviderLeadInboxPage() {
                         </select>
                     </div>
 
-                    {error && (
-                        <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500">
-                            {error}
-                        </div>
-                    )}
+                    {error && !loading && <ErrorState message={error} onRetry={load} />}
 
-                    {loading && (
-                        <div className="flex justify-center py-16">
-                            <Loader2 className="animate-spin text-primary" />
-                        </div>
-                    )}
+                    {loading && <LoadingState label="Loading matched enquiries…" />}
 
-                    {!loading && leads.length === 0 && (
-                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-8 text-center text-[var(--text-muted)]">
-                            No open matched enquiries right now.
-                        </div>
+                    {!loading && !error && leads.length === 0 && (
+                        <EmptyState
+                            icon={Inbox}
+                            title="No matched enquiries right now"
+                            description={type
+                                ? `New ${type === 'FINANCE' ? 'finance' : 'warranty'} enquiries will appear here when they match your approved service.`
+                                : 'New finance and warranty enquiries will appear here when they match your approved services.'}
+                        />
                     )}
 
                     <div className="space-y-4">
