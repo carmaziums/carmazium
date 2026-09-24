@@ -6,6 +6,7 @@ import { useParams } from "next/navigation"
 import { ArrowLeft, Loader2, Star } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { closeServiceLead, formatPence, getServiceLead, SERVICE_LABELS, type ServiceLead } from "@/lib/servicesApi"
+import { subscribeProductSync } from "@/lib/productSync"
 
 export default function ServiceLeadDetailPage() {
     const params = useParams<{ id: string }>()
@@ -19,6 +20,10 @@ export default function ServiceLeadDetailPage() {
         getServiceLead(params.id).then(setLead).catch(e => setError(e?.message || "Could not load enquiry")).finally(() => setBusy(false))
     }, [params.id])
     React.useEffect(() => { load() }, [load])
+
+    React.useEffect(() => subscribeProductSync(["services"], () => {
+        load()
+    }), [load])
 
     const close = async () => {
         setClosing(true); setError(null)
