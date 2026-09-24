@@ -59,6 +59,8 @@ export const SELLER_FUNNEL = {
     VALUATION_ATTEMPTED: 'valuation_attempted',
     /** DVLA/valuation processing returned a customer-visible valuation result. */
     VALUATION_REQUESTED: 'valuation_requested',
+    /** Pricing started but no customer-visible figures could be returned. */
+    VALUATION_FAILED: 'valuation_failed',
     /** Seller picked Retail or Auction and entered the wizard */
     LISTING_STARTED: 'listing_started',
     /** A wizard step validated and advanced — this is the drop-off signal */
