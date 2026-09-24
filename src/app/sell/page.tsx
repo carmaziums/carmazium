@@ -113,6 +113,7 @@ function QuickValuationForm() {
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [result, setResult] = React.useState<LandingValuationResult | null>(null)
+    const valuationJourneyIdRef = React.useRef<string | null>(null)
 
     const handleValuation = async (event: React.FormEvent) => {
         event.preventDefault()
@@ -127,6 +128,15 @@ function QuickValuationForm() {
         if (!Number.isFinite(mileageNumber) || mileageNumber <= 0 || mileageNumber > 1000000) {
             setError("Enter the vehicle's current mileage.")
             return
+        }
+
+        const valuationId = valuationJourneyIdRef.current ?? crypto.randomUUID()
+        if (!valuationJourneyIdRef.current) {
+            valuationJourneyIdRef.current = valuationId
+            trackEvent(SELLER_FUNNEL.VALUATION_ATTEMPTED, {
+                valuation_id: valuationId,
+                entry_point: "sell_landing",
+            })
         }
 
         setLoading(true)
@@ -151,7 +161,7 @@ function QuickValuationForm() {
                     mileage: mileageNumber,
                 })
 
-                const valuationId = crypto.randomUUID()
+                const hasFigures = !(valuation.source === "CARMAZIUM_MODEL" && valuation.comparables === 0)
                 setResult({
                     valuation,
                     dvlaVerified: false,
@@ -194,6 +204,10 @@ function QuickValuationForm() {
                     model: manualResolvedModel,
                     year,
                     valuation_source: valuation.source,
+                    valuation_result: hasFigures ? "figures_returned" : "no_figures",
+                    no_figure_reason: hasFigures ? undefined : "insufficient_market_evidence",
+                    valuation_comparables: valuation.comparables,
+                    live_market_status: valuation.marketEvidence?.liveUkSearchStatus,
                     dvla_verified: false,
                 })
                 return
@@ -224,7 +238,7 @@ function QuickValuationForm() {
                 variant: vehicle.variant,
             })
 
-            const valuationId = crypto.randomUUID()
+            const hasFigures = !(valuation.source === "CARMAZIUM_MODEL" && valuation.comparables === 0)
             setResult({
                 valuation,
                 dvlaVerified: true,
@@ -268,6 +282,10 @@ function QuickValuationForm() {
                 year: vehicle.year,
                 fuel_type: vehicle.fuelType || undefined,
                 valuation_source: valuation.source,
+                valuation_result: hasFigures ? "figures_returned" : "no_figures",
+                no_figure_reason: hasFigures ? undefined : "insufficient_market_evidence",
+                valuation_comparables: valuation.comparables,
+                live_market_status: valuation.marketEvidence?.liveUkSearchStatus,
                 dvla_verified: true,
             })
             setPendingVehicle(null)
@@ -322,6 +340,7 @@ function QuickValuationForm() {
                                 setManualModel("")
                                 setManualYear("")
                                 setResult(null)
+                                valuationJourneyIdRef.current = null
                             }}
                             inputMode="text"
                             autoComplete="off"
@@ -334,7 +353,11 @@ function QuickValuationForm() {
                         <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Current mileage</span>
                         <input
                             value={mileage}
-                            onChange={(event) => setMileage(event.target.value.replace(/[^\d,]/g, ""))}
+                            onChange={(event) => {
+                                setMileage(event.target.value.replace(/[^\d,]/g, ""))
+                                setResult(null)
+                                valuationJourneyIdRef.current = null
+                            }}
                             inputMode="numeric"
                             autoComplete="off"
                             placeholder="45,000"
