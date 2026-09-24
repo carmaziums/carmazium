@@ -2,7 +2,8 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Loader2, Briefcase, AlertCircle, Inbox, ArrowLeft } from "lucide-react"
+import { Briefcase, AlertCircle, Inbox, ArrowLeft } from "lucide-react"
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/AsyncState"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getJobFeedPage, getAssignedJobsPage, formatPence, type ServiceJob } from "@/lib/servicesApi"
@@ -26,20 +27,27 @@ export default function ContractorJobsPage() {
     const [mineCursor, setMineCursor] = React.useState<string | null>(null)
     const [loadingMore, setLoadingMore] = React.useState(false)
 
-    React.useEffect(() => {
+    const loadJobs = React.useCallback(async () => {
         if (authLoading || !user) return
-        Promise.all([getJobFeedPage(), getAssignedJobsPage()])
-            .then(([f, m]) => {
-                setFeed(f.items); setFeedCursor(f.nextCursor)
-                setMine(m.items); setMineCursor(m.nextCursor)
-            })
-            .catch(e => {
-                const msg: string = e?.message || ""
-                if (/no approved services|approved service providers/i.test(msg)) setNotApproved(true)
-                else setError(msg || "Could not load jobs")
-                setFeed([]); setMine([])
-            })
+        setError(null)
+        setNotApproved(false)
+        setFeed(null)
+        setMine(null)
+        try {
+            const [f, m] = await Promise.all([getJobFeedPage(), getAssignedJobsPage()])
+            setFeed(f.items); setFeedCursor(f.nextCursor)
+            setMine(m.items); setMineCursor(m.nextCursor)
+        } catch (e: any) {
+            const msg: string = e?.message || ""
+            if (/no approved services|approved service providers/i.test(msg)) setNotApproved(true)
+            else setError(msg || "Could not load jobs")
+            setFeed([]); setMine([])
+        }
     }, [authLoading, user])
+
+    React.useEffect(() => {
+        void loadJobs()
+    }, [loadJobs])
 
     const loadMore = async () => {
         if (loadingMore) return
@@ -105,14 +113,17 @@ export default function ContractorJobsPage() {
                             <Link href="/dashboard/service/capabilities" className="text-xs font-black uppercase tracking-widest text-primary hover:underline shrink-0">Apply now →</Link>
                         </div>
                     )}
-                    {error && <p className="text-red-500 text-sm">{error}</p>}
-                    {!list && !notApproved && !error && <div className="flex justify-center py-16"><Loader2 className="animate-spin text-primary" /></div>}
+                    {error && <ErrorState message={error} onRetry={loadJobs} />}
+                    {!list && !notApproved && !error && <LoadingState label="Loading service jobs…" />}
 
                     {list && list.length === 0 && !notApproved && (
-                        <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-12 text-center">
-                            {tab === "open" ? <Inbox size={30} className="mx-auto text-[var(--text-muted)] mb-3" /> : <Briefcase size={30} className="mx-auto text-[var(--text-muted)] mb-3" />}
-                            <p className="text-sm text-[var(--text-muted)]">{tab === "open" ? "No matching customer jobs are open right now. New jobs appear here automatically when they match one of your approved service areas." : "Your business has not won a job yet. Quote on Available Jobs to get started."}</p>
-                        </div>
+                        <EmptyState
+                            icon={tab === "open" ? Inbox : Briefcase}
+                            title={tab === "open" ? "No matching jobs right now" : "No won jobs yet"}
+                            description={tab === "open"
+                                ? "New customer jobs appear here automatically when they match one of your approved service areas."
+                                : "Quote on Available Jobs to start building your completed work history."}
+                        />
                     )}
 
                     {list && list.length > 0 && (
