@@ -11,6 +11,7 @@ import {
     formatCurrency,
     type FinanceApplication,
 } from "@/lib/partnerApi"
+import { subscribeProductSync } from "@/lib/productSync"
 
 export default function FinanceApplicationsPage() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -38,6 +39,13 @@ export default function FinanceApplicationsPage() {
         }
         if (!authLoading && user) fetchData()
     }, [user, authLoading, page])
+
+    React.useEffect(() => subscribeProductSync(["services"], () => {
+        if (!user) return
+        void getFinanceApplications(page, limit)
+            .then(res => { setApplications(res.data || []); setTotal(res.total || 0) })
+            .catch(() => {})
+    }), [user, page])
 
     const handleStatusUpdate = async (id: string, status: string) => {
         try {
