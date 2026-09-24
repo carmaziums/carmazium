@@ -52,6 +52,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { DeleteAccountSection } from "@/components/dashboard/DeleteAccountSection"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
+import { ErrorState, LoadingState } from "@/components/ui/AsyncState"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { RecordSaleModal } from "@/components/dashboard/RecordSaleModal"
@@ -101,11 +102,7 @@ import { ImportListingModal } from "@/components/features/ImportListingModal"
 
 export default function UnifiedUserDashboard() {
     return (
-        <React.Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            </div>
-        }>
+        <React.Suspense fallback={<LoadingState label="Loading your dashboard…" className="min-h-screen" />}>
             <UnifiedUserDashboardContent />
         </React.Suspense>
     )
@@ -120,6 +117,7 @@ function UnifiedUserDashboardContent() {
     
     const [dashboardData, setDashboardData] = React.useState<UnifiedDashboardData | null>(null)
     const [loading, setLoading] = React.useState(true)
+    const [dashboardError, setDashboardError] = React.useState<string | null>(null)
     // Featured Boost checkout redirects here with ?boost=success — the payment
     // itself already activates via webhook, but nothing ever confirmed it to
     // the user, who just landed back on their listings with no feedback at all.
@@ -143,11 +141,13 @@ function UnifiedUserDashboardContent() {
 
     const fetchStats = async () => {
         if (!user) return
+        setDashboardError(null)
         try {
             const unified = await getUnifiedDashboard()
             setDashboardData(unified)
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to fetch dashboard stats:', err)
+            setDashboardError(err?.message || 'We could not load your dashboard summary. Check your connection and try again.')
         }
     }
 
@@ -160,11 +160,7 @@ function UnifiedUserDashboardContent() {
     }, [user, authLoading])
 
     if (authLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            </div>
-        )
+        return <LoadingState label="Loading your account…" className="min-h-screen" />
     }
 
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
@@ -210,7 +206,15 @@ function UnifiedUserDashboardContent() {
 
                     {/* Tab Content */}
                     <div className="min-h-[60vh] w-full min-w-0">
-                        {activeTab === "overview" && <OverviewTab data={dashboardData} loading={loading} setTab={setTab} />}
+                        {activeTab === "overview" && (
+                            <OverviewTab
+                                data={dashboardData}
+                                loading={loading}
+                                error={dashboardError}
+                                onRetry={fetchStats}
+                                setTab={setTab}
+                            />
+                        )}
                         {activeTab === "inventory" && <InventoryTab onRefreshStats={fetchStats} />}
                         {activeTab === "offers" && <OffersTab onRefreshStats={fetchStats} />}
                         {activeTab === "bids" && <OutgoingOffersTab onRefreshStats={fetchStats} />}
@@ -230,7 +234,23 @@ function UnifiedUserDashboardContent() {
 // OVERVIEW TAB
 // ─────────────────────────────────────────────────────────────────────────────
 
-function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | null, loading: boolean, setTab: (t: string) => void }) {
+function OverviewTab({
+    data,
+    loading,
+    error,
+    onRetry,
+    setTab,
+}: {
+    data: UnifiedDashboardData | null
+    loading: boolean
+    error: string | null
+    onRetry: () => void
+    setTab: (t: string) => void
+}) {
+    if (error && !data && !loading) {
+        return <ErrorState message={error} onRetry={onRetry} className="min-h-[50vh]" />
+    }
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
