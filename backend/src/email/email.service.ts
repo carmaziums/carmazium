@@ -448,6 +448,81 @@ export class EmailService {
         });
     }
 
+
+    /**
+     * Send the email copy of an admin broadcast.
+     *
+     * Broadcast text is escaped before becoming HTML. Admin media URLs are
+     * already restricted to CarMazium's managed public upload path by the
+     * messaging service, so images can be rendered and video can be linked.
+     */
+    async sendAdminBroadcastEmail(options: {
+        toEmail: string;
+        recipientName?: string | null;
+        text?: string | null;
+        mediaUrl?: string | null;
+        mediaKind?: string | null;
+    }) {
+        const escapeHtml = (value: string) => value
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+
+        const name = escapeHtml(options.recipientName?.trim() || 'there');
+        const safeText = options.text?.trim()
+            ? escapeHtml(options.text.trim()).replace(/\n/g, '<br />')
+            : '';
+        const safeMediaUrl = options.mediaUrl ? escapeHtml(options.mediaUrl) : '';
+        const isImage = options.mediaKind === 'IMAGE';
+        const isVideo = options.mediaKind === 'VIDEO';
+
+        const mediaHtml = safeMediaUrl
+            ? isImage
+                ? `
+                    <div style="margin: 28px 0; text-align: center;">
+                        <a href="${safeMediaUrl}" target="_blank" style="text-decoration: none;">
+                            <img src="${safeMediaUrl}" alt="CarMazium broadcast image"
+                                 style="display:block; width:100%; max-width:520px; height:auto; margin:0 auto; border-radius:14px; border:1px solid rgba(255,255,255,0.08);" />
+                        </a>
+                    </div>`
+                : `
+                    <div style="margin: 28px 0; text-align: center;">
+                        <a href="${safeMediaUrl}" target="_blank"
+                           style="display:inline-block; padding:14px 24px; border-radius:10px; background:#1e293b; border:1px solid rgba(255,255,255,0.12); color:#ffffff; text-decoration:none; font-weight:700;">
+                            ${isVideo ? 'Watch the video' : 'Open attachment'} →
+                        </a>
+                    </div>`
+            : '';
+
+        const bodyHtml = `
+            <p style="margin:0 0 10px; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:#ed1c24;">
+                Message from CarMazium
+            </p>
+            <h1 style="margin:0 0 24px; font-size:26px; line-height:1.25; color:#ffffff;">
+                Hi ${name},
+            </h1>
+            ${safeText ? `
+                <div style="font-size:15px; line-height:1.8; color:#cbd5e1; white-space:normal;">
+                    ${safeText}
+                </div>` : ''}
+            ${mediaHtml}
+            <div style="text-align:center; margin-top:32px;">
+                <a href="${this.frontendUrl}/dashboard" target="_blank"
+                   style="display:inline-block; padding:14px 30px; background:linear-gradient(135deg,#ed1c24,#c41920); color:#ffffff; text-decoration:none; font-weight:800; border-radius:10px;">
+                    Open CarMazium
+                </a>
+            </div>
+        `;
+
+        return this.sendBrandedEmail({
+            to: options.toEmail,
+            subject: 'Message from CarMazium',
+            bodyHtml,
+        });
+    }
+
     async sendStaffInviteEmail(
         toEmail: string,
         dealerName: string,
