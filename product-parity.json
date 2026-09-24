@@ -556,7 +556,8 @@
         "src/app/dashboard/admin/page.tsx"
       ],
       "mobile": [],
-      "status": "gap"
+      "status": "web_only",
+      "reason": "Privileged internal back-office operations are intentionally restricted to the authenticated web admin console; the native customer/partner app does not expose an ADMIN application surface."
     },
     {
       "id": "blog.seo",
@@ -564,7 +565,8 @@
         "src/app/blog/page.tsx"
       ],
       "mobile": [],
-      "status": "web_only_candidate"
+      "status": "web_only",
+      "reason": "The public blog is a web SEO/content surface. It has no transactional app-only behaviour and remains accessible to mobile users through the public website."
     }
   ]
 }
