@@ -33,6 +33,7 @@ import { alsoAuction } from '../../lib/listingsApi';
 import { haptics } from '../../lib/haptics';
 import { useListingFeePayment } from '../../hooks/useListingFeePayment';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { subscribeProductSync } from '../../lib/productSync';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -265,6 +266,10 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       fetchListings(true);
     }
   }, [fetchListings]));
+
+  useEffect(() => subscribeProductSync(['listings', 'offers'], () => {
+    void fetchListings(true);
+  }), [fetchListings]);
 
   // ─── tab counts ───────────────────────────────────────────────
 
