@@ -2745,3 +2745,29 @@ Still open in Block 9:
 - Accessibility and performance certification.
 - Universal-link/App-Link website association files still require the real Apple app identifier and Android signing SHA-256 fingerprint.
 
+## 2026-09-24 — Block 9: Performance hardening checkpoint
+
+**Checkpoint:** static web/native performance risks identified in the repository are hardened and CI-guarded. Runtime/device certification remains deliberately separate.
+
+Audit evidence:
+- Native bundles only eight checked-in image assets, but the three onboarding backgrounds total about 3.9 MB of the ~4.15 MB checked-in mobile asset payload.
+- The onboarding FlatList had no render-window limits, so its default virtualization window could mount/decode all three full-screen backgrounds during the first-run journey.
+- The Android release recipe documents a typical ~65–68 MB APK, while `expo-build-properties` still disabled ProGuard and resource shrinking even though the project already carries explicit Expo/R8 keep rules.
+- Web already code-split Mazium with `next/dynamic`, but the loader mounted immediately in the root layout, so the assistant chunk could still compete with first navigation/paint work.
+- Web image optimization remains intentionally disabled because account-level Vercel `/_next/image` quota failures previously broke marketplace photos. This checkpoint does not trade reliability for a synthetic image-optimization score.
+
+Implemented:
+- Mazium now mounts after `requestIdleCallback` (with a bounded fallback) instead of competing with first paint.
+- Native onboarding uses `expo-image` and limits the horizontal FlatList to one initial item / one item per batch with a small render window and Android clipping.
+- `assetBundlePatterns` is narrowed to `assets/**/*`.
+- Android release builds enable ProGuard/R8 and resource shrinking, retaining the existing `expo.modules.kotlin` / Expo-module keep rules.
+- Added required parity surface `ui.performance_baseline`.
+- Product parity CI now rejects removal of the idle-load, onboarding virtualization or Android release-shrinking safeguards.
+
+Still requires release/runtime evidence:
+- Build a signed release APK/AAB on the configured Android build machine and record before/after artifact size.
+- Run the first-run onboarding and core scrolling journeys on a physical Android device, watching memory pressure/jank.
+- Measure production/preview Core Web Vitals (LCP, INP, CLS) with browser tooling after deployment.
+- Run screen-reader/browser accessibility verification on real runtime surfaces.
+- Universal/App Link certification still requires the real Apple app identifier and Android signing SHA-256 fingerprint for the website association files.
+
