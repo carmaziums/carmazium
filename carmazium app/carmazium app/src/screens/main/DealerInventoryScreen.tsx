@@ -34,6 +34,7 @@ import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
+import { subscribeProductSync } from '../../lib/productSync';
 
 const VIEW_MODE_STORAGE_KEY = 'czm_dealer_inventory_view_mode';
 
@@ -606,6 +607,10 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
   // `listings` itself changes (fetch/refresh), not on filter-tab switches.
   // Hooks must stay unconditional, so this is declared before the early
   // return below (Rules of Hooks).
+  useEffect(() => subscribeProductSync(['listings', 'offers'], () => {
+    void fetchListings(true);
+  }), [fetchListings]);
+
   const handleRowPress = useCallback((id: string) => {
     const l = listings.find((x) => x.id === id);
     if (l) setSelectedListing(l);
