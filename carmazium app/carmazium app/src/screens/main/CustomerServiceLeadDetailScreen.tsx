@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   RefreshControl,
@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
 import { closeServiceLead, formatPence, getServiceLead, ServiceLead, SERVICE_LABELS } from '../../lib/servicesApi';
+import { subscribeProductSync } from '../../lib/productSync';
 
 export const CustomerServiceLeadDetailScreen: React.FC<{ navigation?: any; route?: any }> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
@@ -40,6 +41,9 @@ export const CustomerServiceLeadDetailScreen: React.FC<{ navigation?: any; route
   }, [leadId]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+  useEffect(() => subscribeProductSync(['services'], () => {
+    void load(true);
+  }), [load]);
 
   const close = () => Alert.alert(
     'Close enquiry?',
