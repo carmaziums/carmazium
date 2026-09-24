@@ -17,6 +17,7 @@ import { HamburgerButton } from '../../components/HamburgerButton';
 import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { useAuthStore } from '../../store/authStore';
+import { subscribeProductSync } from '../../lib/productSync';
 import { Colors } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -134,6 +135,9 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => subscribeProductSync(['offers', 'listings', 'account'], () => {
+    void load();
+  }), [load]);
 
   const { buyer, seller, unreadMessages } = data;
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User';
