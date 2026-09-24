@@ -2850,3 +2850,38 @@ External/admin blockers intentionally left for the final 10%:
 - Apple association identity, Android signing fingerprint, signed-device tests, runtime accessibility/performance measurements and actual store publication remain evidence tasks.
 
 **Programme checkpoint:** **90% complete.**
+
+
+## 2026-09-24 — One Product 90% → 100% final remediation checkpoint
+
+**Repository remediation:** **100% complete.**  
+**Runtime production certification:** **PENDING external signing/device/store evidence.**
+
+Exact final code head before the documentation-only checkpoint:
+`7217c48471a477f303e1c221417ddff34685c6a4`
+
+Verified on that head:
+- One Product parity contract, web/mobile/backend typechecks and role-boundary test: PASS.
+- Full backend tests/build: PASS.
+- Web production build: PASS.
+- Mobile Listing CI: PASS.
+- Backend chat build/regression: PASS.
+- One Product release identity contract: PASS.
+- Both Vercel previews: READY.
+- Exact preview Vercel runtime errors/fatals: none observed.
+
+Final code-side work:
+- Added fail-closed environment-driven Apple/Android website association endpoints and parity guards.
+- Confirmed the current live pre-PR production release returns 404 for those association URLs, proving the real signing values still need to be configured before universal/app links can be certified.
+- Found live Vercel telemetry showing intermittent server-side Fly fetch resets/timeouts on vehicle pages.
+- Added a shared bounded timeout + exponential retry/backoff helper for server-side Fly requests and moved vehicle/blog SSR fetches onto it.
+- Confirmed representative existing production public pages return HTTP 200.
+
+Release remains intentionally blocked:
+- no accessible/confirmed Expo production credential from this environment;
+- App Store Connect entries in `eas.json` remain placeholders;
+- Apple Team ID and Android release certificate fingerprint are not present in the repository;
+- physical signed-device, runtime accessibility and real Core Web Vitals evidence is not available through this repository connection;
+- repository rulesets endpoint is empty and the connected GitHub App receives 403 for legacy branch-protection administration.
+
+PR #233 is therefore **not merged** in this checkpoint. Merging web/backend changes before native release can advance on the same SHA would recreate the exact cross-platform drift this programme was built to eliminate.
