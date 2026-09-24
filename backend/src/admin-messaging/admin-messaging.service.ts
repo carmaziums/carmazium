@@ -257,11 +257,11 @@ export class AdminMessagingService {
                     | { ok: true; roomId: string; messageId: string }
                     | { ok: false; error: string }
                     | null = null;
-                let email:
-                    | { status: BroadcastEmailStatus.SENT; messageId: string }
-                    | { status: BroadcastEmailStatus.SKIPPED; messageId: null }
-                    | { status: BroadcastEmailStatus.FAILED; messageId: null; error: string }
-                    | null = null;
+                let email: {
+                    status: BroadcastEmailStatus;
+                    messageId: string | null;
+                    error?: string;
+                } | null = null;
 
                 if (targetStatuses.includes(delivery.status)) {
                     try {
@@ -347,12 +347,12 @@ export class AdminMessagingService {
                         failures.push({
                             userId: result.delivery.userId,
                             channel: 'email',
-                            error: result.email.error,
+                            error: result.email.error || 'Email delivery failed',
                         });
                         Object.assign(data, {
                             emailStatus: BroadcastEmailStatus.FAILED,
                             emailMessageId: null,
-                            emailError: result.email.error,
+                            emailError: result.email.error || 'Email delivery failed',
                         });
                     }
                 }
@@ -728,10 +728,10 @@ export class AdminMessagingService {
     private async deliverEmailOne(
         recipient: Recipient,
         campaign: { text?: string | null; mediaUrl?: string | null; mediaKind?: string | null },
-    ): Promise<
-        | { status: BroadcastEmailStatus.SENT; messageId: string }
-        | { status: BroadcastEmailStatus.SKIPPED; messageId: null }
-    > {
+    ): Promise<{
+        status: BroadcastEmailStatus;
+        messageId: string | null;
+    }> {
         const shouldSend = await this.notificationsService.shouldSendEmail(
             recipient.id,
             'MESSAGE_RECEIVED',
