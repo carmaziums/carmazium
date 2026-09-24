@@ -2,7 +2,7 @@
 
 **Date:** 24 September 2026  
 **Scope:** Website + native mobile app + shared NestJS backend  
-**Certification state:** **CODE PARITY PASS / RUNTIME RELEASE EVIDENCE PENDING**
+**Certification state:** **REPOSITORY REMEDIATION COMPLETE / CODE PARITY PASS / RUNTIME RELEASE EVIDENCE PENDING**
 
 ## Executive result
 
@@ -137,3 +137,55 @@ A common Git SHA is now the One Product release identity:
 Native publication is intentionally gated. Automatic production publication requires repository variable `ONE_PRODUCT_AUTO_RELEASE=true` plus an authenticated `EXPO_TOKEN`. JavaScript-safe releases use EAS Update; native configuration/dependency changes start signed production builds instead. Store submission remains outside this checkpoint because `eas.json` still contains placeholder App Store identifiers and the repository does not contain the real signing/store credentials.
 
 **Programme checkpoint:** **90% complete.** The remaining 10% is external production evidence: signed-device/store association, accessibility/performance runtime checks, and final production smoke/release verification.
+
+
+## 90% → 100% final remediation checkpoint
+
+**Repository remediation programme:** **100% complete.**  
+**Production runtime release certification:** **still pending external evidence.**
+
+Final exact code head before this documentation-only checkpoint:
+
+`7217c48471a477f303e1c221417ddff34685c6a4`
+
+Evidence on that exact code head:
+- Product contract parity: **PASS**.
+- Web typecheck: **PASS**.
+- Mobile typecheck: **PASS**.
+- Backend typecheck + self-service role-boundary test: **PASS**.
+- Web Listing CI production build: **PASS**.
+- Mobile Listing CI: **PASS**.
+- Backend Chat CI build + regression tests: **PASS**.
+- Broad backend test/build workflow: **PASS**.
+- One Product Release Sync contract validation: **PASS**; production convergence and native publication were correctly skipped because this is a PR.
+- Vercel `carmazium` preview: **READY**.
+- Vercel `carmazium-final-unified-review` preview: **READY**.
+- Exact preview runtime error query: **no error/fatal logs found**.
+
+Final remediation completed in this block:
+- Added environment-driven Apple Universal Link and Android App Link association handlers.
+- Added `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` rewrites.
+- Association handlers deliberately fail closed until real Apple Team ID / Android release signing SHA-256 values are configured; no signing identity is guessed.
+- Production telemetry identified transient Vercel → Fly `ECONNRESET` / `ETIMEDOUT` failures on server-rendered vehicle pages. The affected pages still returned HTTP 200, but could lose server-rendered backend data on a transient miss.
+- Added shared bounded-timeout/exponential-backoff server backend fetching and applied it to vehicle-detail and server-rendered blog/RSS/tag surfaces.
+- Added parity guards for both the association contract and SSR backend resilience.
+- Live production smoke checks on the currently deployed pre-PR release returned HTTP 200 for `/`, `/search`, `/services/finance`, `/services/warranty` and `/reviews`.
+
+Why PR #233 remains unmerged:
+- The currently deployed production website does not yet include `/api/release` or the association handlers; these are in PR #233.
+- The installed native apps cannot be guaranteed to move with web/backend until authenticated Expo release credentials are available and native release publication is explicitly enabled.
+- Merging now could therefore advance web/backend while leaving installed iOS/Android clients on the previous application code, which would violate the One Product objective this programme is designed to enforce.
+
+External evidence still required before **runtime release certification** can change from PENDING to PASS:
+- authenticated `EXPO_TOKEN` and deliberate native-release enablement;
+- real App Store Connect / Apple Team values;
+- real Android release-signing SHA-256 fingerprint;
+- signed Android/iOS build evidence and physical-device journey tests;
+- production LCP/INP/CLS measurements;
+- representative runtime keyboard/screen-reader checks;
+- verified Apple/Android association files on the live domain;
+- synchronized production web + backend + native release using one release SHA;
+- final production smoke test on that synchronized release;
+- repository-admin enforcement of required PR/status checks. The connected GitHub integration cannot administer legacy branch protection, and the repository currently exposes no rulesets.
+
+**Conclusion:** the codebase/remediation work is complete and regression-guarded. A production release must remain gated until the external signing/device/store evidence above is supplied; those are release credentials/evidence, not hidden web/mobile parity defects.
