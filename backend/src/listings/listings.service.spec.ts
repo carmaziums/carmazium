@@ -985,7 +985,7 @@ describe('ListingsService', () => {
         });
     });
 
-    describe('mandatory live AI valuation research', () => {
+    describe('live AI valuation enrichment with resilient fallback', () => {
         it('runs live UK market research even when CarMazium already has strong internal comparables', async () => {
             const internalRows = [0, 1, 2, 3].map((index) => ({
                 id: `internal-${index}`,
@@ -1073,6 +1073,36 @@ describe('ListingsService', () => {
                 liveUkComparables: 2,
                 liveUkSearchStatus: 'USED',
                 rawLiveUkComparables: 2,
+            }));
+        });
+
+        it('still returns a numeric low-confidence guide when live market research is unavailable', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+
+            const liveSearch = jest
+                .spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValue(null);
+
+            const result = await service.estimateVehicleValue({
+                make: 'SKODA',
+                model: 'OCTAVIA',
+                year: 2012,
+                mileage: 95000,
+                transmission: 'MANUAL',
+            } as any);
+
+            expect(liveSearch).toHaveBeenCalledTimes(1);
+            expect(result.source).toBe('CARMAZIUM_MODEL');
+            expect(result.confidence).toBe('LOW');
+            expect(result.retail.suggestedAsking).toBeGreaterThan(0);
+            expect(result.retail.suggestedMinimum).toBeGreaterThan(0);
+            expect(result.auction.marketValue).toBeGreaterThan(0);
+            expect(result.auction.suggestedReserve).toBeGreaterThan(0);
+            expect(result.marketEvidence).toEqual(expect.objectContaining({
+                carmaziumComparables: 0,
+                liveUkComparables: 0,
+                liveUkSearchStatus: 'UNAVAILABLE',
+                rawLiveUkComparables: 0,
             }));
         });
     });
