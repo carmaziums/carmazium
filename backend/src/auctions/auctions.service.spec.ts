@@ -374,6 +374,8 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
             expect.objectContaining({
                 userId: 'seller-1',
                 type: 'AUCTION_UPDATED',
+                title: 'We’ve reviewed your auction reserve',
+                message: expect.stringContaining('including its age, mileage, history, number of keys and reported condition'),
                 actionType: 'PRICE_CORRECTED',
             }),
         );
