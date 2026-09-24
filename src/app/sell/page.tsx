@@ -115,6 +115,18 @@ function QuickValuationForm() {
     const [result, setResult] = React.useState<LandingValuationResult | null>(null)
     const valuationJourneyIdRef = React.useRef<string | null>(null)
 
+    const beginValuationJourney = () => {
+        const valuationId = valuationJourneyIdRef.current ?? crypto.randomUUID()
+        if (!valuationJourneyIdRef.current) {
+            valuationJourneyIdRef.current = valuationId
+            trackEvent(SELLER_FUNNEL.VALUATION_ATTEMPTED, {
+                valuation_id: valuationId,
+                entry_point: "sell_landing",
+            })
+        }
+        return valuationId
+    }
+
     const handleValuation = async (event: React.FormEvent) => {
         event.preventDefault()
 
@@ -128,15 +140,6 @@ function QuickValuationForm() {
         if (!Number.isFinite(mileageNumber) || mileageNumber <= 0 || mileageNumber > 1000000) {
             setError("Enter the vehicle's current mileage.")
             return
-        }
-
-        const valuationId = valuationJourneyIdRef.current ?? crypto.randomUUID()
-        if (!valuationJourneyIdRef.current) {
-            valuationJourneyIdRef.current = valuationId
-            trackEvent(SELLER_FUNNEL.VALUATION_ATTEMPTED, {
-                valuation_id: valuationId,
-                entry_point: "sell_landing",
-            })
         }
 
         setLoading(true)
@@ -154,6 +157,7 @@ function QuickValuationForm() {
                     return
                 }
 
+                const valuationId = beginValuationJourney()
                 const valuation = await getVehicleValuation({
                     make,
                     model: manualResolvedModel,
@@ -228,6 +232,7 @@ function QuickValuationForm() {
                 return
             }
 
+            const valuationId = beginValuationJourney()
             const valuation = await getVehicleValuation({
                 make: vehicle.make,
                 model: resolvedModel,
