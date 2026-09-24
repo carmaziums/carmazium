@@ -108,15 +108,15 @@ export function AdminBroadcastComposer() {
     const handleFile = async (file?: File) => {
         if (!file) return
         const isImage = file.type.startsWith("image/")
-        const isVideo = file.type.startsWith("video/")
+        const isVideo = file.type === "video/mp4" || file.type === "video/quicktime"
         if (!isImage && !isVideo) {
-            setResult("Only picture and video files can be sent.")
+            setResult("Only picture files, MP4 videos or MOV videos can be sent.")
             return
         }
 
-        const max = isImage ? 10 * 1024 * 1024 : 25 * 1024 * 1024
+        const max = isImage ? 10 * 1024 * 1024 : 100 * 1024 * 1024
         if (file.size > max) {
-            setResult(isImage ? "Pictures must be 10 MB or smaller." : "Videos must be 25 MB or smaller.")
+            setResult(isImage ? "Pictures must be 10 MB or smaller." : "Videos must be 100 MB or smaller.")
             return
         }
 
@@ -295,7 +295,7 @@ export function AdminBroadcastComposer() {
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/*,video/*"
+                        accept="image/*,video/mp4,video/quicktime"
                         className="hidden"
                         onChange={(e) => handleFile(e.target.files?.[0])}
                     />
@@ -330,7 +330,7 @@ export function AdminBroadcastComposer() {
                             )}
                         </div>
                     )}
-                    <p className="text-xs text-[var(--text-muted)] mt-2">Pictures up to 10 MB · videos up to 25 MB.</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-2">Pictures up to 10 MB · MP4/MOV videos up to 100 MB. Large videos may take longer on mobile data.</p>
                 </section>
 
                 <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 sm:p-5 shadow-lg">
