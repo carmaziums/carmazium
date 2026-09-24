@@ -8,12 +8,12 @@
 
 The repository now has a closed machine-readable parity manifest:
 
-- **49 required cross-platform features**
+- **56 required cross-platform features**
 - **2 approved web-only features**
 - **0 unresolved `gap` entries**
 - **0 `web_only_candidate` entries**
 
-The required features cover authentication and role boundaries, public marketplace journeys, seller/buyer/dealer/Partner workflows, pricing and payment semantics, auctions, service jobs, HPI, chat/notifications, navigation/deep links, terminology, accessibility/state consistency and the shared performance baseline.
+The required features cover authentication and role boundaries, public marketplace journeys, seller/buyer/dealer/Partner workflows, customer Finance/Warranty enquiries, legacy Finance/Insurance Partner operations, pricing and payment semantics, auctions, service jobs, HPI, chat/notifications, cross-client runtime invalidation, navigation/deep links, terminology, accessibility/state consistency and the shared performance baseline.
 
 The two intentional web-only exceptions are:
 
@@ -49,6 +49,8 @@ The `.github/workflows/product-parity.yml` workflow runs the contract gate plus 
 | Partner capabilities / verification / matching | Yes | Yes | Yes | Covered |
 | Provider jobs / quotes / lifecycle / job chat | Yes | Yes | Yes | Covered |
 | Finance / Warranty matched enquiries | Yes | Yes | Yes | Covered |
+| Legacy Finance / Insurance Partner operations | Yes | Yes | Yes | Covered |
+| Cross-client listing / offer / CRM / service invalidation | Yes | Yes | Yes | Covered |
 | Stripe checkout / native PaymentIntent reconciliation | Yes | Yes | Yes | Covered |
 | Seller £100 reward / provider payout lifecycle | Yes | Yes | Yes | Covered |
 | HPI report entitlements | Yes | Yes | Yes | Covered |
@@ -75,6 +77,9 @@ Partner Account, capability application, private verification evidence, matching
 ### Block 8 — Payments / HPI / chat / notifications
 Hosted and native payment reconciliation, exactly-once seller/provider payout controls, HPI entitlements and native notification/chat routing are guarded against drift.
 
+### Post-certification One Product runtime remediation
+A shared `/sync` invalidation channel now covers listings, offers, bids/account summaries, dealer CRM/team/KYC, TradeXchange jobs/enquiries/capabilities and legacy Finance/Insurance Partner mutations. The channel carries no business payload; web and native clients refetch the authoritative backend data when a relevant domain changes. Auction bidding and chat retain their existing dedicated realtime gateways. Native Finance/Warranty customer enquiries and legacy Finance/Insurance Partner dashboards are now first-class parity surfaces, and dealer analytics exposes the same flexible reporting-range model across clients.
+
 ### Block 9 — Navigation / states / accessibility / performance
 Native public-detail hydration, cross-role back-stack behaviour, shared terminology, loading/error/offline states and accessibility semantics are guarded. Performance hardening now includes idle-loaded Mazium, native onboarding virtualization and Android release minification/resource shrinking.
 
@@ -88,6 +93,7 @@ These items are **not code-parity gaps**, but they must be completed before call
 - Run representative keyboard + screen-reader checks against real rendered web/native surfaces.
 - Publish/verify Apple `apple-app-site-association` with the real Apple Team/app identifier.
 - Publish/verify Android `.well-known/assetlinks.json` with the real release signing SHA-256 fingerprint.
+- Publish the tested native JavaScript bundle to the production Expo Updates channel (or ship a signed store build where native config changed) using authenticated release credentials; repository code does not assume those credentials exist.
 
 The repository deliberately does not guess the two signing identifiers.
 
@@ -96,6 +102,7 @@ The repository deliberately does not guess the two signing identifiers.
 **Code parity:** PASS.  
 **Manifest parity:** PASS — zero unresolved gaps.  
 **CI release gate:** REQUIRED and regression-blocking.  
-**Runtime release certification:** PENDING the device/browser/signing evidence above.
+**Runtime synchronization code:** PASS — shared invalidation/refetch contract is CI-guarded; auction/chat keep their dedicated realtime gateways.  
+**Runtime release certification:** PENDING the device/browser/signing/store-release evidence above.
 
 A release may be treated as functionally one-product at the code-contract level only after the current parity workflow is green on its exact release commit. Runtime-performance, accessibility and universal-link claims should be made only after their corresponding external checks are recorded.
