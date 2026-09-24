@@ -604,6 +604,49 @@ describe('AdminMessagingService', () => {
         );
     });
 
+    it('accepts managed admin broadcast videos up to 100 MB', async () => {
+        const previousUrl = process.env.SUPABASE_URL;
+        process.env.SUPABASE_URL = 'https://project.supabase.co';
+        const { service } = makeService();
+
+        try {
+            await expect(service.send('admin-1', {
+                audience: AdminMessageAudience.ALL,
+                mediaUrl: 'https://project.supabase.co/storage/v1/object/public/admin-broadcasts/media/video.mp4',
+                mediaKind: AdminMediaKind.VIDEO,
+                mediaMime: 'video/mp4',
+                mediaSize: 100 * 1024 * 1024,
+                expectedRecipientCount: 1,
+            })).resolves.toEqual(expect.objectContaining({
+                requested: 1,
+                sent: 1,
+            }));
+        } finally {
+            if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+            else process.env.SUPABASE_URL = previousUrl;
+        }
+    });
+
+    it('rejects admin broadcast videos larger than 100 MB', async () => {
+        const previousUrl = process.env.SUPABASE_URL;
+        process.env.SUPABASE_URL = 'https://project.supabase.co';
+        const { service } = makeService();
+
+        try {
+            await expect(service.send('admin-1', {
+                audience: AdminMessageAudience.ALL,
+                mediaUrl: 'https://project.supabase.co/storage/v1/object/public/admin-broadcasts/media/video.mp4',
+                mediaKind: AdminMediaKind.VIDEO,
+                mediaMime: 'video/mp4',
+                mediaSize: (100 * 1024 * 1024) + 1,
+                expectedRecipientCount: 1,
+            })).rejects.toBeInstanceOf(BadRequestException);
+        } finally {
+            if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+            else process.env.SUPABASE_URL = previousUrl;
+        }
+    });
+
     it('rejects media URLs that are not from the configured CarMazium storage path', async () => {
         const previousUrl = process.env.SUPABASE_URL;
         process.env.SUPABASE_URL = 'https://project.supabase.co';
