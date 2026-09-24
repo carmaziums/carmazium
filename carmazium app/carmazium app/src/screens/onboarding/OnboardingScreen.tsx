@@ -7,11 +7,11 @@ import {
   Dimensions,
   TouchableOpacity,
   StatusBar,
-  ImageBackground,
   Animated as RNAnimated,
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
@@ -92,18 +92,19 @@ const SlideItem: React.FC<{
   return (
     <View style={styles.slide}>
       {/* Background Image with Dark Vignette */}
-      <ImageBackground
+      <Image
         source={item.image}
         style={StyleSheet.absoluteFillObject}
-        resizeMode="cover"
-      >
-        {/* Dark vertical gradient overlay to make text highly legible */}
-        <LinearGradient
-          colors={['rgba(10, 10, 12, 0.1)', 'rgba(10, 10, 12, 0.5)', Colors.bgPrimary]}
-          locations={[0, 0.45, 0.85]}
-          style={StyleSheet.absoluteFillObject}
-        />
-      </ImageBackground>
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        recyclingKey={item.id}
+      />
+      {/* Dark vertical gradient overlay to make text highly legible */}
+      <LinearGradient
+        colors={['rgba(10, 10, 12, 0.1)', 'rgba(10, 10, 12, 0.5)', Colors.bgPrimary]}
+        locations={[0, 0.45, 0.85]}
+        style={StyleSheet.absoluteFillObject}
+      />
 
       {/* Content Section */}
       <RNAnimated.View
@@ -192,6 +193,10 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
           index,
         })}
         renderItem={renderSlide}
+        initialNumToRender={1}
+        maxToRenderPerBatch={1}
+        windowSize={3}
+        removeClippedSubviews={Platform.OS === 'android'}
       />
 
       {/* Bottom Controls (Indicators + Full width Chamfer Button) */}
