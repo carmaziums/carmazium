@@ -1040,6 +1040,41 @@ describe('ListingsService', () => {
                 liveUkSearchStatus: 'USED',
             }));
         });
+
+        it('uses one or two sanitized live comparables instead of dropping the valuation', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+
+            const liveSearch = jest
+                .spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValue({
+                    checkedAt: new Date().toISOString(),
+                    rawComparableCount: 2,
+                    comparables: [
+                        { price: 3495, year: 2012, mileage: 95000, transmission: 'MANUAL', kind: 'ACTIVE_ASK' },
+                        { price: 3995, year: 2012, mileage: 95877, transmission: 'AUTOMATIC', kind: 'ACTIVE_ASK' },
+                    ],
+                });
+
+            const result = await service.estimateVehicleValue({
+                make: 'SKODA',
+                model: 'OCTAVIA',
+                year: 2012,
+                mileage: 95000,
+                transmission: 'MANUAL',
+            } as any);
+
+            expect(liveSearch).toHaveBeenCalledTimes(1);
+            expect(result.source).toBe('LIVE_UK_MARKET');
+            expect(result.confidence).toBe('LOW');
+            expect(result.retail.suggestedAsking).toBeGreaterThan(0);
+            expect(result.auction.marketValue).toBeGreaterThan(0);
+            expect(result.marketEvidence).toEqual(expect.objectContaining({
+                carmaziumComparables: 0,
+                liveUkComparables: 2,
+                liveUkSearchStatus: 'USED',
+                rawLiveUkComparables: 2,
+            }));
+        });
     });
 
     describe('alsoAuction', () => {
