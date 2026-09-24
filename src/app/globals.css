@@ -119,6 +119,31 @@
   }
 }
 
+/* ─── Accessibility defaults ───────────────────────────────────────────────── */
+
+:where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid #ed1c24;
+  outline-offset: 3px;
+}
+
+/* Honour the operating-system motion preference across Tailwind animations,
+   hover transitions and smooth scrolling. Functional loading copy remains
+   visible even when decorative spinners/pulses are reduced. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ─── Utilities ────────────────────────────────────────────────────────────── */
 
 @layer utilities {

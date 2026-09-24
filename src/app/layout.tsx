@@ -107,6 +107,12 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${inter.className} selection:bg-red-500/30 selection:text-red-200`}
       >
+        <a
+          href="#main-content"
+          className="sr-only fixed left-4 top-4 z-[200] rounded-lg bg-primary px-4 py-3 font-bold text-white shadow-xl focus:not-sr-only"
+        >
+          Skip to main content
+        </a>
         <MarketplaceJsonLd />
         <ConsentProvider>
           {/* MUST stay first: sets Consent Mode v2 defaults into the
@@ -130,7 +136,7 @@ export default function RootLayout({
                       <StagingBanner />
                       <OfflineBanner />
                       <Header />
-                      <main className="flex-grow pt-20">
+                      <main id="main-content" tabIndex={-1} className="flex-grow pt-20">
                         {children}
                       </main>
                       <ConditionalFooter />

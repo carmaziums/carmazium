@@ -296,6 +296,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                             <Link
                                 key={link.href}
                                 href={link.href}
+                                aria-current={isActive ? "page" : undefined}
                                 className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg min-w-0 relative transition-all ${isActive ? "text-primary" : ""}`}
                                 style={!isActive ? { color: 'var(--text-muted)' } : undefined}
                             >
@@ -327,6 +328,9 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                     })}
                     <button
                         onClick={toggleMobileMenu}
+                        aria-expanded={isMobileMenuOpen}
+                        aria-controls="dashboard-mobile-menu"
+                        aria-label={isMobileMenuOpen ? "Close dashboard menu" : "Open dashboard menu"}
                         className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg min-w-0 transition-all ${isMobileMenuOpen ? "text-primary" : ""}`}
                         style={!isMobileMenuOpen ? { color: 'var(--text-muted)' } : undefined}
                     >
@@ -344,7 +348,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             )}
 
             {/* Mobile Full Menu Panel */}
-            <div className={`
+            <div id="dashboard-mobile-menu" className={`
                 lg:hidden fixed bottom-[72px] left-0 right-0 z-40
                 border-t rounded-t-2xl
                 transition-transform duration-300 ease-out shadow-[0_-10px_40px_rgba(0,0,0,0.5)]
@@ -376,6 +380,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                     )}
                                     <Link
                                         href={link.href}
+                                        aria-current={isActive ? "page" : undefined}
                                         onClick={() => setIsMobileMenuOpen(false)}
                                         className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all ${isActive
                                             ? "bg-primary text-white"
@@ -452,6 +457,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                     )}
                                     <Link
                                         href={link.href}
+                                        aria-current={isActive ? "page" : undefined}
                                         className={`flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-sm transition-all ${isActive
                                             ? "bg-primary text-white font-semibold"
                                             : "hover:bg-primary/5 dark:hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white"
