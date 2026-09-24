@@ -4,7 +4,6 @@ import {
     NotFoundException,
     ForbiddenException,
     BadRequestException,
-    ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
