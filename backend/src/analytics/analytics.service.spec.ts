@@ -106,7 +106,7 @@ describe('AnalyticsService live valuation analytics', () => {
             retailRequests: 3,
             valuationAttempts: 20,
             figuresReturned: 17,
-            withoutFigures: 3,
+            withoutFigures: 2,
             confirmedNoFigures: 2,
             figureSuccessRate: 85,
             valuationJourneys: 13.
@@ -132,7 +132,7 @@ describe('AnalyticsService live valuation analytics', () => {
             sessions: 13,
             valuationAttempts: 20,
             figuresReturned: 17,
-            withoutFigures: 3,
+            withoutFigures: 2,
             confirmedNoFigures: 2,
             figureSuccessRate: 85,
             valuationJourneys: 13.
