@@ -109,6 +109,36 @@ for (const feature of manifest.features) {
   }
 }
 
+// Certification record integrity. Keep human-readable release documents aligned
+// with the machine-readable manifest and retain an explicit runtime evidence ledger.
+const requiredFeatureCount = manifest.features.filter((feature) => feature.status === 'required').length;
+const finalCertification = read('docs/parity/FINAL_CERTIFICATION.md');
+const parityProgress = read('docs/parity/PROGRESS.md');
+const runtimeReleaseChecklist = read('docs/parity/RUNTIME_RELEASE_CHECKLIST.md');
+
+if (!finalCertification.includes(`**${requiredFeatureCount} required cross-platform features**`)) {
+  fail(`Final certification does not match manifest required feature count (${requiredFeatureCount})`);
+} else {
+  ok(`Final certification matches ${requiredFeatureCount} required features`);
+}
+
+if (!parityProgress.includes(`- ${requiredFeatureCount} required web/native parity surfaces.`)) {
+  fail(`Progress record does not match manifest required feature count (${requiredFeatureCount})`);
+} else {
+  ok('Progress record matches the live parity manifest');
+}
+
+if (
+  !runtimeReleaseChecklist.includes('Runtime release certification:') ||
+  !runtimeReleaseChecklist.includes('signed Android APK/AAB') ||
+  !runtimeReleaseChecklist.includes('assetlinks.json') ||
+  !runtimeReleaseChecklist.includes('apple-app-site-association')
+) {
+  fail('Runtime release evidence checklist is missing required certification evidence categories');
+} else {
+  ok('Runtime release evidence ledger is present and explicit');
+}
+
 // Runtime one-product synchronization. The backend emits only domain
 // invalidations; each client must refetch authoritative REST state.
 const backendProductSync = read('backend/src/sync/product-sync.gateway.ts');
