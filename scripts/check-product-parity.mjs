@@ -229,6 +229,26 @@ if (
   ok('Legacy Finance/Insurance Partner roles keep native operational dashboards without buyer fallback');
 }
 
+// Dealer reporting controls must expose the same flexible range model on native
+// as the web command centre: presets, arbitrary days/months/years, all-time
+// and an explicit previous-period comparison toggle.
+const webDealerRangeControl = read('src/components/dashboard/FlexiblePeriodControl.tsx');
+const mobileDealerAnalyticsRange = read('carmazium app/carmazium app/src/screens/main/DealerAnalyticsScreen.tsx');
+const backendDealerAnalyticsRange = read('backend/src/dealers/dealers.service.ts');
+if (
+  !webDealerRangeControl.includes('Compare previous') ||
+  !webDealerRangeControl.includes('<option value="years">') ||
+  !mobileDealerAnalyticsRange.includes("type RangeUnit = 'days' | 'months' | 'years'") ||
+  !mobileDealerAnalyticsRange.includes('applyCustomRange') ||
+  !mobileDealerAnalyticsRange.includes('Compare previous period') ||
+  !mobileDealerAnalyticsRange.includes("if (p === 'ALL') return { range: 'all' }") ||
+  !backendDealerAnalyticsRange.includes("range === 'all'")
+) {
+  fail('Dealer analytics range/comparison controls drifted between web and native');
+} else {
+  ok('Dealer analytics supports flexible days/months/years, all-time and comparison across clients');
+}
+
 // Public review copy must not diverge into fabricated platform metrics.
 const webReviewsParity = read('src/app/reviews/page.tsx');
 if (
