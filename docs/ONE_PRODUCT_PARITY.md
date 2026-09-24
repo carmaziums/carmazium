@@ -102,6 +102,7 @@ The repository currently contains a mature Next.js website and an Expo/React Nat
 - Verify all `gap` entries are closed or explicitly approved as platform-only.
 - Produce a final parity report.
 - Keep CI enforcement in place so parity does not regress.
+- **Checkpoint (24 Sep 2026): code-parity release gate established.** The manifest contains 49 required web/native features, 2 explicitly approved web-only surfaces and 0 unresolved gaps. CI now fails on any future `gap`, unresolved web-only candidate, missing required surface or invalid web-only exception. The final report is `docs/parity/FINAL_CERTIFICATION.md`. Runtime release certification remains conditional on a signed native build/device pass, production browser/accessibility measurements and the real Apple/Android association identifiers.
 
 ## Intent
 
