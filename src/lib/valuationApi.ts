@@ -325,7 +325,27 @@ async function getBrowserFallbackValuation(
         })
         : values
 
-    return finishEstimate(request, cleaned)
+    const valuation = finishEstimate(request, cleaned)
+    valuation.marketEvidence = {
+        carmaziumComparables: cleaned.length,
+        liveUkComparables: 0,
+        liveUkSearchStatus: 'UNAVAILABLE',
+        rawLiveUkComparables: 0,
+    }
+    return valuation
+}
+
+function getDeterministicFallbackValuation(
+    request: VehicleValuationRequest,
+): VehicleValuation {
+    const valuation = finishEstimate(request, [])
+    valuation.marketEvidence = {
+        carmaziumComparables: 0,
+        liveUkComparables: 0,
+        liveUkSearchStatus: 'UNAVAILABLE',
+        rawLiveUkComparables: 0,
+    }
+    return valuation
 }
 
 export async function getVehicleValuation(
@@ -362,7 +382,7 @@ export async function getVehicleValuation(
         try {
             return await getBrowserFallbackValuation(request)
         } catch {
-            return finishEstimate(request, [])
+            return getDeterministicFallbackValuation(request)
         }
     }
 }
