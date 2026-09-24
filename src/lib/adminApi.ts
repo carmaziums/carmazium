@@ -327,8 +327,12 @@ export interface AdminMessageSendResult {
   sent: number;
   failed: number;
   pending?: number;
+  emailSent: number;
+  emailFailed: number;
+  emailSkipped: number;
+  emailPending?: number;
   status?: BroadcastCampaignStatus;
-  failures: Array<{ userId: string; error: string }>;
+  failures: Array<{ userId: string; channel: 'chat' | 'email'; error: string }>;
 }
 
 export interface AdminMessageScheduleResult {
@@ -469,6 +473,7 @@ export type BroadcastCampaignStatus =
   | 'FAILED'
   | 'CANCELLED';
 export type BroadcastDeliveryStatus = 'PENDING' | 'SENT' | 'FAILED';
+export type BroadcastEmailStatus = 'PENDING' | 'SENT' | 'FAILED' | 'SKIPPED';
 
 export interface AdminBroadcastCampaign {
   id: string;
@@ -484,6 +489,9 @@ export interface AdminBroadcastCampaign {
   requested: number;
   sent: number;
   failed: number;
+  emailSent: number;
+  emailFailed: number;
+  emailSkipped: number;
   status: BroadcastCampaignStatus;
   scheduledAt?: string | null;
   startedAt?: string | null;
@@ -506,6 +514,10 @@ export interface AdminBroadcastDelivery {
   messageId?: string | null;
   status: BroadcastDeliveryStatus;
   error?: string | null;
+  emailStatus: BroadcastEmailStatus;
+  emailMessageId?: string | null;
+  emailError?: string | null;
+  emailSentAt?: string | null;
   createdAt: string;
   updatedAt: string;
   user: {
@@ -543,6 +555,12 @@ export interface AdminBroadcastAnalytics {
   pendingRecipients: number;
   attemptedRecipients: number;
   deliverySuccessRate: number | null;
+  emailSentRecipients: number;
+  emailFailedRecipients: number;
+  emailSkippedRecipients: number;
+  emailPendingRecipients: number;
+  emailAttemptedRecipients: number;
+  emailSuccessRate: number | null;
 }
 
 export async function getAdminBroadcastCampaigns(
