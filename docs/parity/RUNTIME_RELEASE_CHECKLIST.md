@@ -1,6 +1,6 @@
 # CarMazium One Product — Runtime Release Evidence Checklist
 
-**Programme checkpoint:** 80%  
+**Programme checkpoint:** 90%  
 **Code-contract parity:** PASS  
 **Runtime release certification:** PENDING
 
@@ -8,7 +8,8 @@ This document is the evidence ledger for the final 20%. A box is checked only wh
 
 ## 80% → 90% — Release candidate evidence
 
-- [ ] Record the exact release candidate Git SHA.
+- [x] Common release identity contract uses the exact Git SHA across web/backend/native artifacts.
+- [ ] Record the exact production release candidate Git SHA.
 - [ ] Confirm One Product parity workflow is green on that exact SHA.
 - [ ] Confirm backend full test/build CI is green on that exact SHA.
 - [ ] Confirm web production build is green on that exact SHA.
