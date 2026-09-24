@@ -110,6 +110,21 @@ const DVLA_FUEL_MAP: Record<string, string> = {
 
 // ─── Euro status mapping (DVLA values → our enum) ─────────────────────────────
 
+function isPlausibleVehicleModel(
+    model?: string | null,
+    make?: string | null,
+    year?: number | null,
+): boolean {
+    const normalizedModel = (model ?? '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+    const normalizedMake = (make ?? '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+
+    if (!normalizedModel || normalizedModel.length < 2) return false;
+    if (normalizedMake && normalizedModel === normalizedMake) return false;
+    if (year && normalizedModel === String(year)) return false;
+
+    return true;
+}
+
 const DVLA_EURO_MAP: Record<string, string> = {
     EURO4: 'EURO_4',
     EURO5: 'EURO_5',
@@ -177,7 +192,17 @@ export class DvlaService {
         const combined = dvlaResult.value;
         if (motResult.status === 'fulfilled' && motResult.value) {
             combined.motHistory = motResult.value.motTests;
-            if (motResult.value.model) combined.model = motResult.value.model;
+            if (isPlausibleVehicleModel(
+                motResult.value.model,
+                combined.make,
+                combined.year,
+            )) {
+                combined.model = motResult.value.model;
+            } else if (motResult.value.model) {
+                this.logger.warn(
+                    `Ignoring implausible MOT model "${motResult.value.model}" for ${combined.make ?? 'unknown make'} ${combined.year ?? ''}`,
+                );
+            }
             if (motResult.value.primaryColour) combined.primaryColour = motResult.value.primaryColour;
             if (motResult.value.firstUsedDate) combined.firstUsedDate = motResult.value.firstUsedDate;
         }
