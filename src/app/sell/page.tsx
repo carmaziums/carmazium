@@ -314,6 +314,16 @@ function QuickValuationForm() {
         } catch (err) {
             if (err instanceof Error && err.message === "AUTH_REDIRECT") return
 
+            if (valuationJourneyIdRef.current) {
+                trackEvent(SELLER_FUNNEL.VALUATION_FAILED, {
+                    valuation_id: valuationJourneyIdRef.current,
+                    entry_point: "sell_landing",
+                    failure_reason: err instanceof Error && err.name === "AbortError"
+                        ? "timeout"
+                        : "unexpected_error",
+                })
+            }
+
             setManualMode(true)
             setPendingVehicle(null)
             setError(null)
