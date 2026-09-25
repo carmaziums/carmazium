@@ -17,6 +17,7 @@ export default function InsuranceQuotesPage() {
     const [quotes, setQuotes] = React.useState<InsuranceQuote[]>([])
     const [loading, setLoading] = React.useState(true)
     const [updating, setUpdating] = React.useState<string | null>(null)
+    const [actionError, setActionError] = React.useState<string | null>(null)
     const [statusFilter, setStatusFilter] = React.useState<string>("ALL")
     const [page, setPage] = React.useState(1)
     const [total, setTotal] = React.useState(0)
@@ -40,12 +41,33 @@ export default function InsuranceQuotesPage() {
     }, [user, authLoading, page])
 
     const handleStatusUpdate = async (id: string, status: string) => {
+        let quotedPrice: number | undefined
+        let coverageType: string | undefined
+        if (status === 'QUOTED') {
+            const rawPrice = window.prompt('Enter the annual insurance premium in pounds (£).')
+            if (rawPrice === null) return
+            quotedPrice = Number(rawPrice)
+            if (!Number.isFinite(quotedPrice) || quotedPrice <= 0) {
+                setActionError('Enter a valid annual premium before sending a quote.')
+                return
+            }
+            const rawCoverage = window.prompt('Enter the coverage type (for example, Comprehensive).')
+            if (rawCoverage === null) return
+            coverageType = rawCoverage.trim()
+            if (coverageType.length < 2) {
+                setActionError('Enter the coverage type before sending a quote.')
+                return
+            }
+        }
+
         try {
             setUpdating(id)
-            const updated = await updateInsuranceStatus(id, status)
+            setActionError(null)
+            const updated = await updateInsuranceStatus(id, status, quotedPrice, coverageType)
             setQuotes(prev => prev.map(q => q.id === id ? updated : q))
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to update status:', err)
+            setActionError(err?.message || 'Could not update this record.')
         } finally {
             setUpdating(null)
         }
@@ -73,6 +95,12 @@ export default function InsuranceQuotesPage() {
                 <DashboardSidebar role="insurance" userName={userName} userType="Insurance Partner" />
 
                 <main className="flex-1 space-y-6">
+                    {actionError && (
+                        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                            {actionError}
+                        </div>
+                    )}
+
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <h1 className="text-2xl font-black font-heading flex items-center gap-2">
                             <ClipboardList className="text-primary" /> Insurance Quotes
