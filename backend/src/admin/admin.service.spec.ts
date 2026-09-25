@@ -7,14 +7,22 @@ describe('AdminService listing approval readiness', () => {
             listing: {
                 findUnique: jest.fn().mockResolvedValue(listing),
                 update: jest.fn(),
+                updateMany: jest.fn().mockResolvedValue({ count: 1 }),
             },
             auction: {
                 update: jest.fn(),
+                updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+            },
+            bid: {
+                updateMany: jest.fn().mockResolvedValue({ count: 0 }),
             },
             user: { findUnique: jest.fn() },
             transaction: { findFirst: jest.fn() },
             analyticsEvent: { create: jest.fn().mockResolvedValue({ id: 'analytics-1' }) },
         };
+        prisma.$transaction = jest.fn(async (arg: any) =>
+            Array.isArray(arg) ? Promise.all(arg) : arg(prisma),
+        );
 
         const service = new AdminService(
             prisma,
@@ -155,4 +163,86 @@ describe('AdminService listing approval readiness', () => {
             expect(prisma.listing.update).not.toHaveBeenCalled();
         },
     );
+
+    it('refuses approval if the auction changes between review and activation', async () => {
+        const { service, prisma } = makeService(validLinkedAuction);
+        prisma.auction.updateMany.mockResolvedValue({ count: 0 });
+
+        await expect(service.approveListing('auction-listing-1'))
+            .rejects.toThrow(/auction changed while this listing was being approved/i);
+
+        expect(prisma.listing.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects a listing and cancels its scheduled auction in one transaction', async () => {
+        const listing = {
+            ...validLinkedAuction,
+            linkedListingId: null,
+            linkedListing: null,
+        };
+        const { service, prisma } = makeService(listing);
+        prisma.listing.update.mockResolvedValue({
+            ...listing,
+            status: 'REJECTED',
+            rejectionReason: 'Needs correction',
+        });
+
+        await service.rejectListing('auction-listing-1', { reason: 'Needs correction' } as any);
+
+        expect(prisma.$transaction).toHaveBeenCalled();
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where: { id: 'auction-1' },
+            data: {
+                status: 'CANCELLED',
+                buyItNowPendingBuyerId: null,
+                buyItNowPendingAt: null,
+            },
+        });
+    });
+
+    it('force-deletes an open auction and its listing as one lifecycle operation', async () => {
+        const listing = {
+            ...validLinkedAuction,
+            status: 'ACTIVE',
+            auction: {
+                ...validLinkedAuction.auction,
+                status: 'ACTIVE',
+            },
+            linkedListingId: null,
+            linkedListing: null,
+        };
+        const { service, prisma } = makeService(listing);
+        prisma.listing.update.mockResolvedValue({
+            ...listing,
+            deletedAt: new Date(),
+        });
+
+        await service.deleteListing('auction-listing-1');
+
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where: { id: 'auction-1' },
+            data: expect.objectContaining({
+                status: 'CANCELLED',
+                deletedAt: expect.any(Date),
+                buyItNowPendingBuyerId: null,
+                buyItNowPendingAt: null,
+            }),
+        });
+        expect(prisma.bid.updateMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: expect.objectContaining({
+                    listingId: 'auction-listing-1',
+                    archivedAt: null,
+                }),
+                data: { archivedAt: expect.any(Date) },
+            }),
+        );
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'auction-listing-1' },
+            data: {
+                deletedAt: expect.any(Date),
+                linkedListingId: null,
+            },
+        });
+    });
 });

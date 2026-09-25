@@ -1362,7 +1362,12 @@ export class AuctionsService {
         const operations: any[] = [
             this.prisma.auction.update({
                 where: { id },
-                data: { deletedAt: new Date() },
+                data: {
+                    status: 'CANCELLED',
+                    deletedAt: new Date(),
+                    buyItNowPendingBuyerId: null,
+                    buyItNowPendingAt: null,
+                },
             }),
             this.prisma.listing.update({
                 where: { id: auction.listingId },

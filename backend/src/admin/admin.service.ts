@@ -325,9 +325,70 @@ export class AdminService {
     }
 
     async deleteListing(id: string) {
-        return this.prisma.listing.update({
+        const listing = await this.prisma.listing.findUnique({
             where: { id },
-            data: { deletedAt: new Date() },
+            include: {
+                auction: {
+                    select: {
+                        id: true,
+                        status: true,
+                        deletedAt: true,
+                    },
+                },
+            },
+        });
+        if (!listing) {
+            throw new NotFoundException('Listing not found');
+        }
+
+        const deletedAt = new Date();
+        return this.prisma.$transaction(async (tx) => {
+            // Admin force-delete is allowed to stop an open auction, but the
+            // Auction row must transition with the Listing row. Otherwise an
+            // invisible ACTIVE/SCHEDULED auction can keep accepting lifecycle
+            // work after its parent has disappeared.
+            if (
+                listing.auction
+                && !listing.auction.deletedAt
+                && ['SCHEDULED', 'ACTIVE'].includes(listing.auction.status)
+            ) {
+                await tx.auction.update({
+                    where: { id: listing.auction.id },
+                    data: {
+                        status: 'CANCELLED',
+                        deletedAt,
+                        buyItNowPendingBuyerId: null,
+                        buyItNowPendingAt: null,
+                    },
+                });
+                await tx.bid.updateMany({
+                    where: {
+                        listingId: id,
+                        deletedAt: null,
+                        cancelledAt: null,
+                        archivedAt: null,
+                    },
+                    data: { archivedAt: deletedAt },
+                });
+            }
+
+            if (listing.linkedListingId) {
+                await tx.listing.updateMany({
+                    where: {
+                        id: listing.linkedListingId,
+                        linkedListingId: id,
+                    },
+                    data: { linkedListingId: null },
+                });
+            }
+
+            return tx.listing.update({
+                where: { id },
+                data: {
+                    deletedAt,
+                    linkedListingId: null,
+                },
+            });
         });
     }
 
@@ -545,7 +606,7 @@ export class AdminService {
                 },
             },
         });
-        if (!listing) {
+        if (!listing || listing.deletedAt) {
             throw new NotFoundException('Listing not found');
         }
         if (listing.status !== 'PENDING_REVIEW') {
@@ -609,19 +670,6 @@ export class AdminService {
                 }
             }
 
-            // Review time must not shorten a seller's 24-hour auction. If the
-            // requested start has already passed, restart the full 24-hour clock
-            // from approval; future scheduled starts keep their original window.
-            const now = new Date();
-            if (listing.auction.startTime <= now) {
-                await this.prisma.auction.update({
-                    where: { id: listing.auction.id },
-                    data: {
-                        startTime: now,
-                        endTime: new Date(now.getTime() + AUCTION_DURATION_MS),
-                    },
-                });
-            }
         }
 
         // Revenue guard: a customer retail listing must have a completed listing-fee
@@ -651,9 +699,55 @@ export class AdminService {
             }
         }
 
-        const updated = await this.prisma.listing.update({
-            where: { id },
-            data: buildListingActivationData(listing.badgeTier),
+        const updated = await this.prisma.$transaction(async (tx) => {
+            // Auction approval and listing activation must commit as one lifecycle
+            // transition. Claim the Auction row first to use the same lock order
+            // as seller cancellation/deletion paths and avoid approval races.
+            if (listing.type === 'AUCTION' && listing.auction) {
+                const now = new Date();
+                const resetWindow = listing.auction.startTime <= now;
+                const auctionClaim = await tx.auction.updateMany({
+                    where: {
+                        id: listing.auction.id,
+                        status: 'SCHEDULED',
+                        deletedAt: null,
+                    },
+                    data: {
+                        // Writing the same status acts as a compare-and-set claim.
+                        status: 'SCHEDULED',
+                        ...(resetWindow
+                            ? {
+                                startTime: now,
+                                endTime: new Date(now.getTime() + AUCTION_DURATION_MS),
+                            }
+                            : {}),
+                    },
+                });
+                if (auctionClaim.count !== 1) {
+                    throw new BadRequestException(
+                        'The auction changed while this listing was being approved. Refresh the review and try again.',
+                    );
+                }
+            }
+
+            const listingClaim = await tx.listing.updateMany({
+                where: {
+                    id,
+                    status: 'PENDING_REVIEW',
+                    deletedAt: null,
+                },
+                data: { status: 'PENDING_REVIEW' },
+            });
+            if (listingClaim.count !== 1) {
+                throw new BadRequestException(
+                    'The listing changed while it was being approved. Refresh the review and try again.',
+                );
+            }
+
+            return tx.listing.update({
+                where: { id },
+                data: buildListingActivationData(listing.badgeTier),
+            });
         });
 
         // Operational funnel telemetry: admin approval is the exact moment a
@@ -704,20 +798,37 @@ export class AdminService {
 
     async rejectListing(id: string, dto: RejectListingDto) {
         const listing = await this.prisma.listing.findUnique({ where: { id }, include: { auction: true } });
-        if (!listing) {
+        if (!listing || listing.deletedAt) {
             throw new NotFoundException('Listing not found');
         }
         if (listing.status !== 'PENDING_REVIEW') {
             throw new BadRequestException('Only listings awaiting review can be rejected');
         }
 
-        const updated = await this.prisma.listing.update({
-            where: { id },
-            data: {
-                status: 'REJECTED',
-                rejectionReason: dto.reason,
-                reviewedAt: new Date(),
-            },
+        const updated = await this.prisma.$transaction(async (tx) => {
+            const next = await tx.listing.update({
+                where: { id },
+                data: {
+                    status: 'REJECTED',
+                    rejectionReason: dto.reason,
+                    reviewedAt: new Date(),
+                },
+            });
+
+            // Rejection and scheduled-auction cancellation are one state change.
+            // A failure in either write rolls the whole review decision back.
+            if (listing.auction && listing.auction.status === 'SCHEDULED' && !listing.auction.deletedAt) {
+                await tx.auction.update({
+                    where: { id: listing.auction.id },
+                    data: {
+                        status: 'CANCELLED',
+                        buyItNowPendingBuyerId: null,
+                        buyItNowPendingAt: null,
+                    },
+                });
+            }
+
+            return next;
         });
 
         // Record the review outcome without copying the free-text rejection
@@ -733,15 +844,6 @@ export class AdminService {
                 },
             },
         }).catch(() => null);
-
-        // A rejected listing has nothing to auction — cancel its still-scheduled
-        // auction rather than leaving it to activate against a rejected listing.
-        if (listing.auction && listing.auction.status === 'SCHEDULED') {
-            await this.prisma.auction.update({
-                where: { id: listing.auction.id },
-                data: { status: 'CANCELLED' },
-            });
-        }
 
         if (listing.sellerId) {
             const seller = await this.prisma.user.findUnique({
