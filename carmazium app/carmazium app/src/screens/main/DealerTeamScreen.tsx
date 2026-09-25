@@ -6,6 +6,7 @@ import {
   FlatList,
   RefreshControl,
   StatusBar,
+  Switch,
   StyleSheet,
   Text,
   TextInput,
@@ -21,6 +22,12 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { Colors } from '../../constants/colors';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
+import {
+  getPartnerTeam,
+  updatePartnerTeamPermissions,
+  type PartnerTeam,
+  type TradeTeamPermissionInput,
+} from '../../lib/servicesApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -91,6 +98,17 @@ const getDisplayName = (member: StaffMember): string => {
   const parts = [member.user.firstName, member.user.lastName].filter(Boolean);
   return parts.length > 0 ? parts.join(' ') : member.user.email;
 };
+
+const blankTradeDraft = (email: string): TradeTeamPermissionInput => ({
+  email: email.trim().toLowerCase(),
+  deliveryEnabled: false,
+  inspectionEnabled: false,
+  canView: false,
+  canChat: false,
+  canQuote: false,
+  canManage: false,
+  canComplete: false,
+});
 
 // ─── Invite role pill ─────────────────────────────────────────────────────────
 
@@ -212,6 +230,10 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
   const [inviteRole, setInviteRole] = useState<InviteRole>('SALES_AGENT');
   const [inviteLoading, setInviteLoading] = useState(false);
   const [removeLoading, setRemoveLoading] = useState<string | null>(null);
+  const [tradeTeam, setTradeTeam] = useState<PartnerTeam | null>(null);
+  const [tradeDrafts, setTradeDrafts] = useState<Record<string, TradeTeamPermissionInput>>({});
+  const [tradeSaving, setTradeSaving] = useState<string | null>(null);
+  const [tradeError, setTradeError] = useState<string | null>(null);
 
   // ── Fetch staff ─────────────────────────────────────────────────────────────
   // GET /dealers/staff returns { active: [...], pending: [...] }, not a bare
@@ -222,10 +244,40 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
   const fetchStaff = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     try {
-      const res = await apiClient<{ success: boolean; data: { active: StaffMember[]; pending: PendingInvite[] } }>('/dealers/staff');
+      const [res, team] = await Promise.all([
+        apiClient<{ success: boolean; data: { active: StaffMember[]; pending: PendingInvite[] } }>('/dealers/staff'),
+        getPartnerTeam().catch(() => null),
+      ]);
       if (res.success) {
-        setStaff(Array.isArray(res.data?.active) ? res.data.active : []);
-        setPendingInvites(Array.isArray(res.data?.pending) ? res.data.pending : []);
+        const active = Array.isArray(res.data?.active) ? res.data.active : [];
+        const pending = Array.isArray(res.data?.pending) ? res.data.pending : [];
+        setStaff(active);
+        setPendingInvites(pending);
+        setTradeTeam(team);
+        if (team) {
+          const byEmail = new Map(team.permissions.map((permission) => [permission.email.toLowerCase(), permission]));
+          const nextDrafts: Record<string, TradeTeamPermissionInput> = {};
+          for (const person of [
+            ...active.map((member) => member.user.email),
+            ...pending.map((invite) => invite.email),
+          ]) {
+            const email = person.trim().toLowerCase();
+            const existing = byEmail.get(email);
+            nextDrafts[email] = existing
+              ? {
+                  email,
+                  deliveryEnabled: existing.deliveryEnabled,
+                  inspectionEnabled: existing.inspectionEnabled,
+                  canView: existing.canView,
+                  canChat: existing.canChat,
+                  canQuote: existing.canQuote,
+                  canManage: existing.canManage,
+                  canComplete: existing.canComplete,
+                }
+              : blankTradeDraft(email);
+          }
+          setTradeDrafts(nextDrafts);
+        }
       }
     } catch {
       /* silently fail */
@@ -301,6 +353,146 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
     ),
     [removeLoading, handleRemove],
   );
+
+  const setTradeFlag = (
+    email: string,
+    field: Exclude<keyof TradeTeamPermissionInput, 'email'>,
+    value: boolean,
+  ) => {
+    setTradeDrafts((current) => {
+      const key = email.trim().toLowerCase();
+      const next = { ...(current[key] ?? blankTradeDraft(key)), [field]: value };
+      const hasService = next.deliveryEnabled || next.inspectionEnabled;
+      if (!hasService) {
+        next.canView = false;
+        next.canChat = false;
+        next.canQuote = false;
+        next.canManage = false;
+        next.canComplete = false;
+      }
+      if (field === 'canView' && !value) {
+        next.canChat = false;
+        next.canQuote = false;
+        next.canManage = false;
+        next.canComplete = false;
+      }
+      if (['canChat', 'canQuote', 'canManage', 'canComplete'].includes(field) && value) {
+        next.canView = true;
+      }
+      return { ...current, [key]: next };
+    });
+  };
+
+  const saveTradeAccess = async (email: string) => {
+    const key = email.trim().toLowerCase();
+    const draft = tradeDrafts[key] ?? blankTradeDraft(key);
+    setTradeSaving(key);
+    setTradeError(null);
+    try {
+      const saved = await updatePartnerTeamPermissions(draft);
+      setTradeTeam((current) => current
+        ? {
+            ...current,
+            permissions: [
+              ...current.permissions.filter((permission) => permission.email.toLowerCase() !== key),
+              saved,
+            ],
+          }
+        : current);
+      Alert.alert('Saved', `TradeXchange access updated for ${key}.`);
+    } catch (err: any) {
+      setTradeError(err?.message || 'Could not save TradeXchange permissions.');
+    } finally {
+      setTradeSaving(null);
+    }
+  };
+
+  const renderTradeToggle = (
+    email: string,
+    label: string,
+    field: Exclude<keyof TradeTeamPermissionInput, 'email'>,
+    disabled = false,
+  ) => {
+    const draft = tradeDrafts[email] ?? blankTradeDraft(email);
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 7 }}>
+        <Text style={{ color: disabled ? Colors.textMuted : Colors.textSecondary, fontFamily: FontFamily.medium, fontSize: FontSize.size12 }}>
+          {label}
+        </Text>
+        <Switch
+          value={Boolean(draft[field])}
+          disabled={disabled}
+          onValueChange={(value) => setTradeFlag(email, field, value)}
+          trackColor={{ false: Colors.borderMuted, true: Colors.accent }}
+          thumbColor={Colors.white}
+        />
+      </View>
+    );
+  };
+
+  const renderTradeAccess = () => {
+    if (!tradeTeam || (!staff.length && !pendingInvites.length)) return null;
+    const people = [
+      ...staff.map((member) => ({
+        id: member.id,
+        email: member.user.email.trim().toLowerCase(),
+        name: getDisplayName(member),
+        pending: false,
+      })),
+      ...pendingInvites.map((invite) => ({
+        id: invite.id,
+        email: invite.email.trim().toLowerCase(),
+        name: invite.email,
+        pending: true,
+      })),
+    ];
+
+    return (
+      <View style={{ marginTop: 26, gap: 12 }}>
+        <View>
+          <Text style={styles.pendingSectionTitle}>TRADEXCHANGE TEAM ACCESS</Text>
+          <Text style={{ color: Colors.textMuted, fontFamily: FontFamily.regular, fontSize: FontSize.xs, lineHeight: 18 }}>
+            Match the website controls: choose Delivery/Recovery or Inspection, then grant view, chat, bid, manage and complete rights. Payouts always stay with the Partner business.
+          </Text>
+        </View>
+        {tradeError ? (
+          <Text style={{ color: Colors.error, fontFamily: FontFamily.medium, fontSize: FontSize.xs }}>{tradeError}</Text>
+        ) : null}
+        {people.map((person) => {
+          const draft = tradeDrafts[person.email] ?? blankTradeDraft(person.email);
+          const hasService = draft.deliveryEnabled || draft.inspectionEnabled;
+          return (
+            <View key={`trade-${person.id}`} style={[styles.pendingCard, { alignItems: 'stretch', flexDirection: 'column' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pendingEmail} numberOfLines={1}>{person.name}</Text>
+                  <Text style={styles.pendingRole} numberOfLines={1}>{person.email}</Text>
+                </View>
+                {person.pending ? <View style={styles.pendingBadge}><Text style={styles.pendingBadgeText}>PENDING</Text></View> : null}
+              </View>
+              {renderTradeToggle(person.email, 'Delivery & Recovery', 'deliveryEnabled')}
+              {renderTradeToggle(person.email, 'Vehicle Inspection', 'inspectionEnabled')}
+              {renderTradeToggle(person.email, 'View jobs', 'canView', !hasService)}
+              {renderTradeToggle(person.email, 'Job chat', 'canChat', !hasService || !draft.canView)}
+              {renderTradeToggle(person.email, 'Can bid / quote', 'canQuote', !hasService || !draft.canView)}
+              {renderTradeToggle(person.email, 'Manage job', 'canManage', !hasService || !draft.canView)}
+              {renderTradeToggle(person.email, 'Complete job', 'canComplete', !hasService || !draft.canView)}
+              <TouchableOpacity
+                style={[styles.inviteBtn, { width: '100%', borderRadius: 12, minHeight: 42, marginTop: 4 }]}
+                onPress={() => saveTradeAccess(person.email)}
+                disabled={tradeSaving === person.email}
+                accessibilityRole="button"
+              >
+                {tradeSaving === person.email
+                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  : <Text style={{ color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.xs }}>SAVE TRADEXCHANGE ACCESS</Text>}
+              </TouchableOpacity>
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
 
   // ── Render empty state ──────────────────────────────────────────────────────
   const renderEmpty = () => (
@@ -392,7 +584,12 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
           ]}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           ListEmptyComponent={renderEmpty}
-          ListFooterComponent={renderPendingInvites}
+          ListFooterComponent={() => (
+            <>
+              {renderPendingInvites()}
+              {renderTradeAccess()}
+            </>
+          )}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl

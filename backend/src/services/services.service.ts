@@ -621,9 +621,25 @@ export class ServicesService {
                 );
             }
             const u = cap.contractor.user;
-            if (!u.stripeConnectAccountId || !u.stripeConnectOnboardingComplete) {
+            if (!u.stripeConnectAccountId) {
                 throw new BadRequestException(
                     'This provider has not completed Stripe Connect onboarding. Approve once payouts are enabled.',
+                );
+            }
+            try {
+                const readiness = await this.payments.refreshConnectAccountReadiness(u.stripeConnectAccountId);
+                if (!readiness.ready) {
+                    throw new BadRequestException(
+                        'This provider’s Stripe Connect account is not currently ready for payouts.',
+                    );
+                }
+            } catch (error) {
+                if (error instanceof BadRequestException) throw error;
+                this.logger.warn(
+                    `Unable to verify Stripe Connect before approving provider capability ${id}: ${(error as any)?.message}`,
+                );
+                throw new ServiceUnavailableException(
+                    'CarMazium could not verify the provider payout account with Stripe. Please try again shortly.',
                 );
             }
             verification = await assertCapabilityVerificationReady(this.prisma, id, cap.serviceType);

@@ -62,6 +62,17 @@ export interface TradeTeamPermission {
   canComplete: boolean;
 }
 
+export type TradeTeamPermissionInput = {
+  email: string;
+  deliveryEnabled: boolean;
+  inspectionEnabled: boolean;
+  canView: boolean;
+  canChat: boolean;
+  canQuote: boolean;
+  canManage: boolean;
+  canComplete: boolean;
+};
+
 export interface PartnerTeam {
   dealerProfileId: string;
   companyName: string;
@@ -332,6 +343,14 @@ export async function savePartnerBusiness(input: {
 
 export async function getPartnerTeam(): Promise<PartnerTeam> {
   const r = await apiClient<{ data: PartnerTeam }>('/services/team');
+  return r.data;
+}
+
+export async function updatePartnerTeamPermissions(input: TradeTeamPermissionInput): Promise<TradeTeamPermission> {
+  const r = await apiClient<{ data: TradeTeamPermission }>('/services/team/permissions', {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
   return r.data;
 }
 

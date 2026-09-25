@@ -166,6 +166,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
   const isPartnerRole = profile?.role === 'DEALER' || accountRole === 'dealer';
   const byType = new Map((team?.capabilities ?? []).map((cap) => [cap.serviceType, cap]));
+  const hasPaidJobCapability = Boolean(byType.get('DELIVERY') || byType.get('INSPECTION'));
   const hasApprovedJobCapability =
     byType.get('DELIVERY')?.status === 'APPROVED'
     || byType.get('INSPECTION')?.status === 'APPROVED';
@@ -336,22 +337,31 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
               )}
 
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Business payouts</Text>
-                <Text style={styles.cardText}>
-                  Delivery and Inspection customers pay through CarMazium. CarMazium deducts 9% and 91% is paid to the Partner business Stripe Connect account.
-                </Text>
-                {team?.stripeConnect.complete ? (
-                  <View style={styles.successRow}>
-                    <Ionicons name="checkmark-circle" size={18} color={Colors.accentGreen} />
-                    <Text style={styles.successText}>Stripe payouts connected</Text>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.secondaryButton} onPress={startStripe} disabled={busy === 'stripe'}>
-                    {busy === 'stripe' ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.secondaryText}>{team?.stripeConnect.connected ? 'FINISH PAYOUT SETUP' : 'SET UP BUSINESS PAYOUTS'}</Text>}
-                  </TouchableOpacity>
-                )}
-              </View>
+              {hasPaidJobCapability ? (
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>Business payouts</Text>
+                  <Text style={styles.cardText}>
+                    Delivery and Inspection customers pay through CarMazium. CarMazium deducts 9% and 91% is paid to the Partner business Stripe Connect account.
+                  </Text>
+                  {team?.stripeConnect.complete ? (
+                    <View style={styles.successRow}>
+                      <Ionicons name="checkmark-circle" size={18} color={Colors.accentGreen} />
+                      <Text style={styles.successText}>Stripe payouts connected</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity style={styles.secondaryButton} onPress={startStripe} disabled={busy === 'stripe'}>
+                      {busy === 'stripe' ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.secondaryText}>{team?.stripeConnect.connected ? 'FINISH PAYOUT SETUP' : 'SET UP BUSINESS PAYOUTS'}</Text>}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>Finance & Warranty payouts</Text>
+                  <Text style={styles.cardText}>
+                    No Stripe payout account is required for Finance or Warranty enquiries because CarMazium does not collect those provider payments.
+                  </Text>
+                </View>
+              )}
 
               <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('DealerTeam')}>
                 <Ionicons name="people-outline" size={17} color={Colors.white} />
