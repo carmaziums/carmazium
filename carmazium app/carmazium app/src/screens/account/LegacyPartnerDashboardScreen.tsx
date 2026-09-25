@@ -195,6 +195,20 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
     );
   };
 
+  const completeFinanceApplication = async (item: LegacyPartnerItem) => {
+    setBusyId(item.id);
+    setError(null);
+    try {
+      const updated = await updateFinancePartnerApplication(item.id, 'COMPLETED');
+      replaceItem(updated);
+      await refreshStats();
+    } catch (err: any) {
+      setError(err?.message || 'Could not complete this finance application.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const openPrimaryAction = (item: LegacyPartnerItem) => {
     setActionItem(item);
     setAmountDraft('');
@@ -364,6 +378,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
               busy={busyId === item.id}
               onPrimary={() => openPrimaryAction(item)}
               onReject={() => rejectItem(item)}
+              onComplete={() => void completeFinanceApplication(item)}
             />
           ))
         )}
@@ -562,12 +577,14 @@ const PartnerRecordCard = ({
   busy,
   onPrimary,
   onReject,
+  onComplete,
 }: {
   kind: LegacyPartnerKind;
   item: LegacyPartnerItem;
   busy: boolean;
   onPrimary: () => void;
   onReject: () => void;
+  onComplete: () => void;
 }) => {
   const finance = item as FinancePartnerApplication;
   const insurance = item as InsurancePartnerQuote;
@@ -628,6 +645,19 @@ const PartnerRecordCard = ({
             <Text style={styles.recordRejectText}>REJECT</Text>
           </TouchableOpacity>
         </View>
+      ) : kind === 'finance' && item.status === 'APPROVED' ? (
+        <TouchableOpacity
+          style={[styles.recordPrimary, { marginTop: 8 }]}
+          onPress={onComplete}
+          disabled={busy}
+          accessibilityRole="button"
+        >
+          {busy ? (
+            <ActivityIndicator size="small" color={Colors.white} />
+          ) : (
+            <Text style={styles.recordPrimaryText}>MARK COMPLETED</Text>
+          )}
+        </TouchableOpacity>
       ) : null}
     </View>
   );
