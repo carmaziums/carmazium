@@ -11,6 +11,7 @@ import { UserRole } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import * as bcrypt from 'bcrypt';
 import { SELF_SERVICE_USER_ROLES, isSelfServiceUserRole } from '../core/account-roles';
+import { resolveFrontendUrl } from '../core/frontend-url';
 
 const VERIFICATION_CODE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const MAX_VERIFICATION_ATTEMPTS = 5;
@@ -505,7 +506,42 @@ export class UsersService {
      * Create (or retrieve) a Stripe Express account for the user and return
      * a one-time onboarding link.
      */
+    private safeConnectRedirectUrl(value: string, field: 'returnUrl' | 'refreshUrl') {
+        let parsed: URL;
+        try {
+            parsed = new URL(value);
+        } catch {
+            throw new BadRequestException(`${field} must be a valid CarMazium URL`);
+        }
+
+        const configuredOrigin = new URL(
+            resolveFrontendUrl(this.config.get<string>('FRONTEND_URL')),
+        ).origin;
+        const allowedOrigins = new Set([
+            configuredOrigin,
+            'https://carmazium.com',
+            'https://www.carmazium.com',
+        ]);
+        if (process.env.NODE_ENV !== 'production') {
+            allowedOrigins.add('http://localhost:3000');
+            allowedOrigins.add('http://127.0.0.1:3000');
+        }
+
+        if (!allowedOrigins.has(parsed.origin)) {
+            throw new BadRequestException(
+                `${field} must return to an approved CarMazium origin`,
+            );
+        }
+        if (parsed.protocol !== 'https:' && !parsed.hostname.match(/^(localhost|127\.0\.0\.1)$/)) {
+            throw new BadRequestException(`${field} must use HTTPS`);
+        }
+        return parsed.toString();
+    }
+
     async createConnectOnboardingLink(userId: string, returnUrl: string, refreshUrl: string) {
+        const safeReturnUrl = this.safeConnectRedirectUrl(returnUrl, 'returnUrl');
+        const safeRefreshUrl = this.safeConnectRedirectUrl(refreshUrl, 'refreshUrl');
+
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
             select: { id: true, email: true, stripeConnectAccountId: true },
@@ -535,8 +571,8 @@ export class UsersService {
 
         const link = await stripe.accountLinks.create({
             account: accountId,
-            return_url: returnUrl,
-            refresh_url: refreshUrl,
+            return_url: safeReturnUrl,
+            refresh_url: safeRefreshUrl,
             type: 'account_onboarding',
         });
 
