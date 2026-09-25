@@ -13,11 +13,10 @@ export class CreateCheckoutSessionDto {
     @Type(() => Number)
     amount: number;
 
-    @ApiPropertyOptional({ description: 'Payment type', default: 'FULL_PAYMENT' })
-    @IsOptional()
+    @ApiProperty({ description: 'Platform payment type', enum: ['COMMISSION'] })
     @IsString()
-    @IsIn(['DEPOSIT', 'FULL_PAYMENT', 'COMMISSION'])
-    type?: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION';
+    @IsIn(['COMMISSION'])
+    type: 'COMMISSION';
 
     @ApiPropertyOptional({ description: 'ISO 4217 currency code', default: 'gbp' })
     @IsOptional()
@@ -41,11 +40,10 @@ export class CreatePaymentSheetDto {
     @Type(() => Number)
     amount: number;
 
-    @ApiPropertyOptional({ description: 'Payment type', default: 'FULL_PAYMENT' })
-    @IsOptional()
+    @ApiProperty({ description: 'Platform payment type', enum: ['COMMISSION', 'LISTING_FEE', 'HPI_REPORT', 'HPI_REPORT_EMAIL'] })
     @IsString()
-    @IsIn(['DEPOSIT', 'FULL_PAYMENT', 'COMMISSION', 'LISTING_FEE', 'HPI_REPORT', 'HPI_REPORT_EMAIL'])
-    type?: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'LISTING_FEE' | 'HPI_REPORT' | 'HPI_REPORT_EMAIL';
+    @IsIn(['COMMISSION', 'LISTING_FEE', 'HPI_REPORT', 'HPI_REPORT_EMAIL'])
+    type: 'COMMISSION' | 'LISTING_FEE' | 'HPI_REPORT' | 'HPI_REPORT_EMAIL';
 
     @ApiPropertyOptional({ description: 'ISO 4217 currency code', default: 'gbp' })
     @IsOptional()
