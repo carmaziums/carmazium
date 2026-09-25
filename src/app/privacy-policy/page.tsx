@@ -86,7 +86,8 @@ const sections = [
     body: (
       <>
         <p>We keep personal data only for as long as reasonably necessary for the purpose for which it was collected and for legal, tax, accounting, fraud-prevention, security, dispute or regulatory requirements.</p>
-        <p>Account deletion deactivates the account, withdraws eligible active listings and anonymises core account information. Some transaction, bid, chat, dispute, KYC, payment or audit records may need to be retained where they are necessary to protect other users, establish or defend legal claims, prevent fraud, meet financial-record obligations or comply with law. When retention is no longer necessary, the data should be deleted or irreversibly anonymised.</p>
+        <p>Successful account deletion removes the sign-in identity, sensitive KYC documents, account-owned files and transient personal records, withdraws unfinished listings and irreversibly anonymises the application account used as a reference by shared marketplace records.</p>
+        <p>Completed transaction, payment, bid, offer, sale, dispute, moderation, service and transactional-chat records may be retained in pseudonymous form where they remain necessary to protect other users, administer refunds or payouts, establish or defend legal claims, prevent fraud, meet financial-record obligations or comply with law. Private chat attachments are removed. When a retention purpose expires, the remaining record should be deleted or further anonymised.</p>
       </>
     ),
   },
@@ -95,7 +96,7 @@ const sections = [
     body: (
       <>
         <p>You can start account deletion in the CarMazium app or website settings. You can also use the public <Link className="text-primary underline" href="/delete-account">Delete Account</Link> page without relying on the mobile app.</p>
-        <p>If an account has a live auction or active bid, deletion may be delayed until that live commitment ends so deletion cannot be used to evade an active transaction. If you cannot sign in, contact <a className="text-primary underline" href="mailto:info@carmazium.com?subject=Account%20deletion%20request">info@carmazium.com</a> from the email address connected to the account.</p>
+        <p>If an account has a live auction or active bid, deletion may be delayed until that live commitment ends so deletion cannot be used to evade an active transaction. Once deletion completes, CarMazium removes the Supabase sign-in identity and the backend also blocks stale sessions or access tokens from restoring the deleted account. If you cannot sign in, contact <a className="text-primary underline" href="mailto:info@carmazium.com?subject=Account%20deletion%20request">info@carmazium.com</a> from the email address connected to the account.</p>
       </>
     ),
   },
