@@ -336,10 +336,10 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
           if (kyc.stripeChargedAt) {
             setAlreadyPaid(true);
             setPaidAt(kyc.stripeChargedAt);
-          } else if (kyc.status === "PENDING") {
-            // Fields were saved on a previous visit but the dealer never completed (or
-            // cancelled) the Stripe Checkout redirect — skip straight to the payment step
-            // instead of making them re-click through steps 1 and 2.
+          } else if (kyc.status === "PENDING" && kyc.stripeCheckoutSessionId) {
+            // Only a KYC that actually reached Stripe checkout is a payment-outstanding
+            // submission. Private document uploads may create an unpaid draft earlier in
+            // the journey; those applicants must stay in the form rather than jump to step 3.
             setActiveStep(3);
           }
         }
