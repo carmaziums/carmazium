@@ -253,6 +253,38 @@ describe('OffersService — private retail negotiations', () => {
         });
     });
 
+    it('requires the controlled cancellation workflow once an offer is accepted', async () => {
+        prisma.offer.findUnique.mockResolvedValue({
+            id: 'offer-accepted',
+            listingId: 'listing-1',
+            buyerId: 'buyer-1',
+            amount: 8200,
+            counterAmount: null,
+            status: 'ACCEPTED',
+            updatedAt: new Date(),
+            counterAttemptsSeller: 0,
+            listing: {
+                id: 'listing-1',
+                title: 'Test',
+                sellerId: 'seller-1',
+                slug: 'test',
+                status: 'OFFER_ACCEPTED',
+                price: 10000,
+            },
+        });
+
+        await expect(
+            service.respondToOffer(
+                'offer-accepted',
+                'seller-1',
+                OfferResponseStatus.REJECTED,
+            ),
+        ).rejects.toThrow(/sale cancellation workflow/i);
+
+        expect(prisma.offer.update).not.toHaveBeenCalled();
+        expect(prisma.listing.updateMany).not.toHaveBeenCalled();
+    });
+
     it('buyer acceptance of a seller counter uses the same exclusive deal close', async () => {
         const offer = {
             id: 'offer-1',

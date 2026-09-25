@@ -487,24 +487,26 @@ export class OffersService {
             );
         }
 
-        const cancellingAcceptedDeal =
-            offer.status === 'ACCEPTED' &&
-            status === OfferResponseStatus.REJECTED;
+        if (offer.status === 'ACCEPTED') {
+            throw new BadRequestException(
+                'This deal has already been accepted. Use the sale cancellation workflow to cancel or relist it.',
+            );
+        }
+
         const isSellerTurn =
             offer.status === 'COUNTERED' &&
             offer.lastCounteredBy === 'BUYER';
 
         if (
             offer.status !== 'PENDING' &&
-            !isSellerTurn &&
-            !cancellingAcceptedDeal
+            !isSellerTurn
         ) {
             throw new BadRequestException(
                 `This offer is already ${offer.status.toLowerCase()}.`,
             );
         }
 
-        if (!cancellingAcceptedDeal && offer.listing.status !== 'ACTIVE') {
+        if (offer.listing.status !== 'ACTIVE') {
             throw new BadRequestException('This vehicle is no longer available for negotiation.');
         }
 
@@ -571,12 +573,6 @@ export class OffersService {
                 data: updateData,
             });
 
-            if (cancellingAcceptedDeal) {
-                await this.prisma.listing.updateMany({
-                    where: { id: offer.listingId, status: 'OFFER_ACCEPTED' },
-                    data: { status: 'ACTIVE' },
-                });
-            }
         }
 
         if (
@@ -631,10 +627,8 @@ export class OffersService {
             notifMessage = `Your offer of £${agreedAmt.toLocaleString('en-GB')} on "${offer.listing.title}" was accepted. The vehicle is now sale pending while you and the seller complete the deal.`;
             notifType = 'OFFER_ACCEPTED';
         } else if (prismaStatus === 'REJECTED') {
-            notifTitle = cancellingAcceptedDeal ? 'Deal Cancelled' : 'Offer Declined';
-            notifMessage = cancellingAcceptedDeal
-                ? `The previously accepted deal on "${offer.listing.title}" was cancelled by the seller and the vehicle is available again.`
-                : `Your offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}" was declined.`;
+            notifTitle = 'Offer Declined';
+            notifMessage = `Your offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}" was declined.`;
             notifType = 'OFFER_REJECTED';
         } else if (prismaStatus === 'COUNTERED') {
             notifTitle = 'Counter Offer Received';

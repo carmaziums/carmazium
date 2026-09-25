@@ -452,20 +452,6 @@ function OfferRow({
                     >
                         <CheckCircle size={13} /> Mark as Sold
                     </Button>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-red-500/40 text-red-400 hover:bg-red-500/10 hover:border-red-500 gap-1"
-                        disabled={isResponding}
-                        onClick={() => {
-                            if (confirm("Are you sure you want to cancel this offer and relist?")) {
-                                onRespond(offer.id, 'REJECTED');
-                            }
-                        }}
-                    >
-                        {isResponding ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
-                        Cancel & Relist
-                    </Button>
                 </div>
             )}
         </div>
