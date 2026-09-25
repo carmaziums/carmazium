@@ -4,7 +4,6 @@ import { ModuleRef } from '@nestjs/core';
 import { PrismaService } from '../prisma/prisma.service';
 import { HpiService } from '../hpi/hpi.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { EmailService } from '../email/email.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
@@ -23,7 +22,6 @@ export class PaymentsService {
         private readonly config: ConfigService,
         private readonly hpiService: HpiService,
         private readonly notificationsService: NotificationsService,
-        private readonly notificationsGateway: NotificationsGateway,
         private readonly emailService: EmailService,
         private readonly moduleRef: ModuleRef,
     ) {}
@@ -159,45 +157,6 @@ export class PaymentsService {
                 entityId: listing.id,
                 actionType: 'SUBMITTED',
             }).catch(() => null);
-            if (notification) {
-                this.notificationsGateway.sendNotification(listing.sellerId, notification);
-            }
-        } catch {
-            // best-effort only
-        }
-    }
-
-    /**
-     * Notify a seller that a buyer has paid the £500 refundable deposit on
-     * their listing. This used to be entirely missing — a completed DEPOSIT
-     * payment only updated the Transaction row, with no reaction anywhere
-     * else, so the seller had no way of knowing anyone had paid a deposit.
-     */
-    private async notifyDepositPaid(listingId: string, buyerId?: string) {
-        try {
-            const listing = await this.prisma.listing.findUnique({
-                where: { id: listingId },
-                select: { id: true, title: true, sellerId: true },
-            });
-            if (!listing?.sellerId) return;
-
-            const buyer = buyerId
-                ? await this.prisma.user.findUnique({ where: { id: buyerId }, select: { firstName: true, lastName: true } })
-                : null;
-            const buyerName = buyer ? `${buyer.firstName ?? ''} ${buyer.lastName ?? ''}`.trim() || 'A buyer' : 'A buyer';
-
-            const notification = await this.notificationsService.create({
-                userId: listing.sellerId,
-                type: 'SYSTEM',
-                title: 'Refundable deposit received',
-                message: `${buyerName} has paid a £500 refundable deposit to secure "${listing.title}". Get in touch with them to arrange next steps.`,
-                link: '/dashboard/seller/listings',
-                entityType: 'Listing',
-                entityId: listing.id,
-            }).catch(() => null);
-            if (notification) {
-                this.notificationsGateway.sendNotification(listing.sellerId, notification);
-            }
         } catch {
             // best-effort only
         }
@@ -211,9 +170,6 @@ export class PaymentsService {
         PREMIUM: 25.00,
     };
     private readonly BOOST_PRICE = 25.00;
-    // £500 refundable deposit — matches the web checkout page's DEPOSIT_AMOUNT
-    // constant (src/app/checkout/page.tsx). Not listing-dependent.
-    private readonly DEPOSIT_AMOUNT = 500;
 
     /**
      * Lazily create a Stripe SDK instance.
@@ -304,7 +260,8 @@ export class PaymentsService {
     }
 
     /**
-     * Create a Stripe Checkout Session for a vehicle purchase or deposit.
+     * Create hosted Checkout only for CarMazium's own auction buyer fee.
+     * Vehicle purchase money must always be settled directly with the seller.
      */
     private readonly AUCTION_BUYER_FEE = 125;
     private readonly AUCTION_SELLER_BONUS = 100;
@@ -382,9 +339,15 @@ export class PaymentsService {
         listingId: string,
         userId: string,
         clientAmount: number,
-        type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' = 'FULL_PAYMENT',
+        type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION',
         currency = 'gbp',
     ) {
+        if (type !== 'COMMISSION') {
+            throw new BadRequestException(
+                'CarMazium does not collect vehicle purchase money. Pay the seller directly; this checkout only accepts CarMazium platform fees.',
+            );
+        }
+
         const listing = await this.prisma.listing.findUnique({
             where: { id: listingId },
         });
@@ -403,19 +366,7 @@ export class PaymentsService {
         // client-supplied `clientAmount` — same fix as createPaymentSheet (F2);
         // see that method's comment for the full rationale. `clientAmount` is
         // kept only as a mismatch-detection log, never used for the actual charge.
-        let amount: number;
-        switch (type) {
-            case 'FULL_PAYMENT':
-                amount = Number(listing.price);
-                break;
-            case 'COMMISSION':
-                amount = this.AUCTION_BUYER_FEE;
-                break;
-            case 'DEPOSIT':
-            default:
-                amount = this.DEPOSIT_AMOUNT;
-                break;
-        }
+        const amount = this.AUCTION_BUYER_FEE;
 
         if (Math.abs(amount - clientAmount) > 0.01) {
             console.warn(
@@ -427,8 +378,6 @@ export class PaymentsService {
         const baseUrl = resolveFrontendUrl(this.config.get<string>('FRONTEND_URL') || this.config.get<string>('NEXT_PUBLIC_BASE_URL'));
 
         const descriptionMap: Record<string, string> = {
-            DEPOSIT: `Refundable deposit for ${listing.title}`,
-            FULL_PAYMENT: `Full payment for ${listing.title}`,
             COMMISSION: `Auction buyer fee — ${listing.title} (£${this.AUCTION_SELLER_BONUS} seller bonus + £${this.AUCTION_PLATFORM_FEE} platform fee)`,
         };
 
@@ -444,15 +393,11 @@ export class PaymentsService {
         });
 
         const productNameMap: Record<string, string> = {
-            DEPOSIT: listing.title,
-            FULL_PAYMENT: listing.title,
             COMMISSION: 'Auction Buyer Fee — Carmazium',
         };
 
         const productDescMap: Record<string, string> = {
-            DEPOSIT: 'Refundable deposit — secures your vehicle',
-            FULL_PAYMENT: `Full payment for ${listing.make || ''} ${listing.model || ''} ${listing.year || ''}`.trim(),
-            COMMISSION: `£${this.AUCTION_SELLER_BONUS} released to seller after handover · £${this.AUCTION_PLATFORM_FEE} Carmazium platform fee (non-refundable)`,
+            COMMISSION: `£${this.AUCTION_SELLER_BONUS} reserved for the seller reward after approved handover · £${this.AUCTION_PLATFORM_FEE} platform fee. Qualifying inspection/cancellation cases can receive a full buyer-fee refund.`,
         };
 
         const session = await stripe.checkout.sessions.create({
@@ -752,11 +697,17 @@ export class PaymentsService {
         listingId: string,
         userId: string,
         clientAmount: number,
-        type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'LISTING_FEE' | 'HPI_REPORT' | 'HPI_REPORT_EMAIL' = 'FULL_PAYMENT',
+        type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'LISTING_FEE' | 'HPI_REPORT' | 'HPI_REPORT_EMAIL',
         currency = 'gbp',
         badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM',
         vrm?: string,
     ) {
+        if (type === 'DEPOSIT' || type === 'FULL_PAYMENT') {
+            throw new BadRequestException(
+                'CarMazium does not collect vehicle purchase money. Pay the seller directly; Payment Sheet is only for CarMazium platform fees and add-ons.',
+            );
+        }
+
         const listing = await this.prisma.listing.findUnique({
             where: { id: listingId },
         });
@@ -780,9 +731,6 @@ export class PaymentsService {
         // only as a mismatch-detection log, never used to set the actual charge.
         let amount: number;
         switch (type) {
-            case 'FULL_PAYMENT':
-                amount = Number(listing.price);
-                break;
             case 'LISTING_FEE': {
                 transactionUserId = await this.resolveListingFeeBusinessId(
                     listing.sellerId,
@@ -821,10 +769,8 @@ export class PaymentsService {
                 }
                 amount = this.HPI_REPORT_PRICE;
                 break;
-            case 'DEPOSIT':
             default:
-                amount = this.DEPOSIT_AMOUNT;
-                break;
+                throw new BadRequestException('Unsupported CarMazium payment type');
         }
 
         if (Math.abs(amount - clientAmount) > 0.01) {
@@ -857,8 +803,6 @@ export class PaymentsService {
         );
 
         const descriptionMap: Record<string, string> = {
-            DEPOSIT: `Refundable deposit for ${listing.title}`,
-            FULL_PAYMENT: `Full payment for ${listing.title}`,
             COMMISSION: `Auction buyer fee — ${listing.title}`,
             LISTING_FEE: `${badgeTier ?? ''} Listing Fee — ${listing.title}`.trim(),
             HPI_REPORT: `Comprehensive HPI Report for ${vrm}`,
@@ -1066,36 +1010,10 @@ export class PaymentsService {
                 }
 
                 // 3. Handle Specific Types
-                if (type === 'DEPOSIT') {
-                    // Previously a no-op beyond marking the Transaction COMPLETED above —
-                    // the seller was never told a buyer had paid a deposit on their listing.
-                    this.notifyDepositPaid(listingId, session.metadata?.userId).catch(() => {});
-                }
-
-                if (type === 'FULL_PAYMENT') {
-                    const buyerId: string | undefined = session.metadata?.userId;
-                    const listing = await this.prisma.listing.findUnique({
-                        where: { id: listingId },
-                        select: { sellerId: true, price: true },
-                    });
-                    await this.prisma.$transaction(async (tx) => {
-                        await tx.listing.update({
-                            where: { id: listingId },
-                            data: { status: 'SOLD' },
-                        });
-                        // Create Sale record so earnings dashboard reflects this purchase
-                        const alreadyRecorded = await tx.sale.findFirst({ where: { listingId } });
-                        if (!alreadyRecorded && listing?.sellerId) {
-                            await tx.sale.create({
-                                data: {
-                                    listingId,
-                                    sellerId: listing.sellerId,
-                                    buyerId: buyerId ?? null,
-                                    soldPrice: listing.price ?? 0,
-                                },
-                            });
-                        }
-                    });
+                if (type === 'DEPOSIT' || type === 'FULL_PAYMENT') {
+                    this.logger.warn(
+                        `Ignoring retired vehicle-money Stripe side effects for transaction ${transactionId ?? 'unknown'} type=${type}. Vehicle payment must be settled directly with the seller.`,
+                    );
                 }
 
                 if (type === 'LISTING_FEE' && listingId) {
@@ -1170,33 +1088,10 @@ export class PaymentsService {
                     });
                 }
 
-                if (type === 'DEPOSIT' && listingId) {
-                    this.notifyDepositPaid(listingId, pi.metadata?.userId).catch(() => {});
-                }
-
-                if (type === 'FULL_PAYMENT' && listingId) {
-                    const buyerId: string | undefined = pi.metadata?.userId;
-                    const listing = await this.prisma.listing.findUnique({
-                        where: { id: listingId },
-                        select: { sellerId: true, price: true },
-                    });
-                    await this.prisma.$transaction(async (tx) => {
-                        await tx.listing.update({
-                            where: { id: listingId },
-                            data: { status: 'SOLD' },
-                        });
-                        const alreadyRecorded = await tx.sale.findFirst({ where: { listingId } });
-                        if (!alreadyRecorded && listing?.sellerId) {
-                            await tx.sale.create({
-                                data: {
-                                    listingId,
-                                    sellerId: listing.sellerId,
-                                    buyerId: buyerId ?? null,
-                                    soldPrice: listing.price ?? 0,
-                                },
-                            });
-                        }
-                    });
+                if (type === 'DEPOSIT' || type === 'FULL_PAYMENT') {
+                    this.logger.warn(
+                        `Ignoring retired vehicle-money PaymentIntent side effects for transaction ${transactionId ?? 'unknown'} type=${type}. Vehicle payment must be settled directly with the seller.`,
+                    );
                 }
 
                 if (type === 'COMMISSION' && transactionId) {

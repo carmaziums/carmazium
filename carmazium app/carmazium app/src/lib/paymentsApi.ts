@@ -1,8 +1,6 @@
 import { apiClient } from './apiClient';
 
 export type PaymentSheetType =
-  | 'DEPOSIT'
-  | 'FULL_PAYMENT'
   | 'COMMISSION'
   | 'LISTING_FEE'
   | 'HPI_REPORT'

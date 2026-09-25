@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { EmailService } from '../email/email.service';
 import { CreateOfferDto } from './dto/create-offer.dto';
 import { AmendOfferDto } from './dto/amend-offer.dto';
@@ -25,7 +24,6 @@ export class OffersService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly notificationsService: NotificationsService,
-        private readonly notificationsGateway: NotificationsGateway,
         private readonly emailService: EmailService,
         private readonly auctionsService: AuctionsService,
         private readonly dealersService: DealersService,
@@ -176,7 +174,6 @@ export class OffersService {
                     actionType: 'EXPIRED',
                     data: { listingId: offer.listingId, offerId: offer.id },
                 });
-                this.notificationsGateway.sendNotification(offer.buyerId, buyerNotification);
 
                 if (offer.listing.sellerId) {
                     const sellerNotification = await this.notificationsService.create({
@@ -190,7 +187,6 @@ export class OffersService {
                         actionType: 'EXPIRED',
                         data: { listingId: offer.listingId, offerId: offer.id },
                     });
-                    this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
                 }
             } catch (error) {
                 console.error('[OffersService] Failed to notify parties of expired offer:', error);
@@ -322,7 +318,6 @@ export class OffersService {
                     actionType: 'CREATED',
                     data: { listingId: listing.id, offerId: offer.id },
                 });
-                this.notificationsGateway.sendNotification(listing.sellerId, notification);
 
                 const seller = await this.prisma.user.findUnique({
                     where: { id: listing.sellerId },
@@ -591,7 +586,6 @@ export class OffersService {
                     actionType: 'COUNTER_LIMIT_REACHED',
                     data: { listingId: offer.listingId, offerId: offer.id },
                 });
-                this.notificationsGateway.sendNotification(offer.buyerId, buyerNotif);
 
                 if (offer.listing.sellerId) {
                     const sellerNotif = await this.notificationsService.create({
@@ -605,10 +599,6 @@ export class OffersService {
                         actionType: 'COUNTER_LIMIT_REACHED',
                         data: { listingId: offer.listingId, offerId: offer.id },
                     });
-                    this.notificationsGateway.sendNotification(
-                        offer.listing.sellerId,
-                        sellerNotif,
-                    );
                 }
             } catch (error) {
                 console.error(
@@ -648,10 +638,6 @@ export class OffersService {
                 actionType: prismaStatus,
                 data: { listingId: offer.listingId, offerId: offer.id },
             });
-            this.notificationsGateway.sendNotification(
-                offer.buyerId,
-                buyerNotification,
-            );
 
             const buyer = await this.prisma.user.findUnique({
                 where: { id: offer.buyerId },
@@ -712,10 +698,6 @@ export class OffersService {
                     actionType: 'ACCEPTED',
                     data: { listingId: offer.listingId, offerId: offer.id },
                 });
-                this.notificationsGateway.sendNotification(
-                    offer.listing.sellerId,
-                    sellerNotification,
-                );
             } catch (error) {
                 console.error(
                     'Failed to notify seller after offer acceptance:',
@@ -881,10 +863,6 @@ export class OffersService {
                     actionType: 'AMENDED',
                     data: { listingId: offer.listingId, offerId: offer.id },
                 });
-                this.notificationsGateway.sendNotification(
-                    offer.listing.sellerId,
-                    notification,
-                );
             } catch (error) {
                 console.error(
                     '[OffersService] Failed to notify seller of amended offer:',
@@ -942,7 +920,6 @@ export class OffersService {
                 actionType: 'WITHDRAWN',
                 data: { listingId: offer.listingId, offerId: offer.id },
             });
-            this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
         }
 
         return updated;
@@ -1052,10 +1029,6 @@ export class OffersService {
                         actionType: 'COUNTER_LIMIT_REACHED',
                         data: { listingId: offer.listingId, offerId: offer.id },
                     });
-                    this.notificationsGateway.sendNotification(
-                        offer.buyerId,
-                        buyerNotif,
-                    );
 
                     if (offer.listing.sellerId) {
                         const sellerNotif = await this.notificationsService.create({
@@ -1072,10 +1045,6 @@ export class OffersService {
                                 offerId: offer.id,
                             },
                         });
-                        this.notificationsGateway.sendNotification(
-                            offer.listing.sellerId,
-                            sellerNotif,
-                        );
                     }
                 } catch (error) {
                     console.error(
@@ -1098,10 +1067,6 @@ export class OffersService {
                         actionType: 'COUNTERED',
                         data: { listingId: offer.listingId, offerId: offer.id },
                     });
-                    this.notificationsGateway.sendNotification(
-                        offer.listing.sellerId,
-                        sellerNotif,
-                    );
                 } catch (error) {
                     console.error(
                         '[OffersService] Failed to notify seller of buyer re-counter:',
@@ -1154,10 +1119,6 @@ export class OffersService {
                     actionType: prismaStatus,
                     data: { listingId: offer.listingId, offerId: offer.id },
                 });
-                this.notificationsGateway.sendNotification(
-                    offer.listing.sellerId,
-                    sellerNotification,
-                );
 
                 if (
                     prismaStatus === 'ACCEPTED' &&

@@ -685,7 +685,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
         </TouchableOpacity>
         <Text style={styles.footerNote}>
           {canPayAuctionFee
-            ? 'Buyer fee is paid securely via Stripe. If handover proof is denied, the current CarMazium flow refunds £100 of the £125 fee; the £25 platform fee remains.'
+            ? 'Buyer fee is paid securely via Stripe. Handover-proof denial normally refunds £100 and retains the £25 platform fee. A qualifying CarMazium inspection refusal or approved seller/vehicle-fault cancellation refunds the full £125.'
             : 'This win belongs to the dealership. Fee payment is restricted to the Owner, Admin or Finance Manager.'}
         </Text>
       </View>

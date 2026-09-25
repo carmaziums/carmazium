@@ -1583,11 +1583,28 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           )}
 
-          {/* Verification Banner */}
-          <View style={styles.protectionCard}>
-            <Ionicons name="shield-checkmark" size={16} color={Colors.midGreen_00d28e} />
-            <Text style={styles.protectionText}>
-              HPI clear · VIN verified
+          {/* Vehicle-history status must reflect the actual report state. */}
+          <View style={[
+            styles.protectionCard,
+            !(hpiData && isReportReady(hpiData) && hpiData.isClear) && {
+              backgroundColor: Colors.whiteAlpha03,
+              borderColor: Colors.whiteAlpha08,
+            },
+          ]}>
+            <Ionicons
+              name={hpiData && isReportReady(hpiData) && hpiData.isClear ? 'shield-checkmark' : 'information-circle-outline'}
+              size={16}
+              color={hpiData && isReportReady(hpiData) && hpiData.isClear ? Colors.midGreen_00d28e : Colors.textMuted}
+            />
+            <Text style={[
+              styles.protectionText,
+              !(hpiData && isReportReady(hpiData) && hpiData.isClear) && { color: Colors.textSecondary },
+            ]}>
+              {hpiData && isReportReady(hpiData)
+                ? (hpiData.isClear ? 'Vehicle history report clear' : 'Vehicle history report available — review before purchase')
+                : hpiData
+                  ? 'Vehicle history report is being prepared'
+                  : 'Vehicle history report not supplied · HPI is optional'}
             </Text>
           </View>
 

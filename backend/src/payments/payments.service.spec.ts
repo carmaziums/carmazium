@@ -573,26 +573,18 @@ describe('PaymentsService — createPaymentSheet (F2: server-side amount, ignore
         mockPaymentIntentsCreate.mockResolvedValue({ id: 'pi_mock', client_secret: 'pi_mock_secret' });
     });
 
-    it('charges the real listing price for FULL_PAYMENT regardless of a lower client-supplied amount', async () => {
-        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
+    it.each(['FULL_PAYMENT', 'DEPOSIT'] as const)(
+        'blocks retired %s vehicle-money Payment Sheet before creating Stripe or transaction state',
+        async (type) => {
+            await expect(
+                service.createPaymentSheet('listing-1', 'user-1', 1, type, 'gbp'),
+            ).rejects.toThrow(/does not collect vehicle purchase money/i);
 
-        await service.createPaymentSheet('listing-1', 'user-1', 1, 'FULL_PAYMENT', 'gbp');
-
-        expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(
-            expect.objectContaining({ amount: 3000000 }), // £30,000 in pence, NOT the client's £1
-        );
-        expect(prisma.transaction.create).toHaveBeenCalledWith(
-            expect.objectContaining({ data: expect.objectContaining({ amount: 30000 }) }),
-        );
-    });
-
-    it('charges the fixed £500 deposit for DEPOSIT regardless of client-supplied amount', async () => {
-        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
-
-        await service.createPaymentSheet('listing-1', 'user-1', 1, 'DEPOSIT', 'gbp');
-
-        expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(expect.objectContaining({ amount: 50000 }));
-    });
+            expect(prisma.listing.findUnique).not.toHaveBeenCalled();
+            expect(prisma.transaction.create).not.toHaveBeenCalled();
+            expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
+        },
+    );
 
     it('charges the fixed £125 auction buyer fee for COMMISSION regardless of client-supplied amount', async () => {
         prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
@@ -1091,32 +1083,18 @@ describe('PaymentsService — createCheckoutSession (F6: server-side amount, sam
         mockCheckoutSessionsCreate.mockResolvedValue({ id: 'cs_mock', url: 'https://checkout.stripe.com/cs_mock' });
     });
 
-    it('charges the real listing price for FULL_PAYMENT regardless of a lower client-supplied amount', async () => {
-        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, make: 'BMW', model: 'M3', year: 2022, images: [], deletedAt: null });
+    it.each(['FULL_PAYMENT', 'DEPOSIT'] as const)(
+        'blocks retired %s hosted vehicle-money checkout before creating Stripe or transaction state',
+        async (type) => {
+            await expect(
+                service.createCheckoutSession('listing-1', 'user-1', 1, type, 'gbp'),
+            ).rejects.toThrow(/does not collect vehicle purchase money/i);
 
-        await service.createCheckoutSession('listing-1', 'user-1', 1, 'FULL_PAYMENT', 'gbp');
-
-        expect(mockCheckoutSessionsCreate).toHaveBeenCalledWith(
-            expect.objectContaining({
-                line_items: [expect.objectContaining({ price_data: expect.objectContaining({ unit_amount: 3000000 }) })],
-            }),
-        );
-        expect(prisma.transaction.create).toHaveBeenCalledWith(
-            expect.objectContaining({ data: expect.objectContaining({ amount: 30000 }) }),
-        );
-    });
-
-    it('charges the fixed £500 deposit for DEPOSIT regardless of client-supplied amount', async () => {
-        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, make: 'BMW', model: 'M3', year: 2022, images: [], deletedAt: null });
-
-        await service.createCheckoutSession('listing-1', 'user-1', 1, 'DEPOSIT', 'gbp');
-
-        expect(mockCheckoutSessionsCreate).toHaveBeenCalledWith(
-            expect.objectContaining({
-                line_items: [expect.objectContaining({ price_data: expect.objectContaining({ unit_amount: 50000 }) })],
-            }),
-        );
-    });
+            expect(prisma.listing.findUnique).not.toHaveBeenCalled();
+            expect(prisma.transaction.create).not.toHaveBeenCalled();
+            expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
+        },
+    );
 
     it('charges the fixed £125 auction buyer fee for COMMISSION regardless of client-supplied amount', async () => {
         prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, make: 'BMW', model: 'M3', year: 2022, images: [], deletedAt: null });

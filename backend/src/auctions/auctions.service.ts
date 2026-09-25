@@ -8,7 +8,6 @@ import {
     Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuctionGateway, AuctionEndPayload } from './auction.gateway';
 import { EmailService } from '../email/email.service';
@@ -45,7 +44,6 @@ export class AuctionsService {
 
     constructor(
         private readonly prisma: PrismaService,
-        private readonly notificationsGateway: NotificationsGateway,
         private readonly notificationsService: NotificationsService,
         @Inject(forwardRef(() => AuctionGateway))
         private readonly auctionGateway: AuctionGateway,
@@ -333,9 +331,6 @@ export class AuctionsService {
             entityId: listingId,
             actionType: 'SUBMITTED',
         }).catch(() => null);
-        if (notification) {
-            this.notificationsGateway.sendNotification(sellerId, notification);
-        }
     }
 
     async findAllActive(): Promise<any[]> {
@@ -820,7 +815,6 @@ export class AuctionsService {
                     entityId: cancellation.auctionId,
                     actionType: 'CANCELLED',
                 });
-                this.notificationsGateway.sendNotification(bidderId, notification);
             } catch (error) {
                 console.error('[AuctionsService] Failed to notify bidder of retail-deal cancellation:', error);
             }
@@ -1018,9 +1012,6 @@ export class AuctionsService {
                 entityId: auctionId,
                 actionType: 'PRICE_CORRECTED',
             }).catch(() => null);
-            if (notification) {
-                this.notificationsGateway.sendNotification(auction.listing.sellerId, notification);
-            }
         }
 
         this.auctionGateway.broadcastPriceUpdated(auctionId, reservePrice);
@@ -1152,9 +1143,6 @@ export class AuctionsService {
                     entityId: auction.id,
                     link: `/dashboard/seller/auctions`,
                 }).catch(() => null);
-                if (notification) {
-                    this.notificationsGateway.sendNotification(listing.sellerId, notification);
-                }
             }
 
             this.auctionGateway.broadcastAuctionEnd(auction.id, {
@@ -1331,9 +1319,6 @@ export class AuctionsService {
                 entityId: auction.id,
                 link: '/dashboard/seller/auctions',
             }).catch(() => null);
-            if (sellerNotification) {
-                this.notificationsGateway.sendNotification(auction.listing.sellerId, sellerNotification);
-            }
         }
 
         this.auctionGateway.broadcastAuctionEnd(auction.id, {
@@ -1435,15 +1420,16 @@ export class AuctionsService {
             } as any,
         });
 
-        // Notify seller that proof is under review
-        this.notificationsGateway.sendNotification(sellerId, {
+        // Persist + deliver the handover review notice through the canonical notification path.
+        await this.notificationsService.create({
+            userId: sellerId,
             type: 'AUCTION_ENDED',
             title: 'Handover proof received',
             message: `Your proof for "${auction.listing.title}" is under review. Your £100 seller bonus will be released once verified.`,
             entityType: 'AUCTION',
             entityId: auctionId,
             link: `/dashboard/seller/auctions`,
-        });
+        }).catch(() => null);
 
         return updated;
     }

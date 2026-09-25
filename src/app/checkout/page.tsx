@@ -5,14 +5,12 @@ import { Suspense, useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { motion } from "framer-motion"
-import { Shield, ShieldCheck, Lock, CreditCard, ArrowLeft, Loader2, Car, CheckCircle, Check, BadgeCheck, Gavel, Wallet, RefreshCcw, Receipt } from "lucide-react"
+import { Shield, ShieldCheck, Lock, ArrowLeft, Loader2, Car, Check, Gavel, Wallet, RefreshCcw, Receipt } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { getListingBySlug, type Listing, formatPrice } from "@/lib/listingApi"
 import { createCheckoutSession } from "@/lib/paymentApi"
 import { useAuth } from "@/context/AuthContext"
 
-const DEPOSIT_AMOUNT = 500 // £500 refundable deposit
 const AUCTION_BUYER_FEE = 125 // £125 total: £100 seller bonus + £25 platform
 const AUCTION_SELLER_BONUS = 100 // released to seller after handover proof
 const AUCTION_PLATFORM_FEE = 25 // non-refundable Carmazium fee
@@ -35,18 +33,20 @@ function CheckoutContent() {
     const { user, loading: authLoading } = useAuth()
 
     const listingId = searchParams.get("listing_id")
-    const mode = searchParams.get("mode") as "deposit" | "full" | "auction_fee" | null
+    const mode = searchParams.get("mode") as "auction_fee" | null
 
     const isAuctionFee = mode === "auction_fee"
 
     const [listing, setListing] = useState<Listing | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isProcessing, setIsProcessing] = useState(false)
-    const [selectedMode, setSelectedMode] = useState<"deposit" | "full">(isAuctionFee ? "deposit" : (mode as "deposit" | "full") || "deposit")
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        if (!listingId) return
+        if (!listingId) {
+            setIsLoading(false)
+            return
+        }
         const load = async () => {
             try {
                 const data = await getListingBySlug(listingId)
@@ -66,16 +66,10 @@ function CheckoutContent() {
         setError(null)
 
         try {
-            let amount: number
-            let type: "DEPOSIT" | "FULL_PAYMENT" | "COMMISSION"
-            if (isAuctionFee) {
-                amount = AUCTION_BUYER_FEE
-                type = "COMMISSION"
-            } else {
-                amount = selectedMode === "deposit" ? DEPOSIT_AMOUNT : parseFloat(String(listing.price))
-                type = selectedMode === "deposit" ? "DEPOSIT" : "FULL_PAYMENT"
+            if (!isAuctionFee) {
+                throw new Error("Vehicle purchase money is paid directly to the seller. CarMazium checkout only handles platform fees.")
             }
-            const result = await createCheckoutSession(listing.id, amount, type, "gbp")
+            const result = await createCheckoutSession(listing.id, AUCTION_BUYER_FEE, "COMMISSION", "gbp")
             if (result.url) {
                 window.location.href = result.url
             }
@@ -97,6 +91,30 @@ function CheckoutContent() {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="animate-spin text-primary" size={40} />
+            </div>
+        )
+    }
+
+    if (!isAuctionFee) {
+        return (
+            <div className="min-h-screen pt-28 pb-20">
+                <div className="container mx-auto px-5 max-w-2xl">
+                    <div className="rounded-3xl border border-[var(--border-default)] bg-[var(--bg-card)] p-8 md:p-10">
+                        <ShieldCheck className="text-emerald-500 mb-5" size={38} />
+                        <h1 className="text-3xl font-heading font-bold mb-3">Pay the seller directly</h1>
+                        <p className="text-[var(--text-muted)] leading-7 mb-6">
+                            CarMazium does not collect or hold the vehicle purchase price or a vehicle deposit. Agree the final amount with the seller and settle the vehicle payment directly with them.
+                        </p>
+                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 mb-6 text-sm text-[var(--text-muted)]">
+                            CarMazium checkout is used only for CarMazium platform charges such as the £125 auction buyer fee, listing fees and optional add-ons.
+                        </div>
+                        <Button asChild className="w-full h-12">
+                            <Link href={listing ? `/buy-cars/${listing.slug}` : "/buy-cars"}>
+                                <ArrowLeft size={17} className="mr-2" /> Return to vehicle
+                            </Link>
+                        </Button>
+                    </div>
+                </div>
             </div>
         )
     }
@@ -261,8 +279,8 @@ function CheckoutContent() {
                         <div>
                             <p className="text-sm font-bold text-blue-400 mb-1">Refund Policy</p>
                             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                                If the vehicle sale does not complete for any reason, <span className="text-[var(--text-primary)] font-bold">£{AUCTION_SELLER_BONUS} is refunded</span> to you.
-                                The £{AUCTION_PLATFORM_FEE} platform fee is non-refundable.
+                                If handover proof is denied, <span className="text-[var(--text-primary)] font-bold">£{AUCTION_SELLER_BONUS} is refunded</span> and the normal £{AUCTION_PLATFORM_FEE} platform fee is retained.
+                                If a completed CarMazium inspection records faults and you validly refuse the vehicle, or an approved cancellation qualifies for a buyer-fee refund, the full £{AUCTION_BUYER_FEE} is refunded.
                             </p>
                         </div>
                     </div>
@@ -324,171 +342,5 @@ function CheckoutContent() {
         )
     }
 
-    return (
-        <div className="min-h-screen pb-20">
-            {/* Header */}
-            <div className="relative overflow-hidden pt-28 pb-12">
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-[#1a2744] to-slate-900" />
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-primary/8 rounded-full blur-[120px] pointer-events-none" />
-                <div className="container mx-auto px-5 relative z-10">
-                    <Link href={`/vehicle/${listing.slug}`} className="inline-flex items-center gap-2 text-sm mb-4 transition-colors hover:text-primary" style={{ color: 'var(--text-muted)' }}>
-                        <ArrowLeft size={16} /> Back to listing
-                    </Link>
-                    <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">Secure Checkout</h1>
-                    <p className="mt-2 text-gray-300">Complete your purchase safely through Stripe</p>
-                </div>
-            </div>
-
-            <div className="container mx-auto px-5 -mt-4 relative z-10">
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                    {/* ── Left column: Vehicle summary ──────────────────────── */}
-                    <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.4 }}
-                        className="lg:col-span-2"
-                    >
-                        <div className="rounded-2xl border overflow-hidden shadow-lg"
-                            style={{ background: 'var(--bg-card)', borderColor: 'var(--border-default)' }}>
-                            <div className="h-52 relative">
-                                <Image src={getListingImage(listing)} alt={listing.title} fill className="object-cover" />
-                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/20 to-transparent" />
-                                <div className="absolute bottom-4 left-4">
-                                    <span className="px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-[var(--border-default)] text-primary font-mono text-xl font-bold">
-                                        {formatPrice(listing.price)}
-                                    </span>
-                                </div>
-                            </div>
-                            <div className="p-5 space-y-3">
-                                <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{listing.title}</h3>
-                                <div className="flex flex-wrap gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                                    {listing.year && <span className="px-2 py-1 rounded-md" style={{ background: 'var(--bg-input)' }}>{listing.year}</span>}
-                                    {listing.mileage && <span className="px-2 py-1 rounded-md" style={{ background: 'var(--bg-input)' }}>{listing.mileage.toLocaleString()} mi</span>}
-                                    {listing.fuelType && <span className="px-2 py-1 rounded-md capitalize" style={{ background: 'var(--bg-input)' }}>{listing.fuelType.toLowerCase()}</span>}
-                                    {listing.transmission && <span className="px-2 py-1 rounded-md capitalize" style={{ background: 'var(--bg-input)' }}>{listing.transmission.toLowerCase()}</span>}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Trust badges */}
-                        <div className="mt-6 grid grid-cols-3 gap-3">
-                            {[
-                                { icon: Shield, label: "Buyer Protection" },
-                                { icon: Lock, label: "SSL Encrypted" },
-                                { icon: BadgeCheck, label: "Stripe Secured" },
-                            ].map(({ icon: Icon, label }) => (
-                                <div key={label} className="flex flex-col items-center gap-2 p-3 rounded-xl border text-center"
-                                    style={{ background: 'var(--bg-card)', borderColor: 'var(--border-default)' }}>
-                                    <Icon size={20} className="text-emerald-400" />
-                                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{label}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </motion.div>
-
-                    {/* ── Right column: Payment options ─────────────────────── */}
-                    <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.4, delay: 0.1 }}
-                        className="lg:col-span-3 space-y-6"
-                    >
-                        {/* Standard deposit / full payment */}
-                        <div className="rounded-2xl border p-6 space-y-5"
-                            style={{ background: 'var(--bg-card)', borderColor: 'var(--border-default)' }}>
-                            <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Choose Payment Option</h2>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <button
-                                    onClick={() => setSelectedMode("deposit")}
-                                    className={`relative p-5 rounded-xl border-2 text-left transition-all ${selectedMode === "deposit" ? 'border-primary bg-primary/5 shadow-lg' : 'hover:border-white/20'}`}
-                                    style={selectedMode !== "deposit" ? { borderColor: 'var(--border-default)', background: 'var(--bg-input)' } : undefined}
-                                >
-                                    {selectedMode === "deposit" && <div className="absolute top-3 right-3"><CheckCircle size={20} className="text-primary" /></div>}
-                                    <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Refundable Deposit</div>
-                                    <div className="text-2xl font-bold text-primary font-mono">£{DEPOSIT_AMOUNT.toLocaleString()}</div>
-                                    <p className="text-xs mt-2" style={{ color: 'var(--text-faint)' }}>Reserve this vehicle — fully refundable within 7 days</p>
-                                </button>
-
-                                <button
-                                    onClick={() => setSelectedMode("full")}
-                                    className={`relative p-5 rounded-xl border-2 text-left transition-all ${selectedMode === "full" ? 'border-primary bg-primary/5 shadow-lg' : 'hover:border-white/20'}`}
-                                    style={selectedMode !== "full" ? { borderColor: 'var(--border-default)', background: 'var(--bg-input)' } : undefined}
-                                >
-                                    {selectedMode === "full" && <div className="absolute top-3 right-3"><CheckCircle size={20} className="text-primary" /></div>}
-                                    <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Full Payment</div>
-                                    <div className="text-2xl font-bold text-primary font-mono">{formatPrice(fullPrice)}</div>
-                                    <p className="text-xs mt-2" style={{ color: 'var(--text-faint)' }}>Complete the purchase — vehicle is yours</p>
-                                </button>
-                            </div>
-
-                            {/* Retail buyer fee notice */}
-                            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/15 text-xs">
-                                <CheckCircle size={13} className="text-emerald-400 shrink-0" />
-                                <span style={{ color: 'var(--text-muted)' }}>Retail buyers pay <span className="text-[var(--text-primary)] font-bold">no buyer fees</span> — only the vehicle price above.</span>
-                            </div>
-                        </div>
-
-                        {/* Order summary */}
-                        <div className="rounded-2xl border p-6 space-y-4"
-                            style={{ background: 'var(--bg-card)', borderColor: 'var(--border-default)' }}>
-                            <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Order Summary</h2>
-
-                            <div className="space-y-3 text-sm">
-                                <div className="flex justify-between">
-                                    <span style={{ color: 'var(--text-muted)' }}>{listing.title}</span>
-                                    <span style={{ color: 'var(--text-primary)' }}>{formatPrice(fullPrice)}</span>
-                                </div>
-                                <div className="border-t" style={{ borderColor: 'var(--border-default)' }} />
-                                <div className="flex justify-between">
-                                    <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>
-                                        {selectedMode === "deposit" ? "Deposit Amount" : "Total Due"}
-                                    </span>
-                                    <span className="text-lg font-bold text-primary font-mono">
-                                        {selectedMode === "deposit" ? `£${DEPOSIT_AMOUNT.toLocaleString()}.00` : formatPrice(fullPrice)}
-                                    </span>
-                                </div>
-                                {selectedMode === "deposit" && (
-                                    <div className="flex justify-between text-xs">
-                                        <span style={{ color: 'var(--text-faint)' }}>Remaining balance</span>
-                                        <span style={{ color: 'var(--text-faint)' }}>{formatPrice(fullPrice - DEPOSIT_AMOUNT)}</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Error */}
-                        {error && (
-                            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                                {error}
-                            </div>
-                        )}
-
-                        {/* Checkout button */}
-                        <Button
-                            onClick={handleCheckout}
-                            disabled={isProcessing}
-                            className="w-full h-14 text-lg font-bold gap-3 bg-gradient-to-r from-primary to-[#ff4d4d] hover:from-[#ff4d4d] hover:to-primary shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all disabled:opacity-50"
-                        >
-                            {isProcessing ? (
-                                <>
-                                    <Loader2 className="animate-spin" size={20} />
-                                    Connecting to Stripe...
-                                </>
-                            ) : (
-                                <>
-                                    <CreditCard size={20} />
-                                    Pay {selectedMode === "deposit" ? `£${DEPOSIT_AMOUNT}` : formatPrice(fullPrice)} Securely
-                                </>
-                            )}
-                        </Button>
-
-                        <p className="text-center text-xs" style={{ color: 'var(--text-faint)' }}>
-                            You will be redirected to Stripe&apos;s secure checkout. Your card details are never stored on our servers.
-                        </p>
-                    </motion.div>
-                </div>
-            </div>
-        </div>
-    )
+    return null
 }

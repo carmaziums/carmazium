@@ -48,7 +48,7 @@ export interface PaymentTransaction {
 export async function createCheckoutSession(
     listingId: string,
     amount: number,
-    type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' = 'FULL_PAYMENT',
+    type: 'COMMISSION' = 'COMMISSION',
     currency = 'gbp',
 ): Promise<CheckoutSessionResult> {
     const data = await apiClient<{ data: CheckoutSessionResult }>('/payments/checkout', {

@@ -154,9 +154,17 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
       return;
     }
 
+    if (paymentType !== 'COMMISSION') {
+      Alert.alert(
+        'Pay the seller directly',
+        'CarMazium does not collect vehicle purchase money or a vehicle deposit. Agree the amount with the seller and pay them directly.',
+      );
+      return;
+    }
+
     setPaying(true);
     try {
-      // 1. Ask the backend to create a PaymentIntent + EphemeralKey.
+      // 1. Ask the backend to create a PaymentIntent + EphemeralKey for the auction buyer fee only.
       const sheet = await createPaymentSheet({
         listingId,
         amount: total,
@@ -249,6 +257,30 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
     pendingConfirmationId,
     reconcilePendingAuctionFee,
   ]);
+
+  // Legacy retail callers must fail closed rather than opening a vehicle-money Payment Sheet.
+  if (paymentType !== 'COMMISSION') {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <View style={{ paddingTop: insets.top + 24, paddingHorizontal: 20, flex: 1 }}>
+          <IconButton
+            style={styles.backBtn}
+            icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />}
+            onPress={() => navigation?.goBack()}
+            accessibilityLabel="Go back"
+          />
+          <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 80 }}>
+            <Ionicons name="shield-checkmark-outline" size={42} color={Colors.accentGreen} />
+            <Text style={[styles.headerTitle, { fontSize: FontSize.xl, marginTop: 16 }]}>Pay the seller directly</Text>
+            <Text style={[styles.commissionNote, { marginTop: 12, fontSize: FontSize.size14, lineHeight: 22 }]}>
+              CarMazium does not collect or hold the vehicle purchase price or a vehicle deposit. Agree the final amount with the seller and settle the vehicle payment directly with them.
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   // ── Success screen ────────────────────────────────────────────────
   if (paid) {

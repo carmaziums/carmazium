@@ -34,7 +34,6 @@ import { createClient } from '@supabase/supabase-js';
 import { SellersService } from '../sellers/sellers.service';
 import { ScraperService } from '../scraper/scraper.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { DealersService } from '../dealers/dealers.service';
 import { buildListingActivationData } from './listing-activation';
 import { brandAdminSeller, brandListingSeller } from './admin-seller-branding';
@@ -127,7 +126,6 @@ export class ListingsService {
         private readonly config: ConfigService,
         private readonly scraper: ScraperService,
         private readonly notificationsService: NotificationsService,
-        private readonly notificationsGateway: NotificationsGateway,
         private readonly dealersService: DealersService,
     ) { }
 
@@ -418,9 +416,6 @@ export class ListingsService {
                 entityId: listing.id,
                 actionType: 'SUBMITTED',
             }).catch(() => null);
-            if (notification) {
-                this.notificationsGateway.sendNotification(listing.sellerId, notification);
-            }
         } catch {
             // best-effort only
         }
@@ -952,7 +947,6 @@ export class ListingsService {
                         entityId: result.auctionId ?? result.listing.id,
                         actionType: 'CANCELLED',
                     });
-                    if (notification) this.notificationsGateway.sendNotification(bidderId, notification);
                 } catch (error) {
                     this.logger.warn(`Could not notify bidder ${bidderId} about retail conversion: ${error}`);
                 }
