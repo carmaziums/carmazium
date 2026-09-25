@@ -53,6 +53,11 @@ describe('ListingsService', () => {
                 findMany: jest.fn(),
                 aggregate: jest.fn(),
                 create: jest.fn(),
+                upsert: jest.fn(),
+            },
+            offer: {
+                findFirst: jest.fn(),
+                updateMany: jest.fn().mockResolvedValue({ count: 0 }),
             },
             dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
@@ -550,73 +555,125 @@ describe('ListingsService', () => {
         });
     });
 
-    describe('updateStatus -> SOLD', () => {
-        it('creates a Sale record when transitioning to SOLD for the first time', async () => {
-            prisma.listing.findUnique.mockResolvedValue({
+    describe('controlled sale completion', () => {
+        it('routes generic SOLD through recordSale and uses the accepted buyer/price', async () => {
+            const active = {
                 id: 'listing-1',
                 sellerId: 'seller-1',
-                status: 'ACTIVE',
+                status: 'OFFER_ACCEPTED',
+                type: 'CLASSIFIED',
                 price: 12000,
                 deletedAt: null,
+            };
+            const sold = { ...active, status: 'SOLD' };
+            prisma.listing.findUnique
+                .mockResolvedValueOnce(active)
+                .mockResolvedValueOnce(active)
+                .mockResolvedValueOnce(sold);
+            prisma.listing.updateMany.mockResolvedValue({ count: 1 });
+            prisma.offer.findFirst.mockResolvedValue({
+                id: 'offer-1',
+                listingId: 'listing-1',
+                buyerId: 'buyer-1',
+                amount: 10000,
+                finalAmount: 10500,
+                counterAmount: 10500,
+                status: 'ACCEPTED',
+                buyer: {
+                    firstName: 'Test',
+                    lastName: 'Buyer',
+                    email: 'buyer@example.test',
+                },
             });
-            prisma.listing.update.mockResolvedValue({
-                id: 'listing-1',
-                sellerId: 'seller-1',
-                status: 'SOLD',
-            });
-            prisma.sale.findFirst.mockResolvedValue(null);
 
             await service.updateStatus('listing-1', 'seller-1', 'SOLD' as any);
 
-            expect(prisma.sale.create).toHaveBeenCalledWith(
+            expect(prisma.sale.upsert).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    data: expect.objectContaining({
+                    where: { listingId: 'listing-1' },
+                    create: expect.objectContaining({
                         listingId: 'listing-1',
                         sellerId: 'seller-1',
-                        soldPrice: 12000,
+                        buyerId: 'buyer-1',
+                        soldPrice: 10500,
+                    }),
+                    update: expect.objectContaining({
+                        buyerId: 'buyer-1',
+                        soldPrice: 10500,
                     }),
                 }),
             );
             expect(sellers.incrementSales).toHaveBeenCalledWith('seller-1');
         });
 
-        it('does NOT double-insert a Sale when one already exists for the listing', async () => {
+        it('does not allow a sold listing to be reactivated outside cancellation', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                status: 'SOLD',
+                type: 'CLASSIFIED',
+                price: 12000,
+                deletedAt: null,
+            });
+
+            await expect(
+                service.updateStatus('listing-1', 'seller-1', 'ACTIVE' as any),
+            ).rejects.toThrow(/sale cancellation workflow/i);
+
+            expect(prisma.listing.update).not.toHaveBeenCalled();
+        });
+
+        it('does not allow an accepted deal to be reactivated outside cancellation', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                status: 'OFFER_ACCEPTED',
+                type: 'CLASSIFIED',
+                price: 12000,
+                deletedAt: null,
+            });
+
+            await expect(
+                service.updateStatus('listing-1', 'seller-1', 'ACTIVE' as any),
+            ).rejects.toThrow(/sale cancellation workflow/i);
+
+            expect(prisma.listing.update).not.toHaveBeenCalled();
+        });
+
+        it('blocks manual SOLD transitions for auction listings', async () => {
             prisma.listing.findUnique.mockResolvedValue({
                 id: 'listing-1',
                 sellerId: 'seller-1',
                 status: 'ACTIVE',
+                type: 'AUCTION',
                 price: 12000,
                 deletedAt: null,
             });
-            prisma.listing.update.mockResolvedValue({
-                id: 'listing-1',
-                sellerId: 'seller-1',
-                status: 'SOLD',
-            });
-            prisma.sale.findFirst.mockResolvedValue({ id: 'existing-sale' });
 
-            await service.updateStatus('listing-1', 'seller-1', 'SOLD' as any);
+            await expect(
+                service.updateStatus('listing-1', 'seller-1', 'SOLD' as any),
+            ).rejects.toThrow(/auction lifecycle/i);
 
-            expect(prisma.sale.create).not.toHaveBeenCalled();
+            expect(prisma.sale.upsert).not.toHaveBeenCalled();
         });
 
-        it('does not create a Sale when the listing was already SOLD', async () => {
-            prisma.listing.findUnique.mockResolvedValue({
+        it('uses compare-and-set so a racing sale completion cannot double-count', async () => {
+            const active = {
                 id: 'listing-1',
                 sellerId: 'seller-1',
-                status: 'SOLD',
+                status: 'ACTIVE',
+                type: 'CLASSIFIED',
                 price: 12000,
                 deletedAt: null,
-            });
-            prisma.listing.update.mockResolvedValue({
-                id: 'listing-1',
-                sellerId: 'seller-1',
-                status: 'SOLD',
-            });
+            };
+            prisma.listing.findUnique.mockResolvedValue(active);
+            prisma.listing.updateMany.mockResolvedValue({ count: 0 });
 
-            await service.updateStatus('listing-1', 'seller-1', 'SOLD' as any);
+            await expect(
+                service.recordSale('listing-1', 'seller-1', { soldPrice: 11500 }),
+            ).rejects.toThrow(/changed while the sale was being recorded/i);
 
-            expect(prisma.sale.create).not.toHaveBeenCalled();
+            expect(prisma.sale.upsert).not.toHaveBeenCalled();
             expect(sellers.incrementSales).not.toHaveBeenCalled();
         });
     });
