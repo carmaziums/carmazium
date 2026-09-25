@@ -670,19 +670,6 @@ export class AdminService {
                 }
             }
 
-            // Review time must not shorten a seller's 24-hour auction. If the
-            // requested start has already passed, restart the full 24-hour clock
-            // from approval; future scheduled starts keep their original window.
-            const now = new Date();
-            if (listing.auction.startTime <= now) {
-                await this.prisma.auction.update({
-                    where: { id: listing.auction.id },
-                    data: {
-                        startTime: now,
-                        endTime: new Date(now.getTime() + AUCTION_DURATION_MS),
-                    },
-                });
-            }
         }
 
         // Revenue guard: a customer retail listing must have a completed listing-fee
@@ -712,9 +699,55 @@ export class AdminService {
             }
         }
 
-        const updated = await this.prisma.listing.update({
-            where: { id },
-            data: buildListingActivationData(listing.badgeTier),
+        const updated = await this.prisma.$transaction(async (tx) => {
+            // Auction approval and listing activation must commit as one lifecycle
+            // transition. Claim the Auction row first to use the same lock order
+            // as seller cancellation/deletion paths and avoid approval races.
+            if (listing.type === 'AUCTION' && listing.auction) {
+                const now = new Date();
+                const resetWindow = listing.auction.startTime <= now;
+                const auctionClaim = await tx.auction.updateMany({
+                    where: {
+                        id: listing.auction.id,
+                        status: 'SCHEDULED',
+                        deletedAt: null,
+                    },
+                    data: {
+                        // Writing the same status acts as a compare-and-set claim.
+                        status: 'SCHEDULED',
+                        ...(resetWindow
+                            ? {
+                                startTime: now,
+                                endTime: new Date(now.getTime() + AUCTION_DURATION_MS),
+                            }
+                            : {}),
+                    },
+                });
+                if (auctionClaim.count !== 1) {
+                    throw new BadRequestException(
+                        'The auction changed while this listing was being approved. Refresh the review and try again.',
+                    );
+                }
+            }
+
+            const listingClaim = await tx.listing.updateMany({
+                where: {
+                    id,
+                    status: 'PENDING_REVIEW',
+                    deletedAt: null,
+                },
+                data: { status: 'PENDING_REVIEW' },
+            });
+            if (listingClaim.count !== 1) {
+                throw new BadRequestException(
+                    'The listing changed while it was being approved. Refresh the review and try again.',
+                );
+            }
+
+            return tx.listing.update({
+                where: { id },
+                data: buildListingActivationData(listing.badgeTier),
+            });
         });
 
         // Operational funnel telemetry: admin approval is the exact moment a
