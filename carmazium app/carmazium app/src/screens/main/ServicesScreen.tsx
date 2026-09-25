@@ -3,6 +3,7 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
+  Linking,
   Text,
   TouchableOpacity,
   View,
@@ -30,11 +31,13 @@ interface ServiceItem {
   color: string;
   bg: string;
   border: string;
+  href?: string;
 }
 
 const SERVICES: ServiceItem[] = [
   {
     title: 'Vehicle Delivery',
+    href: 'https://www.carmazium.com/services/delivery',
     desc: 'Professional vehicle delivery — your car gets transported to your door safely and on schedule, via trusted third-party couriers.',
     icon: 'car-outline',
     color: Colors.infoBlueLight,
@@ -43,6 +46,7 @@ const SERVICES: ServiceItem[] = [
   },
   {
     title: 'Car Inspection',
+    href: 'https://www.carmazium.com/services/inspection',
     desc: 'Connect with certified inspectors who carry out detailed, independent vehicle evaluations before you commit to a purchase.',
     icon: 'search-outline',
     color: Colors.lightGreen_34d399,
@@ -51,6 +55,7 @@ const SERVICES: ServiceItem[] = [
   },
   {
     title: 'Warranty Coverage',
+    href: 'https://www.carmazium.com/services/warranty',
     desc: 'Extended third-party warranty options give you protection against unexpected mechanical or electrical failures after purchase.',
     icon: 'ribbon-outline',
     color: Colors.palePurple_c084fc,
@@ -59,6 +64,7 @@ const SERVICES: ServiceItem[] = [
   },
   {
     title: 'Vehicle Financing',
+    href: 'https://www.carmazium.com/services/finance',
     desc: 'Get matched with finance providers offering structured payment plans and pre-approvals tailored to your budget.',
     icon: 'cash-outline',
     color: Colors.lightOrange_fbbf24,
@@ -156,15 +162,28 @@ export const ServicesScreen: React.FC = () => {
         </TouchableOpacity>
 
         {SERVICES.map((service) => (
-          <View key={service.title} style={styles.card}>
+          <TouchableOpacity
+            key={service.title}
+            style={styles.card}
+            activeOpacity={service.href ? 0.78 : 1}
+            disabled={!service.href}
+            accessibilityRole={service.href ? 'button' : undefined}
+            accessibilityLabel={service.href ? `Open ${service.title}` : service.title}
+            onPress={() => {
+              if (service.href) Linking.openURL(service.href).catch(() => undefined);
+            }}
+          >
             <View style={[styles.iconWrap, { backgroundColor: service.bg, borderColor: service.border }]}>
               <Ionicons name={service.icon} size={22} color={service.color} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.cardTitle}>{service.title}</Text>
               <Text style={styles.cardDesc}>{service.desc}</Text>
+              {service.href && (
+                <Text style={[styles.openText, { color: service.color }]}>Open TradeXchange →</Text>
+              )}
             </View>
-          </View>
+          </TouchableOpacity>
         ))}
 
         <View style={styles.noteCard}>
@@ -310,6 +329,11 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size12,
     color: Colors.textSecondary,
     lineHeight: 19,
+  },
+  openText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    marginTop: 8,
   },
 
   noteCard: {
