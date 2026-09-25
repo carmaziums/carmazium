@@ -236,6 +236,17 @@ export class DealersService {
         // value for it, so it must never fall into the ''-fallback path above.
         const businessType = dto.businessType ?? 'PRIVATE_LIMITED';
 
+        if (businessType === 'SOLE_PROPRIETORSHIP') {
+            const existingKyc = profile.kyc as any;
+            const hasPhotoId = !!(existingKyc?.directorIdProofPath || existingKyc?.directorIdProof);
+            const hasProofOfAddress = !!(existingKyc?.proofOfAddressPath || existingKyc?.proofOfAddress);
+            if (!hasPhotoId || !hasProofOfAddress) {
+                throw new BadRequestException(
+                    'Sole traders must upload photo ID and proof of address before submitting KYC.',
+                );
+            }
+        }
+
         let documentStatuses: Record<string, any> = {};
         const updatedFields: Record<string, any> = {};
 
@@ -262,13 +273,18 @@ export class DealersService {
                     // signed URL, and persisting that would store a link that is
                     // dead before a reviewer opens it -- and would let a caller
                     // point a "document" anywhere they liked.
+                    const soleTraderCompanyOnly =
+                        businessType === 'SOLE_PROPRIETORSHIP' &&
+                        ['vatNumber', 'companyRegistrationNumber', 'personOfSignificantControl'].includes(field);
                     const value = field === 'businessType'
                         ? businessType
-                        : KYC_UPLOAD_FIELDS.has(field)
-                            ? existingValue
-                            : (incomingValue !== null && incomingValue !== undefined)
-                                ? incomingValue
-                                : (requiredFields.has(field) ? (existingValue ?? '') : null);
+                        : soleTraderCompanyOnly
+                            ? ''
+                            : KYC_UPLOAD_FIELDS.has(field)
+                                ? existingValue
+                                : (incomingValue !== null && incomingValue !== undefined)
+                                    ? incomingValue
+                                    : (requiredFields.has(field) ? (existingValue ?? '') : null);
 
                     updatedFields[field] = value;
                     documentStatuses[field] = { status: 'PENDING', note: '' };
@@ -307,13 +323,18 @@ export class DealersService {
             for (const field of fieldsList) {
                 const incomingValue = (dto as any)[field];
                 // For required fields default to '' rather than null to prevent DB errors
+                const soleTraderCompanyOnly =
+                    businessType === 'SOLE_PROPRIETORSHIP' &&
+                    ['vatNumber', 'companyRegistrationNumber', 'personOfSignificantControl'].includes(field);
                 updatedFields[field] = field === 'businessType'
                     ? businessType
-                    : KYC_UPLOAD_FIELDS.has(field)
-                        ? null
-                        : (incomingValue !== null && incomingValue !== undefined)
-                            ? incomingValue
-                            : (requiredFields.has(field) ? '' : null);
+                    : soleTraderCompanyOnly
+                        ? ''
+                        : KYC_UPLOAD_FIELDS.has(field)
+                            ? null
+                            : (incomingValue !== null && incomingValue !== undefined)
+                                ? incomingValue
+                                : (requiredFields.has(field) ? '' : null);
 
                 documentStatuses[field] = { status: 'PENDING', note: '' };
             }

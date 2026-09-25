@@ -534,11 +534,11 @@ export default function AdminDealerVerificationPage() {
               ? "bg-amber-500/10 border-amber-500/25 text-amber-500"
               : "bg-sky-500/10 border-sky-500/25 text-sky-500"}`}
           >
-            {soleTrader ? "Sole Proprietorship" : "Private Limited"}
+            {soleTrader ? "Sole Trader" : "Registered Company"}
           </span>
           {soleTrader && (
             <span className="text-[11px] text-[var(--text-muted)]">
-              No VAT or Companies House record — verified by ID and address.
+              No Companies House record — verified by owner ID and proof of address.
             </span>
           )}
         </div>

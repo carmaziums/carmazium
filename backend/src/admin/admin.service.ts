@@ -1725,7 +1725,17 @@ export class AdminService {
             where: {
                 status: {
                     in: ['PENDING', 'REJECTED']
-                }
+                },
+                // Document uploads can create an unpaid draft before the dealer
+                // submits the full form. Only applications with completed
+                // verification payment evidence are actionable. Keep legacy
+                // bank-transfer submissions visible alongside the Stripe flow.
+                OR: [
+                    { stripeChargedAt: { not: null } },
+                    { paymentReference: { not: null } },
+                    { paymentScreenshot: { not: null } },
+                    { paymentScreenshotPath: { not: null } },
+                ],
             },
             include: {
                 dealerProfile: {

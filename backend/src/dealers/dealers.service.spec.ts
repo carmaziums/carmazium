@@ -258,6 +258,36 @@ describe('DealersService — KYC: submitKyc', () => {
         expect(emailService.sendKycSubmissionAdminAlert).not.toHaveBeenCalled();
     });
 
+    it('rejects a sole-trader submission until both ID and proof of address are attached', async () => {
+        const profile = {
+            id: 'profile-1',
+            userId: 'user-1',
+            companyName: 'Smith Motors',
+            kyc: {
+                id: 'kyc-draft',
+                businessType: 'PRIVATE_LIMITED',
+                directorIdProofPath: 'profile-1/directorIdProof/id.png',
+                proofOfAddressPath: null,
+                documentStatuses: {},
+            },
+            user: { id: 'user-1', role: 'DEALER', firstName: 'John', lastName: 'Smith' },
+        };
+        prisma.dealerProfile.findUnique.mockResolvedValue(profile);
+
+        await expect(service.submitKyc('user-1', {
+            ...baseDto,
+            businessType: 'SOLE_PROPRIETORSHIP',
+            companyHouseName: 'Smith Motors',
+            vatNumber: undefined,
+            companyRegistrationNumber: undefined,
+            personOfSignificantControl: undefined,
+            businessWebsite: undefined,
+        } as any)).rejects.toThrow(
+            'Sole traders must upload photo ID and proof of address before submitting KYC.',
+        );
+        expect(prisma.dealerKyc.update).not.toHaveBeenCalled();
+    });
+
     it('resubmission when already Stripe-verified: alerts admins immediately and keeps payment fields approved', async () => {
         prisma.dealerProfile.findUnique.mockResolvedValue({
             id: 'profile-1',

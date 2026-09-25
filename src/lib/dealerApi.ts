@@ -30,6 +30,7 @@ export interface DealerKycData {
   paymentReference?: string;
   paymentScreenshot?: string;
   stripePaymentIntentId?: string;
+  stripeCheckoutSessionId?: string;
   stripeChargedAt?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   documentStatuses?: Record<

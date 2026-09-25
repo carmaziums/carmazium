@@ -116,17 +116,39 @@ export class KycDocumentsService {
             throw new BadRequestException('Could not store the document. Please try again.');
         }
 
-        // Record the key on the KYC row when one exists. A dealer may upload
-        // before submitting the form, in which case submitKyc persists it.
+        // Attach every upload to a KYC row immediately. First-time applicants
+        // upload documents before they press the final submit button, so simply
+        // storing the object without a row left the file orphaned and invisible
+        // to reviewers. A minimal unpaid draft is safe because admin review only
+        // surfaces applications after the Stripe verification fee is confirmed.
         const kyc = await this.prisma.dealerKyc.findUnique({
             where: { dealerProfileId: profile.id },
             select: { id: true },
         });
+        const column = KYC_DOCUMENT_FIELDS[field].path;
         if (kyc) {
-            const column = KYC_DOCUMENT_FIELDS[field].path;
             await this.prisma.dealerKyc.update({
                 where: { id: kyc.id },
                 data: { [column]: key } as any,
+            });
+        } else {
+            await this.prisma.dealerKyc.create({
+                data: {
+                    dealerProfileId: profile.id,
+                    companyHouseName: '',
+                    representativeName: '',
+                    representativePosition: '',
+                    vatNumber: '',
+                    companyRegistrationNumber: '',
+                    personOfSignificantControl: '',
+                    directorName: '',
+                    businessWebsite: '',
+                    businessRegisteredAddress: '',
+                    documentStatuses: {
+                        [field]: { status: 'PENDING', note: '' },
+                    },
+                    [column]: key,
+                } as any,
             });
         }
 
