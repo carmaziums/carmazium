@@ -43,7 +43,10 @@ function CheckoutContent() {
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        if (!listingId) return
+        if (!listingId) {
+            setIsLoading(false)
+            return
+        }
         const load = async () => {
             try {
                 const data = await getListingBySlug(listingId)
@@ -88,6 +91,30 @@ function CheckoutContent() {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="animate-spin text-primary" size={40} />
+            </div>
+        )
+    }
+
+    if (!isAuctionFee) {
+        return (
+            <div className="min-h-screen pt-28 pb-20">
+                <div className="container mx-auto px-5 max-w-2xl">
+                    <div className="rounded-3xl border border-[var(--border-default)] bg-[var(--bg-card)] p-8 md:p-10">
+                        <ShieldCheck className="text-emerald-500 mb-5" size={38} />
+                        <h1 className="text-3xl font-heading font-bold mb-3">Pay the seller directly</h1>
+                        <p className="text-[var(--text-muted)] leading-7 mb-6">
+                            CarMazium does not collect or hold the vehicle purchase price or a vehicle deposit. Agree the final amount with the seller and settle the vehicle payment directly with them.
+                        </p>
+                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 mb-6 text-sm text-[var(--text-muted)]">
+                            CarMazium checkout is used only for CarMazium platform charges such as the £125 auction buyer fee, listing fees and optional add-ons.
+                        </div>
+                        <Button asChild className="w-full h-12">
+                            <Link href={listing ? `/buy-cars/${listing.slug}` : "/buy-cars"}>
+                                <ArrowLeft size={17} className="mr-2" /> Return to vehicle
+                            </Link>
+                        </Button>
+                    </div>
+                </div>
             </div>
         )
     }
@@ -310,30 +337,6 @@ function CheckoutContent() {
                     <p className="flex items-center justify-center gap-1.5 text-center text-xs mt-1.5" style={{ color: 'var(--text-faint)' }}>
                         <Shield size={11} /> Your payment information is encrypted and secure. We never store your card details.
                     </p>
-                </div>
-            </div>
-        )
-    }
-
-    if (!isAuctionFee) {
-        return (
-            <div className="min-h-screen pt-28 pb-20">
-                <div className="container mx-auto px-5 max-w-2xl">
-                    <div className="rounded-3xl border border-[var(--border-default)] bg-[var(--bg-card)] p-8 md:p-10">
-                        <ShieldCheck className="text-emerald-500 mb-5" size={38} />
-                        <h1 className="text-3xl font-heading font-bold mb-3">Pay the seller directly</h1>
-                        <p className="text-[var(--text-muted)] leading-7 mb-6">
-                            CarMazium does not collect or hold the vehicle purchase price or a vehicle deposit. Agree the final amount with the seller and settle the vehicle payment directly with them.
-                        </p>
-                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 mb-6 text-sm text-[var(--text-muted)]">
-                            CarMazium checkout is used only for CarMazium platform charges such as the £125 auction buyer fee, listing fees and optional add-ons.
-                        </div>
-                        <Button asChild className="w-full h-12">
-                            <Link href={listing ? `/buy-cars/${listing.slug}` : "/buy-cars"}>
-                                <ArrowLeft size={17} className="mr-2" /> Return to vehicle
-                            </Link>
-                        </Button>
-                    </div>
                 </div>
             </div>
         )
