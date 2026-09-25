@@ -1702,7 +1702,7 @@ export class AdminService {
         const data = await Promise.all(
             months.map(async ({ label, start, end }) => {
                 const [newUsers, newListings, revenue] = await Promise.all([
-                    this.prisma.user.count({ where: { createdAt: { gte: start, lte: end } } }),
+                    this.prisma.user.count({ where: { createdAt: { gte: start, lte: end }, deletedAt: null } }),
                     this.prisma.listing.count({ where: { createdAt: { gte: start, lte: end }, deletedAt: null } }),
                     this.computeRealRevenue({ gte: start, lte: end }),
                 ]);
