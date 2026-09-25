@@ -1584,7 +1584,13 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           )}
 
           {/* Vehicle-history status must reflect the actual report state. */}
-          <View style={styles.protectionCard}>
+          <View style={[
+            styles.protectionCard,
+            !(hpiData && isReportReady(hpiData) && hpiData.isClear) && {
+              backgroundColor: Colors.whiteAlpha03,
+              borderColor: Colors.whiteAlpha08,
+            },
+          ]}>
             <Ionicons
               name={hpiData && isReportReady(hpiData) && hpiData.isClear ? 'shield-checkmark' : 'information-circle-outline'}
               size={16}
