@@ -234,7 +234,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
 
           {/* Form Inputs */}
           <View style={styles.formGroup}>
-             <Text style={styles.inputLabel}>TRADING NAME</Text>
+             <Text style={styles.inputLabel}>{businessType === 'SOLE_PROPRIETORSHIP' ? 'TRADING NAME' : 'COMPANY / TRADING NAME'}</Text>
              <View style={styles.inputWrap}>
                 <Ionicons name="business-outline" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
                 <TextInput
