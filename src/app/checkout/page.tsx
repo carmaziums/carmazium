@@ -5,8 +5,7 @@ import { Suspense, useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { motion } from "framer-motion"
-import { Shield, ShieldCheck, Lock, CreditCard, ArrowLeft, Loader2, Car, CheckCircle, Check, BadgeCheck, Gavel, Wallet, RefreshCcw, Receipt } from "lucide-react"
+import { Shield, ShieldCheck, Lock, ArrowLeft, Loader2, Car, Check, Gavel, Wallet, RefreshCcw, Receipt } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { getListingBySlug, type Listing, formatPrice } from "@/lib/listingApi"
 import { createCheckoutSession } from "@/lib/paymentApi"
@@ -253,8 +252,8 @@ function CheckoutContent() {
                         <div>
                             <p className="text-sm font-bold text-blue-400 mb-1">Refund Policy</p>
                             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                                If the vehicle sale does not complete for any reason, <span className="text-[var(--text-primary)] font-bold">£{AUCTION_SELLER_BONUS} is refunded</span> to you.
-                                The £{AUCTION_PLATFORM_FEE} platform fee is non-refundable.
+                                If handover proof is denied, <span className="text-[var(--text-primary)] font-bold">£{AUCTION_SELLER_BONUS} is refunded</span> and the normal £{AUCTION_PLATFORM_FEE} platform fee is retained.
+                                If a completed CarMazium inspection records faults and you validly refuse the vehicle, or an approved cancellation qualifies for a buyer-fee refund, the full £{AUCTION_BUYER_FEE} is refunded.
                             </p>
                         </div>
                     </div>
