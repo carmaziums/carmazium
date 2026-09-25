@@ -660,10 +660,26 @@ export class DealersService {
             this.prisma.lead.count({
                 where: { dealerProfileId: profile.id, status: 'WON', createdAt: dateFilter },
             }),
-            this.prisma.listing.aggregate({
-                where: { sellerId: ownerUserId, deletedAt: null, createdAt: dateFilter },
-                _avg: { viewCount: true },
-            }),
+            this.prisma.$queryRawUnsafe<Array<{ avg_views: string }>>(
+                `WITH listing_views AS (
+                    SELECT l.id, COUNT(ae.id)::numeric AS views
+                    FROM listings l
+                    LEFT JOIN analytics_events ae
+                      ON ae.type = 'view_item'
+                     AND ae.payload->>'item_id' = l.id
+                     AND ae."createdAt" >= $2
+                     AND ae."createdAt" <= $3
+                    WHERE l."sellerId" = $1
+                      AND l."deletedAt" IS NULL
+                      AND l."createdAt" <= $3
+                    GROUP BY l.id
+                )
+                SELECT COALESCE(AVG(views), 0)::TEXT AS avg_views
+                FROM listing_views`,
+                ownerUserId,
+                dateFilter.gte,
+                rangeEnd,
+            ),
             // Previous period (for trend %)
             this.prisma.sale.aggregate({
                 where: { sellerId: ownerUserId, createdAt: prevFilter },
@@ -684,10 +700,26 @@ export class DealersService {
             this.prisma.lead.count({
                 where: { dealerProfileId: profile.id, status: 'WON', createdAt: prevFilter },
             }),
-            this.prisma.listing.aggregate({
-                where: { sellerId: ownerUserId, deletedAt: null, createdAt: prevFilter },
-                _avg: { viewCount: true },
-            }),
+            this.prisma.$queryRawUnsafe<Array<{ avg_views: string }>>(
+                `WITH listing_views AS (
+                    SELECT l.id, COUNT(ae.id)::numeric AS views
+                    FROM listings l
+                    LEFT JOIN analytics_events ae
+                      ON ae.type = 'view_item'
+                     AND ae.payload->>'item_id' = l.id
+                     AND ae."createdAt" >= $2
+                     AND ae."createdAt" < $3
+                    WHERE l."sellerId" = $1
+                      AND l."deletedAt" IS NULL
+                      AND l."createdAt" < $3
+                    GROUP BY l.id
+                )
+                SELECT COALESCE(AVG(views), 0)::TEXT AS avg_views
+                FROM listing_views`,
+                ownerUserId,
+                prevFilter.gte,
+                prevFilter.lte,
+            ),
         ]);
 
         const totalRev = Number(currentRevenue._sum.soldPrice || 0);
@@ -696,8 +728,8 @@ export class DealersService {
         const prevOfferConvRate = prevOfferTotal > 0 ? Math.round((prevOfferAccepted / prevOfferTotal) * 1000) / 10 : 0;
         const leadConvRate = currentLeadTotal > 0 ? Math.round((currentLeadWon / currentLeadTotal) * 1000) / 10 : 0;
         const prevLeadConvRate = prevLeadTotal > 0 ? Math.round((prevLeadWon / prevLeadTotal) * 1000) / 10 : 0;
-        const avgViews = Math.round(currentAvgViews._avg.viewCount || 0);
-        const prevAvgViewsVal = Math.round(prevAvgViews._avg.viewCount || 0);
+        const avgViews = Math.round(Number(currentAvgViews?.[0]?.avg_views ?? 0));
+        const prevAvgViewsVal = Math.round(Number(prevAvgViews?.[0]?.avg_views ?? 0));
 
         // ─── Revenue Trend (selected reporting range) ─────────────────
 
@@ -749,11 +781,23 @@ export class DealersService {
         };
         offersByStatus.forEach(o => { offerBreakdown[o.status] = o._count; });
 
-        // Average accepted offer amount
-        const avgAccepted = await this.prisma.offer.aggregate({
-            where: { listing: { sellerId: ownerUserId }, status: 'ACCEPTED', createdAt: dateFilter },
-            _avg: { amount: true },
-        });
+        // Average negotiated amount for offers accepted in the selected period.
+        // finalAmount/counterAmount are authoritative when a counter was accepted.
+        const avgAccepted = await this.prisma.$queryRawUnsafe<Array<{ avg_amount: string }>>(
+            `SELECT COALESCE(
+                AVG(COALESCE(o."finalAmount", o."counterAmount", o.amount)),
+                0
+             )::TEXT AS avg_amount
+             FROM offers o
+             JOIN listings l ON l.id = o."listingId"
+             WHERE l."sellerId" = $1
+               AND o.status = 'ACCEPTED'
+               AND o."createdAt" >= $2
+               AND o."createdAt" <= $3`,
+            ownerUserId,
+            dateFilter.gte,
+            rangeEnd,
+        );
 
         // Average response time (hours between offer creation and update for non-pending)
         const avgResponseRaw = await this.prisma.$queryRawUnsafe<Array<{ avg_hours: string }>>(
@@ -1089,7 +1133,7 @@ export class DealersService {
             leadFunnel,
             offerBreakdown: {
                 ...offerBreakdown,
-                avgAcceptedAmount: Number(avgAccepted._avg.amount || 0),
+                avgAcceptedAmount: Number(avgAccepted?.[0]?.avg_amount ?? 0),
                 avgTimeToRespond: Math.round(Number(avgResponseRaw?.[0]?.avg_hours || 0) * 10) / 10,
             },
             inventoryHealth: {
