@@ -21,6 +21,15 @@ const mockPrisma = {
     count: jest.fn().mockResolvedValue(0),
     findMany: jest.fn().mockResolvedValue([]),
   },
+  partnerProfile: { findFirst: jest.fn().mockResolvedValue(null) },
+  financeApplication: {
+    count: jest.fn().mockResolvedValue(0),
+    findMany: jest.fn().mockResolvedValue([]),
+  },
+  insuranceQuote: {
+    count: jest.fn().mockResolvedValue(0),
+    findMany: jest.fn().mockResolvedValue([]),
+  },
   $queryRaw: jest.fn().mockResolvedValue([{ views: 0n }]),
 };
 
@@ -166,6 +175,53 @@ describe('DashboardService — period filter', () => {
         where: expect.objectContaining({ status: 'COMPLETED', deletedAt: null }),
       }),
     );
+  });
+
+  it('FINANCE-PARTNER-01: finance dashboard is scoped to the logged-in partner profile', async () => {
+    mockPrisma.partnerProfile.findFirst.mockResolvedValueOnce({ id: 'finance-profile-1' });
+    mockPrisma.financeApplication.count
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(3)
+      .mockResolvedValueOnce(1);
+    mockPrisma.financeApplication.findMany.mockResolvedValueOnce([]);
+
+    const result = await (service as any).getFinanceDashboard('finance-user-1');
+
+    expect(result.stats).toEqual({ pending: 2, approved: 3, rejected: 1 });
+    for (const call of mockPrisma.financeApplication.count.mock.calls.slice(-3)) {
+      expect(call[0].where).toEqual(expect.objectContaining({
+        partnerId: 'finance-profile-1',
+        deletedAt: null,
+      }));
+    }
+  });
+
+  it('INSURANCE-PARTNER-01: insurance dashboard uses insuranceUserId and partner scoping', async () => {
+    mockPrisma.partnerProfile.findFirst.mockResolvedValueOnce({ id: 'insurance-profile-1' });
+    mockPrisma.insuranceQuote.count
+      .mockResolvedValueOnce(4)
+      .mockResolvedValueOnce(5)
+      .mockResolvedValueOnce(2);
+    mockPrisma.insuranceQuote.findMany.mockResolvedValueOnce([]);
+
+    const result = await (service as any).getInsuranceDashboard('insurance-user-1');
+
+    expect(result.stats).toEqual({ pending: 4, quoted: 5, declined: 2 });
+    expect(mockPrisma.partnerProfile.findFirst).toHaveBeenCalledWith({
+      where: {
+        insuranceUserId: 'insurance-user-1',
+        partnerType: 'INSURANCE_PARTNER',
+        isActive: true,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+    for (const call of mockPrisma.insuranceQuote.count.mock.calls.slice(-3)) {
+      expect(call[0].where).toEqual(expect.objectContaining({
+        partnerId: 'insurance-profile-1',
+        deletedAt: null,
+      }));
+    }
   });
 
   it('DEALER-KPI-01: current stock is not restricted by the 7/30 day reporting window', async () => {
