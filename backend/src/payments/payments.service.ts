@@ -4,7 +4,6 @@ import { ModuleRef } from '@nestjs/core';
 import { PrismaService } from '../prisma/prisma.service';
 import { HpiService } from '../hpi/hpi.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { EmailService } from '../email/email.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
@@ -23,7 +22,6 @@ export class PaymentsService {
         private readonly config: ConfigService,
         private readonly hpiService: HpiService,
         private readonly notificationsService: NotificationsService,
-        private readonly notificationsGateway: NotificationsGateway,
         private readonly emailService: EmailService,
         private readonly moduleRef: ModuleRef,
     ) {}
@@ -159,9 +157,6 @@ export class PaymentsService {
                 entityId: listing.id,
                 actionType: 'SUBMITTED',
             }).catch(() => null);
-            if (notification) {
-                this.notificationsGateway.sendNotification(listing.sellerId, notification);
-            }
         } catch {
             // best-effort only
         }
@@ -195,9 +190,6 @@ export class PaymentsService {
                 entityType: 'Listing',
                 entityId: listing.id,
             }).catch(() => null);
-            if (notification) {
-                this.notificationsGateway.sendNotification(listing.sellerId, notification);
-            }
         } catch {
             // best-effort only
         }
