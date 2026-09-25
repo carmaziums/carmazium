@@ -75,7 +75,10 @@ describe('ListingsService', () => {
             $queryRaw: jest.fn().mockResolvedValue([{ lock_result: '' }]),
             $transaction: jest.fn(async (arg: any) => Array.isArray(arg) ? Promise.all(arg) : arg(prisma)),
         };
-        sellers = { incrementListings: jest.fn(), incrementSales: jest.fn() };
+        sellers = {
+            incrementListings: jest.fn().mockResolvedValue(undefined),
+            incrementSales: jest.fn().mockResolvedValue(undefined),
+        };
         const config = {
             get: jest.fn((key: string) =>
                 key === 'SUPABASE_URL' ? 'https://test.supabase.co' : undefined,
