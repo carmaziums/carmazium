@@ -4,6 +4,7 @@ import {
     BadRequestException,
     ForbiddenException,
     Logger,
+    ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -12,6 +13,7 @@ import { EmailService } from '../email/email.service';
 import * as bcrypt from 'bcrypt';
 import { SELF_SERVICE_USER_ROLES, isSelfServiceUserRole } from '../core/account-roles';
 import { resolveFrontendUrl } from '../core/frontend-url';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const VERIFICATION_CODE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const MAX_VERIFICATION_ATTEMPTS = 5;
@@ -30,12 +32,34 @@ function assertValidPhone(phone: string) {
 @Injectable()
 export class UsersService {
     private readonly logger = new Logger(UsersService.name);
+    private readonly supabaseAdmin: SupabaseClient | null;
 
     constructor(
         private readonly prisma: PrismaService,
         private readonly emailService: EmailService,
         private readonly config: ConfigService,
-    ) { }
+    ) {
+        const supabaseUrl =
+            this.config.get<string>('SUPABASE_URL')
+            || this.config.get<string>('NEXT_PUBLIC_SUPABASE_URL');
+        const serviceKey = this.config.get<string>('SUPABASE_SERVICE_KEY');
+
+        let validatedUrl: string | null = null;
+        if (supabaseUrl) {
+            try {
+                const parsed = new URL(supabaseUrl);
+                if (parsed.protocol === 'https:') validatedUrl = parsed.toString().replace(/\/$/, '');
+            } catch {
+                validatedUrl = null;
+            }
+        }
+
+        this.supabaseAdmin = validatedUrl && serviceKey
+            ? createClient(validatedUrl, serviceKey, {
+                auth: { persistSession: false, autoRefreshToken: false },
+            })
+            : null;
+    }
 
     private async getStripe() {
         const Stripe = (await import('stripe')).default;
