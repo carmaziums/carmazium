@@ -17,6 +17,7 @@ import Link from "next/link"
 import HomeClient from "./HomeClient"
 import { type Listing } from "@/lib/listingApi"
 import { type BlogPost, type BlogPostSummary } from "@/lib/blogApi"
+import { fetchWithRetry } from "@/lib/fetchWithRetry"
 
 const SOCIAL_IMAGE = "/assets/images/discover-hero.webp"
 
@@ -67,15 +68,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly
  */
 async function getLatestBlogPosts(): Promise<BlogPostSummary[]> {
     try {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 10000)
-
-        const res = await fetch(`${API_URL}/blog?page=1&limit=3`, {
-            next: { revalidate: 300 },
-            signal: controller.signal,
-        })
-
-        clearTimeout(timeoutId)
+        const res = await fetchWithRetry(
+            `${API_URL}/blog?page=1&limit=3`,
+            { next: { revalidate: 300 } },
+            { timeoutMs: 7000, retries: 2, retryDelayMs: 300 },
+        )
 
         if (!res.ok) return []
         const data = await res.json()
@@ -101,16 +98,13 @@ async function getLatestBlogPosts(): Promise<BlogPostSummary[]> {
  */
 async function getFeaturedListings(): Promise<Listing[]> {
     try {
-        // Add a 10s timeout to prevent Vercel build hangs if the backend is slow or down
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 10000)
-
-        const res = await fetch(`${API_URL}/listings/featured`, {
-            next: { revalidate: 300 },
-            signal: controller.signal,
-        })
-
-        clearTimeout(timeoutId)
+        // Retry transient Fly.io read failures while keeping the total wait
+        // bounded so a backend incident cannot hang the homepage render.
+        const res = await fetchWithRetry(
+            `${API_URL}/listings/featured`,
+            { next: { revalidate: 300 } },
+            { timeoutMs: 7000, retries: 2, retryDelayMs: 300 },
+        )
 
         if (!res.ok) return []
         const data = await res.json()
