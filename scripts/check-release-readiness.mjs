@@ -87,6 +87,55 @@ for (const feature of webOnly) {
 }
 
 // ---------------------------------------------------------------------------
+// 2. Store-policy privacy and deletion surfaces.
+// ---------------------------------------------------------------------------
+requiredFile('src/app/privacy-policy/page.tsx', 'Public privacy policy');
+requiredFile('src/app/delete-account/page.tsx', 'Public account-deletion page');
+requiredFile('carmazium app/carmazium app/src/screens/main/PrivacyPolicyScreen.tsx', 'Native privacy policy screen');
+
+const webPrivacy = read('src/app/privacy-policy/page.tsx');
+const webDelete = read('src/app/delete-account/page.tsx');
+const webFooter = read('src/components/layout/Footer.tsx');
+const webSignup = read('src/app/auth/signup/page.tsx');
+const mobilePrivacy = read('carmazium app/carmazium app/src/screens/main/PrivacyPolicyScreen.tsx');
+const mobileSignup = read('carmazium app/carmazium app/src/screens/auth/SignupScreen.tsx');
+const mobileDrawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
+const mobileSettings = read('carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx');
+
+if (
+  !webPrivacy.includes('MaziuM AI') ||
+  !webPrivacy.includes('OpenAI') ||
+  !webPrivacy.includes('Account deletion') ||
+  !webPrivacy.includes('Your rights')
+) {
+  fail('Privacy policy must disclose AI processing, deletion and user rights');
+} else {
+  ok('Public privacy policy contains core store/privacy disclosures');
+}
+
+if (
+  !webFooter.includes('href="/privacy-policy"') ||
+  !webFooter.includes('href="/delete-account"') ||
+  !webSignup.includes('href="/privacy-policy"')
+) {
+  fail('Website must expose privacy and account-deletion links from normal user journeys');
+} else {
+  ok('Website exposes public privacy and deletion surfaces');
+}
+
+if (
+  !webDelete.includes('DeleteAccountPortal') ||
+  !mobileSettings.includes("method: 'DELETE'") ||
+  !mobileSignup.includes("navigation.navigate('PrivacyPolicy')") ||
+  !mobileDrawer.includes("stackScreen: 'PrivacyPolicy'") ||
+  !mobilePrivacy.includes('https://www.carmazium.com/privacy-policy')
+) {
+  fail('Native/web privacy or account-deletion access regressed');
+} else {
+  ok('Privacy policy and account deletion remain reachable across web and native');
+}
+
+// ---------------------------------------------------------------------------
 // 2. Native production identity/build configuration.
 // ---------------------------------------------------------------------------
 const app = readJson('carmazium app/carmazium app/app.json').expo;
