@@ -1,5 +1,5 @@
 {
-  "version": 8,
+  "version": 9,
   "purpose": "CarMazium one-product parity contract",
   "policy": {
     "backend_is_source_of_truth": true,
@@ -628,6 +628,31 @@
       "mobile": [],
       "status": "web_only",
       "reason": "The public blog is a web SEO/content surface. It has no transactional app-only behaviour and remains accessible to mobile users through the public website."
+    },
+    {
+      "id": "legal.privacy_policy",
+      "web": [
+        "src/app/privacy-policy/page.tsx",
+        "src/components/layout/Footer.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/PrivacyPolicyScreen.tsx",
+        "carmazium app/carmazium app/src/screens/auth/SignupScreen.tsx",
+        "carmazium app/carmazium app/src/components/GlobalDrawer.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "account.deletion",
+      "web": [
+        "src/app/delete-account/page.tsx",
+        "src/components/account/DeleteAccountPortal.tsx",
+        "src/components/dashboard/DeleteAccountSection.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx"
+      ],
+      "status": "required"
     }
   ]
 }
