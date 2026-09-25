@@ -21,6 +21,7 @@ export default function InsuranceDashboard() {
     const [quotes, setQuotes] = React.useState<InsuranceQuote[]>([])
     const [loading, setLoading] = React.useState(true)
     const [updating, setUpdating] = React.useState<string | null>(null)
+    const [actionError, setActionError] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         async function fetchData() {
@@ -43,14 +44,35 @@ export default function InsuranceDashboard() {
     }, [user, authLoading])
 
     const handleStatusUpdate = async (id: string, status: string) => {
+        let quotedPrice: number | undefined
+        let coverageType: string | undefined
+        if (status === 'QUOTED') {
+            const rawPrice = window.prompt('Enter the annual insurance premium in pounds (£).')
+            if (rawPrice === null) return
+            quotedPrice = Number(rawPrice)
+            if (!Number.isFinite(quotedPrice) || quotedPrice <= 0) {
+                setActionError('Enter a valid annual premium before sending a quote.')
+                return
+            }
+            const rawCoverage = window.prompt('Enter the coverage type (for example, Comprehensive).')
+            if (rawCoverage === null) return
+            coverageType = rawCoverage.trim()
+            if (coverageType.length < 2) {
+                setActionError('Enter the coverage type before sending a quote.')
+                return
+            }
+        }
+
         try {
             setUpdating(id)
-            const updated = await updateInsuranceStatus(id, status)
+            setActionError(null)
+            const updated = await updateInsuranceStatus(id, status, quotedPrice, coverageType)
             setQuotes(prev => prev.map(q => q.id === id ? updated : q))
             const newStats = await getInsuranceStats()
             setStats(newStats)
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to update status:', err)
+            setActionError(err?.message || 'Could not update this record.')
         } finally {
             setUpdating(null)
         }
@@ -72,6 +94,12 @@ export default function InsuranceDashboard() {
                 <DashboardSidebar role="insurance" userName={userName} userType="Insurance Partner" />
 
                 <main className="flex-1 space-y-8">
+                    {actionError && (
+                        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                            {actionError}
+                        </div>
+                    )}
+
                     {/* Stats Row */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl hover:bg-white/10 transition-colors">
