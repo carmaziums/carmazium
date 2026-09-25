@@ -232,6 +232,7 @@ const sessionsCreate = jest.fn();
 const sessionsRetrieve = jest.fn();
 const refundsCreate = jest.fn();
 const transfersCreate = jest.fn();
+const refreshConnectAccountReadiness = jest.fn(async (accountId: string) => ({ ready: true, accountId }));
 
 const CUSTOMER = { id: 'u_cust', role: 'BUYER', email: 'cust@example.com', firstName: 'Cara', lastName: 'Customer', phone: '07000000001', postcode: null };
 const TRUCKER = { id: 'u_truck', role: 'CONTRACTOR', email: 'kent@example.com', firstName: 'Ken', lastName: 'Trucker', phone: '07000000002', stripeConnectAccountId: 'acct_kent', stripeConnectOnboardingComplete: true };
@@ -257,7 +258,7 @@ beforeAll(async () => {
                         refunds: { create: refundsCreate },
                         transfers: { create: transfersCreate },
                     }),
-                    refreshConnectAccountReadiness: async (accountId: string) => ({ ready: true, accountId }),
+                    refreshConnectAccountReadiness,
                 },
             },
             { provide: ConfigService, useValue: { get: (k: string) => (k === 'FRONTEND_URL' ? 'https://www.carmazium.com' : undefined) } },
@@ -322,6 +323,27 @@ describe('Delivery & Recovery — end to end', () => {
     it('admin cannot approve a provider without Stripe Connect', async () => {
         const cap = await svc.applyCapability(NOSTRIPE.id, { serviceType: 'DELIVERY' } as any);
         await expect(svc.adminReviewCapability(ADMIN.id, cap.id, { status: 'APPROVED' } as any)).rejects.toThrow(/Stripe Connect/);
+    });
+
+    it('admin re-checks Stripe readiness instead of trusting a stale completed flag', async () => {
+        const cap = await svc.applyCapability(RIVAL.id, {
+            serviceType: 'INSPECTION',
+            businessName: 'Rival Recovery',
+        } as any);
+        addVerifiedEvidence(cap.id, 'INSPECTION');
+        refreshConnectAccountReadiness.mockResolvedValueOnce({ ready: false, accountId: RIVAL.stripeConnectAccountId! });
+
+        await expect(
+            svc.adminReviewCapability(ADMIN.id, cap.id, { status: 'APPROVED' } as any),
+        ).rejects.toThrow(/not currently ready for payouts/i);
+        expect(refreshConnectAccountReadiness).toHaveBeenCalledWith(RIVAL.stripeConnectAccountId);
+
+        // Keep the shared story deterministic for the later approval step.
+        const stored = db.one('contractorCapability', { id: cap.id });
+        if (stored) {
+            stored.status = 'REJECTED';
+            stored.verificationStatus = 'REJECTED';
+        }
     });
 
     it('admin approves Kent and the rival', async () => {
