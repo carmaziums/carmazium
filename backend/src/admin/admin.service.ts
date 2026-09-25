@@ -563,6 +563,27 @@ export class AdminService {
                 auctionData.endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
             }
             await this.prisma.auction.update({ where: { id: listing.auction.id }, data: auctionData });
+
+            const oldReserve = Number(listing.auction.reservePrice);
+            if (
+                dto.reservePrice !== undefined
+                && dto.reservePrice !== oldReserve
+                && listing.sellerId
+            ) {
+                const notification = await this.notificationsService.create({
+                    userId: listing.sellerId,
+                    type: 'AUCTION_UPDATED',
+                    title: 'We’ve reviewed your auction reserve',
+                    message: `Our team has reviewed "${listing.title}" using the vehicle information available in your listing, including its age, mileage, history, number of keys and reported condition. We have adjusted the reserve price from £${oldReserve.toLocaleString('en-GB')} to £${dto.reservePrice.toLocaleString('en-GB')} to better reflect its current market position. A realistic reserve can help attract stronger buyer interest and improve the chance of achieving a competitive sale price.`,
+                    link: '/dashboard/seller/auctions',
+                    entityType: 'Auction',
+                    entityId: listing.auction.id,
+                    actionType: 'PRICE_CORRECTED',
+                }).catch(() => null);
+                if (notification) {
+                    this.notificationsGateway.sendNotification(listing.sellerId, notification);
+                }
+            }
         } else if (
             dto.reservePrice !== undefined
             && listing.auction
