@@ -155,7 +155,8 @@ WHERE id IN (
 UPDATE public.offers
 SET
     status = 'CANCELLED',
-    "counterExpiresAt" = NULL
+    "counterExpiresAt" = NULL,
+    "updatedAt" = now()
 WHERE id IN (
     '0cf5912e-7e54-484b-98fa-c90a27b61bb7',
     '0da47ae8-e81e-424f-bde5-05e3eeeaa462',
@@ -245,7 +246,8 @@ WHERE "listingId" IN (
 UPDATE public.offers
 SET
     status = 'CANCELLED',
-    "counterExpiresAt" = NULL
+    "counterExpiresAt" = NULL,
+    "updatedAt" = now()
 WHERE "listingId" IN (
     'ef10ca25-4db1-4c55-b4dd-fb6478692f40',
     '8c6d80bf-7971-4186-a57f-77d34f8a6042'
@@ -255,9 +257,10 @@ WHERE "listingId" IN (
 UPDATE public.delivery_requests
 SET
     status = 'CANCELLED',
-    "cancelledAt" = COALESCE("cancelledAt", now())
+    "cancelledAt" = COALESCE("cancelledAt", now()),
+    "updatedAt" = now()
 WHERE "listingId" IN (
-    'ef10ca25-4db1-4c55-b4db-fb6478692f40',
+    'ef10ca25-4db1-4c55-b4dd-fb6478692f40',
     '8c6d80bf-7971-4186-a57f-77d34f8a6042'
 )
   AND status::text IN ('PENDING', 'ACCEPTED');
@@ -269,7 +272,8 @@ SET
     "winningBidAmount" = NULL,
     "wonAt" = NULL,
     "buyItNowPendingBuyerId" = NULL,
-    "buyItNowPendingAt" = NULL
+    "buyItNowPendingAt" = NULL,
+    "updatedAt" = now()
 WHERE id IN (
     '9cbbed3b-0115-436d-9aee-19c98e502a8a',
     '2ab7a1fe-b348-40aa-b914-22fca72d3c27'
@@ -279,11 +283,27 @@ UPDATE public.listings
 SET
     status = 'DRAFT',
     type = 'CLASSIFIED',
-    "linkedListingId" = NULL
+    "linkedListingId" = NULL,
+    "updatedAt" = now()
 WHERE id IN (
-    'ef10ca25-4db1-4c55-b4db-fb6478692f40',
+    'ef10ca25-4db1-4c55-b4dd-fb6478692f40',
     '8c6d80bf-7971-4186-a57f-77d34f8a6042'
 );
+
+-- Mirror revertUnpaidWins(): both historical wins incremented the seller's sale
+-- counter when a winner was assigned, so returning the vehicle to inventory must
+-- remove that one provisional sale from the stored seller counter.
+UPDATE public.seller_profiles sp
+SET
+    "totalSales" = sp."totalSales" - 1,
+    "updatedAt" = now()
+FROM public.listings l
+WHERE l.id IN (
+    'ef10ca25-4db1-4c55-b4dd-fb6478692f40',
+    '8c6d80bf-7971-4186-a57f-77d34f8a6042'
+)
+  AND sp."userId" = l."sellerId"
+  AND sp."totalSales" > 0;
 
 DO $$
 DECLARE
