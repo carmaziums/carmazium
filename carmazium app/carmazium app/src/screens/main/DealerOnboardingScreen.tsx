@@ -23,6 +23,9 @@ import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
 
 import { IconButton } from '../../components/IconButton';
+
+type BusinessType = 'PRIVATE_LIMITED' | 'SOLE_PROPRIETORSHIP';
+
 export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { role, user, accountRole, initializeAuth, setRole } = useAuthStore();
@@ -33,6 +36,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
   // number, VAT number, address & phone), so a real dealer who didn't notice
   // and clear them could submit fabricated registration data as their own.
   // Hint text now lives in `placeholder` props instead.
+  const [businessType, setBusinessType] = useState<BusinessType>('PRIVATE_LIMITED');
   const [tradingName, setTradingName] = useState('');
   const [regNumber, setRegNumber] = useState('');
   const [vatNumber, setVatNumber] = useState('');
@@ -84,11 +88,12 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
   const handleContinue = async () => {
     const trimmedName = tradingName.trim();
     const trimmedVat = vatNumber.trim();
+    const isSoleTrader = businessType === 'SOLE_PROPRIETORSHIP';
     setSubmitError(null);
 
     const nextFieldErrors: { tradingName?: string; vatNumber?: string } = {};
-    if (!trimmedName) nextFieldErrors.tradingName = 'Trading name is required';
-    if (!trimmedVat) nextFieldErrors.vatNumber = 'VAT number is required';
+    if (!trimmedName) nextFieldErrors.tradingName = isSoleTrader ? 'Trading name is required' : 'Company name is required';
+    if (!isSoleTrader && !trimmedVat) nextFieldErrors.vatNumber = 'VAT number is required';
     setFieldErrors(nextFieldErrors);
     if (Object.keys(nextFieldErrors).length > 0) return;
 
@@ -110,15 +115,15 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
         method: 'PATCH',
         body: JSON.stringify({
           companyName: trimmedName,
-          vatNumber: trimmedVat,
-          ...(regNumber.trim() && { registrationNumber: regNumber.trim() }),
+          ...(!isSoleTrader && trimmedVat && { vatNumber: trimmedVat }),
+          ...(!isSoleTrader && regNumber.trim() && { registrationNumber: regNumber.trim() }),
           ...(address.trim() && { businessAddress: address.trim() }),
           ...(phone.trim() && { phone: phone.trim() }),
         }),
       });
 
-      showToast('Dealership details saved — let’s verify your business', 'success');
-      navigation?.navigate('DealerKYC');
+      showToast('Business details saved — let’s verify your account', 'success');
+      navigation?.navigate('DealerKYC', { businessType });
     } catch (err: any) {
       setSubmitError(err?.message || 'Please check your details and try again.');
     } finally {
@@ -184,6 +189,49 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
             </View>
           ) : null}
 
+          {/* Business type comes first so sole traders never get forced into
+              Companies House fields that do not apply to them. */}
+          <View style={styles.businessTypeWrap}>
+            <Text style={styles.inputLabel}>BUSINESS TYPE</Text>
+            <View style={styles.businessTypeRow}>
+              {([
+                { value: 'PRIVATE_LIMITED' as BusinessType, title: 'REGISTERED COMPANY', hint: 'Registered at Companies House' },
+                { value: 'SOLE_PROPRIETORSHIP' as BusinessType, title: 'SOLE TRADER', hint: 'Trading as an individual' },
+              ]).map((option) => {
+                const selected = businessType === option.value;
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[styles.businessTypeCard, selected && styles.businessTypeCardSelected]}
+                    onPress={() => {
+                      setBusinessType(option.value);
+                      setFieldErrors({});
+                      if (option.value === 'SOLE_PROPRIETORSHIP') {
+                        setRegNumber('');
+                        setVatNumber('');
+                      }
+                    }}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected }}
+                  >
+                    <View style={[styles.businessTypeRadio, selected && styles.businessTypeRadioSelected]}>
+                      {selected ? <View style={styles.businessTypeRadioDot} /> : null}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.businessTypeTitle, selected && styles.businessTypeTitleSelected]}>{option.title}</Text>
+                      <Text style={styles.businessTypeHint}>{option.hint}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {businessType === 'SOLE_PROPRIETORSHIP' ? (
+              <Text style={styles.businessTypeHelp}>
+                No Companies House or VAT details are required. We will verify you using your identity and proof of address.
+              </Text>
+            ) : null}
+          </View>
+
           {/* Form Inputs */}
           <View style={styles.formGroup}>
              <Text style={styles.inputLabel}>TRADING NAME</Text>
@@ -201,30 +249,34 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
              {fieldErrors.tradingName ? <Text style={styles.fieldErrorText}>{fieldErrors.tradingName}</Text> : null}
           </View>
 
-          <View style={styles.formGroup}>
-             <Text style={styles.inputLabel}>COMPANIES HOUSE REG</Text>
-             <View style={styles.inputWrap}>
-                <MaterialCommunityIcons name="pound" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
-                <TextInput style={styles.textInput} value={regNumber} onChangeText={setRegNumber} keyboardType="numeric" placeholder="e.g. 12345678" placeholderTextColor={Colors.iconMuted} />
-                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={styles.inputIconRight} />
-             </View>
-          </View>
-
-          <View style={styles.formGroup}>
-             <Text style={styles.inputLabel}>VAT NUMBER</Text>
-             <View style={styles.inputWrap}>
-                <MaterialCommunityIcons name="file-document-outline" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.textInput}
-                  value={vatNumber}
-                  onChangeText={v => { setVatNumber(v); if (fieldErrors.vatNumber) setFieldErrors(prev => ({ ...prev, vatNumber: undefined })); }}
-                  placeholder="e.g. GB 123 456 789"
-                  placeholderTextColor={Colors.iconMuted}
-                />
-                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={styles.inputIconRight} />
-             </View>
-             {fieldErrors.vatNumber ? <Text style={styles.fieldErrorText}>{fieldErrors.vatNumber}</Text> : null}
-          </View>
+          {businessType === 'PRIVATE_LIMITED' ? (
+            <>
+            <View style={styles.formGroup}>
+               <Text style={styles.inputLabel}>COMPANIES HOUSE REG</Text>
+               <View style={styles.inputWrap}>
+                  <MaterialCommunityIcons name="pound" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
+                  <TextInput style={styles.textInput} value={regNumber} onChangeText={setRegNumber} keyboardType="numeric" placeholder="e.g. 12345678" placeholderTextColor={Colors.iconMuted} />
+                  <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={styles.inputIconRight} />
+               </View>
+            </View>
+  
+            <View style={styles.formGroup}>
+               <Text style={styles.inputLabel}>VAT NUMBER</Text>
+               <View style={styles.inputWrap}>
+                  <MaterialCommunityIcons name="file-document-outline" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInput}
+                    value={vatNumber}
+                    onChangeText={v => { setVatNumber(v); if (fieldErrors.vatNumber) setFieldErrors(prev => ({ ...prev, vatNumber: undefined })); }}
+                    placeholder="e.g. GB 123 456 789"
+                    placeholderTextColor={Colors.iconMuted}
+                  />
+                  <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={styles.inputIconRight} />
+               </View>
+               {fieldErrors.vatNumber ? <Text style={styles.fieldErrorText}>{fieldErrors.vatNumber}</Text> : null}
+            </View>
+            </>
+          ) : null}
 
           <View style={styles.formGroup}>
              <Text style={styles.inputLabel}>BUSINESS ADDRESS</Text>
@@ -357,6 +409,43 @@ const styles = StyleSheet.create({
   },
 
   // Form
+  businessTypeWrap: {
+     marginHorizontal: 24, marginBottom: 20,
+  },
+  businessTypeRow: {
+     gap: 10,
+  },
+  businessTypeCard: {
+     flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14,
+     borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08,
+     backgroundColor: Colors.whiteAlpha03,
+  },
+  businessTypeCardSelected: {
+     borderColor: Colors.accent, backgroundColor: Colors.accentAlpha03,
+  },
+  businessTypeRadio: {
+     width: 20, height: 20, borderRadius: 10, borderWidth: 2,
+     borderColor: Colors.iconMuted, alignItems: 'center', justifyContent: 'center',
+  },
+  businessTypeRadioSelected: {
+     borderColor: Colors.accent,
+  },
+  businessTypeRadioDot: {
+     width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.accent,
+  },
+  businessTypeTitle: {
+     fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.textSecondary,
+  },
+  businessTypeTitleSelected: {
+     color: Colors.white,
+  },
+  businessTypeHint: {
+     fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted, marginTop: 2,
+  },
+  businessTypeHelp: {
+     fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary,
+     lineHeight: 18, marginTop: 10,
+  },
   formGroup: {
      marginHorizontal: 24, marginBottom: 16
   },
