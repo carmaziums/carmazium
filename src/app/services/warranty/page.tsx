@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { ArrowLeft, ArrowRight, BadgeCheck, CheckCircle, FileText, LayoutDashboard, ShieldCheck, Users } from "lucide-react"
-import { warrantyServiceEnabled } from "@/lib/featureFlags"
+import { useTradeXchangeAvailability } from "@/hooks/useTradeXchangeAvailability"
 import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
 import { ServiceLeadForm } from "@/components/services/ServiceLeadForm"
 import { Button } from "@/components/ui/Button"
@@ -10,7 +10,12 @@ import { useAuth } from "@/context/AuthContext"
 
 export default function WarrantyServicePage() {
     const { user } = useAuth()
-    if (!warrantyServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Warranty" />
+    const { availability, loading } = useTradeXchangeAvailability()
+
+    if (loading) {
+        return <div className="min-h-screen pt-32 text-center text-sm text-[var(--text-muted)]">Checking TradeXchange availability…</div>
+    }
+    if (!availability?.WARRANTY) return <ServiceTemporarilyUnavailable serviceName="Warranty" />
 
     const providerHref = user
         ? "/dashboard/partner"
@@ -19,7 +24,7 @@ export default function WarrantyServicePage() {
     return (
         <div className="min-h-screen pt-24 pb-20">
             <main className="container mx-auto px-5 max-w-6xl">
-                <Link href="/auctions" className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary mb-6"><ArrowLeft size={15} /> Back to TradeXchange</Link>
+                <Link href="/services" className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary mb-6"><ArrowLeft size={15} /> Back to TradeXchange</Link>
 
                 <section className="grid lg:grid-cols-[0.8fr_1.2fr] gap-10 items-start mb-16">
                     <aside className="lg:sticky lg:top-24">

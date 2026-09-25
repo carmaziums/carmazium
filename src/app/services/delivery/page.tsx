@@ -16,7 +16,7 @@ import {
     Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import { deliveryServiceEnabled } from "@/lib/featureFlags"
+import { useTradeXchangeAvailability } from "@/hooks/useTradeXchangeAvailability"
 import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
 import { useAuth } from "@/context/AuthContext"
 
@@ -29,7 +29,12 @@ const STEPS = [
 
 export default function DeliveryLandingPage() {
     const { user } = useAuth()
-    if (!deliveryServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Delivery & Recovery" />
+    const { availability, loading } = useTradeXchangeAvailability()
+
+    if (loading) {
+        return <div className="min-h-screen pt-32 text-center text-sm text-[var(--text-muted)]">Checking TradeXchange availability…</div>
+    }
+    if (!availability?.DELIVERY) return <ServiceTemporarilyUnavailable serviceName="Delivery & Recovery" />
 
     const providerHref = user
         ? "/dashboard/partner"
@@ -40,7 +45,7 @@ export default function DeliveryLandingPage() {
             <section className="relative overflow-hidden border-b border-[var(--border-default)]" style={{ marginTop: "-80px", paddingTop: "80px" }}>
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(237,28,36,0.10)_0%,transparent_55%)]" />
                 <div className="container mx-auto px-6 py-16 md:py-24 relative">
-                    <Link href="/auctions" className="mb-7 inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary">
+                    <Link href="/services" className="mb-7 inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary">
                         <ArrowLeft size={15} /> Back to TradeXchange
                     </Link>
                     <div className="max-w-3xl">

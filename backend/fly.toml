@@ -4,25 +4,13 @@ primary_region = 'lhr'
 [build]
 
 [deploy]
-  # NO release_command on purpose.
-  #
-  # This used to run `prisma db push --accept-data-loss`, which drops any table
-  # present in the database but absent from schema.prisma. The tradexchange_*
-  # tables and migrations were historically split between Prisma and Supabase.
-  # Finance/Warranty service leads are now modelled in schema.prisma, but the
-  # wider production Prisma migration history is still incomplete, so enabling
-  # automatic schema reconciliation here would be unsafe. The 2026-09-10 deploy
-  # is proof: db push tried destructive cleanup and was stopped
-  # only because an RLS policy on tradexchange_offers depended on the table.
-  #
-  # Schema changes are applied by hand against the database (see
-  # prisma/migrations/*.sql) before the deploy that needs them, which is how
-  # they have actually been shipped. The Dockerfile still runs `prisma
-  # generate`, so the client is always built against schema.prisma.
-  #
-  # If an automated step is ever wanted here, it must be `prisma migrate deploy`
-  # with a real migration history — never `db push`, which treats the schema
-  # file as the whole truth and everything else as garbage to collect.
+  # Read-only release gate. This does NOT run db push or mutate the schema.
+  # TradeXchange historically shipped some Supabase/manual migrations outside
+  # Prisma's migration ledger, so automatic reconciliation remains unsafe until
+  # that history is fully reconciled. Instead, every backend release verifies
+  # the required TradeXchange tables, columns, indexes and backend-only grants
+  # before the new machines are promoted.
+  release_command = 'node dist/scripts/verify-tradexchange-schema.js'
 
 [http_service]
   internal_port = 8080
