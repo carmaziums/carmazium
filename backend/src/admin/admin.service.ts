@@ -1727,9 +1727,15 @@ export class AdminService {
                     in: ['PENDING', 'REJECTED']
                 },
                 // Document uploads can create an unpaid draft before the dealer
-                // submits the full form. Only paid applications are actionable
-                // for admin review.
-                stripeChargedAt: { not: null },
+                // submits the full form. Only applications with completed
+                // verification payment evidence are actionable. Keep legacy
+                // bank-transfer submissions visible alongside the Stripe flow.
+                OR: [
+                    { stripeChargedAt: { not: null } },
+                    { paymentReference: { not: null } },
+                    { paymentScreenshot: { not: null } },
+                    { paymentScreenshotPath: { not: null } },
+                ],
             },
             include: {
                 dealerProfile: {
