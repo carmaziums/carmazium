@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "parity:check": "node scripts/check-product-parity.mjs"
+    "parity:check": "node scripts/check-product-parity.mjs",
+    "release:check": "node scripts/check-release-readiness.mjs",
+    "release:check:strict": "node scripts/check-release-readiness.mjs --strict"
   },
   "dependencies": {
     "@prisma/client": "^7.3.0",

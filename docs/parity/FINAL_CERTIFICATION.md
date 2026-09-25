@@ -1,101 +1,153 @@
 # CarMazium One Product — Final Parity Certification
 
-**Date:** 24 September 2026  
+**Date:** 25 September 2026  
 **Scope:** Website + native mobile app + shared NestJS backend  
-**Certification state:** **CODE PARITY PASS / RUNTIME RELEASE EVIDENCE PENDING**
+**Programme progress:** **100% — Blocks 1–10 complete**  
+**Release state:** **CODE + LIVE WEB CERTIFIED / NATIVE STORE RELEASE HELD FOR EXTERNAL EVIDENCE**
 
 ## Executive result
 
-The repository now has a closed machine-readable parity manifest:
+The revalidated repository has a closed machine-readable parity contract:
 
-- **49 required cross-platform features**
+- **54 required cross-platform features**
 - **2 approved web-only features**
 - **0 unresolved `gap` entries**
 - **0 `web_only_candidate` entries**
 
-The required features cover authentication and role boundaries, public marketplace journeys, seller/buyer/dealer/Partner workflows, pricing and payment semantics, auctions, service jobs, HPI, chat/notifications, navigation/deep links, terminology, accessibility/state consistency and the shared performance baseline.
+The required features cover authentication and role boundaries, public marketplace journeys, seller/buyer/dealer/Partner workflows, Registered Company / Sole Trader dealer KYC, legacy Finance/Insurance partner operations, pricing and payment semantics, auctions, service jobs, HPI, chat/notifications, navigation/deep links, terminology, accessibility/state consistency, performance safeguards, business-role landing and the direct-to-seller vehicle-payment boundary.
 
-The two intentional web-only exceptions are:
+The intentional web-only exceptions remain:
 
-1. **`admin.operations`** — privileged internal back-office operations remain in the authenticated web admin console. The native customer/partner app does not expose an ADMIN application surface.
-2. **`blog.seo`** — the public blog is an SEO/content surface rather than a transactional app journey and remains available to mobile users through the public website.
+1. **`admin.operations`** — privileged internal back-office operations remain in the authenticated web admin console.
+2. **`blog.seo`** — the public blog remains a web SEO/content surface and is not a transactional native-app journey.
 
-These exceptions are documented in `product-parity.json` with explicit reasons. They are not unresolved parity defects.
+These are documented platform choices, not unresolved parity defects.
 
-## Release gate
+## Block 10 certification gate
 
-`scripts/check-product-parity.mjs` is now a release gate rather than only an audit warning:
+Block 10 adds a repeatable release-certification layer:
 
-- every `required` feature must declare existing web and mobile files;
-- every approved `web_only` feature must declare web files, no mobile files, and an explicit reason;
-- any `gap` fails CI;
-- any `web_only_candidate` fails CI;
-- unknown parity statuses fail CI.
+- `scripts/check-release-readiness.mjs`
+- `npm run release:check`
+- `npm run release:check:strict`
+- `.github/workflows/release-certification.yml`
 
-The `.github/workflows/product-parity.yml` workflow runs the contract gate plus web, mobile and backend typechecks. Its path filters include parity-sensitive source code and the release/config surfaces used by the performance baseline.
+The normal gate certifies repository-controlled conditions. Strict mode additionally requires external facts that must never be invented in source control: real Apple submission identifiers and valid Apple/Android web-association files.
 
-## Matched journey coverage
+The Release Certification workflow runs the parity contract, release-readiness contract, web TypeScript, native Expo config + TypeScript, backend TypeScript, full backend Jest tests and backend build. Manual dispatch also performs live production web-route and Fly.io health checks; strict manual dispatch then requires the deployed Universal Link / App Link association documents.
 
-| Journey | Shared backend contract | Web surface | Native surface | Code/CI status |
+## Revalidation after the Block 9 checkpoint
+
+While Block 10 was being prepared, PR #250 merged Registered Company / Sole Trader KYC support into `main`. Certification was restarted from that newer main rather than accepting the earlier Block 9 baseline.
+
+Block 10 therefore adds `dealer.kyc_business_type` to the parity manifest and guards that:
+
+- web and native expose both Registered Company and Sole Trader choices;
+- business type is carried from onboarding into KYC;
+- sole traders are not forced through Companies House-only fields;
+- sole traders require photo ID and proof of address;
+- KYC evidence stays in the private KYC bucket;
+- first-time uploads attach to a draft KYC row;
+- unpaid drafts are excluded from actionable admin review.
+
+The final manifest count is consequently 54 required features, not the earlier 53.
+
+## Production evidence
+
+The current-main production baseline used for Block 10 is:
+
+`main@cc568dec50fbcfba5acb4bbc4cca2fe0ad8e732e`
+
+Vercel deployment:
+
+`dpl_7LVPAMqfm8LupJj9GXwEvCNmgieE`
+
+The deployment is **READY** and mapped to the production domains. Its build error view contained no errors.
+
+Direct production checks returned HTTP 200 for search, auctions, sell, pricing, login and signup after the sole-trader KYC merge.
+
+For the checked first-hour window on that exact deployment, Vercel reported:
+
+- 13 HTTP 200 responses
+- 2 HTTP 304 responses
+- no 4xx/5xx status groups
+- no warning/error/fatal log entries
+
+A wider project-level query still contains historical Fly.io connection-reset/timeout events from prior deployments. Those are documented as a reliability caveat; they were not present in the checked current-main deployment window.
+
+Detailed evidence is in `docs/parity/BLOCK10_RELEASE_EVIDENCE.md`.
+
+## Matched journey result
+
+| Journey | Shared backend | Web | Native | Result |
 | --- | --- | --- | --- | --- |
 | Authentication / onboarding / verification | Yes | Yes | Yes | Covered |
-| Public vehicle marketplace / filters / detail | Yes | Yes | Yes | Covered |
+| Public marketplace / search / detail | Yes | Yes | Yes | Covered + live web observed |
 | Retail + auction listing creation | Yes | Yes | Yes | Covered |
 | Seller offers / handover / earnings | Yes | Yes | Yes | Covered |
 | Auction bidding / winner fee / post-win contact | Yes | Yes | Yes | Covered |
-| Verified inspection → vehicle refusal → £125 refund | Yes | Yes | Yes | Covered |
-| Dealer business identity / staff RBAC | Yes | Yes | Yes | Covered |
+| Verified inspection → refusal → £125 refund | Yes | Yes | Yes | Covered |
+| Dealer identity / staff RBAC | Yes | Yes | Yes | Covered |
+| Registered Company / Sole Trader KYC | Yes | Yes | Yes | Covered + guarded |
 | Dealer inventory / CRM / offers / purchases | Yes | Yes | Yes | Covered |
 | Partner capabilities / verification / matching | Yes | Yes | Yes | Covered |
-| Provider jobs / quotes / lifecycle / job chat | Yes | Yes | Yes | Covered |
+| Provider jobs / quotes / lifecycle / chat | Yes | Yes | Yes | Covered |
 | Finance / Warranty matched enquiries | Yes | Yes | Yes | Covered |
-| Stripe checkout / native PaymentIntent reconciliation | Yes | Yes | Yes | Covered |
+| Legacy Finance Partner operations | Yes | Yes | Yes | Covered |
+| Legacy Insurance Partner operations | Yes | Yes | Yes | Covered |
+| Stripe platform charges / reconciliation | Yes | Yes | Yes | Covered |
+| Vehicle purchase money paid directly to seller | Yes | Yes | Yes | Regression guarded |
 | Seller £100 reward / provider payout lifecycle | Yes | Yes | Yes | Covered |
 | HPI report entitlements | Yes | Yes | Yes | Covered |
-| Notifications / deep-link tap routing | Yes | Yes | Yes | Covered |
-| Public detail deep links / authenticated back stack | Yes | Yes | Yes | Covered |
-| Loading / empty / error / offline states | Shared rules | Yes | Yes | Covered |
-| Accessibility semantics | Shared invariants | Yes | Yes | Static guard covered |
-| Performance baseline | Shared release invariants | Yes | Yes | Static guard covered |
+| Notifications / direct-open chat routing | Yes | Yes | Yes | Covered |
+| Public deep links / authenticated back stack | Yes | Yes | Yes | Code covered; external associations pending |
+| Loading / empty / error / offline states | Shared rules | Yes | Yes | Static guard covered |
+| Accessibility semantics | Shared invariants | Yes | Yes | Static guard; device evidence pending |
+| Performance baseline | Shared invariants | Yes | Yes | Static guard; device evidence pending |
 
-## Blocks 1–9 result
+## Blocks 1–10
 
 ### Blocks 1–4
-The product contract, roles/authentication, public marketplace and seller journey are represented as required parity surfaces and enforced through the shared backend/client contract.
+Production reliability, auction/listing integrity, sales lifecycle and the core shared product contract were repaired and placed behind authoritative backend rules.
 
 ### Block 5 — Buyer
-Buyer business rules are aligned, including auction winner fee reconciliation, the 72-hour payment deadline and the verified linked-inspection refusal path. Native mobile now exposes the linked customer service-job journey rather than carrying only an API contract.
+Buyer business rules were aligned, including auction fee reconciliation, the 72-hour payment deadline and verified linked-inspection refusal/refund behavior.
 
 ### Block 6 — Dealer
-Dealer staff operate through one canonical dealership identity. Owner/Admin/Sales/Finance permissions are enforced in the backend and consumed by both clients. Auction winner, seller, bid and fee state use the dealership identity rather than staff shadow identities.
+Dealer staff use one canonical dealership identity and both clients consume the backend permission model.
 
 ### Block 7 — Partner / TradeXchange
-Partner Account, capability application, private verification evidence, matching, provider jobs, Finance/Warranty leads and provider-focused service-job messages are represented on both web and native mobile.
+Partner capabilities, verification, matching, provider jobs, Finance/Warranty enquiries and service-job messaging are available across clients.
 
 ### Block 8 — Payments / HPI / chat / notifications
-Hosted and native payment reconciliation, exactly-once seller/provider payout controls, HPI entitlements and native notification/chat routing are guarded against drift.
+Payment reconciliation, exactly-once payout controls, HPI entitlements and notification/chat routing were hardened.
 
-### Block 9 — Navigation / states / accessibility / performance
-Native public-detail hydration, cross-role back-stack behaviour, shared terminology, loading/error/offline states and accessibility semantics are guarded. Performance hardening now includes idle-loaded Mazium, native onboarding virtualization and Android release minification/resource shrinking.
+### Block 9 — Website ↔ native parity
+Finance/Insurance partner native workspaces and Contractor landing were corrected, direct-to-seller payment behavior was fail-closed, and the parity manifest reached zero gaps.
 
-## Runtime and external evidence still required
+### Block 10 — End-to-end certification / release gate
+The current production web deployment was inspected, the concurrent sole-trader KYC change was incorporated into parity, and certification became a repeatable CI/manual gate with a separate strict external-release stage.
 
-These items are **not code-parity gaps**, but they must be completed before calling a specific mobile/web release fully runtime-certified:
+## External native release evidence still required
 
-- Build a new signed Android APK/AAB after the Block 9 release-config change and record artifact size versus the documented ~65–68 MB prior APK.
-- Run first-use onboarding plus representative marketplace/auction/dashboard scroll journeys on a physical Android device and record any memory/jank regressions.
-- Measure production Core Web Vitals / equivalent browser timing (LCP, INP, CLS) after the performance build is live.
-- Run representative keyboard + screen-reader checks against real rendered web/native surfaces.
-- Publish/verify Apple `apple-app-site-association` with the real Apple Team/app identifier.
-- Publish/verify Android `.well-known/assetlinks.json` with the real release signing SHA-256 fingerprint.
+These items prevent a truthful **native store-release PASS** even though the ten-block programme is complete:
 
-The repository deliberately does not guess the two signing identifiers.
+1. **Android App Links:** `/.well-known/assetlinks.json` currently returns 404; the real release-signing SHA-256 fingerprint is not in the repository.
+2. **Apple Universal Links:** `/.well-known/apple-app-site-association` currently returns 404; the real Apple Team/app identifier is not in the repository.
+3. **iOS submit settings:** `eas.json` still contains placeholder Apple ID / App Store Connect app ID / Apple Team ID values.
+4. **Signed store artefacts:** no signed AAB / iOS archive was produced in this session because release credentials are external.
+5. **Physical-device evidence:** push delivery/tap routing, haptics, gestures, Payment Sheet, screen-reader behavior and device performance remain device-level checks.
+6. **Native crash telemetry:** the EAS production profile has a placeholder Sentry DSN and the native dependency graph has no Sentry integration.
 
-## Release decision
+The strict release gate intentionally fails until the relevant external facts are supplied.
 
+## Final decision
+
+**One-product correction programme:** PASS — **100% / Blocks 1–10 complete**.  
 **Code parity:** PASS.  
-**Manifest parity:** PASS — zero unresolved gaps.  
-**CI release gate:** REQUIRED and regression-blocking.  
-**Runtime release certification:** PENDING the device/browser/signing evidence above.
+**Manifest parity:** PASS — **54 required, 2 approved web-only, zero unresolved gaps**.  
+**Checked current-main production website:** PASS.  
+**Regression/release gate:** ESTABLISHED.  
+**Native App Store / Google Play release certification:** **HOLD pending external signing, association and physical-device evidence**.
 
-A release may be treated as functionally one-product at the code-contract level only after the current parity workflow is green on its exact release commit. Runtime-performance, accessibility and universal-link claims should be made only after their corresponding external checks are recorded.
+“100%” means the requested ten-block audit/correction/certification programme is complete. It does not convert missing Apple/Google credentials or unperformed physical-device checks into passes.

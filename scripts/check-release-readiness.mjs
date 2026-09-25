@@ -1,0 +1,259 @@
+#!/usr/bin/env node
+
+/**
+ * CarMazium release-readiness gate.
+ *
+ * Default mode checks everything that can be certified from repository state.
+ * --strict additionally requires external release artefacts that cannot be
+ * invented in code (store identifiers and verified universal-link files).
+ *
+ * The strict mode is intended for the manual Release Certification workflow
+ * immediately before a signed store release.
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+
+const root = process.cwd();
+const strict = process.argv.includes('--strict');
+
+let failures = 0;
+let warnings = 0;
+
+const rel = (p) => path.join(root, p);
+const exists = (p) => fs.existsSync(rel(p));
+const read = (p) => fs.readFileSync(rel(p), 'utf8');
+const readJson = (p) => JSON.parse(read(p));
+
+function ok(message) {
+  console.log(`RELEASE OK: ${message}`);
+}
+
+function warn(message) {
+  warnings += 1;
+  console.warn(`RELEASE WARNING: ${message}`);
+}
+
+function fail(message) {
+  failures += 1;
+  console.error(`RELEASE ERROR: ${message}`);
+}
+
+function external(message) {
+  if (strict) fail(message);
+  else warn(`${message} (strict release gate will fail until this is supplied)`);
+}
+
+function hasPlaceholder(value) {
+  return typeof value === 'string' && /FILL_IN|REPLACE_WITH|YOUR_[A-Z_]+|CHANGE_ME/i.test(value);
+}
+
+function requiredFile(filePath, label = filePath) {
+  if (!exists(filePath)) fail(`${label} is missing: ${filePath}`);
+  else ok(`${label} exists`);
+}
+
+// ---------------------------------------------------------------------------
+// 1. Machine-readable one-product contract.
+// ---------------------------------------------------------------------------
+const manifest = readJson('product-parity.json');
+const required = manifest.features.filter((feature) => feature.status === 'required');
+const webOnly = manifest.features.filter((feature) => feature.status === 'web_only');
+const unresolved = manifest.features.filter(
+  (feature) => feature.status === 'gap' || feature.status === 'web_only_candidate',
+);
+
+if (unresolved.length) {
+  fail(`Parity manifest still contains unresolved entries: ${unresolved.map((f) => f.id).join(', ')}`);
+} else {
+  ok(`Parity manifest has zero unresolved gaps (${required.length} required, ${webOnly.length} approved web-only)`);
+}
+
+for (const feature of required) {
+  if (!feature.web?.length || !feature.mobile?.length) {
+    fail(`${feature.id} is required but does not declare both web and mobile surfaces`);
+    continue;
+  }
+  for (const filePath of [...feature.web, ...feature.mobile]) {
+    if (!exists(filePath)) fail(`${feature.id} references missing file ${filePath}`);
+  }
+}
+
+for (const feature of webOnly) {
+  if (!feature.reason?.trim()) fail(`${feature.id} is web_only without an explicit reason`);
+  if (!feature.web?.length || feature.mobile?.length) {
+    fail(`${feature.id} has an invalid web_only platform declaration`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 2. Native production identity/build configuration.
+// ---------------------------------------------------------------------------
+const app = readJson('carmazium app/carmazium app/app.json').expo;
+const eas = readJson('carmazium app/carmazium app/eas.json');
+const mobilePackage = readJson('carmazium app/carmazium app/package.json');
+
+const expectedBundleId = 'uk.carmazium.app';
+if (app.ios?.bundleIdentifier !== expectedBundleId) {
+  fail(`iOS bundleIdentifier must be ${expectedBundleId}, got ${app.ios?.bundleIdentifier ?? 'missing'}`);
+} else {
+  ok(`iOS bundle identifier = ${expectedBundleId}`);
+}
+
+if (app.android?.package !== expectedBundleId) {
+  fail(`Android package must be ${expectedBundleId}, got ${app.android?.package ?? 'missing'}`);
+} else {
+  ok(`Android package = ${expectedBundleId}`);
+}
+
+const easProjectId = app.extra?.eas?.projectId;
+if (
+  typeof easProjectId !== 'string' ||
+  hasPlaceholder(easProjectId) ||
+  !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(easProjectId)
+) {
+  fail('Expo EAS projectId is missing, placeholder, or not a UUID');
+} else {
+  ok(`Expo EAS projectId is configured (${easProjectId})`);
+}
+
+const production = eas.build?.production;
+if (!production) {
+  fail('EAS production build profile is missing');
+} else {
+  if (production.channel !== 'production') fail('EAS production profile must use the production update channel');
+  else ok('EAS production update channel is production');
+
+  if (production.android?.buildType !== 'app-bundle') {
+    fail('EAS production Android build must produce an app-bundle');
+  } else {
+    ok('EAS production Android output is app-bundle');
+  }
+
+  const apiUrl = production.env?.EXPO_PUBLIC_API_URL;
+  if (typeof apiUrl !== 'string' || !apiUrl.startsWith('https://')) {
+    fail('Production mobile API URL must be an explicit HTTPS URL');
+  } else {
+    ok(`Production mobile API URL is HTTPS (${apiUrl})`);
+  }
+}
+
+const associatedDomains = app.ios?.associatedDomains ?? [];
+for (const domain of ['applinks:carmazium.com', 'applinks:www.carmazium.com']) {
+  if (!associatedDomains.includes(domain)) fail(`iOS associatedDomains is missing ${domain}`);
+}
+if (
+  associatedDomains.includes('applinks:carmazium.com') &&
+  associatedDomains.includes('applinks:www.carmazium.com')
+) {
+  ok('iOS declares both production associated domains');
+}
+
+const androidIntentJson = JSON.stringify(app.android?.intentFilters ?? []);
+for (const host of ['"host":"carmazium.com"', '"host":"www.carmazium.com"']) {
+  if (!androidIntentJson.includes(host)) fail(`Android HTTPS intent filters are missing ${host}`);
+}
+if (androidIntentJson.includes('"autoVerify":true') && androidIntentJson.includes('"scheme":"https"')) {
+  ok('Android HTTPS app-link intent filter is autoVerify-enabled');
+} else {
+  fail('Android HTTPS app-link intent filter is not autoVerify-enabled');
+}
+
+requiredFile('carmazium app/carmazium app/scripts/release-android.mjs', 'Android signed-release script');
+requiredFile('carmazium app/carmazium app/plugins/withAndroidReleaseSigning.js', 'Android release-signing config plugin');
+
+const appPlugins = JSON.stringify(app.plugins ?? []);
+if (!appPlugins.includes('./plugins/withAndroidReleaseSigning')) {
+  fail('app.json does not register withAndroidReleaseSigning');
+} else {
+  ok('Android release-signing plugin is registered');
+}
+
+if (mobilePackage.scripts?.['android:release'] !== 'node scripts/release-android.mjs') {
+  fail('Mobile package does not expose the guarded android:release command');
+} else {
+  ok('Mobile package exposes guarded android:release command');
+}
+
+// Sentry is not currently installed in the native dependency graph. A placeholder
+// DSN therefore cannot be treated as release telemetry. Keep it visible as a
+// warning without blocking code certification.
+const sentryDsn = production?.env?.EXPO_PUBLIC_SENTRY_DSN;
+const hasSentryDependency = Object.keys(mobilePackage.dependencies ?? {}).some((name) =>
+  name.toLowerCase().includes('sentry'),
+);
+if (hasPlaceholder(sentryDsn) && !hasSentryDependency) {
+  warn('Production EAS profile contains a Sentry placeholder but the native app has no Sentry dependency; crash telemetry is not certified');
+}
+
+// ---------------------------------------------------------------------------
+// 3. External distribution/deep-link evidence.
+// ---------------------------------------------------------------------------
+const iosSubmit = eas.submit?.production?.ios ?? {};
+for (const [key, value] of Object.entries({
+  appleId: iosSubmit.appleId,
+  ascAppId: iosSubmit.ascAppId,
+  appleTeamId: iosSubmit.appleTeamId,
+})) {
+  if (!value || hasPlaceholder(value)) external(`EAS iOS submit field ${key} is not configured`);
+}
+
+const androidSubmit = eas.submit?.production?.android ?? {};
+if (!androidSubmit.serviceAccountKeyPath) {
+  external('EAS Android submit serviceAccountKeyPath is not configured');
+} else {
+  ok('EAS Android submit path is declared (credential file remains external by design)');
+}
+
+const assetLinksPath = 'public/.well-known/assetlinks.json';
+const aasaPath = 'public/.well-known/apple-app-site-association';
+
+if (!exists(assetLinksPath)) {
+  external('Android Digital Asset Links file is not present in the web app');
+} else {
+  try {
+    const links = readJson(assetLinksPath);
+    const serialised = JSON.stringify(links);
+    if (!Array.isArray(links) || links.length === 0 || hasPlaceholder(serialised)) {
+      external('Android Digital Asset Links file does not contain a real signing association');
+    } else {
+      ok('Android Digital Asset Links file contains at least one association');
+    }
+  } catch {
+    fail('Android Digital Asset Links file is not valid JSON');
+  }
+}
+
+if (!exists(aasaPath)) {
+  external('Apple app-site-association file is not present in the web app');
+} else {
+  try {
+    const aasa = readJson(aasaPath);
+    const details = aasa?.applinks?.details;
+    const serialised = JSON.stringify(aasa);
+    if (!Array.isArray(details) || details.length === 0 || hasPlaceholder(serialised)) {
+      external('Apple app-site-association file does not contain a real app identifier');
+    } else {
+      ok('Apple app-site-association file contains at least one app association');
+    }
+  } catch {
+    fail('Apple app-site-association file is not valid JSON');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Result.
+// ---------------------------------------------------------------------------
+console.log(
+  `\nRelease-readiness summary: mode=${strict ? 'strict' : 'code'}, failures=${failures}, warnings=${warnings}`,
+);
+
+if (failures > 0) {
+  process.exit(1);
+}
+
+console.log(
+  strict
+    ? 'Strict release-readiness gate passed.'
+    : 'Code-controlled release-readiness gate passed. External release evidence is reported as warnings until strict mode is run.',
+);

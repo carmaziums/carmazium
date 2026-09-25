@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "purpose": "CarMazium one-product parity contract",
   "policy": {
     "backend_is_source_of_truth": true,
@@ -377,6 +377,18 @@
         "carmazium app/carmazium app/src/screens/vehicle/AuctionDetailScreen.tsx",
         "carmazium app/carmazium app/src/screens/buyer/BuyerBidsScreen.tsx",
         "carmazium app/carmazium app/src/screens/main/AuctionCompleteScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "dealer.kyc_business_type",
+      "web": [
+        "src/components/dashboard/KycOverlayForm.tsx",
+        "src/lib/dealerApi.ts"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/DealerOnboardingScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/DealerKYCScreen.tsx"
       ],
       "status": "required"
     },

@@ -2797,3 +2797,16 @@ Runtime/external evidence still required before a specific release is called ful
 - runtime keyboard/screen-reader checks;
 - real Apple app identifier and Android release-certificate SHA-256 for website association files.
 
+
+
+### 2026-09-25 — Block 10 release certification
+
+**Rebased certification baseline:** `main@cc568dec50fbcfba5acb4bbc4cca2fe0ad8e732e`, including PR #250 Registered Company / Sole Trader Partner/dealer KYC.
+
+**Repository result.** The manifest now has 54 required web/native features, 2 approved web-only exceptions and zero unresolved gaps. The sole-trader KYC branch is explicitly represented and CI-guarded rather than only inheriting generic dealer coverage. Added `scripts/check-release-readiness.mjs` and `.github/workflows/release-certification.yml` so product parity, release config, web/native/backend type safety, full backend tests/build and native Expo config are evaluated together.
+
+**Production evidence.** Current-main Vercel deployment `dpl_7LVPAMqfm8LupJj9GXwEvCNmgieE` was READY with a clean build error view. Core public routes returned HTTP 200 after the KYC merge. In the inspected first-hour window the deployment recorded 13 HTTP 200 and 2 HTTP 304 responses, with no 4xx/5xx status groups and no warning/error/fatal log entries.
+
+**External release blockers.** Both `/.well-known/assetlinks.json` and `/.well-known/apple-app-site-association` return 404. The actual Android signing fingerprint and Apple Team/app identifier are not stored in the repository, and the iOS EAS submit values remain placeholders. No signed store artefact or physical-device pass is claimed.
+
+**Programme state:** Blocks 1–10 complete at the code-contract/live-web level. Native store release remains on HOLD until the strict external gate can pass.
