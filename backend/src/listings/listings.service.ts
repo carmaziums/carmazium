@@ -1807,54 +1807,6 @@ export class ListingsService {
             'You do not have permission to update this listing',
         );
 
-        // SOLD and OFFER_ACCEPTED are controlled deal states. They cannot be
-        // reopened or withdrawn through the generic status endpoint because that
-        // would bypass Sale cleanup, accepted-offer cancellation and evidence-backed
-        // sale cancellation.
-        if (listing.status === 'SOLD' && status !== 'SOLD') {
-            throw new BadRequestException(
-                'A sold vehicle cannot be relisted directly. Use the sale cancellation workflow first.',
-            );
-        }
-        if (
-            listing.status === 'OFFER_ACCEPTED'
-            && status !== 'OFFER_ACCEPTED'
-            && status !== 'SOLD'
-        ) {
-            throw new BadRequestException(
-                'This vehicle has an accepted deal. Use the sale cancellation workflow to cancel or relist it.',
-            );
-        }
-        if (status === 'OFFER_ACCEPTED' && listing.status !== 'OFFER_ACCEPTED') {
-            throw new BadRequestException(
-                'Sale Pending can only be created by accepting a valid retail offer.',
-            );
-        }
-
-        // The generic SOLD transition is only a compatibility entry point for
-        // approved retail inventory. Route it through recordSale() so accepted
-        // buyer/price data, Sale persistence and concurrency protection are identical
-        // to PATCH /listings/:id/sold.
-        if (status === 'SOLD') {
-            if (listing.status === 'SOLD') {
-                throw new BadRequestException('This listing is already marked as sold');
-            }
-            if (listing.type !== 'CLASSIFIED') {
-                throw new BadRequestException(
-                    'Auction sales are completed by the auction lifecycle and cannot be marked sold manually.',
-                );
-            }
-            if (!['ACTIVE', 'OFFER_ACCEPTED'].includes(listing.status)) {
-                throw new BadRequestException(
-                    'Only an active or sale-pending retail listing can be marked sold.',
-                );
-            }
-            return this.recordSale(id, userId, {
-                soldPrice: Number(listing.price),
-                buyerPostcode,
-            });
-        }
-
         // Build update data with proper type mapping
         const updateData: any = {};
 
@@ -1969,10 +1921,59 @@ export class ListingsService {
             'You do not have permission to update this listing',
         );
 
+        // SOLD and OFFER_ACCEPTED are controlled deal states. They cannot be
+        // reopened or withdrawn through the generic status endpoint because that
+        // would bypass Sale cleanup, accepted-offer cancellation and evidence-backed
+        // sale cancellation.
+        if (listing.status === 'SOLD' && status !== 'SOLD') {
+            throw new BadRequestException(
+                'A sold vehicle cannot be relisted directly. Use the sale cancellation workflow first.',
+            );
+        }
+        if (
+            listing.status === 'OFFER_ACCEPTED'
+            && status !== 'OFFER_ACCEPTED'
+            && status !== 'SOLD'
+        ) {
+            throw new BadRequestException(
+                'This vehicle has an accepted deal. Use the sale cancellation workflow to cancel or relist it.',
+            );
+        }
+        if (status === 'OFFER_ACCEPTED' && listing.status !== 'OFFER_ACCEPTED') {
+            throw new BadRequestException(
+                'Sale Pending can only be created by accepting a valid retail offer.',
+            );
+        }
+
+        // The generic SOLD transition is only a compatibility entry point for
+        // approved retail inventory. Route it through recordSale() so accepted
+        // buyer/price data, Sale persistence and concurrency protection are identical
+        // to PATCH /listings/:id/sold.
+        if (status === 'SOLD') {
+            if (listing.status === 'SOLD') {
+                throw new BadRequestException('This listing is already marked as sold');
+            }
+            if (listing.type !== 'CLASSIFIED') {
+                throw new BadRequestException(
+                    'Auction sales are completed by the auction lifecycle and cannot be marked sold manually.',
+                );
+            }
+            if (!['ACTIVE', 'OFFER_ACCEPTED'].includes(listing.status)) {
+                throw new BadRequestException(
+                    'Only an active or sale-pending retail listing can be marked sold.',
+                );
+            }
+            return this.recordSale(id, userId, {
+                soldPrice: Number(listing.price),
+                buyerPostcode,
+            });
+        }
+
         // Going live must always go through payment + admin review (publishListing()
         // then an admin approval) — this generic status endpoint may only relist a
-        // listing that has already been through that gate once (i.e. it's currently
-        // ACTIVE, SOLD, WITHDRAWN, or OFFER_ACCEPTED). It may never be used to skip
+        // listing that has already been through that gate once (ACTIVE/WITHDRAWN).
+        // SOLD and OFFER_ACCEPTED are controlled above and may not be reopened here.
+        // It may never be used to skip
         // review for a brand-new, still-DRAFT, still-PENDING_REVIEW, or REJECTED listing.
         if (status === 'ACTIVE' && !['ACTIVE', 'WITHDRAWN'].includes(listing.status)) {
             throw new BadRequestException(
