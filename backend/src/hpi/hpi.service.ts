@@ -3,7 +3,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { HpiPdfService } from './hpi-pdf.service';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { NotificationsGateway } from '../notifications/notifications.gateway';
 import {
     HPI_CHECK_KEYS,
     HpiReportData,
@@ -42,7 +41,6 @@ export class HpiService {
         private readonly hpiPdfService: HpiPdfService,
         private readonly emailService: EmailService,
         private readonly notificationsService: NotificationsService,
-        private readonly notificationsGateway: NotificationsGateway,
     ) { }
 
     /**
@@ -404,10 +402,6 @@ export class HpiService {
             entityType: 'Listing',
             entityId: listing.id,
         }).catch(() => null);
-
-        if (notification) {
-            this.notificationsGateway.sendNotification(listing.sellerId, notification);
-        }
 
         if (listing.seller?.email) {
             await this.emailService.sendHpiReportReadyAlert({
