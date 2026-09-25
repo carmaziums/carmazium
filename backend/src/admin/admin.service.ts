@@ -1725,7 +1725,11 @@ export class AdminService {
             where: {
                 status: {
                     in: ['PENDING', 'REJECTED']
-                }
+                },
+                // Document uploads can create an unpaid draft before the dealer
+                // submits the full form. Only paid applications are actionable
+                // for admin review.
+                stripeChargedAt: { not: null },
             },
             include: {
                 dealerProfile: {
