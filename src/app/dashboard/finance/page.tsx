@@ -21,6 +21,7 @@ export default function FinanceDashboard() {
     const [applications, setApplications] = React.useState<FinanceApplication[]>([])
     const [loading, setLoading] = React.useState(true)
     const [updating, setUpdating] = React.useState<string | null>(null)
+    const [actionError, setActionError] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         async function fetchData() {
@@ -43,14 +44,27 @@ export default function FinanceDashboard() {
     }, [user, authLoading])
 
     const handleStatusUpdate = async (id: string, status: string) => {
+        let monthlyPayment: number | undefined
+        if (status === 'APPROVED') {
+            const raw = window.prompt('Enter the approved monthly payment in pounds (£).')
+            if (raw === null) return
+            monthlyPayment = Number(raw)
+            if (!Number.isFinite(monthlyPayment) || monthlyPayment <= 0) {
+                setActionError('Enter a valid monthly payment before approving finance.')
+                return
+            }
+        }
+
         try {
             setUpdating(id)
-            const updated = await updateFinanceStatus(id, status)
+            setActionError(null)
+            const updated = await updateFinanceStatus(id, status, monthlyPayment)
             setApplications(prev => prev.map(a => a.id === id ? updated : a))
             const newStats = await getFinanceStats()
             setStats(newStats)
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to update status:', err)
+            setActionError(err?.message || 'Could not update this record.')
         } finally {
             setUpdating(null)
         }
@@ -72,6 +86,12 @@ export default function FinanceDashboard() {
                 <DashboardSidebar role="finance" userName={userName} userType="Finance Partner" />
 
                 <main className="flex-1 space-y-8">
+                    {actionError && (
+                        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                            {actionError}
+                        </div>
+                    )}
+
                     {/* Stats Row */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl hover:bg-white/10 transition-colors">

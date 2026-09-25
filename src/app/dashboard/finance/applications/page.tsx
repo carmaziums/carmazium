@@ -17,6 +17,7 @@ export default function FinanceApplicationsPage() {
     const [applications, setApplications] = React.useState<FinanceApplication[]>([])
     const [loading, setLoading] = React.useState(true)
     const [updating, setUpdating] = React.useState<string | null>(null)
+    const [actionError, setActionError] = React.useState<string | null>(null)
     const [statusFilter, setStatusFilter] = React.useState<string>("ALL")
     const [page, setPage] = React.useState(1)
     const [total, setTotal] = React.useState(0)
@@ -40,12 +41,25 @@ export default function FinanceApplicationsPage() {
     }, [user, authLoading, page])
 
     const handleStatusUpdate = async (id: string, status: string) => {
+        let monthlyPayment: number | undefined
+        if (status === 'APPROVED') {
+            const raw = window.prompt('Enter the approved monthly payment in pounds (£).')
+            if (raw === null) return
+            monthlyPayment = Number(raw)
+            if (!Number.isFinite(monthlyPayment) || monthlyPayment <= 0) {
+                setActionError('Enter a valid monthly payment before approving finance.')
+                return
+            }
+        }
+
         try {
             setUpdating(id)
-            const updated = await updateFinanceStatus(id, status)
+            setActionError(null)
+            const updated = await updateFinanceStatus(id, status, monthlyPayment)
             setApplications(prev => prev.map(a => a.id === id ? updated : a))
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to update status:', err)
+            setActionError(err?.message || 'Could not update this record.')
         } finally {
             setUpdating(null)
         }
@@ -73,6 +87,12 @@ export default function FinanceApplicationsPage() {
                 <DashboardSidebar role="finance" userName={userName} userType="Finance Partner" />
 
                 <main className="flex-1 space-y-6">
+                    {actionError && (
+                        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                            {actionError}
+                        </div>
+                    )}
+
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <h1 className="text-2xl font-black font-heading flex items-center gap-2">
                             <FileText className="text-primary" /> Finance Applications

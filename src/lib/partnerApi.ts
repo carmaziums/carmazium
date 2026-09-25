@@ -81,6 +81,20 @@ export interface PartnerStats {
     totalValue: number
 }
 
+export interface PartnerSettings {
+    companyName: string
+    callbackUrl: string
+    isActive: boolean
+    isConfigured: boolean
+    apiKeyHint: string | null
+    integrationEnabled: boolean
+}
+
+export interface RegeneratedPartnerKey {
+    apiKey: string
+    apiKeyHint: string
+}
+
 // ============================================================================
 // FINANCE PARTNER API
 // ============================================================================
@@ -107,21 +121,28 @@ export async function updateFinanceStatus(
 }
 
 export async function getFinanceStats(): Promise<PartnerStats> {
-    try {
-        const res = await getFinanceApplications(1, 1000)
-        const apps = res.data || []
-        return {
-            pending: apps.filter(a => a.status === 'PENDING').length,
-            approved: apps.filter(a => a.status === 'APPROVED').length,
-            rejected: apps.filter(a => a.status === 'REJECTED').length,
-            completed: apps.filter(a => a.status === 'COMPLETED').length,
-            totalValue: apps
-                .filter(a => a.status === 'APPROVED' || a.status === 'COMPLETED')
-                .reduce((sum, a) => sum + (parseFloat(a.monthlyPayment || '0') * a.termMonths), 0),
-        }
-    } catch {
-        return { pending: 0, approved: 0, rejected: 0, completed: 0, totalValue: 0 }
-    }
+    const res = await apiClient<{ data: PartnerStats }>('/finance/partner/stats')
+    return res.data
+}
+
+export async function getFinancePartnerSettings(): Promise<PartnerSettings> {
+    const res = await apiClient<{ data: PartnerSettings }>('/finance/partner/settings')
+    return res.data
+}
+
+export async function saveFinancePartnerSettings(input: { companyName: string; callbackUrl?: string | null }): Promise<PartnerSettings> {
+    const res = await apiClient<{ data: PartnerSettings }>('/finance/partner/settings', {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+    })
+    return res.data
+}
+
+export async function regenerateFinancePartnerKey(): Promise<RegeneratedPartnerKey> {
+    const res = await apiClient<{ data: RegeneratedPartnerKey }>('/finance/partner/api-key/regenerate', {
+        method: 'POST',
+    })
+    return res.data
 }
 
 // ============================================================================
@@ -152,21 +173,28 @@ export async function updateInsuranceStatus(
 }
 
 export async function getInsuranceStats(): Promise<PartnerStats> {
-    try {
-        const res = await getInsuranceQuotes(1, 1000)
-        const quotes = res.data || []
-        return {
-            pending: quotes.filter(q => q.status === 'PENDING').length,
-            approved: quotes.filter(q => q.status === 'QUOTED' || q.status === 'ACCEPTED').length,
-            rejected: quotes.filter(q => q.status === 'REJECTED').length,
-            completed: quotes.filter(q => q.status === 'ACCEPTED').length,
-            totalValue: quotes
-                .filter(q => q.status === 'ACCEPTED')
-                .reduce((sum, q) => sum + parseFloat(q.quotedPrice || '0'), 0),
-        }
-    } catch {
-        return { pending: 0, approved: 0, rejected: 0, completed: 0, totalValue: 0 }
-    }
+    const res = await apiClient<{ data: PartnerStats }>('/insurance/partner/stats')
+    return res.data
+}
+
+export async function getInsurancePartnerSettings(): Promise<PartnerSettings> {
+    const res = await apiClient<{ data: PartnerSettings }>('/insurance/partner/settings')
+    return res.data
+}
+
+export async function saveInsurancePartnerSettings(input: { companyName: string; callbackUrl?: string | null }): Promise<PartnerSettings> {
+    const res = await apiClient<{ data: PartnerSettings }>('/insurance/partner/settings', {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+    })
+    return res.data
+}
+
+export async function regenerateInsurancePartnerKey(): Promise<RegeneratedPartnerKey> {
+    const res = await apiClient<{ data: RegeneratedPartnerKey }>('/insurance/partner/api-key/regenerate', {
+        method: 'POST',
+    })
+    return res.data
 }
 
 // ============================================================================

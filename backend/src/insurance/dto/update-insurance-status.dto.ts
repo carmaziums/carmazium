@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, Length } from 'class-validator';
 import { InsuranceQuoteStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 
@@ -21,10 +21,16 @@ export class UpdateInsuranceStatusDto {
     @IsEnum(InsuranceQuoteStatusEnum)
     status: InsuranceQuoteStatus;
 
-    @ApiProperty({ description: 'Annual price (if quoted)', required: false })
+    @ApiProperty({ description: 'Annual quoted premium (required when status is QUOTED)', required: false })
     @IsOptional()
     @Type(() => Number)
     @IsNumber({ maxDecimalPlaces: 2 })
     @IsPositive()
-    annualPrice?: number;
+    quotedPrice?: number;
+
+    @ApiProperty({ description: 'Coverage type offered', required: false })
+    @IsOptional()
+    @IsString()
+    @Length(2, 80)
+    coverageType?: string;
 }
