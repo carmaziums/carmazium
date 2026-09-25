@@ -78,7 +78,7 @@ export default function EarningsPage() {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
                             <h1 className="text-3xl font-black font-heading uppercase tracking-tight">Revenue & Earnings</h1>
-                            <p className="text-[var(--text-muted)] mt-1 font-medium text-sm">Track your sales performance and platform revenue.</p>
+                            <p className="text-[var(--text-muted)] mt-1 font-medium text-sm">Track your vehicle sales proceeds and CarMazium auction bonus payments.</p>
                         </div>
                         <Button
                             className="flex items-center gap-2 shadow-neon h-12"

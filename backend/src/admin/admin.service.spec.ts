@@ -246,3 +246,60 @@ describe('AdminService listing approval readiness', () => {
         });
     });
 });
+
+
+describe('AdminService platform statistics', () => {
+    it('uses live entities, canonical Sale count and retained platform revenue', async () => {
+        const prisma: any = {
+            user: { count: jest.fn().mockResolvedValue(503) },
+            listing: { count: jest.fn()
+                .mockResolvedValueOnce(479)
+                .mockResolvedValueOnce(121) },
+            sale: { count: jest.fn().mockResolvedValue(59) },
+            auction: { count: jest.fn()
+                .mockResolvedValueOnce(311)
+                .mockResolvedValueOnce(2)
+                .mockResolvedValueOnce(25) },
+            bid: { count: jest.fn().mockResolvedValue(293) },
+            transaction: {
+                aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 202.92 } }),
+                count: jest.fn().mockResolvedValue(8),
+            },
+        };
+
+        const service = new AdminService(
+            prisma,
+            {} as any,
+            {} as any,
+            {} as any,
+            {} as any,
+            {} as any,
+            {} as any,
+            {} as any,
+        );
+
+        const result = await service.getPlatformStats();
+
+        expect(result).toEqual(expect.objectContaining({
+            totalUsers: 503,
+            totalListings: 479,
+            activeListings: 121,
+            soldListings: 59,
+            totalAuctions: 311,
+            activeAuctions: 2,
+            endedAuctions: 25,
+            totalBids: 293,
+            totalRevenue: 402.92,
+        }));
+        expect(prisma.user.count).toHaveBeenCalledWith({ where: { deletedAt: null } });
+        expect(prisma.sale.count).toHaveBeenCalledWith();
+        expect(prisma.transaction.aggregate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: expect.objectContaining({
+                    status: 'COMPLETED',
+                    deletedAt: null,
+                }),
+            }),
+        );
+    });
+});

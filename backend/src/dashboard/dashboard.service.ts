@@ -24,27 +24,48 @@ export class DashboardService {
 
     async getBuyerDashboard(userId: string, period: '7d' | '30d' = '30d') {
         const dateFilter = this.buildPeriodFilter(period);
+        const now = new Date();
         const [
-            activeBids,
+            activeBidListings,
             activeOffers,
             watchlistCount,
             wonAuctions,
+            totalSpent,
             bids,
             offers,
             history,
         ] = await Promise.all([
-            this.prisma.bid.count({
+            this.prisma.bid.findMany({
                 where: {
                     bidderId: userId,
-                    createdAt: dateFilter,
                     cancelledAt: null,
                     archivedAt: null,
-                    listing: { auction: { status: 'ACTIVE' } },
+                    listing: {
+                        deletedAt: null,
+                        auction: {
+                            status: 'ACTIVE',
+                            deletedAt: null,
+                            endTime: { gt: now },
+                        },
+                    },
+                },
+                select: { listingId: true },
+                distinct: ['listingId'],
+            }),
+            this.prisma.offer.count({ where: { buyerId: userId, status: { in: ['PENDING', 'COUNTERED'] } } }),
+            this.prisma.watchlistItem.count({ where: { userId } }),
+            this.prisma.auction.count({
+                where: {
+                    winnerId: userId,
+                    status: 'ENDED',
+                    deletedAt: null,
+                    wonAt: dateFilter,
                 },
             }),
-            this.prisma.offer.count({ where: { buyerId: userId, status: { in: ['PENDING', 'COUNTERED'] }, createdAt: dateFilter } }),
-            this.prisma.watchlistItem.count({ where: { userId, createdAt: dateFilter } }),
-            this.prisma.auction.count({ where: { winnerId: userId, createdAt: dateFilter } }),
+            this.prisma.sale.aggregate({
+                where: { buyerId: userId, createdAt: dateFilter },
+                _sum: { soldPrice: true },
+            }),
             this.prisma.bid.findMany({
                 where: { bidderId: userId, createdAt: dateFilter, cancelledAt: null },
                 take: 20,
@@ -103,10 +124,11 @@ export class DashboardService {
         ]);
 
         return {
-            activeBids,
+            activeBids: activeBidListings.length,
             activeOffers,
             watchlistCount,
             wonAuctions,
+            totalSpent: Number(totalSpent._sum.soldPrice ?? 0),
             bids: (bids as any[]).map(b => ({
                 id: b.id,
                 amount: Number(b.amount),
@@ -176,7 +198,7 @@ export class DashboardService {
         }
 
         const [
-            activeBids,
+            activeBidListings,
             watchlistCount,
             buyerCounteredOffers,
             totalListings,
@@ -187,8 +209,26 @@ export class DashboardService {
             unreadMessages,
             incomingOffers
         ] = await Promise.all([
-            // Buyer stats (Always specific to the logged-in user)
-            this.prisma.offer.count({ where: { buyerId: userId, status: 'PENDING' } }),
+            // Buyer stats (always specific to the logged-in user). A buyer can
+            // place several bids in one auction; the dashboard counts active
+            // auction participations, not bid rows.
+            this.prisma.bid.findMany({
+                where: {
+                    bidderId: userId,
+                    cancelledAt: null,
+                    archivedAt: null,
+                    listing: {
+                        deletedAt: null,
+                        auction: {
+                            status: 'ACTIVE',
+                            deletedAt: null,
+                            endTime: { gt: new Date() },
+                        },
+                    },
+                },
+                select: { listingId: true },
+                distinct: ['listingId'],
+            }),
             this.prisma.watchlistItem.count({ where: { userId } }),
             // Buyer: seller countered — needs accept/decline in My Offers
             this.prisma.offer.count({ where: { buyerId: userId, status: 'COUNTERED' } }),
@@ -198,8 +238,9 @@ export class DashboardService {
             this.prisma.listing.count({ where: { sellerId: targetOwnerId, deletedAt: null } }),
             // Phase 10: activeListings intentionally ACTIVE only — this is the current live inventory count
             this.prisma.listing.count({ where: { sellerId: targetOwnerId, status: 'ACTIVE', deletedAt: null } }),
-            // Phase 10: soldListings correctly counts only SOLD — used for sold count stat
-            this.prisma.listing.count({ where: { sellerId: targetOwnerId, status: 'SOLD', deletedAt: null } }),
+            // Sale is the canonical completed-sale ledger. Listing status is
+            // inventory state and can contain legacy/linked rows without a Sale.
+            this.prisma.sale.count({ where: { sellerId: targetOwnerId } }),
             this.prisma.listing.aggregate({
                 where: { sellerId: targetOwnerId, deletedAt: null },
                 _sum: { viewCount: true }
@@ -233,7 +274,7 @@ export class DashboardService {
 
         return {
             buyer: {
-                activeBids,
+                activeBids: activeBidListings.length,
                 watchlistCount,
                 counteredOffersPending: buyerCounteredOffers,
             },
@@ -251,10 +292,27 @@ export class DashboardService {
 
     async getSellerDashboard(userId: string, period: '7d' | '30d' = '30d') {
         const dateFilter = this.buildPeriodFilter(period);
-        const [activeListings, activeAuctions, offerCount, savedCount, offers, earnings] = await Promise.all([
-            this.prisma.listing.count({ where: { sellerId: userId, status: 'ACTIVE', deletedAt: null, createdAt: dateFilter } }),
+        const now = new Date();
+        const [
+            activeListings,
+            activeAuctions,
+            offerCount,
+            savedCount,
+            offers,
+            earnings,
+            soldListings,
+            totalRevenue,
+            trackedViewsRaw,
+        ] = await Promise.all([
+            // Inventory is a current snapshot, not "listings created this period".
+            this.prisma.listing.count({ where: { sellerId: userId, status: 'ACTIVE', deletedAt: null } }),
             this.prisma.auction.count({
-                where: { listing: { sellerId: userId }, endTime: { gt: new Date() }, createdAt: dateFilter },
+                where: {
+                    status: 'ACTIVE',
+                    deletedAt: null,
+                    endTime: { gt: now },
+                    listing: { sellerId: userId, deletedAt: null, status: 'ACTIVE' },
+                },
             }),
             this.prisma.offer.count({
                 where: { listing: { sellerId: userId }, status: { in: ['PENDING', 'COUNTERED'] }, createdAt: dateFilter },
@@ -277,6 +335,21 @@ export class DashboardService {
                 orderBy: { createdAt: 'desc' },
                 include: { listing: { select: { title: true } } },
             }),
+            this.prisma.sale.count({ where: { sellerId: userId, createdAt: dateFilter } }),
+            this.prisma.sale.aggregate({
+                where: { sellerId: userId, createdAt: dateFilter },
+                _sum: { soldPrice: true },
+            }),
+            this.prisma.$queryRaw<Array<{ views: bigint }>>`
+                SELECT COUNT(*)::bigint AS views
+                FROM analytics_events ae
+                INNER JOIN listings l
+                    ON l.id = ae.payload->>'item_id'
+                WHERE ae.type = 'view_item'
+                  AND ae."createdAt" >= ${dateFilter.gte}
+                  AND l."sellerId" = ${userId}
+                  AND l."deletedAt" IS NULL
+            `,
         ]);
 
         return {
@@ -284,6 +357,9 @@ export class DashboardService {
             activeAuctions,
             offerCount,
             savedCount,
+            totalViews: Number(trackedViewsRaw?.[0]?.views ?? 0),
+            soldListings,
+            totalRevenue: Number(totalRevenue._sum.soldPrice ?? 0),
             enquiries: offerCount,
             offers: offers.map(o => ({
                 id: o.id,
@@ -295,8 +371,10 @@ export class DashboardService {
             earnings: earnings.map(s => ({
                 id: s.id,
                 soldPrice: Number(s.soldPrice),
-                platformFee: Number(s.soldPrice) * 0.025,
-                net: Number(s.soldPrice) * 0.975,
+                // CarMazium takes 0% of retail sale proceeds. Buyer pays seller
+                // directly; platform charges are separate Transaction rows.
+                platformFee: 0,
+                net: Number(s.soldPrice),
                 listing: { title: s.listing?.title ?? 'Vehicle' },
                 createdAt: s.createdAt,
             })),
@@ -657,26 +735,53 @@ export class DashboardService {
     }
 
     async getAdminDashboard() {
-        const [users, listings, auctions, revenue] = await Promise.all([
-            this.prisma.user.count(),
-            this.prisma.listing.count(),
-            this.prisma.auction.count({ where: { endTime: { gt: new Date() } } }),
+        const now = new Date();
+        const [users, listings, auctions, retainedFees, commissionCount] = await Promise.all([
+            this.prisma.user.count({ where: { deletedAt: null } }),
+            this.prisma.listing.count({ where: { deletedAt: null } }),
+            this.prisma.auction.count({
+                where: {
+                    status: 'ACTIVE',
+                    deletedAt: null,
+                    endTime: { gt: now },
+                    listing: { deletedAt: null, status: 'ACTIVE' },
+                },
+            }),
             this.prisma.transaction.aggregate({
+                where: {
+                    status: 'COMPLETED',
+                    deletedAt: null,
+                    type: { in: ['LISTING_FEE', 'HPI_REPORT', 'HPI_REPORT_EMAIL'] },
+                },
                 _sum: { amount: true },
+            }),
+            this.prisma.transaction.count({
+                where: {
+                    status: 'COMPLETED',
+                    deletedAt: null,
+                    type: 'COMMISSION',
+                },
             }),
         ]);
 
         const recentUsers = await this.prisma.user.findMany({
+            where: { deletedAt: null },
             take: 5,
             orderBy: { createdAt: 'desc' },
             select: { id: true, firstName: true, lastName: true, email: true, role: true, createdAt: true },
         });
 
+        // A £125 auction COMMISSION contains £100 seller pass-through and only
+        // £25 retained by CarMazium. Pending vehicle payments are never revenue.
+        const totalRevenue = Math.round(
+            (Number(retainedFees._sum.amount ?? 0) + commissionCount * 25) * 100,
+        ) / 100;
+
         return {
             totalUsers: users,
             totalListings: listings,
             activeAuctions: auctions,
-            totalRevenue: revenue._sum.amount || 0,
+            totalRevenue,
             recentUsers,
         };
     }

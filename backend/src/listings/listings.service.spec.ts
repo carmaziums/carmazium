@@ -50,7 +50,8 @@ describe('ListingsService', () => {
             },
             sale: {
                 findFirst: jest.fn(),
-                findMany: jest.fn(),
+                findMany: jest.fn().mockResolvedValue([]),
+                count: jest.fn().mockResolvedValue(0),
                 aggregate: jest.fn(),
                 create: jest.fn(),
                 upsert: jest.fn(),
@@ -64,7 +65,13 @@ describe('ListingsService', () => {
             user: { findUnique: jest.fn() },
             transaction: { findMany: jest.fn(), update: jest.fn() },
             hpiReport: { findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }) },
-            auction: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+            auction: {
+                create: jest.fn(),
+                findUnique: jest.fn(),
+                findMany: jest.fn().mockResolvedValue([]),
+                update: jest.fn(),
+                updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+            },
             bid: {
                 findFirst: jest.fn(),
                 findMany: jest.fn().mockResolvedValue([]),
@@ -736,6 +743,47 @@ describe('ListingsService', () => {
                 where: { sellerId: 'owner-1' },
                 _sum: { soldPrice: true },
             });
+        });
+    });
+
+    describe('dashboard earnings integrity', () => {
+        it('uses Sale count as the seller completed-sales source of truth', async () => {
+            prisma.dealerStaff.findFirst.mockResolvedValue(null);
+            prisma.listing.count.mockResolvedValue(7);
+            prisma.listing.aggregate.mockResolvedValue({ _sum: { viewCount: 20 } });
+            prisma.sale.count.mockResolvedValue(5);
+            prisma.sale.aggregate.mockResolvedValue({ _sum: { soldPrice: 189300 } });
+
+            const stats = await service.getSellerStats('seller-1');
+
+            expect(stats.soldListings).toBe(5);
+            expect(prisma.sale.count).toHaveBeenCalledWith({ where: { sellerId: 'seller-1' } });
+        });
+
+        it('does not double-count auction Sale rows in earnings totals', async () => {
+            prisma.dealerStaff.findFirst.mockResolvedValue(null);
+            prisma.sale.findMany.mockResolvedValue([]);
+            prisma.sale.count.mockResolvedValue(2);
+            prisma.sale.aggregate.mockResolvedValue({ _sum: { soldPrice: 138100 } });
+            prisma.auction.findMany.mockResolvedValue([
+                {
+                    id: 'auction-1',
+                    listingId: 'listing-1',
+                    winningBidAmount: 120100,
+                    sellerBonusReleasedAt: new Date('2026-09-20T12:00:00Z'),
+                    updatedAt: new Date('2026-09-20T12:00:00Z'),
+                    listing: { id: 'listing-1', title: 'Auction Vehicle', images: [], vrm: 'AA11AAA' },
+                    winner: { id: 'buyer-1', firstName: 'Buyer', lastName: 'One', email: 'buyer@example.test' },
+                },
+            ]);
+
+            const result = await service.getEarnings('seller-1');
+
+            expect(result.totalRevenue).toBe(138100);
+            expect(result.totalSales).toBe(2);
+            expect(result.totalAuctionRevenue).toBe(120100);
+            expect(result.totalAuctionSales).toBe(1);
+            expect(result.totalAuctionBonus).toBe(100);
         });
     });
 

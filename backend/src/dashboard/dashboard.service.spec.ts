@@ -12,6 +12,15 @@ const mockPrisma = {
   lead: { groupBy: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
   dealerProfile: { findUnique: jest.fn().mockResolvedValue({ id: 'dp-1', userId: 'user-1', isVerified: true, companyName: 'Test Motors', createdAt: new Date('2025-01-01T00:00:00.000Z'), staff: [] }) },
   dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
+  message: { count: jest.fn().mockResolvedValue(0) },
+  transaction: {
+    aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 0 } }),
+    count: jest.fn().mockResolvedValue(0),
+  },
+  user: {
+    count: jest.fn().mockResolvedValue(0),
+    findMany: jest.fn().mockResolvedValue([]),
+  },
   $queryRaw: jest.fn().mockResolvedValue([{ views: 0n }]),
 };
 
@@ -29,21 +38,57 @@ describe('DashboardService — period filter', () => {
     service = module.get<DashboardService>(DashboardService);
   });
 
-  it('DASH-FILTER-01: getBuyerDashboard with 7d passes createdAt gte ~7 days ago to bid.count', async () => {
+  it('DASH-FILTER-01: buyer won/spend metrics use the selected 7-day period', async () => {
     const before = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 - 1000);
     await (service as any).getBuyerDashboard('user-1', '7d');
-    expect(mockPrisma.bid.count).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ createdAt: expect.objectContaining({ gte: expect.any(Date) }) }) })
-    );
-    const callArg = mockPrisma.bid.count.mock.calls[0][0];
-    expect(callArg.where.createdAt.gte.getTime()).toBeGreaterThan(before.getTime());
+
+    const auctionArg = mockPrisma.auction.count.mock.calls[0][0];
+    expect(auctionArg.where.wonAt.gte.getTime()).toBeGreaterThan(before.getTime());
+
+    const saleArg = mockPrisma.sale.aggregate.mock.calls[0][0];
+    expect(saleArg.where.createdAt.gte.getTime()).toBeGreaterThan(before.getTime());
   });
 
-  it('DASH-FILTER-01-default: getBuyerDashboard defaults to 30d when period omitted', async () => {
+  it('DASH-FILTER-01-default: buyer won/spend metrics default to 30 days', async () => {
     const before = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000 - 1000);
     await (service as any).getBuyerDashboard('user-1');
-    const callArg = mockPrisma.bid.count.mock.calls[0][0];
-    expect(callArg.where.createdAt.gte.getTime()).toBeGreaterThan(before.getTime());
+
+    const saleArg = mockPrisma.sale.aggregate.mock.calls[0][0];
+    expect(saleArg.where.createdAt.gte.getTime()).toBeGreaterThan(before.getTime());
+  });
+
+  it('BUYER-KPI-01: totalSpent is sourced from canonical buyer Sale rows', async () => {
+    mockPrisma.sale.aggregate.mockResolvedValueOnce({ _sum: { soldPrice: 18750 } });
+
+    const result = await (service as any).getBuyerDashboard('buyer-1', '30d');
+
+    expect(result.totalSpent).toBe(18750);
+    expect(mockPrisma.sale.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ buyerId: 'buyer-1' }),
+        _sum: { soldPrice: true },
+      }),
+    );
+  });
+
+  it('BUYER-KPI-02: activeBids counts distinct live auctions, not bid rows or offers', async () => {
+    mockPrisma.bid.findMany
+      .mockResolvedValueOnce([{ listingId: 'listing-1' }, { listingId: 'listing-2' }])
+      .mockResolvedValueOnce([]);
+
+    const result = await (service as any).getBuyerDashboard('buyer-1', '30d');
+
+    expect(result.activeBids).toBe(2);
+    expect(mockPrisma.bid.findMany.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        distinct: ['listingId'],
+        where: expect.objectContaining({
+          bidderId: 'buyer-1',
+          cancelledAt: null,
+          archivedAt: null,
+        }),
+      }),
+    );
   });
 
   it('DASH-FILTER-02: getSellerDashboard with 30d passes createdAt gte ~30 days ago to offer.count', async () => {
@@ -51,6 +96,76 @@ describe('DashboardService — period filter', () => {
     await (service as any).getSellerDashboard('user-1', '30d');
     const callArg = mockPrisma.offer.count.mock.calls[0][0];
     expect(callArg.where.createdAt.gte.getTime()).toBeGreaterThan(before.getTime());
+  });
+
+  it('UNIFIED-KPI-01: unified activeBids is actual live-auction participation', async () => {
+    mockPrisma.bid.findMany.mockResolvedValueOnce([
+      { listingId: 'listing-1' },
+      { listingId: 'listing-2' },
+    ]);
+    mockPrisma.sale.count.mockResolvedValueOnce(4);
+    mockPrisma.listing.count.mockResolvedValue(0);
+    mockPrisma.listing.aggregate.mockResolvedValue({ _sum: { viewCount: 0 } });
+    mockPrisma.sale.aggregate.mockResolvedValue({ _sum: { soldPrice: 0 } });
+
+    const result = await (service as any).getUnifiedDashboard('buyer-1');
+
+    expect(result.buyer.activeBids).toBe(2);
+    expect(result.seller.soldListings).toBe(4);
+  });
+
+  it('SELLER-KPI-01: seller dashboard returns selected-period sales, revenue, views and 0% sale fee', async () => {
+    mockPrisma.listing.count.mockResolvedValueOnce(3);
+    mockPrisma.auction.count.mockResolvedValueOnce(1);
+    mockPrisma.offer.count.mockResolvedValueOnce(2);
+    mockPrisma.watchlistItem.count.mockResolvedValueOnce(5);
+    mockPrisma.offer.findMany.mockResolvedValueOnce([]);
+    mockPrisma.sale.findMany.mockResolvedValueOnce([
+      {
+        id: 'sale-1',
+        soldPrice: 10000,
+        listing: { title: 'Test Vehicle' },
+        createdAt: new Date(),
+      },
+    ]);
+    mockPrisma.sale.count.mockResolvedValueOnce(1);
+    mockPrisma.sale.aggregate.mockResolvedValueOnce({ _sum: { soldPrice: 10000 } });
+    mockPrisma.$queryRaw.mockResolvedValueOnce([{ views: 44n }]);
+
+    const result = await (service as any).getSellerDashboard('seller-1', '30d');
+
+    expect(result.activeListings).toBe(3);
+    expect(result.soldListings).toBe(1);
+    expect(result.totalRevenue).toBe(10000);
+    expect(result.totalViews).toBe(44);
+    expect(result.earnings[0]).toEqual(expect.objectContaining({
+      soldPrice: 10000,
+      platformFee: 0,
+      net: 10000,
+    }));
+  });
+
+  it('ADMIN-KPI-01: admin dashboard excludes deleted rows and non-retained payment throughput', async () => {
+    mockPrisma.user.count.mockResolvedValueOnce(503);
+    mockPrisma.listing.count.mockResolvedValueOnce(479);
+    mockPrisma.auction.count.mockResolvedValueOnce(2);
+    mockPrisma.transaction.aggregate.mockResolvedValueOnce({ _sum: { amount: 202.92 } });
+    mockPrisma.transaction.count.mockResolvedValueOnce(8);
+    mockPrisma.user.findMany.mockResolvedValueOnce([]);
+
+    const result = await (service as any).getAdminDashboard();
+
+    expect(result).toEqual(expect.objectContaining({
+      totalUsers: 503,
+      totalListings: 479,
+      activeAuctions: 2,
+      totalRevenue: 402.92,
+    }));
+    expect(mockPrisma.transaction.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ status: 'COMPLETED', deletedAt: null }),
+      }),
+    );
   });
 
   it('DEALER-KPI-01: current stock is not restricted by the 7/30 day reporting window', async () => {

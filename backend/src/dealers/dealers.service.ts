@@ -549,7 +549,7 @@ export class DealersService {
         const [activeListings, totalViews, soldListings, activeLeads, totalLeads, recentLeads, totalRevenue] = await Promise.all([
             this.prisma.listing.count({ where: { sellerId: ownerUserId, status: 'ACTIVE', deletedAt: null } }),
             this.prisma.listing.aggregate({ where: { sellerId: ownerUserId, deletedAt: null }, _sum: { viewCount: true } }),
-            this.prisma.listing.count({ where: { sellerId: ownerUserId, status: 'SOLD', deletedAt: null } }),
+            this.prisma.sale.count({ where: { sellerId: ownerUserId } }),
             this.prisma.lead.count({ where: { dealerProfileId: profile.id, status: { notIn: ['WON', 'LOST'] } } }),
             this.prisma.lead.count({ where: { dealerProfileId: profile.id } }),
             this.prisma.lead.findMany({
@@ -619,6 +619,7 @@ export class DealersService {
 
         const dateFilter = this.buildDateFilter(range, from, to);
         const prevFilter = this.getPreviousPeriodFilter(range, from, to);
+        const rangeEnd = dateFilter.lte ?? new Date();
 
         // ─── Current Period KPIs ─────────────────────────────────────
 
@@ -659,10 +660,26 @@ export class DealersService {
             this.prisma.lead.count({
                 where: { dealerProfileId: profile.id, status: 'WON', createdAt: dateFilter },
             }),
-            this.prisma.listing.aggregate({
-                where: { sellerId: ownerUserId, deletedAt: null, createdAt: dateFilter },
-                _avg: { viewCount: true },
-            }),
+            this.prisma.$queryRawUnsafe<Array<{ avg_views: string }>>(
+                `WITH listing_views AS (
+                    SELECT l.id, COUNT(ae.id)::numeric AS views
+                    FROM listings l
+                    LEFT JOIN analytics_events ae
+                      ON ae.type = 'view_item'
+                     AND ae.payload->>'item_id' = l.id
+                     AND ae."createdAt" >= $2
+                     AND ae."createdAt" <= $3
+                    WHERE l."sellerId" = $1
+                      AND l."deletedAt" IS NULL
+                      AND l."createdAt" <= $3
+                    GROUP BY l.id
+                )
+                SELECT COALESCE(AVG(views), 0)::TEXT AS avg_views
+                FROM listing_views`,
+                ownerUserId,
+                dateFilter.gte,
+                rangeEnd,
+            ),
             // Previous period (for trend %)
             this.prisma.sale.aggregate({
                 where: { sellerId: ownerUserId, createdAt: prevFilter },
@@ -683,10 +700,26 @@ export class DealersService {
             this.prisma.lead.count({
                 where: { dealerProfileId: profile.id, status: 'WON', createdAt: prevFilter },
             }),
-            this.prisma.listing.aggregate({
-                where: { sellerId: ownerUserId, deletedAt: null, createdAt: prevFilter },
-                _avg: { viewCount: true },
-            }),
+            this.prisma.$queryRawUnsafe<Array<{ avg_views: string }>>(
+                `WITH listing_views AS (
+                    SELECT l.id, COUNT(ae.id)::numeric AS views
+                    FROM listings l
+                    LEFT JOIN analytics_events ae
+                      ON ae.type = 'view_item'
+                     AND ae.payload->>'item_id' = l.id
+                     AND ae."createdAt" >= $2
+                     AND ae."createdAt" < $3
+                    WHERE l."sellerId" = $1
+                      AND l."deletedAt" IS NULL
+                      AND l."createdAt" < $3
+                    GROUP BY l.id
+                )
+                SELECT COALESCE(AVG(views), 0)::TEXT AS avg_views
+                FROM listing_views`,
+                ownerUserId,
+                prevFilter.gte,
+                prevFilter.lte,
+            ),
         ]);
 
         const totalRev = Number(currentRevenue._sum.soldPrice || 0);
@@ -695,10 +728,10 @@ export class DealersService {
         const prevOfferConvRate = prevOfferTotal > 0 ? Math.round((prevOfferAccepted / prevOfferTotal) * 1000) / 10 : 0;
         const leadConvRate = currentLeadTotal > 0 ? Math.round((currentLeadWon / currentLeadTotal) * 1000) / 10 : 0;
         const prevLeadConvRate = prevLeadTotal > 0 ? Math.round((prevLeadWon / prevLeadTotal) * 1000) / 10 : 0;
-        const avgViews = Math.round(currentAvgViews._avg.viewCount || 0);
-        const prevAvgViewsVal = Math.round(prevAvgViews._avg.viewCount || 0);
+        const avgViews = Math.round(Number(currentAvgViews?.[0]?.avg_views ?? 0));
+        const prevAvgViewsVal = Math.round(Number(prevAvgViews?.[0]?.avg_views ?? 0));
 
-        // ─── Revenue Trend (by month, last 12 months max) ───────────
+        // ─── Revenue Trend (selected reporting range) ─────────────────
 
         const revenueTrendRaw = await this.prisma.$queryRawUnsafe<Array<{ month: string; revenue: string; units: string }>>(
             `SELECT 
@@ -708,10 +741,12 @@ export class DealersService {
              FROM sales s
              WHERE s."sellerId" = $1
                AND s."createdAt" >= $2
+               AND s."createdAt" <= $3
              GROUP BY TO_CHAR(s."createdAt", 'YYYY-MM')
              ORDER BY month ASC`,
             ownerUserId,
-            subDays(new Date(), 365),
+            dateFilter.gte,
+            rangeEnd,
         );
 
         const revenueTrend = revenueTrendRaw.map(r => ({
@@ -724,7 +759,7 @@ export class DealersService {
 
         const leadsByStatus = await this.prisma.lead.groupBy({
             by: ['status'],
-            where: { dealerProfileId: profile.id },
+            where: { dealerProfileId: profile.id, createdAt: dateFilter },
             _count: true,
         });
 
@@ -737,7 +772,7 @@ export class DealersService {
 
         const offersByStatus = await this.prisma.offer.groupBy({
             by: ['status'],
-            where: { listing: { sellerId: ownerUserId } },
+            where: { listing: { sellerId: ownerUserId }, createdAt: dateFilter },
             _count: true,
         });
 
@@ -746,11 +781,23 @@ export class DealersService {
         };
         offersByStatus.forEach(o => { offerBreakdown[o.status] = o._count; });
 
-        // Average accepted offer amount
-        const avgAccepted = await this.prisma.offer.aggregate({
-            where: { listing: { sellerId: ownerUserId }, status: 'ACCEPTED' },
-            _avg: { amount: true },
-        });
+        // Average negotiated amount for offers accepted in the selected period.
+        // finalAmount/counterAmount are authoritative when a counter was accepted.
+        const avgAccepted = await this.prisma.$queryRawUnsafe<Array<{ avg_amount: string }>>(
+            `SELECT COALESCE(
+                AVG(COALESCE(o."finalAmount", o."counterAmount", o.amount)),
+                0
+             )::TEXT AS avg_amount
+             FROM offers o
+             JOIN listings l ON l.id = o."listingId"
+             WHERE l."sellerId" = $1
+               AND o.status = 'ACCEPTED'
+               AND o."createdAt" >= $2
+               AND o."createdAt" <= $3`,
+            ownerUserId,
+            dateFilter.gte,
+            rangeEnd,
+        );
 
         // Average response time (hours between offer creation and update for non-pending)
         const avgResponseRaw = await this.prisma.$queryRawUnsafe<Array<{ avg_hours: string }>>(
@@ -758,8 +805,12 @@ export class DealersService {
              FROM offers o
              JOIN listings l ON o."listingId" = l.id
              WHERE l."sellerId" = $1
-               AND o.status != 'PENDING'`,
+               AND o.status != 'PENDING'
+               AND o."createdAt" >= $2
+               AND o."createdAt" <= $3`,
             ownerUserId,
+            dateFilter.gte,
+            rangeEnd,
         );
 
         // ─── Inventory Health ────────────────────────────────────────
@@ -846,9 +897,11 @@ export class DealersService {
                  FROM sales s
                  JOIN listings l ON s."listingId" = l.id
                  WHERE s."sellerId" = $1
-                   AND s."createdAt" >= $2`,
+                   AND s."createdAt" >= $2
+                   AND s."createdAt" <= $3`,
                 ownerUserId,
                 dateFilter.gte,
+                rangeEnd,
             ),
             this.prisma.$queryRawUnsafe<Array<{ avg_days: string }>>(
                 `SELECT AVG(EXTRACT(EPOCH FROM (s."createdAt" - l."createdAt")) / 86400)::TEXT AS avg_days
@@ -896,9 +949,11 @@ export class DealersService {
                  FROM sales s
                  JOIN listings l ON s."listingId" = l.id
                  WHERE s."sellerId" = $1
-                   AND s."createdAt" >= $2`,
+                   AND s."createdAt" >= $2
+                   AND s."createdAt" <= $3`,
                 ownerUserId,
                 dateFilter.gte,
+                rangeEnd,
             ),
             // Top selling models by units sold
             this.prisma.$queryRawUnsafe<Array<{ make: string; model: string; units: string; revenue: string; avg_price: string }>>(
@@ -910,12 +965,14 @@ export class DealersService {
                  JOIN listings l ON s."listingId" = l.id
                  WHERE s."sellerId" = $1
                    AND s."createdAt" >= $2
+                   AND s."createdAt" <= $3
                    AND l.make IS NOT NULL
                  GROUP BY l.make, l.model
                  ORDER BY COUNT(*) DESC
                  LIMIT 10`,
                 ownerUserId,
                 dateFilter.gte,
+                rangeEnd,
             ),
             // Fast movers: sold vehicles grouped by model, ordered by avg days to sell ASC
             this.prisma.$queryRawUnsafe<Array<{ make: string; model: string; units: string; avg_days: string }>>(
@@ -926,6 +983,7 @@ export class DealersService {
                  JOIN listings l ON s."listingId" = l.id
                  WHERE s."sellerId" = $1
                    AND s."createdAt" >= $2
+                   AND s."createdAt" <= $3
                    AND l.make IS NOT NULL
                  GROUP BY l.make, l.model
                  HAVING COUNT(*) >= 1
@@ -933,6 +991,7 @@ export class DealersService {
                  LIMIT 10`,
                 ownerUserId,
                 dateFilter.gte,
+                rangeEnd,
             ),
             // Slow movers: active listings grouped by model, ordered by avg days in stock DESC
             this.prisma.$queryRawUnsafe<Array<{ make: string; model: string; count: string; avg_days: string }>>(
@@ -954,9 +1013,13 @@ export class DealersService {
                 `SELECT COALESCE(NULLIF(source, ''), 'unknown') AS source, COUNT(*)::TEXT AS count
                  FROM leads
                  WHERE "dealerProfileId" = $1
+                   AND "createdAt" >= $2
+                   AND "createdAt" <= $3
                  GROUP BY COALESCE(NULLIF(source, ''), 'unknown')
                  ORDER BY COUNT(*) DESC`,
                 profile.id,
+                dateFilter.gte,
+                rangeEnd,
             ),
             // Salesperson performance
             this.prisma.$queryRawUnsafe<Array<{ name: string; total: string; won: string; active: string }>>(
@@ -967,9 +1030,13 @@ export class DealersService {
                  FROM leads l
                  JOIN users u ON l."assignedToId" = u.id
                  WHERE l."dealerProfileId" = $1
+                   AND l."createdAt" >= $2
+                   AND l."createdAt" <= $3
                  GROUP BY u.id, u."firstName", u."lastName"
                  ORDER BY COUNT(*) FILTER (WHERE l.status = 'WON') DESC`,
                 profile.id,
+                dateFilter.gte,
+                rangeEnd,
             ),
             // Sales by listing type (AUCTION vs CLASSIFIED)
             this.prisma.$queryRawUnsafe<Array<{ type: string; units: string; revenue: string }>>(
@@ -978,9 +1045,11 @@ export class DealersService {
                  JOIN listings l ON s."listingId" = l.id
                  WHERE s."sellerId" = $1
                    AND s."createdAt" >= $2
+                   AND s."createdAt" <= $3
                  GROUP BY l.type`,
                 ownerUserId,
                 dateFilter.gte,
+                rangeEnd,
             ),
             // Customers by area (UK postcode)
             this.prisma.$queryRawUnsafe<Array<{ postcode: string; count: string; revenue: string }>>(
@@ -991,11 +1060,13 @@ export class DealersService {
                  WHERE "sellerId" = $1
                    AND "buyerPostcode" IS NOT NULL
                    AND "createdAt" >= $2
+                   AND "createdAt" <= $3
                  GROUP BY "buyerPostcode"
                  ORDER BY COUNT(*) DESC
                  LIMIT 15`,
                 ownerUserId,
                 dateFilter.gte,
+                rangeEnd,
             ),
         ]);
 
@@ -1047,7 +1118,7 @@ export class DealersService {
                 totalUnitsSold: currentUnitsSold,
                 totalUnitsSoldTrend: this.calcTrend(currentUnitsSold, prevUnitsSold),
                 avgDaysToSell,
-                avgDaysToSellTrend: this.calcTrend(prevAvgDaysToSell, avgDaysToSell),
+                avgDaysToSellTrend: this.calcTrend(avgDaysToSell, prevAvgDaysToSell),
                 offerConversionRate: offerConvRate,
                 offerConversionRateTrend: this.calcTrend(offerConvRate, prevOfferConvRate),
                 leadConversionRate: leadConvRate,
@@ -1062,7 +1133,7 @@ export class DealersService {
             leadFunnel,
             offerBreakdown: {
                 ...offerBreakdown,
-                avgAcceptedAmount: Number(avgAccepted._avg.amount || 0),
+                avgAcceptedAmount: Number(avgAccepted?.[0]?.avg_amount ?? 0),
                 avgTimeToRespond: Math.round(Number(avgResponseRaw?.[0]?.avg_hours || 0) * 10) / 10,
             },
             inventoryHealth: {
