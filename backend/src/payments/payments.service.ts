@@ -162,39 +162,6 @@ export class PaymentsService {
         }
     }
 
-    /**
-     * Notify a seller that a buyer has paid the £500 refundable deposit on
-     * their listing. This used to be entirely missing — a completed DEPOSIT
-     * payment only updated the Transaction row, with no reaction anywhere
-     * else, so the seller had no way of knowing anyone had paid a deposit.
-     */
-    private async notifyDepositPaid(listingId: string, buyerId?: string) {
-        try {
-            const listing = await this.prisma.listing.findUnique({
-                where: { id: listingId },
-                select: { id: true, title: true, sellerId: true },
-            });
-            if (!listing?.sellerId) return;
-
-            const buyer = buyerId
-                ? await this.prisma.user.findUnique({ where: { id: buyerId }, select: { firstName: true, lastName: true } })
-                : null;
-            const buyerName = buyer ? `${buyer.firstName ?? ''} ${buyer.lastName ?? ''}`.trim() || 'A buyer' : 'A buyer';
-
-            const notification = await this.notificationsService.create({
-                userId: listing.sellerId,
-                type: 'SYSTEM',
-                title: 'Refundable deposit received',
-                message: `${buyerName} has paid a £500 refundable deposit to secure "${listing.title}". Get in touch with them to arrange next steps.`,
-                link: '/dashboard/seller/listings',
-                entityType: 'Listing',
-                entityId: listing.id,
-            }).catch(() => null);
-        } catch {
-            // best-effort only
-        }
-    }
-
     // Prices in GBP
     private readonly HPI_REPORT_PRICE = 9.99;
     private readonly LISTING_FEES = {
@@ -430,7 +397,7 @@ export class PaymentsService {
         };
 
         const productDescMap: Record<string, string> = {
-            COMMISSION: `£${this.AUCTION_SELLER_BONUS} released to seller after handover · £${this.AUCTION_PLATFORM_FEE} Carmazium platform fee (non-refundable)`,
+            COMMISSION: `£${this.AUCTION_SELLER_BONUS} reserved for the seller reward after approved handover · £${this.AUCTION_PLATFORM_FEE} platform fee. Qualifying inspection/cancellation cases can receive a full buyer-fee refund.`,
         };
 
         const session = await stripe.checkout.sessions.create({
