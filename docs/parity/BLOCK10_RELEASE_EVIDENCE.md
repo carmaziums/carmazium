@@ -2,129 +2,108 @@
 
 ## Scope
 
-Certification baseline after the concurrent sole-trader KYC merge:
+Baseline: `main@cc568dec50fbcfba5acb4bbc4cca2fe0ad8e732e` (Block 9 merged).
 
-- Repository: `carmaziums/carmazium`
-- Current `main`: `cc568dec50fbcfba5acb4bbc4cca2fe0ad8e732e`
-- Change included after Block 9: PR #250, Registered Company / Sole Trader Partner/dealer KYC
-- Vercel production deployment: `dpl_7LVPAMqfm8LupJj9GXwEvCNmgieE`
+This record separates evidence that was directly verified from release evidence that still depends on external signing credentials or physical devices.
 
-Block 10 distinguishes repository-controlled certification from external store/signing evidence. Missing credentials, signing identities or physical-device results are never inferred as passes.
+## Verified production web evidence
 
-## Production web evidence
+Vercel production deployment:
 
-The current-main Vercel deployment was reported **READY** and targets production. Its aliases include `carmazium.com` and `www.carmazium.com`.
+- Project: `carmazium`
+- Deployment: `dpl_7se2wNde31k45iyy3WRBvetZeNGJ`
+- Git ref: `main`
+- Git SHA: `cc568dec50fbcfba5acb4bbc4cca2fe0ad8e732e`
+- Deployment state: `READY`
+- Production aliases include `carmazium.com` and `www.carmazium.com`
+- Vercel build error log: no build errors
 
-The Vercel build error view contained no build errors.
+Direct production fetches returned HTTP 200 for:
 
-Direct production fetches after the sole-trader KYC deployment returned HTTP 200 for:
-
+- `/`
 - `/search`
 - `/auctions`
 - `/sell`
 - `/pricing`
+- `/about`
 - `/auth/login`
 - `/auth/signup`
 
-For the checked first-hour window on the exact current-main production deployment, Vercel runtime counts were:
+The authenticated `/dashboard` route also returned HTTP 200 and rendered the expected client-side authentication loading shell for an anonymous request.
 
-- HTTP 200: 13
+For the checked two-hour window on the exact Block 9 production deployment, Vercel runtime counts were:
+
+- HTTP 200: 139
 - HTTP 304: 2
-- no 4xx/5xx status-code groups
-- no warning/error/fatal log entries
+- No 4xx/5xx runtime status groups on that deployment
 
-The initial request paths observed on that deployment included `/`, `/sell`, `/cookie-policy` and `/icon.png`.
+Observed request paths included `/sell`, `/search`, `/pricing`, `/auctions`, `/dashboard`, `/dashboard/user`, a live auction detail route, and a public vehicle detail route.
 
-A broader project-level 24-hour runtime-error query previously showed historical `fetch failed` / Fly.io connection-reset and timeout events on older deployments. Those events are retained as a reliability caveat rather than treated as impossible to recur; they were not present in the checked current-main deployment window.
+A project-wide 24-hour runtime-error query still contained historical `fetch failed` / Fly.io connection-reset and timeout events from older deployments. Those errors were not present in the warning/error logs for the exact Block 9 production deployment during the checked window. This is evidence of current deployment health, not proof that upstream networking can never recur.
 
-## One-product contract
+## Repository release evidence
 
-Block 10 revalidated the manifest after PR #250 rather than certifying the pre-KYC tree.
+The one-product manifest at the Block 9 baseline contains:
 
-Final manifest state on the Block 10 branch:
+- 54 required web/native features
+- 2 approved web-only exceptions
+- 0 unresolved `gap` entries
+- 0 unresolved `web_only_candidate` entries
 
-- **54 required web/native features**
-- **2 approved web-only exceptions**
-- **0 unresolved `gap` entries**
-- **0 `web_only_candidate` entries**
-
-The new `dealer.kyc_business_type` feature explicitly covers the Registered Company / Sole Trader branch on web and native. CI also checks the backend requirements that make the branch truthful:
-
-- sole traders are not forced through Companies House evidence
-- sole traders require photo ID + proof of address
-- KYC documents use the private `dealer-kyc-documents` bucket
-- first-time document uploads attach to an unpaid draft instead of becoming orphaned
-- unpaid drafts stay out of the actionable admin review queue
-
-## Release controls added in Block 10
+Block 10 adds:
 
 - `scripts/check-release-readiness.mjs`
 - `npm run release:check`
 - `npm run release:check:strict`
 - `.github/workflows/release-certification.yml`
 
-The normal PR gate checks repository-controlled readiness and reports external requirements as warnings. The strict manual release gate turns those external requirements into hard failures.
+The release workflow repeats parity, web TypeScript, native Expo-config resolution + TypeScript, and backend TypeScript + full Jest + build. A manual workflow-dispatch run also performs live web-route and Fly.io health checks.
 
-The Release Certification workflow runs:
+## External blockers found during Block 10
 
-- one-product parity check
-- release-readiness check
-- web TypeScript
-- native Expo config resolution
-- native TypeScript
-- backend TypeScript
-- full backend Jest suite
-- backend build
+These are not hidden or inferred as passes.
 
-Manual release dispatch additionally performs production-route checks and calls the Fly.io `/health` endpoint.
+### Universal links / Android App Links
 
-## External native release blockers
+The native app correctly declares:
 
-### Android App Links
+- iOS associated domains for `carmazium.com` and `www.carmazium.com`
+- Android auto-verified HTTPS intent filters for both hosts
 
-Native configuration declares auto-verified HTTPS links for both production hosts, but production currently returns **404** for:
+But the production website currently returns **404** for:
 
-`https://www.carmazium.com/.well-known/assetlinks.json`
+- `https://www.carmazium.com/.well-known/assetlinks.json`
+- `https://www.carmazium.com/.well-known/apple-app-site-association`
 
-The real release-signing SHA-256 certificate fingerprint is not stored in the repository, so Block 10 does not manufacture this file.
+The repository does not contain either association file. The real Android release-signing SHA-256 fingerprint and Apple Team/app identifier must be supplied before these files can be generated truthfully.
 
-### Apple Universal Links
+### Store submission
 
-Native configuration declares associated domains for both production hosts, but production currently returns **404** for:
-
-`https://www.carmazium.com/.well-known/apple-app-site-association`
-
-The real Apple Team/app identifier is not stored in the repository, so Block 10 does not manufacture this file.
-
-### Store submission identifiers
-
-The production iOS submit profile in `eas.json` still contains placeholders for:
+`eas.json` still contains placeholder iOS submit values:
 
 - Apple ID email
 - App Store Connect app ID
 - Apple Team ID
 
-Android declares a Google Play service-account path; the credential file is external and intentionally must not be committed.
+Android declares a Google Play service-account path, but the credential itself is external and intentionally not committed.
 
-### Signed artefact and device evidence
+### Signed device evidence
 
-A signed Android AAB / iOS store archive was not produced in this session because release credentials are external. Physical-device verification is also still required for claims that cannot be established from repository/Vercel evidence, including:
+A signed Android/iOS store build was not produced in this session because the release credentials and signing artefacts are external to the repository. Physical-device checks (push delivery, haptics, gestures, Payment Sheet, background/killed-state navigation and native accessibility) also cannot be certified from repository or Vercel evidence.
 
-- background/killed-state push delivery and tap routing
-- haptics and touch gestures
-- native Stripe Payment Sheet presentation
-- screen-reader behavior
-- device memory/scroll performance
-- installed universal/app links after the association files are published
+### Native crash telemetry
 
-### Crash telemetry
+The production EAS profile contains a placeholder Sentry DSN, but the native dependency graph does not currently include Sentry. Block 10 therefore treats native crash telemetry as **not certified**, not as a working integration.
 
-The EAS production profile contains a placeholder Sentry DSN while the native dependency graph does not currently include a Sentry integration. Native crash telemetry is therefore **not certified**.
+## Release decision
 
-## Decision
+### One-product programme
+**COMPLETE at the code-contract and live-web level.**
 
-**Ten-block one-product programme:** complete at the code-contract and live-web level.
+### Production website
+**PASS for the checked Block 9 deployment.**
 
-**Native store release:** HOLD until the strict external gate can pass.
+### Native store release
+**HOLD — external release evidence required.**
 
-The strict gate is expected to remain red until the actual Apple/Google signing/store facts and the two deployed web-association files are supplied. This is an explicit release dependency, not an unresolved web/native feature-parity defect.
+The strict release gate is deliberately expected to fail until the real signing/store identifiers and both deployed universal-link association files exist. A green ordinary PR gate is not equivalent to a green strict store-release gate.
