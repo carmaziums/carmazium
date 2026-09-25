@@ -2934,7 +2934,9 @@ export class ListingsService {
         const [totalListings, activeListings, soldListings, draftListings, viewsAggregate, salesAggregate] = await Promise.all([
             this.prisma.listing.count({ where: baseWhere }),
             this.prisma.listing.count({ where: { ...baseWhere, status: 'ACTIVE' } }),
-            this.prisma.listing.count({ where: { ...baseWhere, status: 'SOLD' } }),
+            // Sale is the canonical completed-sale ledger. A SOLD listing can
+            // be a linked/legacy inventory row without its own completed sale.
+            this.prisma.sale.count({ where: { sellerId } }),
             this.prisma.listing.count({ where: { ...baseWhere, status: 'DRAFT' } }),
             this.prisma.listing.aggregate({
                 where: baseWhere,
@@ -2968,7 +2970,7 @@ export class ListingsService {
 
         const [totalListings, soldCount, viewsAggregate, recentListings, salesAggregate, sellerProfile, reviewAggregate, respondedOffers] = await Promise.all([
             this.prisma.listing.count({ where: baseWhere }),
-            this.prisma.listing.count({ where: { ...baseWhere, status: 'SOLD' } }),
+            this.prisma.sale.count({ where: { sellerId } }),
             this.prisma.listing.aggregate({
                 where: baseWhere,
                 _sum: { viewCount: true },
@@ -3153,12 +3155,15 @@ export class ListingsService {
             winner: a.winner,
         }));
 
-        const totalRevenue = Number(revenueAgg._sum.soldPrice ?? 0) + totalAuctionRevenue;
+        // Every completed auction already has a canonical Sale row. Auction
+        // figures below are a channel breakdown only; adding them to Sale totals
+        // would double-count the same vehicle and gross proceeds.
+        const totalRevenue = Number(revenueAgg._sum.soldPrice ?? 0);
 
         return {
             sales,
             totalRevenue,
-            totalSales: totalSales + totalAuctionSales,
+            totalSales,
             auctionSales,
             totalAuctionRevenue,
             totalAuctionSales,
