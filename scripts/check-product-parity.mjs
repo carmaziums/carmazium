@@ -303,6 +303,75 @@ const mobileLinkingConfig = read('carmazium app/carmazium app/src/navigation/lin
 const mobileVehicleDeepLink = read('carmazium app/carmazium app/src/screens/vehicle/VehicleDeepLinkScreen.tsx');
 const mobileAuctionDeepLink = read('carmazium app/carmazium app/src/screens/vehicle/AuctionDeepLinkScreen.tsx');
 const mobileAppConfig = read('carmazium app/carmazium app/app.json');
+const mobileTabNavigator = read('carmazium app/carmazium app/src/navigation/TabNavigator.tsx');
+const mobileLegacyPartnerDashboard = read('carmazium app/carmazium app/src/screens/account/LegacyPartnerDashboardScreen.tsx');
+const mobileLegacyPartnerApi = read('carmazium app/carmazium app/src/lib/legacyPartnerApi.ts');
+const webDashboardRoleRouter = read('src/app/dashboard/page.tsx');
+const webFinancePartnerDashboard = read('src/app/dashboard/finance/page.tsx');
+const webInsurancePartnerDashboard = read('src/app/dashboard/insurance/page.tsx');
+const webPartnerApi = read('src/lib/partnerApi.ts');
+const webCheckout = read('src/app/checkout/page.tsx');
+
+// Block 9 revalidation — operational business-role landing must match web.
+// CONTRACTOR uses the consolidated Partner workspace. The legacy FINANCE_PARTNER
+// and INSURANCE_PARTNER roles still have live backend/web workflows, so native
+// must expose those records and mutations rather than an identity-only card.
+if (
+  !webDashboardRoleRouter.includes("role === 'CONTRACTOR'") ||
+  !webDashboardRoleRouter.includes("router.push('/dashboard/partner')") ||
+  !webDashboardRoleRouter.includes("role === 'FINANCE_PARTNER'") ||
+  !webDashboardRoleRouter.includes("router.push('/dashboard/finance')") ||
+  !webDashboardRoleRouter.includes("role === 'INSURANCE_PARTNER'") ||
+  !webDashboardRoleRouter.includes("router.push('/dashboard/insurance')") ||
+  !mobileTabNavigator.includes("accountRole === 'contractor'") ||
+  !mobileTabNavigator.includes('<PartnerDashboardScreen {...props} />') ||
+  !mobileTabNavigator.includes("accountRole === 'finance_partner' || accountRole === 'insurance_partner'") ||
+  !mobileTabNavigator.includes('<LegacyPartnerDashboardScreen {...props} />')
+) {
+  fail('Operational business-role home routing drifted between web and native');
+} else {
+  ok('Contractor, Finance Partner and Insurance Partner accounts land in operational native workspaces');
+}
+
+if (
+  !webFinancePartnerDashboard.includes('getFinanceApplications') ||
+  !webFinancePartnerDashboard.includes('updateFinanceStatus') ||
+  !webInsurancePartnerDashboard.includes('getInsuranceQuotes') ||
+  !webInsurancePartnerDashboard.includes('updateInsuranceStatus') ||
+  !webPartnerApi.includes('/finance/partner?') ||
+  !webPartnerApi.includes('/insurance/partner?') ||
+  !mobileLegacyPartnerApi.includes("`/finance/${applicationId}/status`") ||
+  !mobileLegacyPartnerApi.includes("`/insurance/${quoteId}/status`") ||
+  !mobileLegacyPartnerApi.includes("`${prefixFor(kind)}/partner/settings`") ||
+  !mobileLegacyPartnerDashboard.includes('updateFinancePartnerApplication') ||
+  !mobileLegacyPartnerDashboard.includes('updateInsurancePartnerQuote') ||
+  !mobileLegacyPartnerDashboard.includes('saveLegacyPartnerSettings') ||
+  !mobileLegacyPartnerDashboard.includes('regenerateLegacyPartnerKey')
+) {
+  fail('Finance/Insurance partner operations or settings are missing from one client');
+} else {
+  ok('Finance/Insurance partner records, response actions and integration settings are available on web and native');
+}
+
+// Block 9 — preserve the Block 8 payment boundary on both clients. CarMazium
+// collects platform charges only; a stale native route must never silently
+// default itself into a commission payment, and neither client may restore
+// vehicle deposit/full-payment checkout.
+if (
+  !webCheckout.includes('CarMazium does not collect or hold the vehicle purchase price or a vehicle deposit') ||
+  !webCheckout.includes('mode === "auction_fee"') ||
+  !mobilePurchaseFlow.includes("if (paymentType !== 'COMMISSION')") ||
+  !mobilePurchaseFlow.includes('Pay the seller directly') ||
+  mobilePurchaseFlow.includes("paymentType = 'COMMISSION'") ||
+  mobilePaymentsApi.includes("'DEPOSIT'") ||
+  mobilePaymentsApi.includes("'FULL_PAYMENT'") ||
+  !buyerPaymentsService.includes("if (type !== 'COMMISSION')") ||
+  !buyerPaymentsService.includes('CarMazium does not collect vehicle purchase money')
+) {
+  fail('Vehicle-money direct-settlement boundary drifted across web/mobile/backend');
+} else {
+  ok('Web, native and backend keep vehicle purchase money outside CarMazium checkout');
+}
 
 if (
   !webVehicleDetail.includes('message || undefined') ||
