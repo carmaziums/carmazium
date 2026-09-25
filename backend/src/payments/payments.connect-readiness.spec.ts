@@ -27,7 +27,6 @@ describe('PaymentsService — TradeXchange Connect transfer readiness', () => {
             {} as any,
             {} as any,
             {} as any,
-            {} as any,
         );
     });
 
