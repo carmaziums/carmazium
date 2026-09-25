@@ -853,9 +853,11 @@ export class DealersService {
                  FROM sales s
                  JOIN listings l ON s."listingId" = l.id
                  WHERE s."sellerId" = $1
-                   AND s."createdAt" >= $2`,
+                   AND s."createdAt" >= $2
+                   AND s."createdAt" <= $3`,
                 ownerUserId,
                 dateFilter.gte,
+                rangeEnd,
             ),
             this.prisma.$queryRawUnsafe<Array<{ avg_days: string }>>(
                 `SELECT AVG(EXTRACT(EPOCH FROM (s."createdAt" - l."createdAt")) / 86400)::TEXT AS avg_days
@@ -903,9 +905,11 @@ export class DealersService {
                  FROM sales s
                  JOIN listings l ON s."listingId" = l.id
                  WHERE s."sellerId" = $1
-                   AND s."createdAt" >= $2`,
+                   AND s."createdAt" >= $2
+                   AND s."createdAt" <= $3`,
                 ownerUserId,
                 dateFilter.gte,
+                rangeEnd,
             ),
             // Top selling models by units sold
             this.prisma.$queryRawUnsafe<Array<{ make: string; model: string; units: string; revenue: string; avg_price: string }>>(
@@ -917,12 +921,14 @@ export class DealersService {
                  JOIN listings l ON s."listingId" = l.id
                  WHERE s."sellerId" = $1
                    AND s."createdAt" >= $2
+                   AND s."createdAt" <= $3
                    AND l.make IS NOT NULL
                  GROUP BY l.make, l.model
                  ORDER BY COUNT(*) DESC
                  LIMIT 10`,
                 ownerUserId,
                 dateFilter.gte,
+                rangeEnd,
             ),
             // Fast movers: sold vehicles grouped by model, ordered by avg days to sell ASC
             this.prisma.$queryRawUnsafe<Array<{ make: string; model: string; units: string; avg_days: string }>>(
@@ -933,6 +939,7 @@ export class DealersService {
                  JOIN listings l ON s."listingId" = l.id
                  WHERE s."sellerId" = $1
                    AND s."createdAt" >= $2
+                   AND s."createdAt" <= $3
                    AND l.make IS NOT NULL
                  GROUP BY l.make, l.model
                  HAVING COUNT(*) >= 1
@@ -940,6 +947,7 @@ export class DealersService {
                  LIMIT 10`,
                 ownerUserId,
                 dateFilter.gte,
+                rangeEnd,
             ),
             // Slow movers: active listings grouped by model, ordered by avg days in stock DESC
             this.prisma.$queryRawUnsafe<Array<{ make: string; model: string; count: string; avg_days: string }>>(
@@ -961,9 +969,13 @@ export class DealersService {
                 `SELECT COALESCE(NULLIF(source, ''), 'unknown') AS source, COUNT(*)::TEXT AS count
                  FROM leads
                  WHERE "dealerProfileId" = $1
+                   AND "createdAt" >= $2
+                   AND "createdAt" <= $3
                  GROUP BY COALESCE(NULLIF(source, ''), 'unknown')
                  ORDER BY COUNT(*) DESC`,
                 profile.id,
+                dateFilter.gte,
+                rangeEnd,
             ),
             // Salesperson performance
             this.prisma.$queryRawUnsafe<Array<{ name: string; total: string; won: string; active: string }>>(
@@ -974,9 +986,13 @@ export class DealersService {
                  FROM leads l
                  JOIN users u ON l."assignedToId" = u.id
                  WHERE l."dealerProfileId" = $1
+                   AND l."createdAt" >= $2
+                   AND l."createdAt" <= $3
                  GROUP BY u.id, u."firstName", u."lastName"
                  ORDER BY COUNT(*) FILTER (WHERE l.status = 'WON') DESC`,
                 profile.id,
+                dateFilter.gte,
+                rangeEnd,
             ),
             // Sales by listing type (AUCTION vs CLASSIFIED)
             this.prisma.$queryRawUnsafe<Array<{ type: string; units: string; revenue: string }>>(
@@ -985,9 +1001,11 @@ export class DealersService {
                  JOIN listings l ON s."listingId" = l.id
                  WHERE s."sellerId" = $1
                    AND s."createdAt" >= $2
+                   AND s."createdAt" <= $3
                  GROUP BY l.type`,
                 ownerUserId,
                 dateFilter.gte,
+                rangeEnd,
             ),
             // Customers by area (UK postcode)
             this.prisma.$queryRawUnsafe<Array<{ postcode: string; count: string; revenue: string }>>(
@@ -998,11 +1016,13 @@ export class DealersService {
                  WHERE "sellerId" = $1
                    AND "buyerPostcode" IS NOT NULL
                    AND "createdAt" >= $2
+                   AND "createdAt" <= $3
                  GROUP BY "buyerPostcode"
                  ORDER BY COUNT(*) DESC
                  LIMIT 15`,
                 ownerUserId,
                 dateFilter.gte,
+                rangeEnd,
             ),
         ]);
 
