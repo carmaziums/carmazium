@@ -418,9 +418,6 @@ export class ListingsService {
                 entityId: listing.id,
                 actionType: 'SUBMITTED',
             }).catch(() => null);
-            if (notification) {
-                this.notificationsGateway.sendNotification(listing.sellerId, notification);
-            }
         } catch {
             // best-effort only
         }
