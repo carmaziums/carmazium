@@ -549,7 +549,7 @@ export class DealersService {
         const [activeListings, totalViews, soldListings, activeLeads, totalLeads, recentLeads, totalRevenue] = await Promise.all([
             this.prisma.listing.count({ where: { sellerId: ownerUserId, status: 'ACTIVE', deletedAt: null } }),
             this.prisma.listing.aggregate({ where: { sellerId: ownerUserId, deletedAt: null }, _sum: { viewCount: true } }),
-            this.prisma.listing.count({ where: { sellerId: ownerUserId, status: 'SOLD', deletedAt: null } }),
+            this.prisma.sale.count({ where: { sellerId: ownerUserId } }),
             this.prisma.lead.count({ where: { dealerProfileId: profile.id, status: { notIn: ['WON', 'LOST'] } } }),
             this.prisma.lead.count({ where: { dealerProfileId: profile.id } }),
             this.prisma.lead.findMany({
@@ -619,6 +619,7 @@ export class DealersService {
 
         const dateFilter = this.buildDateFilter(range, from, to);
         const prevFilter = this.getPreviousPeriodFilter(range, from, to);
+        const rangeEnd = dateFilter.lte ?? new Date();
 
         // ─── Current Period KPIs ─────────────────────────────────────
 
@@ -698,7 +699,7 @@ export class DealersService {
         const avgViews = Math.round(currentAvgViews._avg.viewCount || 0);
         const prevAvgViewsVal = Math.round(prevAvgViews._avg.viewCount || 0);
 
-        // ─── Revenue Trend (by month, last 12 months max) ───────────
+        // ─── Revenue Trend (selected reporting range) ─────────────────
 
         const revenueTrendRaw = await this.prisma.$queryRawUnsafe<Array<{ month: string; revenue: string; units: string }>>(
             `SELECT 
@@ -708,10 +709,12 @@ export class DealersService {
              FROM sales s
              WHERE s."sellerId" = $1
                AND s."createdAt" >= $2
+               AND s."createdAt" <= $3
              GROUP BY TO_CHAR(s."createdAt", 'YYYY-MM')
              ORDER BY month ASC`,
             ownerUserId,
-            subDays(new Date(), 365),
+            dateFilter.gte,
+            rangeEnd,
         );
 
         const revenueTrend = revenueTrendRaw.map(r => ({
@@ -724,7 +727,7 @@ export class DealersService {
 
         const leadsByStatus = await this.prisma.lead.groupBy({
             by: ['status'],
-            where: { dealerProfileId: profile.id },
+            where: { dealerProfileId: profile.id, createdAt: dateFilter },
             _count: true,
         });
 
@@ -737,7 +740,7 @@ export class DealersService {
 
         const offersByStatus = await this.prisma.offer.groupBy({
             by: ['status'],
-            where: { listing: { sellerId: ownerUserId } },
+            where: { listing: { sellerId: ownerUserId }, createdAt: dateFilter },
             _count: true,
         });
 
@@ -748,7 +751,7 @@ export class DealersService {
 
         // Average accepted offer amount
         const avgAccepted = await this.prisma.offer.aggregate({
-            where: { listing: { sellerId: ownerUserId }, status: 'ACCEPTED' },
+            where: { listing: { sellerId: ownerUserId }, status: 'ACCEPTED', createdAt: dateFilter },
             _avg: { amount: true },
         });
 
@@ -758,8 +761,12 @@ export class DealersService {
              FROM offers o
              JOIN listings l ON o."listingId" = l.id
              WHERE l."sellerId" = $1
-               AND o.status != 'PENDING'`,
+               AND o.status != 'PENDING'
+               AND o."createdAt" >= $2
+               AND o."createdAt" <= $3`,
             ownerUserId,
+            dateFilter.gte,
+            rangeEnd,
         );
 
         // ─── Inventory Health ────────────────────────────────────────
@@ -1047,7 +1054,7 @@ export class DealersService {
                 totalUnitsSold: currentUnitsSold,
                 totalUnitsSoldTrend: this.calcTrend(currentUnitsSold, prevUnitsSold),
                 avgDaysToSell,
-                avgDaysToSellTrend: this.calcTrend(prevAvgDaysToSell, avgDaysToSell),
+                avgDaysToSellTrend: this.calcTrend(avgDaysToSell, prevAvgDaysToSell),
                 offerConversionRate: offerConvRate,
                 offerConversionRateTrend: this.calcTrend(offerConvRate, prevOfferConvRate),
                 leadConversionRate: leadConvRate,
