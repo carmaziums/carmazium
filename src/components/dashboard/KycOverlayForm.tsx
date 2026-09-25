@@ -37,13 +37,13 @@ export const KYC_SKIP_KEY = 'kyc_skipped_v1';
 const BUSINESS_TYPE_OPTIONS: { value: BusinessType; label: string; hint: string }[] = [
   {
     value: "PRIVATE_LIMITED",
-    label: "Private Limited",
-    hint: "Registered at Companies House (Ltd)",
+    label: "Registered Company",
+    hint: "A company registered at Companies House",
   },
   {
     value: "SOLE_PROPRIETORSHIP",
-    label: "Sole Proprietorship",
-    hint: "Trading as an individual, no Ltd company",
+    label: "Sole Trader",
+    hint: "Trading in your own name or under a trading name",
   },
 ];
 
@@ -855,8 +855,54 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
               {activeStep === 1 && (
                 <div className="space-y-5">
                   <h3 className="text-base font-extrabold uppercase text-[var(--text-primary)] tracking-tight border-b border-[var(--border-default)] pb-2">
-                    Step 1: Representative &amp; Company Details
+                    Step 1: Business Type &amp; Representative Details
                   </h3>
+
+                  {/* Business type decides which KYC evidence applies. Ask this
+                      before company-specific fields so sole traders never see a
+                      Companies House requirement as their first experience. */}
+                  <fieldset className="space-y-3">
+                    <legend className="text-xs font-extrabold uppercase text-primary tracking-widest mb-3 flex items-center gap-1.5">
+                      <Building2 size={11} />
+                      Business Type
+                    </legend>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {BUSINESS_TYPE_OPTIONS.map((opt) => {
+                        const selected = formData.businessType === opt.value;
+                        return (
+                          <label
+                            key={opt.value}
+                            className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-colors ${selected
+                              ? "border-primary bg-primary/5"
+                              : "border-[var(--border-default)] bg-[var(--bg-input)] hover:border-primary/40"}`}
+                          >
+                            <input
+                              type="radio"
+                              name="businessType"
+                              value={opt.value}
+                              checked={selected}
+                              disabled={submitting}
+                              onChange={() => setFormData((f) => ({ ...f, businessType: opt.value }))}
+                              className="mt-0.5 shrink-0 accent-primary"
+                            />
+                            <span>
+                              <span className="block text-sm font-extrabold text-[var(--text-primary)]">
+                                {opt.label}
+                              </span>
+                              <span className="block text-[11px] text-[var(--text-muted)] mt-0.5">
+                                {opt.hint}
+                              </span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-[var(--text-muted)]">
+                      {isSoleTrader
+                        ? "Sole traders are not registered at Companies House. We verify the owner using photo ID and proof of address instead."
+                        : "Registered companies continue through the existing company verification route."}
+                    </p>
+                  </fieldset>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {renderInput({
@@ -911,54 +957,8 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
               {activeStep === 2 && (
                 <div className="space-y-5">
                   <h3 className="text-base font-extrabold uppercase text-[var(--text-primary)] tracking-tight border-b border-[var(--border-default)] pb-2">
-                    Step 2: Registrations &amp; Business Address
+                    Step 2: Business Registration &amp; Address
                   </h3>
-
-                  {/* Business type decides the whole step. Radios rather than
-                      styled divs so arrow keys move between them and screen
-                      readers announce the group and the current selection. */}
-                  <fieldset className="space-y-3">
-                    <legend className="text-xs font-extrabold uppercase text-primary tracking-widest mb-3 flex items-center gap-1.5">
-                      <Building2 size={11} />
-                      Business Type
-                    </legend>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {BUSINESS_TYPE_OPTIONS.map((opt) => {
-                        const selected = formData.businessType === opt.value;
-                        return (
-                          <label
-                            key={opt.value}
-                            className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-colors ${selected
-                              ? "border-primary bg-primary/5"
-                              : "border-[var(--border-default)] bg-[var(--bg-input)] hover:border-primary/40"}`}
-                          >
-                            <input
-                              type="radio"
-                              name="businessType"
-                              value={opt.value}
-                              checked={selected}
-                              disabled={submitting}
-                              onChange={() => setFormData((f) => ({ ...f, businessType: opt.value }))}
-                              className="mt-0.5 shrink-0 accent-primary"
-                            />
-                            <span>
-                              <span className="block text-sm font-extrabold text-[var(--text-primary)]">
-                                {opt.label}
-                              </span>
-                              <span className="block text-[11px] text-[var(--text-muted)] mt-0.5">
-                                {opt.hint}
-                              </span>
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                    <p className="text-[11px] text-[var(--text-muted)]">
-                      {isSoleTrader
-                        ? "Sole traders have no VAT number and no Companies House record, so we verify you with photo ID and proof of address instead."
-                        : "We will ask for your VAT number and Companies House details."}
-                    </p>
-                  </fieldset>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {/* Limited-company registrations. A sole trader has neither,
