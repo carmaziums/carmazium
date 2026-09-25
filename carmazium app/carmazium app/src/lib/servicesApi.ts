@@ -62,7 +62,16 @@ export interface TradeTeamPermission {
   canComplete: boolean;
 }
 
-export type TradeTeamPermissionInput = Omit<TradeTeamPermission, 'id'>;
+export type TradeTeamPermissionInput = {
+  email: string;
+  deliveryEnabled: boolean;
+  inspectionEnabled: boolean;
+  canView: boolean;
+  canChat: boolean;
+  canQuote: boolean;
+  canManage: boolean;
+  canComplete: boolean;
+};
 
 export interface PartnerTeam {
   dealerProfileId: string;
