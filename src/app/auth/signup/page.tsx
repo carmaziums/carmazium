@@ -257,7 +257,10 @@ function SignupForm() {
                     </Button>
                 </div>
 
-                <p className="mt-5 text-center text-xs leading-5 text-gray-400">\n                    By creating or continuing with an account, you acknowledge the <Link href="/privacy-policy" className="font-semibold text-white underline underline-offset-2">Privacy Policy</Link> and agree to the <Link href="/terms" className="font-semibold text-white underline underline-offset-2">Terms & Conditions</Link>.\n                </p>\n                <div className="mt-8 text-center text-sm text-gray-300">Already have an account? <Link href="/auth/login" className="text-primary font-bold hover:text-red-400">Log In</Link></div>
+                <p className="mt-5 text-center text-xs leading-5 text-gray-400">
+                    By creating or continuing with an account, you acknowledge the <Link href="/privacy-policy" className="font-semibold text-white underline underline-offset-2">Privacy Policy</Link> and agree to the <Link href="/terms" className="font-semibold text-white underline underline-offset-2">Terms & Conditions</Link>.
+                </p>
+                <div className="mt-8 text-center text-sm text-gray-300">Already have an account? <Link href="/auth/login" className="text-primary font-bold hover:text-red-400">Log In</Link></div>
                 <div className="mt-4 text-center text-xs text-gray-400">Businesses use one <span className="text-white font-semibold">Partner Account</span> and add services from the Partner Dashboard.</div>
             </div>
         </div>
