@@ -35,14 +35,13 @@ function CheckoutContent() {
     const { user, loading: authLoading } = useAuth()
 
     const listingId = searchParams.get("listing_id")
-    const mode = searchParams.get("mode") as "deposit" | "full" | "auction_fee" | null
+    const mode = searchParams.get("mode") as "auction_fee" | null
 
     const isAuctionFee = mode === "auction_fee"
 
     const [listing, setListing] = useState<Listing | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isProcessing, setIsProcessing] = useState(false)
-    const [selectedMode, setSelectedMode] = useState<"deposit" | "full">(isAuctionFee ? "deposit" : (mode as "deposit" | "full") || "deposit")
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
@@ -66,16 +65,10 @@ function CheckoutContent() {
         setError(null)
 
         try {
-            let amount: number
-            let type: "DEPOSIT" | "FULL_PAYMENT" | "COMMISSION"
-            if (isAuctionFee) {
-                amount = AUCTION_BUYER_FEE
-                type = "COMMISSION"
-            } else {
-                amount = selectedMode === "deposit" ? DEPOSIT_AMOUNT : parseFloat(String(listing.price))
-                type = selectedMode === "deposit" ? "DEPOSIT" : "FULL_PAYMENT"
+            if (!isAuctionFee) {
+                throw new Error("Vehicle purchase money is paid directly to the seller. CarMazium checkout only handles platform fees.")
             }
-            const result = await createCheckoutSession(listing.id, amount, type, "gbp")
+            const result = await createCheckoutSession(listing.id, AUCTION_BUYER_FEE, "COMMISSION", "gbp")
             if (result.url) {
                 window.location.href = result.url
             }
@@ -319,6 +312,30 @@ function CheckoutContent() {
                     <p className="flex items-center justify-center gap-1.5 text-center text-xs mt-1.5" style={{ color: 'var(--text-faint)' }}>
                         <Shield size={11} /> Your payment information is encrypted and secure. We never store your card details.
                     </p>
+                </div>
+            </div>
+        )
+    }
+
+    if (!isAuctionFee) {
+        return (
+            <div className="min-h-screen pt-28 pb-20">
+                <div className="container mx-auto px-5 max-w-2xl">
+                    <div className="rounded-3xl border border-[var(--border-default)] bg-[var(--bg-card)] p-8 md:p-10">
+                        <ShieldCheck className="text-emerald-500 mb-5" size={38} />
+                        <h1 className="text-3xl font-heading font-bold mb-3">Pay the seller directly</h1>
+                        <p className="text-[var(--text-muted)] leading-7 mb-6">
+                            CarMazium does not collect or hold the vehicle purchase price or a vehicle deposit. Agree the final amount with the seller and settle the vehicle payment directly with them.
+                        </p>
+                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 mb-6 text-sm text-[var(--text-muted)]">
+                            CarMazium checkout is used only for CarMazium platform charges such as the £125 auction buyer fee, listing fees and optional add-ons.
+                        </div>
+                        <Button asChild className="w-full h-12">
+                            <Link href={listing ? `/buy-cars/${listing.slug}` : "/buy-cars"}>
+                                <ArrowLeft size={17} className="mr-2" /> Return to vehicle
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
             </div>
         )
