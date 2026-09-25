@@ -5,7 +5,8 @@ import { LoginScreen } from '../screens/auth/LoginScreen';
 import { SignupScreen } from '../screens/auth/SignupScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
 import { ResetPasswordScreen } from '../screens/auth/ResetPasswordScreen';
-import { TermsScreen } from '../screens/main/TermsScreen';\nimport { PrivacyPolicyScreen } from '../screens/main/PrivacyPolicyScreen';
+import { TermsScreen } from '../screens/main/TermsScreen';
+import { PrivacyPolicyScreen } from '../screens/main/PrivacyPolicyScreen';
 import { Colors } from '../constants/colors';
 import { useAuthStore } from '../store/authStore';
 
@@ -20,7 +21,8 @@ export type AuthStackParamList = {
   // renders Auth/Main as mutually exclusive stacks, so MainStackNavigator's
   // copy of this screen is unreachable before login (mobile-production-
   // readiness-plan.md F13).
-  Terms: undefined;\n  PrivacyPolicy: undefined;
+  Terms: undefined;
+  PrivacyPolicy: undefined;
 };
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
@@ -49,7 +51,8 @@ export const AuthNavigator: React.FC = () => {
       <Stack.Screen name="Signup" component={SignupScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-      <Stack.Screen name="Terms" component={TermsScreen} options={{ animation: 'slide_from_right' }} />\n      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="Terms" component={TermsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };
