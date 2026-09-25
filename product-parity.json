@@ -554,6 +554,7 @@
       "id": "partner.legacy_finance_operations",
       "web": [
         "src/app/dashboard/finance/page.tsx",
+        "src/app/dashboard/finance/applications/page.tsx",
         "src/app/dashboard/finance/settings/page.tsx",
         "src/lib/partnerApi.ts"
       ],
@@ -567,6 +568,7 @@
       "id": "partner.legacy_insurance_operations",
       "web": [
         "src/app/dashboard/insurance/page.tsx",
+        "src/app/dashboard/insurance/quotes/page.tsx",
         "src/app/dashboard/insurance/settings/page.tsx",
         "src/lib/partnerApi.ts"
       ],
