@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 7,
   "purpose": "CarMazium one-product parity contract",
   "policy": {
     "backend_is_source_of_truth": true,
@@ -547,6 +547,53 @@
         "carmazium app/carmazium app/src/screens/onboarding/OnboardingScreen.tsx",
         "carmazium app/carmazium app/app.json",
         "carmazium app/carmazium app/plugins/withAndroidProguardRules.js"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "partner.legacy_finance_operations",
+      "web": [
+        "src/app/dashboard/finance/page.tsx",
+        "src/app/dashboard/finance/settings/page.tsx",
+        "src/lib/partnerApi.ts"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/account/LegacyPartnerDashboardScreen.tsx",
+        "carmazium app/carmazium app/src/lib/legacyPartnerApi.ts"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "partner.legacy_insurance_operations",
+      "web": [
+        "src/app/dashboard/insurance/page.tsx",
+        "src/app/dashboard/insurance/settings/page.tsx",
+        "src/lib/partnerApi.ts"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/account/LegacyPartnerDashboardScreen.tsx",
+        "carmazium app/carmazium app/src/lib/legacyPartnerApi.ts"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "navigation.account_role_home",
+      "web": [
+        "src/app/dashboard/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/navigation/TabNavigator.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "payments.vehicle_direct_settlement",
+      "web": [
+        "src/app/checkout/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/PurchaseFlowScreen.tsx",
+        "carmazium app/carmazium app/src/lib/paymentsApi.ts"
       ],
       "status": "required"
     },
