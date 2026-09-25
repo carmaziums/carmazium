@@ -1646,7 +1646,9 @@ export class AdminService {
                 where: { status: 'COMPLETED', deletedAt: null, type: 'COMMISSION', ...createdAt },
             }),
         ]);
-        return Number(feeAgg._sum?.amount ?? 0) + commissionCount * this.AUCTION_PLATFORM_FEE_CUT;
+        return Math.round(
+            (Number(feeAgg._sum?.amount ?? 0) + commissionCount * this.AUCTION_PLATFORM_FEE_CUT) * 100,
+        ) / 100;
     }
 
     async getPlatformStats() {
