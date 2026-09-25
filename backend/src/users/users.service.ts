@@ -128,22 +128,162 @@ export class UsersService {
         return safeUser;
     }
 
+    private deletionStorageClient(): SupabaseClient {
+        if (!this.supabaseAdmin) {
+            throw new ServiceUnavailableException(
+                'Account deletion is temporarily unavailable because secure storage cleanup is not configured.',
+            );
+        }
+        return this.supabaseAdmin;
+    }
+
+    private publicStoragePath(value: string | null | undefined, bucket: string): string | null {
+        if (!value) return null;
+        const clean = value.split('#')[0].split('?')[0];
+        const marker = `/storage/v1/object/public/${bucket}/`;
+        const index = clean.indexOf(marker);
+        if (index < 0) return null;
+        try {
+            return decodeURIComponent(clean.slice(index + marker.length));
+        } catch {
+            return null;
+        }
+    }
+
+    private async removeStoragePaths(bucket: string, paths: Iterable<string>): Promise<void> {
+        const unique = Array.from(new Set(Array.from(paths).filter(Boolean)));
+        if (!unique.length) return;
+
+        const storage = this.deletionStorageClient().storage.from(bucket);
+        // Supabase Storage remove() is capped; keep batches deliberately below
+        // the documented 1000-object maximum.
+        for (let i = 0; i < unique.length; i += 500) {
+            const batch = unique.slice(i, i + 500);
+            const { error } = await storage.remove(batch);
+            if (error) {
+                this.logger.error(
+                    `Account deletion storage cleanup failed in ${bucket}: ${error.message}`,
+                );
+                throw new ServiceUnavailableException(
+                    'Could not remove all account files. Nothing else has been deleted; please try again.',
+                );
+            }
+        }
+    }
+
     /**
-     * Soft-delete the current user's account — never a hard delete, since
-     * Listing/Bid/Transaction all cascade off User at the DB level and a
-     * real delete would wipe out other people's transaction/auction history
-     * along with it. Anonymizes PII and withdraws listings that haven't
-     * resulted in a live commitment; leaves historical bids/transactions/
-     * chat rooms untouched since they're tied to other parties too.
+     * Remove account-owned Storage objects before deleting the Supabase Auth
+     * identity. Supabase refuses a hard Auth deletion while that identity still
+     * owns Storage objects, so this is a required first phase rather than
+     * best-effort cleanup.
+     *
+     * Reads of storage.objects are metadata-only; object deletion is always
+     * performed through the Storage API, never by deleting Storage rows in SQL.
+     */
+    private async removeAccountStorage(
+        userId: string,
+        user: { profileImage?: string | null },
+        dealerProfile: any | null,
+        listings: Array<{ images: string[] }>,
+        chatAttachments: Array<{ attachmentPath: string | null }>,
+    ): Promise<void> {
+        const byBucket = new Map<string, Set<string>>();
+        const add = (bucket: string, path: string | null | undefined) => {
+            if (!path) return;
+            const set = byBucket.get(bucket) ?? new Set<string>();
+            set.add(path);
+            byBucket.set(bucket, set);
+        };
+
+        // Files uploaded directly by an authenticated user can live under many
+        // path shapes. owner_id is the authoritative way to find them.
+        const owned = await this.prisma.$queryRaw<Array<{ bucket_id: string; name: string }>>`
+            SELECT bucket_id, name
+            FROM storage.objects
+            WHERE owner_id::text = ${userId}
+        `;
+        for (const object of owned) add(object.bucket_id, object.name);
+
+        // Service-role uploads have no owner_id, so collect the sensitive paths
+        // from application records as well.
+        const kyc = dealerProfile?.kyc;
+        for (const field of [
+            'vatProofPath',
+            'companyRegistrationProofPath',
+            'directorIdProofPath',
+            'proofOfAddressPath',
+            'paymentScreenshotPath',
+        ]) {
+            add('dealer-kyc-documents', kyc?.[field]);
+        }
+
+        for (const field of [
+            'vatProof',
+            'companyRegistrationProof',
+            'directorIdProof',
+            'proofOfAddress',
+            'paymentScreenshot',
+        ]) {
+            add('listings', this.publicStoragePath(kyc?.[field], 'listings'));
+        }
+
+        add('listings', this.publicStoragePath(user.profileImage, 'listings'));
+        add('listings', this.publicStoragePath(dealerProfile?.logo, 'listings'));
+
+        for (const listing of listings) {
+            for (const image of listing.images ?? []) {
+                add('listings', this.publicStoragePath(image, 'listings'));
+            }
+        }
+
+        for (const message of chatAttachments) {
+            add('chat-attachments', message.attachmentPath);
+        }
+
+        for (const [bucket, paths] of byBucket) {
+            await this.removeStoragePaths(bucket, paths);
+        }
+    }
+
+    private async deleteSupabaseIdentity(userId: string): Promise<void> {
+        const admin = this.deletionStorageClient().auth.admin;
+        const { error } = await admin.deleteUser(userId);
+        if (!error) return;
+
+        // Local-only legacy accounts may never have had a Supabase identity.
+        // Treat an absent identity as already deleted, but fail closed for every
+        // other Auth error so the API never claims deletion succeeded when the
+        // login identity still exists.
+        if (/user.*not found|not found/i.test(error.message || '')) {
+            this.logger.warn(`No Supabase Auth identity existed for deleted local user ${userId}`);
+            return;
+        }
+
+        this.logger.error(
+            `Supabase Auth deletion failed for ${userId}: ${error.message}`,
+        );
+        throw new ServiceUnavailableException(
+            'Could not remove the sign-in identity. Account deletion has not been completed; please try again.',
+        );
+    }
+
+    /**
+     * Permanently close the account while preserving only records that have a
+     * genuine transaction, safety, fraud, accounting or dispute reason to
+     * survive. The User row itself remains as a pseudonymous referential anchor
+     * because bids, sales, transactions and shared conversations reference it.
+     *
+     * Deletion phases:
+     *  1. reject unsafe live-auction deletion,
+     *  2. erase Storage/KYC media,
+     *  3. hard-delete the Supabase Auth identity,
+     *  4. atomically erase/anonymise application PII and transient records.
      */
     async deleteAccount(userId: string) {
         const user = await this.prisma.user.findUnique({ where: { id: userId } });
         if (!user) throw new NotFoundException('User not found');
         if (user.deletedAt) throw new BadRequestException('This account has already been deleted');
 
-        // Don't let a seller delete out from under an auction that's actively
-        // receiving bids right now — that's unfair to bidders and could be
-        // used to dodge losing.
         const liveAuctionAsSeller = await this.prisma.listing.findFirst({
             where: { sellerId: userId, deletedAt: null, auction: { status: 'ACTIVE' } },
             select: { id: true },
@@ -154,7 +294,6 @@ export class UsersService {
             );
         }
 
-        // Same reasoning for a buyer who's actively bidding right now.
         const activeBid = await this.prisma.bid.findFirst({
             where: { bidderId: userId, deletedAt: null, listing: { auction: { status: 'ACTIVE' } } },
             select: { id: true },
@@ -165,30 +304,285 @@ export class UsersService {
             );
         }
 
-        // Withdraw listings that never reached a live commitment. Ended/sold
-        // listings are already inert and stay as historical record.
-        await this.prisma.listing.updateMany({
-            where: { sellerId: userId, deletedAt: null, status: { in: ['DRAFT', 'PENDING_REVIEW', 'ACTIVE'] } },
-            data: { status: 'WITHDRAWN' },
+        const [dealerProfile, listings, chatAttachments] = await Promise.all([
+            this.prisma.dealerProfile.findUnique({
+                where: { userId },
+                include: { kyc: true },
+            }),
+            this.prisma.listing.findMany({
+                where: { sellerId: userId },
+                select: { images: true },
+            }),
+            this.prisma.message.findMany({
+                where: { senderId: userId, attachmentPath: { not: null } },
+                select: { attachmentPath: true },
+            }),
+        ]);
+
+        // Complete irreversible file/Auth cleanup before committing the local
+        // anonymisation transaction. If Storage/Auth is unavailable, the user
+        // can safely retry because the local account is still intact.
+        await this.removeAccountStorage(
+            userId,
+            user,
+            dealerProfile,
+            listings,
+            chatAttachments,
+        );
+        await this.deleteSupabaseIdentity(userId);
+
+        const deletedAt = new Date();
+        const deletedEmail = `deleted-${userId}@deleted.carmazium.com`;
+
+        await this.prisma.$transaction(async (tx) => {
+            // Remove transient/personal records that have no reason to survive
+            // an account deletion.
+            await tx.addressVerification.deleteMany({ where: { userId } });
+            await tx.notification.deleteMany({ where: { userId } });
+            await tx.watchlistItem.deleteMany({ where: { userId } });
+            await tx.analyticsEvent.deleteMany({ where: { userId } });
+
+            // Unfinished enquiries are not accounting records. Completed or
+            // accepted financial/insurance records remain linked only to the
+            // pseudonymous account anchor for audit/legal history.
+            await tx.financeApplication.deleteMany({
+                where: { userId, status: { in: ['PENDING', 'REJECTED'] } },
+            });
+            await tx.insuranceQuote.deleteMany({
+                where: { userId, status: { in: ['PENDING', 'QUOTED', 'EXPIRED', 'REJECTED'] } },
+            });
+
+            // Remove contact/financial-preference data from TradeXchange leads
+            // while preserving a non-identifying lifecycle record.
+            await tx.serviceLead.updateMany({
+                where: { customerId: userId },
+                data: {
+                    customerId: null,
+                    fullName: null,
+                    email: null,
+                    phone: null,
+                    postcode: null,
+                    summary: null,
+                    depositPence: null,
+                    termMonths: null,
+                    monthlyBudgetPence: null,
+                    employmentStatus: null,
+                    annualIncomePence: null,
+                    consentToProviderContact: false,
+                    consentRecordedAt: null,
+                    anonymizedAt: deletedAt,
+                    closedAt: deletedAt,
+                },
+            });
+            await tx.serviceLead.updateMany({
+                where: { customerId: null, anonymizedAt: deletedAt, status: 'OPEN' },
+                data: { status: 'EXPIRED' },
+            });
+
+            // CRM/HPI/sale rows can contain snapshots that would otherwise keep
+            // name, email, phone or postcode after the account itself is erased.
+            await tx.lead.updateMany({
+                where: { buyerId: userId },
+                data: {
+                    buyerId: null,
+                    buyerName: 'Deleted user',
+                    buyerEmail: null,
+                    buyerPhone: null,
+                    notes: null,
+                    nextFollowUpAt: null,
+                },
+            });
+            await tx.sale.updateMany({
+                where: { buyerId: userId },
+                data: {
+                    buyerName: null,
+                    buyerEmail: null,
+                    buyerPostcode: null,
+                },
+            });
+            await tx.hpiReportEmailRequest.updateMany({
+                where: { buyerId: userId },
+                data: { buyerEmail: deletedEmail },
+            });
+            await tx.sellerReview.updateMany({
+                where: { reviewerId: userId },
+                data: { comment: null },
+            });
+
+            // User-authored private attachment files have already been erased.
+            // Keep message text only where the shared transcript itself is a
+            // legitimate transaction/safety record, but remove file pointers.
+            await tx.message.updateMany({
+                where: { senderId: userId },
+                data: {
+                    attachmentPath: null,
+                    attachmentName: null,
+                    attachmentMime: null,
+                    attachmentSize: null,
+                },
+            });
+
+            // Withdraw unfinished listings and remove seller-authored media,
+            // free text and precise location from every retained listing.
+            await tx.listing.updateMany({
+                where: {
+                    sellerId: userId,
+                    deletedAt: null,
+                    status: { in: ['DRAFT', 'PENDING_REVIEW', 'ACTIVE'] },
+                },
+                data: { status: 'WITHDRAWN' },
+            });
+            await tx.listing.updateMany({
+                where: { sellerId: userId },
+                data: {
+                    images: [],
+                    videoUrls: [],
+                    description: null,
+                    location: null,
+                    latitude: null,
+                    longitude: null,
+                    notOwnerRelationship: null,
+                },
+            });
+
+            // Dealer/sole-trader KYC identity evidence is intentionally erased
+            // rather than retained as general marketplace history.
+            if (dealerProfile) {
+                if (dealerProfile.kyc) {
+                    await tx.dealerKyc.delete({ where: { id: dealerProfile.kyc.id } });
+                }
+                await tx.dealerInvite.deleteMany({
+                    where: { dealerProfileId: dealerProfile.id },
+                });
+                await tx.dealerStaff.updateMany({
+                    where: { dealerProfileId: dealerProfile.id },
+                    data: { isActive: false },
+                });
+                await tx.dealerProfile.update({
+                    where: { id: dealerProfile.id },
+                    data: {
+                        companyName: `Deleted business ${dealerProfile.id.slice(0, 8)}`,
+                        vatNumber: `DELETED-${dealerProfile.id}`,
+                        registrationNumber: null,
+                        businessAddress: null,
+                        logo: null,
+                        description: null,
+                        phone: null,
+                        website: null,
+                        openingHours: null,
+                        isVerified: false,
+                        verificationDate: null,
+                        deletedAt,
+                    },
+                });
+            }
+
+            // Remove this person's membership in other dealer teams.
+            await tx.dealerStaff.deleteMany({ where: { userId } });
+
+            const contractor = await tx.contractorProfile.findUnique({
+                where: { userId },
+                select: { id: true },
+            });
+            if (contractor) {
+                await tx.contractorCapability.updateMany({
+                    where: { contractorId: contractor.id },
+                    data: {
+                        status: 'SUSPENDED',
+                        verificationStatus: 'NOT_SUBMITTED',
+                        jobNationwide: false,
+                        jobPostcodeAreas: [],
+                        leadNationwide: false,
+                        leadPostcodeAreas: [],
+                        leadMinVehicleValuePence: null,
+                        leadMaxVehicleValuePence: null,
+                        leadMinVehicleYear: null,
+                        leadMaxVehicleMileage: null,
+                        leadMinAnnualIncomePence: null,
+                        leadFinanceTermMinMonths: null,
+                        leadFinanceTermMaxMonths: null,
+                        leadWarrantyLevels: [],
+                        leadWarrantyMinMonths: null,
+                        leadWarrantyMaxMonths: null,
+                    } as any,
+                });
+                await tx.contractorProfile.update({
+                    where: { id: contractor.id },
+                    data: {
+                        businessName: null,
+                        phone: null,
+                        serviceTypes: [],
+                        serviceArea: null,
+                        certifications: [],
+                        deletedAt,
+                    },
+                });
+            }
+
+            const partnerProfiles = await tx.partnerProfile.findMany({
+                where: {
+                    OR: [
+                        { financeUserId: userId },
+                        { insuranceUserId: userId },
+                    ],
+                },
+                select: { id: true },
+            });
+            for (const partner of partnerProfiles) {
+                await tx.partnerProfile.update({
+                    where: { id: partner.id },
+                    data: {
+                        companyName: `Deleted partner ${partner.id.slice(0, 8)}`,
+                        apiKey: `deleted-${partner.id}`,
+                        callbackUrl: null,
+                        isActive: false,
+                        deletedAt,
+                    },
+                });
+            }
+
+            // Keep only the minimum pseudonymous row needed by retained shared
+            // transaction/safety records. Stripe identifiers are retained here
+            // solely because refunds, chargebacks or unsettled payouts may still
+            // need to be reconciled after account closure.
+            await tx.user.update({
+                where: { id: userId },
+                data: {
+                    deletedAt,
+                    email: deletedEmail,
+                    passwordHash: 'ACCOUNT_DELETED',
+                    firstName: 'Deleted',
+                    lastName: 'User',
+                    phone: null,
+                    profileImage: null,
+                    isEmailVerified: false,
+                    isPhoneVerified: false,
+                    isAddressVerified: false,
+                    addressVerifiedAt: null,
+                    bankAccountName: null,
+                    bankSortCode: null,
+                    bankAccountNumber: null,
+                    notifyOnSale: false,
+                    showPublicProfile: false,
+                    location: null,
+                    postcode: null,
+                    preferences: null,
+                },
+            });
         });
 
-        await this.prisma.user.update({
-            where: { id: userId },
-            data: {
-                deletedAt: new Date(),
-                email: `deleted-${userId}@deleted.carmazium.com`,
-                passwordHash: 'ACCOUNT_DELETED',
-                firstName: 'Deleted',
-                lastName: 'User',
-                phone: null,
-                profileImage: null,
-                bankAccountName: null,
-                bankSortCode: null,
-                bankAccountNumber: null,
-            },
-        });
-
-        return { success: true };
+        this.logger.log(`Completed account erasure for ${userId}`);
+        return {
+            success: true,
+            deletedAt,
+            retainedRecordClasses: [
+                'completed transactions and payments',
+                'auction bids/offers and completed sales',
+                'dispute/moderation records',
+                'transactional chat text without private attachments',
+                'Stripe identifiers needed for refunds, chargebacks or unsettled payouts',
+            ],
+        };
     }
 
     /**
