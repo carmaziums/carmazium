@@ -59,7 +59,7 @@ describe('ListingsService', () => {
             user: { findUnique: jest.fn() },
             transaction: { findMany: jest.fn(), update: jest.fn() },
             hpiReport: { findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }) },
-            auction: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+            auction: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
             bid: {
                 findFirst: jest.fn(),
                 findMany: jest.fn().mockResolvedValue([]),
@@ -1269,6 +1269,157 @@ describe('ListingsService', () => {
             expect(data.auction.create.startingBid).toBe(7000);
             expect(data.auction.create.endTime.getTime() - data.auction.create.startTime.getTime())
                 .toBe(24 * 60 * 60 * 1000);
+        });
+    });
+
+    describe('auction/listing lifecycle synchronization', () => {
+        it('blocks generic withdrawal while an auction is already live', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                type: 'AUCTION',
+                status: 'ACTIVE',
+                price: 10000,
+                deletedAt: null,
+                linkedListingId: null,
+            });
+            prisma.auction.findUnique.mockResolvedValue({
+                id: 'auction-1',
+                status: 'ACTIVE',
+                deletedAt: null,
+            });
+
+            await expect(
+                service.updateStatus('listing-1', 'seller-1', 'WITHDRAWN' as any),
+            ).rejects.toThrow(/live auction cannot be withdrawn/i);
+
+            expect(prisma.listing.update).not.toHaveBeenCalled();
+            expect(prisma.auction.updateMany).not.toHaveBeenCalled();
+        });
+
+        it('cancels and archives a scheduled auction atomically when the seller withdraws it', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                type: 'AUCTION',
+                status: 'PENDING_REVIEW',
+                price: 10000,
+                deletedAt: null,
+                linkedListingId: 'retail-1',
+            });
+            prisma.auction.findUnique.mockResolvedValue({
+                id: 'auction-1',
+                status: 'SCHEDULED',
+                deletedAt: null,
+            });
+            prisma.listing.update.mockResolvedValue({
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                status: 'WITHDRAWN',
+            });
+
+            await service.updateStatus('listing-1', 'seller-1', 'WITHDRAWN' as any);
+
+            expect(prisma.auction.updateMany).toHaveBeenCalledWith({
+                where: {
+                    id: 'auction-1',
+                    status: 'SCHEDULED',
+                    deletedAt: null,
+                },
+                data: {
+                    status: 'CANCELLED',
+                    buyItNowPendingBuyerId: null,
+                    buyItNowPendingAt: null,
+                },
+            });
+            expect(prisma.bid.updateMany).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: expect.objectContaining({
+                        listingId: 'listing-1',
+                        archivedAt: null,
+                    }),
+                    data: { archivedAt: expect.any(Date) },
+                }),
+            );
+            expect(prisma.listing.updateMany).toHaveBeenCalledWith({
+                where: {
+                    id: 'retail-1',
+                    linkedListingId: 'listing-1',
+                },
+                data: { linkedListingId: null },
+            });
+            expect(prisma.listing.update).toHaveBeenCalledWith({
+                where: { id: 'listing-1' },
+                data: {
+                    status: 'WITHDRAWN',
+                    linkedListingId: null,
+                },
+            });
+        });
+
+        it('blocks deletion of a live auction through the generic listing endpoint', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                type: 'AUCTION',
+                status: 'ACTIVE',
+                deletedAt: null,
+                linkedListingId: null,
+            });
+            prisma.auction.findUnique.mockResolvedValue({
+                id: 'auction-1',
+                status: 'ACTIVE',
+                deletedAt: null,
+            });
+
+            await expect(
+                service.softDelete('listing-1', 'seller-1'),
+            ).rejects.toThrow(/live auction cannot be deleted/i);
+
+            expect(prisma.listing.update).not.toHaveBeenCalled();
+        });
+
+        it('soft-deletes and cancels a scheduled auction in the same transaction', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                type: 'AUCTION',
+                status: 'PENDING_REVIEW',
+                deletedAt: null,
+                linkedListingId: null,
+            });
+            prisma.auction.findUnique.mockResolvedValue({
+                id: 'auction-1',
+                status: 'SCHEDULED',
+                deletedAt: null,
+            });
+            prisma.listing.update.mockResolvedValue({
+                id: 'listing-1',
+                deletedAt: new Date(),
+            });
+
+            await service.softDelete('listing-1', 'seller-1');
+
+            expect(prisma.auction.updateMany).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: {
+                        id: 'auction-1',
+                        status: 'SCHEDULED',
+                        deletedAt: null,
+                    },
+                    data: expect.objectContaining({
+                        status: 'CANCELLED',
+                        deletedAt: expect.any(Date),
+                    }),
+                }),
+            );
+            expect(prisma.listing.update).toHaveBeenCalledWith({
+                where: { id: 'listing-1' },
+                data: {
+                    deletedAt: expect.any(Date),
+                    linkedListingId: null,
+                },
+            });
         });
     });
 });
