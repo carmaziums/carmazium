@@ -493,7 +493,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
   // dealer never completed (or cancelled, or was declined on) the £1 Stripe
   // checkout. Must not look like a fresh, unstarted application — it's one tap
   // away from being submitted. Mirrors web's KycOverlayForm.tsx identical gate.
-  const isPaymentOutstanding = kycStatus === 'PENDING' && !existingKyc?.stripeChargedAt;
+  const isPaymentOutstanding = kycStatus === 'PENDING' && !existingKyc?.stripeChargedAt && !!existingKyc?.stripeCheckoutSessionId;
 
   // ── Status banner config ────────────────────────────────────────────────────
   const getBannerConfig = () => {
