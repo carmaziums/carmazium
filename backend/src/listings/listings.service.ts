@@ -1932,35 +1932,119 @@ export class ListingsService {
             );
         }
 
+        // Listing status and auction status are one lifecycle. A seller must
+        // never be able to hide an ACTIVE auction by changing only the Listing
+        // row. Scheduled auctions may be withdrawn, but cancellation + bid
+        // archival + unlinking must commit atomically with the listing change.
+        let scheduledAuctionToCancel: { id: string } | null = null;
+        if (status === 'WITHDRAWN' && listing.type === 'AUCTION') {
+            const auction = await this.prisma.auction.findUnique({
+                where: { listingId: id },
+                select: { id: true, status: true, deletedAt: true },
+            });
+
+            if (auction && !auction.deletedAt && auction.status === 'ACTIVE') {
+                throw new BadRequestException(
+                    'A live auction cannot be withdrawn. Allow the auction to finish normally.',
+                );
+            }
+            if (auction && !auction.deletedAt && auction.status === 'SCHEDULED') {
+                scheduledAuctionToCancel = { id: auction.id };
+            }
+        }
+
         // For SOLD transitions we wrap the listing update + Sale insert in a transaction
         // so total earnings can never drift from the listings.status state.
         const isNewSold = status === 'SOLD' && listing.status !== 'SOLD';
-        const updated = isNewSold
+        const updated = scheduledAuctionToCancel
             ? await this.prisma.$transaction(async (tx) => {
-                const next = await tx.listing.update({
-                    where: { id },
-                    data: { status },
+                const archivedAt = new Date();
+                const cancelled = await tx.auction.updateMany({
+                    where: {
+                        id: scheduledAuctionToCancel.id,
+                        status: 'SCHEDULED',
+                        deletedAt: null,
+                    },
+                    data: {
+                        status: 'CANCELLED',
+                        buyItNowPendingBuyerId: null,
+                        buyItNowPendingAt: null,
+                    },
                 });
-                // Only insert a Sale row if one doesn't already exist for this listing
-                // (defensive against double-clicks / race with `recordSale`).
-                const existing = await tx.sale.findFirst({ where: { listingId: id } });
-                if (!existing) {
-                    await tx.sale.create({
-                        data: {
-                            listingId: id,
-                            sellerId: listing.sellerId || userId,
-                            buyerId: null,
-                            soldPrice: listing.price,
-                            buyerPostcode: buyerPostcode ?? null,
+                if (cancelled.count !== 1) {
+                    throw new BadRequestException(
+                        'The auction changed while it was being withdrawn. Refresh and try again.',
+                    );
+                }
+
+                await tx.bid.updateMany({
+                    where: {
+                        listingId: id,
+                        deletedAt: null,
+                        cancelledAt: null,
+                        archivedAt: null,
+                    },
+                    data: { archivedAt },
+                });
+
+                if (listing.linkedListingId) {
+                    await tx.listing.updateMany({
+                        where: {
+                            id: listing.linkedListingId,
+                            linkedListingId: id,
                         },
+                        data: { linkedListingId: null },
                     });
                 }
-                return next;
+
+                return tx.listing.update({
+                    where: { id },
+                    data: { status, linkedListingId: null },
+                });
             })
-            : await this.prisma.listing.update({
-                where: { id },
-                data: { status },
-            });
+            : status === 'WITHDRAWN' && listing.linkedListingId
+                ? await this.prisma.$transaction(async (tx) => {
+                    // Withdrawing one channel must never leave the counterpart
+                    // pointing at a non-live listing. The other channel may
+                    // continue independently.
+                    await tx.listing.updateMany({
+                        where: {
+                            id: listing.linkedListingId!,
+                            linkedListingId: id,
+                        },
+                        data: { linkedListingId: null },
+                    });
+                    return tx.listing.update({
+                        where: { id },
+                        data: { status, linkedListingId: null },
+                    });
+                })
+                : isNewSold
+                    ? await this.prisma.$transaction(async (tx) => {
+                        const next = await tx.listing.update({
+                            where: { id },
+                            data: { status },
+                        });
+                        // Only insert a Sale row if one doesn't already exist for this listing
+                        // (defensive against double-clicks / race with `recordSale`).
+                        const existing = await tx.sale.findFirst({ where: { listingId: id } });
+                        if (!existing) {
+                            await tx.sale.create({
+                                data: {
+                                    listingId: id,
+                                    sellerId: listing.sellerId || userId,
+                                    buyerId: null,
+                                    soldPrice: listing.price,
+                                    buyerPostcode: buyerPostcode ?? null,
+                                },
+                            });
+                        }
+                        return next;
+                    })
+                    : await this.prisma.listing.update({
+                        where: { id },
+                        data: { status },
+                    });
 
         // Phase 2: Increment listing count if status changed TO Active from something else
         if (status === 'ACTIVE' && updated.sellerId && listing.status !== 'ACTIVE') {
@@ -2629,7 +2713,6 @@ export class ListingsService {
      * Includes ownership check
      */
     async softDelete(id: string, userId: string): Promise<Listing> {
-        // First, fetch the listing to verify ownership
         const listing = await this.findById(id);
 
         await this.assertListingManagement(
@@ -2638,15 +2721,70 @@ export class ListingsService {
             'You do not have permission to delete this listing',
         );
 
-        // Soft delete by setting deletedAt
-        const deletedListing = await this.prisma.listing.update({
-            where: { id },
-            data: {
-                deletedAt: new Date(),
-            },
-        });
+        const auction = listing.type === 'AUCTION'
+            ? await this.prisma.auction.findUnique({
+                where: { listingId: id },
+                select: { id: true, status: true, deletedAt: true },
+            })
+            : null;
 
-        return deletedListing;
+        if (auction && !auction.deletedAt && auction.status === 'ACTIVE') {
+            throw new BadRequestException(
+                'A live auction cannot be deleted. Allow the auction to finish normally.',
+            );
+        }
+
+        const deletedAt = new Date();
+        return this.prisma.$transaction(async (tx) => {
+            if (auction && !auction.deletedAt && auction.status === 'SCHEDULED') {
+                const cancelled = await tx.auction.updateMany({
+                    where: {
+                        id: auction.id,
+                        status: 'SCHEDULED',
+                        deletedAt: null,
+                    },
+                    data: {
+                        status: 'CANCELLED',
+                        deletedAt,
+                        buyItNowPendingBuyerId: null,
+                        buyItNowPendingAt: null,
+                    },
+                });
+                if (cancelled.count !== 1) {
+                    throw new BadRequestException(
+                        'The auction changed while it was being deleted. Refresh and try again.',
+                    );
+                }
+
+                await tx.bid.updateMany({
+                    where: {
+                        listingId: id,
+                        deletedAt: null,
+                        cancelledAt: null,
+                        archivedAt: null,
+                    },
+                    data: { archivedAt: deletedAt },
+                });
+            }
+
+            if (listing.linkedListingId) {
+                await tx.listing.updateMany({
+                    where: {
+                        id: listing.linkedListingId,
+                        linkedListingId: id,
+                    },
+                    data: { linkedListingId: null },
+                });
+            }
+
+            return tx.listing.update({
+                where: { id },
+                data: {
+                    deletedAt,
+                    linkedListingId: null,
+                },
+            });
+        });
     }
 
     /**
