@@ -773,7 +773,9 @@ export class DashboardService {
 
         // A £125 auction COMMISSION contains £100 seller pass-through and only
         // £25 retained by CarMazium. Pending vehicle payments are never revenue.
-        const totalRevenue = Number(retainedFees._sum.amount ?? 0) + commissionCount * 25;
+        const totalRevenue = Math.round(
+            (Number(retainedFees._sum.amount ?? 0) + commissionCount * 25) * 100,
+        ) / 100;
 
         return {
             totalUsers: users,
