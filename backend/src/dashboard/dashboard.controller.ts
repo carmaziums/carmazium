@@ -2,6 +2,8 @@ import { Controller, Get, UseGuards, ForbiddenException, Query } from '@nestjs/c
 import { ApiTags, ApiOperation, ApiResponse, ApiCookieAuth } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User, UserRole } from '@prisma/client';
 import { StandardResponse } from '../listings/dto/response.dto';
@@ -78,21 +80,19 @@ export class DashboardController {
     }
 
     @Get('finance')
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.FINANCE_PARTNER)
     @ApiOperation({ summary: 'Get finance partner dashboard data' })
     async getFinanceDashboard(@CurrentUser() user: User) {
-        if (user.role !== UserRole.FINANCE_PARTNER && user.role !== UserRole.ADMIN) {
-            throw new ForbiddenException('Only finance partners can access this dashboard');
-        }
         const data = await this.dashboardService.getFinanceDashboard(user.id);
         return new StandardResponse(data);
     }
 
     @Get('insurance')
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.INSURANCE_PARTNER)
     @ApiOperation({ summary: 'Get insurance partner dashboard data' })
     async getInsuranceDashboard(@CurrentUser() user: User) {
-        if (user.role !== UserRole.INSURANCE_PARTNER && user.role !== UserRole.ADMIN) {
-            throw new ForbiddenException('Only insurance partners can access this dashboard');
-        }
         const data = await this.dashboardService.getInsuranceDashboard(user.id);
         return new StandardResponse(data);
     }
