@@ -96,7 +96,7 @@ export default function SellerDashboard() {
                             border="border-primary/20"
                             loading={loading}
                             href="/dashboard/seller/listings?status=ACTIVE"
-                            subLabel={subLabel}
+                            subLabel="Current"
                         />
                         <MetricCard
                             label="Total Views"
