@@ -49,6 +49,7 @@ describe('dealer KYC private document storage', () => {
             dealerKyc: {
                 findUnique: jest.fn().mockResolvedValue({ id: 'kyc-1' }),
                 update: jest.fn().mockResolvedValue({}),
+                create: jest.fn().mockResolvedValue({ id: 'kyc-draft' }),
             },
         };
 
@@ -76,6 +77,24 @@ describe('dealer KYC private document storage', () => {
         expect(prisma.dealerKyc.update).toHaveBeenCalledWith(
             expect.objectContaining({ data: { proofOfAddressPath: key } }),
         );
+    });
+
+    it('creates an unpaid KYC draft so a first upload is never orphaned', async () => {
+        prisma.dealerKyc.findUnique.mockResolvedValueOnce(null);
+
+        const key = await service.storeDocument('user-1', 'proofOfAddress', file());
+
+        expect(prisma.dealerKyc.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                dealerProfileId: 'dealer-1',
+                proofOfAddressPath: key,
+                companyHouseName: '',
+                businessRegisteredAddress: '',
+                documentStatuses: {
+                    proofOfAddress: { status: 'PENDING', note: '' },
+                },
+            }),
+        });
     });
 
     it('rejects a file whose bytes do not match its declared type', async () => {
