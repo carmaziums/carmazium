@@ -48,11 +48,8 @@ export interface PurchaseFlowParams {
   listingImage?: string;
   /** Seller / dealer display name */
   sellerName?: string;
-  /**
-   * Payment type — defaults to FULL_PAYMENT.
-   * 'COMMISSION' is used by auction winners paying the £125 buyer fee.
-   */
-  paymentType?: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION';
+  /** Current PurchaseFlow is only for the £125 auction buyer platform fee. */
+  paymentType?: 'COMMISSION';
   /**
    * Optional auction id — when set and paymentType is 'COMMISSION' the
    * screen refetches the auction after a successful payment so the
@@ -94,7 +91,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
     listingTitle,
     listingImage,
     sellerName,
-    paymentType = 'FULL_PAYMENT',
+    paymentType = 'COMMISSION',
     auctionId,
   } = params;
 
@@ -168,7 +165,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
       const sheet = await createPaymentSheet({
         listingId,
         amount: total,
-        type: paymentType,
+        type: 'COMMISSION',
         currency: 'gbp',
       });
 
@@ -250,7 +247,6 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
   }, [
     listingId,
     total,
-    paymentType,
     initPaymentSheet,
     presentPaymentSheet,
     isWonAuctionFee,
