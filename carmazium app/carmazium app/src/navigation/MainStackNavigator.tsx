@@ -154,7 +154,7 @@ export type MainStackParamList = {
     listingTitle: string;
     listingImage?: string;
     sellerName?: string;
-    paymentType?: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION';
+    paymentType?: 'COMMISSION';
     auctionId?: string;
   } | undefined;
   SellCarFlow: { listingId?: string } | undefined;
