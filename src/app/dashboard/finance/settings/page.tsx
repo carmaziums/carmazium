@@ -1,19 +1,46 @@
 "use client"
 
 import * as React from "react"
-import { Settings, Loader2, Building2, Globe, Key, Save } from "lucide-react"
+import { AlertCircle, Building2, CheckCircle2, Copy, Globe, Key, Loader2, Save, Settings } from "lucide-react"
 import { DeleteAccountSection } from "@/components/dashboard/DeleteAccountSection"
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
+import {
+    getFinancePartnerSettings,
+    regenerateFinancePartnerKey,
+    saveFinancePartnerSettings,
+    type PartnerSettings,
+} from "@/lib/partnerApi"
 
 export default function FinanceSettingsPage() {
     const { user, profile, loading: authLoading } = useAuth()
+    const [loading, setLoading] = React.useState(true)
     const [saving, setSaving] = React.useState(false)
+    const [regenerating, setRegenerating] = React.useState(false)
+    const [settings, setSettings] = React.useState<PartnerSettings | null>(null)
     const [companyName, setCompanyName] = React.useState("")
     const [callbackUrl, setCallbackUrl] = React.useState("")
+    const [revealedKey, setRevealedKey] = React.useState("")
+    const [copied, setCopied] = React.useState(false)
+    const [error, setError] = React.useState<string | null>(null)
+    const [success, setSuccess] = React.useState<string | null>(null)
 
-    if (authLoading) {
+    React.useEffect(() => {
+        if (authLoading || !user) return
+        setLoading(true)
+        setError(null)
+        getFinancePartnerSettings()
+            .then((data) => {
+                setSettings(data)
+                setCompanyName(data.companyName)
+                setCallbackUrl(data.callbackUrl)
+            })
+            .catch((err) => setError(err?.message || "Could not load finance partner settings."))
+            .finally(() => setLoading(false))
+    }, [authLoading, user])
+
+    if (authLoading || loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -21,12 +48,63 @@ export default function FinanceSettingsPage() {
         )
     }
 
-    const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
+    const userName = profile?.firstName
+        ? `${profile.firstName} ${profile.lastName || ""}`.trim()
+        : (user?.email?.split("@")[0] || "User")
 
     const handleSave = async () => {
+        const trimmedName = companyName.trim()
+        if (trimmedName.length < 2) {
+            setError("Enter your finance company or trading name.")
+            return
+        }
+
         setSaving(true)
-        // API call would go here once backend partner profile update endpoint exists
-        setTimeout(() => setSaving(false), 1000)
+        setError(null)
+        setSuccess(null)
+        try {
+            const saved = await saveFinancePartnerSettings({
+                companyName: trimmedName,
+                callbackUrl: callbackUrl.trim() || null,
+            })
+            setSettings(saved)
+            setCompanyName(saved.companyName)
+            setCallbackUrl(saved.callbackUrl)
+            setSuccess("Finance partner settings saved.")
+        } catch (err: any) {
+            setError(err?.message || "Could not save finance partner settings.")
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleRegenerate = async () => {
+        if (!settings?.isConfigured) {
+            setError("Save your company settings before generating an integration key.")
+            return
+        }
+        if (!window.confirm("Generate a new integration key? Any previously issued key will stop working.")) return
+
+        setRegenerating(true)
+        setError(null)
+        setSuccess(null)
+        setCopied(false)
+        try {
+            const result = await regenerateFinancePartnerKey()
+            setRevealedKey(result.apiKey)
+            setSettings(current => current ? { ...current, apiKeyHint: result.apiKeyHint } : current)
+            setSuccess("New integration key generated. Copy it now; the full key will not be shown again after you leave this page.")
+        } catch (err: any) {
+            setError(err?.message || "Could not regenerate the integration key.")
+        } finally {
+            setRegenerating(false)
+        }
+    }
+
+    const copyKey = async () => {
+        if (!revealedKey) return
+        await navigator.clipboard.writeText(revealedKey)
+        setCopied(true)
     }
 
     return (
@@ -39,7 +117,17 @@ export default function FinanceSettingsPage() {
                         <Settings className="text-primary" /> Partner Settings
                     </h1>
 
-                    {/* Company Info */}
+                    {error && (
+                        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 flex gap-2">
+                            <AlertCircle size={18} className="shrink-0 mt-0.5" /> {error}
+                        </div>
+                    )}
+                    {success && (
+                        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300 flex gap-2">
+                            <CheckCircle2 size={18} className="shrink-0 mt-0.5" /> {success}
+                        </div>
+                    )}
+
                     <div className="glass-card border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl p-6 space-y-6">
                         <h2 className="text-lg font-bold flex items-center gap-2">
                             <Building2 size={18} className="text-primary" /> Company Information
@@ -68,7 +156,6 @@ export default function FinanceSettingsPage() {
                         </div>
                     </div>
 
-                    {/* Integration Settings */}
                     <div className="glass-card border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl p-6 space-y-6">
                         <h2 className="text-lg font-bold flex items-center gap-2">
                             <Globe size={18} className="text-primary" /> Integration Settings
@@ -83,22 +170,38 @@ export default function FinanceSettingsPage() {
                                 placeholder="https://your-api.example.com/webhook"
                                 className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/50"
                             />
-                            <p className="text-xs text-[var(--text-muted)] mt-2">We&apos;ll send application status webhooks to this URL</p>
+                            <p className="text-xs text-[var(--text-muted)] mt-2">
+                                Saved for approved external integrations. Automatic callback delivery is not enabled until CarMazium activates the integration.
+                            </p>
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">API Key</label>
-                            <div className="flex gap-2">
+                            <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">Integration Key</label>
+                            <div className="flex flex-col sm:flex-row gap-2">
                                 <input
                                     type="text"
-                                    value="••••••••••••••••"
-                                    disabled
-                                    className="flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 text-[var(--text-muted)] cursor-not-allowed font-mono"
+                                    value={revealedKey || settings?.apiKeyHint || "No key generated"}
+                                    readOnly
+                                    className="flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 text-[var(--text-muted)] font-mono"
                                 />
-                                <Button variant="outline" className="border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:">
-                                    <Key size={16} className="mr-2" /> Regenerate
+                                {revealedKey && (
+                                    <Button type="button" variant="outline" onClick={copyKey}>
+                                        <Copy size={16} className="mr-2" /> {copied ? "Copied" : "Copy"}
+                                    </Button>
+                                )}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleRegenerate}
+                                    disabled={regenerating || !settings?.isConfigured}
+                                >
+                                    {regenerating ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Key size={16} className="mr-2" />}
+                                    Regenerate
                                 </Button>
                             </div>
+                            <p className="text-xs text-[var(--text-muted)] mt-2">
+                                Keys are only exposed when regenerated. External API access is not enabled until a CarMazium partner integration is activated.
+                            </p>
                         </div>
                     </div>
 
