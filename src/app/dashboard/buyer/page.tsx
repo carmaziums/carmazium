@@ -91,7 +91,7 @@ export default function BuyerDashboard() {
                             bg="bg-primary/10"
                             border="border-primary/20"
                             loading={loading}
-                            subLabel={subLabel}
+                            subLabel="Current"
                         />
                         <MetricCard
                             label="Watchlist"
@@ -101,7 +101,7 @@ export default function BuyerDashboard() {
                             bg="bg-pink-500/10"
                             border="border-pink-500/20"
                             loading={loading}
-                            subLabel={subLabel}
+                            subLabel="Current"
                         />
                         <MetricCard
                             label="Won"
