@@ -49,6 +49,12 @@ describe('NotificationsService — push routing metadata', () => {
             },
         });
 
+        expect(gateway.sendNotification).toHaveBeenCalledTimes(1);
+        expect(gateway.sendNotification).toHaveBeenCalledWith(
+            'user-1',
+            expect.objectContaining({ id: 'notif-1', type: 'AUCTION_WON' }),
+        );
+
         expect(pushSpy).toHaveBeenCalledWith(
             'ExponentPushToken[test-token]',
             expect.objectContaining({
