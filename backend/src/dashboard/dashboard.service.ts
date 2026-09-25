@@ -691,20 +691,36 @@ export class DashboardService {
     }
 
     async getFinanceDashboard(userId: string) {
-        const [pending, approved, rejected] = await Promise.all([
-            this.prisma.financeApplication.count({ where: { status: 'PENDING' } }),
-            this.prisma.financeApplication.count({ where: { status: 'APPROVED' } }),
-            this.prisma.financeApplication.count({ where: { status: 'REJECTED' } }),
-        ]);
-
-        const recentApplications = await this.prisma.financeApplication.findMany({
-            take: 10,
-            orderBy: { createdAt: 'desc' },
-            include: {
-                user: { select: { id: true, firstName: true, lastName: true, email: true } },
-                listing: { select: { id: true, title: true, price: true, status: true } },
+        const partner = await this.prisma.partnerProfile.findFirst({
+            where: {
+                financeUserId: userId,
+                partnerType: 'FINANCE_PARTNER',
+                isActive: true,
+                deletedAt: null,
             },
+            select: { id: true },
         });
+        if (!partner) {
+            return {
+                stats: { pending: 0, approved: 0, rejected: 0 },
+                recentApplications: [],
+            };
+        }
+
+        const [pending, approved, rejected, recentApplications] = await Promise.all([
+            this.prisma.financeApplication.count({ where: { partnerId: partner.id, deletedAt: null, status: 'PENDING' } }),
+            this.prisma.financeApplication.count({ where: { partnerId: partner.id, deletedAt: null, status: 'APPROVED' } }),
+            this.prisma.financeApplication.count({ where: { partnerId: partner.id, deletedAt: null, status: 'REJECTED' } }),
+            this.prisma.financeApplication.findMany({
+                where: { partnerId: partner.id, deletedAt: null },
+                take: 10,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    user: { select: { id: true, firstName: true, lastName: true, email: true } },
+                    listing: { select: { id: true, title: true, price: true, status: true } },
+                },
+            }),
+        ]);
 
         return {
             stats: { pending, approved, rejected },
@@ -713,20 +729,36 @@ export class DashboardService {
     }
 
     async getInsuranceDashboard(userId: string) {
-        const [pending, quoted, declined] = await Promise.all([
-            this.prisma.insuranceQuote.count({ where: { status: 'PENDING' } }),
-            this.prisma.insuranceQuote.count({ where: { status: 'QUOTED' } }),
-            this.prisma.insuranceQuote.count({ where: { status: 'REJECTED' } }),
-        ]);
-
-        const recentQuotes = await this.prisma.insuranceQuote.findMany({
-            take: 10,
-            orderBy: { createdAt: 'desc' },
-            include: {
-                user: { select: { id: true, firstName: true, lastName: true, email: true } },
-                listing: { select: { id: true, title: true, price: true, status: true } },
+        const partner = await this.prisma.partnerProfile.findFirst({
+            where: {
+                insuranceUserId: userId,
+                partnerType: 'INSURANCE_PARTNER',
+                isActive: true,
+                deletedAt: null,
             },
+            select: { id: true },
         });
+        if (!partner) {
+            return {
+                stats: { pending: 0, quoted: 0, declined: 0 },
+                recentQuotes: [],
+            };
+        }
+
+        const [pending, quoted, declined, recentQuotes] = await Promise.all([
+            this.prisma.insuranceQuote.count({ where: { partnerId: partner.id, deletedAt: null, status: 'PENDING' } }),
+            this.prisma.insuranceQuote.count({ where: { partnerId: partner.id, deletedAt: null, status: 'QUOTED' } }),
+            this.prisma.insuranceQuote.count({ where: { partnerId: partner.id, deletedAt: null, status: 'REJECTED' } }),
+            this.prisma.insuranceQuote.findMany({
+                where: { partnerId: partner.id, deletedAt: null },
+                take: 10,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    user: { select: { id: true, firstName: true, lastName: true, email: true } },
+                    listing: { select: { id: true, title: true, price: true, status: true } },
+                },
+            }),
+        ]);
 
         return {
             stats: { pending, quoted, declined },
