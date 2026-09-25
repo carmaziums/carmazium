@@ -90,7 +90,7 @@ export function Footer() {
                 <div className="mt-10 flex flex-col gap-4 border-t border-white/10 pt-6 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
                     <p>&copy; {new Date().getFullYear()} CarMazium. All Rights Reserved.</p>
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                        <Link href="/terms" className={footerLinkClass}>Terms & Conditions</Link>
+                        <Link href="/terms" className={footerLinkClass}>Terms & Conditions</Link>\n                        <Link href="/privacy-policy" className={footerLinkClass}>Privacy Policy</Link>\n                        <Link href="/delete-account" className={footerLinkClass}>Delete Account</Link>
                         <Link href="/cookie-policy" className={footerLinkClass}>Cookie Policy</Link>
                         <button
                             onClick={openPreferences}
