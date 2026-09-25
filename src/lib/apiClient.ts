@@ -1,4 +1,5 @@
 import { getAccessToken } from './supabase';
+import { fetchWithRetry } from './fetchWithRetry';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
 
@@ -78,28 +79,49 @@ export async function apiClient<T>(
         ...options.headers,
     };
 
-    // Use a manual AbortController for a 30 s timeout — compatible with all
-    // browsers (AbortSignal.timeout is not available in Safari < 16).
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(new Error('Request timed out after 30 s')), 30000);
-
-    const config = {
+    const method = (options.method || 'GET').toUpperCase();
+    const config: RequestInit = {
         ...options,
         headers,
         credentials: 'include' as RequestCredentials,
-        signal: controller.signal,
     };
+    const requestUrl = `${API_URL}${endpoint}`;
 
     let response: Response;
     try {
-        response = await fetch(`${API_URL}${endpoint}`, config);
+        if (method === 'GET' || method === 'HEAD') {
+            // Vercel occasionally sees transient Fly.io socket resets/timeouts.
+            // Reads are safe to retry; writes are intentionally single-attempt
+            // to prevent duplicate mutations if only the response was lost.
+            response = await fetchWithRetry(requestUrl, config, {
+                timeoutMs: 10000,
+                retries: 2,
+                retryDelayMs: 400,
+            });
+        } else {
+            // Keep mutations single-attempt with the existing 30 s ceiling.
+            const controller = new AbortController();
+            const timer = setTimeout(
+                () => controller.abort(new Error('Request timed out after 30 s')),
+                30000,
+            );
+
+            try {
+                response = await fetch(requestUrl, {
+                    ...config,
+                    signal: controller.signal,
+                });
+            } finally {
+                clearTimeout(timer);
+            }
+        }
     } catch (err: any) {
         const msg = err?.message || String(err);
-        throw new Error(msg.includes('aborted') || msg.includes('timed out')
-            ? 'Request timed out — the server took too long to respond. Please try again.'
-            : msg);
-    } finally {
-        clearTimeout(timer);
+        throw new Error(
+            msg.includes('aborted') || msg.includes('timed out') || err?.name === 'AbortError'
+                ? 'Request timed out — the server took too long to respond. Please try again.'
+                : msg,
+        );
     }
 
     if (!response.ok) {
