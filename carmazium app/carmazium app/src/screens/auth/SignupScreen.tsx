@@ -371,7 +371,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.checkboxLabel}>
                 I agree to the{' '}
                 <Text style={styles.boldText} onPress={() => navigation.navigate('Terms')}>Terms</Text> and{' '}
-                <Text style={styles.boldText}>Privacy Policy</Text>.
+                <Text style={styles.boldText} onPress={() => navigation.navigate('PrivacyPolicy')}>Privacy Policy</Text>.
               </Text>
             </TouchableOpacity>
 

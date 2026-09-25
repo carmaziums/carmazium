@@ -38,6 +38,7 @@ import { ProviderLeadsScreen } from '../screens/main/ProviderLeadsScreen';
 import { ProviderLeadDetailScreen } from '../screens/main/ProviderLeadDetailScreen';
 import { ProviderMessagesScreen } from '../screens/main/ProviderMessagesScreen';
 import { TermsScreen } from '../screens/main/TermsScreen';
+import { PrivacyPolicyScreen } from '../screens/main/PrivacyPolicyScreen';
 import { HowItWorksScreen } from '../screens/main/HowItWorksScreen';
 import { AboutScreen } from '../screens/main/AboutScreen';
 import { ContactScreen } from '../screens/main/ContactScreen';
@@ -127,6 +128,7 @@ export type MainStackParamList = {
   ProviderLeadDetail: { leadId: string };
   ProviderMessages: undefined;
   Terms: undefined;
+  PrivacyPolicy: undefined;
   HowItWorks: undefined;
   About: undefined;
   Contact: undefined;
@@ -298,6 +300,7 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="ProviderLeadDetail" component={ProviderLeadDetailScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ProviderMessages" component={ProviderMessagesScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Terms" component={TermsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="HowItWorks" component={HowItWorksScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="About" component={AboutScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Contact" component={ContactScreen} options={{ animation: 'slide_from_right' }} />

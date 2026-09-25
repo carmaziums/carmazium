@@ -6,6 +6,7 @@ import { SignupScreen } from '../screens/auth/SignupScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
 import { ResetPasswordScreen } from '../screens/auth/ResetPasswordScreen';
 import { TermsScreen } from '../screens/main/TermsScreen';
+import { PrivacyPolicyScreen } from '../screens/main/PrivacyPolicyScreen';
 import { Colors } from '../constants/colors';
 import { useAuthStore } from '../store/authStore';
 
@@ -21,6 +22,7 @@ export type AuthStackParamList = {
   // copy of this screen is unreachable before login (mobile-production-
   // readiness-plan.md F13).
   Terms: undefined;
+  PrivacyPolicy: undefined;
 };
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
@@ -50,6 +52,7 @@ export const AuthNavigator: React.FC = () => {
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       <Stack.Screen name="Terms" component={TermsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };

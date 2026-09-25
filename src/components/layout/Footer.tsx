@@ -91,6 +91,8 @@ export function Footer() {
                     <p>&copy; {new Date().getFullYear()} CarMazium. All Rights Reserved.</p>
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                         <Link href="/terms" className={footerLinkClass}>Terms & Conditions</Link>
+                        <Link href="/privacy-policy" className={footerLinkClass}>Privacy Policy</Link>
+                        <Link href="/delete-account" className={footerLinkClass}>Delete Account</Link>
                         <Link href="/cookie-policy" className={footerLinkClass}>Cookie Policy</Link>
                         <button
                             onClick={openPreferences}

@@ -67,6 +67,7 @@ const ITEMS: MenuItem[] = [
   // Built but previously unreachable from anywhere in the app — no nav entry
   // existed at all (mobile-production-readiness-plan.md F13).
   { id: 'terms',    label: 'Terms of Service', icon: 'document-text-outline', iconLib: 'ion', stackScreen: 'Terms' },
+  { id: 'privacy',  label: 'Privacy Policy', icon: 'shield-checkmark-outline', iconLib: 'ion', stackScreen: 'PrivacyPolicy' },
 ];
 
 // Web (DashboardSidebar.tsx) treats BUYER and SELLER as the same unified
