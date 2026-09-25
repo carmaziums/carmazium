@@ -2797,3 +2797,16 @@ Runtime/external evidence still required before a specific release is called ful
 - runtime keyboard/screen-reader checks;
 - real Apple app identifier and Android release-certificate SHA-256 for website association files.
 
+
+
+### 2026-09-25 — Block 10 release certification
+
+**Baseline:** `main@2519efffdd3ecd6eedbbb3d1eda18ba04b055ebb` after the Block 9 web/native parity correction.
+
+**Repository result.** The parity manifest now has 53 required web/native features, 2 approved web-only exceptions and zero unresolved gaps. Added `scripts/check-release-readiness.mjs` plus the `Release Certification` GitHub workflow so the product contract, web/native/backend type safety, full backend tests/build and native Expo config are rechecked together. Manual dispatch also performs live production web and backend-health smoke checks. Strict mode additionally requires the real store identifiers and deployed Apple/Android association files.
+
+**Production evidence.** The exact Block 9 Vercel production deployment was READY and mapped to both production domains. Core public routes returned HTTP 200. In the inspected two-hour window the deployment recorded 139 HTTP 200 responses and 2 HTTP 304 responses with no 4xx/5xx status groups. Build-error logs were empty. Historical project-level Fly connection-reset/timeout events remain documented rather than being misrepresented as impossible to recur.
+
+**External release blockers.** Both `/.well-known/assetlinks.json` and `/.well-known/apple-app-site-association` returned 404. The real Android release-signing SHA-256 fingerprint and Apple Team/app identifier are not stored in the repository, and the iOS EAS submit fields remain placeholders. No signed store artefact or physical-device accessibility/performance/push/payment pass was claimed.
+
+**Programme state:** Blocks 1–10 complete at the code-contract/live-web level. Native store release remains on HOLD until the strict external gate can pass.
