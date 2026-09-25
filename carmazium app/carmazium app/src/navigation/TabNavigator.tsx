@@ -22,6 +22,8 @@ import { DealerProfileScreen } from '../screens/main/DealerProfileScreen';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
 import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
 import { AccountRoleHomeScreen } from '../screens/account/AccountRoleHomeScreen';
+import { LegacyPartnerDashboardScreen } from '../screens/account/LegacyPartnerDashboardScreen';
+import { PartnerDashboardScreen } from '../screens/main/PartnerDashboardScreen';
 import { useAuthStore } from '../store/authStore';
 
 // Stable wrapper so the Profile tab's component prop never changes reference,
@@ -40,14 +42,15 @@ const ProfileTabScreen: React.FC<any> = React.memo((props) => {
   // from the drawer — only the tiles differ, not the access.
   // Business/platform roles must never be silently presented as a personal
   // Buyer simply because the mobile preview role is intentionally narrower.
-  // Their native operational workspaces are tracked separately in the parity
-  // programme, but their identity is preserved here today.
-  if (
-    accountRole === 'contractor' ||
-    accountRole === 'finance_partner' ||
-    accountRole === 'insurance_partner' ||
-    accountRole === 'admin'
-  ) {
+  // Route each operational role to the same backend-backed workspace it has
+  // on web. Admin remains intentionally web-only (product-parity.json).
+  if (accountRole === 'contractor') {
+    return <PartnerDashboardScreen {...props} />;
+  }
+  if (accountRole === 'finance_partner' || accountRole === 'insurance_partner') {
+    return <LegacyPartnerDashboardScreen {...props} />;
+  }
+  if (accountRole === 'admin') {
     return <AccountRoleHomeScreen {...props} />;
   }
 

@@ -91,7 +91,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
     listingTitle,
     listingImage,
     sellerName,
-    paymentType = 'COMMISSION',
+    paymentType,
     auctionId,
   } = params;
 
@@ -99,11 +99,10 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
   /** An auction buyer fee, as opposed to a retail purchase — the two want
    *  different next steps on success. */
   const isWonAuctionFee = isCommission && !!auctionId;
-  // Auction winners pay only the platform commission — no sale price is
-  // being settled here (they still owe the seller the winning bid amount
-  // out-of-band). For deposits and full payments the sale price stacks
-  // with the buyer fee.
-  const total = isCommission ? buyerFee : salePrice + buyerFee;
+  // Auction winners pay only the CarMazium buyer fee here. Never default an
+  // unspecified route into COMMISSION: stale/legacy callers must fail closed
+  // into the direct-to-seller message instead of attempting a platform charge.
+  const total = isCommission ? buyerFee : 0;
 
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState(false);
