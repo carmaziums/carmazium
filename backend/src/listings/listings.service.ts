@@ -1807,6 +1807,54 @@ export class ListingsService {
             'You do not have permission to update this listing',
         );
 
+        // SOLD and OFFER_ACCEPTED are controlled deal states. They cannot be
+        // reopened or withdrawn through the generic status endpoint because that
+        // would bypass Sale cleanup, accepted-offer cancellation and evidence-backed
+        // sale cancellation.
+        if (listing.status === 'SOLD' && status !== 'SOLD') {
+            throw new BadRequestException(
+                'A sold vehicle cannot be relisted directly. Use the sale cancellation workflow first.',
+            );
+        }
+        if (
+            listing.status === 'OFFER_ACCEPTED'
+            && status !== 'OFFER_ACCEPTED'
+            && status !== 'SOLD'
+        ) {
+            throw new BadRequestException(
+                'This vehicle has an accepted deal. Use the sale cancellation workflow to cancel or relist it.',
+            );
+        }
+        if (status === 'OFFER_ACCEPTED' && listing.status !== 'OFFER_ACCEPTED') {
+            throw new BadRequestException(
+                'Sale Pending can only be created by accepting a valid retail offer.',
+            );
+        }
+
+        // The generic SOLD transition is only a compatibility entry point for
+        // approved retail inventory. Route it through recordSale() so accepted
+        // buyer/price data, Sale persistence and concurrency protection are identical
+        // to PATCH /listings/:id/sold.
+        if (status === 'SOLD') {
+            if (listing.status === 'SOLD') {
+                throw new BadRequestException('This listing is already marked as sold');
+            }
+            if (listing.type !== 'CLASSIFIED') {
+                throw new BadRequestException(
+                    'Auction sales are completed by the auction lifecycle and cannot be marked sold manually.',
+                );
+            }
+            if (!['ACTIVE', 'OFFER_ACCEPTED'].includes(listing.status)) {
+                throw new BadRequestException(
+                    'Only an active or sale-pending retail listing can be marked sold.',
+                );
+            }
+            return this.recordSale(id, userId, {
+                soldPrice: Number(listing.price),
+                buyerPostcode,
+            });
+        }
+
         // Build update data with proper type mapping
         const updateData: any = {};
 
@@ -1926,7 +1974,7 @@ export class ListingsService {
         // listing that has already been through that gate once (i.e. it's currently
         // ACTIVE, SOLD, WITHDRAWN, or OFFER_ACCEPTED). It may never be used to skip
         // review for a brand-new, still-DRAFT, still-PENDING_REVIEW, or REJECTED listing.
-        if (status === 'ACTIVE' && !['ACTIVE', 'SOLD', 'WITHDRAWN', 'OFFER_ACCEPTED'].includes(listing.status)) {
+        if (status === 'ACTIVE' && !['ACTIVE', 'WITHDRAWN'].includes(listing.status)) {
             throw new BadRequestException(
                 'This listing has not been approved yet. Submit it for review from the listing editor instead.',
             );
@@ -1953,9 +2001,6 @@ export class ListingsService {
             }
         }
 
-        // For SOLD transitions we wrap the listing update + Sale insert in a transaction
-        // so total earnings can never drift from the listings.status state.
-        const isNewSold = status === 'SOLD' && listing.status !== 'SOLD';
         const updated = scheduledAuctionToCancel
             ? await this.prisma.$transaction(async (tx) => {
                 const archivedAt = new Date();
@@ -2019,41 +2064,14 @@ export class ListingsService {
                         data: { status, linkedListingId: null },
                     });
                 })
-                : isNewSold
-                    ? await this.prisma.$transaction(async (tx) => {
-                        const next = await tx.listing.update({
-                            where: { id },
-                            data: { status },
-                        });
-                        // Only insert a Sale row if one doesn't already exist for this listing
-                        // (defensive against double-clicks / race with `recordSale`).
-                        const existing = await tx.sale.findFirst({ where: { listingId: id } });
-                        if (!existing) {
-                            await tx.sale.create({
-                                data: {
-                                    listingId: id,
-                                    sellerId: listing.sellerId || userId,
-                                    buyerId: null,
-                                    soldPrice: listing.price,
-                                    buyerPostcode: buyerPostcode ?? null,
-                                },
-                            });
-                        }
-                        return next;
-                    })
-                    : await this.prisma.listing.update({
-                        where: { id },
-                        data: { status },
-                    });
+                : await this.prisma.listing.update({
+                    where: { id },
+                    data: { status },
+                });
 
         // Phase 2: Increment listing count if status changed TO Active from something else
         if (status === 'ACTIVE' && updated.sellerId && listing.status !== 'ACTIVE') {
             await this.sellersService.incrementListings(updated.sellerId);
-        }
-
-        // Phase 2: Increment sales count if marked as SOLD
-        if (isNewSold && updated.sellerId) {
-            await this.sellersService.incrementSales(updated.sellerId);
         }
 
         return updated;
@@ -2314,6 +2332,16 @@ export class ListingsService {
         if (listing.status === 'SOLD') {
             throw new BadRequestException('This listing is already marked as sold');
         }
+        if (listing.type !== 'CLASSIFIED') {
+            throw new BadRequestException(
+                'Auction sales are completed by the auction lifecycle and cannot be recorded manually.',
+            );
+        }
+        if (!['ACTIVE', 'OFFER_ACCEPTED'].includes(listing.status)) {
+            throw new BadRequestException(
+                'Only an active or sale-pending retail listing can be recorded as sold.',
+            );
+        }
 
         const effectiveSellerId = listing.sellerId || userId;
 
@@ -2356,10 +2384,28 @@ export class ListingsService {
         }
 
         const updated = await this.prisma.$transaction(async (tx) => {
-            const updatedListing = await tx.listing.update({
-                where: { id },
+            // Compare-and-set the listing state. Only one concurrent completion can
+            // win, so double-clicks/racing requests cannot create duplicate sale
+            // counters or overwrite a cancellation that committed first.
+            const claimed = await tx.listing.updateMany({
+                where: {
+                    id,
+                    type: 'CLASSIFIED',
+                    status: listing.status,
+                    deletedAt: null,
+                },
                 data: { status: 'SOLD' },
             });
+            if (claimed.count !== 1) {
+                throw new BadRequestException(
+                    'This listing changed while the sale was being recorded. Refresh and try again.',
+                );
+            }
+
+            const updatedListing = await tx.listing.findUnique({ where: { id } });
+            if (!updatedListing) {
+                throw new NotFoundException('Listing not found after sale completion');
+            }
 
             // Defensive close: once SOLD, no pending/countered negotiation may
             // remain actionable, including manual/off-platform sales.
