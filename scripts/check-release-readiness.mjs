@@ -92,6 +92,7 @@ for (const feature of webOnly) {
 requiredFile('src/app/privacy-policy/page.tsx', 'Public privacy policy');
 requiredFile('src/app/delete-account/page.tsx', 'Public account-deletion page');
 requiredFile('carmazium app/carmazium app/src/screens/main/PrivacyPolicyScreen.tsx', 'Native privacy policy screen');
+requiredFile('docs/privacy/ACCOUNT_DELETION_RETENTION.md', 'Account deletion retention contract');
 
 const webPrivacy = read('src/app/privacy-policy/page.tsx');
 const webDelete = read('src/app/delete-account/page.tsx');
@@ -101,6 +102,8 @@ const mobilePrivacy = read('carmazium app/carmazium app/src/screens/main/Privacy
 const mobileSignup = read('carmazium app/carmazium app/src/screens/auth/SignupScreen.tsx');
 const mobileDrawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
 const mobileSettings = read('carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx');
+const accountDeletionService = read('backend/src/users/users.service.ts');
+const deletionRetention = read('docs/privacy/ACCOUNT_DELETION_RETENTION.md');
 
 if (
   !webPrivacy.includes('MaziuM AI') ||
@@ -133,6 +136,24 @@ if (
   fail('Native/web privacy or account-deletion access regressed');
 } else {
   ok('Privacy policy and account deletion remain reachable across web and native');
+}
+
+if (
+  !accountDeletionService.includes('FROM storage.objects') ||
+  !accountDeletionService.includes('owner_id::text') ||
+  !accountDeletionService.includes('auth.admin') ||
+  !accountDeletionService.includes('deleteUser(userId)') ||
+  !accountDeletionService.includes('dealerKyc.delete') ||
+  !accountDeletionService.includes('addressVerification.deleteMany') ||
+  !accountDeletionService.includes('analyticsEvent.deleteMany') ||
+  !accountDeletionService.includes('location: null') ||
+  !accountDeletionService.includes('postcode: null') ||
+  !accountDeletionService.includes('this.prisma.$transaction') ||
+  !deletionRetention.includes('Supabase Auth identity')
+) {
+  fail('Account deletion no longer performs the required Auth/Storage/PII erasure lifecycle');
+} else {
+  ok('Account deletion erases Auth, Storage, KYC and transient PII while retaining only documented record classes');
 }
 
 // ---------------------------------------------------------------------------
