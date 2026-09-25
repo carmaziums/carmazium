@@ -1,0 +1,137 @@
+name: Release Certification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'backend/**'
+      - 'carmazium app/carmazium app/**'
+      - 'product-parity.json'
+      - 'scripts/check-product-parity.mjs'
+      - 'scripts/check-release-readiness.mjs'
+      - 'package.json'
+      - '.github/workflows/release-certification.yml'
+  workflow_dispatch:
+    inputs:
+      strict_external:
+        description: 'Require store identifiers and deployed universal-link associations'
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-certification-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    name: Product + release contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check one-product parity
+        run: node scripts/check-product-parity.mjs
+      - name: Check code-controlled release readiness
+        run: node scripts/check-release-readiness.mjs
+
+  web:
+    name: Web typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+  mobile:
+    name: Native config + typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 'carmazium app/carmazium app'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
+      - run: npm ci
+      - name: Resolve Expo production config
+        run: npx expo config --type public > /tmp/carmazium-expo-config.json
+      - run: npm run typescript
+
+  backend:
+    name: Backend typecheck + tests + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test -- --runInBand
+      - run: npm run build
+
+  live-production:
+    name: Live production smoke
+    if: github.event_name == 'workflow_dispatch'
+    needs: [contract, web, mobile, backend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check production web routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in / /search /auctions /sell /pricing /auth/login /auth/signup; do
+            code="$(curl --retry 3 --retry-all-errors --connect-timeout 10 --max-time 30 -sS -o /dev/null -w '%{http_code}' "https://www.carmazium.com${path}")"
+            echo "${path}: HTTP ${code}"
+            test "${code}" = "200"
+          done
+      - name: Check backend health
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(curl --retry 3 --retry-all-errors --connect-timeout 10 --max-time 30 -fsS https://carmazium-hjoh9w.fly.dev/health)"
+          echo "${body}"
+          node -e "const b=JSON.parse(process.argv[1]); if (b.status !== 'ok') process.exit(1)" "${body}"
+
+  strict-external-release-gate:
+    name: Store + universal-link gate
+    if: github.event_name == 'workflow_dispatch' && inputs.strict_external == true
+    needs: [live-production]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Require repository release identifiers
+        run: node scripts/check-release-readiness.mjs --strict
+      - name: Require deployed Android app association
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --retry 3 --retry-all-errors --connect-timeout 10 --max-time 30 -fsS             -H 'Accept: application/json'             https://www.carmazium.com/.well-known/assetlinks.json             | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const j=JSON.parse(s);if(!Array.isArray(j)||j.length===0)process.exit(1)})"
+      - name: Require deployed Apple app association
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --retry 3 --retry-all-errors --connect-timeout 10 --max-time 30 -fsS             -H 'Accept: application/json'             https://www.carmazium.com/.well-known/apple-app-site-association             | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const j=JSON.parse(s);if(!Array.isArray(j?.applinks?.details)||j.applinks.details.length===0)process.exit(1)})"
