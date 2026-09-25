@@ -729,6 +729,11 @@ const mobileDealerOffers = read('carmazium app/carmazium app/src/screens/main/De
 const webDealerLiveAuction = read('src/app/auctions/live/[id]/page.tsx');
 const webDealerWonAuctions = read('src/app/dashboard/dealer/auctions/won/page.tsx');
 const mobileDealerLiveAuction = read('carmazium app/carmazium app/src/screens/vehicle/AuctionDetailScreen.tsx');
+const webDealerKycForm = read('src/components/dashboard/KycOverlayForm.tsx');
+const webDealerApiForKyc = read('src/lib/dealerApi.ts');
+const mobileDealerKycScreen = read('carmazium app/carmazium app/src/screens/main/DealerKYCScreen.tsx');
+const mobileDealerOnboardingScreen = read('carmazium app/carmazium app/src/screens/main/DealerOnboardingScreen.tsx');
+const dealerKycDocuments = read('backend/src/dealers/kyc-documents.service.ts');
 
 if (
   !webDealerAccess.includes("('/dealers/access')") ||
@@ -759,6 +764,30 @@ if (
   fail('Native dealer UI is not bound to the backend dealership permission contract');
 } else {
   ok('Native dealer routes, drawer and inventory controls consume dealership permissions');
+}
+
+// Block 10 revalidation — company and sole-trader KYC must remain one
+// cross-platform business-verification contract. Sole traders must never be
+// forced through Companies House fields, and identity documents stay private.
+if (
+  !webDealerApiForKyc.includes("export type BusinessType = 'PRIVATE_LIMITED' | 'SOLE_PROPRIETORSHIP'") ||
+  !webDealerKycForm.includes("formData.businessType === \"SOLE_PROPRIETORSHIP\"") ||
+  !webDealerKycForm.includes('Sole traders are not registered at Companies House') ||
+  !mobileDealerOnboardingScreen.includes("type BusinessType = 'PRIVATE_LIMITED' | 'SOLE_PROPRIETORSHIP'") ||
+  !mobileDealerOnboardingScreen.includes("navigation?.navigate('DealerKYC', { businessType })") ||
+  !mobileDealerKycScreen.includes("businessType === 'SOLE_PROPRIETORSHIP'") ||
+  !mobileDealerKycScreen.includes('Sole traders must upload photo ID and proof of address.') ||
+  !dealerService.includes("const businessType = dto.businessType ?? 'PRIVATE_LIMITED'") ||
+  !dealerService.includes("businessType === 'SOLE_PROPRIETORSHIP'") ||
+  !dealerService.includes('Sole traders must upload photo ID and proof of address before submitting KYC.') ||
+  !dealerKycDocuments.includes("DEALER_KYC_BUCKET = 'dealer-kyc-documents'") ||
+  !dealerKycDocuments.includes("cacheControl: 'no-store'") ||
+  !dealerKycDocuments.includes('dealerKyc.create') ||
+  !adminServiceForPayouts.includes('{ stripeChargedAt: { not: null } }')
+) {
+  fail('Registered-company / sole-trader KYC parity or private-evidence safeguards drifted');
+} else {
+  ok('Registered-company and sole-trader KYC stay aligned across web, native and backend');
 }
 
 // Block 9 — loading / empty / error / offline state consistency.
