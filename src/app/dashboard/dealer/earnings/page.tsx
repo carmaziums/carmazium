@@ -82,7 +82,7 @@ export default function DealerEarningsPage() {
                             </div>
                             <div>
                                 <h1 className="text-3xl font-black font-heading text-[var(--text-primary)] uppercase tracking-tight">Dealership Earnings</h1>
-                                <p className="text-[var(--text-muted)] mt-0.5 font-medium text-sm">Comprehensive revenue oversight for your dealership inventory.</p>
+                                <p className="text-[var(--text-muted)] mt-0.5 font-medium text-sm">Track dealership vehicle sales proceeds and CarMazium auction bonus payments.</p>
                             </div>
                         </div>
                         <Button className="flex items-center gap-2 shadow-neon h-12" variant="outline" size="sm">
