@@ -139,7 +139,7 @@ export async function regenerateLegacyPartnerKey(kind: LegacyPartnerKind): Promi
 
 export async function updateFinancePartnerApplication(
   applicationId: string,
-  status: 'APPROVED' | 'REJECTED',
+  status: 'APPROVED' | 'REJECTED' | 'COMPLETED',
   monthlyPayment?: number,
 ): Promise<FinancePartnerApplication> {
   const res = await apiClient<StandardResponse<FinancePartnerApplication>>(
