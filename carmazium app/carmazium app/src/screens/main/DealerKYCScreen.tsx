@@ -16,8 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { apiClient } from '../../lib/apiClient';
-import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
-import { useAuthStore } from '../../store/authStore';
+import { convertAndCompress } from '../../lib/storageHelper';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
@@ -29,6 +28,9 @@ import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+
+type BusinessType = 'PRIVATE_LIMITED' | 'SOLE_PROPRIETORSHIP';
+
 // ─── Inline form-field helper ────────────────────────────────────────────────
 
 interface FormFieldProps {
@@ -161,9 +163,12 @@ const KycSkeleton: React.FC = () => (
 
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
-export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
-  const userId = useAuthStore((state) => state.user?.id) ?? 'anon';
+  const [businessType, setBusinessType] = useState<BusinessType>(
+    route?.params?.businessType === 'SOLE_PROPRIETORSHIP' ? 'SOLE_PROPRIETORSHIP' : 'PRIVATE_LIMITED',
+  );
+  const isSoleTrader = businessType === 'SOLE_PROPRIETORSHIP';
 
   const [existingKyc, setExistingKyc] = useState<any>(null);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -206,6 +211,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
         if (res.success && res.data) {
           setExistingKyc(res.data);
           const k = res.data;
+          setBusinessType(k.businessType === 'SOLE_PROPRIETORSHIP' ? 'SOLE_PROPRIETORSHIP' : 'PRIVATE_LIMITED');
           setForm({
             companyHouseName: k.companyHouseName || '',
             representativeName: k.representativeName || '',
@@ -218,6 +224,12 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
             businessRegisteredAddress: k.businessRegisteredAddress || '',
             tradingAddress: k.tradingAddress || '',
             googleReviewsLink: k.googleReviewsLink || '',
+          });
+          setDocUrls({
+            directorIdProof: k.directorIdProof || '',
+            proofOfAddress: k.proofOfAddress || '',
+            vatProof: k.vatProof || '',
+            companyRegistrationProof: k.companyRegistrationProof || '',
           });
           // Populate already-paid state if the dealer has previously cleared the £1 fee.
           if (k.stripeChargedAt) {
@@ -270,10 +282,22 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
       }
 
       const ext = mimeType === 'application/pdf' ? 'pdf' : 'jpg';
-      const path = `${userId}/kyc/${fieldName}-${Date.now()}.${ext}`;
-      // Keep the authenticated user ID as the first path segment so Storage
-      // RLS can enforce owner-scoped writes, matching the web upload helper.
-      const url = await uploadToStorage(localUri, 'listings', path, mimeType);
+      const body = new FormData();
+      body.append('file', {
+        uri: localUri,
+        name: `${fieldName}-${Date.now()}.${ext}`,
+        type: mimeType,
+      } as any);
+
+      // Identity documents must use the backend's private KYC bucket. The app
+      // previously uploaded passports and certificates through the generic
+      // listings path, which did not match the hardened web KYC flow.
+      const uploaded = await apiClient<{ success: boolean; data: { url: string | null } }>(
+        `/dealers/kyc/documents/${fieldName}`,
+        { method: 'POST', body, timeoutMs: 30_000 },
+      );
+      const url = uploaded.data?.url;
+      if (!url) throw new Error('Document uploaded but no preview link was returned.');
       setDocUrls((prev) => ({ ...prev, [fieldName]: url }));
       haptics.medium();
     } catch (err: any) {
@@ -289,21 +313,28 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
   // checkout redirect. Nothing here is considered "submitted" from the dealer's
   // point of view until stripeChargedAt is set (see the isPending gate below).
   const handleSubmit = async () => {
-    const required: (keyof typeof form)[] = [
+    const commonRequired: (keyof typeof form)[] = [
       'companyHouseName',
       'representativeName',
       'representativePosition',
+      'directorName',
+      'businessRegisteredAddress',
+    ];
+    const companyRequired: (keyof typeof form)[] = [
       'vatNumber',
       'companyRegistrationNumber',
       'personOfSignificantControl',
-      'directorName',
       'businessWebsite',
-      'businessRegisteredAddress',
     ];
+    const required = isSoleTrader ? commonRequired : [...commonRequired, ...companyRequired];
 
     const missing = required.filter((k) => !form[k]?.trim());
     if (missing.length > 0) {
       setFieldErrors(Object.fromEntries(missing.map((k) => [k, 'This field is required'])));
+      return;
+    }
+    if (isSoleTrader && (!docUrls.directorIdProof || !docUrls.proofOfAddress)) {
+      setSubmitError('Sole traders must upload photo ID and proof of address.');
       return;
     }
     setFieldErrors({});
@@ -311,7 +342,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const payload: any = { ...form, ...docUrls };
+      const payload: any = { ...form, businessType };
       if (!payload.tradingAddress) delete payload.tradingAddress;
       if (!payload.googleReviewsLink) delete payload.googleReviewsLink;
 
@@ -631,35 +662,86 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
               </View>
             </View>
 
-            {/* ── SECTION 1: COMPANY DETAILS ──────────────────────────────── */}
-            <SectionLabel title="COMPANY DETAILS" />
+            {/* ── BUSINESS TYPE ─────────────────────────────────────────── */}
+            <SectionLabel title="BUSINESS TYPE" />
+            <View style={styles.businessTypeRow}>
+              {([
+                { value: 'PRIVATE_LIMITED' as BusinessType, title: 'REGISTERED COMPANY', hint: 'Registered at Companies House' },
+                { value: 'SOLE_PROPRIETORSHIP' as BusinessType, title: 'SOLE TRADER', hint: 'Trading as an individual' },
+              ]).map((option) => {
+                const selected = businessType === option.value;
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[styles.businessTypeCard, selected && styles.businessTypeCardSelected]}
+                    onPress={() => {
+                      setBusinessType(option.value);
+                      setFieldErrors({});
+                      setSubmitError(null);
+                      if (option.value === 'SOLE_PROPRIETORSHIP') {
+                        setForm((prev) => ({
+                          ...prev,
+                          vatNumber: '',
+                          companyRegistrationNumber: '',
+                          personOfSignificantControl: '',
+                        }));
+                      }
+                    }}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected }}
+                  >
+                    <View style={[styles.businessTypeRadio, selected && styles.businessTypeRadioSelected]}>
+                      {selected ? <View style={styles.businessTypeRadioDot} /> : null}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.businessTypeTitle, selected && styles.businessTypeTitleSelected]}>
+                        {option.title}
+                      </Text>
+                      <Text style={styles.businessTypeHint}>{option.hint}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {isSoleTrader ? (
+              <Text style={styles.businessTypeHelp}>
+                Sole traders are verified using the owner&apos;s photo ID and proof of address. Companies House details are not required.
+              </Text>
+            ) : null}
+
+            {/* ── SECTION 1: BUSINESS DETAILS ─────────────────────────────── */}
+            <SectionLabel title={isSoleTrader ? "SOLE TRADER DETAILS" : "COMPANY DETAILS"} />
 
             <FormField
-              label="Company House Name"
+              label={isSoleTrader ? "Trading Name" : "Company House Name"}
               value={form.companyHouseName}
               onChange={setField('companyHouseName')}
-              placeholder="e.g. Knightsbridge Motors Ltd"
+              placeholder={isSoleTrader ? "e.g. Smith Motors" : "e.g. Knightsbridge Motors Ltd"}
               error={fieldErrors.companyHouseName}
             />
+            {!isSoleTrader ? (
+              <>
+                <FormField
+                  label="Registration Number"
+                  value={form.companyRegistrationNumber}
+                  onChange={setField('companyRegistrationNumber')}
+                  placeholder="e.g. 12345678"
+                  error={fieldErrors.companyRegistrationNumber}
+                />
+                <FormField
+                  label="VAT Number"
+                  value={form.vatNumber}
+                  onChange={setField('vatNumber')}
+                  placeholder="e.g. GB123456789"
+                  error={fieldErrors.vatNumber}
+                />
+              </>
+            ) : null}
             <FormField
-              label="Registration Number"
-              value={form.companyRegistrationNumber}
-              onChange={setField('companyRegistrationNumber')}
-              placeholder="e.g. 12345678"
-              error={fieldErrors.companyRegistrationNumber}
-            />
-            <FormField
-              label="VAT Number"
-              value={form.vatNumber}
-              onChange={setField('vatNumber')}
-              placeholder="e.g. GB123456789"
-              error={fieldErrors.vatNumber}
-            />
-            <FormField
-              label="Registered Address"
+              label={isSoleTrader ? "Business Address" : "Registered Address"}
               value={form.businessRegisteredAddress}
               onChange={setField('businessRegisteredAddress')}
-              placeholder="Full registered address"
+              placeholder="Full business address"
               multiline
               error={fieldErrors.businessRegisteredAddress}
             />
@@ -667,7 +749,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
               label="Trading Address"
               value={form.tradingAddress}
               onChange={setField('tradingAddress')}
-              placeholder="If different from registered"
+              placeholder="If different from the address above"
               optional
               multiline
             />
@@ -676,6 +758,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
               value={form.businessWebsite}
               onChange={setField('businessWebsite')}
               placeholder="https://yoursite.co.uk"
+              optional={isSoleTrader}
               keyboardType="url"
               error={fieldErrors.businessWebsite}
             />
@@ -689,35 +772,37 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
             />
 
             {/* ── SECTION 2: REPRESENTATIVE ───────────────────────────────── */}
-            <SectionLabel title="REPRESENTATIVE" />
+            <SectionLabel title={isSoleTrader ? "OWNER / REPRESENTATIVE" : "REPRESENTATIVE"} />
 
             <FormField
-              label="Full Name"
+              label={isSoleTrader ? "Owner / Representative Name" : "Full Name"}
               value={form.representativeName}
               onChange={setField('representativeName')}
               placeholder="e.g. James Wilson"
               error={fieldErrors.representativeName}
             />
             <FormField
-              label="Job Title"
+              label={isSoleTrader ? "Role" : "Job Title"}
               value={form.representativePosition}
               onChange={setField('representativePosition')}
-              placeholder="e.g. Managing Director"
+              placeholder={isSoleTrader ? "Sole trader" : "e.g. Managing Director"}
               error={fieldErrors.representativePosition}
             />
-            <FormField
-              label="Person of Significant Control"
-              value={form.personOfSignificantControl}
-              onChange={setField('personOfSignificantControl')}
-              placeholder="Full name of PSC"
-              error={fieldErrors.personOfSignificantControl}
-            />
+            {!isSoleTrader ? (
+              <FormField
+                label="Person of Significant Control"
+                value={form.personOfSignificantControl}
+                onChange={setField('personOfSignificantControl')}
+                placeholder="Full name of PSC"
+                error={fieldErrors.personOfSignificantControl}
+              />
+            ) : null}
 
-            {/* ── SECTION 3: DIRECTOR ─────────────────────────────────────── */}
-            <SectionLabel title="DIRECTOR" />
+            {/* ── SECTION 3: OWNER / DIRECTOR ─────────────────────────────── */}
+            <SectionLabel title={isSoleTrader ? "OWNER" : "DIRECTOR"} />
 
             <FormField
-              label="Director Name"
+              label={isSoleTrader ? "Owner Name" : "Director Name"}
               value={form.directorName}
               onChange={setField('directorName')}
               placeholder="e.g. James Wilson"
@@ -727,12 +812,17 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
             {/* ── SECTION 4: DOCUMENT UPLOADS ─────────────────────────────── */}
             <SectionLabel title="DOCUMENT UPLOADS" />
 
-            {/* Document upload helper */}
-            {([
-              { field: 'vatProof', label: 'VAT Certificate', type: 'pdf' as const },
-              { field: 'companyRegistrationProof', label: 'Company Registration Certificate', type: 'pdf' as const },
-              { field: 'directorIdProof', label: 'Director ID / Passport Photo', type: 'image' as const },
-            ] as const).map(({ field, label, type }) => (
+            {(isSoleTrader
+              ? [
+                  { field: 'directorIdProof', label: 'Driving Licence or Passport', type: 'image' as const },
+                  { field: 'proofOfAddress', label: 'Proof of Address', type: 'pdf' as const },
+                ]
+              : [
+                  { field: 'vatProof', label: 'VAT Certificate', type: 'pdf' as const },
+                  { field: 'companyRegistrationProof', label: 'Company Registration Certificate', type: 'pdf' as const },
+                  { field: 'directorIdProof', label: 'Director ID / Passport Photo', type: 'image' as const },
+                ]
+            ).map(({ field, label, type }) => (
               <View key={field} style={styles.docField}>
                 <Text style={styles.docFieldLabel}>{label.toUpperCase()}</Text>
                 {docUploading[field] ? (
@@ -744,10 +834,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
                   <View style={styles.docUploadedRow}>
                     <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
                     <Text style={styles.docUploadedText} numberOfLines={1}>Uploaded</Text>
-                    <TouchableOpacity
-                      onPress={() => handleDocumentCapture(field, type)}
-                      activeOpacity={0.7}
-                    >
+                    <TouchableOpacity onPress={() => handleDocumentCapture(field, type)} activeOpacity={0.7}>
                       <Text style={styles.docReplaceLink}>Replace</Text>
                     </TouchableOpacity>
                   </View>
@@ -839,7 +926,15 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
                     submitting ||
                     !form.companyHouseName.trim() ||
                     !form.representativeName.trim() ||
-                    !form.vatNumber.trim()
+                    !form.representativePosition.trim() ||
+                    !form.directorName.trim() ||
+                    !form.businessRegisteredAddress.trim() ||
+                    (isSoleTrader
+                      ? (!docUrls.directorIdProof || !docUrls.proofOfAddress)
+                      : (!form.vatNumber.trim() ||
+                         !form.companyRegistrationNumber.trim() ||
+                         !form.personOfSignificantControl.trim() ||
+                         !form.businessWebsite.trim()))
                   }
                 />
               )}
@@ -969,6 +1064,65 @@ const styles = StyleSheet.create({
     letterSpacing: 1.8,
     marginBottom: 16,
     marginTop: 8,
+  },
+
+  // Business type
+  businessTypeRow: {
+    gap: 10,
+    marginBottom: 10,
+  },
+  businessTypeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.bgSecondary,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    borderRadius: Radius.inline,
+    padding: 14,
+  },
+  businessTypeCardSelected: {
+    borderColor: Colors.accent,
+    backgroundColor: Colors.accentAlpha03,
+  },
+  businessTypeRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: Colors.iconMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  businessTypeRadioSelected: {
+    borderColor: Colors.accent,
+  },
+  businessTypeRadioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.accent,
+  },
+  businessTypeTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.textSecondary,
+  },
+  businessTypeTitleSelected: {
+    color: Colors.white,
+  },
+  businessTypeHint: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  businessTypeHelp: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    lineHeight: 18,
+    color: Colors.textSecondary,
+    marginBottom: 22,
   },
 
   // Payment info
