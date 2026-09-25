@@ -469,7 +469,7 @@ export class UsersService {
                         description: null,
                         phone: null,
                         website: null,
-                        openingHours: null,
+                        openingHours: {},
                         isVerified: false,
                         verificationDate: null,
                         deletedAt,
@@ -566,7 +566,7 @@ export class UsersService {
                     showPublicProfile: false,
                     location: null,
                     postcode: null,
-                    preferences: null,
+                    preferences: {},
                 },
             });
         });
