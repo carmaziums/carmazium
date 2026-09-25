@@ -1650,16 +1650,23 @@ export class AdminService {
     }
 
     async getPlatformStats() {
+        const now = new Date();
         const [users, listings, activeListings, soldListings, auctions, activeAuctions, endedAuctions, bids, totalRevenue] = await Promise.all([
-            this.prisma.user.count(),
-            // Phase 10: include SOLD in total count — no status filter, counts DRAFT + ACTIVE + SOLD
+            this.prisma.user.count({ where: { deletedAt: null } }),
+            // Inventory totals exclude soft-deleted rows.
             this.prisma.listing.count({ where: { deletedAt: null } }),
-            // Phase 10: activeListings intentionally ACTIVE only — current live count
             this.prisma.listing.count({ where: { status: 'ACTIVE', deletedAt: null } }),
-            // Phase 10: soldListings correctly counts SOLD listings only
-            this.prisma.listing.count({ where: { status: 'SOLD', deletedAt: null } }),
+            // Completed sales come from the canonical Sale ledger, not inventory status.
+            this.prisma.sale.count(),
             this.prisma.auction.count({ where: { deletedAt: null } }),
-            this.prisma.auction.count({ where: { status: 'ACTIVE', deletedAt: null } }),
+            this.prisma.auction.count({
+                where: {
+                    status: 'ACTIVE',
+                    deletedAt: null,
+                    endTime: { gt: now },
+                    listing: { deletedAt: null, status: 'ACTIVE' },
+                },
+            }),
             this.prisma.auction.count({ where: { status: 'ENDED', deletedAt: null } }),
             this.prisma.bid.count({ where: { deletedAt: null } }),
             this.computeRealRevenue(),
