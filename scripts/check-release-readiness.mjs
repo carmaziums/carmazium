@@ -93,6 +93,7 @@ requiredFile('src/app/privacy-policy/page.tsx', 'Public privacy policy');
 requiredFile('src/app/delete-account/page.tsx', 'Public account-deletion page');
 requiredFile('carmazium app/carmazium app/src/screens/main/PrivacyPolicyScreen.tsx', 'Native privacy policy screen');
 requiredFile('docs/privacy/ACCOUNT_DELETION_RETENTION.md', 'Account deletion retention contract');
+requiredFile('backend/prisma/manual-migrations/20260925_account_deletion_auth_trigger_safety.sql', 'Auth deletion trigger safety migration');
 
 const webPrivacy = read('src/app/privacy-policy/page.tsx');
 const webDelete = read('src/app/delete-account/page.tsx');
@@ -104,6 +105,7 @@ const mobileDrawer = read('carmazium app/carmazium app/src/components/GlobalDraw
 const mobileSettings = read('carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx');
 const accountDeletionService = read('backend/src/users/users.service.ts');
 const deletionRetention = read('docs/privacy/ACCOUNT_DELETION_RETENTION.md');
+const authDeletionTrigger = read('backend/prisma/manual-migrations/20260925_account_deletion_auth_trigger_safety.sql');
 
 if (
   !webPrivacy.includes('MaziuM AI') ||
@@ -154,6 +156,18 @@ if (
   fail('Account deletion no longer performs the required Auth/Storage/PII erasure lifecycle');
 } else {
   ok('Account deletion erases Auth, Storage, KYC and transient PII while retaining only documented record classes');
+}
+
+if (
+  !authDeletionTrigger.includes('UPDATE public.users') ||
+  authDeletionTrigger.includes('DELETE FROM public.users') ||
+  !authDeletionTrigger.includes("SET search_path = ''") ||
+  !authDeletionTrigger.includes('REVOKE ALL ON FUNCTION public.carmazium_pseudonymize_local_user_after_auth_delete()') ||
+  !authDeletionTrigger.includes('AFTER DELETE ON auth.users')
+) {
+  fail('Supabase Auth deletion trigger must pseudonymise local identity without exposing a SECURITY DEFINER RPC');
+} else {
+  ok('Supabase Auth deletion trigger preserves shared history and is not publicly executable');
 }
 
 // ---------------------------------------------------------------------------
