@@ -286,7 +286,7 @@ function localFallbackValuation(request: VehicleValuationRequest): VehicleValuat
     confidenceScore: 0.2,
     comparables: 0,
     source: 'CARMAZIUM_MODEL',
-    explanation: 'Exact-model market evidence is temporarily unavailable, so this LOW-confidence guide uses vehicle age, mileage, transmission and conservative depreciation. Use it as a starting point rather than a guaranteed sale price.',
+    explanation: 'Exact-model market evidence is temporarily unavailable, so this LOW-confidence guide uses vehicle age and mileage and conservative depreciation. Use it as a starting point rather than a guaranteed sale price.',
     retail: {
       suggestedAsking: high,
       suggestedMinimum: mid,
