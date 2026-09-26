@@ -486,6 +486,13 @@ ${JSON.stringify(data, null, 2)}
             const content = completion.choices[0]?.message?.content?.trim() || '';
             if (!content) throw new Error('Empty response from OpenAI');
 
+            if (await this.isUnsafe(content)) {
+                this.logger.warn('Blocked unsafe AI-generated listing description before returning it');
+                return {
+                    text: 'Vehicle details are available in the listing. Please review the specification and contact the seller for any information you need.',
+                };
+            }
+
             return { text: content };
         } catch (error) {
             this.logger.error('OpenAI generate description error:', error);
