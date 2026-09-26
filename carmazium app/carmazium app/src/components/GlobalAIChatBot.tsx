@@ -593,6 +593,81 @@ const styles = StyleSheet.create({
   msgTextAI: { color: Colors.paleNearWhite_e0e0e0 },
   msgTextUser: { color: Colors.white },
 
+  aiConsentCard: {
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: Colors.deepBlue_1e1e28,
+    borderWidth: 1,
+    borderColor: Colors.accentAlpha25,
+  },
+  aiConsentTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginBottom: 7,
+  },
+  aiConsentTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.white,
+  },
+  aiConsentText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size10,
+    lineHeight: 16,
+    color: Colors.textSecondary,
+  },
+  aiConsentActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  aiConsentPrimary: {
+    flex: 1,
+    minHeight: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 10,
+  },
+  aiConsentPrimaryText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size10,
+    color: Colors.white,
+    textAlign: 'center',
+  },
+  aiConsentSecondary: {
+    minHeight: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    paddingHorizontal: 12,
+  },
+  aiConsentSecondaryText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size10,
+    color: Colors.textSecondary,
+  },
+  aiReportButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 4,
+    paddingVertical: 4,
+  },
+  aiReportText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: Colors.textMuted,
+  },
+  aiReportTextDone: {
+    color: Colors.success,
+  },
+
   // Filter card
   filterCard: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
