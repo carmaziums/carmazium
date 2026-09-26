@@ -61,6 +61,16 @@ export default function AppSupportPage() {
           </section>
         </div>
 
+        <section id="accessibility" className="mt-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
+          <ShieldCheck className="text-primary" />
+          <h2 className="mt-4 text-xl font-black text-[var(--text-primary)]">Accessibility support</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+            CarMazium is designed to work with platform accessibility settings including screen readers,
+            larger text and Reduce Motion. If any control, form or flow is difficult to use with an
+            accessibility feature, email <a className="text-primary underline" href="mailto:info@carmazium.com?subject=Accessibility%20support">info@carmazium.com</a> and tell us the device and feature you were using.
+          </p>
+        </section>
+
         <section className="mt-5 rounded-2xl border border-red-500/25 bg-[var(--bg-card)] p-6">
           <Trash2 className="text-red-400" />
           <h2 className="mt-4 text-xl font-black text-[var(--text-primary)]">Delete your account</h2>
