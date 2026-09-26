@@ -1132,6 +1132,7 @@ const webAiApiSafety = read('src/lib/aiApi.ts');
 const mobileAiApiSafety = read('carmazium app/carmazium app/src/lib/aiApi.ts');
 const backendAiSafety = read('backend/src/ai/ai.service.ts');
 const backendAiController = read('backend/src/ai/ai.controller.ts');
+const backendAiRateLimit = read('backend/src/chat/chat-rate-limit.service.ts');
 const adminAiReportQueue = read('src/app/dashboard/admin/ai-reports/page.tsx');
 
 if (
@@ -1155,6 +1156,8 @@ if (
   !backendAiSafety.includes('safeResult') ||
   !backendAiSafety.includes('createReport') ||
   !backendAiController.includes("@Post('report')") ||
+  !backendAiController.includes('consumeAiReport(source)') ||
+  !backendAiRateLimit.includes('consumeAiReport(sourceKey') ||
   !backendAiController.includes("@Get('admin/reports')") ||
   !adminAiReportQueue.includes('AI response reports') ||
   !adminAiReportQueue.includes('RESOLVED') ||
