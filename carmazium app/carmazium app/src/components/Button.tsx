@@ -60,6 +60,9 @@ export const Button: React.FC<ButtonProps> = ({
   const isDisabled = disabled || loading;
   const height = SIZE_HEIGHT[size];
   const resolvedAccessibilityLabel = accessibilityLabel ?? label ?? 'Button';
+  const expandedHitSlop = size === 'sm' || size === 'icon'
+    ? { top: 4, bottom: 4, left: 4, right: 4 }
+    : undefined;
 
   const shapeStyle =
     shape === 'pill'
@@ -112,6 +115,7 @@ export const Button: React.FC<ButtonProps> = ({
         accessibilityLabel={resolvedAccessibilityLabel}
         accessibilityHint={accessibilityHint}
         accessibilityState={{ disabled: isDisabled, busy: loading }}
+        hitSlop={expandedHitSlop}
       >
         <LinearGradient
           colors={isDisabled ? [Colors.textDisabled, Colors.textDisabled] : [Colors.accentGlow, Colors.accent]}
@@ -134,6 +138,7 @@ export const Button: React.FC<ButtonProps> = ({
       accessibilityLabel={resolvedAccessibilityLabel}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
+      hitSlop={expandedHitSlop}
     >
       {content}
     </TouchableOpacity>
