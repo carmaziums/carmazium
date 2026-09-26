@@ -124,7 +124,7 @@ const SectionLabel: React.FC<{ title: string }> = ({ title }) => (
 
 // ─── Pending state view ───────────────────────────────────────────────────────
 
-const PendingView: React.FC = () => (
+const PendingView: React.FC<{ onEdit?: () => void }> = ({ onEdit }) => (
   <View style={styles.pendingContainer}>
     <View style={styles.pendingIconCircle}>
       <Ionicons name="shield-outline" size={36} color={Colors.warning} />
@@ -137,6 +137,9 @@ const PendingView: React.FC = () => (
       <Ionicons name="time-outline" size={14} color={Colors.warning} />
       <Text style={styles.pendingInfoText}>Typically reviewed within 2–3 business days</Text>
     </View>
+    {onEdit ? (
+      <PrimaryCTA label="CHANGE BUSINESS TYPE" onPress={onEdit} style={{ width: '100%', marginTop: 20 }} />
+    ) : null}
   </View>
 );
 
@@ -165,6 +168,7 @@ const KycSkeleton: React.FC = () => (
 
 export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
+  const reverifyRequested = route?.params?.reverify === true;
   const [businessType, setBusinessType] = useState<BusinessType>(
     route?.params?.businessType === 'SOLE_PROPRIETORSHIP' ? 'SOLE_PROPRIETORSHIP' : 'PRIVATE_LIMITED',
   );
@@ -175,6 +179,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [editingExisting, setEditingExisting] = useState(false);
 
   // ── £1 Verification Fee state (paid via hosted Stripe Checkout — see
   // web's KycOverlayForm.tsx, the source-of-truth reference for this flow).
@@ -231,10 +236,16 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
             vatProof: k.vatProof || '',
             companyRegistrationProof: k.companyRegistrationProof || '',
           });
-          // Populate already-paid state if the dealer has previously cleared the £1 fee.
-          if (k.stripeChargedAt) {
+          // £1 is charged once per dealer account. Preserve modern Stripe
+          // payments and legacy applications whose old payment fields were approved.
+          const paymentStatuses = k.documentStatuses || {};
+          const feeAlreadyVerified =
+            !!k.stripeChargedAt ||
+            paymentStatuses.paymentReference?.status === 'APPROVED' ||
+            paymentStatuses.paymentScreenshot?.status === 'APPROVED';
+          if (feeAlreadyVerified) {
             setAlreadyPaid(true);
-            setPaidAt(k.stripeChargedAt);
+            setPaidAt(k.stripeChargedAt ?? null);
           }
         }
       })
@@ -313,6 +324,15 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
   // checkout redirect. Nothing here is considered "submitted" from the dealer's
   // point of view until stripeChargedAt is set (see the isPending gate below).
   const handleSubmit = async () => {
+    const originalBusinessType: BusinessType =
+      existingKyc?.businessType === 'SOLE_PROPRIETORSHIP' ? 'SOLE_PROPRIETORSHIP' : 'PRIVATE_LIMITED';
+    const businessTypeChanged = !!existingKyc && businessType !== originalBusinessType;
+
+    if (existingKyc?.status === 'APPROVED' && reverifyRequested && !businessTypeChanged) {
+      setSubmitError('Choose a different business type to start re-verification.');
+      return;
+    }
+
     const commonRequired: (keyof typeof form)[] = [
       'companyHouseName',
       'representativeName',
@@ -335,6 +355,10 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
     }
     if (isSoleTrader && (!docUrls.directorIdProof || !docUrls.proofOfAddress)) {
       setSubmitError('Sole traders must upload photo ID and proof of address.');
+      return;
+    }
+    if (!isSoleTrader && (!docUrls.directorIdProof || !docUrls.vatProof || !docUrls.companyRegistrationProof)) {
+      setSubmitError('Registered companies must upload director ID, VAT evidence and Companies House evidence.');
       return;
     }
     setFieldErrors({});
@@ -483,17 +507,20 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
 
   const kycStatus: string | null = existingKyc?.status ?? null;
   const isApproved = kycStatus === 'APPROVED';
+  const originalBusinessType: BusinessType =
+    existingKyc?.businessType === 'SOLE_PROPRIETORSHIP' ? 'SOLE_PROPRIETORSHIP' : 'PRIVATE_LIMITED';
+  const businessTypeChanged = !!existingKyc && businessType !== originalBusinessType;
   // Requires stripeChargedAt too — a PENDING record with fields saved but the £1 fee
   // unpaid (e.g. the dealer backgrounded the app or cancelled the Stripe checkout)
   // must fall through to the form below so they can retry payment, not get stuck
   // behind this hard "Under Review" gate with no way to pay. Mirrors web's
   // KycOverlayForm.tsx identical gate.
-  const isPending = (kycStatus === 'PENDING' || kycStatus === 'UNDER_REVIEW') && !!existingKyc?.stripeChargedAt;
+  const isPending = (kycStatus === 'PENDING' || kycStatus === 'UNDER_REVIEW') && alreadyPaid;
   // Distinct from isPending above: fields were saved on a previous visit but the
   // dealer never completed (or cancelled, or was declined on) the £1 Stripe
   // checkout. Must not look like a fresh, unstarted application — it's one tap
   // away from being submitted. Mirrors web's KycOverlayForm.tsx identical gate.
-  const isPaymentOutstanding = kycStatus === 'PENDING' && !existingKyc?.stripeChargedAt && !!existingKyc?.stripeCheckoutSessionId;
+  const isPaymentOutstanding = kycStatus === 'PENDING' && !alreadyPaid && !!existingKyc?.stripeCheckoutSessionId;
 
   // ── Status banner config ────────────────────────────────────────────────────
   const getBannerConfig = () => {
@@ -583,7 +610,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
             />
           </View>
         </ScrollView>
-      ) : isPending ? (
+      ) : isPending && !editingExisting ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
@@ -607,7 +634,12 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
               </Text>
             </View>
           )}
-          <PendingView />
+          <PendingView
+            onEdit={() => {
+              setEditingExisting(true);
+              setSubmitError(null);
+            }}
+          />
           <View style={{ height: 60 }} />
         </ScrollView>
       ) : (
@@ -636,6 +668,40 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                 </Text>
               </View>
             )}
+
+            {isApproved && reverifyRequested ? (
+              <View style={[styles.infoCard, { borderColor: Colors.warningAlpha25 }]}>
+                <View style={styles.infoCardHeader}>
+                  <View style={styles.infoIconWrap}>
+                    <Ionicons name="alert-circle-outline" size={20} color={Colors.warning} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.infoCardTitle}>Re-verify legal business type</Text>
+                    <Text style={styles.infoCardDesc}>
+                      Your account stays verified until you submit a different legal business type.
+                      After submission, verification becomes Pending while CarMazium reviews the new identity.
+                      Your existing £1 verification payment is retained.
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ) : null}
+
+            {editingExisting && isPending ? (
+              <View style={[styles.infoCard, { borderColor: Colors.warningAlpha25 }]}>
+                <View style={styles.infoCardHeader}>
+                  <View style={styles.infoIconWrap}>
+                    <Ionicons name="create-outline" size={20} color={Colors.warning} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.infoCardTitle}>Editing application under review</Text>
+                    <Text style={styles.infoCardDesc}>
+                      Submit the corrected legal business type to restart review. Your £1 payment remains valid.
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ) : null}
 
             {/* INFO CARD */}
             <View style={styles.infoCard}>
@@ -904,7 +970,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
 
             {/* ── SUBMIT ──────────────────────────────────────────────────── */}
             <View style={styles.submitWrapper}>
-              {isApproved ? (
+              {isApproved && !reverifyRequested ? (
                 <PrimaryCTA
                   label="APPLICATION APPROVED"
                   onPress={() => {}}
@@ -924,6 +990,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                   isLoading={submitting}
                   disabled={
                     submitting ||
+                    (isApproved && reverifyRequested && !businessTypeChanged) ||
                     !form.companyHouseName.trim() ||
                     !form.representativeName.trim() ||
                     !form.representativePosition.trim() ||
@@ -934,7 +1001,10 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                       : (!form.vatNumber.trim() ||
                          !form.companyRegistrationNumber.trim() ||
                          !form.personOfSignificantControl.trim() ||
-                         !form.businessWebsite.trim()))
+                         !form.businessWebsite.trim() ||
+                         !docUrls.directorIdProof ||
+                         !docUrls.vatProof ||
+                         !docUrls.companyRegistrationProof))
                   }
                 />
               )}
