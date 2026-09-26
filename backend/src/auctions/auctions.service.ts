@@ -1662,15 +1662,15 @@ export class AuctionsService {
                     : `/sell?editId=${auction.listingId}&sellMode=retail`;
 
                 const recommendation = retailAlreadyLive
-                    ? `Your auction for ${vehicle || listing.title} has ended without a sale. The vehicle was presented to CarMazium’s dealer network, but it did not attract enough interest to complete a sale at the reserve this time. Your Retail Listing is already live, so the vehicle can continue reaching a wider retail audience on CarMazium.`
-                    : `Your auction for ${vehicle || listing.title} has ended without a sale. The vehicle was presented to CarMazium’s dealer network, but it did not attract enough interest to complete a sale at the reserve this time. We recommend moving it to a Retail Listing so it can reach a much wider audience and improve its chances of selling. Your existing vehicle details can be reused, and a CarMazium Retail Listing costs just £1 until sold.`;
+                    ? `Your auction for ${vehicle || listing.title} has ended without a sale. The vehicle was presented across CarMazium’s verified dealer network, but it did not receive enough interest to complete a sale at the reserve price. Your Retail Listing is already live, so it can continue reaching CarMazium’s wider retail audience and give the vehicle another strong opportunity to sell.`
+                    : `Your auction for ${vehicle || listing.title} has ended without a sale. The vehicle was presented across CarMazium’s verified dealer network, but it did not receive enough interest to complete a sale at the reserve price. We recommend moving it to a Retail Listing. This opens the vehicle to CarMazium’s much wider retail audience, increasing its visibility and giving it a stronger chance of finding the right buyer. Your vehicle details are already saved, and a CarMazium Retail Listing costs just £1 until sold.`;
 
                 await this.notificationsService.create({
                     userId: listing.sellerId,
                     type: 'AUCTION_ENDED_NO_SALE',
                     title: retailAlreadyLive
                         ? 'Auction ended — your Retail Listing stays live'
-                        : 'Auction ended — reach more buyers with Retail',
+                        : 'Auction ended — give your car a wider audience',
                     message: recommendation,
                     entityType: 'AUCTION',
                     entityId: auction.id,
@@ -1703,7 +1703,7 @@ export class AuctionsService {
                             {
                                 content: recommendation + (retailAlreadyLive
                                     ? ' Open your seller dashboard to manage the Retail Listing.'
-                                    : ' Open your seller dashboard and choose “List in Retail” when you are ready.'),
+                                    : ' You can move it to Retail directly from your seller dashboard using “List in Retail”.'),
                                 clientMessageId: auction.id,
                             },
                         );

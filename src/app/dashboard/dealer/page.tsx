@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button"
 import {
     Car, Eye, TrendingUp, Kanban, Gavel,
     PlusCircle, Loader2, Building2, CheckCircle,
-    Mail, ShieldCheck, BarChart3, ChevronRight
+    Mail, ShieldCheck, BarChart3, ChevronRight, X, ShoppingBag
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { FlexiblePeriodControl, type DashboardRangeSelection, type DashboardRangeUnit } from "@/components/dashboard/FlexiblePeriodControl"
@@ -17,6 +17,7 @@ import { apiClient } from "@/lib/apiClient"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { useDealerAccess } from "@/context/DealerAccessContext"
+import { getNotifications, markNotificationRead, type AppNotification } from "@/lib/notificationsApi"
 
 export default function DealerDashboard() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -67,6 +68,7 @@ export default function DealerDashboard() {
     const [statsError, setStatsError] = React.useState(false)
     const [resending, setResending] = React.useState(false)
     const [resendSuccess, setResendSuccess] = React.useState(false)
+    const [unsoldAuctionNotice, setUnsoldAuctionNotice] = React.useState<AppNotification | null>(null)
     const { loading: accessLoading, hasPermission } = useDealerAccess()
 
     const canManageInventory = hasPermission('MANAGE_INVENTORY')
@@ -82,6 +84,25 @@ export default function DealerDashboard() {
         }
     }, [user, authLoading, accessLoading, rangeAllTime, rangeValue, rangeUnit, compareRange, canManageCrm])
 
+    React.useEffect(() => {
+        if (!user) return
+
+        const refreshUnsoldNotice = () => {
+            getNotifications(20)
+                .then((recentNotifications) => {
+                    setUnsoldAuctionNotice(
+                        recentNotifications.find(
+                            notification => notification.type === 'AUCTION_ENDED_NO_SALE' && !notification.isRead,
+                        ) ?? null,
+                    )
+                })
+                .catch(() => {})
+        }
+
+        const intervalId = window.setInterval(refreshUnsoldNotice, 30_000)
+        return () => window.clearInterval(intervalId)
+    }, [user])
+
     async function fetchDashboardData() {
         setLoading(true)
         setStatsError(false)
@@ -95,11 +116,12 @@ export default function DealerDashboard() {
             }
             if (compareRange) rangeQuery.set('compare', '1')
 
-            const [statsRes, leadsRes] = await Promise.all([
+            const [statsRes, leadsRes, recentNotifications] = await Promise.all([
                 apiClient<{ data: any }>(`/dashboard/dealer?${rangeQuery.toString()}`),
                 canManageCrm
                     ? apiClient<{ data: any[]; meta?: any }>('/dealers/leads?limit=5').catch(() => ({ data: [] }))
                     : Promise.resolve({ data: [] }),
+                getNotifications(20),
             ])
 
             const s = statsRes?.data || {}
@@ -118,6 +140,11 @@ export default function DealerDashboard() {
                 leadsCreated: s.leadsCreated ?? 0,
                 recentLeads: leadsRes?.data ?? [],
             })
+            setUnsoldAuctionNotice(
+                recentNotifications.find(
+                    notification => notification.type === 'AUCTION_ENDED_NO_SALE' && !notification.isRead,
+                ) ?? null,
+            )
         } catch (err) {
             console.error('Failed to load dashboard data:', err)
             // Do not turn an API failure into convincing-looking zeroes.
@@ -126,6 +153,28 @@ export default function DealerDashboard() {
         } finally {
             setLoading(false)
         }
+    }
+
+    async function dismissUnsoldAuctionNotice() {
+        const notice = unsoldAuctionNotice
+        setUnsoldAuctionNotice(null)
+        if (notice) {
+            await markNotificationRead(notice.id).catch(() => {})
+        }
+    }
+
+    function openRetailFromNotice() {
+        const notice = unsoldAuctionNotice
+        if (!notice) return
+
+        const retailUrl =
+            typeof notice.data?.retailUrl === 'string'
+                ? notice.data.retailUrl
+                : '/dashboard/dealer/auctions'
+
+        setUnsoldAuctionNotice(null)
+        markNotificationRead(notice.id).catch(() => {})
+        router.push(retailUrl)
     }
 
     const handleResendEmail = async () => {
@@ -419,6 +468,78 @@ export default function DealerDashboard() {
 
                 </main>
             </div>
+
+            {unsoldAuctionNotice && (
+                <div
+                    className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="dealer-unsold-auction-title"
+                    onClick={(event) => {
+                        if (event.target === event.currentTarget) dismissUnsoldAuctionNotice()
+                    }}
+                >
+                    <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-[var(--border-default)] bg-[var(--bg-dropdown)] shadow-2xl">
+                        <div className="flex items-start justify-between gap-4 border-b border-[var(--border-default)] p-6">
+                            <div className="flex items-start gap-3">
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+                                    <Gavel size={20} className="text-primary" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black uppercase tracking-widest text-primary">Auction update</p>
+                                    <h2 id="dealer-unsold-auction-title" className="mt-1 text-xl font-black">
+                                        Give your vehicle a wider audience
+                                    </h2>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={dismissUnsoldAuctionNotice}
+                                className="rounded-xl p-2 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]"
+                                aria-label="Close"
+                            >
+                                <X size={19} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-5 p-6">
+                            <p className="text-sm leading-7 text-[var(--text-secondary)]">
+                                {unsoldAuctionNotice.message}
+                            </p>
+
+                            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                                <div className="flex items-start gap-3">
+                                    <ShoppingBag size={18} className="mt-0.5 shrink-0 text-emerald-500" />
+                                    <div>
+                                        <p className="text-sm font-black text-[var(--text-primary)]">
+                                            {unsoldAuctionNotice.data?.retailAlreadyLive
+                                                ? 'Your Retail Listing is already live'
+                                                : 'Retail Listing — £1 until sold'}
+                                        </p>
+                                        <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+                                            {unsoldAuctionNotice.data?.retailAlreadyLive
+                                                ? 'Keep the vehicle visible to CarMazium’s wider retail audience and manage it from your dashboard.'
+                                                : 'Your vehicle details are already saved. Move it into the wider retail marketplace without starting again.'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                <Button type="button" variant="outline" onClick={dismissUnsoldAuctionNotice}>
+                                    Not now
+                                </Button>
+                                <Button type="button" className="gap-2" onClick={openRetailFromNotice}>
+                                    <ShoppingBag size={16} />
+                                    {unsoldAuctionNotice.data?.retailAlreadyLive
+                                        ? 'Manage Retail Listing'
+                                        : 'List in Retail for £1'}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
