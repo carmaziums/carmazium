@@ -16,6 +16,7 @@ import { Colors } from '../constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { IconButton } from './IconButton';
+import { useReduceMotionPreference } from '../hooks/useReduceMotionPreference';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -64,8 +65,14 @@ function getDailyQuickReplies() {
 
 const TypingDots: React.FC = () => {
   const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
+  const reduceMotion = useReduceMotionPreference();
 
   useEffect(() => {
+    if (reduceMotion) {
+      dots.forEach((dot) => dot.setValue(0));
+      return;
+    }
+
     const anims = dots.map((dot, i) =>
       Animated.loop(
         Animated.sequence([
@@ -79,7 +86,7 @@ const TypingDots: React.FC = () => {
     anims.forEach((a) => a.start());
     return () => anims.forEach((a) => a.stop());
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [reduceMotion]);
 
   return (
     <View style={styles.dotsRow}>
