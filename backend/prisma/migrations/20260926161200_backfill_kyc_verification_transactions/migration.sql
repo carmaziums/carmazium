@@ -22,16 +22,16 @@ SELECT
   1.00,
   'KYC_VERIFICATION'::"transaction_type",
   'COMPLETED'::"transaction_status",
-  dk."stripePaymentIntentId",
+  COALESCE(dk."stripePaymentIntentId", dk."stripeCheckoutSessionId"),
   'One-time dealer identity verification fee',
   dk."stripeChargedAt",
   COALESCE(dk."updatedAt", dk."stripeChargedAt")
 FROM "dealer_kycs" dk
 JOIN "dealer_profiles" dp ON dp."id" = dk."dealerProfileId"
 WHERE dk."stripeChargedAt" IS NOT NULL
-  AND dk."stripePaymentIntentId" IS NOT NULL
+  AND COALESCE(dk."stripePaymentIntentId", dk."stripeCheckoutSessionId") IS NOT NULL
   AND NOT EXISTS (
     SELECT 1
     FROM "transactions" t
-    WHERE t."stripePaymentId" = dk."stripePaymentIntentId"
+    WHERE t."stripePaymentId" = COALESCE(dk."stripePaymentIntentId", dk."stripeCheckoutSessionId")
   );
