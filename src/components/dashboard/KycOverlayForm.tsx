@@ -262,7 +262,15 @@ function FileUploadField({
 
 // ─── Main KYC Overlay Component ────────────────────────────────────────────────
 
-export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
+export function KycOverlayForm({
+  onSkip,
+  allowApprovedReverification = false,
+  onExit,
+}: {
+  onSkip?: () => void;
+  allowApprovedReverification?: boolean;
+  onExit?: () => void;
+}) {
   const { profile, signOut, refreshProfile } = useAuth();
   const router = useRouter();
 
@@ -273,6 +281,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
   const [activeStep, setActiveStep] = useState(1);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [editingExisting, setEditingExisting] = useState(false);
 
   // ── £1 Verification Fee State (paid via hosted Stripe Checkout redirect) ──
   const [alreadyPaid, setAlreadyPaid] = useState(false);
@@ -332,10 +341,17 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
             vatProof: kyc.vatProof || "",
             companyRegistrationProof: kyc.companyRegistrationProof || "",
           });
-          // Populate already-paid state if the dealer has previously cleared the £1 fee
-          if (kyc.stripeChargedAt) {
+          // The £1 verification fee is charged once per dealer account. Modern
+          // records use Stripe; older verified applications may only carry the
+          // legacy payment fields as APPROVED.
+          const paymentStatuses = kyc.documentStatuses || {};
+          const feeAlreadyVerified =
+            !!kyc.stripeChargedAt ||
+            paymentStatuses.paymentReference?.status === "APPROVED" ||
+            paymentStatuses.paymentScreenshot?.status === "APPROVED";
+          if (feeAlreadyVerified) {
             setAlreadyPaid(true);
-            setPaidAt(kyc.stripeChargedAt);
+            setPaidAt(kyc.stripeChargedAt || null);
           } else if (kyc.status === "PENDING" && kyc.stripeCheckoutSessionId) {
             // Only a KYC that actually reached Stripe checkout is a payment-outstanding
             // submission. Private document uploads may create an unpaid draft earlier in
@@ -365,8 +381,14 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
     setFileUrls((prev) => ({ ...prev, [fieldName]: "" }));
   };
 
+  const originalBusinessType = (kycData?.businessType || "PRIVATE_LIMITED") as BusinessType;
+  const businessTypeChanged = !!kycData && formData.businessType !== originalBusinessType;
+
   const isFieldApproved = (fieldName: string): boolean => {
     if (!kycData?.documentStatuses) return false;
+    // A legal-identity change must reopen previously approved identity fields.
+    // Payment is handled separately and remains verified once paid.
+    if (businessTypeChanged) return false;
     return kycData.documentStatuses[fieldName]?.status === "APPROVED";
   };
 
@@ -452,6 +474,13 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (kycData?.status === "APPROVED" && allowApprovedReverification && !businessTypeChanged) {
+      setErrorMsg("Choose a different business type to start re-verification.");
+      setActiveStep(1);
+      return;
+    }
+
     if (!validateStep(3)) return;
 
     setSubmitting(true);
@@ -459,9 +488,9 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
     setSuccessMsg("");
 
     try {
-      // Always save the latest field values first — the backend service locks
-      // already-approved fields by reading their values from the database
-      // (ignoring what arrives in the DTO), so it's safe to resend everything.
+      // Save the latest field values first. Normal rejected-field resubmissions
+      // keep approved values locked server-side; changing legal business type
+      // deliberately reopens identity fields and starts a new review.
       // fileUrls deliberately excluded: each document was already stored by
       // POST /dealers/kyc/documents/:field, and the values held here are
       // 10-minute signed URLs. Sending them would persist a link that dies
@@ -521,7 +550,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
   // Edge case: if the KYC is APPROVED but the layout hasn't unmounted this
   // component yet (profile refresh still in-flight), show a success screen
   // and push to the dashboard so the layout re-evaluates the guard.
-  if (kycData && kycData.status === "APPROVED") {
+  if (kycData && kycData.status === "APPROVED" && !allowApprovedReverification) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-body)] backdrop-blur-xl p-4 overflow-y-auto">
         <div className="dealer-glass-card max-w-xl w-full p-8 md:p-10 border border-emerald-500/20 relative overflow-hidden flex flex-col items-center text-center">
@@ -551,7 +580,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
   // Requires stripeChargedAt too — a PENDING record with fields saved but the £1 fee
   // unpaid (e.g. dealer cancelled the Stripe Checkout redirect) must fall through to
   // the form below so they can retry payment, not get stuck behind this hard gate.
-  if (kycData && kycData.status === "PENDING" && kycData.stripeChargedAt) {
+  if (kycData && kycData.status === "PENDING" && alreadyPaid && !editingExisting) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-body)] backdrop-blur-xl p-4 overflow-y-auto">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
@@ -606,6 +635,17 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
 
           <div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
             <button
+              onClick={() => {
+                setEditingExisting(true);
+                setActiveStep(1);
+                setErrorMsg("");
+              }}
+              className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs uppercase tracking-widest transition-all cursor-pointer"
+            >
+              <Building2 size={14} />
+              Change Business Type
+            </button>
+            <button
               onClick={async () => {
                 setLoading(true);
                 const kyc = await getDealerKyc();
@@ -642,7 +682,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
   // declined on, or they closed the tab during) the Stripe Checkout redirect.
   // This must NOT look like a fresh, unstarted application — it's one click away
   // from being submitted, not a re-do.
-  if (kycData && kycData.status === "PENDING" && !kycData.stripeChargedAt) {
+  if (kycData && kycData.status === "PENDING" && !alreadyPaid && !!kycData.stripeCheckoutSessionId) {
     const handleResumePayment = async () => {
       setErrorMsg("");
       setCheckoutLoading(true);
@@ -779,6 +819,45 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
             </button>
           </div>
         </div>
+
+        {allowApprovedReverification && kycData?.status === "APPROVED" && (
+          <div className="mb-6 p-4 rounded-xl border border-amber-500/25 bg-amber-500/5 flex items-start gap-3">
+            <AlertCircle className="text-amber-400 shrink-0 mt-0.5" size={18} />
+            <div className="flex-1">
+              <h3 className="text-xs font-extrabold uppercase text-amber-400 tracking-wider">
+                Re-verify legal business type
+              </h3>
+              <p className="text-[var(--text-secondary)] text-xs mt-1 leading-relaxed">
+                Your account stays verified until you submit a different legal business type. After submission,
+                verification changes to Pending while CarMazium reviews the new identity. Your existing £1 verification
+                payment is retained and you will not be charged again.
+              </p>
+            </div>
+            {onExit && (
+              <button
+                type="button"
+                onClick={onExit}
+                className="shrink-0 px-3 py-1.5 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)]"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        )}
+
+        {editingExisting && kycData?.status === "PENDING" && alreadyPaid && (
+          <div className="mb-6 p-4 rounded-xl border border-amber-500/25 bg-amber-500/5 flex items-start gap-3">
+            <AlertCircle className="text-amber-400 shrink-0 mt-0.5" size={18} />
+            <div>
+              <h3 className="text-xs font-extrabold uppercase text-amber-400 tracking-wider">
+                Editing application under review
+              </h3>
+              <p className="text-[var(--text-secondary)] text-xs mt-1 leading-relaxed">
+                Submit the corrected business type to restart the review. Your £1 verification payment remains valid.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Info Box if Rejected */}
         {kycData && kycData.status === "REJECTED" && (
@@ -1169,7 +1248,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
             ) : (
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || (allowApprovedReverification && kycData?.status === "APPROVED" && !businessTypeChanged)}
                 className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-[var(--bg-input)] disabled:text-[var(--text-muted)] text-white font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.3)]"
               >
                 {submitting ? (
