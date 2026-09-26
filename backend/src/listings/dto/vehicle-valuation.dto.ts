@@ -54,6 +54,13 @@ export class VehicleValuationDto {
     @MaxLength(40)
     condition?: string;
 
+    @Type(() => Number)
+    @IsInt()
+    @Min(1)
+    @Max(5)
+    @IsOptional()
+    exteriorGrade?: number;
+
     @IsString()
     @IsOptional()
     @MaxLength(60)
