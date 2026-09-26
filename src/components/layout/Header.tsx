@@ -24,6 +24,7 @@ const navLinks: NavLink[] = [
     { name: "Home", href: "/" },
     { name: "Buy Cars", kind: "buy-menu" },
     { name: "Sell Cars", kind: "sell-menu" },
+    { name: "Get Valuation", href: "/sell" },
     // TradeXchange keeps /auctions as its overview route for backwards
     // compatibility, while the header exposes each current service area.
     { name: "TradeXchange", kind: "trade-menu" },
