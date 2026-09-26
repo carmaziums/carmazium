@@ -840,7 +840,7 @@ export class EmailService {
     async sendAuctionEndedSellerEmail(sellerEmail: string, sellerName: string, vehicleTitle: string, winningAmount: number, auctionId: string) {
         const bodyHtml = `
             <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
-                Your Auction Has Ended
+                Your Auction Has Ended — Let&apos;s Reach More Buyers
             </h1>
             <p style="margin: 0 0 28px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
                 Hi <strong style="color: #ffffff;">${sellerName}</strong>, your auction has successfully ended with a winning bid.
@@ -892,20 +892,20 @@ export class EmailService {
             </p>
             <div style="background: rgba(237,28,36,0.06); border: 1px solid rgba(237,28,36,0.18); border-radius: 14px; padding: 22px; margin-bottom: 24px;">
                 <p style="margin: 0 0 12px; font-size: 14px; color: #e2e8f0; line-height: 1.7;">
-                    Your vehicle was presented to <strong style="color:#ffffff;">CarMazium’s dealer network</strong>,
-                    but it did not attract enough interest to complete a sale at the reserve this time.
+                    Your vehicle was presented across <strong style="color:#ffffff;">CarMazium’s verified dealer network</strong>,
+                    but it did not receive enough interest to complete a sale at the reserve price.
                 </p>
                 <p style="margin: 0; font-size: 14px; color: #94a3b8; line-height: 1.7;">
                     ${retailAlreadyLive
-                        ? 'Your Retail Listing is already live, so the vehicle can continue reaching the wider retail audience on CarMazium.'
-                        : 'We recommend moving the vehicle to a Retail Listing. This opens it to a much wider audience and gives it another strong opportunity to find the right buyer.'}
+                        ? 'Your Retail Listing is already live, so the vehicle can continue reaching CarMazium’s wider retail audience and has another strong opportunity to sell.'
+                        : 'We recommend moving the vehicle to a Retail Listing. This opens it to CarMazium’s much wider retail audience, increases its visibility and gives it a stronger chance of finding the right buyer.'}
                 </p>
             </div>
             ${!retailAlreadyLive ? `
                 <div style="background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.16); border-radius: 14px; padding: 18px 20px; margin-bottom: 28px;">
                     <p style="margin:0 0 5px; font-size:14px; font-weight:800; color:#4ade80;">A simple next step</p>
                     <p style="margin:0; font-size:13px; color:#94a3b8; line-height:1.6;">
-                        Your existing vehicle details can be reused. A CarMazium Retail Listing costs just £1 and remains listed until sold.
+                        Your vehicle details are already saved, so there is no need to start again. A CarMazium Retail Listing costs just £1 and remains listed until sold.
                     </p>
                 </div>
             ` : ''}
@@ -924,7 +924,7 @@ export class EmailService {
             to: sellerEmail,
             subject: retailAlreadyLive
                 ? `Auction ended — your Retail Listing for "${vehicleTitle}" stays live — CarMazium`
-                : `Auction ended — give "${vehicleTitle}" a wider retail audience — CarMazium`,
+                : `Auction ended — reach more buyers with "${vehicleTitle}" — CarMazium`,
             bodyHtml,
         });
     }
