@@ -22,8 +22,8 @@ EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
-CREATE TABLE IF NOT EXISTS "ai_reports" (
-  "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+CREATE TABLE IF NOT EXISTS public."ai_reports" (
+  "id" text NOT NULL,
   "surface" TEXT NOT NULL,
   "prompt" TEXT,
   "response" TEXT NOT NULL,
@@ -39,7 +39,9 @@ CREATE TABLE IF NOT EXISTS "ai_reports" (
 );
 
 CREATE INDEX IF NOT EXISTS "ai_reports_status_createdAt_idx"
-  ON "ai_reports" ("status", "createdAt" DESC);
+  ON public."ai_reports" ("status", "createdAt" DESC);
 
 CREATE INDEX IF NOT EXISTS "ai_reports_reason_createdAt_idx"
-  ON "ai_reports" ("reason", "createdAt" DESC);
+  ON public."ai_reports" ("reason", "createdAt" DESC);
+
+ALTER TABLE public."ai_reports" ENABLE ROW LEVEL SECURITY;
