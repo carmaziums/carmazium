@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Carmazium",
+    "name": "CarMazium",
     "slug": "carmazium",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "carmazium",
     "runtimeVersion": {
-      "policy": "sdkVersion"
+      "policy": "appVersion"
     },
     "updates": {
       "url": "https://u.expo.dev/f0ab914b-3433-4816-80a2-0a94e6c6a066",
