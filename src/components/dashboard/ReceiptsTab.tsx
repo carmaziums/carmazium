@@ -37,6 +37,7 @@ interface ReceiptEntry {
     date: string
     description: string | null
     stripePaymentId: string | null
+    synthetic?: boolean
     vehicle?: { title: string; image?: string; make: string | null; model: string | null; year: number | null }
 }
 
@@ -85,8 +86,18 @@ export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
                     } : undefined,
                 }))
 
-                // Synthetic KYC receipt for dealers
-                if (isDealer && kycData?.stripeChargedAt) {
+                // Older deployments did not write KYC fees into the Transaction
+                // ledger. Keep a temporary synthetic fallback only when the canonical
+                // KYC transaction is genuinely absent, so migrated accounts never see
+                // the same £1 receipt twice.
+                const hasCanonicalKyc = entries.some((entry) =>
+                    entry.type === 'KYC_VERIFICATION'
+                    && (
+                        !kycData?.stripePaymentIntentId
+                        || entry.stripePaymentId === kycData.stripePaymentIntentId
+                    ),
+                )
+                if (isDealer && kycData?.stripeChargedAt && !hasCanonicalKyc) {
                     entries.push({
                         id: kycData.stripePaymentIntentId || 'kyc-fee',
                         type: 'KYC_VERIFICATION',
@@ -95,6 +106,7 @@ export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
                         date: kycData.stripeChargedAt,
                         description: 'One-time dealer identity verification fee',
                         stripePaymentId: kycData.stripePaymentIntentId || null,
+                        synthetic: true,
                     })
                 }
 
@@ -197,8 +209,8 @@ export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
                             <button
                                 onClick={() => downloadReceiptPdf(receipt.id)}
                                 className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-primary transition-colors"
-                                disabled={isKyc}
-                                title={isKyc ? 'Not available for synthetic KYC receipt' : 'Download PDF receipt'}
+                                disabled={!!receipt.synthetic}
+                                title={receipt.synthetic ? 'Receipt will be available after the payment ledger is reconciled' : 'Download PDF receipt'}
                             >
                                 <Download size={10} /> Download PDF
                             </button>
