@@ -1160,7 +1160,6 @@ describe('AuctionsService — final lifecycle consistency', () => {
                 actionType: 'LIST_RETAIL',
                 data: expect.objectContaining({
                     listingId: 'listing-1',
-                    verifiedDealerCount: 742,
                     retailAlreadyLive: false,
                     retailUrl: '/sell?editId=listing-1&sellMode=retail',
                 }),
@@ -1185,9 +1184,16 @@ describe('AuctionsService — final lifecycle consistency', () => {
             expect.stringContaining('BMW'),
             '550e8400-e29b-41d4-a716-446655440000',
             'listing-1',
-            'more than 700 verified dealers',
             false,
         );
+
+        expect(prisma.dealerProfile.count).not.toHaveBeenCalled();
+
+        const notificationCall = notificationsService.create.mock.calls.find(
+            ([payload]: any[]) => payload.type === 'AUCTION_ENDED_NO_SALE',
+        )?.[0];
+        expect(notificationCall?.message).toContain('CarMazium’s dealer network');
+        expect(notificationCall?.message).not.toMatch(/\b\d+[,.]?\d*\s+verified dealers\b/i);
     });
 
     it('retires a cancelled linked auction clone while returning the retail source to an unlinked state', async () => {

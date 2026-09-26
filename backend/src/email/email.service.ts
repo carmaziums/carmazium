@@ -870,7 +870,6 @@ export class EmailService {
         vehicleTitle: string,
         auctionId: string,
         listingId?: string,
-        dealerAudienceLabel = 'CarMazium’s verified dealer network',
         retailAlreadyLive = false,
     ) {
         const actionUrl = retailAlreadyLive
@@ -893,13 +892,13 @@ export class EmailService {
             </p>
             <div style="background: rgba(237,28,36,0.06); border: 1px solid rgba(237,28,36,0.18); border-radius: 14px; padding: 22px; margin-bottom: 24px;">
                 <p style="margin: 0 0 12px; font-size: 14px; color: #e2e8f0; line-height: 1.7;">
-                    Your vehicle was made available across <strong style="color:#ffffff;">${dealerAudienceLabel}</strong>,
-                    but the auction did not generate enough interest to complete a sale at the reserve.
+                    Your vehicle was presented to <strong style="color:#ffffff;">CarMazium’s dealer network</strong>,
+                    but it did not attract enough interest to complete a sale at the reserve this time.
                 </p>
                 <p style="margin: 0; font-size: 14px; color: #94a3b8; line-height: 1.7;">
                     ${retailAlreadyLive
                         ? 'Your Retail Listing is already live, so the vehicle can continue reaching the wider retail audience on CarMazium.'
-                        : 'We recommend moving the vehicle to a Retail Listing. This opens it to a much wider audience and can potentially put it in front of thousands of retail shoppers rather than only the trade-auction audience.'}
+                        : 'We recommend moving the vehicle to a Retail Listing. This opens it to a much wider audience and gives it another strong opportunity to find the right buyer.'}
                 </p>
             </div>
             ${!retailAlreadyLive ? `
