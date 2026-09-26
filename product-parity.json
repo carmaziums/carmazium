@@ -1,5 +1,5 @@
 {
-  "version": 9,
+  "version": 10,
   "purpose": "CarMazium one-product parity contract",
   "policy": {
     "backend_is_source_of_truth": true,
@@ -651,6 +651,19 @@
       ],
       "mobile": [
         "carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "chat.ugc_safety",
+      "web": [
+        "src/components/chat/ChatWindow.tsx",
+        "src/components/admin/AdminChatModerationQueue.tsx",
+        "backend/src/chat/chat-content-safety.service.ts"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/ChatScreen.tsx",
+        "carmazium app/carmazium app/src/lib/chatApi.ts"
       ],
       "status": "required"
     }

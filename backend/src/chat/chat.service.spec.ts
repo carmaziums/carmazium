@@ -137,6 +137,7 @@ describe('ChatService — conversation context and authorization', () => {
             chatAttachmentService,
             tradeTeamService,
             { syncRetailLeadActivity: jest.fn().mockResolvedValue(null) } as any,
+            { assertAllowedText: jest.fn().mockResolvedValue(undefined) } as any,
         );
     });
 

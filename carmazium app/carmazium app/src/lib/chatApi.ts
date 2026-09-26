@@ -73,6 +73,11 @@ export interface ChatRoom {
   } | null;
   unreadCount: number;
   updatedAt: string;
+  chatBlocked?: boolean;
+  blockedByMe?: boolean;
+  blockReason?: string | null;
+  canBlockChat?: boolean;
+  canUnblockChat?: boolean;
 }
 
 export interface ChatAttachmentUploadTicket {
@@ -89,6 +94,24 @@ export interface SendChatAttachmentPayload {
   size: number;
   caption?: string;
   clientMessageId?: string;
+}
+
+export type ChatReportReason =
+  | 'HARASSMENT'
+  | 'SCAM_FRAUD'
+  | 'SPAM'
+  | 'INAPPROPRIATE_CONTENT'
+  | 'OTHER';
+
+export interface ChatReportResult {
+  report: {
+    id: string;
+    messageId: string;
+    chatRoomId: string;
+    reason: ChatReportReason;
+    status: 'OPEN' | 'REVIEWING' | 'RESOLVED' | 'DISMISSED';
+  };
+  created: boolean;
 }
 
 export interface ChatRoomsResponse {
@@ -212,6 +235,47 @@ export async function sendChatAttachment(
       method: 'POST',
       body: JSON.stringify(payload),
     }
+  );
+  return response.data;
+}
+
+
+export async function reportChatMessage(
+  messageId: string,
+  reason: ChatReportReason,
+  details?: string,
+): Promise<ChatReportResult> {
+  const response = await apiClient<{ data: ChatReportResult }>(
+    `/chat/messages/${messageId}/report`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        reason,
+        details: details?.trim() || undefined,
+      }),
+    },
+  );
+  return response.data;
+}
+
+export async function blockChatRoom(
+  roomId: string,
+  reason?: string,
+): Promise<ChatRoom> {
+  const response = await apiClient<{ data: ChatRoom }>(
+    `/chat/rooms/${roomId}/block`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason?.trim() || undefined }),
+    },
+  );
+  return response.data;
+}
+
+export async function unblockChatRoom(roomId: string): Promise<ChatRoom> {
+  const response = await apiClient<{ data: ChatRoom }>(
+    `/chat/rooms/${roomId}/unblock`,
+    { method: 'POST', body: JSON.stringify({}) },
   );
   return response.data;
 }

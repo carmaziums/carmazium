@@ -1089,6 +1089,40 @@ if (
   ok('Native direct-open chat hydrates newly created rooms before relying on room metadata');
 }
 
+// Store audit Block 3 — UGC moderation parity. Report/block actions must be
+// available on both clients, while one backend content filter protects every
+// message transport before persistence.
+const webChatSafety = read('src/components/chat/ChatWindow.tsx');
+const mobileChatApiSafety = read('carmazium app/carmazium app/src/lib/chatApi.ts');
+const backendChatSafety = read('backend/src/chat/chat-content-safety.service.ts');
+const backendChatServiceSafety = read('backend/src/chat/chat.service.ts');
+
+if (
+  !webChatSafety.includes('Report message') ||
+  !webChatSafety.includes('Block this conversation') ||
+  !mobileChatScreen.includes('Report message') ||
+  !mobileChatScreen.includes('Block conversation?') ||
+  !mobileChatScreen.includes('Messaging blocked') ||
+  !mobileChatApiSafety.includes('reportChatMessage') ||
+  !mobileChatApiSafety.includes('blockChatRoom') ||
+  !mobileChatApiSafety.includes('unblockChatRoom')
+) {
+  fail('Web/native member chat moderation controls drifted');
+} else {
+  ok('Web and native member chat both expose report/block/unblock safety controls');
+}
+
+if (
+  !backendChatSafety.includes("model: 'omni-moderation-latest'") ||
+  !backendChatSafety.includes('LOCAL_HIGH_CONFIDENCE_RULES') ||
+  !backendChatServiceSafety.includes("assertAllowedText(dto.content, 'MESSAGE')") ||
+  !backendChatServiceSafety.includes("assertAllowedText(content, 'ATTACHMENT_CAPTION')")
+) {
+  fail('Shared server-side chat content filtering drifted');
+} else {
+  ok('All client message transports share the same backend content-safety boundary');
+}
+
 const webPricing = read('src/lib/pricingConfig.ts');
 const mobilePricing = read('carmazium app/carmazium app/src/constants/pricing.ts');
 const payments = read('backend/src/payments/payments.service.ts');

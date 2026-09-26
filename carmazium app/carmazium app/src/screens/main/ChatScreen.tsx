@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -25,7 +26,21 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
 import { useChat } from '../../context/ChatContext';
 import { useAuthStore } from '../../store/authStore';
-import { createChatAttachmentUpload, getChatMessages, sendChatAttachment, sendChatMessage, markMessagesAsRead, type ChatHistoryCursor, type ChatMessage, type ChatRoom, type ChatUser } from '../../lib/chatApi';
+import {
+  blockChatRoom,
+  createChatAttachmentUpload,
+  getChatMessages,
+  markMessagesAsRead,
+  reportChatMessage,
+  sendChatAttachment,
+  sendChatMessage,
+  unblockChatRoom,
+  type ChatHistoryCursor,
+  type ChatMessage,
+  type ChatReportReason,
+  type ChatRoom,
+  type ChatUser,
+} from '../../lib/chatApi';
 import { getListingById } from '../../lib/listingsApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -40,6 +55,14 @@ type NavProp = NativeStackNavigationProp<MainStackParamList>;
 // Message bubbles cap their width off this instead of a percentage string —
 // see the note on the `bubble` style below for why.
 const MAX_BUBBLE_WIDTH = Dimensions.get('window').width * 0.82;
+
+const REPORT_REASONS: Array<{ value: ChatReportReason; label: string }> = [
+  { value: 'HARASSMENT', label: 'Harassment or threats' },
+  { value: 'SCAM_FRAUD', label: 'Scam or fraud' },
+  { value: 'SPAM', label: 'Spam' },
+  { value: 'INAPPROPRIATE_CONTENT', label: 'Inappropriate content' },
+  { value: 'OTHER', label: 'Other' },
+];
 
 const createClientMessageId = (): string => {
   const bytes = new Uint8Array(16);
@@ -352,6 +375,12 @@ export const ChatScreen: React.FC = () => {
   // called only on some renders (e.g. once `loading`/`room` resolve) violates
   // the Rules of Hooks and crashes the screen to blank on the next render.
   const [openingListing, setOpeningListing] = useState(false);
+  const [reportTarget, setReportTarget] = useState<ChatMessage | null>(null);
+  const [reportReason, setReportReason] = useState<ChatReportReason | null>(null);
+  const [reportDetails, setReportDetails] = useState('');
+  const [reporting, setReporting] = useState(false);
+  const [reportedMessageIds, setReportedMessageIds] = useState<Set<string>>(new Set());
+  const [changingBlock, setChangingBlock] = useState(false);
 
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -608,15 +637,87 @@ export const ChatScreen: React.FC = () => {
   // bottom as new messages are appended, without any manual scrollToEnd() hack.
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
+  const openReport = useCallback((message: ChatMessage) => {
+    if (message.senderId === user?.id || message.deliveryStatus) return;
+    setReportTarget(message);
+    setReportReason(null);
+    setReportDetails('');
+  }, [user?.id]);
+
+  const closeReport = useCallback(() => {
+    if (reporting) return;
+    setReportTarget(null);
+    setReportReason(null);
+    setReportDetails('');
+  }, [reporting]);
+
+  const submitReport = useCallback(async () => {
+    if (!reportTarget || !reportReason || reporting) return;
+
+    try {
+      setReporting(true);
+      await reportChatMessage(
+        reportTarget.id,
+        reportReason,
+        reportDetails.trim() || undefined,
+      );
+      setReportedMessageIds((prev) => {
+        const next = new Set(prev);
+        next.add(reportTarget.id);
+        return next;
+      });
+      setReportTarget(null);
+      setReportReason(null);
+      setReportDetails('');
+      showToast('Report sent to CarMazium moderation.', 'success');
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Could not submit this report.',
+        'info',
+      );
+    } finally {
+      setReporting(false);
+    }
+  }, [reportTarget, reportReason, reporting, reportDetails, showToast]);
+
   const renderMessageItem = useCallback(({ item }: { item: ChatMessage }) => (
-    <MessageBubble
-      msg={item}
-      isOwn={item.senderId === user?.id}
-      isLastOwnMessage={item.id === lastOwnMessageId}
-      initials={initialsForBubbles}
-      onRetry={handleRetry}
-    />
-  ), [user?.id, lastOwnMessageId, initialsForBubbles, handleRetry]);
+    <View>
+      <MessageBubble
+        msg={item}
+        isOwn={item.senderId === user?.id}
+        isLastOwnMessage={item.id === lastOwnMessageId}
+        initials={initialsForBubbles}
+        onRetry={handleRetry}
+      />
+      {item.senderId !== user?.id &&
+        !item.deliveryStatus &&
+        room?.context !== 'SUPPORT' &&
+        item.sender.role !== 'ADMIN' && (
+          <View style={styles.messageSafetyRow}>
+            {reportedMessageIds.has(item.id) ? (
+              <Text style={styles.messageReportedText}>Reported</Text>
+            ) : (
+              <TouchableOpacity
+                onPress={() => openReport(item)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Report this message"
+              >
+                <Text style={styles.messageReportText}>Report</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+    </View>
+  ), [
+    user?.id,
+    lastOwnMessageId,
+    initialsForBubbles,
+    handleRetry,
+    room?.context,
+    reportedMessageIds,
+    openReport,
+  ]);
 
   if (loading) {
     return (
@@ -811,6 +912,47 @@ export const ChatScreen: React.FC = () => {
     }
   };
 
+
+  const performBlockChange = async (shouldBlock: boolean) => {
+    if (changingBlock) return;
+    try {
+      setChangingBlock(true);
+      if (shouldBlock) {
+        await blockChatRoom(room.id);
+        showToast('Conversation blocked. Messaging is paused for both sides.', 'success');
+      } else {
+        await unblockChatRoom(room.id);
+        showToast('Conversation unblocked.', 'success');
+      }
+      await refreshRooms();
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Could not update this conversation.',
+        'info',
+      );
+    } finally {
+      setChangingBlock(false);
+    }
+  };
+
+  const handleBlockToggle = () => {
+    const unblocking = Boolean(room.blockedByMe);
+    Alert.alert(
+      unblocking ? 'Unblock conversation?' : 'Block conversation?',
+      unblocking
+        ? 'Messaging will be available again if the other participant has not also blocked the conversation.'
+        : 'Messaging will stop for both sides. Existing messages stay available as evidence and can still be reported.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: unblocking ? 'Unblock' : 'Block',
+          style: unblocking ? 'default' : 'destructive',
+          onPress: () => void performBlockChange(!unblocking),
+        },
+      ],
+    );
+  };
+
   const carPrice = room.listing?.price ? parseFloat(String(room.listing.price)) : 0;
   const isDealer = room.otherUser.role === 'DEALER';
 
@@ -858,6 +1000,24 @@ export const ChatScreen: React.FC = () => {
           )}
         </View>
 
+        {(room.canBlockChat || room.canUnblockChat) && (
+          <IconButton
+            style={styles.safetyHeaderButton}
+            icon={
+              changingBlock
+                ? <ActivityIndicator size="small" color={Colors.white} />
+                : <Ionicons
+                    name={room.blockedByMe ? 'lock-open-outline' : 'ban-outline'}
+                    size={19}
+                    color={room.blockedByMe ? Colors.success : Colors.textSecondary}
+                  />
+            }
+            onPress={handleBlockToggle}
+            disabled={changingBlock}
+            accessibilityLabel={room.blockedByMe ? 'Unblock conversation' : 'Block conversation'}
+          />
+        )}
+
       </View>
 
       {/* Listing context banner */}
@@ -885,6 +1045,30 @@ export const ChatScreen: React.FC = () => {
           </View>
           <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
+      )}
+
+      {room.chatBlocked && !shouldBlockChat && (
+        <View style={styles.chatBlockedBanner}>
+          <Ionicons name="ban-outline" size={16} color={Colors.warning} />
+          <View style={styles.chatBlockedCopy}>
+            <Text style={styles.chatBlockedTitle}>Messaging blocked</Text>
+            <Text style={styles.chatBlockedText}>
+              {room.blockedByMe
+                ? 'You blocked this conversation. The transcript remains available and messages can still be reported.'
+                : 'Messaging is paused because this conversation has been blocked. The transcript remains available.'}
+            </Text>
+          </View>
+          {room.blockedByMe && (
+            <TouchableOpacity
+              onPress={handleBlockToggle}
+              disabled={changingBlock}
+              style={styles.unblockInlineButton}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.unblockInlineText}>Unblock</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       )}
 
       {/* Main chat body with conditional overlay blocking */}
@@ -974,7 +1158,7 @@ export const ChatScreen: React.FC = () => {
       </View>
 
       {/* Sticky action CTAs bar (hide if blocked) */}
-      {!shouldBlockChat && room.listing && (
+      {!shouldBlockChat && !room.chatBlocked && room.listing && (
         <View style={styles.actionsBar}>
           <TouchableOpacity
             style={[styles.actionBtn, styles.actionBtnOutlineRed]}
@@ -999,7 +1183,7 @@ export const ChatScreen: React.FC = () => {
       )}
 
       {/* Bottom Text bar (hide if blocked) */}
-      {!shouldBlockChat && (
+      {!shouldBlockChat && !room.chatBlocked && (
         <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <IconButton
             style={styles.attachBtn}
@@ -1024,6 +1208,108 @@ export const ChatScreen: React.FC = () => {
           <IconButton style={[styles.sendBtn, (!inputVal.trim() || uploadingPhoto) && styles.sendBtnDisabled]} icon={<Ionicons name="send" size={15} color={Colors.white} />} onPress={handleSend} disabled={!inputVal.trim() || uploadingPhoto} accessibilityLabel="Send message" />
         </View>
       )}
+
+      <Modal
+        visible={Boolean(reportTarget)}
+        transparent
+        animationType="fade"
+        onRequestClose={closeReport}
+      >
+        <View style={styles.reportModalBackdrop}>
+          <View style={styles.reportModalCard}>
+            <View style={styles.reportModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.reportModalEyebrow}>Safety</Text>
+                <Text style={styles.reportModalTitle}>Report message</Text>
+              </View>
+              <IconButton
+                style={styles.reportModalClose}
+                icon={<Ionicons name="close" size={20} color={Colors.white} />}
+                onPress={closeReport}
+                disabled={reporting}
+                accessibilityLabel="Close report"
+              />
+            </View>
+
+            <Text style={styles.reportModalHelp}>
+              CarMazium moderators receive only the reported message and its attachment evidence, not your surrounding private conversation.
+            </Text>
+
+            {reportTarget && (
+              <View style={styles.reportPreview}>
+                <Text style={styles.reportPreviewText} numberOfLines={4}>
+                  {reportTarget.content || (reportTarget.attachmentPath ? 'Photo message' : 'Message')}
+                </Text>
+              </View>
+            )}
+
+            <Text style={styles.reportSectionLabel}>Reason</Text>
+            <View style={styles.reportReasonWrap}>
+              {REPORT_REASONS.map((reason) => {
+                const selected = reportReason === reason.value;
+                return (
+                  <TouchableOpacity
+                    key={reason.value}
+                    style={[
+                      styles.reportReasonChip,
+                      selected && styles.reportReasonChipSelected,
+                    ]}
+                    onPress={() => setReportReason(reason.value)}
+                    activeOpacity={0.75}
+                  >
+                    <Text
+                      style={[
+                        styles.reportReasonText,
+                        selected && styles.reportReasonTextSelected,
+                      ]}
+                    >
+                      {reason.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={styles.reportSectionLabel}>Additional details (optional)</Text>
+            <TextInput
+              style={styles.reportDetailsInput}
+              value={reportDetails}
+              onChangeText={(value) => setReportDetails(value.slice(0, 1000))}
+              placeholder="Tell the moderator what happened"
+              placeholderTextColor={Colors.textMuted}
+              multiline
+              maxLength={1000}
+            />
+
+            <View style={styles.reportModalActions}>
+              <TouchableOpacity
+                style={styles.reportCancelButton}
+                onPress={closeReport}
+                disabled={reporting}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.reportCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.reportSubmitButton,
+                  (!reportReason || reporting) && styles.reportSubmitDisabled,
+                ]}
+                onPress={() => void submitReport()}
+                disabled={!reportReason || reporting}
+                activeOpacity={0.8}
+              >
+                {reporting ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <Ionicons name="flag-outline" size={16} color={Colors.white} />
+                )}
+                <Text style={styles.reportSubmitText}>Submit report</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenWrapper>
   );
 };
@@ -1077,6 +1363,68 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size10,
     color: Colors.success,
     marginTop: 1,
+  },
+  safetyHeaderButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.whiteAlpha06,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    marginLeft: 8,
+  },
+  messageSafetyRow: {
+    alignSelf: 'flex-start',
+    marginLeft: 54,
+    marginTop: -2,
+    marginBottom: 6,
+  },
+  messageReportText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size10,
+    color: Colors.textMuted,
+  },
+  messageReportedText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size10,
+    color: Colors.success,
+  },
+  chatBlockedBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: Colors.warningAlpha05,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.warningAlpha20,
+  },
+  chatBlockedCopy: {
+    flex: 1,
+  },
+  chatBlockedTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.warning,
+  },
+  chatBlockedText: {
+    marginTop: 2,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size10,
+    lineHeight: 15,
+    color: Colors.textSecondary,
+  },
+  unblockInlineButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.warningAlpha25,
+  },
+  unblockInlineText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size10,
+    color: Colors.warning,
   },
   // Listing Context banner
   listingBanner: {
@@ -1501,6 +1849,151 @@ const styles = StyleSheet.create({
   sendBtnDisabled: {
     backgroundColor: Colors.deepBlue_1e1e24,
     opacity: 0.6,
+  },
+  reportModalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+  },
+  reportModalCard: {
+    width: '100%',
+    maxHeight: '88%',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    backgroundColor: Colors.deepBlue_16161c,
+    padding: 20,
+  },
+  reportModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reportModalEyebrow: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: Colors.accent,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  reportModalTitle: {
+    marginTop: 2,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xl,
+    color: Colors.white,
+  },
+  reportModalClose: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.whiteAlpha06,
+  },
+  reportModalHelp: {
+    marginTop: 12,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size12,
+    lineHeight: 18,
+    color: Colors.textSecondary,
+  },
+  reportPreview: {
+    marginTop: 14,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.bgSecondary,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha05,
+  },
+  reportPreviewText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size12,
+    lineHeight: 18,
+    color: Colors.white,
+  },
+  reportSectionLabel: {
+    marginTop: 16,
+    marginBottom: 8,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size10,
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  reportReasonWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  reportReasonChip: {
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    backgroundColor: Colors.bgSecondary,
+  },
+  reportReasonChipSelected: {
+    borderColor: Colors.accent,
+    backgroundColor: Colors.darkRed_3b2424,
+  },
+  reportReasonText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size10,
+    color: Colors.textSecondary,
+  },
+  reportReasonTextSelected: {
+    color: Colors.white,
+  },
+  reportDetailsInput: {
+    minHeight: 88,
+    maxHeight: 130,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    backgroundColor: Colors.bgSecondary,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size12,
+    lineHeight: 18,
+    color: Colors.white,
+    textAlignVertical: 'top',
+  },
+  reportModalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 18,
+  },
+  reportCancelButton: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+  },
+  reportCancelText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.textSecondary,
+  },
+  reportSubmitButton: {
+    flex: 1.4,
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    borderRadius: 12,
+    backgroundColor: Colors.accent,
+  },
+  reportSubmitDisabled: {
+    opacity: 0.45,
+  },
+  reportSubmitText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.white,
   },
   // General Errors
   errorContainer: {
