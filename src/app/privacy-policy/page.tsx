@@ -128,7 +128,7 @@ export default function PrivacyPolicyPage() {
         <div className="mb-8">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Legal</p>
           <h1 className="mt-2 text-4xl md:text-5xl font-black font-heading uppercase tracking-tight text-[var(--text-primary)]">Privacy Policy</h1>
-          <p className="mt-3 text-sm text-[var(--text-muted)]">Last updated: 25 September 2026</p>
+          <p className="mt-3 text-sm text-[var(--text-muted)]">Last updated: 26 September 2026</p>
           <p className="mt-5 max-w-3xl text-[var(--text-secondary)] leading-7">
             This policy explains how CarMazium handles personal data across the website, iPhone and Android apps, marketplace, auctions, Partner services and MaziuM AI.
           </p>
