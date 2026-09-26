@@ -1184,7 +1184,7 @@ export class PaymentsService {
                     title: 'Dealer KYC Submitted — £1 Verification Paid',
                     message: `${companyName} has paid the £1 KYC verification fee and is ready for review.`,
                     data: { kycId, stripePaymentId, companyName },
-                    link: '/admin/kyc',
+                    link: '/dashboard/admin/dealer-verification',
                 }).catch(() => {}),
             ),
         );
