@@ -19,6 +19,21 @@ on:
         required: true
         type: boolean
         default: true
+      asc_app_id:
+        description: 'App Store Connect numeric Apple ID for CarMazium'
+        required: false
+        type: string
+        default: ''
+      apple_team_id:
+        description: '10-character Apple Developer Team ID expected in AASA'
+        required: false
+        type: string
+        default: ''
+      android_sha256_fingerprint:
+        description: 'Google Play app-signing SHA-256 fingerprint expected in assetlinks.json'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -123,15 +138,36 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Require repository release identifiers
-        run: node scripts/check-release-readiness.mjs --strict
+      - name: Validate supplied store evidence
+        shell: bash
+        env:
+          CARMAZIUM_ASC_APP_ID: ${{ inputs.asc_app_id }}
+          APPLE_TEAM_ID: ${{ inputs.apple_team_id }}
+          ANDROID_SHA256: ${{ inputs.android_sha256_fingerprint }}
+        run: |
+          set -euo pipefail
+          test -n "$CARMAZIUM_ASC_APP_ID"
+          [[ "$CARMAZIUM_ASC_APP_ID" =~ ^[0-9]+$ ]]
+          [[ "$APPLE_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]]
+          [[ "$ANDROID_SHA256" =~ ^([0-9A-Fa-f]{2}:){31}[0-9A-Fa-f]{2}$ ]]
+          node scripts/check-release-readiness.mjs --strict
       - name: Require deployed Android app association
         shell: bash
+        env:
+          EXPECTED_FINGERPRINT: ${{ inputs.android_sha256_fingerprint }}
         run: |
           set -euo pipefail
-          curl --retry 3 --retry-all-errors --connect-timeout 10 --max-time 30 -fsS             -H 'Accept: application/json'             https://www.carmazium.com/.well-known/assetlinks.json             | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const j=JSON.parse(s);if(!Array.isArray(j)||j.length===0)process.exit(1)})"
+          curl --retry 3 --retry-all-errors --connect-timeout 10 --max-time 30 -fsS \
+            -H 'Accept: application/json' \
+            https://www.carmazium.com/.well-known/assetlinks.json \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const j=JSON.parse(s);const x=Array.isArray(j)&&j.find(v=>v?.target?.package_name==='uk.carmazium.app'&&v?.relation?.includes('delegate_permission/common.handle_all_urls'));const got=x?.target?.sha256_cert_fingerprints??[];const expected=(process.env.EXPECTED_FINGERPRINT||'').toUpperCase();if(!x||!got.map(v=>String(v).toUpperCase()).includes(expected))process.exit(1)})"
       - name: Require deployed Apple app association
         shell: bash
+        env:
+          EXPECTED_TEAM_ID: ${{ inputs.apple_team_id }}
         run: |
           set -euo pipefail
-          curl --retry 3 --retry-all-errors --connect-timeout 10 --max-time 30 -fsS             -H 'Accept: application/json'             https://www.carmazium.com/.well-known/apple-app-site-association             | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const j=JSON.parse(s);if(!Array.isArray(j?.applinks?.details)||j.applinks.details.length===0)process.exit(1)})"
+          curl --retry 3 --retry-all-errors --connect-timeout 10 --max-time 30 -fsS \
+            -H 'Accept: application/json' \
+            https://www.carmazium.com/.well-known/apple-app-site-association \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const j=JSON.parse(s);const expected=(process.env.EXPECTED_TEAM_ID||'')+'.uk.carmazium.app';const details=j?.applinks?.details??[];const x=Array.isArray(details)&&details.find(v=>v?.appID===expected);if(!x||!Array.isArray(x.paths)||!x.paths.includes('/auctions/live/*'))process.exit(1)})"

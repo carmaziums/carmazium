@@ -2,6 +2,18 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  async rewrites() {
+    return [
+      {
+        source: '/.well-known/assetlinks.json',
+        destination: '/api/app-links/android',
+      },
+      {
+        source: '/.well-known/apple-app-site-association',
+        destination: '/api/app-links/apple',
+      },
+    ];
+  },
   async redirects() {
     return [
       {
