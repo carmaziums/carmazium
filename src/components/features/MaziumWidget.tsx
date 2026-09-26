@@ -4,18 +4,20 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { X, Send, Search, ArrowRight } from "lucide-react"
+import { X, Send, Search, ArrowRight, Flag, ShieldCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 
-import { aiChat } from "@/lib/aiApi"
+import { aiChat, reportAiResponse, type AiReportReason } from "@/lib/aiApi"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ChatMessage {
     role: "user" | "bot"
     text: string
+    prompt?: string
+    reportable?: boolean
     /** Optional filter card attached to a bot message */
     filterCard?: {
         label: string
@@ -60,8 +62,18 @@ export function MaziumWidget() {
     const [showGreeting, setShowGreeting] = React.useState<boolean | null>(null)
     const [isThinking, setIsThinking] = React.useState(false)
     const [quickReplies, setQuickReplies] = React.useState<QuickReply[]>([])
+    const [hasAiConsent, setHasAiConsent] = React.useState<boolean | null>(null)
+    const [reportTarget, setReportTarget] = React.useState<ChatMessage | null>(null)
+    const [reportReason, setReportReason] = React.useState<AiReportReason | "">("")
+    const [reportDetails, setReportDetails] = React.useState("")
+    const [isReporting, setIsReporting] = React.useState(false)
+    const [reportedResponses, setReportedResponses] = React.useState<Set<string>>(new Set())
     const messagesEndRef = React.useRef<HTMLDivElement>(null)
     const greetingIntervalRef = React.useRef<NodeJS.Timeout | null>(null)
+
+    React.useEffect(() => {
+        setHasAiConsent(localStorage.getItem("mazium_ai_consent_v1") === "accepted")
+    }, [])
 
     // Set daily dynamic quick replies on mount
     React.useEffect(() => {
@@ -125,6 +137,8 @@ export function MaziumWidget() {
             return {
                 role: "bot",
                 text: result.text,
+                prompt: userMessage,
+                reportable: true,
                 filterCard: result.filterCard || undefined,
             }
         } catch (error) {
@@ -138,7 +152,7 @@ export function MaziumWidget() {
 
     const handleSend = async (message?: string) => {
         const text = (message || input).trim()
-        if (!text) return
+        if (!text || hasAiConsent !== true) return
         setInput("")
 
         // Add user message
@@ -156,6 +170,34 @@ export function MaziumWidget() {
             ])
         } finally {
             setIsThinking(false)
+        }
+    }
+
+    const acceptAiConsent = () => {
+        localStorage.setItem("mazium_ai_consent_v1", "accepted")
+        setHasAiConsent(true)
+    }
+
+    const submitAiReport = async () => {
+        if (!reportTarget || !reportReason || isReporting) return
+        try {
+            setIsReporting(true)
+            await reportAiResponse({
+                prompt: reportTarget.prompt,
+                response: reportTarget.text,
+                reason: reportReason,
+                details: reportDetails.trim() || undefined,
+            })
+            setReportedResponses(prev => {
+                const next = new Set(prev)
+                next.add(reportTarget.text)
+                return next
+            })
+            setReportTarget(null)
+            setReportReason("")
+            setReportDetails("")
+        } finally {
+            setIsReporting(false)
         }
     }
 
@@ -218,6 +260,33 @@ export function MaziumWidget() {
                 <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 custom-scrollbar"
                     style={{ background: "var(--bg-card)" }}
                 >
+                    {hasAiConsent === false && (
+                        <div className="rounded-xl border p-3 text-xs leading-relaxed"
+                            style={{ background: "var(--bg-input)", borderColor: "var(--border-default)", color: "var(--text-secondary)" }}
+                        >
+                            <div className="flex items-center gap-2 font-bold mb-1" style={{ color: "var(--text-primary)" }}>
+                                <ShieldCheck size={14} className="text-primary" />
+                                Before you use Mazium AI
+                            </div>
+                            <p>Your message and recent Mazium chat context are sent to OpenAI to generate a response. Do not include passwords, payment credentials or unnecessary sensitive personal information.</p>
+                            <div className="mt-3 flex items-center gap-2">
+                                <button
+                                    onClick={acceptAiConsent}
+                                    className="rounded-lg bg-primary px-3 py-2 font-bold text-white"
+                                >
+                                    I understand & continue
+                                </button>
+                                <button
+                                    onClick={() => router.push("/privacy-policy")}
+                                    className="rounded-lg border px-3 py-2 font-bold"
+                                    style={{ borderColor: "var(--border-default)", color: "var(--text-primary)" }}
+                                >
+                                    Privacy
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {messages.map((msg, i) => (
                         <div
                             key={i}
@@ -287,9 +356,73 @@ export function MaziumWidget() {
                                         />
                                     </button>
                                 )}
+
+                                {msg.role === "bot" && msg.reportable && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setReportTarget(msg)
+                                            setReportReason("")
+                                            setReportDetails("")
+                                        }}
+                                        disabled={reportedResponses.has(msg.text)}
+                                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold disabled:opacity-60"
+                                        style={{ color: "var(--text-muted)" }}
+                                    >
+                                        <Flag size={12} />
+                                        {reportedResponses.has(msg.text) ? "Reported" : "Report AI response"}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     ))}
+
+                    {reportTarget && (
+                        <div className="rounded-xl border p-3 space-y-3"
+                            style={{ background: "var(--bg-input)", borderColor: "var(--border-default)" }}
+                        >
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs font-black" style={{ color: "var(--text-primary)" }}>Report this AI response</p>
+                                <button
+                                    type="button"
+                                    onClick={() => setReportTarget(null)}
+                                    disabled={isReporting}
+                                    aria-label="Close AI report"
+                                    style={{ color: "var(--text-muted)" }}
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
+                            <select
+                                value={reportReason}
+                                onChange={e => setReportReason(e.target.value as AiReportReason | "")}
+                                className="w-full rounded-lg border px-3 py-2 text-xs"
+                                style={{ background: "var(--bg-card)", borderColor: "var(--border-default)", color: "var(--text-primary)" }}
+                            >
+                                <option value="">Choose a reason</option>
+                                <option value="UNSAFE_OFFENSIVE">Unsafe or offensive</option>
+                                <option value="INACCURATE_MISLEADING">Inaccurate or misleading</option>
+                                <option value="SCAM_DISHONEST">Scam or dishonest guidance</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                            <textarea
+                                value={reportDetails}
+                                onChange={e => setReportDetails(e.target.value.slice(0, 1000))}
+                                placeholder="Optional details"
+                                maxLength={1000}
+                                className="min-h-16 w-full resize-none rounded-lg border px-3 py-2 text-xs"
+                                style={{ background: "var(--bg-card)", borderColor: "var(--border-default)", color: "var(--text-primary)" }}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => void submitAiReport()}
+                                disabled={!reportReason || isReporting}
+                                className="w-full rounded-lg bg-primary px-3 py-2 text-xs font-black text-white disabled:opacity-50"
+                            >
+                                {isReporting ? "Submitting…" : "Submit report"}
+                            </button>
+                        </div>
+                    )}
 
                     {/* Thinking Indicator */}
                     {isThinking && (
@@ -321,7 +454,7 @@ export function MaziumWidget() {
                         <button
                             key={chip.label}
                             onClick={() => handleSend(chip.action)}
-                            disabled={isThinking}
+                            disabled={isThinking || hasAiConsent !== true}
                             className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all hover:scale-105 disabled:opacity-50 cursor-pointer"
                             style={{
                                 borderColor: "var(--border-default)",
@@ -351,13 +484,13 @@ export function MaziumWidget() {
                         onKeyDown={(e) =>
                             e.key === "Enter" && !isThinking && handleSend()
                         }
-                        disabled={isThinking}
+                        disabled={isThinking || hasAiConsent !== true}
                     />
                     <Button
                         size="icon"
                         className="h-10 w-10 shrink-0 rounded-full shadow-neon"
                         onClick={() => handleSend()}
-                        disabled={isThinking || !input.trim()}
+                        disabled={isThinking || hasAiConsent !== true || !input.trim()}
                     >
                         <Send size={16} />
                     </Button>
