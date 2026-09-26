@@ -6,6 +6,8 @@ import { AdminMessagingService } from './admin-messaging.service';
 export class AdminBroadcastSchedulerService {
     private readonly logger = new Logger(AdminBroadcastSchedulerService.name);
     private running = false;
+    private lastKycReminderCheckAt = 0;
+    private readonly kycReminderCheckIntervalMs = 15 * 60 * 1000;
 
     constructor(private readonly messaging: AdminMessagingService) {}
 
@@ -29,6 +31,20 @@ export class AdminBroadcastSchedulerService {
                 this.logger.log(
                     `Claimed ${result.claimed}/${result.due} due scheduled broadcast(s)`,
                 );
+            }
+
+            // KYC reminders are a recurring operational campaign, not a locked
+            // future snapshot. Re-resolve eligibility each run so a dealer who
+            // has become verified automatically drops out before the next email.
+            const now = Date.now();
+            if (now - this.lastKycReminderCheckAt >= this.kycReminderCheckIntervalMs) {
+                this.lastKycReminderCheckAt = now;
+                const kycReminder = await this.messaging.processDealerKycReminderAutomation();
+                if (kycReminder.due) {
+                    this.logger.log(
+                        `Automatic dealer KYC reminder delivered to ${kycReminder.requested ?? 0} dealer(s)`,
+                    );
+                }
             }
         } catch (error: any) {
             this.logger.error(
