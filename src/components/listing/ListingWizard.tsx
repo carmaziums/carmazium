@@ -678,7 +678,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     const isAuthenticated = !!user
     const isEmailVerified = !!user?.email_confirmed_at
-    const isVerifiedDealer = profile?.role === 'DEALER' && !!profile?.dealerProfile?.isVerified
+    const isDealerStaff = !!((profile as any)?.dealerStaffMemberships?.length)
+    const isVerifiedDealer = profile?.role === 'DEALER' && (!!profile?.dealerProfile?.isVerified || isDealerStaff)
 
     // Header quick navigation can take a seller straight into the requested
     // listing channel. Keep edit/HPI flows authoritative and apply the shortcut
