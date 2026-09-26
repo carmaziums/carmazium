@@ -30,7 +30,7 @@ export function VehicleValuationCard({
                 <Loader2 size={18} className="animate-spin text-blue-400 shrink-0" />
                 <div>
                     <p className="text-sm font-bold text-[var(--text-primary)]">Calculating your CarMazium estimate</p>
-                    <p className="text-xs text-[var(--text-muted)]">Checking similar vehicles, including year, mileage, transmission and other vehicle details.</p>
+                    <p className="text-xs text-[var(--text-muted)]">Checking the vehicle's age and mileage to calculate its current market value.</p>
                 </div>
             </div>
         )
@@ -60,16 +60,13 @@ export function VehicleValuationCard({
                     <div>
                         <p className="text-sm font-black text-[var(--text-primary)]">Not enough reliable market evidence yet</p>
                         <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
-                            CarMazium does not have enough exact-model evidence to give you a trustworthy price for this vehicle yet. Please enter your own asking price or auction value rather than relying on a generic make-level estimate.
+                            CarMazium does not have enough reliable market evidence to give you a trustworthy value for this vehicle yet. Please enter your own price to continue.
                         </p>
                     </div>
                 </div>
             </div>
         )
     }
-
-    const usesLiveUkMarket =
-        valuation.source === "LIVE_UK_MARKET" || valuation.source === "BLENDED_MARKET"
 
     const confidenceClass =
         valuation.confidence === "HIGH"
@@ -78,10 +75,7 @@ export function VehicleValuationCard({
                 ? "text-amber-600 border-amber-500/30 bg-amber-500/10 dark:text-amber-300"
                 : "text-orange-600 border-orange-500/30 bg-orange-500/10 dark:text-orange-300"
 
-    const primaryValue =
-        mode === "auction"
-            ? valuation.auction.marketValue
-            : valuation.retail.suggestedAsking
+    const primaryValue = valuation.auction.marketValue
 
     return (
         <div className="relative overflow-hidden rounded-2xl border border-blue-500/25 bg-gradient-to-br from-blue-500/10 via-[var(--bg-card)] to-[var(--bg-card)] p-5 md:p-6">
@@ -94,12 +88,10 @@ export function VehicleValuationCard({
                         </div>
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-500">
-                                {usesLiveUkMarket ? "Live UK Market Estimate" : "CarMazium Market Estimate"}
+                                Vehicle Valuation
                             </p>
                             <p className="mt-1 text-xs text-[var(--text-muted)]">
-                                {mode === "auction"
-                                    ? "Lower dealer-buy guidance designed for a competitive trade auction."
-                                    : "Upper retail asking guidance based on current market evidence."}
+                                Based on the age and mileage of your vehicle.
                             </p>
                         </div>
                     </div>
@@ -110,15 +102,13 @@ export function VehicleValuationCard({
 
                 <div className="mt-5 rounded-2xl border border-blue-500/20 bg-[var(--bg-input)] p-5 md:p-6">
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-                        {mode === "auction" ? "Dealer auction guide" : "Retail asking guide"}
+                        Current Market Value
                     </p>
                     <p className="mt-2 text-3xl font-black tabular-nums text-[var(--text-primary)] md:text-4xl">
                         {formatPrice(primaryValue)}
                     </p>
                     <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
-                        {mode === "auction"
-                            ? "A lower guide intended to leave traders room for preparation, warranty and resale margin. You remain in control of the reserve."
-                            : "A stronger retail asking guide. You remain in control of the final advertised price."}
+                        Based on the age and mileage of your vehicle.
                     </p>
                 </div>
 
@@ -126,7 +116,7 @@ export function VehicleValuationCard({
 
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[10px] leading-relaxed text-[var(--text-muted)]">
-                        Guide only. Actual sale price depends on exact specification, condition, demand and buyer inspection.
+                        Guide only. Vehicle condition, specification and current market demand can affect the final selling price.
                     </p>
                     <Button type="button" onClick={onApply} className="h-10 shrink-0 gap-2 px-4">
                         <CheckCircle size={15} />
