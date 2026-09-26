@@ -75,7 +75,7 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
           <Text style={s.livePillText}>LIVE</Text>
         </View>
         <View style={{ position: 'absolute', top: 34, left: 10, right: 10 }} pointerEvents="none">
-          <AuctionCardTrustBadges badgeTier={l?.badgeTier} isFeatured={l?.isFeatured} isDepartedSale={l?.isDepartedSale} />
+          <AuctionCardTrustBadges badgeTier={l?.badgeTier} isFeatured={l?.isFeatured} isDepartedSale={l?.isDepartedSale} isImported={l?.isImported} />
         </View>
         <WishlistHeart listing={auctionToListingParam(auction)} />
         <View style={s.bidOverlay} pointerEvents="none">
@@ -134,7 +134,7 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
           <Text style={s.livePillText}>UPCOMING</Text>
         </View>
         <View style={{ position: 'absolute', top: 34, left: 10, right: 10 }} pointerEvents="none">
-          <AuctionCardTrustBadges badgeTier={l?.badgeTier} isFeatured={l?.isFeatured} isDepartedSale={l?.isDepartedSale} />
+          <AuctionCardTrustBadges badgeTier={l?.badgeTier} isFeatured={l?.isFeatured} isDepartedSale={l?.isDepartedSale} isImported={l?.isImported} />
         </View>
         <WishlistHeart listing={auctionToListingParam(auction)} />
         <View style={s.bidOverlay} pointerEvents="none">
