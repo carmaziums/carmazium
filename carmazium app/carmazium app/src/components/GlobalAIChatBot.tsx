@@ -141,6 +141,8 @@ export const GlobalAIChatBot: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authUserId = useAuthStore((s) => s.user?.id || '');
+  const aiConsentKey = authUserId ? `mazium_ai_consent_v1:${authUserId}` : '';
 
   // Track the keyboard directly instead of wrapping the panel in a
   // KeyboardAvoidingView. The panel is a fixed-size, absolutely-positioned
@@ -197,10 +199,15 @@ export const GlobalAIChatBot: React.FC = () => {
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem('mazium_ai_consent_v1')
+    if (!aiConsentKey) {
+      setHasAiConsent(false);
+      return;
+    }
+    setHasAiConsent(null);
+    AsyncStorage.getItem(aiConsentKey)
       .then((value) => setHasAiConsent(value === 'accepted'))
       .catch(() => setHasAiConsent(false));
-  }, []);
+  }, [aiConsentKey]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -299,7 +306,8 @@ export const GlobalAIChatBot: React.FC = () => {
 
   const acceptAiConsent = async () => {
     try {
-      await AsyncStorage.setItem('mazium_ai_consent_v1', 'accepted');
+      if (!aiConsentKey) return;
+      await AsyncStorage.setItem(aiConsentKey, 'accepted');
       setHasAiConsent(true);
     } catch {
       setHasAiConsent(false);
@@ -320,7 +328,7 @@ export const GlobalAIChatBot: React.FC = () => {
 
   const withdrawAiConsent = async () => {
     try {
-      await AsyncStorage.removeItem('mazium_ai_consent_v1');
+      if (aiConsentKey) await AsyncStorage.removeItem(aiConsentKey);
     } finally {
       setHasAiConsent(false);
       setMessage('');
