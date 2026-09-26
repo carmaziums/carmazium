@@ -136,6 +136,12 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
               <Text style={styles.featuredText}>⭐ FEATURED</Text>
             </View>
           )}
+          {listing.isImported && (
+            <View style={styles.importedBadge}>
+              <Ionicons name="globe-outline" size={10} color="#111827" />
+              <Text style={styles.importedText}>IMPORTED</Text>
+            </View>
+          )}
           {/* Paid-tier indicator — this is NOT a verification signal, just which
               listing package the seller bought (mobile-ui-ux-audit.md §C5). */}
           {(listing.badgeTier === 'STANDARD' || listing.badgeTier === 'PREMIUM') && (
@@ -284,6 +290,23 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size9,
     color: Colors.white,
     letterSpacing: 0.8,
+  },
+  importedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FACC15',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  importedText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: '#111827',
+    letterSpacing: 0.6,
   },
   newBadge: {
     backgroundColor: Colors.success,
