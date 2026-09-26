@@ -80,6 +80,18 @@ Those values are then checked against the live CarMazium association endpoints:
 Until the real identities are configured, these endpoints intentionally fail
 closed rather than publishing invented associations.
 
+## Android 16 KB memory-page compatibility
+
+Google Play requires relevant apps with native code to support devices using
+16 KB memory page sizes. CarMazium uses React Native 0.81, whose framework
+baseline supports 16 KB pages, but that does not prove every third-party native
+library bundled into the final AAB is compatible.
+
+Inspect the **exact final AAB** (including its native libraries) using the
+current Play/Android tooling before certification. Set
+`android_16kb_page_size_confirmed` only after the submitted candidate passes
+that artifact-level check.
+
 ## Real-device QA
 
 Complete the device matrix in
