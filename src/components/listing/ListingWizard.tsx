@@ -705,8 +705,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 condition: formData.condition || undefined,
                 exteriorGrade: automaticExteriorGrade,
                 serviceHistory: formData.serviceHistory || undefined,
-                mechanicalIssues: formData.mechanicalIssues.trim() || undefined,
-                electricalIssues: formData.electricalIssues.trim() || undefined,
                 owners: formData.owners || undefined,
                 writeOffCategory: formData.writeOffCategory || undefined,
                 isImported: formData.isImported,
