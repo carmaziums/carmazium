@@ -133,14 +133,22 @@ export function Header() {
                                 <div
                                     key={link.name}
                                     className="relative"
-                                    onMouseEnter={() => setIsBuyMenuOpen(true)}
+                                    onMouseEnter={() => {
+                                        setIsBuyMenuOpen(true)
+                                        setIsSellMenuOpen(false)
+                                        setIsTradeMenuOpen(false)
+                                    }}
                                     onMouseLeave={() => setIsBuyMenuOpen(false)}
                                 >
                                     <button
                                         type="button"
                                         aria-expanded={isBuyMenuOpen}
                                         aria-haspopup="menu"
-                                        onClick={() => setIsBuyMenuOpen(open => !open)}
+                                        onClick={() => {
+                                            setIsBuyMenuOpen(open => !open)
+                                            setIsSellMenuOpen(false)
+                                            setIsTradeMenuOpen(false)
+                                        }}
                                         className={cn(
                                             "text-[0.95rem] font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 relative group flex items-center gap-1.5",
                                             buyCarsActive ? "text-primary" : "opacity-80 hover:opacity-100"
@@ -518,7 +526,11 @@ export function Header() {
                                         <button
                                             type="button"
                                             aria-expanded={isBuyMenuOpen}
-                                            onClick={() => setIsBuyMenuOpen(open => !open)}
+                                            onClick={() => {
+                                                setIsBuyMenuOpen(open => !open)
+                                                setIsSellMenuOpen(false)
+                                                setIsTradeMenuOpen(false)
+                                            }}
                                             className={cn(
                                                 "w-full text-lg font-medium py-2 hover:text-primary transition-colors flex items-center justify-center gap-2",
                                                 buyCarsActive && "text-primary"
