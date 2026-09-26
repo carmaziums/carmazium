@@ -7,6 +7,10 @@ export class AiSearchDto {
     @IsNotEmpty()
     @MaxLength(1000)
     query: string;
+
+    @IsBoolean()
+    @Equals(true, { message: 'AI data-sharing consent is required' })
+    aiConsentAcknowledged: boolean;
 }
 
 class ChatMessageDto {
@@ -26,6 +30,10 @@ export class AiChatDto {
     @ValidateNested({ each: true })
     @Type(() => ChatMessageDto)
     messages: ChatMessageDto[];
+
+    @IsBoolean()
+    @Equals(true, { message: 'AI data-sharing consent is required' })
+    aiConsentAcknowledged: boolean;
 }
 
 export class AiDescriptionDto {
