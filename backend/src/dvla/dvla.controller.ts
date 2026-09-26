@@ -41,7 +41,7 @@ export class DvlaController {
     @ApiOperation({ summary: 'Look up a UK vehicle by registration number via DVLA VES API' })
     @ApiBody({ schema: { properties: {
         vrm: { type: 'string', example: 'AB12CDE' },
-        allowAiEnrichment: { type: 'boolean', required: false, description: 'Only true after explicit user AI-data-sharing consent' },
+        allowAiEnrichment: { type: 'boolean', description: 'Only true after explicit user AI-data-sharing consent' },
     } } })
     @ApiResponse({ status: 200, description: 'Vehicle data returned successfully' })
     @ApiResponse({ status: 400, description: 'Invalid or unrecognised registration number' })
