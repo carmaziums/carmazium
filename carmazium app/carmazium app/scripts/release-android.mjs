@@ -8,7 +8,7 @@
 // Steps: verify the release keystore exists -> expo prebuild --clean
 // -> guarded cleanup of stale Gradle build-output dirs (belt-and-suspenders
 // against caching issues seen previously on this project, see CONTEXT.md)
-// -> gradlew assembleRelease -> verify the signed APK landed where expected.
+// -> gradlew bundleRelease -> verify the signed Play Store AAB landed where expected.
 
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 const APP_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const KEYSTORE_PROPERTIES = path.join(APP_ROOT, 'keystores', 'release.keystore.properties');
 const ANDROID_DIR = path.join(APP_ROOT, 'android');
-const APK_OUTPUT = path.join(ANDROID_DIR, 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk');
+const AAB_OUTPUT = path.join(ANDROID_DIR, 'app', 'build', 'outputs', 'bundle', 'release', 'app-release.aab');
 
 function log(msg) {
   console.log(`\n[android:release] ${msg}`);
@@ -91,14 +91,17 @@ for (const rel of ['app/build/generated', 'app/build/intermediates/assets', 'app
 // though the file is right there. The original manual command sidestepped
 // this with an explicit `.\gradlew.bat` prefix; an absolute path is equivalent
 // and avoids any ambiguity about which directory cmd.exe is resolving against.
+const gradleWrapper = process.platform === 'win32'
+  ? path.join(ANDROID_DIR, 'gradlew.bat')
+  : path.join(ANDROID_DIR, 'gradlew');
 run(
-  path.join(ANDROID_DIR, 'gradlew.bat'),
-  ['assembleRelease', '-PreactNativeArchitectures=arm64-v8a', '--max-workers', '2', '--no-daemon'],
+  gradleWrapper,
+  ['bundleRelease', '--max-workers', '2', '--no-daemon'],
   ANDROID_DIR
 );
 
-// ── 5. Verify the signed APK actually landed where expected ──
-if (!existsSync(APK_OUTPUT)) {
-  fail(`Build reported success but no APK was found at ${APK_OUTPUT}.`);
+// ── 5. Verify the signed Play Store bundle actually landed where expected ──
+if (!existsSync(AAB_OUTPUT)) {
+  fail(`Build reported success but no AAB was found at ${AAB_OUTPUT}.`);
 }
-log(`Signed APK ready: ${APK_OUTPUT}`);
+log(`Signed Play Store AAB ready: ${AAB_OUTPUT}`);
