@@ -18,7 +18,7 @@ export interface AiChatMessage {
 export async function sendAiChatMessage(messages: AiChatMessage[]): Promise<AiChatResult> {
   const res = await apiClient<{ success: boolean; data: AiChatResult }>('/ai/chat', {
     method: 'POST',
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, aiConsentAcknowledged: true }),
   });
   return res.data;
 }
@@ -31,7 +31,7 @@ export interface AiSearchResult {
 export async function naturalLanguageSearch(query: string): Promise<AiSearchResult> {
   const res = await apiClient<{ success: boolean; data: AiSearchResult }>('/ai/search', {
     method: 'POST',
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, aiConsentAcknowledged: true }),
   });
   return res.data;
 }
