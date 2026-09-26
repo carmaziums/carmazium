@@ -186,8 +186,10 @@ export class ReceiptPdfService {
             COMMISSION: 'Commission — ',
             REFUND: 'Refund — ',
             HPI_REPORT: 'HPI report — ',
+            HPI_REPORT_EMAIL: 'HPI report (emailed) — ',
             LISTING_FEE: 'Listing fee — ',
             BOOST: 'Featured boost — ',
+            KYC_VERIFICATION: 'Dealer KYC verification — ',
         };
         const prefix = typeLabels[type] ?? '';
         const desc = rawDescription || `${prefix}${vehicleLabel}${vrm ? ` (${vrm})` : ''}`;
