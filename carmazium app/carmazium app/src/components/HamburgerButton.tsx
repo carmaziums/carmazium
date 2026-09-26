@@ -18,6 +18,10 @@ export const HamburgerButton: React.FC<HamburgerButtonProps> = ({
       activeOpacity={0.7}
       onPress={openDrawer}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      accessibilityRole="button"
+      accessibilityLabel="Open navigation menu"
+      accessibilityHint="Opens the CarMazium navigation drawer"
+      accessible
     >
       {/* Three bars — full / shorter / shortest, all left-aligned */}
       <View style={[styles.bar, { backgroundColor: color, width: 18 }]} />
@@ -29,8 +33,8 @@ export const HamburgerButton: React.FC<HamburgerButtonProps> = ({
 
 const styles = StyleSheet.create({
   btn: {
-    width: 38,
-    height: 38,
+    minWidth: 44,
+    minHeight: 44,
     borderRadius: 10,
     backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
