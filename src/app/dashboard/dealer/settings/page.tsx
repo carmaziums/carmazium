@@ -28,6 +28,7 @@ export default function DealerSettingsPage() {
     const [activeTab, setActiveTab] = React.useState("profile")
     const [kycData, setKycData] = React.useState<any>(null)
     const [showKycReverify, setShowKycReverify] = React.useState(false)
+    const isSoleTraderKyc = kycData?.businessType === 'SOLE_PROPRIETORSHIP'
     const [form, setForm] = React.useState({
         companyName: "",
         vatNumber: "",
@@ -85,8 +86,10 @@ export default function DealerSettingsPage() {
                 method: 'PATCH',
                 body: JSON.stringify({
                     companyName: form.companyName,
-                    vatNumber: form.vatNumber,
-                    registrationNumber: form.registrationNumber,
+                    ...(!isSoleTraderKyc ? {
+                        vatNumber: form.vatNumber,
+                        registrationNumber: form.registrationNumber,
+                    } : {}),
                     businessAddress: form.businessAddress,
                     phone: form.phone,
                     website: form.website,
@@ -232,33 +235,37 @@ export default function DealerSettingsPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         <div className="space-y-2">
                                             <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2">
-                                                <Building2 size={12} /> Company Name
+                                                <Building2 size={12} /> {isSoleTraderKyc ? 'Trading Name' : 'Company Name'}
                                             </label>
                                             <Input
                                                 value={form.companyName}
                                                 onChange={e => setForm(f => ({ ...f, companyName: e.target.value }))}
-                                                placeholder="Your Dealership Ltd"
+                                                placeholder={isSoleTraderKyc ? 'Your trading name' : 'Your Dealership Ltd'}
                                                 className="bg-[var(--bg-card)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)]"
                                             />
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">VAT Number</label>
-                                            <Input
-                                                value={form.vatNumber}
-                                                onChange={e => setForm(f => ({ ...f, vatNumber: e.target.value }))}
-                                                placeholder="GB123456789"
-                                                className="bg-[var(--bg-card)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)]"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Registration Number</label>
-                                            <Input
-                                                value={form.registrationNumber}
-                                                onChange={e => setForm(f => ({ ...f, registrationNumber: e.target.value }))}
-                                                placeholder="Company house number"
-                                                className="bg-[var(--bg-card)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)]"
-                                            />
-                                        </div>
+                                        {!isSoleTraderKyc && (
+                                            <>
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">VAT Number</label>
+                                                    <Input
+                                                        value={form.vatNumber}
+                                                        onChange={e => setForm(f => ({ ...f, vatNumber: e.target.value }))}
+                                                        placeholder="GB123456789"
+                                                        className="bg-[var(--bg-card)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)]"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Registration Number</label>
+                                                    <Input
+                                                        value={form.registrationNumber}
+                                                        onChange={e => setForm(f => ({ ...f, registrationNumber: e.target.value }))}
+                                                        placeholder="Company house number"
+                                                        className="bg-[var(--bg-card)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)]"
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
                                         <div className="space-y-2">
                                             <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2">
                                                 <Phone size={12} /> Phone
