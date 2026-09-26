@@ -637,15 +637,87 @@ export const ChatScreen: React.FC = () => {
   // bottom as new messages are appended, without any manual scrollToEnd() hack.
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
+  const openReport = useCallback((message: ChatMessage) => {
+    if (message.senderId === user?.id || message.deliveryStatus) return;
+    setReportTarget(message);
+    setReportReason(null);
+    setReportDetails('');
+  }, [user?.id]);
+
+  const closeReport = useCallback(() => {
+    if (reporting) return;
+    setReportTarget(null);
+    setReportReason(null);
+    setReportDetails('');
+  }, [reporting]);
+
+  const submitReport = useCallback(async () => {
+    if (!reportTarget || !reportReason || reporting) return;
+
+    try {
+      setReporting(true);
+      await reportChatMessage(
+        reportTarget.id,
+        reportReason,
+        reportDetails.trim() || undefined,
+      );
+      setReportedMessageIds((prev) => {
+        const next = new Set(prev);
+        next.add(reportTarget.id);
+        return next;
+      });
+      setReportTarget(null);
+      setReportReason(null);
+      setReportDetails('');
+      showToast('Report sent to CarMazium moderation.', 'success');
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Could not submit this report.',
+        'info',
+      );
+    } finally {
+      setReporting(false);
+    }
+  }, [reportTarget, reportReason, reporting, reportDetails, showToast]);
+
   const renderMessageItem = useCallback(({ item }: { item: ChatMessage }) => (
-    <MessageBubble
-      msg={item}
-      isOwn={item.senderId === user?.id}
-      isLastOwnMessage={item.id === lastOwnMessageId}
-      initials={initialsForBubbles}
-      onRetry={handleRetry}
-    />
-  ), [user?.id, lastOwnMessageId, initialsForBubbles, handleRetry]);
+    <View>
+      <MessageBubble
+        msg={item}
+        isOwn={item.senderId === user?.id}
+        isLastOwnMessage={item.id === lastOwnMessageId}
+        initials={initialsForBubbles}
+        onRetry={handleRetry}
+      />
+      {item.senderId !== user?.id &&
+        !item.deliveryStatus &&
+        room?.context !== 'SUPPORT' &&
+        item.sender.role !== 'ADMIN' && (
+          <View style={styles.messageSafetyRow}>
+            {reportedMessageIds.has(item.id) ? (
+              <Text style={styles.messageReportedText}>Reported</Text>
+            ) : (
+              <TouchableOpacity
+                onPress={() => openReport(item)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Report this message"
+              >
+                <Text style={styles.messageReportText}>Report</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+    </View>
+  ), [
+    user?.id,
+    lastOwnMessageId,
+    initialsForBubbles,
+    handleRetry,
+    room?.context,
+    reportedMessageIds,
+    openReport,
+  ]);
 
   if (loading) {
     return (
