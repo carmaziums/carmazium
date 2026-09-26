@@ -906,6 +906,8 @@ export class ListingsService {
                     driveType: dto.driveType ?? null,
                     numberOfKeys: dto.numberOfKeys ?? null,
                     serviceHistory: dto.serviceHistory ?? null,
+                    mechanicalIssues: dto.mechanicalIssues ?? null,
+                    electricalIssues: dto.electricalIssues ?? null,
                     owners: dto.owners ?? null,
                     torqueNm: dto.torqueNm ?? null,
                     topSpeedMph: dto.topSpeedMph ?? null,
@@ -1327,6 +1329,8 @@ export class ListingsService {
                 driveType: createListingDto.driveType ?? null,
                 numberOfKeys: createListingDto.numberOfKeys ?? null,
                 serviceHistory: createListingDto.serviceHistory ?? null,
+                mechanicalIssues: createListingDto.mechanicalIssues ?? null,
+                electricalIssues: createListingDto.electricalIssues ?? null,
                 owners: createListingDto.owners ?? null,
                 torqueNm: createListingDto.torqueNm ?? null,
                 topSpeedMph: createListingDto.topSpeedMph ?? null,
@@ -1851,6 +1855,8 @@ export class ListingsService {
         if (updateListingDto.driveType !== undefined) updateData.driveType = updateListingDto.driveType;
         if (updateListingDto.numberOfKeys !== undefined) updateData.numberOfKeys = updateListingDto.numberOfKeys;
         if (updateListingDto.serviceHistory !== undefined) updateData.serviceHistory = updateListingDto.serviceHistory;
+        if (updateListingDto.mechanicalIssues !== undefined) updateData.mechanicalIssues = updateListingDto.mechanicalIssues || null;
+        if (updateListingDto.electricalIssues !== undefined) updateData.electricalIssues = updateListingDto.electricalIssues || null;
         if (updateListingDto.owners !== undefined) updateData.owners = updateListingDto.owners;
         if (updateListingDto.torqueNm !== undefined) updateData.torqueNm = updateListingDto.torqueNm;
         if (updateListingDto.topSpeedMph !== undefined) updateData.topSpeedMph = updateListingDto.topSpeedMph;
