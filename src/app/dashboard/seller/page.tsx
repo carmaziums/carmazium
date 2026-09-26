@@ -66,6 +66,25 @@ export default function SellerDashboard() {
         }
     }, [user, authLoading, period])
 
+    React.useEffect(() => {
+        if (!user) return
+
+        const refreshUnsoldNotice = () => {
+            getNotifications(20)
+                .then((recentNotifications) => {
+                    setUnsoldAuctionNotice(
+                        recentNotifications.find(
+                            notification => notification.type === 'AUCTION_ENDED_NO_SALE' && !notification.isRead,
+                        ) ?? null,
+                    )
+                })
+                .catch(() => {})
+        }
+
+        const intervalId = window.setInterval(refreshUnsoldNotice, 30_000)
+        return () => window.clearInterval(intervalId)
+    }, [user])
+
     async function dismissUnsoldAuctionNotice() {
         const notice = unsoldAuctionNotice
         setUnsoldAuctionNotice(null)
@@ -250,7 +269,7 @@ export default function SellerDashboard() {
                                 <div>
                                     <p className="text-xs font-black uppercase tracking-widest text-primary">Auction update</p>
                                     <h2 id="unsold-auction-title" className="mt-1 text-xl font-black">
-                                        A wider audience could be the next step
+                                        Give your vehicle a wider audience
                                     </h2>
                                 </div>
                             </div>
