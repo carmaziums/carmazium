@@ -178,6 +178,12 @@ export function MaziumWidget() {
         setHasAiConsent(true)
     }
 
+    const withdrawAiConsent = () => {
+        localStorage.removeItem("mazium_ai_consent_v1")
+        setHasAiConsent(false)
+        setInput("")
+    }
+
     const submitAiReport = async () => {
         if (!reportTarget || !reportReason || isReporting) return
         try {
@@ -495,6 +501,21 @@ export function MaziumWidget() {
                         <Send size={16} />
                     </Button>
                 </div>
+
+                {hasAiConsent === true && (
+                    <div
+                        className="shrink-0 flex items-center justify-center gap-3 border-t px-3 py-1.5 text-[10px]"
+                        style={{ borderColor: "var(--border-default)", color: "var(--text-muted)" }}
+                    >
+                        <button type="button" onClick={() => router.push("/privacy-policy")} className="hover:underline">
+                            AI privacy
+                        </button>
+                        <span aria-hidden="true">·</span>
+                        <button type="button" onClick={withdrawAiConsent} className="hover:underline">
+                            Stop AI sharing
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Greeting Pop-up */}
