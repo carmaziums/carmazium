@@ -972,6 +972,7 @@ for (const requiredInput of [
   'ios_sdk_version',
   'android_build_id',
   'android_artifact_sha256',
+  'android_16kb_page_size_confirmed',
   'device_qa_confirmed',
   'accessibility_qa_confirmed',
   'push_qa_confirmed',
@@ -999,6 +1000,7 @@ if (
 }
 
 const finalExternalChecks = [
+  ['CARMAZIUM_ANDROID_16KB_PAGE_SIZE_CONFIRMED', 'Final Android AAB 16 KB memory-page compatibility is not yet externally confirmed'],
   ['CARMAZIUM_DEVICE_QA_CONFIRMED', 'Representative physical-device QA is not yet externally confirmed'],
   ['CARMAZIUM_ACCESSIBILITY_QA_CONFIRMED', 'VoiceOver/TalkBack and large-text QA are not yet externally confirmed'],
   ['CARMAZIUM_PUSH_QA_CONFIRMED', 'Foreground/background/killed-state push QA is not yet externally confirmed'],
