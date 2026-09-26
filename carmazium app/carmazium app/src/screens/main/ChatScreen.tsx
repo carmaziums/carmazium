@@ -24,6 +24,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
+import { useReduceMotionPreference } from '../../hooks/useReduceMotionPreference';
 import { useChat } from '../../context/ChatContext';
 import { useAuthStore } from '../../store/authStore';
 import {
@@ -114,8 +115,14 @@ const getAvatarBg = (val: string) => {
 // ─── Animated typing indicator (Instagram/WhatsApp-style bouncing dots) ──────
 const TypingDots: React.FC = () => {
   const dots = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
+  const reduceMotion = useReduceMotionPreference();
 
   useEffect(() => {
+    if (reduceMotion) {
+      dots.forEach((dot) => dot.setValue(0));
+      return;
+    }
+
     const loops = dots.map((dot, i) =>
       Animated.loop(
         Animated.sequence([
@@ -128,7 +135,7 @@ const TypingDots: React.FC = () => {
     );
     loops.forEach((loop) => loop.start());
     return () => loops.forEach((loop) => loop.stop());
-  }, [dots]);
+  }, [dots, reduceMotion]);
 
   return (
     <View style={styles.typingDotsRow}>
@@ -226,13 +233,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                   size={14}
                   color={msg.isRead ? Colors.lightBlue_4fa8ff : 'rgba(255,255,255,0.45)'}
                   style={styles.readTick}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
                 />
               )}
             </View>
           </View>
           {deliveryState}
           {showSeenIndicator && (
-            <View style={styles.seenRow}>
+            <View style={styles.seenRow} accessible accessibilityLabel="Message seen">
               <View style={[styles.seenAvatar, { backgroundColor: getAvatarBg(initials) }]}>
                 <Text style={styles.seenAvatarText}>{initials.slice(0, 1)}</Text>
               </View>
@@ -254,7 +263,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             <Text style={styles.offerTagAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
           </View>
           <Text style={styles.offerText}>{msg.content}</Text>
-          <Text style={styles.timeTextRight}>
+          <Text
+            style={styles.timeTextRight}
+            accessibilityLabel={`${formatMessageTime(msg.createdAt)}${isOwn && !msg.deliveryStatus && msg.isRead ? ', read' : ''}`}
+          >
             {formatMessageTime(msg.createdAt)}
             {isOwn && !msg.deliveryStatus && msg.isRead && ' ✓✓'}
           </Text>
@@ -273,7 +285,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             <Text style={styles.counterTitle}>{isOwn ? 'YOUR COUNTER OFFER' : 'COUNTER OFFER'}</Text>
             <Text style={styles.counterAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
           </View>
-          <Text style={isOwn ? styles.timeTextRight : styles.timeTextLeft}>
+          <Text
+            style={isOwn ? styles.timeTextRight : styles.timeTextLeft}
+            accessibilityLabel={`${formatMessageTime(msg.createdAt)}${isOwn && !msg.deliveryStatus && msg.isRead ? ', read' : ''}`}
+          >
             {formatMessageTime(msg.createdAt)}
             {isOwn && !msg.deliveryStatus && msg.isRead && ' ✓✓'}
           </Text>
