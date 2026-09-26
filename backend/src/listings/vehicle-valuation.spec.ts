@@ -81,6 +81,15 @@ describe('calculateVehicleValuation', () => {
         expect(automatic.mid).toBeGreaterThan(manual.mid);
     });
 
+    it('applies seller-selected condition even when no market comparables exist', () => {
+        const good = calculateVehicleValuation({ ...vehicle, condition: 'GOOD' }, []);
+        const fair = calculateVehicleValuation({ ...vehicle, condition: 'FAIR' }, []);
+        const poor = calculateVehicleValuation({ ...vehicle, condition: 'POOR' }, []);
+
+        expect(good.mid).toBeGreaterThan(fair.mid);
+        expect(fair.mid).toBeGreaterThan(poor.mid);
+    });
+
     it('reduces valuation as the automatic exterior defect grade worsens', () => {
         const grade1 = calculateVehicleValuation({ ...vehicle, exteriorGrade: 1 }, []);
         const grade3 = calculateVehicleValuation({ ...vehicle, exteriorGrade: 3 }, []);
