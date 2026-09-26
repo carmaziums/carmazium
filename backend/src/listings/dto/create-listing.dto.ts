@@ -435,6 +435,18 @@ export class CreateListingDto {
     @IsOptional()
     serviceHistory?: string;
 
+    @ApiProperty({ description: 'Seller-declared known mechanical problems or faults', example: 'Clutch judder when cold; front suspension knock over bumps', required: false })
+    @IsString()
+    @IsOptional()
+    @MaxLength(2000)
+    mechanicalIssues?: string;
+
+    @ApiProperty({ description: 'Seller-declared known electrical problems or warning lights', example: 'Rear parking sensor intermittent; battery warning light occasionally appears', required: false })
+    @IsString()
+    @IsOptional()
+    @MaxLength(2000)
+    electricalIssues?: string;
+
     @ApiProperty({ description: 'Number of previous keepers', example: '2', required: false })
     @IsString()
     @IsOptional()
