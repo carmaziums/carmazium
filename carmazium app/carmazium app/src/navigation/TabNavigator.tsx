@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet, TouchableOpacity, AccessibilityInfo } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize, TextPresets } from '../constants/typography';
 import { Elevation, Radius } from '../constants/spacing';
+import { useReduceMotionPreference } from '../hooks/useReduceMotionPreference';
 
 // Main screens
 import { HomeScreen } from '../screens/main/HomeScreen';
@@ -104,19 +105,7 @@ const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = React.memo(function Anim
   size,
 }) {
   const scale = useSharedValue(1);
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((enabled) => { if (mounted) setReduceMotion(enabled); })
-      .catch(() => {});
-    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
-    return () => {
-      mounted = false;
-      subscription.remove();
-    };
-  }, []);
+  const reduceMotion = useReduceMotionPreference();
 
   useEffect(() => {
     if (focused && !reduceMotion) {
@@ -289,7 +278,9 @@ const styles = StyleSheet.create({
   },
   tabItem: {
     flex: 1,
+    minHeight: 48,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingBottom: 6,
     gap: 4,
   },
