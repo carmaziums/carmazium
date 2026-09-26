@@ -433,9 +433,27 @@ function Damage3DMapper({
   }
 
   const markedLabels = records.map(r => r.zone);
+  const grade = computeExteriorGradeFromDefectCount(records.length);
+  const gradeLabels: Record<number, string> = {
+    1: 'Excellent',
+    2: 'Great',
+    3: 'Good',
+    4: 'Average',
+    5: 'Below Average',
+  };
 
   return (
     <View>
+      <View style={{ marginBottom: 14, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderMuted, backgroundColor: Colors.darkBlue_2a2a35 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View>
+            <Text style={{ color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.sm }}>Grade {grade} — {gradeLabels[grade]}</Text>
+            <Text style={[s.fieldHint, { marginTop: 3 }]}>Automatically calculated from {records.length} reported defect{records.length === 1 ? '' : 's'}.</Text>
+          </View>
+          <Text style={{ color: Colors.warning, fontFamily: FontFamily.bold, fontSize: FontSize.lg }}>{grade}</Text>
+        </View>
+      </View>
+
       {/* 3D vehicle viewer with tappable damage hotspots */}
       <ThreeDVehicleViewer
         zones={DAMAGE_ZONES_3D}
