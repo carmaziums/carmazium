@@ -375,6 +375,12 @@ export const ChatScreen: React.FC = () => {
   // called only on some renders (e.g. once `loading`/`room` resolve) violates
   // the Rules of Hooks and crashes the screen to blank on the next render.
   const [openingListing, setOpeningListing] = useState(false);
+  const [reportTarget, setReportTarget] = useState<ChatMessage | null>(null);
+  const [reportReason, setReportReason] = useState<ChatReportReason | null>(null);
+  const [reportDetails, setReportDetails] = useState('');
+  const [reporting, setReporting] = useState(false);
+  const [reportedMessageIds, setReportedMessageIds] = useState<Set<string>>(new Set());
+  const [changingBlock, setChangingBlock] = useState(false);
 
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
