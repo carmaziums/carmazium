@@ -457,6 +457,9 @@ export function KycOverlayForm({
         if (!formData.vatNumber.trim()) { setErrorMsg("VAT Number is required."); return false; }
         if (!formData.companyRegistrationNumber.trim()) { setErrorMsg("Company Registration Number is required."); return false; }
         if (!formData.businessWebsite.trim()) { setErrorMsg("Business Website is required."); return false; }
+        if (!fileUrls.directorIdProof) { setErrorMsg("Please upload the director photo ID."); return false; }
+        if (!fileUrls.vatProof) { setErrorMsg("Please upload VAT evidence."); return false; }
+        if (!fileUrls.companyRegistrationProof) { setErrorMsg("Please upload Companies House evidence."); return false; }
       }
       if (!formData.businessRegisteredAddress.trim()) { setErrorMsg(isSoleTrader ? "Business Address is required." : "Registered Business Address is required."); return false; }
     }
