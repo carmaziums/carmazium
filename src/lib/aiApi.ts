@@ -54,3 +54,88 @@ export async function aiGenerateDescription(data: Record<string, any>): Promise<
     });
     return json.data;
 }
+
+
+export type AiReportReason =
+    | 'UNSAFE_OFFENSIVE'
+    | 'INACCURATE_MISLEADING'
+    | 'SCAM_DISHONEST'
+    | 'OTHER';
+
+export async function reportAiResponse(payload: {
+    prompt?: string;
+    response: string;
+    reason: AiReportReason;
+    details?: string;
+}): Promise<{ id: string; status: string }> {
+    const json = await apiClient<{ data: { id: string; status: string } }>('/ai/report', {
+        method: 'POST',
+        body: JSON.stringify({
+            surface: 'WEB',
+            prompt: payload.prompt,
+            response: payload.response,
+            reason: payload.reason,
+            details: payload.details,
+        }),
+    });
+    return json.data;
+}
+
+
+export type AiReportStatus = 'OPEN' | 'REVIEWING' | 'RESOLVED' | 'DISMISSED';
+
+export interface AdminAiReport {
+    id: string;
+    surface: string;
+    prompt?: string | null;
+    response: string;
+    reason: AiReportReason;
+    details?: string | null;
+    status: AiReportStatus;
+    reviewedById?: string | null;
+    reviewedAt?: string | null;
+    adminNote?: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export async function getAdminAiReports(
+    page = 1,
+    limit = 30,
+    status?: AiReportStatus | '',
+): Promise<{
+    data: AdminAiReport[];
+    pagination: { total: number; page: number; limit: number; totalPages: number };
+}> {
+    const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+    });
+    if (status) params.set('status', status);
+
+    const json = await apiClient<{
+        data: {
+            data: AdminAiReport[];
+            pagination: { total: number; page: number; limit: number; totalPages: number };
+        };
+    }>(`/ai/admin/reports?${params.toString()}`);
+    return json.data;
+}
+
+export async function updateAdminAiReport(
+    reportId: string,
+    status: AiReportStatus,
+    adminNote?: string,
+): Promise<AdminAiReport> {
+    const json = await apiClient<{ data: AdminAiReport }>(
+        `/ai/admin/reports/${reportId}`,
+        {
+            method: 'PATCH',
+            body: JSON.stringify({
+                status,
+                adminNote: adminNote?.trim() || undefined,
+            }),
+        },
+    );
+    return json.data;
+}
