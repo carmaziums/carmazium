@@ -54,6 +54,14 @@ This matches the Google Play requirement in force for new apps and app updates
 from 31 August 2026. Expo SDK 54 also uses Android API 36 as its supported
 compile/target baseline.
 
+## Apple build-tool compatibility
+
+App Store Connect currently requires iOS uploads to be built with Xcode 26 or
+later and the iOS 26 SDK or later. Expo confirms that SDK 54 EAS Build defaults
+to Xcode 26, so the current CarMazium SDK line can satisfy this requirement.
+Before submission, keep the EAS build log as release evidence that the actual
+signed archive used an eligible Xcode/iOS SDK image.
+
 ## On-device release evidence
 
 Repository checks cannot certify physical behaviour. Before store submission,
