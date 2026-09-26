@@ -1155,21 +1155,63 @@ export class PaymentsService {
             where: { id: kycId },
             include: { dealerProfile: true },
         });
-        if (!kyc || (kyc as any).stripeChargedAt) return; // already healed or unknown record
+        if (!kyc) return;
 
+        const userId = kyc.dealerProfile?.userId;
+        if (!userId) {
+            this.logger.error(`Cannot record KYC payment for ${kycId}: dealer owner is missing`);
+            return;
+        }
+
+        const wasAlreadyPaid = !!(kyc as any).stripeChargedAt;
+        const chargedAt = (kyc as any).stripeChargedAt ?? new Date();
         const existingStatuses = (kyc.documentStatuses as Record<string, any>) || {};
-        await this.prisma.dealerKyc.update({
-            where: { id: kycId },
-            data: {
-                stripeChargedAt: new Date(),
-                stripePaymentIntentId: stripePaymentId,
-                documentStatuses: {
-                    ...existingStatuses,
-                    paymentReference: { status: 'APPROVED', note: 'Stripe verified' },
-                    paymentScreenshot: { status: 'APPROVED', note: 'Stripe verified' },
+
+        // The £1 KYC fee is real platform revenue and belongs in the same
+        // canonical Transaction ledger as listing fees, HPI and auction fees.
+        // It is account-level, so listingId is deliberately null.
+        await this.prisma.$transaction(async (tx) => {
+            if (!wasAlreadyPaid) {
+                await tx.dealerKyc.update({
+                    where: { id: kycId },
+                    data: {
+                        stripeChargedAt: chargedAt,
+                        stripePaymentIntentId: stripePaymentId,
+                        documentStatuses: {
+                            ...existingStatuses,
+                            paymentReference: { status: 'APPROVED', note: 'Stripe verified' },
+                            paymentScreenshot: { status: 'APPROVED', note: 'Stripe verified' },
+                        },
+                    } as any,
+                });
+            }
+
+            await tx.transaction.upsert({
+                where: { stripePaymentId },
+                create: {
+                    listingId: null,
+                    userId,
+                    amount: 1,
+                    type: 'KYC_VERIFICATION' as any,
+                    status: 'COMPLETED',
+                    stripePaymentId,
+                    description: 'One-time dealer identity verification fee',
+                    createdAt: chargedAt,
                 },
-            } as any,
+                update: {
+                    listingId: null,
+                    userId,
+                    amount: 1,
+                    type: 'KYC_VERIFICATION' as any,
+                    status: 'COMPLETED',
+                    description: 'One-time dealer identity verification fee',
+                },
+            });
         });
+
+        // Payment processing is idempotent. A replay repairs a missing ledger
+        // row above, but must not send the admin alert twice.
+        if (wasAlreadyPaid) return;
 
         const companyName = kyc.dealerProfile?.companyName ?? 'A dealer';
 
@@ -1208,10 +1250,14 @@ export class PaymentsService {
         const session = await stripe.checkout.sessions.retrieve(sessionId);
         await this.assertCheckoutSessionAccess(session, userId);
 
-        if ((kyc as any).stripeChargedAt) return { applied: true };
-        if (session.payment_status !== 'paid') return { applied: false };
+        if (session.payment_status !== 'paid' && !(kyc as any).stripeChargedAt) return { applied: false };
 
-        await this.markKycFeePaid(kyc.id, (session.payment_intent as string) ?? session.id);
+        await this.markKycFeePaid(
+            kyc.id,
+            (kyc as any).stripePaymentIntentId
+                ?? (session.payment_intent as string)
+                ?? session.id,
+        );
         return { applied: true };
     }
 
