@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
-import { AiReportReason, AiReportStatus } from '@prisma/client';
+import { AiReportStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiReportDto, UpdateAiReportDto } from './ai.dto';
 
@@ -241,7 +241,7 @@ export class AiService {
     async updateReport(reportId: string, adminId: string, dto: UpdateAiReportDto) {
         const existing = await this.prisma.aiReport.findUnique({ where: { id: reportId } });
         if (!existing) {
-            throw new Error('AI report not found');
+            throw new NotFoundException('AI report not found');
         }
 
         return this.prisma.aiReport.update({
