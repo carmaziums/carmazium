@@ -686,6 +686,11 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                 {listing.isFeatured && (
                                     <FeaturedBadge compact />
                                 )}
+                                {listing.isImported && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide bg-amber-400/95 text-slate-950 border border-amber-100/70 px-2.5 py-1 rounded-full">
+                                        <Globe size={10} /> Imported Vehicle
+                                    </span>
+                                )}
                                 <WriteOffCategoryBadge category={listing.writeOffCategory} className="!py-1.5 !text-xs" />
                                 {/* Badge Tier */}
                                 {listing.badgeTier && listing.badgeTier !== 'FREE' && (
@@ -1130,6 +1135,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                         {listing.condition && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Condition:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.condition.replace('_', ' ')}</span></div>}
                                         {listing.vrm && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Registration:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.vrm}</span></div>}
                                         {listing.monthOfFirstRegistration && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Reg. date:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.monthOfFirstRegistration}</span></div>}
+                                        {listing.isImported && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Vehicle origin:</span><span className="text-amber-400 font-semibold text-sm">Imported vehicle</span></div>}
                                         {listing.owners && (
                                             <div className="flex justify-between py-0.5">
                                                 <span className="text-[var(--text-muted)] text-sm">Previous Owners</span>
