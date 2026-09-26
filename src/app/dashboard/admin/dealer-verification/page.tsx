@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { useAuth } from "@/context/AuthContext";
-import { getPendingKycList, reviewKyc } from "@/lib/adminApi";
+import { getPendingKycList, reviewKyc, type DealerKycBusinessType } from "@/lib/adminApi";
 import { normalizeExternalUrl } from "@/lib/externalUrl";
 import { Button } from "@/components/ui/Button";
 
@@ -217,6 +217,7 @@ export default function AdminDealerVerificationPage() {
 
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
   const [decisions, setDecisions] = React.useState<Record<string, { status: "APPROVED" | "REJECTED"; note: string }>>({});
+  const [businessTypeOverrides, setBusinessTypeOverrides] = React.useState<Record<string, DealerKycBusinessType>>({});
 
   // Lightbox state
   const [lightbox, setLightbox] = React.useState<{ url: string; label: string } | null>(null);
@@ -246,36 +247,53 @@ export default function AdminDealerVerificationPage() {
     if (profile?.role === "ADMIN") loadPendingKyc();
   }, [profile]);
 
+  const buildDecisionsForKyc = (
+    dealerKyc: any,
+    current: Record<string, { status: "APPROVED" | "REJECTED"; note: string }> = {},
+  ) => {
+    const initialDecisions: Record<string, { status: "APPROVED" | "REJECTED"; note: string }> = {};
+    const existingStatuses = dealerKyc.documentStatuses || {};
+
+    fieldsFor(dealerKyc).forEach((field) => {
+      if (current[field.id]) {
+        initialDecisions[field.id] = current[field.id];
+        return;
+      }
+
+      const existing = existingStatuses[field.id];
+      const isPaymentFieldStripeVerified =
+        dealerKyc.stripePaymentIntentId &&
+        (field.id === "paymentReference" || field.id === "paymentScreenshot");
+
+      initialDecisions[field.id] = isPaymentFieldStripeVerified
+        ? { status: "APPROVED", note: "Stripe verified" }
+        : {
+            // Preserve an earlier rejection, but default pending/new fields to
+            // approved so the reviewer only has to flag what is actually wrong.
+            status: existing?.status === "REJECTED" ? "REJECTED" : "APPROVED",
+            note: existing?.status === "REJECTED" ? (existing?.note || "") : "",
+          };
+    });
+
+    return initialDecisions;
+  };
+
   const toggleExpand = (dealerKyc: any) => {
     if (expandedId === dealerKyc.id) {
       setExpandedId(null);
       setDecisions({});
     } else {
+      const businessType: DealerKycBusinessType =
+        dealerKyc.businessType === "SOLE_PROPRIETORSHIP" ? "SOLE_PROPRIETORSHIP" : "PRIVATE_LIMITED";
       setExpandedId(dealerKyc.id);
-      const initialDecisions: Record<string, any> = {};
-      const existingStatuses = dealerKyc.documentStatuses || {};
-      fieldsFor(dealerKyc).forEach((field) => {
-        const item = existingStatuses[field.id];
-
-        // Auto-approve payment fields for Stripe-verified records
-        const isPaymentFieldStripeVerified =
-          dealerKyc.stripePaymentIntentId &&
-          (field.id === 'paymentReference' || field.id === 'paymentScreenshot');
-
-        if (isPaymentFieldStripeVerified) {
-          initialDecisions[field.id] = { status: "APPROVED", note: "Stripe verified" };
-        } else {
-          initialDecisions[field.id] = {
-            // Only preserve REJECTED from a previous review; default everything else
-            // (including PENDING first-submissions) to APPROVED so the admin only
-            // needs to actively reject fields rather than approve each one manually.
-            status: item?.status === "REJECTED" ? "REJECTED" : "APPROVED",
-            note: item?.status === "REJECTED" ? (item?.note || "") : "",
-          };
-        }
-      });
-      setDecisions(initialDecisions);
+      setBusinessTypeOverrides((prev) => ({ ...prev, [dealerKyc.id]: businessType }));
+      setDecisions(buildDecisionsForKyc({ ...dealerKyc, businessType }));
     }
+  };
+
+  const handleBusinessTypeChange = (dealerKyc: any, businessType: DealerKycBusinessType) => {
+    setBusinessTypeOverrides((prev) => ({ ...prev, [dealerKyc.id]: businessType }));
+    setDecisions((current) => buildDecisionsForKyc({ ...dealerKyc, businessType }, current));
   };
 
   const handleDecisionChange = (fieldName: string, status: "APPROVED" | "REJECTED") => {
@@ -286,7 +304,12 @@ export default function AdminDealerVerificationPage() {
     setDecisions((prev) => ({ ...prev, [fieldName]: { ...prev[fieldName], note } }));
   };
 
-  const submitReview = async (dealerKycId: string) => {
+  const submitReview = async (dealerKyc: any) => {
+    const dealerKycId = dealerKyc.id;
+    const businessType: DealerKycBusinessType =
+      businessTypeOverrides[dealerKycId]
+      ?? (dealerKyc.businessType === "SOLE_PROPRIETORSHIP" ? "SOLE_PROPRIETORSHIP" : "PRIVATE_LIMITED");
+
     setSubmittingId(dealerKycId);
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -303,7 +326,7 @@ export default function AdminDealerVerificationPage() {
         throw new Error("Please provide a rejection reason note for all rejected fields.");
       }
 
-      await reviewKyc(dealerKycId, fieldsPayload);
+      await reviewKyc(dealerKycId, fieldsPayload, businessType);
       setSuccessMsg("KYC review submitted successfully! Notification emails have been triggered.");
       setExpandedId(null);
       setDecisions({});
@@ -485,7 +508,7 @@ export default function AdminDealerVerificationPage() {
                               </p>
                             </div>
                             <button
-                              onClick={() => submitReview(item.id)}
+                              onClick={() => submitReview(item)}
                               disabled={isSubmitting}
                               className="w-full sm:w-auto px-8 py-3 rounded-lg bg-primary hover:bg-primary/95 disabled:bg-[var(--bg-input)] disabled:text-[var(--text-muted)] text-white font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-neon flex items-center justify-center gap-2"
                             >
@@ -520,32 +543,74 @@ export default function AdminDealerVerificationPage() {
       "Payment Verification": <Receipt size={12} className="text-primary" />,
     };
 
-    const soleTrader = item?.businessType === "SOLE_PROPRIETORSHIP";
+    const submittedBusinessType: DealerKycBusinessType =
+      item?.businessType === "SOLE_PROPRIETORSHIP" ? "SOLE_PROPRIETORSHIP" : "PRIVATE_LIMITED";
+    const selectedBusinessType = businessTypeOverrides[item.id] ?? submittedBusinessType;
+    const effectiveItem = { ...item, businessType: selectedBusinessType };
+    const soleTrader = selectedBusinessType === "SOLE_PROPRIETORSHIP";
+    const businessTypeChanged = selectedBusinessType !== submittedBusinessType;
 
     return (
       <div className="space-y-6 text-left">
-        {/* Says which ruleset is in force, so a reviewer never reads a hidden
-            VAT row as a missing one. */}
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">
-            Business type
-          </span>
-          <span
-            className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border ${soleTrader
-              ? "bg-amber-500/10 border-amber-500/25 text-amber-500"
-              : "bg-sky-500/10 border-sky-500/25 text-sky-500"}`}
-          >
-            {soleTrader ? "Sole Trader" : "Registered Company"}
-          </span>
-          {soleTrader && (
-            <span className="text-[11px] text-[var(--text-muted)]">
-              No Companies House record — verified by owner ID and proof of address.
+        {/* Admin may correct a misclassified business before submitting the KYC
+            decision. The selected type drives which evidence is required. */}
+        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 sm:p-4 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">
+                Business type
+              </p>
+              <p className="text-[11px] text-[var(--text-muted)] mt-1">
+                Admin can correct the business type from the evidence provided. The change is saved with the KYC decision.
+              </p>
+            </div>
+            {businessTypeChanged && (
+              <span className="inline-flex self-start sm:self-auto rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border bg-amber-500/10 border-amber-500/25 text-amber-500">
+                Admin correction pending
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => handleBusinessTypeChange(item, "PRIVATE_LIMITED")}
+              className={`rounded-lg border px-3 py-2.5 text-xs font-extrabold transition-all ${!soleTrader
+                ? "bg-sky-500/10 border-sky-500/35 text-sky-500"
+                : "bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]"}`}
+            >
+              Registered Company
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBusinessTypeChange(item, "SOLE_PROPRIETORSHIP")}
+              className={`rounded-lg border px-3 py-2.5 text-xs font-extrabold transition-all ${soleTrader
+                ? "bg-amber-500/10 border-amber-500/35 text-amber-500"
+                : "bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]"}`}
+            >
+              Sole Trader
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]">
+            <span>
+              Submitted as: <strong className="text-[var(--text-secondary)]">{submittedBusinessType === "SOLE_PROPRIETORSHIP" ? "Sole Trader" : "Registered Company"}</strong>
             </span>
+            <span className="hidden sm:inline">•</span>
+            <span>
+              Review rules: <strong className={soleTrader ? "text-amber-500" : "text-sky-500"}>{soleTrader ? "Sole Trader" : "Registered Company"}</strong>
+            </span>
+          </div>
+
+          {soleTrader && (
+            <p className="text-[11px] text-[var(--text-muted)]">
+              Sole traders do not need Companies House, VAT or PSC evidence; owner ID and proof of address are used instead.
+            </p>
           )}
         </div>
 
         {categories.map((cat) => {
-          const catFields = fieldsFor(item).filter((f) => f.category === cat);
+          const catFields = fieldsFor(effectiveItem).filter((f) => f.category === cat);
 
           // Stripe-verified records: show auto-approved badge for Payment Verification, skip manual fields
           if (cat === 'Payment Verification' && item.stripePaymentIntentId) {

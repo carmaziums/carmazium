@@ -888,10 +888,16 @@ export async function getPendingKycList() {
   return result.data;
 }
 
-export async function reviewKyc(id: string, fields: { field: string; status: 'APPROVED' | 'REJECTED'; note?: string }[]) {
+export type DealerKycBusinessType = 'PRIVATE_LIMITED' | 'SOLE_PROPRIETORSHIP';
+
+export async function reviewKyc(
+  id: string,
+  fields: { field: string; status: 'APPROVED' | 'REJECTED'; note?: string }[],
+  businessType?: DealerKycBusinessType,
+) {
   const result = await apiClient<any>(`/admin/dealers/kyc/${id}/review`, {
     method: 'PATCH',
-    body: JSON.stringify({ fields }),
+    body: JSON.stringify({ fields, ...(businessType ? { businessType } : {}) }),
   });
   return result;
 }
