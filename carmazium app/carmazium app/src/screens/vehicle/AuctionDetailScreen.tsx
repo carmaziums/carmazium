@@ -1202,6 +1202,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Text style={s.livePillText}>UPCOMING</Text>
               </View>
             )}
+            {(auction?.listing?.isImported ?? listing.isImported) && (
+              <View style={s.importedPill}>
+                <Ionicons name="globe-outline" size={10} color="#111827" />
+                <Text style={s.importedPillText}>IMPORTED</Text>
+              </View>
+            )}
           </View>
 
           <View style={s.heroTopRight}>
@@ -1335,6 +1341,16 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
             ) : null}
 
+            {/* Import disclosure */}
+            {(auction?.listing?.isImported ?? listing.isImported) && (
+              <View style={[s.banner, s.bannerAmber]}>
+                <Ionicons name="globe-outline" size={14} color={Colors.warning} />
+                <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
+                  <Text style={{ fontFamily: FontFamily.bold }}>Imported vehicle</Text> — This listing is marked as an import so buyers can take that into account before bidding.
+                </Text>
+              </View>
+            )}
+
             {/* Write-off warning */}
             {(auction?.listing as any)?.writeOffCategory && (auction?.listing as any).writeOffCategory !== 'NONE' && (
               <View style={[s.banner, s.bannerAmber]}>
@@ -1360,6 +1376,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   ['Registration', (auction?.listing as any)?.vrm],
                   ['Reg. Date', (auction?.listing as any)?.monthOfFirstRegistration],
                   ['Location', auction?.listing?.location ?? listing.location],
+                  ['Vehicle origin', (auction?.listing?.isImported ?? listing.isImported) ? 'Imported vehicle' : null],
                 ].filter(([, v]) => v).map(([k, v]) => (
                   <View key={k as string} style={s.specRow}>
                     <Text style={s.specKey}>{k}</Text>
@@ -2116,6 +2133,8 @@ const s = StyleSheet.create({
   heroImg: { width: '100%', height: '100%' },
   heroTopLeft: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', gap: 6, zIndex: 2 },
   heroTopRight: { position: 'absolute', top: 12, right: 12, gap: 6, alignItems: 'flex-end', zIndex: 2 },
+  importedPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FACC15', borderWidth: 1, borderColor: '#FDE68A', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  importedPillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: '#111827', letterSpacing: 0.5 },
   heroBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14, zIndex: 2 },
   heroBidLabel: { ...TextPresets.eyebrow, fontSize: FontSize.size9, color: Colors.textSecondary, marginBottom: 4 },
   // The live bid is the focal figure of this screen and was rendering in
