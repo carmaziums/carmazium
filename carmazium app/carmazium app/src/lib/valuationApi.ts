@@ -10,6 +10,12 @@ export interface VehicleValuationRequest {
   exteriorGrade?: number;
   serviceHistory?: string;
   owners?: string;
+  numberOfKeys?: number;
+  ulezCompliant?: boolean;
+  euroStandard?: string;
+  doors?: number;
+  seats?: number;
+  features?: string[];
   writeOffCategory?: string;
   isImported?: boolean;
   excludeListingId?: string;
@@ -84,6 +90,35 @@ function transmissionFamily(value?: string): 'MANUAL' | 'AUTO' | null {
   return null;
 }
 
+function featureValueFactor(features?: string[]): number {
+  if (!features?.length) return 1;
+  const values = features.map((feature) => feature.trim().toUpperCase());
+  const has = (...needles: string[]) =>
+    values.some((feature) => needles.some((needle) => feature.includes(needle)));
+
+  let uplift = 0;
+  if (has('PANORAMIC', 'PAN ROOF', 'SUNROOF')) uplift += 0.005;
+  if (has('LEATHER')) uplift += 0.004;
+  if (has('HEATED SEAT')) uplift += 0.003;
+  if (has('360 CAMERA', 'REVERSE CAMERA', 'REVERSING CAMERA')) uplift += 0.003;
+  if (has('NAVIGATION', 'SAT NAV')) uplift += 0.002;
+  if (has('APPLE CARPLAY', 'ANDROID AUTO')) uplift += 0.002;
+  if (has('PARKING SENSOR')) uplift += 0.002;
+  if (has('LED HEADLIGHT', 'MATRIX LED')) uplift += 0.0015;
+  return 1 + Math.min(0.018, uplift);
+}
+
+function complianceFactor(request: VehicleValuationRequest): number {
+  if (request.ulezCompliant === true) return 1.01;
+  if (request.ulezCompliant === false) return 0.96;
+
+  const euro = (request.euroStandard ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (euro === 'EURO6D' || euro === 'EURO6') return 1.01;
+  if (euro === 'EURO5') return 0.995;
+  if (euro === 'EURO4') return 0.985;
+  return 1;
+}
+
 function localFallbackValuation(request: VehicleValuationRequest): VehicleValuation {
   const age = Math.max(0, new Date().getFullYear() - request.year);
   let value = BASE_NEW_VALUES[(request.make ?? '').trim().toUpperCase()] ?? 32000;
@@ -106,6 +141,28 @@ function localFallbackValuation(request: VehicleValuationRequest): VehicleValuat
   if (grade === 3) value *= 0.97;
   if (grade === 4) value *= 0.94;
   if (grade >= 5) value *= 0.90;
+
+  const service = (request.serviceHistory ?? '').toUpperCase();
+  if (service.includes('FULL')) value *= 1.02;
+  if (service.includes('PARTIAL')) value *= 0.99;
+  if (service === 'NONE' || service.includes('NO SERVICE')) value *= 0.96;
+
+  const ownerNumber = Number.parseInt((request.owners ?? '').replace(/[^0-9]/g, ''), 10);
+  if (ownerNumber === 1) value *= 1.02;
+  if (ownerNumber === 2) value *= 1.01;
+  if (ownerNumber === 4) value *= 0.98;
+  if (ownerNumber >= 5) value *= 0.96;
+
+  if (request.numberOfKeys === 1) value *= 0.985;
+  value *= complianceFactor(request);
+  value *= featureValueFactor(request.features);
+  if (request.isImported) value *= 0.92;
+
+  const writeOff = (request.writeOffCategory ?? '').toUpperCase();
+  if (writeOff === 'CAT_N') value *= 0.82;
+  if (writeOff === 'CAT_S') value *= 0.75;
+  if (writeOff === 'CAT_A') value *= 0.25;
+  if (writeOff === 'CAT_B') value *= 0.30;
 
   const transmission = transmissionFamily(request.transmission);
   if (transmission === 'AUTO') value *= 1.04;
@@ -161,6 +218,12 @@ export async function getVehicleValuation(
   if (request.exteriorGrade) params.set('exteriorGrade', String(request.exteriorGrade));
   if (request.serviceHistory) params.set('serviceHistory', request.serviceHistory);
   if (request.owners) params.set('owners', request.owners);
+  if (request.numberOfKeys) params.set('numberOfKeys', String(request.numberOfKeys));
+  if (request.ulezCompliant !== undefined) params.set('ulezCompliant', String(request.ulezCompliant));
+  if (request.euroStandard) params.set('euroStandard', request.euroStandard);
+  if (request.doors) params.set('doors', String(request.doors));
+  if (request.seats) params.set('seats', String(request.seats));
+  if (request.features?.length) params.set('features', request.features.join('|'));
   if (request.writeOffCategory) params.set('writeOffCategory', request.writeOffCategory);
   if (request.isImported !== undefined) params.set('isImported', String(request.isImported));
   if (request.excludeListingId) params.set('excludeListingId', request.excludeListingId);
