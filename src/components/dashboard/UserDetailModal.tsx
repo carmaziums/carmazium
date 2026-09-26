@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { getAdminUserDetail, banUser, unbanUser, lockUser, unlockUser } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
+import { normalizeExternalUrl } from "@/lib/externalUrl"
 
 function fmtDate(d: string | null | undefined) {
     if (!d) return "—"
@@ -117,6 +118,8 @@ async function exportUserDetailPdf(detail: any) {
 
     const name = [detail.firstName, detail.lastName].filter(Boolean).join(" ") || detail.email || "User"
     const kyc = detail?.dealerProfile?.kyc
+    const dealerWebsiteUrl = normalizeExternalUrl(detail?.dealerProfile?.website)
+    const kycBusinessWebsiteUrl = normalizeExternalUrl(kyc?.businessWebsite)
     const documentStatuses: Record<string, { status: string; note?: string }> = kyc?.documentStatuses || {}
 
     doc.setFont("helvetica", "bold")
@@ -421,7 +424,7 @@ export function UserDetailModal({ userId, onClose, onChanged, onMessage }: { use
                                         <Field label="Registration No." value={detail.dealerProfile.registrationNumber} />
                                         <Field label="Business Address" value={detail.dealerProfile.businessAddress} />
                                         <Field label="Business Phone" value={detail.dealerProfile.phone} />
-                                        <Field label="Website" value={detail.dealerProfile.website ? <a href={detail.dealerProfile.website} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Visit <ExternalLink size={11} /></a> : null} />
+                                        <Field label="Website" value={detail.dealerProfile.website ? (dealerWebsiteUrl ? <a href={dealerWebsiteUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Visit <ExternalLink size={11} /></a> : <span className="text-[var(--text-muted)]">{detail.dealerProfile.website}</span>) : null} />
                                     </div>
                                 </Section>
                             )}
@@ -444,7 +447,7 @@ export function UserDetailModal({ userId, onClose, onChanged, onMessage }: { use
                                         <Field label="Representative Role" value={kyc.representativePosition} />
                                         <Field label="Director" value={kyc.directorName} />
                                         <Field label="Person of Significant Control" value={kyc.personOfSignificantControl} />
-                                        <Field label="Business Website" value={kyc.businessWebsite} />
+                                        <Field label="Business Website" value={kyc.businessWebsite ? (kycBusinessWebsiteUrl ? <a href={kycBusinessWebsiteUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Visit <ExternalLink size={11} /></a> : <span className="text-[var(--text-muted)]">{kyc.businessWebsite}</span>) : null} />
                                         <Field label="Registered Address" value={kyc.businessRegisteredAddress} />
                                         <Field label="Trading Address" value={kyc.tradingAddress} />
                                         <Field label="£1 Fee Charged" value={kyc.stripeChargedAt ? fmtDateTime(kyc.stripeChargedAt) : "Not paid"} />
