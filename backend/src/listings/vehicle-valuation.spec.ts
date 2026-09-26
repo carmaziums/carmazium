@@ -81,6 +81,16 @@ describe('calculateVehicleValuation', () => {
         expect(automatic.mid).toBeGreaterThan(manual.mid);
     });
 
+    it('reduces valuation as the automatic exterior defect grade worsens', () => {
+        const grade1 = calculateVehicleValuation({ ...vehicle, exteriorGrade: 1 }, []);
+        const grade3 = calculateVehicleValuation({ ...vehicle, exteriorGrade: 3 }, []);
+        const grade5 = calculateVehicleValuation({ ...vehicle, exteriorGrade: 5 }, []);
+
+        expect(grade1.mid).toBeGreaterThan(grade3.mid);
+        expect(grade3.mid).toBeGreaterThan(grade5.mid);
+        expect(grade5.auction.marketValue).toBeLessThan(grade1.auction.marketValue);
+    });
+
     it('discounts write-off vehicles relative to an otherwise identical clean vehicle', () => {
         const comps = [
             { price: 10000, year: 2019, mileage: 60000, kind: 'SALE' as const },
