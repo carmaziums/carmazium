@@ -8,11 +8,12 @@ import React, {
 } from 'react';
 import * as SecureStore from 'expo-secure-store';
 
-// The mobile app doesn't request device geolocation — the prompt was to
-// skip expo-location and let buyers type a postcode instead. We geocode
-// the postcode client-side against postcodes.io so haversine distance
-// estimates still work; if the geocode fails we keep the postcode string
-// on record and let the server validate on POST /delivery-requests.
+// Buyer/delivery location remains postcode-first and does not request GPS.
+// The seller listing wizard has a separate, explicitly user-triggered
+// "Locate Me" action that requests foreground location only. Here we geocode
+// the postcode client-side against postcodes.io so distance estimates work
+// without device location; if geocoding fails we keep the postcode string and
+// let the server validate it on POST /delivery-requests.
 
 const STORAGE_KEY = 'carmazium.userLocation.v1';
 const POSTCODE_LOOKUP_URL = 'https://api.postcodes.io/postcodes/';
