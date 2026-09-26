@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
-import { Menu, X, LogIn, User as UserIcon, LogOut, ChevronDown, Car } from "lucide-react"
+import { Menu, X, LogIn, User as UserIcon, LogOut, ChevronDown, Car, Gavel, ShieldCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
@@ -14,9 +14,13 @@ import { NotificationBell } from "@/components/layout/NotificationBell"
 import { ThemeToggle } from "@/components/ui/ThemeToggle"
 
 
-const navLinks: { name: string; href: string; prefetch?: boolean; badge?: string }[] = [
+type NavLink =
+    | { name: string; href: string; prefetch?: boolean; badge?: string; kind?: undefined }
+    | { name: "Buy Cars"; kind: "buy-menu"; href?: undefined; prefetch?: undefined; badge?: undefined }
+
+const navLinks: NavLink[] = [
     { name: "Home", href: "/" },
-    { name: "Buy Cars", href: "/search" },
+    { name: "Buy Cars", kind: "buy-menu" },
     { name: "Sell Cars", href: "/sell", prefetch: false },
     // Label only — the route stays /auctions. Renaming the URL would break
     // existing links, SEO, the /auctions/live/[id] children, and the
@@ -30,6 +34,7 @@ const navLinks: { name: string; href: string; prefetch?: boolean; badge?: string
 export function Header() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
     const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false)
+    const [isBuyMenuOpen, setIsBuyMenuOpen] = React.useState(false)
     const [activeLink, setActiveLink] = React.useState("")
 
     const pathname = usePathname()
@@ -39,7 +44,15 @@ export function Header() {
 
     React.useEffect(() => {
         setActiveLink(pathname || "")
+        setIsBuyMenuOpen(false)
+        setIsMobileMenuOpen(false)
     }, [pathname])
+
+    const buyCarsActive =
+        activeLink === "/search"
+        || activeLink.startsWith("/buy-cars")
+        || activeLink === "/auctions/browse"
+        || activeLink.startsWith("/auctions/live/")
 
     // Every account sees the TradeXchange link, dealer or not. Hiding it from
     // buyers and sellers hid the upsell as well as the room: a retail account is
@@ -102,30 +115,110 @@ export function Header() {
 
                 {/* Desktop Nav */}
                 <nav className="hidden lg:flex flex-none justify-center gap-8">
-                    {visibleNavLinks.map((link) => (
-                        <Link
-                            key={link.name}
-                            href={link.href}
-                            prefetch={link.prefetch}
-                            aria-current={activeLink === link.href ? "page" : undefined}
-                            className={cn(
-                                "text-[0.95rem] font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 relative group flex items-center gap-1.5",
-                                activeLink === link.href ? "text-primary" : "opacity-80 hover:opacity-100"
-                            )}
-                        >
-                            {link.name}
-                            {link.badge && (
-                                <span className="flex items-center gap-0.5 bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full leading-none">
-                                    <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
-                                    {link.badge}
-                                </span>
-                            )}
-                            <span className={cn(
-                                "absolute bottom-0 left-0 w-full h-[2px] bg-primary transform scale-x-0 transition-transform group-hover:scale-x-100",
-                                activeLink === link.href && "scale-x-100"
-                            )} />
-                        </Link>
-                    ))}
+                    {visibleNavLinks.map((link) => {
+                        if (link.kind === "buy-menu") {
+                            return (
+                                <div
+                                    key={link.name}
+                                    className="relative"
+                                    onMouseEnter={() => setIsBuyMenuOpen(true)}
+                                    onMouseLeave={() => setIsBuyMenuOpen(false)}
+                                >
+                                    <button
+                                        type="button"
+                                        aria-expanded={isBuyMenuOpen}
+                                        aria-haspopup="menu"
+                                        onClick={() => setIsBuyMenuOpen(open => !open)}
+                                        className={cn(
+                                            "text-[0.95rem] font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 relative group flex items-center gap-1.5",
+                                            buyCarsActive ? "text-primary" : "opacity-80 hover:opacity-100"
+                                        )}
+                                    >
+                                        Buy Cars
+                                        <ChevronDown
+                                            size={14}
+                                            className={cn("transition-transform", isBuyMenuOpen && "rotate-180")}
+                                        />
+                                        <span className={cn(
+                                            "absolute bottom-0 left-0 w-full h-[2px] bg-primary transform scale-x-0 transition-transform group-hover:scale-x-100",
+                                            buyCarsActive && "scale-x-100"
+                                        )} />
+                                    </button>
+
+                                    {isBuyMenuOpen && (
+                                        <div
+                                            role="menu"
+                                            className="absolute left-1/2 top-full z-[80] mt-3 w-72 -translate-x-1/2 overflow-hidden rounded-2xl border shadow-2xl"
+                                            style={{
+                                                background: "var(--bg-dropdown)",
+                                                borderColor: "var(--border-default)",
+                                            }}
+                                        >
+                                            <Link
+                                                href="/search"
+                                                role="menuitem"
+                                                className="flex items-start gap-3 px-4 py-4 transition-colors hover:bg-primary/5"
+                                                onClick={() => setIsBuyMenuOpen(false)}
+                                            >
+                                                <Car size={19} className="mt-0.5 text-primary shrink-0" />
+                                                <span className="text-left">
+                                                    <span className="block text-sm font-bold">Retail Listings</span>
+                                                    <span className="mt-0.5 block text-xs text-[var(--text-muted)]">
+                                                        Browse cars advertised for retail buyers.
+                                                    </span>
+                                                </span>
+                                            </Link>
+                                            <div className="h-px bg-[var(--border-default)]" />
+                                            <Link
+                                                href="/auctions/browse"
+                                                role="menuitem"
+                                                className="flex items-start gap-3 px-4 py-4 transition-colors hover:bg-primary/5"
+                                                onClick={() => setIsBuyMenuOpen(false)}
+                                            >
+                                                <Gavel size={19} className="mt-0.5 text-primary shrink-0" />
+                                                <span className="min-w-0 text-left">
+                                                    <span className="flex items-center gap-2 text-sm font-bold">
+                                                        Live Auctions
+                                                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-500">
+                                                            <ShieldCheck size={10} /> Verified Dealers
+                                                        </span>
+                                                    </span>
+                                                    <span className="mt-0.5 block text-xs text-[var(--text-muted)]">
+                                                        Trade auctions for KYC-approved dealers only.
+                                                    </span>
+                                                </span>
+                                            </Link>
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        }
+
+                        return (
+                            <Link
+                                key={link.name}
+                                href={link.href}
+                                prefetch={link.prefetch}
+                                aria-current={activeLink === link.href ? "page" : undefined}
+                                className={cn(
+                                    "text-[0.95rem] font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 relative group flex items-center gap-1.5",
+                                    activeLink === link.href ? "text-primary" : "opacity-80 hover:opacity-100"
+                                )}
+                            >
+                                {link.name}
+                                {link.badge && (
+                                    <span className="flex items-center gap-0.5 bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full leading-none">
+                                        <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
+                                        {link.badge}
+                                    </span>
+                                )}
+                                <span className={cn(
+                                    "absolute bottom-0 left-0 w-full h-[2px] bg-primary transform scale-x-0 transition-transform group-hover:scale-x-100",
+                                    activeLink === link.href && "scale-x-100"
+                                )} />
+                            </Link>
+                        )
+                    })}
                 </nav>
 
                 {/* Action Buttons */}
@@ -261,26 +354,95 @@ export function Header() {
                                 <ThemeToggle />
                             </div>
                         )}
-                        {visibleNavLinks.map((link) => (
-                            <Link
-                                key={link.name}
-                                href={link.href}
-                                prefetch={link.prefetch}
-                                className={cn(
-                                    "text-lg font-medium py-2 hover:text-primary transition-colors flex items-center justify-center gap-2",
-                                    activeLink === link.href && "text-primary"
-                                )}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                            >
-                                {link.name}
-                                {link.badge && (
-                                    <span className="flex items-center gap-0.5 bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full leading-none">
-                                        <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
-                                        {link.badge}
-                                    </span>
-                                )}
-                            </Link>
-                        ))}
+                        {visibleNavLinks.map((link) => {
+                            if (link.kind === "buy-menu") {
+                                return (
+                                    <div key={link.name} className="w-full">
+                                        <button
+                                            type="button"
+                                            aria-expanded={isBuyMenuOpen}
+                                            onClick={() => setIsBuyMenuOpen(open => !open)}
+                                            className={cn(
+                                                "w-full text-lg font-medium py-2 hover:text-primary transition-colors flex items-center justify-center gap-2",
+                                                buyCarsActive && "text-primary"
+                                            )}
+                                        >
+                                            Buy Cars
+                                            <ChevronDown
+                                                size={18}
+                                                className={cn("transition-transform", isBuyMenuOpen && "rotate-180")}
+                                            />
+                                        </button>
+
+                                        {isBuyMenuOpen && (
+                                            <div className="mx-auto mt-2 w-full max-w-md overflow-hidden rounded-2xl border text-left"
+                                                style={{ borderColor: "var(--border-default)", background: "var(--bg-card)" }}
+                                            >
+                                                <Link
+                                                    href="/search"
+                                                    className="flex items-start gap-3 px-4 py-4 hover:bg-primary/5 transition-colors"
+                                                    onClick={() => {
+                                                        setIsBuyMenuOpen(false)
+                                                        setIsMobileMenuOpen(false)
+                                                    }}
+                                                >
+                                                    <Car size={20} className="mt-0.5 text-primary shrink-0" />
+                                                    <span>
+                                                        <span className="block font-bold">Retail Listings</span>
+                                                        <span className="block text-xs text-[var(--text-muted)] mt-0.5">
+                                                            Cars advertised for retail buyers.
+                                                        </span>
+                                                    </span>
+                                                </Link>
+                                                <div className="h-px bg-[var(--border-default)]" />
+                                                <Link
+                                                    href="/auctions/browse"
+                                                    className="flex items-start gap-3 px-4 py-4 hover:bg-primary/5 transition-colors"
+                                                    onClick={() => {
+                                                        setIsBuyMenuOpen(false)
+                                                        setIsMobileMenuOpen(false)
+                                                    }}
+                                                >
+                                                    <Gavel size={20} className="mt-0.5 text-primary shrink-0" />
+                                                    <span className="min-w-0">
+                                                        <span className="flex flex-wrap items-center gap-2 font-bold">
+                                                            Live Auctions
+                                                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-500">
+                                                                <ShieldCheck size={10} /> Verified Dealers
+                                                            </span>
+                                                        </span>
+                                                        <span className="block text-xs text-[var(--text-muted)] mt-0.5">
+                                                            KYC-approved dealer access only.
+                                                        </span>
+                                                    </span>
+                                                </Link>
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            }
+
+                            return (
+                                <Link
+                                    key={link.name}
+                                    href={link.href}
+                                    prefetch={link.prefetch}
+                                    className={cn(
+                                        "text-lg font-medium py-2 hover:text-primary transition-colors flex items-center justify-center gap-2",
+                                        activeLink === link.href && "text-primary"
+                                    )}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                >
+                                    {link.name}
+                                    {link.badge && (
+                                        <span className="flex items-center gap-0.5 bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full leading-none">
+                                            <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
+                                            {link.badge}
+                                        </span>
+                                    )}
+                                </Link>
+                            )
+                        })}
 
 
 
