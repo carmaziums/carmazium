@@ -1,4 +1,4 @@
 -- Seller-declared known vehicle faults.
 ALTER TABLE "listings"
-ADD COLUMN "mechanicalIssues" TEXT,
-ADD COLUMN "electricalIssues" TEXT;
+ADD COLUMN IF NOT EXISTS "mechanicalIssues" TEXT,
+ADD COLUMN IF NOT EXISTS "electricalIssues" TEXT;
