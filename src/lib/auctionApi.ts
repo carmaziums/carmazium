@@ -68,6 +68,8 @@ export interface AuctionListing {
     exteriorGrade: number | null;
     owners: string | null;
     serviceHistory: string | null;
+    mechanicalIssues?: string | null;
+    electricalIssues?: string | null;
     // Only present if the seller purchased an HPI report
     hpiReport?: { status: 'PENDING' | 'COMPLETED'; isClear: boolean } | null;
     // Trust/promo — same fields the Buy Cars card reads
