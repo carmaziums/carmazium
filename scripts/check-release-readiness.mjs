@@ -802,7 +802,10 @@ if (exists(storeMetadataPath)) {
     ['marketing URL', appStore.marketingUrl],
     ['accessibility URL', appStore.accessibilityUrl],
   ]) {
-    if (typeof value !== 'string' || !value.startsWith('https://www.carmazium.com/')) {
+    if (
+      typeof value !== 'string' ||
+      (value !== 'https://www.carmazium.com' && !value.startsWith('https://www.carmazium.com/'))
+    ) {
       fail(`Store ${label} must use the canonical HTTPS CarMazium domain`);
     }
   }
