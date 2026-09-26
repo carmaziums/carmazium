@@ -1185,6 +1185,8 @@ function SearchPageContent() {
                                         deliveryAvailable={listing.deliveryAvailable ?? false}
                                         exteriorGrade={listing.exteriorGrade}
                                         writeOffCategory={listing.writeOffCategory}
+                                    isImported={listing.isImported ?? false}
+                                        isImported={listing.isImported ?? false}
                                     />
                                 ))}
                             </div>
@@ -1224,6 +1226,8 @@ function SearchPageContent() {
                                     deliveryAvailable={listing.deliveryAvailable ?? false}
                                     exteriorGrade={listing.exteriorGrade}
                                         writeOffCategory={listing.writeOffCategory}
+                                    isImported={listing.isImported ?? false}
+                                        isImported={listing.isImported ?? false}
                                 />
                             ))}
                         </div>
