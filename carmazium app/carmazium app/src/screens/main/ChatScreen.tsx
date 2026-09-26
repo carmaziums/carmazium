@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -25,7 +26,21 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
 import { useChat } from '../../context/ChatContext';
 import { useAuthStore } from '../../store/authStore';
-import { createChatAttachmentUpload, getChatMessages, sendChatAttachment, sendChatMessage, markMessagesAsRead, type ChatHistoryCursor, type ChatMessage, type ChatRoom, type ChatUser } from '../../lib/chatApi';
+import {
+  blockChatRoom,
+  createChatAttachmentUpload,
+  getChatMessages,
+  markMessagesAsRead,
+  reportChatMessage,
+  sendChatAttachment,
+  sendChatMessage,
+  unblockChatRoom,
+  type ChatHistoryCursor,
+  type ChatMessage,
+  type ChatReportReason,
+  type ChatRoom,
+  type ChatUser,
+} from '../../lib/chatApi';
 import { getListingById } from '../../lib/listingsApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -40,6 +55,14 @@ type NavProp = NativeStackNavigationProp<MainStackParamList>;
 // Message bubbles cap their width off this instead of a percentage string —
 // see the note on the `bubble` style below for why.
 const MAX_BUBBLE_WIDTH = Dimensions.get('window').width * 0.82;
+
+const REPORT_REASONS: Array<{ value: ChatReportReason; label: string }> = [
+  { value: 'HARASSMENT', label: 'Harassment or threats' },
+  { value: 'SCAM_FRAUD', label: 'Scam or fraud' },
+  { value: 'SPAM', label: 'Spam' },
+  { value: 'INAPPROPRIATE_CONTENT', label: 'Inappropriate content' },
+  { value: 'OTHER', label: 'Other' },
+];
 
 const createClientMessageId = (): string => {
   const bytes = new Uint8Array(16);
