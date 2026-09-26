@@ -10,6 +10,8 @@ on:
       - 'product-parity.json'
       - 'scripts/check-product-parity.mjs'
       - 'scripts/check-release-readiness.mjs'
+      - 'scripts/check-release-candidate-evidence.mjs'
+      - 'docs/native/**'
       - 'package.json'
       - '.github/workflows/release-certification.yml'
   workflow_dispatch:
