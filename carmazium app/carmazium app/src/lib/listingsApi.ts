@@ -321,6 +321,8 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
     taxDueDate:               l.taxDueDate               ?? null,
     owners:                   l.owners != null ? Number(l.owners) : null,
     serviceHistory:           l.serviceHistory           ?? null,
+    mechanicalIssues:         l.mechanicalIssues         ?? null,
+    electricalIssues:         l.electricalIssues         ?? null,
     writeOffCategory:         l.writeOffCategory         ?? null,
     stolenRecovered:          l.stolenRecovered          ?? null,
     hasOutstandingFinance:    l.hasOutstandingFinance    ?? null,
