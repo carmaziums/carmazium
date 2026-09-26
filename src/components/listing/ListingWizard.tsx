@@ -189,6 +189,7 @@ const INITIAL_FORM: FormData = {
 
 function getValuationBaseKey(data: Partial<FormData>, excludeListingId?: string | null) {
     return [
+        String(data.vrm || '').replace(/\s/g, '').toUpperCase(),
         String(data.make || '').trim().toUpperCase(),
         String(data.model || '').trim().toUpperCase(),
         String(data.year || '').trim(),
