@@ -626,7 +626,7 @@ export class DealersService {
                     title: 'KYC £1 Verification Payment Received',
                     message: `${companyName} has completed the £1 KYC verification charge (PI: ${piId}).`,
                     data: { piId, companyName },
-                    link: '/admin/kyc',
+                    link: '/dashboard/admin/dealer-verification',
                 }).catch(() => {}),
             ),
         );
