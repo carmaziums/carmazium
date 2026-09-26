@@ -504,11 +504,14 @@ if (exists(appleAssociationRoute)) {
   }
 }
 
-external('Live /.well-known responses must be verified against the real Apple Team ID and Google Play signing certificate');
+if (strict) {
+  ok('Live /.well-known identity checks are delegated to the strict workflow HTTP verification');
+} else {
+  warn('Live /.well-known identity checks run only in the manual strict release workflow');
+}
 
 // ---------------------------------------------------------------------------
 // Result.
-
 // ---------------------------------------------------------------------------
 console.log(
   `\nRelease-readiness summary: mode=${strict ? 'strict' : 'code'}, failures=${failures}, warnings=${warnings}`,
