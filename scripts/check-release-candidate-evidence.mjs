@@ -81,6 +81,7 @@ if (!Number.isFinite(iosSdkMajor) || iosSdkMajor < 26) {
 
 for (const [name, label] of [
   ['CARMAZIUM_ANDROID_SIGNED_AAB_CONFIRMED', 'Signed Android AAB verified'],
+  ['CARMAZIUM_ANDROID_16KB_PAGE_SIZE_CONFIRMED', 'Android AAB native libraries verified for 16 KB memory pages'],
   ['CARMAZIUM_IOS_SIGNED_ARCHIVE_CONFIRMED', 'Signed iOS archive verified'],
   ['CARMAZIUM_DEVICE_QA_CONFIRMED', 'Representative real-device QA completed'],
   ['CARMAZIUM_ACCESSIBILITY_QA_CONFIRMED', 'VoiceOver/TalkBack and large-text QA completed'],
