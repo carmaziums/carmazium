@@ -436,12 +436,18 @@ if (hasPlaceholder(sentryDsn) && !hasSentryDependency) {
 // 6. External distribution/deep-link evidence.
 // ---------------------------------------------------------------------------
 const iosSubmit = eas.submit?.production?.ios ?? {};
-for (const [key, value] of Object.entries({
-  appleId: iosSubmit.appleId,
-  ascAppId: iosSubmit.ascAppId,
-  appleTeamId: iosSubmit.appleTeamId,
-})) {
-  if (!value || hasPlaceholder(value)) external(`EAS iOS submit field ${key} is not configured`);
+if (Object.values(iosSubmit).some((value) => hasPlaceholder(value))) {
+  fail('EAS iOS submit profile must not contain placeholder store identifiers');
+} else {
+  ok('EAS iOS submit profile contains no fake store identifiers');
+}
+
+if (!iosSubmit.ascAppId) {
+  external('App Store Connect app ID is not configured for non-interactive iOS submission');
+} else if (!/^\d+$/.test(String(iosSubmit.ascAppId))) {
+  fail('App Store Connect app ID must be numeric');
+} else {
+  ok('App Store Connect app ID is configured');
 }
 
 const androidSubmit = eas.submit?.production?.android ?? {};
@@ -451,44 +457,58 @@ if (!androidSubmit.serviceAccountKeyPath) {
   ok('EAS Android submit path is declared (credential file remains external by design)');
 }
 
-const assetLinksPath = 'public/.well-known/assetlinks.json';
-const aasaPath = 'public/.well-known/apple-app-site-association';
+const nextConfigSource = read('next.config.ts');
+const androidAssociationRoute = 'src/app/api/app-links/android/route.ts';
+const appleAssociationRoute = 'src/app/api/app-links/apple/route.ts';
+requiredFile(androidAssociationRoute, 'Android Digital Asset Links route');
+requiredFile(appleAssociationRoute, 'Apple app-site-association route');
 
-if (!exists(assetLinksPath)) {
-  external('Android Digital Asset Links file is not present in the web app');
+if (
+  !nextConfigSource.includes("source: '/.well-known/assetlinks.json'") ||
+  !nextConfigSource.includes("destination: '/api/app-links/android'") ||
+  !nextConfigSource.includes("source: '/.well-known/apple-app-site-association'") ||
+  !nextConfigSource.includes("destination: '/api/app-links/apple'")
+) {
+  fail('Canonical /.well-known routes are not wired to the association handlers');
 } else {
-  try {
-    const links = readJson(assetLinksPath);
-    const serialised = JSON.stringify(links);
-    if (!Array.isArray(links) || links.length === 0 || hasPlaceholder(serialised)) {
-      external('Android Digital Asset Links file does not contain a real signing association');
-    } else {
-      ok('Android Digital Asset Links file contains at least one association');
-    }
-  } catch {
-    fail('Android Digital Asset Links file is not valid JSON');
+  ok('Canonical Android and Apple association URLs are wired without redirects');
+}
+
+if (exists(androidAssociationRoute)) {
+  const source = read(androidAssociationRoute);
+  if (
+    !source.includes("package_name: PACKAGE_NAME") ||
+    !source.includes("'uk.carmazium.app'") ||
+    !source.includes('ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS') ||
+    !source.includes('delegate_permission/common.handle_all_urls') ||
+    !source.includes('FINGERPRINT_RE')
+  ) {
+    fail('Android association route must bind the real signing fingerprint to uk.carmazium.app');
+  } else {
+    ok('Android association route is package-bound and signing-fingerprint gated');
   }
 }
 
-if (!exists(aasaPath)) {
-  external('Apple app-site-association file is not present in the web app');
-} else {
-  try {
-    const aasa = readJson(aasaPath);
-    const details = aasa?.applinks?.details;
-    const serialised = JSON.stringify(aasa);
-    if (!Array.isArray(details) || details.length === 0 || hasPlaceholder(serialised)) {
-      external('Apple app-site-association file does not contain a real app identifier');
-    } else {
-      ok('Apple app-site-association file contains at least one app association');
-    }
-  } catch {
-    fail('Apple app-site-association file is not valid JSON');
+if (exists(appleAssociationRoute)) {
+  const source = read(appleAssociationRoute);
+  if (
+    !source.includes("'uk.carmazium.app'") ||
+    !source.includes('APPLE_APP_TEAM_ID') ||
+    !source.includes('TEAM_ID_RE') ||
+    !source.includes('/auctions/live/*') ||
+    !source.includes('/dashboard/earnings*')
+  ) {
+    fail('Apple association route must bind a validated Team ID to the declared native deep-link surface');
+  } else {
+    ok('Apple association route is Team-ID gated and scoped to supported native routes');
   }
 }
+
+external('Live /.well-known responses must be verified against the real Apple Team ID and Google Play signing certificate');
 
 // ---------------------------------------------------------------------------
 // Result.
+
 // ---------------------------------------------------------------------------
 console.log(
   `\nRelease-readiness summary: mode=${strict ? 'strict' : 'code'}, failures=${failures}, warnings=${warnings}`,
