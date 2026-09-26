@@ -318,6 +318,27 @@ export const GlobalAIChatBot: React.FC = () => {
     }, 180);
   };
 
+  const withdrawAiConsent = async () => {
+    try {
+      await AsyncStorage.removeItem('mazium_ai_consent_v1');
+    } finally {
+      setHasAiConsent(false);
+      setMessage('');
+    }
+  };
+
+  const showAiPrivacyOptions = () => {
+    Alert.alert(
+      'MaziuM AI privacy',
+      'You can view the privacy policy or stop sending prompts to OpenAI. You can opt in again later.',
+      [
+        { text: 'View privacy', onPress: openAiPrivacy },
+        { text: 'Stop AI sharing', style: 'destructive', onPress: () => void withdrawAiConsent() },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
+  };
+
   const closeAiReport = () => {
     if (aiReporting) return;
     setAiReportTarget(null);
@@ -395,7 +416,15 @@ export const GlobalAIChatBot: React.FC = () => {
                     <Text style={styles.chatStatus}>Always online</Text>
                   </View>
                 </View>
-                <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setIsOpen(false)} accessibilityLabel="Close" />
+                <View style={styles.chatHeaderActions}>
+                  <IconButton
+                    style={styles.closeBtn}
+                    icon={<Ionicons name="shield-checkmark-outline" size={18} color={Colors.textSecondary} />}
+                    onPress={showAiPrivacyOptions}
+                    accessibilityLabel="MaziuM AI privacy options"
+                  />
+                  <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setIsOpen(false)} accessibilityLabel="Close" />
+                </View>
               </View>
 
               {/* Messages */}
@@ -690,6 +719,7 @@ const styles = StyleSheet.create({
   chatAvatarText: { fontFamily: FontFamily.black, fontSize: FontSize.base, color: Colors.white },
   chatTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
   chatStatus: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.accentGreen },
+  chatHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   closeBtn: { padding: 4 },
 
   chatScroll: { flex: 1, backgroundColor: Colors.bgPrimary },
