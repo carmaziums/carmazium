@@ -333,7 +333,7 @@ function variantSpecificationFactor(value?: string | null): number {
     if (!variant) return 1;
 
     const performanceMarkers = [
-        'AMG', 'M SPORT COMPETITION', 'M COMPETITION', 'RS', 'VRS',
+        'AMG', 'M SPORT COMPETITION', 'M COMPETITION', 'VRS',
         'GTI', 'TYPE R', 'GR SPORT', 'GRMN', 'N PERFORMANCE',
     ];
     if (performanceMarkers.some((marker) => variant.includes(marker))) return 1.02;
