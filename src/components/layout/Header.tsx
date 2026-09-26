@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
-import { Menu, X, LogIn, User as UserIcon, LogOut, ChevronDown, Car, Gavel, ShieldCheck } from "lucide-react"
+import { Menu, X, LogIn, User as UserIcon, LogOut, ChevronDown, Car, Gavel, ShieldCheck, Truck, Wrench, Banknote, LayoutGrid } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
@@ -17,15 +17,16 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle"
 type NavLink =
     | { name: string; href: string; prefetch?: boolean; badge?: string; kind?: undefined }
     | { name: "Buy Cars"; kind: "buy-menu"; href?: undefined; prefetch?: undefined; badge?: undefined }
+    | { name: "Sell Cars"; kind: "sell-menu"; href?: undefined; prefetch?: undefined; badge?: undefined }
+    | { name: "TradeXchange"; kind: "trade-menu"; href?: undefined; prefetch?: undefined; badge?: undefined }
 
 const navLinks: NavLink[] = [
     { name: "Home", href: "/" },
     { name: "Buy Cars", kind: "buy-menu" },
-    { name: "Sell Cars", href: "/sell", prefetch: false },
-    // Label only — the route stays /auctions. Renaming the URL would break
-    // existing links, SEO, the /auctions/live/[id] children, and the
-    // backend's returnPath allowlist (/^\/(buy-cars|auctions)\//).
-    { name: "TradeXchange", href: "/auctions" },
+    { name: "Sell Cars", kind: "sell-menu" },
+    // TradeXchange keeps /auctions as its overview route for backwards
+    // compatibility, while the header exposes each current service area.
+    { name: "TradeXchange", kind: "trade-menu" },
     { name: "Compare", href: "/compare" },
     { name: "Pricing", href: "/pricing" },
     { name: "About", href: "/about" },
@@ -35,6 +36,8 @@ export function Header() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
     const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false)
     const [isBuyMenuOpen, setIsBuyMenuOpen] = React.useState(false)
+    const [isSellMenuOpen, setIsSellMenuOpen] = React.useState(false)
+    const [isTradeMenuOpen, setIsTradeMenuOpen] = React.useState(false)
     const [activeLink, setActiveLink] = React.useState("")
 
     const pathname = usePathname()
@@ -45,6 +48,8 @@ export function Header() {
     React.useEffect(() => {
         setActiveLink(pathname || "")
         setIsBuyMenuOpen(false)
+        setIsSellMenuOpen(false)
+        setIsTradeMenuOpen(false)
         setIsMobileMenuOpen(false)
     }, [pathname])
 
@@ -53,6 +58,13 @@ export function Header() {
         || activeLink.startsWith("/buy-cars")
         || activeLink === "/auctions/browse"
         || activeLink.startsWith("/auctions/live/")
+
+    const sellCarsActive = activeLink === "/sell"
+
+    const tradeXchangeActive =
+        activeLink === "/auctions"
+        || activeLink === "/auctions/how-it-works"
+        || activeLink.startsWith("/services")
 
     // Every account sees the TradeXchange link, dealer or not. Hiding it from
     // buyers and sellers hid the upsell as well as the room: a retail account is
@@ -121,14 +133,22 @@ export function Header() {
                                 <div
                                     key={link.name}
                                     className="relative"
-                                    onMouseEnter={() => setIsBuyMenuOpen(true)}
+                                    onMouseEnter={() => {
+                                        setIsBuyMenuOpen(true)
+                                        setIsSellMenuOpen(false)
+                                        setIsTradeMenuOpen(false)
+                                    }}
                                     onMouseLeave={() => setIsBuyMenuOpen(false)}
                                 >
                                     <button
                                         type="button"
                                         aria-expanded={isBuyMenuOpen}
                                         aria-haspopup="menu"
-                                        onClick={() => setIsBuyMenuOpen(open => !open)}
+                                        onClick={() => {
+                                            setIsBuyMenuOpen(open => !open)
+                                            setIsSellMenuOpen(false)
+                                            setIsTradeMenuOpen(false)
+                                        }}
                                         className={cn(
                                             "text-[0.95rem] font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 relative group flex items-center gap-1.5",
                                             buyCarsActive ? "text-primary" : "opacity-80 hover:opacity-100"
@@ -188,6 +208,151 @@ export function Header() {
                                                     </span>
                                                 </span>
                                             </Link>
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        }
+
+                        if (link.kind === "sell-menu") {
+                            return (
+                                <div
+                                    key={link.name}
+                                    className="relative"
+                                    onMouseEnter={() => {
+                                        setIsSellMenuOpen(true)
+                                        setIsBuyMenuOpen(false)
+                                        setIsTradeMenuOpen(false)
+                                    }}
+                                    onMouseLeave={() => setIsSellMenuOpen(false)}
+                                >
+                                    <button
+                                        type="button"
+                                        aria-expanded={isSellMenuOpen}
+                                        aria-haspopup="menu"
+                                        onClick={() => {
+                                            setIsSellMenuOpen(open => !open)
+                                            setIsBuyMenuOpen(false)
+                                            setIsTradeMenuOpen(false)
+                                        }}
+                                        className={cn(
+                                            "text-[0.95rem] font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 relative group flex items-center gap-1.5",
+                                            sellCarsActive ? "text-primary" : "opacity-80 hover:opacity-100"
+                                        )}
+                                    >
+                                        Sell Cars
+                                        <ChevronDown size={14} className={cn("transition-transform", isSellMenuOpen && "rotate-180")} />
+                                        <span className={cn(
+                                            "absolute bottom-0 left-0 w-full h-[2px] bg-primary transform scale-x-0 transition-transform group-hover:scale-x-100",
+                                            sellCarsActive && "scale-x-100"
+                                        )} />
+                                    </button>
+
+                                    {isSellMenuOpen && (
+                                        <div
+                                            role="menu"
+                                            className="absolute left-1/2 top-full z-[80] mt-3 w-72 -translate-x-1/2 overflow-hidden rounded-2xl border shadow-2xl"
+                                            style={{ background: "var(--bg-dropdown)", borderColor: "var(--border-default)" }}
+                                        >
+                                            <Link
+                                                href="/sell?sellMode=retail#sell-options"
+                                                role="menuitem"
+                                                className="flex items-start gap-3 px-4 py-4 transition-colors hover:bg-primary/5"
+                                                onClick={() => setIsSellMenuOpen(false)}
+                                            >
+                                                <Car size={19} className="mt-0.5 text-primary shrink-0" />
+                                                <span className="text-left">
+                                                    <span className="block text-sm font-bold">Retail Listing</span>
+                                                    <span className="mt-0.5 block text-xs text-[var(--text-muted)]">Advertise directly to retail buyers from £1.</span>
+                                                </span>
+                                            </Link>
+                                            <div className="h-px bg-[var(--border-default)]" />
+                                            <Link
+                                                href="/sell?sellMode=auction#sell-options"
+                                                role="menuitem"
+                                                className="flex items-start gap-3 px-4 py-4 transition-colors hover:bg-primary/5"
+                                                onClick={() => setIsSellMenuOpen(false)}
+                                            >
+                                                <Gavel size={19} className="mt-0.5 text-primary shrink-0" />
+                                                <span className="text-left">
+                                                    <span className="block text-sm font-bold">Auction Listing</span>
+                                                    <span className="mt-0.5 block text-xs text-[var(--text-muted)]">List free and let verified dealers bid.</span>
+                                                </span>
+                                            </Link>
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        }
+
+                        if (link.kind === "trade-menu") {
+                            const tradeItems = [
+                                { name: "TradeXchange Overview", href: "/auctions", icon: LayoutGrid, desc: "See every TradeXchange service area." },
+                                { name: "Vehicle Auctions", href: "/auctions/how-it-works", icon: Gavel, desc: "Buy and sell trade stock through live auctions." },
+                                { name: "Delivery & Recovery", href: "/services/delivery", icon: Truck, desc: "Arrange vehicle transport and recovery." },
+                                { name: "Vehicle Inspection", href: "/services/inspection", icon: Wrench, desc: "Request independent vehicle inspections." },
+                                { name: "Vehicle Finance", href: "/services/finance", icon: Banknote, desc: "Request options from approved finance providers." },
+                                { name: "Warranty", href: "/services/warranty", icon: ShieldCheck, desc: "Request vehicle warranty options." },
+                            ]
+                            return (
+                                <div
+                                    key={link.name}
+                                    className="relative"
+                                    onMouseEnter={() => {
+                                        setIsTradeMenuOpen(true)
+                                        setIsBuyMenuOpen(false)
+                                        setIsSellMenuOpen(false)
+                                    }}
+                                    onMouseLeave={() => setIsTradeMenuOpen(false)}
+                                >
+                                    <button
+                                        type="button"
+                                        aria-expanded={isTradeMenuOpen}
+                                        aria-haspopup="menu"
+                                        onClick={() => {
+                                            setIsTradeMenuOpen(open => !open)
+                                            setIsBuyMenuOpen(false)
+                                            setIsSellMenuOpen(false)
+                                        }}
+                                        className={cn(
+                                            "text-[0.95rem] font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 relative group flex items-center gap-1.5",
+                                            tradeXchangeActive ? "text-primary" : "opacity-80 hover:opacity-100"
+                                        )}
+                                    >
+                                        TradeXchange
+                                        <ChevronDown size={14} className={cn("transition-transform", isTradeMenuOpen && "rotate-180")} />
+                                        <span className={cn(
+                                            "absolute bottom-0 left-0 w-full h-[2px] bg-primary transform scale-x-0 transition-transform group-hover:scale-x-100",
+                                            tradeXchangeActive && "scale-x-100"
+                                        )} />
+                                    </button>
+
+                                    {isTradeMenuOpen && (
+                                        <div
+                                            role="menu"
+                                            className="absolute left-1/2 top-full z-[80] mt-3 w-80 -translate-x-1/2 overflow-hidden rounded-2xl border shadow-2xl"
+                                            style={{ background: "var(--bg-dropdown)", borderColor: "var(--border-default)" }}
+                                        >
+                                            {tradeItems.map((item, index) => {
+                                                const Icon = item.icon
+                                                return (
+                                                    <React.Fragment key={item.href}>
+                                                        {index > 0 && <div className="h-px bg-[var(--border-default)]" />}
+                                                        <Link
+                                                            href={item.href}
+                                                            role="menuitem"
+                                                            className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-primary/5"
+                                                            onClick={() => setIsTradeMenuOpen(false)}
+                                                        >
+                                                            <Icon size={18} className="mt-0.5 text-primary shrink-0" />
+                                                            <span className="text-left">
+                                                                <span className="block text-sm font-bold">{item.name}</span>
+                                                                <span className="mt-0.5 block text-xs text-[var(--text-muted)]">{item.desc}</span>
+                                                            </span>
+                                                        </Link>
+                                                    </React.Fragment>
+                                                )
+                                            })}
                                         </div>
                                     )}
                                 </div>
@@ -361,7 +526,11 @@ export function Header() {
                                         <button
                                             type="button"
                                             aria-expanded={isBuyMenuOpen}
-                                            onClick={() => setIsBuyMenuOpen(open => !open)}
+                                            onClick={() => {
+                                                setIsBuyMenuOpen(open => !open)
+                                                setIsSellMenuOpen(false)
+                                                setIsTradeMenuOpen(false)
+                                            }}
                                             className={cn(
                                                 "w-full text-lg font-medium py-2 hover:text-primary transition-colors flex items-center justify-center gap-2",
                                                 buyCarsActive && "text-primary"
@@ -416,6 +585,124 @@ export function Header() {
                                                         </span>
                                                     </span>
                                                 </Link>
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            }
+
+                            if (link.kind === "sell-menu") {
+                                return (
+                                    <div key={link.name} className="w-full">
+                                        <button
+                                            type="button"
+                                            aria-expanded={isSellMenuOpen}
+                                            onClick={() => {
+                                                setIsSellMenuOpen(open => !open)
+                                                setIsBuyMenuOpen(false)
+                                                setIsTradeMenuOpen(false)
+                                            }}
+                                            className={cn(
+                                                "w-full text-lg font-medium py-2 hover:text-primary transition-colors flex items-center justify-center gap-2",
+                                                sellCarsActive && "text-primary"
+                                            )}
+                                        >
+                                            Sell Cars
+                                            <ChevronDown size={18} className={cn("transition-transform", isSellMenuOpen && "rotate-180")} />
+                                        </button>
+
+                                        {isSellMenuOpen && (
+                                            <div
+                                                className="mx-auto mt-2 w-full max-w-md overflow-hidden rounded-2xl border text-left"
+                                                style={{ borderColor: "var(--border-default)", background: "var(--bg-card)" }}
+                                            >
+                                                <Link
+                                                    href="/sell?sellMode=retail#sell-options"
+                                                    className="flex items-start gap-3 px-4 py-4 hover:bg-primary/5 transition-colors"
+                                                    onClick={() => {
+                                                        setIsSellMenuOpen(false)
+                                                        setIsMobileMenuOpen(false)
+                                                    }}
+                                                >
+                                                    <Car size={20} className="mt-0.5 text-primary shrink-0" />
+                                                    <span>
+                                                        <span className="block font-bold">Retail Listing</span>
+                                                        <span className="block text-xs text-[var(--text-muted)] mt-0.5">Advertise directly to retail buyers from £1.</span>
+                                                    </span>
+                                                </Link>
+                                                <div className="h-px bg-[var(--border-default)]" />
+                                                <Link
+                                                    href="/sell?sellMode=auction#sell-options"
+                                                    className="flex items-start gap-3 px-4 py-4 hover:bg-primary/5 transition-colors"
+                                                    onClick={() => {
+                                                        setIsSellMenuOpen(false)
+                                                        setIsMobileMenuOpen(false)
+                                                    }}
+                                                >
+                                                    <Gavel size={20} className="mt-0.5 text-primary shrink-0" />
+                                                    <span>
+                                                        <span className="block font-bold">Auction Listing</span>
+                                                        <span className="block text-xs text-[var(--text-muted)] mt-0.5">List free and let verified dealers bid.</span>
+                                                    </span>
+                                                </Link>
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            }
+
+                            if (link.kind === "trade-menu") {
+                                const tradeItems = [
+                                    { name: "TradeXchange Overview", href: "/auctions", icon: LayoutGrid },
+                                    { name: "Vehicle Auctions", href: "/auctions/how-it-works", icon: Gavel },
+                                    { name: "Delivery & Recovery", href: "/services/delivery", icon: Truck },
+                                    { name: "Vehicle Inspection", href: "/services/inspection", icon: Wrench },
+                                    { name: "Vehicle Finance", href: "/services/finance", icon: Banknote },
+                                    { name: "Warranty", href: "/services/warranty", icon: ShieldCheck },
+                                ]
+                                return (
+                                    <div key={link.name} className="w-full">
+                                        <button
+                                            type="button"
+                                            aria-expanded={isTradeMenuOpen}
+                                            onClick={() => {
+                                                setIsTradeMenuOpen(open => !open)
+                                                setIsBuyMenuOpen(false)
+                                                setIsSellMenuOpen(false)
+                                            }}
+                                            className={cn(
+                                                "w-full text-lg font-medium py-2 hover:text-primary transition-colors flex items-center justify-center gap-2",
+                                                tradeXchangeActive && "text-primary"
+                                            )}
+                                        >
+                                            TradeXchange
+                                            <ChevronDown size={18} className={cn("transition-transform", isTradeMenuOpen && "rotate-180")} />
+                                        </button>
+
+                                        {isTradeMenuOpen && (
+                                            <div
+                                                className="mx-auto mt-2 w-full max-w-md overflow-hidden rounded-2xl border text-left"
+                                                style={{ borderColor: "var(--border-default)", background: "var(--bg-card)" }}
+                                            >
+                                                {tradeItems.map((item, index) => {
+                                                    const Icon = item.icon
+                                                    return (
+                                                        <React.Fragment key={item.href}>
+                                                            {index > 0 && <div className="h-px bg-[var(--border-default)]" />}
+                                                            <Link
+                                                                href={item.href}
+                                                                className="flex items-center gap-3 px-4 py-3.5 hover:bg-primary/5 transition-colors"
+                                                                onClick={() => {
+                                                                    setIsTradeMenuOpen(false)
+                                                                    setIsMobileMenuOpen(false)
+                                                                }}
+                                                            >
+                                                                <Icon size={19} className="text-primary shrink-0" />
+                                                                <span className="font-bold">{item.name}</span>
+                                                            </Link>
+                                                        </React.Fragment>
+                                                    )
+                                                })}
                                             </div>
                                         )}
                                     </div>

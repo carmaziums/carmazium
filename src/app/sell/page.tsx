@@ -700,7 +700,9 @@ function MarketingGate({ children }: { children: React.ReactNode }) {
     const isResumeFlow = Boolean(
         searchParams.get("editId") ||
         searchParams.get("editSlug") ||
-        searchParams.get("hpi_success") === "true"
+        searchParams.get("hpi_success") === "true" ||
+        searchParams.get("sellMode") === "retail" ||
+        searchParams.get("sellMode") === "auction"
     )
 
     if (isResumeFlow) return null
