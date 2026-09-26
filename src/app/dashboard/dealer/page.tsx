@@ -84,6 +84,25 @@ export default function DealerDashboard() {
         }
     }, [user, authLoading, accessLoading, rangeAllTime, rangeValue, rangeUnit, compareRange, canManageCrm])
 
+    React.useEffect(() => {
+        if (!user) return
+
+        const refreshUnsoldNotice = () => {
+            getNotifications(20)
+                .then((recentNotifications) => {
+                    setUnsoldAuctionNotice(
+                        recentNotifications.find(
+                            notification => notification.type === 'AUCTION_ENDED_NO_SALE' && !notification.isRead,
+                        ) ?? null,
+                    )
+                })
+                .catch(() => {})
+        }
+
+        const intervalId = window.setInterval(refreshUnsoldNotice, 30_000)
+        return () => window.clearInterval(intervalId)
+    }, [user])
+
     async function fetchDashboardData() {
         setLoading(true)
         setStatsError(false)
