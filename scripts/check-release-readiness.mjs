@@ -171,7 +171,45 @@ if (
 }
 
 // ---------------------------------------------------------------------------
-// 2. Native production identity/build configuration.
+// 3. User-generated-content safety and moderation.
+// ---------------------------------------------------------------------------
+requiredFile('backend/src/chat/chat-content-safety.service.ts', 'Server-side chat content filter');
+requiredFile('src/components/admin/AdminChatModerationQueue.tsx', 'Admin chat moderation queue');
+
+const chatService = read('backend/src/chat/chat.service.ts');
+const chatSafety = read('backend/src/chat/chat-content-safety.service.ts');
+const webChat = read('src/components/chat/ChatWindow.tsx');
+const nativeChat = read('carmazium app/carmazium app/src/screens/main/ChatScreen.tsx');
+const nativeChatApi = read('carmazium app/carmazium app/src/lib/chatApi.ts');
+
+if (
+  !chatSafety.includes("model: 'omni-moderation-latest'") ||
+  !chatSafety.includes('LOCAL_HIGH_CONFIDENCE_RULES') ||
+  !chatService.includes("assertAllowedText(dto.content, 'MESSAGE')") ||
+  !chatService.includes("assertAllowedText(content, 'ATTACHMENT_CAPTION')")
+) {
+  fail('Member-authored chat must pass one server-side moderation boundary before persistence');
+} else {
+  ok('REST/WebSocket chat share a server-side objectionable-content filter');
+}
+
+if (
+  !webChat.includes('Report message') ||
+  !webChat.includes('Block this conversation') ||
+  !nativeChat.includes('Report message') ||
+  !nativeChat.includes('Block conversation?') ||
+  !nativeChat.includes('Messaging blocked') ||
+  !nativeChatApi.includes('reportChatMessage') ||
+  !nativeChatApi.includes('blockChatRoom') ||
+  !nativeChatApi.includes('unblockChatRoom')
+) {
+  fail('Report/block controls must remain available on both web and native chat');
+} else {
+  ok('Web and native expose report, block and unblock controls');
+}
+
+// ---------------------------------------------------------------------------
+// 4. Native production identity/build configuration.
 // ---------------------------------------------------------------------------
 const app = readJson('carmazium app/carmazium app/app.json').expo;
 const eas = readJson('carmazium app/carmazium app/eas.json');
@@ -271,7 +309,7 @@ if (hasPlaceholder(sentryDsn) && !hasSentryDependency) {
 }
 
 // ---------------------------------------------------------------------------
-// 3. External distribution/deep-link evidence.
+// 5. External distribution/deep-link evidence.
 // ---------------------------------------------------------------------------
 const iosSubmit = eas.submit?.production?.ios ?? {};
 for (const [key, value] of Object.entries({
