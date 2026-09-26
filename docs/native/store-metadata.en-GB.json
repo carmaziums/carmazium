@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "app": {
+    "name": "CarMazium",
+    "bundleId": "uk.carmazium.app",
+    "androidPackage": "uk.carmazium.app",
+    "primaryLanguage": "en-GB",
+    "accountMinimumAge": 18,
+    "marketingUrl": "https://www.carmazium.com",
+    "supportUrl": "https://www.carmazium.com/app-support",
+    "privacyPolicyUrl": "https://www.carmazium.com/privacy-policy",
+    "accountDeletionUrl": "https://www.carmazium.com/delete-account",
+    "supportEmail": "info@carmazium.com",
+    "supportPhone": "+44 121 838 5040"
+  },
+  "apple": {
+    "name": "CarMazium",
+    "subtitle": "Buy, Sell & Auction Cars",
+    "promotionalText": "Sell by free auction or from £1 retail listing. Browse used cars, manage offers and messages, and access dealer tools in one CarMazium account.",
+    "description": "CarMazium is a UK vehicle marketplace for adults buying, selling and sourcing used cars.\\n\\nSELL YOUR CAR\\n• List a vehicle in a timed auction free of charge as the seller.\\n• Choose a retail listing from £1.\\n• Use vehicle lookup, valuation guidance and listing tools to prepare your advert.\\n• Eligible completed auction sales can qualify for CarMazium's seller incentive after the required handover evidence is approved.\\n\\nBUY & BROWSE\\n• Search retail vehicles and live auctions.\\n• Save vehicles, manage offers and keep transaction-related messages in one account.\\n• Retail buyers are not charged a CarMazium buyer fee for the vehicle purchase.\\n\\nDEALER TOOLS\\n• Approved motor traders can bid in auctions.\\n• Manage inventory, purchases, offers, customers and business verification from the dealer workspace.\\n• A successful auction buyer pays CarMazium's applicable platform fee before restricted post-win functionality is unlocked.\\n\\nPARTNER SERVICES\\nEligible business accounts can access CarMazium partner/service workflows, subject to verification and availability.\\n\\nIMPORTANT\\nCarMazium is a marketplace and technology platform. Vehicle purchase money is paid directly between buyer and seller; CarMazium does not hold the vehicle purchase price. Auction bidding is restricted to approved motor-trade users. Pricing, eligibility and promotional conditions are shown before the relevant action and may be updated in accordance with the platform terms.\\n\\nAccounts are for users aged 18 or over.",
+    "keywords": "used cars,car auction,sell my car,vehicle marketplace,car valuation,motor trade,dealer",
+    "primaryCategory": "Shopping",
+    "secondaryCategory": "Business",
+    "copyright": "2026 CarMazium Ltd"
+  },
+  "googlePlay": {
+    "appName": "CarMazium",
+    "shortDescription": "Buy, sell and auction used cars with CarMazium’s UK vehicle marketplace.",
+    "fullDescription": "CarMazium is a UK vehicle marketplace for adults buying, selling and sourcing used cars.\\n\\nSELL YOUR CAR\\n• Free seller entry to timed vehicle auctions.\\n• Retail listing options starting from £1.\\n• Vehicle lookup, valuation guidance and listing tools.\\n• Eligible completed auction sales can qualify for CarMazium's seller incentive after approved handover evidence.\\n\\nBUY & BROWSE\\n• Search retail vehicles and live auctions.\\n• Save vehicles, manage offers and use transaction-related messaging.\\n• No CarMazium retail buyer fee for the vehicle purchase.\\n\\nFOR MOTOR TRADERS\\nApproved motor traders can bid in auctions and use dealer inventory, purchase, offer, customer and verification tools. A successful auction buyer pays the applicable CarMazium platform fee before restricted post-win functionality is unlocked.\\n\\nCarMazium does not hold the vehicle purchase price. Buyers pay sellers directly. Auction bidding is limited to approved motor-trade users. Pricing, eligibility and promotional conditions are shown before the relevant action and are governed by the CarMazium terms.\\n\\nAccounts are for users aged 18 or over.",
+    "category": "AUTO_AND_VEHICLES",
+    "containsAds": false,
+    "targetAudience": [
+      "18_AND_OVER"
+    ]
+  },
+  "declarationFacts": {
+    "userGeneratedVehicleListings": true,
+    "privateMemberMessaging": true,
+    "aiAssistant": true,
+    "financialServicesMarketplaceEnquiries": true,
+    "realMoneyGambling": false,
+    "simulatedGambling": false,
+    "nativeAdvertisingSdkPresent": false,
+    "backgroundLocation": false,
+    "broadPhotoVideoPermission": false,
+    "cameraPermission": false,
+    "microphonePermission": false
+  }
+}
