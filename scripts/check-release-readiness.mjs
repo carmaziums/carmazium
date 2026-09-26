@@ -743,6 +743,175 @@ requiredFile('docs/native/STORE_ACCESSIBILITY_DEVICE_QA.md', 'Native accessibili
 warn('Physical VoiceOver/TalkBack, large-text, payment, push and installed-link checks still require a signed build on real devices');
 
 // ---------------------------------------------------------------------------
+// 9. Store listing metadata, reviewer access and submission completeness.
+// ---------------------------------------------------------------------------
+const storeMetadataPath = 'docs/native/store-metadata.en-GB.json';
+requiredFile(storeMetadataPath, 'Canonical en-GB store metadata');
+requiredFile('docs/native/STORE_REVIEW_ACCESS.md', 'Store reviewer-access contract');
+requiredFile('docs/native/STORE_CONTENT_DECLARATIONS.md', 'Store content/audience declaration contract');
+requiredFile('docs/native/STORE_LISTING_ASSETS.md', 'Store listing asset plan');
+requiredFile('src/app/app-support/page.tsx', 'Public app support page');
+
+if (exists(storeMetadataPath)) {
+  const store = readJson(storeMetadataPath);
+  const apple = store.apple ?? {};
+  const play = store.googlePlay ?? {};
+  const appStore = store.app ?? {};
+  const utf8 = (value) => Buffer.byteLength(String(value ?? ''), 'utf8');
+
+  if (appStore.name !== app.name || apple.name !== app.name || play.appName !== app.name) {
+    fail('Store names must match the canonical native app name');
+  } else {
+    ok('Apple/Google store names match the native CarMazium identity');
+  }
+
+  if (String(apple.name ?? '').length < 2 || String(apple.name ?? '').length > 30) {
+    fail('Apple app name must be 2–30 characters');
+  }
+  if (String(apple.subtitle ?? '').length > 30) {
+    fail('Apple subtitle exceeds 30 characters');
+  }
+  if (String(apple.promotionalText ?? '').length > 170) {
+    fail('Apple promotional text exceeds 170 characters');
+  }
+  if (String(apple.description ?? '').length === 0 || String(apple.description).length > 4000) {
+    fail('Apple description must be present and <= 4000 characters');
+  }
+  if (utf8(apple.keywords) === 0 || utf8(apple.keywords) > 100) {
+    fail('Apple keywords must be present and <= 100 UTF-8 bytes');
+  } else {
+    ok(`Apple metadata fits name/subtitle/promo/description/keyword limits (keywords=${utf8(apple.keywords)} bytes)`);
+  }
+
+  if (String(play.appName ?? '').length > 30) {
+    fail('Google Play app name exceeds 30 characters');
+  }
+  if (String(play.shortDescription ?? '').length === 0 || String(play.shortDescription).length > 80) {
+    fail('Google Play short description must be present and <= 80 characters');
+  }
+  if (String(play.fullDescription ?? '').length === 0 || String(play.fullDescription).length > 4000) {
+    fail('Google Play full description must be present and <= 4000 characters');
+  } else {
+    ok('Google Play listing copy fits current length limits');
+  }
+
+  for (const [label, value] of [
+    ['support URL', appStore.supportUrl],
+    ['privacy URL', appStore.privacyPolicyUrl],
+    ['account deletion URL', appStore.accountDeletionUrl],
+    ['marketing URL', appStore.marketingUrl],
+    ['accessibility URL', appStore.accessibilityUrl],
+  ]) {
+    if (
+      typeof value !== 'string' ||
+      (value !== 'https://www.carmazium.com' && !value.startsWith('https://www.carmazium.com/'))
+    ) {
+      fail(`Store ${label} must use the canonical HTTPS CarMazium domain`);
+    }
+  }
+
+  if (appStore.supportUrl !== 'https://www.carmazium.com/app-support') {
+    fail('Store support URL must point to the dedicated app-support page');
+  }
+  if (appStore.privacyPolicyUrl !== 'https://www.carmazium.com/privacy-policy') {
+    fail('Store privacy URL must point to the production Privacy Policy');
+  }
+  if (appStore.accountDeletionUrl !== 'https://www.carmazium.com/delete-account') {
+    fail('Store account deletion URL must point to the public deletion flow');
+  }
+
+  if (appStore.accountMinimumAge !== 18 || !Array.isArray(play.targetAudience) || !play.targetAudience.includes('18_AND_OVER')) {
+    fail('Store audience contract must preserve the 18+ CarMazium account rule');
+  } else {
+    ok('Store audience contract is aligned to the 18+ account requirement');
+  }
+
+  const declarationFacts = store.declarationFacts ?? {};
+  for (const fact of ['userGeneratedVehicleListings', 'privateMemberMessaging', 'aiAssistant']) {
+    if (declarationFacts[fact] !== true) {
+      fail(`Store declaration facts must truthfully declare ${fact}=true`);
+    }
+  }
+  for (const fact of [
+    'realMoneyGambling',
+    'simulatedGambling',
+    'nativeAdvertisingSdkPresent',
+    'backgroundLocation',
+    'broadPhotoVideoPermission',
+    'cameraPermission',
+    'microphonePermission',
+  ]) {
+    if (declarationFacts[fact] !== false) {
+      fail(`Store declaration facts must preserve current ${fact}=false contract`);
+    }
+  }
+
+  const nativePackage = readJson('carmazium app/carmazium app/package.json');
+  const nativeDependencyNames = Object.keys({
+    ...(nativePackage.dependencies ?? {}),
+    ...(nativePackage.devDependencies ?? {}),
+  }).join('\n');
+  if (/admob|react-native-google-mobile-ads|facebook-audience|applovin|ironsource|unity-ads/i.test(nativeDependencyNames)) {
+    fail('Native advertising dependency detected while store metadata declares Contains ads: No');
+  } else if (play.containsAds !== false) {
+    fail('Google Play metadata must declare containsAds=false while no native ad SDK is present');
+  } else {
+    ok('Google Play advertising declaration matches the current native dependency graph');
+  }
+
+  const forbiddenKeywordNames = ['carwow', 'motorway', 'autotrader', 'cinch'];
+  const keywordText = String(apple.keywords ?? '').toLowerCase();
+  const badKeywords = forbiddenKeywordNames.filter((name) => keywordText.includes(name));
+  if (badKeywords.length) {
+    fail(`Apple keywords must not contain competitor/company names: ${badKeywords.join(', ')}`);
+  }
+
+  const storeCopy = `${apple.description ?? ''}\n${play.fullDescription ?? ''}`;
+  for (const phrase of ['18 or over', 'paid directly between buyer and seller', 'approved motor']) {
+    if (!storeCopy.toLowerCase().includes(phrase.toLowerCase())) {
+      fail(`Store descriptions must disclose core marketplace constraint: "${phrase}"`);
+    }
+  }
+
+  const notificationPlugin = (app.plugins ?? []).find(
+    (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-notifications',
+  );
+  if (!Array.isArray(notificationPlugin) || notificationPlugin[1]?.androidCollapsedTitle !== 'CarMazium') {
+    fail('Android notification collapsed title must use canonical CarMazium branding');
+  } else {
+    ok('Android notification branding matches the store identity');
+  }
+}
+
+const appSupportSource = read('src/app/app-support/page.tsx');
+for (const expected of ['info@carmazium.com', '0121 838 5040', 'Company number 17053307', '/delete-account', '/privacy-policy']) {
+  if (!appSupportSource.includes(expected)) {
+    fail(`Public app support page is missing required support detail: ${expected}`);
+  }
+}
+if (
+  appSupportSource.includes('info@carmazium.com') &&
+  appSupportSource.includes('0121 838 5040') &&
+  appSupportSource.includes('/delete-account') &&
+  appSupportSource.includes('/privacy-policy')
+) {
+  ok('Public app support page exposes contact, privacy and deletion help');
+}
+
+const reviewAccessConfirmed = process.env.CARMAZIUM_REVIEW_ACCESS_CONFIRMED === 'true';
+const storeConsoleMetadataConfirmed = process.env.CARMAZIUM_STORE_CONSOLE_METADATA_CONFIRMED === 'true';
+const storeAssetsConfirmed = process.env.CARMAZIUM_STORE_ASSETS_CONFIRMED === 'true';
+
+if (reviewAccessConfirmed) ok('Store reviewer access has been externally confirmed');
+else external('Working reusable reviewer credentials/demo access have not been confirmed in both store consoles');
+
+if (storeConsoleMetadataConfirmed) ok('Store-console metadata/content declarations have been externally confirmed');
+else external('Canonical metadata, privacy/data-safety, age/content and app-content declarations have not been confirmed in both store consoles');
+
+if (storeAssetsConfirmed) ok('Release-candidate store screenshots/graphics have been externally confirmed');
+else external('Release-candidate screenshots/feature graphics have not been confirmed in both store consoles');
+
+// ---------------------------------------------------------------------------
 // Result.
 // ---------------------------------------------------------------------------
 console.log(
