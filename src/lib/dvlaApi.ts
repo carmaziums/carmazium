@@ -56,9 +56,12 @@ export interface MotTestDefect {
     dangerous: boolean;
 }
 
-export async function dvlaLookup(vrm: string): Promise<DvlaLookupResult> {
+export async function dvlaLookup(
+    vrm: string,
+    allowAiEnrichment = false,
+): Promise<DvlaLookupResult> {
     return apiClient<DvlaLookupResult>('/dvla/lookup', {
         method: 'POST',
-        body: JSON.stringify({ vrm }),
+        body: JSON.stringify({ vrm, allowAiEnrichment }),
     });
 }
