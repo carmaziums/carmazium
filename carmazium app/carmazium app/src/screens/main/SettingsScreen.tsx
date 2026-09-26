@@ -84,6 +84,8 @@ export const SettingsScreen: React.FC = () => {
             setDealerWebsite(dp.website ?? '');
             setDealerDescription(dp.description ?? '');
             setDealerLogo(dp.logo ?? '');
+            setDealerBusinessType(dp.kyc?.businessType === 'SOLE_PROPRIETORSHIP' ? 'SOLE_PROPRIETORSHIP' : 'PRIVATE_LIMITED');
+            setDealerKycStatus(dp.kyc?.status ?? null);
           }
         }
       } catch { /* keep store-derived defaults */ }
@@ -132,6 +134,9 @@ export const SettingsScreen: React.FC = () => {
   const [dealerSaving, setDealerSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [dealerFieldErrors, setDealerFieldErrors] = useState<{ companyName?: string; vatNumber?: string }>({});
+  const [dealerBusinessType, setDealerBusinessType] = useState<'PRIVATE_LIMITED' | 'SOLE_PROPRIETORSHIP'>('PRIVATE_LIMITED');
+  const [dealerKycStatus, setDealerKycStatus] = useState<string | null>(null);
+  const isSoleTraderDealer = dealerBusinessType === 'SOLE_PROPRIETORSHIP';
 
   const handlePickDealerLogo = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -157,8 +162,8 @@ export const SettingsScreen: React.FC = () => {
     const trimmedCompany = dealerCompanyName.trim();
     const trimmedVat = dealerVatNumber.trim();
     const nextFieldErrors: { companyName?: string; vatNumber?: string } = {};
-    if (!trimmedCompany) nextFieldErrors.companyName = 'Company name is required';
-    if (!trimmedVat) nextFieldErrors.vatNumber = 'VAT number is required';
+    if (!trimmedCompany) nextFieldErrors.companyName = isSoleTraderDealer ? 'Trading name is required' : 'Company name is required';
+    if (!isSoleTraderDealer && !trimmedVat) nextFieldErrors.vatNumber = 'VAT number is required';
     setDealerFieldErrors(nextFieldErrors);
     if (Object.keys(nextFieldErrors).length > 0) return;
 
@@ -168,8 +173,10 @@ export const SettingsScreen: React.FC = () => {
         method: 'PATCH',
         body: JSON.stringify({
           companyName: trimmedCompany,
-          vatNumber: trimmedVat,
-          registrationNumber: dealerRegNumber.trim(),
+          ...(!isSoleTraderDealer ? {
+            vatNumber: trimmedVat,
+            registrationNumber: dealerRegNumber.trim(),
+          } : {}),
           businessAddress: dealerAddress.trim(),
           phone: dealerPhone.trim(),
           website: dealerWebsite.trim(),
@@ -586,40 +593,44 @@ export const SettingsScreen: React.FC = () => {
               </TouchableOpacity>
 
               <View>
-                <FieldLabel label="COMPANY NAME" />
+                <FieldLabel label={isSoleTraderDealer ? "TRADING NAME" : "COMPANY NAME"} />
                 <TextInput
                   style={styles.inputField}
                   value={dealerCompanyName}
                   onChangeText={v => { setDealerCompanyName(v); if (dealerFieldErrors.companyName) setDealerFieldErrors(prev => ({ ...prev, companyName: undefined })); }}
-                  placeholder="e.g. Knightsbridge Motors Ltd"
+                  placeholder={isSoleTraderDealer ? "e.g. Smith Motors" : "e.g. Knightsbridge Motors Ltd"}
                   placeholderTextColor={Colors.iconMuted}
                 />
                 {dealerFieldErrors.companyName ? <Text style={styles.fieldErrorText}>{dealerFieldErrors.companyName}</Text> : null}
               </View>
 
-              <View>
-                <FieldLabel label="VAT NUMBER" />
-                <TextInput
-                  style={styles.inputField}
-                  value={dealerVatNumber}
-                  onChangeText={v => { setDealerVatNumber(v); if (dealerFieldErrors.vatNumber) setDealerFieldErrors(prev => ({ ...prev, vatNumber: undefined })); }}
-                  placeholder="e.g. GB 123 456 789"
-                  placeholderTextColor={Colors.iconMuted}
-                />
-                {dealerFieldErrors.vatNumber ? <Text style={styles.fieldErrorText}>{dealerFieldErrors.vatNumber}</Text> : null}
-              </View>
+              {!isSoleTraderDealer ? (
+                <>
+                  <View>
+                    <FieldLabel label="VAT NUMBER" />
+                    <TextInput
+                      style={styles.inputField}
+                      value={dealerVatNumber}
+                      onChangeText={v => { setDealerVatNumber(v); if (dealerFieldErrors.vatNumber) setDealerFieldErrors(prev => ({ ...prev, vatNumber: undefined })); }}
+                      placeholder="e.g. GB 123 456 789"
+                      placeholderTextColor={Colors.iconMuted}
+                    />
+                    {dealerFieldErrors.vatNumber ? <Text style={styles.fieldErrorText}>{dealerFieldErrors.vatNumber}</Text> : null}
+                  </View>
 
-              <View>
-                <FieldLabel label="COMPANIES HOUSE REG" />
-                <TextInput
-                  style={styles.inputField}
-                  value={dealerRegNumber}
-                  onChangeText={setDealerRegNumber}
-                  keyboardType="numeric"
-                  placeholder="e.g. 12345678"
-                  placeholderTextColor={Colors.iconMuted}
-                />
-              </View>
+                  <View>
+                    <FieldLabel label="COMPANIES HOUSE REG" />
+                    <TextInput
+                      style={styles.inputField}
+                      value={dealerRegNumber}
+                      onChangeText={setDealerRegNumber}
+                      keyboardType="numeric"
+                      placeholder="e.g. 12345678"
+                      placeholderTextColor={Colors.iconMuted}
+                    />
+                  </View>
+                </>
+              ) : null}
 
               <View>
                 <FieldLabel label="BUSINESS ADDRESS" />
@@ -681,6 +692,32 @@ export const SettingsScreen: React.FC = () => {
                 {dealerSaving
                   ? <ActivityIndicator size="small" color={Colors.white} />
                   : <Text style={styles.saveBtnText}>SAVE DEALERSHIP PROFILE</Text>}
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        {isDealerAccount && (
+          <>
+            <SectionHeader icon="shield-checkmark-outline" label="BUSINESS VERIFICATION" />
+            <View style={styles.card}>
+              <Text style={styles.payoutDesc}>
+                Legal type: {isSoleTraderDealer ? 'Sole Trader' : 'Registered Company'}
+                {dealerKycStatus ? ` • Status: ${dealerKycStatus}` : ''}
+              </Text>
+              <Text style={[styles.payoutDesc, { marginTop: 8 }]}>
+                Change your legal business type or update an application under review. If your £1 verification fee has
+                already been paid, CarMazium will not charge it again. An approved account stays verified until a
+                different legal type is submitted; it then returns to Pending until the new identity is approved.
+              </Text>
+              <TouchableOpacity
+                style={[styles.stripeBtn, { marginTop: 16 }]}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('DealerKYC', { reverify: dealerKycStatus === 'APPROVED' })}
+              >
+                <Text style={styles.stripeBtnText}>
+                  {dealerKycStatus === 'APPROVED' ? 'CHANGE BUSINESS TYPE / RE-VERIFY' : 'OPEN BUSINESS VERIFICATION'}
+                </Text>
               </TouchableOpacity>
             </View>
           </>
