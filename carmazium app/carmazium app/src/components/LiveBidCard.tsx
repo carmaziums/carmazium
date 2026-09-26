@@ -129,6 +129,7 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
             badgeTier={auction.badgeTier}
             isFeatured={auction.isFeatured}
             isDepartedSale={auction.isDepartedSale}
+            isImported={auction.isImported}
           />
         </View>
       </View>
