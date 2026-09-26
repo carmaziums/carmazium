@@ -314,6 +314,118 @@ function vehicleProfileFactor(input: {
     return factor;
 }
 
+function fuelSpecificationFactor(value?: string | null): number {
+    const fuel = normalizeText(value);
+    if (!fuel) return 1;
+
+    // Fuel desirability is highly model-dependent, so keep generic movements
+    // deliberately small. Exact market evidence still dominates whenever it
+    // exists; these factors are only the post-base specification adjustment.
+    if (fuel.includes('PLUGIN_HYBRID')) return 1.01;
+    if (fuel.includes('HYBRID')) return 1.0075;
+    if (fuel === 'DIESEL') return 0.995;
+    if (fuel === 'LPG' || fuel === 'BI_FUEL' || fuel === 'NATURAL_GAS') return 0.98;
+    return 1;
+}
+
+function variantSpecificationFactor(value?: string | null): number {
+    const variant = normalizeText(value);
+    if (!variant) return 1;
+
+    const performanceMarkers = [
+        'AMG', 'M SPORT COMPETITION', 'M COMPETITION', 'RS', 'VRS',
+        'GTI', 'TYPE R', 'GR SPORT', 'GRMN', 'N PERFORMANCE',
+    ];
+    if (performanceMarkers.some((marker) => variant.includes(marker))) return 1.02;
+
+    const premiumMarkers = [
+        'M SPORT', 'AMG LINE', 'S LINE', 'R LINE', 'ST LINE', 'N LINE',
+        'GT LINE', 'TITANIUM', 'VIGNALE', 'TEKNA', 'PORTFOLIO',
+        'AUTOBIOGRAPHY', 'HSE', 'R DESIGN', 'INSCRIPTION', 'EXCEL',
+    ];
+    if (premiumMarkers.some((marker) => variant.includes(marker))) return 1.01;
+
+    return 1;
+}
+
+function bodyConfigurationFactor(input: {
+    doors?: number | null;
+    seats?: number | null;
+}): number {
+    let factor = 1;
+    const doors = Number(input.doors);
+    const seats = Number(input.seats);
+
+    if (Number.isFinite(doors)) {
+        if (doors === 5) factor *= 1.004;
+        if (doors === 3) factor *= 0.996;
+        if (doors === 2) factor *= 0.992;
+    }
+
+    if (Number.isFinite(seats)) {
+        if (seats >= 7) factor *= 1.008;
+        if (seats > 0 && seats <= 2) factor *= 0.995;
+    }
+
+    return factor;
+}
+
+/**
+ * Deterministic adjustment applied after the market base has been established
+ * from make/model/year/mileage. This is intentionally independent of market
+ * searching so changing seller answers cannot make a previously-found base
+ * valuation disappear.
+ */
+export function vehicleSpecificationAdjustmentFactor(input: VehicleValuationInput): number {
+    let factor = vehicleProfileFactor(input);
+
+    const transmission = transmissionFamily(input.transmission);
+    if (transmission === 'AUTO') factor *= 1.03;
+    if (transmission === 'MANUAL') factor *= 0.98;
+
+    factor *= fuelSpecificationFactor(input.fuelType);
+    factor *= variantSpecificationFactor(input.variant);
+    factor *= bodyConfigurationFactor(input);
+
+    return clamp(factor, 0.18, 1.20);
+}
+
+export function applyVehicleSpecificationAdjustments(
+    base: VehicleValuationResult,
+    input: VehicleValuationInput,
+): VehicleValuationResult {
+    const factor = vehicleSpecificationAdjustmentFactor(input);
+    if (Math.abs(factor - 1) < 0.0001) return { ...base };
+
+    const low = roundMoney(base.low * factor);
+    const mid = roundMoney(base.mid * factor);
+    const high = roundMoney(base.high * factor);
+    const auctionMarketValue = roundMoney(base.auction.marketValue * factor);
+    const openingBid = Math.round(auctionMarketValue * 0.70 * 100) / 100;
+    const reserveLow = Math.round(auctionMarketValue * 0.90 * 100) / 100;
+    const reserveHigh = auctionMarketValue;
+    const suggestedReserve = roundMoney(auctionMarketValue * 0.95);
+
+    return {
+        ...base,
+        low,
+        mid,
+        high,
+        explanation: `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
+        retail: {
+            suggestedAsking: roundMoney(base.retail.suggestedAsking * factor),
+            suggestedMinimum: roundMoney(base.retail.suggestedMinimum * factor),
+        },
+        auction: {
+            marketValue: auctionMarketValue,
+            openingBid,
+            reserveLow,
+            reserveHigh,
+            suggestedReserve,
+        },
+    };
+}
+
 function normalizeComparable(
     input: VehicleValuationInput,
     comparable: VehicleValuationComparable,
