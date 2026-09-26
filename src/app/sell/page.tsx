@@ -101,13 +101,7 @@ function formatGuidePrice(value: number) {
 }
 
 function valuationHasFigures(valuation: VehicleValuation) {
-    return [
-        valuation.low,
-        valuation.mid,
-        valuation.high,
-        valuation.retail.suggestedAsking,
-        valuation.auction.marketValue,
-    ].every((value) => Number.isFinite(value) && value > 0)
+    return Number.isFinite(valuation.auction.marketValue) && valuation.auction.marketValue > 0
 }
 
 function valuationQuality(valuation: VehicleValuation) {
@@ -378,12 +372,6 @@ function QuickValuationForm() {
     }
 
     const hasGuide = result ? valuationHasFigures(result.valuation) : false
-    const usesLiveUkMarket = result
-        ? result.valuation.source === "LIVE_UK_MARKET" || result.valuation.source === "BLENDED_MARKET"
-        : false
-    const usesModelFallback = result
-        ? result.valuation.source === "CARMAZIUM_MODEL" || result.valuation.source === "CARMAZIUM_MODEL_PROFILE"
-        : false
     const needsModel = !!pendingVehicle && !pendingVehicle.model && !result
     const needsManualDetails = manualMode && !result
 
@@ -520,41 +508,19 @@ function QuickValuationForm() {
                             </p>
                             {hasGuide && (
                                 <>
-                                    <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--text-muted)]">
-                                        {usesLiveUkMarket
-                                            ? "Live UK market guidance"
-                                            : usesModelFallback
-                                                ? "CarMazium estimated guide · Limited market evidence"
-                                                : "CarMazium market guidance"}
-                                    </p>
-                                    <div className="mt-3 grid grid-cols-2 gap-2 sm:max-w-xl">
-                                        <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-3">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600 dark:text-blue-400">
-                                                Retail asking guide
-                                            </p>
-                                            <p className="mt-1 text-2xl font-black tabular-nums text-[var(--text-primary)]">
-                                                {formatGuidePrice(result.valuation.retail.suggestedAsking)}
-                                            </p>
-                                            <p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">
-                                                Upper guide for a retail advert.
-                                            </p>
-                                        </div>
-                                        <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.06] p-3">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-orange-600 dark:text-orange-400">
-                                                Dealer auction guide
-                                            </p>
-                                            <p className="mt-1 text-2xl font-black tabular-nums text-[var(--text-primary)]">
-                                                {formatGuidePrice(result.valuation.auction.marketValue)}
-                                            </p>
-                                            <p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">
-                                                Lower trade-oriented guide for dealer bidding.
-                                            </p>
-                                        </div>
+                                    <div className="mt-3 max-w-xl rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-4">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600 dark:text-blue-400">
+                                            Current Market Value
+                                        </p>
+                                        <p className="mt-1 text-3xl font-black tabular-nums text-[var(--text-primary)]">
+                                            {formatGuidePrice(result.valuation.auction.marketValue)}
+                                        </p>
+                                        <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+                                            Based on the age and mileage of your vehicle.
+                                        </p>
                                     </div>
                                     <p className="mt-2 max-w-xl text-xs leading-5 text-[var(--text-muted)]">
-                                        {usesModelFallback
-                                            ? "Exact-model market evidence is limited right now, so this is a LOW-confidence estimate based on vehicle age, mileage, transmission and conservative depreciation. You can adjust the price before listing."
-                                            : "Guide only. Exact specification, condition, demand and inspection can change the final sale price."}
+                                        Guide only. Vehicle condition, specification and current market demand can affect the final selling price.
                                     </p>
                                 </>
                             )}
@@ -562,12 +528,10 @@ function QuickValuationForm() {
                         <div className="grid shrink-0 grid-cols-1 gap-2 sm:min-w-[250px]">
                             <Button type="button" onClick={() => startListing("AUCTION")} className="bg-orange-600 hover:bg-orange-500">
                                 FREE Dealer Auction
-                                {hasGuide && <span className="font-black">{formatGuidePrice(result.valuation.auction.marketValue)}</span>}
                                 <Gavel size={16} />
                             </Button>
                             <Button type="button" variant="outline" onClick={() => startListing("CLASSIFIED")}>
                                 £1 Retail Listing
-                                {hasGuide && <span className="font-black">{formatGuidePrice(result.valuation.retail.suggestedAsking)}</span>}
                                 <ArrowRight size={16} />
                             </Button>
                         </div>

@@ -768,8 +768,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     function applyValuation() {
         if (!valuation) return
 
+        // The customer-facing valuation is one neutral Current Market Value.
+        // Keep the richer retail/auction guidance in the valuation payload for
+        // internal platform logic, but never switch the visible applied figure
+        // based on listing method.
+        set("priceAsking", String(valuation.auction.marketValue))
+
         if (isAuction) {
-            set("priceAsking", String(valuation.auction.marketValue))
             setAuctionSchedule(prev => ({
                 ...prev,
                 reservePrice: String(valuation.auction.suggestedReserve),
@@ -777,8 +782,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             return
         }
 
-        set("priceAsking", String(valuation.retail.suggestedAsking))
-        set("priceMin", String(valuation.retail.suggestedMinimum))
+        // A retail offer floor is optional. Do not silently introduce a second
+        // auto-valued customer price after they chose "Use this value".
+        set("priceMin", "")
     }
 
     const auctionMarketValue = isAuction ? (parseFloat(formData.priceAsking) || 0) : 0
