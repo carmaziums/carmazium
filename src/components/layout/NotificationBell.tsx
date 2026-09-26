@@ -60,6 +60,9 @@ function normalizeNotificationHref(href: string): string {
         const m = href.match(/[?&]room=([^&]+)/)
         return m ? `/dashboard/user?tab=messages&room=${decodeURIComponent(m[1])}` : "/dashboard/user?tab=messages"
     }
+    // Legacy admin KYC notifications used a route that never existed in the
+    // Next.js app. Keep old notifications working after the backend link is fixed.
+    if (href === "/admin/kyc") return "/dashboard/admin/dealer-verification"
     if (href === "/dashboard" || href === "/dashboard/") return "/dashboard/user?tab=overview"
     return href
 }
