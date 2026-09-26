@@ -209,7 +209,61 @@ if (
 }
 
 // ---------------------------------------------------------------------------
-// 4. Native production identity/build configuration.
+// 4. MaziuM AI safety, consent and reporting.
+// ---------------------------------------------------------------------------
+requiredFile('backend/prisma/manual-migrations/20260926_ai_reports.sql', 'AI report database migration');
+requiredFile('src/app/dashboard/admin/ai-reports/page.tsx', 'Admin AI report review queue');
+
+const aiBackend = read('backend/src/ai/ai.service.ts');
+const aiController = read('backend/src/ai/ai.controller.ts');
+const webMazium = read('src/components/features/MaziumWidget.tsx');
+const nativeMazium = read('carmazium app/carmazium app/src/components/GlobalAIChatBot.tsx');
+const webAiApi = read('src/lib/aiApi.ts');
+const nativeAiApi = read('carmazium app/carmazium app/src/lib/aiApi.ts');
+const adminAiReports = read('src/app/dashboard/admin/ai-reports/page.tsx');
+
+if (
+  !aiBackend.includes("model: 'omni-moderation-latest'") ||
+  !aiBackend.includes('LOCAL_AI_BLOCK_RULES') ||
+  !aiBackend.includes('safeResult') ||
+  !aiBackend.includes('createReport') ||
+  !aiController.includes("@Post('report')") ||
+  !aiController.includes("@Get('admin/reports')") ||
+  !aiController.includes("@Patch('admin/reports/:id')")
+) {
+  fail('MaziuM AI safety/reporting backend regressed');
+} else {
+  ok('MaziuM AI moderates inputs/outputs and persists user reports');
+}
+
+if (
+  !webMazium.includes('mazium_ai_consent_v1') ||
+  !webMazium.includes('I understand & continue') ||
+  !webMazium.includes('Report AI response') ||
+  !webAiApi.includes('reportAiResponse') ||
+  !nativeMazium.includes('mazium_ai_consent_v1') ||
+  !nativeMazium.includes('I understand & continue') ||
+  !nativeMazium.includes('Report AI response') ||
+  !nativeAiApi.includes('reportAiResponse')
+) {
+  fail('AI consent/report controls must remain available on both web and native');
+} else {
+  ok('Web and native require first-use AI acknowledgement and expose in-app reporting');
+}
+
+if (
+  !adminAiReports.includes('AI response reports') ||
+  !adminAiReports.includes('REVIEWING') ||
+  !adminAiReports.includes('RESOLVED') ||
+  !adminAiReports.includes('DISMISSED')
+) {
+  fail('Admin AI report review workflow regressed');
+} else {
+  ok('Admin AI report queue supports review and closure states');
+}
+
+// ---------------------------------------------------------------------------
+// 5. Native production identity/build configuration.
 // ---------------------------------------------------------------------------
 const app = readJson('carmazium app/carmazium app/app.json').expo;
 const eas = readJson('carmazium app/carmazium app/eas.json');
@@ -309,7 +363,7 @@ if (hasPlaceholder(sentryDsn) && !hasSentryDependency) {
 }
 
 // ---------------------------------------------------------------------------
-// 5. External distribution/deep-link evidence.
+// 6. External distribution/deep-link evidence.
 // ---------------------------------------------------------------------------
 const iosSubmit = eas.submit?.production?.ios ?? {};
 for (const [key, value] of Object.entries({
