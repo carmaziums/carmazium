@@ -1309,6 +1309,12 @@ export class AdminMessagingService {
                                 firstName: true,
                                 lastName: true,
                                 role: true,
+                                dealerProfile: {
+                                    select: {
+                                        isVerified: true,
+                                        verificationDate: true,
+                                    },
+                                },
                             },
                         },
                     },
@@ -1319,6 +1325,26 @@ export class AdminMessagingService {
         if (!campaign) {
             throw new NotFoundException('Broadcast campaign not found.');
         }
+
+        if (campaign.audience === AdminMessageAudience.UNVERIFIED_DEALERS) {
+            const kycConversions = campaign.deliveries.filter((delivery) => {
+                const verificationDate = delivery.user.dealerProfile?.verificationDate;
+                if (!delivery.user.dealerProfile?.isVerified || !verificationDate) return false;
+                const reminderAt = delivery.emailSentAt
+                    || campaign.startedAt
+                    || campaign.createdAt;
+                return verificationDate.getTime() >= reminderAt.getTime();
+            }).length;
+
+            return {
+                ...campaign,
+                kycConversions,
+                kycCurrentlyVerified: campaign.deliveries.filter(
+                    (delivery) => delivery.user.dealerProfile?.isVerified,
+                ).length,
+            };
+        }
+
         return campaign;
     }
 
