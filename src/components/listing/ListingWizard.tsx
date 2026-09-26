@@ -35,6 +35,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { apiClient } from "@/lib/apiClient"
 import { getAuctionOpeningBid, getAuctionReserveGuide } from "@/lib/auctionPricing"
 import { getVehicleValuation, type VehicleValuation } from "@/lib/valuationApi"
+import { computeExteriorGradeFromDefectCount } from "@/lib/exteriorGrade"
 import { VehicleValuationCard } from "./VehicleValuationCard"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -63,6 +64,8 @@ interface FormData {
     // Condition & History
     condition: string
     serviceHistory: string
+    mechanicalIssues: string
+    electricalIssues: string
     owners: string
     isDepartedSale: boolean
     departedRelationship: string
@@ -168,7 +171,7 @@ const INITIAL_FORM: FormData = {
     mileage: "", fuelType: "", transmission: "", color: "",
     doors: "", seats: "", engineSize: "", bhp: "",
     features: [], description: "", title: "",
-    condition: "", serviceHistory: "", owners: "", isDepartedSale: false, departedRelationship: "", isImported: false,
+    condition: "", serviceHistory: "", mechanicalIssues: "", electricalIssues: "", owners: "", isDepartedSale: false, departedRelationship: "", isImported: false,
     deliveryAvailable: false, deliveryPricePerMile: '', deliveryMaxMiles: '',
     variant: "", driveType: "", numberOfKeys: "",
     torqueNm: "", topSpeedMph: "", zeroTo60Mph: "", combinedMpg: "", extraUrbanMpg: "",
@@ -436,6 +439,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     writeOffCategory: (l.writeOffCategory || 'NONE') as FormData['writeOffCategory'],
                     listingType: (l.type || 'CLASSIFIED') as 'CLASSIFIED' | 'AUCTION',
                     serviceHistory: l.serviceHistory || '',
+                    mechanicalIssues: l.mechanicalIssues || '',
+                    electricalIssues: l.electricalIssues || '',
                     owners: l.owners ? String(l.owners) : '',
                     variant: l.variant || '',
                     driveType: l.driveType || '',
@@ -662,6 +667,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         setFormData(prev => ({ ...prev, [key]: val }))
 
     const isAuction = formData.listingType === 'AUCTION'
+    const automaticExteriorGrade = computeExteriorGradeFromDefectCount(damageRecords.length)
 
     // A seller should see useful price guidance as soon as the basic vehicle
     // identity is known — before they reach the pricing step. Keep the request
@@ -697,6 +703,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 fuelType: formData.fuelType || undefined,
                 transmission: formData.transmission || undefined,
                 condition: formData.condition || undefined,
+                exteriorGrade: automaticExteriorGrade,
                 serviceHistory: formData.serviceHistory || undefined,
                 owners: formData.owners || undefined,
                 writeOffCategory: formData.writeOffCategory || undefined,
@@ -755,6 +762,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         formData.fuelType,
         formData.transmission,
         formData.condition,
+        automaticExteriorGrade,
         formData.serviceHistory,
         formData.owners,
         formData.writeOffCategory,
@@ -1230,6 +1238,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 driveType: formData.driveType || undefined,
                 numberOfKeys: formData.numberOfKeys ? parseInt(formData.numberOfKeys) : undefined,
                 serviceHistory: formData.serviceHistory || undefined,
+                mechanicalIssues: formData.mechanicalIssues.trim() || undefined,
+                electricalIssues: formData.electricalIssues.trim() || undefined,
                 owners: formData.owners || undefined,
                 torqueNm: formData.torqueNm ? parseInt(formData.torqueNm) : undefined,
                 topSpeedMph: formData.topSpeedMph ? parseInt(formData.topSpeedMph) : undefined,
@@ -1267,22 +1277,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 })
 
                 // Save damage records (overwrites previous damage for this listing)
-                if (damageRecords.length > 0) {
-                    try {
-                        const detections = damageRecords.map(r => ({
-                            part: r.zone,
-                            type: r.description,
-                            size: "MEDIUM",
-                            coords: { x: r.x, y: r.y, view: r.view },
-                            imageUrl: r.photoUrl ?? "",
-                        }))
-                        await apiClient(`/damage/${editId}/save`, {
-                            method: 'POST',
-                            body: JSON.stringify({ detections }),
-                        })
-                    } catch (e) {
-                        console.error('Failed to save damage records:', e)
-                    }
+                try {
+                    const detections = damageRecords.map(r => ({
+                        part: r.zone,
+                        type: r.description,
+                        size: "MEDIUM",
+                        coords: { x: r.x, y: r.y, view: r.view },
+                        imageUrl: r.photoUrl ?? "",
+                    }))
+                    await apiClient(`/damage/${editId}/save`, {
+                        method: 'POST',
+                        body: JSON.stringify({ detections }),
+                    })
+                } catch (e) {
+                    console.error('Failed to save damage records:', e)
                 }
 
                 await ensureAuctionScheduled(editId)
@@ -1321,22 +1329,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 const finalListingId = response.data.id
                 const finalSlug = response.data.slug
 
-                if (damageRecords.length > 0) {
-                    try {
-                        const detections = damageRecords.map(r => ({
-                            part: r.zone,
-                            type: r.description,
-                            size: "MEDIUM",
-                            coords: { x: r.x, y: r.y, view: r.view },
-                            imageUrl: r.photoUrl ?? "",
-                        }))
-                        await apiClient(`/damage/${finalListingId}/save`, {
-                            method: 'POST',
-                            body: JSON.stringify({ detections }),
-                        })
-                    } catch (e) {
-                        console.error('Failed to save damage records:', e)
-                    }
+                try {
+                    const detections = damageRecords.map(r => ({
+                        part: r.zone,
+                        type: r.description,
+                        size: "MEDIUM",
+                        coords: { x: r.x, y: r.y, view: r.view },
+                        imageUrl: r.photoUrl ?? "",
+                    }))
+                    await apiClient(`/damage/${finalListingId}/save`, {
+                        method: 'POST',
+                        body: JSON.stringify({ detections }),
+                    })
+                } catch (e) {
+                    console.error('Failed to save damage records:', e)
                 }
 
                 localStorage.removeItem('carmazium_listing_draft')
@@ -2473,6 +2479,32 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             ))}
                                         </div>
                                     </div>
+                                    {/* Known Mechanical & Electrical Problems */}
+                                    <div className="space-y-2 md:col-span-2">
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Known Mechanical Problems</label>
+                                        <Textarea
+                                            value={formData.mechanicalIssues}
+                                            onChange={(e) => set("mechanicalIssues", e.target.value)}
+                                            maxLength={2000}
+                                            rows={3}
+                                            placeholder="e.g. clutch judder when cold, suspension knock, oil leak, gearbox noise. Leave blank if you have nothing to report."
+                                            className={inputCls}
+                                        />
+                                        <p className="text-[10px] text-[var(--text-secondary)]">Tell buyers about any known engine, gearbox, clutch, brake, steering, suspension or other mechanical faults.</p>
+                                    </div>
+                                    <div className="space-y-2 md:col-span-2">
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Known Electrical Problems</label>
+                                        <Textarea
+                                            value={formData.electricalIssues}
+                                            onChange={(e) => set("electricalIssues", e.target.value)}
+                                            maxLength={2000}
+                                            rows={3}
+                                            placeholder="e.g. warning light, parking sensor fault, battery issue, window or infotainment problem. Leave blank if you have nothing to report."
+                                            className={inputCls}
+                                        />
+                                        <p className="text-[10px] text-[var(--text-secondary)]">Add known warning lights, battery/charging, sensor, lighting, infotainment or other electrical faults.</p>
+                                    </div>
+
                                     {/* Number of Keys */}
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Number of Keys</label>

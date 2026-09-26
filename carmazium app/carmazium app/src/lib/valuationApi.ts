@@ -7,6 +7,7 @@ export interface VehicleValuationRequest {
   fuelType?: string;
   transmission?: string;
   condition?: string;
+  exteriorGrade?: number;
   serviceHistory?: string;
   owners?: string;
   writeOffCategory?: string;
@@ -95,6 +96,17 @@ function localFallbackValuation(request: VehicleValuationRequest): VehicleValuat
   const mileageDeltaThousands = (request.mileage - expectedMileage) / 1000;
   value *= clamp(1 - mileageDeltaThousands * 0.0035, 0.72, 1.15);
 
+  const condition = (request.condition ?? '').toUpperCase();
+  if (condition === 'EXCELLENT') value *= 1.03;
+  if (condition === 'FAIR') value *= 0.93;
+  if (condition === 'POOR') value *= 0.84;
+
+  const grade = Number(request.exteriorGrade);
+  if (grade === 2) value *= 0.99;
+  if (grade === 3) value *= 0.97;
+  if (grade === 4) value *= 0.94;
+  if (grade >= 5) value *= 0.90;
+
   const transmission = transmissionFamily(request.transmission);
   if (transmission === 'AUTO') value *= 1.04;
   if (transmission === 'MANUAL') value *= 0.96;
@@ -146,6 +158,7 @@ export async function getVehicleValuation(
   if (request.fuelType) params.set('fuelType', request.fuelType);
   if (request.transmission) params.set('transmission', request.transmission);
   if (request.condition) params.set('condition', request.condition);
+  if (request.exteriorGrade) params.set('exteriorGrade', String(request.exteriorGrade));
   if (request.serviceHistory) params.set('serviceHistory', request.serviceHistory);
   if (request.owners) params.set('owners', request.owners);
   if (request.writeOffCategory) params.set('writeOffCategory', request.writeOffCategory);

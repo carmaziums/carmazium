@@ -36,6 +36,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import * as Location from 'expo-location';
 import { getAuctionOpeningBid, getAuctionReserveGuide } from '../../lib/auctionPricing';
 import { getVehicleValuation, type VehicleValuation } from '../../lib/valuationApi';
+import { computeExteriorGradeFromDefectCount } from '../../lib/exteriorGrade';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   encodeVehicleImageCategory,
@@ -432,9 +433,27 @@ function Damage3DMapper({
   }
 
   const markedLabels = records.map(r => r.zone);
+  const grade = computeExteriorGradeFromDefectCount(records.length);
+  const gradeLabels: Record<number, string> = {
+    1: 'Excellent',
+    2: 'Great',
+    3: 'Good',
+    4: 'Average',
+    5: 'Below Average',
+  };
 
   return (
     <View>
+      <View style={{ marginBottom: 14, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderMuted, backgroundColor: Colors.darkBlue_2a2a35 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View>
+            <Text style={{ color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.sm }}>Grade {grade} — {gradeLabels[grade]}</Text>
+            <Text style={[s.fieldHint, { marginTop: 3 }]}>Automatically calculated from {records.length} reported defect{records.length === 1 ? '' : 's'}.</Text>
+          </View>
+          <Text style={{ color: Colors.warning, fontFamily: FontFamily.bold, fontSize: FontSize.lg }}>{grade}</Text>
+        </View>
+      </View>
+
       {/* 3D vehicle viewer with tappable damage hotspots */}
       <ThreeDVehicleViewer
         zones={DAMAGE_ZONES_3D}
@@ -604,6 +623,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [variant, setVariant] = useState('');
   const [driveType, setDriveType] = useState('');
   const [serviceHistory, setServiceHistory] = useState('');
+  const [mechanicalIssues, setMechanicalIssues] = useState('');
+  const [electricalIssues, setElectricalIssues] = useState('');
   const [numberOfKeys, setNumberOfKeys] = useState('');
   // Performance
   const [zeroTo60, setZeroTo60] = useState('');
@@ -704,6 +725,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [minIncrement, setMinIncrement] = useState('100');
   const [buyItNowPrice, setBuyItNowPrice] = useState('');
 
+  const automaticExteriorGrade = computeExteriorGradeFromDefectCount(damageRecords.length);
+
   const auctionMarketValue = listingType === 'AUCTION'
     ? (parseFloat(priceAsking.replace(/[^0-9.]/g, '')) || 0)
     : 0;
@@ -740,6 +763,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       fuelType: fuelType || undefined,
       transmission: transmission || undefined,
       condition: condition || undefined,
+      exteriorGrade: automaticExteriorGrade,
       serviceHistory: serviceHistory || undefined,
       owners: owners || undefined,
       writeOffCategory: writeOffCat || undefined,
@@ -779,6 +803,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     fuelType,
     transmission,
     condition,
+    automaticExteriorGrade,
     serviceHistory,
     owners,
     writeOffCat,
@@ -786,21 +811,18 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     editListingId,
   ]);
 
-  function applyValuationGuide(target: 'CLASSIFIED' | 'AUCTION') {
+  function applyValuationGuide() {
     if (!valuation) return;
 
-    setListingType(target);
-    setBadgeTier(target === 'AUCTION' ? 'FREE' : 'BASIC');
-
-    if (target === 'AUCTION') {
-      setPriceAsking(String(valuation.auction.marketValue));
+    setPriceAsking(String(valuation.auction.marketValue));
+    if (listingType === 'AUCTION') {
       setReservePrice(String(valuation.auction.suggestedReserve));
       setStartingBid(String(valuation.auction.openingBid));
       return;
     }
 
-    setPriceAsking(String(valuation.retail.suggestedAsking));
-    setPriceMin(String(valuation.retail.suggestedMinimum));
+    // Do not silently introduce a second auto-valued customer price.
+    setPriceMin('');
   }
 
   // ── Per-image upload progress ──
@@ -896,6 +918,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         setVariant(l.variant ?? '');
         if (l.driveType) setDriveType(String(l.driveType));
         if (l.serviceHistory) setServiceHistory(String(l.serviceHistory));
+        setMechanicalIssues(String(l.mechanicalIssues ?? ''));
+        setElectricalIssues(String(l.electricalIssues ?? ''));
         if (l.numberOfKeys != null) setNumberOfKeys(String(l.numberOfKeys));
         if (l.zeroTo60Mph != null) setZeroTo60(String(l.zeroTo60Mph));
         if (l.topSpeedMph != null) setTopSpeed(String(l.topSpeedMph));
@@ -1702,7 +1726,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         doors: doors ? parseInt(doors) : undefined,
         seats: seats ? parseInt(seats) : undefined,
         variant, driveType,
-        serviceHistory, numberOfKeys: numberOfKeys ? parseInt(numberOfKeys) : undefined,
+        serviceHistory,
+        mechanicalIssues: mechanicalIssues.trim() || undefined,
+        electricalIssues: electricalIssues.trim() || undefined,
+        numberOfKeys: numberOfKeys ? parseInt(numberOfKeys) : undefined,
         zeroTo60Mph: zeroTo60 ? parseFloat(zeroTo60) : undefined,
         topSpeedMph: topSpeed ? parseInt(topSpeed) : undefined,
         torqueNm: torque ? parseInt(torque) : undefined,
@@ -1745,7 +1772,6 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       // not silently swallowed (mobile-audit.md W7: publish used to succeed while the
       // damage details vanished with no indication anything went wrong).
       const saveDamageRecords = (listingId: string): Promise<boolean> => {
-        if (damageRecords.length === 0) return Promise.resolve(true);
         return apiClient(`/damage/${listingId}/save`, {
           method: 'POST',
           body: JSON.stringify({
@@ -2280,6 +2306,22 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <FieldInput label="VARIANT / TRIM" value={variant} onChange={setVariant} placeholder="e.g. S-Line, M Sport, Ghia" />
           <PillRow label="DRIVE TYPE" options={DRIVE_TYPES} value={driveType as any} onSelect={setDriveType} />
           <PillRow label="SERVICE HISTORY" options={SERVICE_HISTORY_OPTS} value={serviceHistory as any} onSelect={setServiceHistory} />
+          <FieldInput
+            label="KNOWN MECHANICAL PROBLEMS"
+            value={mechanicalIssues}
+            onChange={v => setMechanicalIssues(v.slice(0, 2000))}
+            multiline
+            placeholder="e.g. clutch judder, suspension knock, oil leak, gearbox noise"
+            hint="Add any known engine, gearbox, clutch, brake, steering, suspension or other mechanical faults."
+          />
+          <FieldInput
+            label="KNOWN ELECTRICAL PROBLEMS"
+            value={electricalIssues}
+            onChange={v => setElectricalIssues(v.slice(0, 2000))}
+            multiline
+            placeholder="e.g. warning light, parking sensor, battery, window or infotainment fault"
+            hint="Add any known warning lights, battery/charging, sensor, lighting, infotainment or other electrical faults."
+          />
           <View>
             <SL label="NUMBER OF KEYS" />
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -2900,11 +2942,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     return (
       <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
 
-        <SectionBox title="CarMazium Market Guidance" accent={Colors.infoBlue}>
+        <SectionBox title="Vehicle Valuation" accent={Colors.infoBlue}>
           {valuationLoading ? (
             <View style={s.valuationLoadingRow}>
               <ActivityIndicator size="small" color={Colors.infoBlueLight} />
-              <Text style={s.valuationStatusText}>Checking current UK market evidence…</Text>
+              <Text style={s.valuationStatusText}>Calculating current market value…</Text>
             </View>
           ) : valuationError ? (
             <View style={s.valuationNotice}>
@@ -2913,50 +2955,29 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             </View>
           ) : valuation ? (
             <>
-              <Text style={s.fieldHint}>
-                {valuation.source === 'LIVE_UK_MARKET' || valuation.source === 'BLENDED_MARKET'
-                  ? 'Live UK market guidance. Retail uses the stronger upper asking guide; auction uses the lower dealer-buy guide.'
-                  : valuation.source === 'CARMAZIUM_MODEL' || valuation.source === 'CARMAZIUM_MODEL_PROFILE'
-                    ? 'Estimated guide with limited exact-model market evidence. Retail uses the upper guide; auction uses the lower dealer-buy guide.'
-                    : 'CarMazium market guidance. Retail uses the stronger upper asking guide; auction uses the lower dealer-buy guide.'}
-              </Text>
-              <View style={s.valuationGrid}>
-                <TouchableOpacity
-                  style={[s.valuationCard, listingType === 'CLASSIFIED' && s.valuationCardSelected]}
-                  onPress={() => applyValuationGuide('CLASSIFIED')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={s.valuationCardLabel}>RETAIL ASKING GUIDE</Text>
-                  <Text style={s.valuationRetailPrice}>£{valuation.retail.suggestedAsking.toLocaleString('en-GB')}</Text>
-                  <Text style={s.valuationCardHint}>Upper market guidance for a retail advert.</Text>
-                  <Text style={s.valuationApplyText}>Use retail guide</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[s.valuationCard, listingType === 'AUCTION' && s.valuationCardSelectedAuction]}
-                  onPress={() => applyValuationGuide('AUCTION')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={s.valuationCardLabel}>DEALER AUCTION GUIDE</Text>
-                  <Text style={s.valuationAuctionPrice}>£{valuation.auction.marketValue.toLocaleString('en-GB')}</Text>
-                  <Text style={s.valuationCardHint}>Lower trade-oriented guide for dealer bidding.</Text>
-                  <Text style={[s.valuationApplyText, { color: Colors.lightOrange_fb923c }]}>Use auction guide</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={s.valuationCard}
+                onPress={applyValuationGuide}
+                activeOpacity={0.8}
+              >
+                <Text style={s.valuationCardLabel}>CURRENT MARKET VALUE</Text>
+                <Text style={s.valuationAuctionPrice}>£{valuation.auction.marketValue.toLocaleString('en-GB')}</Text>
+                <Text style={s.valuationCardHint}>Based on the age, mileage and condition information provided for your vehicle.</Text>
+                <Text style={s.valuationApplyText}>Use this value</Text>
+              </TouchableOpacity>
               <Text style={s.valuationEvidenceText}>
-                {valuation.comparables > 0
-                  ? `Based on ${valuation.comparables} comparable market signal${valuation.comparables === 1 ? '' : 's'}. Guide only; condition, specification and demand can change the final sale price.`
-                  : 'LOW-confidence fallback guide based on age, mileage, transmission and conservative depreciation. You can adjust the price before listing.'}
+                Guide only. Vehicle condition, specification and current market demand can affect the final selling price.
               </Text>
             </>
           ) : (
-            <Text style={s.fieldHint}>Complete the vehicle make, model, year and mileage to see retail and auction guidance.</Text>
+            <Text style={s.fieldHint}>Complete the vehicle make, model, year and mileage to see the current market value.</Text>
           )}
         </SectionBox>
 
-        <SectionBox title={isAuction ? 'Set Your Dealer Auction Value' : 'Set Your Retail Price Range'} accent={Colors.accent}>
+        <SectionBox title={isAuction ? 'Set Your Auction Value' : 'Set Your Retail Price Range'} accent={Colors.accent}>
           {isAuction ? (
             <Text style={s.fieldHint}>
-              The <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Dealer Auction Value</Text> is the lower trade-oriented guide. CarMazium automatically sets the Opening Bid at 70% of this value and never shows the guide value to bidders.
+              Use the current market value as a starting point. CarMazium automatically sets the Opening Bid at 70% of the value you enter, while you remain in control of the reserve.
             </Text>
           ) : (
             <Text style={s.fieldHint}>
@@ -2988,9 +3009,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               </View>
             )}
             <View style={{ flex: 1 }}>
-              <SL label={isAuction ? 'DEALER AUCTION VALUE *' : 'ASKING PRICE *'} required />
+              <SL label={isAuction ? 'CURRENT MARKET VALUE *' : 'ASKING PRICE *'} required />
               <Text style={s.fieldHintRed}>
-                {isAuction ? 'Lower trade guide · internal only · not shown to bidders' : 'Upper retail guide · displayed on listing'}
+                {isAuction ? 'Internal reference · not shown to bidders' : 'Displayed on listing'}
               </Text>
               <View style={[s.priceInputWrap, s.priceInputWrapActive, touched.priceAsking ? { borderColor: fieldBorderColor('priceAsking') } : {}]}>
                 <Text style={[s.priceCurrency, { color: Colors.accent }]}>£</Text>

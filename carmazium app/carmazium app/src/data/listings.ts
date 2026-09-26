@@ -134,6 +134,8 @@ export interface CarListing {
   taxDueDate?: string | null;
   owners?: number | null;
   serviceHistory?: string | null;
+  mechanicalIssues?: string | null;
+  electricalIssues?: string | null;
   writeOffCategory?: string | null;
   stolenRecovered?: boolean | null;
   hasOutstandingFinance?: boolean | null;

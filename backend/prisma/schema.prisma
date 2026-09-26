@@ -814,6 +814,8 @@ model Listing {
   driveType                String? // FWD, RWD, AWD, 4WD
   numberOfKeys             Int? // Number of keys included
   serviceHistory           String? // Full Main Dealer, Full Independent, Partial, None
+  mechanicalIssues         String? // Seller-declared known engine/gearbox/brake/suspension/mechanical faults
+  electricalIssues         String? // Seller-declared known warning lights, battery, sensor or electrical faults
   owners                   String? // Number of previous keepers: "1", "2", "3+"
   isDepartedSale           Boolean?
   departedRelationship     String?

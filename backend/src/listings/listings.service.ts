@@ -163,6 +163,7 @@ export class ListingsService {
             transmission: true,
             writeOffCategory: true,
             condition: true,
+            exteriorGrade: true,
             serviceHistory: true,
             owners: true,
             isImported: true,
@@ -255,6 +256,7 @@ export class ListingsService {
                 transmission: row.transmission ? String(row.transmission) : null,
                 writeOffCategory: row.writeOffCategory ? String(row.writeOffCategory) : null,
                 condition: row.condition ? String(row.condition) : null,
+                exteriorGrade: row.exteriorGrade,
                 serviceHistory: row.serviceHistory ? String(row.serviceHistory) : null,
                 owners: row.owners != null ? String(row.owners) : null,
                 isImported: row.isImported,
@@ -315,6 +317,7 @@ export class ListingsService {
             fuelType: dto.fuelType,
             transmission: dto.transmission,
             condition: dto.condition,
+            exteriorGrade: dto.exteriorGrade,
             serviceHistory: dto.serviceHistory,
             owners: dto.owners,
             writeOffCategory: dto.writeOffCategory,
@@ -903,6 +906,8 @@ export class ListingsService {
                     driveType: dto.driveType ?? null,
                     numberOfKeys: dto.numberOfKeys ?? null,
                     serviceHistory: dto.serviceHistory ?? null,
+                    mechanicalIssues: dto.mechanicalIssues ?? null,
+                    electricalIssues: dto.electricalIssues ?? null,
                     owners: dto.owners ?? null,
                     torqueNm: dto.torqueNm ?? null,
                     topSpeedMph: dto.topSpeedMph ?? null,
@@ -1324,6 +1329,8 @@ export class ListingsService {
                 driveType: createListingDto.driveType ?? null,
                 numberOfKeys: createListingDto.numberOfKeys ?? null,
                 serviceHistory: createListingDto.serviceHistory ?? null,
+                mechanicalIssues: createListingDto.mechanicalIssues ?? null,
+                electricalIssues: createListingDto.electricalIssues ?? null,
                 owners: createListingDto.owners ?? null,
                 torqueNm: createListingDto.torqueNm ?? null,
                 topSpeedMph: createListingDto.topSpeedMph ?? null,
@@ -1848,6 +1855,8 @@ export class ListingsService {
         if (updateListingDto.driveType !== undefined) updateData.driveType = updateListingDto.driveType;
         if (updateListingDto.numberOfKeys !== undefined) updateData.numberOfKeys = updateListingDto.numberOfKeys;
         if (updateListingDto.serviceHistory !== undefined) updateData.serviceHistory = updateListingDto.serviceHistory;
+        if (updateListingDto.mechanicalIssues !== undefined) updateData.mechanicalIssues = updateListingDto.mechanicalIssues || null;
+        if (updateListingDto.electricalIssues !== undefined) updateData.electricalIssues = updateListingDto.electricalIssues || null;
         if (updateListingDto.owners !== undefined) updateData.owners = updateListingDto.owners;
         if (updateListingDto.torqueNm !== undefined) updateData.torqueNm = updateListingDto.torqueNm;
         if (updateListingDto.topSpeedMph !== undefined) updateData.topSpeedMph = updateListingDto.topSpeedMph;

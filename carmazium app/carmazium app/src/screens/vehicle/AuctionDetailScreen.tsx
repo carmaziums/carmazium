@@ -1471,6 +1471,18 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <GradeChip grade={(auction?.listing as any)?.exteriorGrade} variant="pill" />
               </View>
               <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />
+              {(auction?.listing as any)?.mechanicalIssues ? (
+                <View style={{ marginTop: 12, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(245,158,11,0.28)', backgroundColor: 'rgba(245,158,11,0.07)' }}>
+                  <Text style={[s.specKey, { color: Colors.warning, marginBottom: 5 }]}>KNOWN MECHANICAL PROBLEMS</Text>
+                  <Text style={[s.specVal, { lineHeight: 19 }]}>{(auction?.listing as any).mechanicalIssues}</Text>
+                </View>
+              ) : null}
+              {(auction?.listing as any)?.electricalIssues ? (
+                <View style={{ marginTop: 10, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(59,130,246,0.28)', backgroundColor: 'rgba(59,130,246,0.07)' }}>
+                  <Text style={[s.specKey, { color: Colors.infoBlueLight, marginBottom: 5 }]}>KNOWN ELECTRICAL PROBLEMS</Text>
+                  <Text style={[s.specVal, { lineHeight: 19 }]}>{(auction?.listing as any).electricalIssues}</Text>
+                </View>
+              ) : null}
             </View>
 
             {/* Trust note */}

@@ -1340,6 +1340,27 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                     ))}
                                                 </div>
                                             )}
+
+                                            {(auction.listing.mechanicalIssues || auction.listing.electricalIssues) && (
+                                                <div className="mt-5 grid gap-3 md:grid-cols-2">
+                                                    {auction.listing.mechanicalIssues && (
+                                                        <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-4">
+                                                            <p className="text-[10px] font-black uppercase tracking-wider text-amber-500">Known Mechanical Problems</p>
+                                                            <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-[var(--text-secondary)]">
+                                                                {auction.listing.mechanicalIssues}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                    {auction.listing.electricalIssues && (
+                                                        <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-4">
+                                                            <p className="text-[10px] font-black uppercase tracking-wider text-blue-500">Known Electrical Problems</p>
+                                                            <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-[var(--text-secondary)]">
+                                                                {auction.listing.electricalIssues}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                             )
                                         })()}
