@@ -799,20 +799,34 @@ export function KycOverlayForm({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={handleSkip}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] text-xs font-bold text-[var(--text-muted)] transition-colors"
-            >
-              Skip for now
-            </button>
-            <button
-              onClick={handleSwitchToBuyer}
-              disabled={switchingRole}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg border border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 text-xs font-bold text-blue-300 transition-colors disabled:opacity-50"
-            >
-              {switchingRole ? <Loader2 className="animate-spin" size={12} /> : <User size={12} />}
-              Buyer / Seller
-            </button>
+            {!allowApprovedReverification && (
+              <>
+                <button
+                  onClick={handleSkip}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] text-xs font-bold text-[var(--text-muted)] transition-colors"
+                >
+                  Skip for now
+                </button>
+                <button
+                  onClick={handleSwitchToBuyer}
+                  disabled={switchingRole}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg border border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 text-xs font-bold text-blue-300 transition-colors disabled:opacity-50"
+                >
+                  {switchingRole ? <Loader2 className="animate-spin" size={12} /> : <User size={12} />}
+                  Buyer / Seller
+                </button>
+              </>
+            )}
+            {allowApprovedReverification && onExit && (
+              <button
+                type="button"
+                onClick={onExit}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] text-xs font-bold text-[var(--text-secondary)] transition-colors"
+              >
+                <X size={12} />
+                Cancel
+              </button>
+            )}
             <button
               onClick={handleSignOut}
               className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] text-xs font-bold text-[var(--text-secondary)] transition-colors"
