@@ -462,6 +462,10 @@ export class EmailService {
         text?: string | null;
         mediaUrl?: string | null;
         mediaKind?: string | null;
+        subject?: string | null;
+        eyebrow?: string | null;
+        ctaLabel?: string | null;
+        ctaUrl?: string | null;
     }) {
         const escapeHtml = (value: string) => value
             .replace(/&/g, '&amp;')
@@ -475,6 +479,14 @@ export class EmailService {
             ? escapeHtml(options.text.trim()).replace(/\n/g, '<br />')
             : '';
         const safeMediaUrl = options.mediaUrl ? escapeHtml(options.mediaUrl) : '';
+        const safeEyebrow = escapeHtml(options.eyebrow?.trim() || 'Message from CarMazium');
+        const safeCtaLabel = escapeHtml(options.ctaLabel?.trim() || 'Open CarMazium');
+        const ctaTarget = options.ctaUrl?.trim()
+            ? (/^https?:\/\//i.test(options.ctaUrl.trim())
+                ? options.ctaUrl.trim()
+                : `${this.frontendUrl}${options.ctaUrl.trim().startsWith('/') ? '' : '/'}${options.ctaUrl.trim()}`)
+            : `${this.frontendUrl}/dashboard`;
+        const safeCtaUrl = escapeHtml(ctaTarget);
         const isImage = options.mediaKind === 'IMAGE';
         const isVideo = options.mediaKind === 'VIDEO';
 
@@ -498,7 +510,7 @@ export class EmailService {
 
         const bodyHtml = `
             <p style="margin:0 0 10px; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:#ed1c24;">
-                Message from CarMazium
+                ${safeEyebrow}
             </p>
             <h1 style="margin:0 0 24px; font-size:26px; line-height:1.25; color:#ffffff;">
                 Hi ${name},
@@ -509,16 +521,16 @@ export class EmailService {
                 </div>` : ''}
             ${mediaHtml}
             <div style="text-align:center; margin-top:32px;">
-                <a href="${this.frontendUrl}/dashboard" target="_blank"
+                <a href="${safeCtaUrl}" target="_blank"
                    style="display:inline-block; padding:14px 30px; background:linear-gradient(135deg,#ed1c24,#c41920); color:#ffffff; text-decoration:none; font-weight:800; border-radius:10px;">
-                    Open CarMazium
+                    ${safeCtaLabel}
                 </a>
             </div>
         `;
 
         return this.sendBrandedEmail({
             to: options.toEmail,
-            subject: 'Message from CarMazium',
+            subject: options.subject?.trim() || 'Message from CarMazium',
             bodyHtml,
         });
     }
