@@ -299,20 +299,59 @@ export default function DealerInventoryPage() {
                                                 )}
                                             </div>
 
-                                            {/* Info */}
+                                            {/* Info — mirror the desktop vehicle showcase on mobile. */}
                                             <div className="flex-1 min-w-0">
-                                                <p className="font-black text-base leading-snug truncate">{listing.title}</p>
-                                                <p className="text-sm text-[var(--text-muted)] mt-0.5">{listing.vrm || 'Private'}</p>
-                                                <span className={`inline-flex mt-1.5 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-widest border ${STATUS_COLORS[listing.status] || STATUS_COLORS.DRAFT}`}>
-                                                    {STATUS_LABELS[listing.status] || listing.status}
-                                                </span>
-                                                {listing.status === 'REJECTED' && listing.rejectionReason && (
-                                                    <p className="text-xs text-red-400 mt-1">{listing.rejectionReason}</p>
-                                                )}
+                                                <p className="font-black text-base leading-snug">{listing.title}</p>
+                                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                                                    <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest px-2 py-0.5 bg-[var(--bg-card)] rounded border border-[var(--border-default)]">
+                                                        {listing.vrm || 'PRIVATE'}
+                                                    </span>
+                                                    {listing.make && (
+                                                        <span className="text-xs font-bold text-primary italic uppercase tracking-widest">{listing.make}</span>
+                                                    )}
+                                                    {typeof listing.mileage === 'number' && (
+                                                        <span className="text-xs text-[var(--text-muted)] font-bold">• {listing.mileage.toLocaleString()} mi</span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <p className="text-xl font-black mt-3">£{listing.price?.toLocaleString()}</p>
+                                        {/* Mobile parity grid: same information as desktop columns, adapted to a narrow screen. */}
+                                        <div className="grid grid-cols-2 gap-2 mt-4">
+                                            <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 min-w-0">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Market Price</p>
+                                                <p className="text-xl font-black mt-1">£{listing.price?.toLocaleString()}</p>
+                                                <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest inline-flex items-center gap-1 mt-0.5">
+                                                    <TrendingUp size={9} /> Market Value Plus
+                                                </p>
+                                            </div>
+
+                                            <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 min-w-0">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Status</p>
+                                                <span className={`inline-flex mt-2 px-2.5 py-1 rounded-lg text-[11px] font-black tracking-widest border ${STATUS_COLORS[listing.status] || STATUS_COLORS.DRAFT}`}>
+                                                    {STATUS_LABELS[listing.status] || listing.status}
+                                                </span>
+                                                {listing.status === 'REJECTED' && listing.rejectionReason && (
+                                                    <p className="text-[10px] text-red-400 mt-1.5 leading-snug">{listing.rejectionReason}</p>
+                                                )}
+                                            </div>
+
+                                            <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 min-w-0">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Engagement</p>
+                                                <p className="text-base font-black mt-1">{listing.viewCount || 0}</p>
+                                                <div className="w-full h-1 bg-[var(--bg-input)] rounded-full overflow-hidden mt-1.5">
+                                                    <div className="h-full bg-blue-500/50" style={{ width: `${Math.min((listing.viewCount || 0) / 10, 100)}%` }} />
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 min-w-0">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Hot Leads</p>
+                                                <p className="text-base text-red-400 font-black mt-1">0</p>
+                                                <div className="w-full h-1 bg-[var(--bg-input)] rounded-full overflow-hidden mt-1.5">
+                                                    <div className="h-full bg-red-500/50 pulse-glow" style={{ width: '0%' }} />
+                                                </div>
+                                            </div>
+                                        </div>
 
                                         {canManageInventory && (
                                         <div className="grid grid-cols-2 gap-2 mt-3">
