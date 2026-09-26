@@ -864,27 +864,70 @@ export class EmailService {
         return this.sendBrandedEmail({ to: sellerEmail, subject: `Auction ended — "${vehicleTitle}" sold for £${winningAmount.toLocaleString('en-GB')} — CarMazium`, bodyHtml });
     }
 
-    async sendAuctionReserveNotMetEmail(sellerEmail: string, sellerName: string, vehicleTitle: string, auctionId: string) {
+    async sendAuctionReserveNotMetEmail(
+        sellerEmail: string,
+        sellerName: string,
+        vehicleTitle: string,
+        auctionId: string,
+        listingId?: string,
+        dealerAudienceLabel = 'CarMazium’s verified dealer network',
+        retailAlreadyLive = false,
+    ) {
+        const actionUrl = retailAlreadyLive
+            ? `${this.frontendUrl}/dashboard/seller/listings`
+            : listingId
+                ? `${this.frontendUrl}/sell?editId=${encodeURIComponent(listingId)}&sellMode=retail`
+                : `${this.frontendUrl}/dashboard/seller/auctions`;
+
+        const actionLabel = retailAlreadyLive
+            ? 'View Retail Listing →'
+            : 'List in Retail for £1 →';
+
         const bodyHtml = `
             <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
-                Auction Ended — Reserve Not Met
+                Your Auction Has Ended
             </h1>
-            <p style="margin: 0 0 28px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
-                Hi <strong style="color: #ffffff;">${sellerName}</strong>, your auction for <strong style="color: #ffffff;">${vehicleTitle}</strong> has ended, but the reserve price was not reached.
+            <p style="margin: 0 0 24px; font-size: 15px; color: #94a3b8; line-height: 1.7;">
+                Hi <strong style="color: #ffffff;">${sellerName}</strong>, your auction for
+                <strong style="color: #ffffff;">${vehicleTitle}</strong> has ended without a sale.
             </p>
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 20px; margin-bottom: 32px;">
-                <p style="margin: 0; font-size: 14px; color: #94a3b8; line-height: 1.6;">
-                    You can relist the vehicle with a lower reserve price, or create a new classified listing to attract direct offers.
+            <div style="background: rgba(237,28,36,0.06); border: 1px solid rgba(237,28,36,0.18); border-radius: 14px; padding: 22px; margin-bottom: 24px;">
+                <p style="margin: 0 0 12px; font-size: 14px; color: #e2e8f0; line-height: 1.7;">
+                    Your vehicle was made available across <strong style="color:#ffffff;">${dealerAudienceLabel}</strong>,
+                    but the auction did not generate enough interest to complete a sale at the reserve.
+                </p>
+                <p style="margin: 0; font-size: 14px; color: #94a3b8; line-height: 1.7;">
+                    ${retailAlreadyLive
+                        ? 'Your Retail Listing is already live, so the vehicle can continue reaching the wider retail audience on CarMazium.'
+                        : 'We recommend moving the vehicle to a Retail Listing. This opens it to a much wider audience and can potentially put it in front of thousands of retail shoppers rather than only the trade-auction audience.'}
                 </p>
             </div>
-            <div style="text-align: center; margin: 36px 0 24px;">
-                <a href="${this.frontendUrl}/dashboard/seller/auctions" target="_blank"
-                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #c41920); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.35);">
-                    Re-auction Vehicle →
+            ${!retailAlreadyLive ? `
+                <div style="background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.16); border-radius: 14px; padding: 18px 20px; margin-bottom: 28px;">
+                    <p style="margin:0 0 5px; font-size:14px; font-weight:800; color:#4ade80;">A simple next step</p>
+                    <p style="margin:0; font-size:13px; color:#94a3b8; line-height:1.6;">
+                        Your existing vehicle details can be reused. A CarMazium Retail Listing costs just £1 and remains listed until sold.
+                    </p>
+                </div>
+            ` : ''}
+            <div style="text-align: center; margin: 34px 0 24px;">
+                <a href="${actionUrl}" target="_blank"
+                   style="display: inline-block; padding: 16px 42px; background: linear-gradient(135deg, #ed1c24, #c41920); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.04em; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.30);">
+                    ${actionLabel}
                 </a>
             </div>
+            <p style="margin: 0; font-size: 12px; color: #64748b; line-height: 1.6; text-align:center;">
+                Auction reference: ${auctionId}
+            </p>
         `;
-        return this.sendBrandedEmail({ to: sellerEmail, subject: `Auction ended — reserve not met for "${vehicleTitle}" — CarMazium`, bodyHtml });
+
+        return this.sendBrandedEmail({
+            to: sellerEmail,
+            subject: retailAlreadyLive
+                ? `Auction ended — your Retail Listing for "${vehicleTitle}" stays live — CarMazium`
+                : `Auction ended — give "${vehicleTitle}" a wider retail audience — CarMazium`,
+            bodyHtml,
+        });
     }
 
     // ─── Handover Emails ─────────────────────────────────────────────

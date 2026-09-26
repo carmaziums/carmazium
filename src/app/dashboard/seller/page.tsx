@@ -5,13 +5,14 @@ import Link from "next/link"
 import Image from "next/image"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/Button"
-import { PlusCircle, Loader2, Eye, TrendingUp, Car, DollarSign } from "lucide-react"
+import { PlusCircle, Loader2, Eye, TrendingUp, Car, DollarSign, X, ShoppingBag, Gavel } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { PeriodToggle } from "@/components/dashboard/PeriodToggle"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
 import { getMyListings, formatPrice, type SellerStats, type Listing } from "@/lib/listingApi"
+import { getNotifications, markNotificationRead, type AppNotification } from "@/lib/notificationsApi"
 
 export default function SellerDashboard() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -32,6 +33,7 @@ export default function SellerDashboard() {
     const [listings, setListings] = React.useState<Listing[]>([])
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
+    const [unsoldAuctionNotice, setUnsoldAuctionNotice] = React.useState<AppNotification | null>(null)
 
     React.useEffect(() => {
         async function fetchData() {
@@ -39,12 +41,18 @@ export default function SellerDashboard() {
 
             try {
                 setLoading(true)
-                const [statsData, listingsData] = await Promise.all([
+                const [statsData, listingsData, recentNotifications] = await Promise.all([
                     apiClient<{ data: SellerStats }>(`/dashboard/seller?period=${period}`).then(r => r.data).catch(() => null),
-                    getMyListings({ limit: 5 })
+                    getMyListings({ limit: 5 }),
+                    getNotifications(20),
                 ])
                 setStats(statsData)
                 setListings(listingsData.data || [])
+                setUnsoldAuctionNotice(
+                    recentNotifications.find(
+                        notification => notification.type === 'AUCTION_ENDED_NO_SALE' && !notification.isRead,
+                    ) ?? null,
+                )
             } catch (err: any) {
                 console.error('Failed to fetch dashboard data:', err)
                 setError(err.message)
@@ -57,6 +65,28 @@ export default function SellerDashboard() {
             fetchData()
         }
     }, [user, authLoading, period])
+
+    async function dismissUnsoldAuctionNotice() {
+        const notice = unsoldAuctionNotice
+        setUnsoldAuctionNotice(null)
+        if (notice) {
+            await markNotificationRead(notice.id).catch(() => {})
+        }
+    }
+
+    function openRetailFromNotice() {
+        const notice = unsoldAuctionNotice
+        if (!notice) return
+
+        const retailUrl =
+            typeof notice.data?.retailUrl === 'string'
+                ? notice.data.retailUrl
+                : '/dashboard/seller/auctions'
+
+        setUnsoldAuctionNotice(null)
+        markNotificationRead(notice.id).catch(() => {})
+        router.push(retailUrl)
+    }
 
     if (authLoading) {
         return (
@@ -201,6 +231,77 @@ export default function SellerDashboard() {
                     </div>
                 </main>
             </div>
+            {unsoldAuctionNotice && (
+                <div
+                    className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="unsold-auction-title"
+                    onClick={(event) => {
+                        if (event.target === event.currentTarget) dismissUnsoldAuctionNotice()
+                    }}
+                >
+                    <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-[var(--border-default)] bg-[var(--bg-dropdown)] shadow-2xl">
+                        <div className="flex items-start justify-between gap-4 border-b border-[var(--border-default)] p-6">
+                            <div className="flex items-start gap-3">
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+                                    <Gavel size={20} className="text-primary" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black uppercase tracking-widest text-primary">Auction update</p>
+                                    <h2 id="unsold-auction-title" className="mt-1 text-xl font-black">
+                                        A wider audience could be the next step
+                                    </h2>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={dismissUnsoldAuctionNotice}
+                                className="rounded-xl p-2 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]"
+                                aria-label="Close"
+                            >
+                                <X size={19} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-5 p-6">
+                            <p className="text-sm leading-7 text-[var(--text-secondary)]">
+                                {unsoldAuctionNotice.message}
+                            </p>
+
+                            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                                <div className="flex items-start gap-3">
+                                    <ShoppingBag size={18} className="mt-0.5 shrink-0 text-emerald-500" />
+                                    <div>
+                                        <p className="text-sm font-black text-[var(--text-primary)]">
+                                            {unsoldAuctionNotice.data?.retailAlreadyLive
+                                                ? 'Your Retail Listing is already working for you'
+                                                : 'Retail Listing — £1 until sold'}
+                                        </p>
+                                        <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+                                            {unsoldAuctionNotice.data?.retailAlreadyLive
+                                                ? 'Keep the vehicle visible to the wider retail audience and manage the listing from your dashboard.'
+                                                : 'Reuse the vehicle details you already entered and move the car into the wider retail marketplace.'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                <Button type="button" variant="outline" onClick={dismissUnsoldAuctionNotice}>
+                                    Not now
+                                </Button>
+                                <Button type="button" className="gap-2" onClick={openRetailFromNotice}>
+                                    <ShoppingBag size={16} />
+                                    {unsoldAuctionNotice.data?.retailAlreadyLive
+                                        ? 'Manage Retail Listing'
+                                        : 'List in Retail for £1'}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
