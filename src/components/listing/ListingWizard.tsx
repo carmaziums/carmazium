@@ -34,7 +34,7 @@ import { VehicleDamageMapper, type DamageRecord } from "./VehicleDamageMapper"
 import { useRouter, useSearchParams } from "next/navigation"
 import { apiClient } from "@/lib/apiClient"
 import { getAuctionOpeningBid, getAuctionReserveGuide } from "@/lib/auctionPricing"
-import { getVehicleValuation, type VehicleValuation } from "@/lib/valuationApi"
+import { applyVehicleValuationAdjustments, getVehicleValuation, type VehicleValuation } from "@/lib/valuationApi"
 import { computeExteriorGradeFromDefectCount } from "@/lib/exteriorGrade"
 import { VehicleValuationCard } from "./VehicleValuationCard"
 
@@ -187,6 +187,17 @@ const INITIAL_FORM: FormData = {
     priceMin: "", priceAsking: "", badgeTier: 'BASIC', bannerLabel: "", status: "DRAFT", listingType: "CLASSIFIED",
 }
 
+function getValuationBaseKey(data: Partial<FormData>, excludeListingId?: string | null) {
+    return [
+        String(data.make || '').trim().toUpperCase(),
+        String(data.model || '').trim().toUpperCase(),
+        String(data.year || '').trim(),
+        String(data.mileage || '').replace(/[^0-9]/g, ''),
+        excludeListingId || '',
+    ].join('|')
+}
+
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function addHours(isoString: string, hours: number): string {
@@ -335,7 +346,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [dvlaSuccess, setDvlaSuccess] = React.useState(false)
     const [geoLoading, setGeoLoading] = React.useState(false)
     const [isGeneratingDesc, setIsGeneratingDesc] = React.useState(false)
+    const [baseValuation, setBaseValuation] = React.useState<VehicleValuation | null>(null)
     const [valuation, setValuation] = React.useState<VehicleValuation | null>(null)
+    const valuationBaseKeyRef = React.useRef<string | null>(null)
     const [valuationLoading, setValuationLoading] = React.useState(false)
     const [valuationError, setValuationError] = React.useState<string | null>(null)
     // A non-PII journey key links a valuation to a later listing submission.
@@ -646,6 +659,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         setDvlaLoading(false)
         setDvlaError(null)
         setDvlaSuccess(false)
+        setBaseValuation(null)
+        valuationBaseKeyRef.current = null
         setValuation(null)
         setValuationLoading(false)
         setValuationError(null)
@@ -669,25 +684,39 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const isAuction = formData.listingType === 'AUCTION'
     const automaticExteriorGrade = computeExteriorGradeFromDefectCount(damageRecords.length)
 
-    // A seller should see useful price guidance as soon as the basic vehicle
-    // identity is known — before they reach the pricing step. Keep the request
-    // debounced because mileage/trim inputs can change quickly while typing.
+    // The market lookup is intentionally based only on stable vehicle identity.
+    // Seller answers below (fuel, gearbox, condition, keys, service history,
+    // compliance, damage grade and equipment) adjust that base locally; they do
+    // not trigger another market search.
     const valuationReady =
         formData.vehicleType === 'CAR' &&
         !!formData.make &&
         !!formData.model &&
         Number(formData.year) >= 1950 &&
         formData.mileage !== '' &&
-        Number(formData.mileage) >= 0 &&
-        !!formData.transmission
+        Number(formData.mileage) >= 0
+
+    const currentValuationBaseKey = getValuationBaseKey(formData, editId)
 
     React.useEffect(() => {
         if (!valuationReady) {
+            setBaseValuation(null)
+            valuationBaseKeyRef.current = null
             setValuation(null)
             setValuationError(null)
             setValuationLoading(false)
             return
         }
+
+        // A valuation supplied by the landing-page registration/mileage lookup
+        // is already the correct base. Do not ask the market again.
+        if (baseValuation && valuationBaseKeyRef.current === currentValuationBaseKey) {
+            return
+        }
+
+        setBaseValuation(null)
+        setValuation(null)
+        valuationBaseKeyRef.current = null
 
         let cancelled = false
         const timer = window.setTimeout(() => {
@@ -699,30 +728,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 model: formData.model,
                 year: Number(formData.year),
                 mileage: Number(formData.mileage),
-                variant: formData.variant || undefined,
-                fuelType: formData.fuelType || undefined,
-                transmission: formData.transmission || undefined,
-                condition: formData.condition || undefined,
-                exteriorGrade: automaticExteriorGrade,
-                serviceHistory: formData.serviceHistory || undefined,
-                owners: formData.owners || undefined,
-                numberOfKeys: formData.numberOfKeys ? Number(formData.numberOfKeys) : undefined,
-                ulezCompliant: formData.ulezCompliant ?? undefined,
-                euroStandard: formData.euroStandard || undefined,
-                doors: formData.doors ? Number(formData.doors) : undefined,
-                seats: formData.seats ? Number(formData.seats) : undefined,
-                features: formData.features.length ? formData.features : undefined,
-                writeOffCategory: formData.writeOffCategory || undefined,
-                isImported: formData.isImported,
                 excludeListingId: editId || undefined,
             })
                 .then((result) => {
                     if (cancelled) return
-                    setValuation(result)
+                    valuationBaseKeyRef.current = currentValuationBaseKey
+                    setBaseValuation(result)
 
-                    // Count an actual completed valuation, not merely a DVLA
-                    // lookup. Reuse one journey id for repeated recalculations
-                    // of the same vehicle so conversion reporting stays stable.
                     const normalizedVrm = formData.vrm.replace(/\s/g, "").toUpperCase()
                     if (
                         !valuationJourneyIdRef.current
@@ -737,14 +749,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             make: formData.make || undefined,
                             model: formData.model || undefined,
                             year: Number(formData.year) || undefined,
-                            fuel_type: formData.fuelType || undefined,
                             valuation_source: result.source,
                         })
                     }
                 })
                 .catch((error: any) => {
                     if (cancelled) return
-                    console.error('Vehicle valuation failed:', error)
+                    console.error('Base vehicle valuation failed:', error)
+                    setBaseValuation(null)
                     setValuation(null)
                     setValuationError(error?.message || 'Valuation unavailable')
                 })
@@ -759,7 +771,45 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         }
     }, [
         valuationReady,
+        currentValuationBaseKey,
         formData.vrm,
+        formData.make,
+        formData.model,
+        formData.year,
+        formData.mileage,
+        formData.listingType,
+        editId,
+        isDashboard,
+        trackEvent,
+        baseValuation,
+    ])
+
+    React.useEffect(() => {
+        if (!baseValuation) return
+
+        setValuation(applyVehicleValuationAdjustments(baseValuation, {
+            make: formData.make,
+            model: formData.model,
+            year: Number(formData.year),
+            mileage: Number(formData.mileage),
+            variant: formData.variant || undefined,
+            fuelType: formData.fuelType || undefined,
+            transmission: formData.transmission || undefined,
+            condition: formData.condition || undefined,
+            exteriorGrade: automaticExteriorGrade,
+            serviceHistory: formData.serviceHistory || undefined,
+            owners: formData.owners || undefined,
+            numberOfKeys: formData.numberOfKeys ? Number(formData.numberOfKeys) : undefined,
+            ulezCompliant: formData.ulezCompliant ?? undefined,
+            euroStandard: formData.euroStandard || undefined,
+            doors: formData.doors ? Number(formData.doors) : undefined,
+            seats: formData.seats ? Number(formData.seats) : undefined,
+            features: formData.features.length ? formData.features : undefined,
+            writeOffCategory: formData.writeOffCategory || undefined,
+            isImported: formData.isImported,
+        }))
+    }, [
+        baseValuation,
         formData.make,
         formData.model,
         formData.year,
@@ -779,10 +829,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         formData.features,
         formData.writeOffCategory,
         formData.isImported,
-        formData.listingType,
-        editId,
-        isDashboard,
-        trackEvent,
     ])
 
     function applyValuation() {
@@ -1085,7 +1131,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 badgeTier: listingType === "AUCTION" ? "FREE" : "BASIC",
                 status: "ACTIVE",
             }))
-            setValuation(detail.valuation ?? null)
+            const landingBase = detail.valuation ?? null
+            setBaseValuation(landingBase)
+            valuationBaseKeyRef.current = landingBase
+                ? getValuationBaseKey(detail.vehicle, editId)
+                : null
+            setValuation(landingBase)
             setValuationError(null)
             if (detail.valuationId) {
                 valuationJourneyIdRef.current = detail.valuationId
@@ -1115,6 +1166,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         profile?.role,
         router,
         trackEvent,
+        editId,
     ])
 
     // ─── Submit ──────────────────────────────────────────────────────────────────
