@@ -54,3 +54,29 @@ export async function aiGenerateDescription(data: Record<string, any>): Promise<
     });
     return json.data;
 }
+
+
+export type AiReportReason =
+    | 'UNSAFE_OFFENSIVE'
+    | 'INACCURATE_MISLEADING'
+    | 'SCAM_DISHONEST'
+    | 'OTHER';
+
+export async function reportAiResponse(payload: {
+    prompt?: string;
+    response: string;
+    reason: AiReportReason;
+    details?: string;
+}): Promise<{ id: string; status: string }> {
+    const json = await apiClient<{ data: { id: string; status: string } }>('/ai/report', {
+        method: 'POST',
+        body: JSON.stringify({
+            surface: 'WEB',
+            prompt: payload.prompt,
+            response: payload.response,
+            reason: payload.reason,
+            details: payload.details,
+        }),
+    });
+    return json.data;
+}
