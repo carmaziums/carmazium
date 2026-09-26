@@ -65,7 +65,6 @@
     "production": {
       "ios": {},
       "android": {
-        "serviceAccountKeyPath": "./google-service-account.json",
         "track": "internal"
       }
     }
