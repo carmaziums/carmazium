@@ -51,6 +51,11 @@ export default function ProfilePage() {
     const [receivedReviews, setReceivedReviews] = React.useState<ReviewItem[]>([])
     const [givenReviews, setGivenReviews] = React.useState<ReviewItem[]>([])
 
+    const dealerKyc = profile?.dealerProfile?.kyc
+    const isSoleTraderKyc = dealerKyc?.businessType === "SOLE_PROPRIETORSHIP"
+    const businessTypeLabel = isSoleTraderKyc ? "Sole Trader" : "Registered Company"
+    const verificationStatus = dealerKyc?.status || "Not submitted"
+
     const [personalForm, setPersonalForm] = React.useState({
         firstName: "",
         lastName: "",
@@ -236,10 +241,6 @@ export default function ProfilePage() {
     const isPersonal = currentRole === "BUYER" || currentRole === "SELLER"
     const isPartner = currentRole === "DEALER" || currentRole === "CONTRACTOR"
     const canOwnDealershipProfile = currentRole === "DEALER" || !!profile?.dealerProfile
-    const dealerKyc = profile?.dealerProfile?.kyc
-    const isSoleTraderKyc = dealerKyc?.businessType === "SOLE_PROPRIETORSHIP"
-    const businessTypeLabel = isSoleTraderKyc ? "Sole Trader" : "Registered Company"
-    const verificationStatus = dealerKyc?.status || "Not submitted"
     const accountLabel = isPersonal ? "Personal Account" : isPartner ? "Partner Account" : currentRole
     const initials = `${profile?.firstName?.[0] || ""}${profile?.lastName?.[0] || ""}` || profile?.email?.[0] || "C"
 
