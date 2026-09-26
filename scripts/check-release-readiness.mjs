@@ -222,6 +222,12 @@ const nativeMazium = read('carmazium app/carmazium app/src/components/GlobalAICh
 const webAiApi = read('src/lib/aiApi.ts');
 const nativeAiApi = read('carmazium app/carmazium app/src/lib/aiApi.ts');
 const adminAiReports = read('src/app/dashboard/admin/ai-reports/page.tsx');
+const webListingAi = read('src/components/listing/ListingWizard.tsx');
+const nativeListingAi = read('carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx');
+const nativeSearchAi = read('carmazium app/carmazium app/src/screens/main/SearchScreen.tsx');
+const dvlaControllerAi = read('backend/src/dvla/dvla.controller.ts');
+const dvlaServiceAi = read('backend/src/dvla/dvla.service.ts');
+const aiDto = read('backend/src/ai/ai.dto.ts');
 
 if (
   !aiBackend.includes("model: 'omni-moderation-latest'") ||
@@ -263,6 +269,21 @@ if (
   fail('Admin AI report review workflow regressed');
 } else {
   ok('Admin AI report queue supports review and closure states');
+}
+
+if (
+  !webListingAi.includes('ensureAiSharingConsent') ||
+  !webListingAi.includes('dvlaLookup(formData.vrm, hasAiSharingConsent())') ||
+  !nativeListingAi.includes('ensureSellerAiConsent') ||
+  !nativeListingAi.includes('allowAiEnrichment') ||
+  !nativeSearchAi.includes('ensureAiSearchConsent') ||
+  !dvlaControllerAi.includes('dto.allowAiEnrichment === true') ||
+  !dvlaServiceAi.includes('allowAiEnrichment = false') ||
+  !aiDto.includes("AI data-sharing consent is required")
+) {
+  fail('Optional seller/search AI data sharing must remain explicitly consent-gated');
+} else {
+  ok('Seller AI, AI Search and DVLA AI enrichment remain consent-gated');
 }
 
 // ---------------------------------------------------------------------------
