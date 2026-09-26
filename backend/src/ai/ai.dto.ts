@@ -1,10 +1,11 @@
-import { IsString, IsNotEmpty, IsArray, ValidateNested, IsIn, IsOptional, IsEnum, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, ValidateNested, IsIn, IsOptional, IsEnum, MaxLength, ArrayMaxSize } from 'class-validator';
 import { Type } from 'class-transformer';
 import { AiReportReason, AiReportStatus } from '@prisma/client';
 
 export class AiSearchDto {
     @IsString()
     @IsNotEmpty()
+    @MaxLength(1000)
     query: string;
 }
 
@@ -15,11 +16,13 @@ class ChatMessageDto {
 
     @IsString()
     @IsNotEmpty()
+    @MaxLength(4000)
     content: string;
 }
 
 export class AiChatDto {
     @IsArray()
+    @ArrayMaxSize(10)
     @ValidateNested({ each: true })
     @Type(() => ChatMessageDto)
     messages: ChatMessageDto[];
