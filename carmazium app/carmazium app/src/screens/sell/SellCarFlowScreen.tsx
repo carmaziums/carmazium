@@ -35,7 +35,7 @@ import { CAR_MAKES, getModelsForMake } from '../../data/carData';
 import { BottomSheet } from '../../components/BottomSheet';
 import * as Location from 'expo-location';
 import { getAuctionOpeningBid, getAuctionReserveGuide } from '../../lib/auctionPricing';
-import { getVehicleValuation, type VehicleValuation } from '../../lib/valuationApi';
+import { applyVehicleValuationAdjustments, getVehicleValuation, type VehicleValuation } from '../../lib/valuationApi';
 import { computeExteriorGradeFromDefectCount } from '../../lib/exteriorGrade';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -700,7 +700,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [deliveryPricePerMile, setDeliveryPricePerMile] = useState('');
   const [badgeTier, setBadgeTier] = useState<BadgeTier>('BASIC');
   const [listingType, setListingType] = useState<'CLASSIFIED' | 'AUCTION'>('CLASSIFIED');
+  const [baseValuation, setBaseValuation] = useState<VehicleValuation | null>(null);
   const [valuation, setValuation] = useState<VehicleValuation | null>(null);
+  const valuationBaseKeyRef = useRef<string | null>(null);
   const [valuationLoading, setValuationLoading] = useState(false);
   const [valuationError, setValuationError] = useState<string | null>(null);
   const valuationRequestId = useRef(0);
@@ -744,44 +746,49 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const yearNumber = Number(year);
     const mileageNumber = Number(String(mileage).replace(/[^0-9]/g, ''));
     if (!make.trim() || !model.trim() || !Number.isFinite(yearNumber) || yearNumber < 1950 || !Number.isFinite(mileageNumber) || mileageNumber < 0) {
+      setBaseValuation(null);
+      valuationBaseKeyRef.current = null;
       setValuation(null);
       setValuationError(null);
       return;
     }
 
+    const baseKey = [
+      vrm.replace(/\s/g, '').toUpperCase(),
+      make.trim().toUpperCase(),
+      model.trim().toUpperCase(),
+      String(yearNumber),
+      String(mileageNumber),
+      editListingId || '',
+    ].join('|');
+
+    if (baseValuation && valuationBaseKeyRef.current === baseKey) return;
+
     const requestId = ++valuationRequestId.current;
     let cancelled = false;
+    setBaseValuation(null);
+    valuationBaseKeyRef.current = null;
+    setValuation(null);
     setValuationLoading(true);
     setValuationError(null);
 
+    // One market request establishes the base. Specification changes below are
+    // applied locally and never re-run the market search.
     getVehicleValuation({
       make: make.trim(),
       model: model.trim(),
       year: yearNumber,
       mileage: mileageNumber,
-      variant: variant || undefined,
-      fuelType: fuelType || undefined,
-      transmission: transmission || undefined,
-      condition: condition || undefined,
-      exteriorGrade: automaticExteriorGrade,
-      serviceHistory: serviceHistory || undefined,
-      owners: owners || undefined,
-      numberOfKeys: numberOfKeys ? Number(numberOfKeys) : undefined,
-      ulezCompliant: ulezCompliant ?? undefined,
-      euroStandard: euroStandard || undefined,
-      doors: doors ? Number(doors) : undefined,
-      seats: seats ? Number(seats) : undefined,
-      features: features.length ? features : undefined,
-      writeOffCategory: writeOffCat || undefined,
-      isImported,
       excludeListingId: editListingId || undefined,
     })
       .then(result => {
         if (cancelled || valuationRequestId.current !== requestId) return;
-        setValuation(result);
+        valuationBaseKeyRef.current = baseKey;
+        setBaseValuation(result);
       })
       .catch(error => {
         if (cancelled || valuationRequestId.current !== requestId) return;
+        setBaseValuation(null);
         setValuation(null);
         setValuationError(
           error?.message === 'VALUATION_TIMEOUT'
@@ -801,6 +808,41 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }, [
     step,
     vehicleType,
+    vrm,
+    make,
+    model,
+    year,
+    mileage,
+    editListingId,
+    baseValuation,
+  ]);
+
+  useEffect(() => {
+    if (!baseValuation) return;
+
+    setValuation(applyVehicleValuationAdjustments(baseValuation, {
+      make: make.trim(),
+      model: model.trim(),
+      year: Number(year),
+      mileage: Number(String(mileage).replace(/[^0-9]/g, '')),
+      variant: variant || undefined,
+      fuelType: fuelType || undefined,
+      transmission: transmission || undefined,
+      condition: condition || undefined,
+      exteriorGrade: automaticExteriorGrade,
+      serviceHistory: serviceHistory || undefined,
+      owners: owners || undefined,
+      numberOfKeys: numberOfKeys ? Number(numberOfKeys) : undefined,
+      ulezCompliant: ulezCompliant ?? undefined,
+      euroStandard: euroStandard || undefined,
+      doors: doors ? Number(doors) : undefined,
+      seats: seats ? Number(seats) : undefined,
+      features: features.length ? features : undefined,
+      writeOffCategory: writeOffCat || undefined,
+      isImported,
+    }));
+  }, [
+    baseValuation,
     make,
     model,
     year,
@@ -820,7 +862,6 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     features,
     writeOffCat,
     isImported,
-    editListingId,
   ]);
 
   function applyValuationGuide() {
@@ -2974,11 +3015,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               >
                 <Text style={s.valuationCardLabel}>CURRENT MARKET VALUE</Text>
                 <Text style={s.valuationAuctionPrice}>£{valuation.auction.marketValue.toLocaleString('en-GB')}</Text>
-                <Text style={s.valuationCardHint}>Based on the age, mileage and condition information provided for your vehicle.</Text>
+                <Text style={s.valuationCardHint}>Base market value from the vehicle model, year and mileage, adjusted by the condition and specification you provide.</Text>
                 <Text style={s.valuationApplyText}>Use this value</Text>
               </TouchableOpacity>
               <Text style={s.valuationEvidenceText}>
-                Guide only. Vehicle condition, specification and current market demand can affect the final selling price.
+                Guide only. Changing condition or specification adjusts this saved base value; it does not start another market search.
               </Text>
             </>
           ) : (

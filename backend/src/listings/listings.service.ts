@@ -47,6 +47,7 @@ import {
     getListingSubmissionReadiness,
 } from './listing-readiness';
 import {
+    applyVehicleSpecificationAdjustments,
     calculateVehicleValuation,
     VehicleValuationComparable,
     VehicleValuationInput,
@@ -237,42 +238,10 @@ export class ListingsService {
             });
         }
 
-        // Exact trim and powertrain evidence is more valuable than a generic
-        // same-model advert. Narrow the comparable pool only when at least three
-        // rows remain so sparse vehicles are never stranded by over-filtering.
-        if (dto.variant) {
-            const targetVariant = dto.variant.trim().toUpperCase();
-            const sameVariantRows = rows.filter(
-                (row) => row.variant && row.variant.trim().toUpperCase() === targetVariant,
-            );
-            if (sameVariantRows.length >= 3) {
-                rows = sameVariantRows;
-            }
-        }
-
-        if (dto.fuelType) {
-            const targetFuel = String(dto.fuelType).toUpperCase();
-            const sameFuelRows = rows.filter(
-                (row) => row.fuelType && String(row.fuelType).toUpperCase() === targetFuel,
-            );
-            if (sameFuelRows.length >= 3) {
-                rows = sameFuelRows;
-            }
-        }
-
-        // If we have enough same-transmission vehicles, value the target
-        // primarily against those. This prevents automatic asking prices from
-        // inflating a manual valuation (and vice versa). Sparse cases still
-        // retain the wider pool and are normalised in the valuation engine.
-        if (dto.transmission) {
-            const targetTransmission = String(dto.transmission).toUpperCase();
-            const sameTransmissionRows = rows.filter(
-                (row) => row.transmission && String(row.transmission).toUpperCase() === targetTransmission,
-            );
-            if (sameTransmissionRows.length >= 3) {
-                rows = sameTransmissionRows;
-            }
-        }
+        // Establish one stable market base from make/model/year/mileage only.
+        // Seller-entered specification is applied after this lookup so changing
+        // fuel, gearbox, keys, service history, condition, ULEZ or features
+        // never causes the market search itself to disappear or return empty.
 
         const comparables: VehicleValuationComparable[] = [];
 
@@ -345,11 +314,15 @@ export class ListingsService {
             }
         }
 
-        const valuationInput: VehicleValuationInput = {
+        const baseValuationInput: VehicleValuationInput = {
             make,
             model,
             year: dto.year,
             mileage: dto.mileage,
+        };
+
+        const specificationInput: VehicleValuationInput = {
+            ...baseValuationInput,
             variant: dto.variant,
             fuelType: dto.fuelType,
             transmission: dto.transmission,
@@ -373,7 +346,7 @@ export class ListingsService {
         // customer-facing availability dependency. A timeout, provider outage,
         // missing key or zero usable rows falls through to first-party evidence
         // and then to the deterministic LOW-confidence model estimate.
-        const liveMarket = await this.getLiveUkMarketComparables(valuationInput);
+        const liveMarket = await this.getLiveUkMarketComparables(baseValuationInput);
 
         // The live-market sanitizer has already rejected invalid, mismatched,
         // damaged/salvage and duplicate adverts. Keep 1-2 credible live rows
@@ -381,9 +354,13 @@ export class ListingsService {
         // blends sparse evidence back toward the conservative fallback.
         const usableLiveComparables = liveMarket?.comparables ?? [];
 
-        const valuation = calculateVehicleValuation(
-            valuationInput,
+        const baseValuation = calculateVehicleValuation(
+            baseValuationInput,
             [...comparables, ...usableLiveComparables],
+        );
+        const valuation = applyVehicleSpecificationAdjustments(
+            baseValuation,
+            specificationInput,
         );
 
         if (usableLiveComparables.length > 0) {

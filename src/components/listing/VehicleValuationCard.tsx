@@ -50,24 +50,6 @@ export function VehicleValuationCard({
 
     if (!valuation) return null
 
-    if (valuation.source === "CARMAZIUM_MODEL" && valuation.comparables === 0) {
-        return (
-            <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-5 md:p-6">
-                <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10">
-                        <AlertTriangle size={18} className="text-amber-500" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-black text-[var(--text-primary)]">Not enough reliable market evidence yet</p>
-                        <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
-                            CarMazium does not have enough reliable market evidence to give you a trustworthy value for this vehicle yet. Please enter your own price to continue.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
     const confidenceClass =
         valuation.confidence === "HIGH"
             ? "text-emerald-600 border-emerald-500/30 bg-emerald-500/10 dark:text-emerald-400"
@@ -91,7 +73,7 @@ export function VehicleValuationCard({
                                 Vehicle Valuation
                             </p>
                             <p className="mt-1 text-xs text-[var(--text-muted)]">
-                                Based on the age, mileage and condition information provided for your vehicle.
+                                Base market value from the vehicle model, year and mileage, adjusted by the condition and specification you provide.
                             </p>
                         </div>
                     </div>
@@ -108,7 +90,7 @@ export function VehicleValuationCard({
                         {formatPrice(primaryValue)}
                     </p>
                     <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
-                        Based on the age, mileage and condition information provided for your vehicle.
+                        Base market value from the vehicle model, year and mileage, adjusted by the condition and specification you provide.
                     </p>
                 </div>
 
@@ -116,7 +98,7 @@ export function VehicleValuationCard({
 
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[10px] leading-relaxed text-[var(--text-muted)]">
-                        Guide only. Vehicle condition, specification and current market demand can affect the final selling price.
+                        Guide only. Changing condition or specification adjusts this saved base value; it does not start another market search.
                     </p>
                     <Button type="button" onClick={onApply} className="h-10 shrink-0 gap-2 px-4">
                         <CheckCircle size={15} />

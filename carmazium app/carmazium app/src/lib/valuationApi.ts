@@ -119,6 +119,149 @@ function complianceFactor(request: VehicleValuationRequest): number {
   return 1;
 }
 
+function profileFactor(request: VehicleValuationRequest): number {
+  let factor = 1;
+
+  const condition = (request.condition ?? '').toUpperCase();
+  if (condition === 'EXCELLENT') factor *= 1.03;
+  if (condition === 'FAIR') factor *= 0.93;
+  if (condition === 'POOR') factor *= 0.84;
+
+  const grade = Number(request.exteriorGrade);
+  if (grade === 2) factor *= 0.99;
+  if (grade === 3) factor *= 0.97;
+  if (grade === 4) factor *= 0.94;
+  if (grade >= 5) factor *= 0.90;
+
+  const service = (request.serviceHistory ?? '').toUpperCase();
+  if (service.includes('FULL')) factor *= 1.02;
+  if (service.includes('PARTIAL')) factor *= 0.99;
+  if (service === 'NONE' || service.includes('NO SERVICE')) factor *= 0.96;
+
+  const ownerNumber = Number.parseInt((request.owners ?? '').replace(/[^0-9]/g, ''), 10);
+  if (ownerNumber === 1) factor *= 1.02;
+  if (ownerNumber === 2) factor *= 1.01;
+  if (ownerNumber === 4) factor *= 0.98;
+  if (ownerNumber >= 5) factor *= 0.96;
+
+  if (request.numberOfKeys === 1) factor *= 0.985;
+
+  if (request.ulezCompliant === true) factor *= 1.01;
+  else if (request.ulezCompliant === false) factor *= 0.96;
+  else {
+    const euro = (request.euroStandard ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (euro === 'EURO6D' || euro === 'EURO6') factor *= 1.01;
+    if (euro === 'EURO5') factor *= 0.995;
+    if (euro === 'EURO4') factor *= 0.985;
+  }
+
+  if (request.features?.length) {
+    const values = request.features.map((feature) => feature.trim().toUpperCase());
+    const has = (...needles: string[]) =>
+      values.some((feature) => needles.some((needle) => feature.includes(needle)));
+    let uplift = 0;
+    if (has('PANORAMIC', 'PAN ROOF', 'SUNROOF')) uplift += 0.005;
+    if (has('LEATHER')) uplift += 0.004;
+    if (has('HEATED SEAT')) uplift += 0.003;
+    if (has('360 CAMERA', 'REVERSE CAMERA', 'REVERSING CAMERA')) uplift += 0.003;
+    if (has('NAVIGATION', 'SAT NAV')) uplift += 0.002;
+    if (has('APPLE CARPLAY', 'ANDROID AUTO')) uplift += 0.002;
+    if (has('PARKING SENSOR')) uplift += 0.002;
+    if (has('LED HEADLIGHT', 'MATRIX LED')) uplift += 0.0015;
+    factor *= 1 + Math.min(0.018, uplift);
+  }
+
+  const writeOff = (request.writeOffCategory ?? '').toUpperCase();
+  if (writeOff === 'CAT_N') factor *= 0.82;
+  if (writeOff === 'CAT_S') factor *= 0.75;
+  if (writeOff === 'CAT_A') factor *= 0.25;
+  if (writeOff === 'CAT_B') factor *= 0.30;
+
+  if (request.isImported) factor *= 0.92;
+
+  return factor;
+}
+
+function fuelSpecificationFactor(value?: string): number {
+  const fuel = (value ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!fuel) return 1;
+  if (fuel.includes('PLUGINHYBRID')) return 1.01;
+  if (fuel.includes('HYBRID')) return 1.0075;
+  if (fuel === 'DIESEL') return 0.995;
+  if (['LPG', 'BIFUEL', 'NATURALGAS'].includes(fuel)) return 0.98;
+  return 1;
+}
+
+function variantSpecificationFactor(value?: string): number {
+  const variant = (value ?? '').trim().toUpperCase();
+  if (!variant) return 1;
+
+  const performanceMarkers = [
+    'AMG', 'M SPORT COMPETITION', 'M COMPETITION', 'VRS',
+    'GTI', 'TYPE R', 'GR SPORT', 'GRMN', 'N PERFORMANCE',
+  ];
+  if (performanceMarkers.some((marker) => variant.includes(marker))) return 1.02;
+
+  const premiumMarkers = [
+    'M SPORT', 'AMG LINE', 'S LINE', 'R LINE', 'ST LINE', 'N LINE',
+    'GT LINE', 'TITANIUM', 'VIGNALE', 'TEKNA', 'PORTFOLIO',
+    'AUTOBIOGRAPHY', 'HSE', 'R DESIGN', 'INSCRIPTION', 'EXCEL',
+  ];
+  if (premiumMarkers.some((marker) => variant.includes(marker))) return 1.01;
+  return 1;
+}
+
+export function vehicleSpecificationAdjustmentFactor(request: VehicleValuationRequest): number {
+  let factor = profileFactor(request);
+
+  const transmission = transmissionFamily(request.transmission);
+  if (transmission === 'AUTO') factor *= 1.03;
+  if (transmission === 'MANUAL') factor *= 0.98;
+
+  factor *= fuelSpecificationFactor(request.fuelType);
+  factor *= variantSpecificationFactor(request.variant);
+
+  if (request.doors === 5) factor *= 1.004;
+  if (request.doors === 3) factor *= 0.996;
+  if (request.doors === 2) factor *= 0.992;
+  if ((request.seats ?? 0) >= 7) factor *= 1.008;
+  if ((request.seats ?? 0) > 0 && (request.seats ?? 0) <= 2) factor *= 0.995;
+
+  return clamp(factor, 0.18, 1.20);
+}
+
+export function applyVehicleValuationAdjustments(
+  base: VehicleValuation,
+  request: VehicleValuationRequest,
+): VehicleValuation {
+  const factor = vehicleSpecificationAdjustmentFactor(request);
+  if (Math.abs(factor - 1) < 0.0001) return { ...base };
+
+  const low = roundMoney(base.low * factor);
+  const mid = roundMoney(base.mid * factor);
+  const high = roundMoney(base.high * factor);
+  const auctionMarketValue = roundMoney(base.auction.marketValue * factor);
+
+  return {
+    ...base,
+    low,
+    mid,
+    high,
+    explanation: `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
+    retail: {
+      suggestedAsking: roundMoney(base.retail.suggestedAsking * factor),
+      suggestedMinimum: roundMoney(base.retail.suggestedMinimum * factor),
+    },
+    auction: {
+      marketValue: auctionMarketValue,
+      openingBid: Math.round(auctionMarketValue * 0.70 * 100) / 100,
+      reserveLow: Math.round(auctionMarketValue * 0.90 * 100) / 100,
+      reserveHigh: auctionMarketValue,
+      suggestedReserve: roundMoney(auctionMarketValue * 0.95),
+    },
+  };
+}
+
 function localFallbackValuation(request: VehicleValuationRequest): VehicleValuation {
   const age = Math.max(0, new Date().getFullYear() - request.year);
   let value = BASE_NEW_VALUES[(request.make ?? '').trim().toUpperCase()] ?? 32000;
@@ -130,43 +273,6 @@ function localFallbackValuation(request: VehicleValuationRequest): VehicleValuat
   const expectedMileage = Math.max(6000, age * 8500);
   const mileageDeltaThousands = (request.mileage - expectedMileage) / 1000;
   value *= clamp(1 - mileageDeltaThousands * 0.0035, 0.72, 1.15);
-
-  const condition = (request.condition ?? '').toUpperCase();
-  if (condition === 'EXCELLENT') value *= 1.03;
-  if (condition === 'FAIR') value *= 0.93;
-  if (condition === 'POOR') value *= 0.84;
-
-  const grade = Number(request.exteriorGrade);
-  if (grade === 2) value *= 0.99;
-  if (grade === 3) value *= 0.97;
-  if (grade === 4) value *= 0.94;
-  if (grade >= 5) value *= 0.90;
-
-  const service = (request.serviceHistory ?? '').toUpperCase();
-  if (service.includes('FULL')) value *= 1.02;
-  if (service.includes('PARTIAL')) value *= 0.99;
-  if (service === 'NONE' || service.includes('NO SERVICE')) value *= 0.96;
-
-  const ownerNumber = Number.parseInt((request.owners ?? '').replace(/[^0-9]/g, ''), 10);
-  if (ownerNumber === 1) value *= 1.02;
-  if (ownerNumber === 2) value *= 1.01;
-  if (ownerNumber === 4) value *= 0.98;
-  if (ownerNumber >= 5) value *= 0.96;
-
-  if (request.numberOfKeys === 1) value *= 0.985;
-  value *= complianceFactor(request);
-  value *= featureValueFactor(request.features);
-  if (request.isImported) value *= 0.92;
-
-  const writeOff = (request.writeOffCategory ?? '').toUpperCase();
-  if (writeOff === 'CAT_N') value *= 0.82;
-  if (writeOff === 'CAT_S') value *= 0.75;
-  if (writeOff === 'CAT_A') value *= 0.25;
-  if (writeOff === 'CAT_B') value *= 0.30;
-
-  const transmission = transmissionFamily(request.transmission);
-  if (transmission === 'AUTO') value *= 1.04;
-  if (transmission === 'MANUAL') value *= 0.96;
 
   const mid = roundMoney(value);
   const low = roundMoney(mid * 0.85);
@@ -180,7 +286,7 @@ function localFallbackValuation(request: VehicleValuationRequest): VehicleValuat
     confidenceScore: 0.2,
     comparables: 0,
     source: 'CARMAZIUM_MODEL',
-    explanation: 'Exact-model market evidence is temporarily unavailable, so this LOW-confidence guide uses vehicle age, mileage, transmission and conservative depreciation. Use it as a starting point rather than a guaranteed sale price.',
+    explanation: 'Exact-model market evidence is temporarily unavailable, so this LOW-confidence guide uses vehicle age and mileage and conservative depreciation. Use it as a starting point rather than a guaranteed sale price.',
     retail: {
       suggestedAsking: high,
       suggestedMinimum: mid,
