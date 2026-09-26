@@ -1646,26 +1646,14 @@ export class AuctionsService {
             }
         } else {
             // No winner — give the seller a clear next step instead of simply
-            // telling them to re-auction. The dealer-audience statement is
-            // generated from the actual verified dealer count so customer
-            // communications never make an unsupported reach claim.
+            // telling them to re-auction. Keep network size out of all
+            // customer-facing communication; the useful message is the next
+            // selling route, not the current dealer count.
             if (listing.sellerId) {
-                const [seller, verifiedDealerCount] = await Promise.all([
-                    this.prisma.user.findUnique({
-                        where: { id: listing.sellerId },
-                        select: { email: true, firstName: true },
-                    }),
-                    this.prisma.dealerProfile.count({
-                        where: { isVerified: true },
-                    }),
-                ]);
-
-                const dealerAudienceLabel =
-                    verifiedDealerCount >= 700
-                        ? 'more than 700 verified dealers'
-                        : verifiedDealerCount > 0
-                            ? `${verifiedDealerCount.toLocaleString('en-GB')} verified dealers`
-                            : 'CarMazium’s verified dealer network';
+                const seller = await this.prisma.user.findUnique({
+                    where: { id: listing.sellerId },
+                    select: { email: true, firstName: true },
+                });
 
                 const linkedRetailListingId = (listing as any).linkedListingId as string | null;
                 const retailAlreadyLive = Boolean(linkedRetailListingId);
@@ -1674,8 +1662,8 @@ export class AuctionsService {
                     : `/sell?editId=${auction.listingId}&sellMode=retail`;
 
                 const recommendation = retailAlreadyLive
-                    ? `Your auction for ${vehicle || listing.title} has ended without a sale. The vehicle was made available across ${dealerAudienceLabel}, but the auction did not convert into a sale at the reserve. Your Retail Listing is already in place, so it can continue reaching the wider retail audience on CarMazium.`
-                    : `Your auction for ${vehicle || listing.title} has ended without a sale. The vehicle was made available across ${dealerAudienceLabel}, but the auction did not generate enough interest to complete a sale at the reserve. We recommend moving it to a Retail Listing, which opens the vehicle to a much wider audience and can potentially put it in front of thousands of retail shoppers. Your existing vehicle details can be reused, and a CarMazium Retail Listing costs £1 until sold.`;
+                    ? `Your auction for ${vehicle || listing.title} has ended without a sale. The vehicle was presented to CarMazium’s dealer network, but it did not attract enough interest to complete a sale at the reserve this time. Your Retail Listing is already live, so the vehicle can continue reaching a wider retail audience on CarMazium.`
+                    : `Your auction for ${vehicle || listing.title} has ended without a sale. The vehicle was presented to CarMazium’s dealer network, but it did not attract enough interest to complete a sale at the reserve this time. We recommend moving it to a Retail Listing so it can reach a much wider audience and improve its chances of selling. Your existing vehicle details can be reused, and a CarMazium Retail Listing costs just £1 until sold.`;
 
                 await this.notificationsService.create({
                     userId: listing.sellerId,
@@ -1694,7 +1682,6 @@ export class AuctionsService {
                         linkedRetailListingId,
                         retailAlreadyLive,
                         retailUrl,
-                        verifiedDealerCount,
                         vehicleTitle: vehicle || listing.title,
                     },
                 });
@@ -1734,7 +1721,6 @@ export class AuctionsService {
                         vehicle || listing.title,
                         auction.id,
                         auction.listingId,
-                        dealerAudienceLabel,
                         retailAlreadyLive,
                     ).catch(console.error);
                 }
