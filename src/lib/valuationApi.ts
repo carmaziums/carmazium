@@ -9,6 +9,7 @@ export interface VehicleValuationRequest {
     fuelType?: string
     transmission?: string
     condition?: string
+    exteriorGrade?: number
     serviceHistory?: string
     owners?: string
     writeOffCategory?: string
@@ -144,6 +145,12 @@ function profileFactor(request: VehicleValuationRequest): number {
     if (condition === 'EXCELLENT') factor *= 1.03
     if (condition === 'FAIR') factor *= 0.93
     if (condition === 'POOR') factor *= 0.84
+
+    const grade = Number(request.exteriorGrade)
+    if (grade === 2) factor *= 0.99
+    if (grade === 3) factor *= 0.97
+    if (grade === 4) factor *= 0.94
+    if (grade >= 5) factor *= 0.90
 
     const writeOff = (request.writeOffCategory ?? '').toUpperCase()
     if (writeOff === 'CAT_N') factor *= 0.82
@@ -362,6 +369,7 @@ export async function getVehicleValuation(
         if (request.fuelType) params.set('fuelType', request.fuelType)
         if (request.transmission) params.set('transmission', request.transmission)
         if (request.condition) params.set('condition', request.condition)
+        if (request.exteriorGrade) params.set('exteriorGrade', String(request.exteriorGrade))
         if (request.serviceHistory) params.set('serviceHistory', request.serviceHistory)
         if (request.owners) params.set('owners', request.owners)
         if (request.writeOffCategory) params.set('writeOffCategory', request.writeOffCategory)
