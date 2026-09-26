@@ -1187,6 +1187,24 @@ enum ChatReportStatus {
   @@map("chat_report_status")
 }
 
+enum AiReportReason {
+  UNSAFE_OFFENSIVE
+  INACCURATE_MISLEADING
+  SCAM_DISHONEST
+  OTHER
+
+  @@map("ai_report_reason")
+}
+
+enum AiReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+
+  @@map("ai_report_status")
+}
+
 enum BroadcastCampaignStatus {
   SCHEDULED
   SENDING
@@ -1312,6 +1330,25 @@ model ChatReport {
   @@index([reportedUserId])
   @@index([reviewedById])
   @@map("chat_reports")
+}
+
+model AiReport {
+  id           String         @id @default(uuid())
+  surface      String
+  prompt       String?
+  response     String
+  reason       AiReportReason
+  details      String?
+  status       AiReportStatus @default(OPEN)
+  reviewedById String?
+  reviewedAt   DateTime?
+  adminNote    String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([reason, createdAt(sort: Desc)])
+  @@map("ai_reports")
 }
 
 model ChatBlock {
