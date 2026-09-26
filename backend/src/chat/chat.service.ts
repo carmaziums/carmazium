@@ -8,6 +8,7 @@ import { messageInboxLink } from './chat-routing';
 import { ChatAttachmentService } from './chat-attachment.service';
 import { TradeTeamService } from '../services/trade-team.service';
 import { DealersService } from '../dealers/dealers.service';
+import { ChatContentSafetyService } from './chat-content-safety.service';
 
 /**
  * Chat service handling all chat room and message operations
@@ -23,6 +24,7 @@ export class ChatService {
         private readonly chatAttachmentService: ChatAttachmentService,
         private readonly tradeTeamService: TradeTeamService,
         private readonly dealersService: DealersService,
+        private readonly chatContentSafety: ChatContentSafetyService,
     ) { }
 
     /**
@@ -2366,6 +2368,7 @@ export class ChatService {
         if (dto.content.startsWith(DISPUTE_EVENT_PREFIX)) {
             throw new BadRequestException('This message format is reserved for CarMazium dispute events.');
         }
+        await this.chatContentSafety.assertAllowedText(dto.content, 'MESSAGE');
 
         if (dto.clientMessageId) {
             const existing = await this.findMessageByClientId(
@@ -2480,6 +2483,7 @@ export class ChatService {
         if (content.startsWith(DISPUTE_EVENT_PREFIX)) {
             throw new BadRequestException('This message format is reserved for CarMazium dispute events.');
         }
+        await this.chatContentSafety.assertAllowedText(content, 'ATTACHMENT_CAPTION');
 
         if (dto.clientMessageId) {
             const existing = await this.findMessageByClientId(
