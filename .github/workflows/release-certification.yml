@@ -49,6 +49,86 @@ on:
         required: true
         type: boolean
         default: false
+      release_sha:
+        description: 'Full Git SHA used to create both signed native release candidates'
+        required: false
+        type: string
+        default: ''
+      ios_build_id:
+        description: 'EAS/App Store identifier for the signed iOS release candidate'
+        required: false
+        type: string
+        default: ''
+      ios_artifact_sha256:
+        description: 'SHA-256 digest of the exact iOS IPA/archive submitted for testing'
+        required: false
+        type: string
+        default: ''
+      ios_xcode_version:
+        description: 'Xcode version reported by the signed iOS build'
+        required: false
+        type: string
+        default: ''
+      ios_sdk_version:
+        description: 'iOS SDK version reported by the signed iOS build'
+        required: false
+        type: string
+        default: ''
+      android_build_id:
+        description: 'EAS/Play identifier for the signed Android release candidate'
+        required: false
+        type: string
+        default: ''
+      android_artifact_sha256:
+        description: 'SHA-256 digest of the exact Android AAB submitted for testing'
+        required: false
+        type: string
+        default: ''
+      ios_signed_archive_confirmed:
+        description: 'Signed iOS store archive has been verified'
+        required: true
+        type: boolean
+        default: false
+      android_signed_aab_confirmed:
+        description: 'Signed Android Play AAB has been verified'
+        required: true
+        type: boolean
+        default: false
+      device_qa_confirmed:
+        description: 'Representative real-device QA is complete'
+        required: true
+        type: boolean
+        default: false
+      accessibility_qa_confirmed:
+        description: 'VoiceOver/TalkBack and large-text QA are complete'
+        required: true
+        type: boolean
+        default: false
+      push_qa_confirmed:
+        description: 'Foreground/background/killed-state push QA is complete'
+        required: true
+        type: boolean
+        default: false
+      payment_qa_confirmed:
+        description: 'Native payment presentation/test transaction QA is complete'
+        required: true
+        type: boolean
+        default: false
+      deep_link_qa_confirmed:
+        description: 'Installed Universal Link/App Link QA is complete'
+        required: true
+        type: boolean
+        default: false
+      testflight_upload_confirmed:
+        description: 'The exact iOS release candidate is uploaded to TestFlight'
+        required: true
+        type: boolean
+        default: false
+      play_internal_upload_confirmed:
+        description: 'The exact Android release candidate is uploaded to Play internal testing'
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -162,6 +242,22 @@ jobs:
           CARMAZIUM_REVIEW_ACCESS_CONFIRMED: ${{ inputs.review_access_confirmed }}
           CARMAZIUM_STORE_CONSOLE_METADATA_CONFIRMED: ${{ inputs.store_console_metadata_confirmed }}
           CARMAZIUM_STORE_ASSETS_CONFIRMED: ${{ inputs.store_assets_confirmed }}
+          CARMAZIUM_RELEASE_SHA: ${{ inputs.release_sha }}
+          CARMAZIUM_IOS_BUILD_ID: ${{ inputs.ios_build_id }}
+          CARMAZIUM_IOS_ARTIFACT_SHA256: ${{ inputs.ios_artifact_sha256 }}
+          CARMAZIUM_IOS_XCODE_VERSION: ${{ inputs.ios_xcode_version }}
+          CARMAZIUM_IOS_SDK_VERSION: ${{ inputs.ios_sdk_version }}
+          CARMAZIUM_ANDROID_BUILD_ID: ${{ inputs.android_build_id }}
+          CARMAZIUM_ANDROID_ARTIFACT_SHA256: ${{ inputs.android_artifact_sha256 }}
+          CARMAZIUM_IOS_SIGNED_ARCHIVE_CONFIRMED: ${{ inputs.ios_signed_archive_confirmed }}
+          CARMAZIUM_ANDROID_SIGNED_AAB_CONFIRMED: ${{ inputs.android_signed_aab_confirmed }}
+          CARMAZIUM_DEVICE_QA_CONFIRMED: ${{ inputs.device_qa_confirmed }}
+          CARMAZIUM_ACCESSIBILITY_QA_CONFIRMED: ${{ inputs.accessibility_qa_confirmed }}
+          CARMAZIUM_PUSH_QA_CONFIRMED: ${{ inputs.push_qa_confirmed }}
+          CARMAZIUM_PAYMENT_QA_CONFIRMED: ${{ inputs.payment_qa_confirmed }}
+          CARMAZIUM_DEEP_LINK_QA_CONFIRMED: ${{ inputs.deep_link_qa_confirmed }}
+          CARMAZIUM_TESTFLIGHT_UPLOAD_CONFIRMED: ${{ inputs.testflight_upload_confirmed }}
+          CARMAZIUM_PLAY_INTERNAL_UPLOAD_CONFIRMED: ${{ inputs.play_internal_upload_confirmed }}
         run: |
           set -euo pipefail
           test "$CARMAZIUM_REVIEW_ACCESS_CONFIRMED" = "true"
@@ -172,6 +268,7 @@ jobs:
           [[ "$APPLE_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]]
           [[ "$ANDROID_SHA256" =~ ^([0-9A-Fa-f]{2}:){31}[0-9A-Fa-f]{2}$ ]]
           node scripts/check-release-readiness.mjs --strict
+          node scripts/check-release-candidate-evidence.mjs
       - name: Require deployed Android app association
         shell: bash
         env:
