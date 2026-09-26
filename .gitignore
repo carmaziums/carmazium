@@ -38,7 +38,7 @@ env.txt
 **/env.txt
 
 # EAS / app store credentials — never commit real service-account keys or
-# signing secrets (eas.json itself only holds placeholder IDs, safe to commit)
+# signing secrets. eas.json contains only non-secret build/submit configuration.
 google-service-account*.json
 *-service-account.json
 *.p8
