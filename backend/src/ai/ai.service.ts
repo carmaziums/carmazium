@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
+import { AiReportReason, AiReportStatus } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { AiReportDto, UpdateAiReportDto } from './ai.dto';
 
 interface FilterCard {
     label: string;
@@ -105,6 +108,10 @@ Your personality:
 - Keep responses concise (2-4 sentences usually)
 - If the user asks about a specific car type, suggest search filters
 - CRITICAL: When suggesting filters in filterCard, ONLY extract parameters explicitly requested in the user's CURRENT message! DO NOT merge or carry over filters from previous messages.
+- Do not provide instructions that facilitate violence, sexual exploitation, fraud, credential theft, harassment, self-harm, dangerous wrongdoing, or deceptive document creation.
+- Never ask for passwords, one-time codes, card PINs, CVVs, banking credentials or other authentication secrets.
+- Do not claim that finance, insurance, warranty or legal outcomes are guaranteed. Explain that eligibility and decisions belong to the relevant provider.
+- If a request is unsafe or outside normal car-buying/selling assistance, refuse briefly and redirect to safe automotive help.
 
 When you want to suggest car search filters, include a filterCard in your response JSON.
 
@@ -128,6 +135,12 @@ Or with a filter card:
 Always respond in JSON only — no markdown wrappers.`;
 
 const SEARCH_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const AI_SAFETY_FALLBACK = 'I can help with safe car buying, selling and ownership questions, but I can\'t help with that request.';
+const LOCAL_AI_BLOCK_RULES = [
+    /\b(?:child\s+porn(?:ography)?|sexual\s+(?:image|images|photo|photos)\s+of\s+(?:a\s+)?(?:child|minor)|underage\s+sexual)\b/i,
+    /\b(?:steal|phish|harvest)\s+(?:a\s+)?(?:password|login|credential|one[-\s]?time\s+code|otp)\b/i,
+    /\b(?:fake|forge)\s+(?:a\s+)?(?:driving\s+licen[cs]e|passport|bank\s+statement|insurance\s+certificate|vehicle\s+document|v5c)\b/i,
+];
 
 @Injectable()
 export class AiService {
@@ -135,7 +148,10 @@ export class AiService {
     private openai: OpenAI;
     private readonly searchCache = new Map<string, { result: AiSearchResult; expiresAt: number }>();
 
-    constructor(private configService: ConfigService) {
+    constructor(
+        private configService: ConfigService,
+        private readonly prisma: PrismaService,
+    ) {
         const apiKey = this.configService.get<string>('OPENAI_API_KEY');
         if (!apiKey) {
             this.logger.warn('OPENAI_API_KEY not configured — AI features will return fallback responses');
@@ -143,7 +159,107 @@ export class AiService {
         this.openai = new OpenAI({ apiKey: apiKey || '' });
     }
 
+    private localUnsafe(text: string): boolean {
+        const normalized = text
+            .normalize('NFKC')
+            .replace(/[\u200B-\u200D\uFEFF]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        return LOCAL_AI_BLOCK_RULES.some((pattern) => pattern.test(normalized));
+    }
+
+    private async isUnsafe(text: string): Promise<boolean> {
+        const clean = text.trim();
+        if (!clean) return false;
+        if (this.localUnsafe(clean)) return true;
+
+        const apiKey = this.configService.get<string>('OPENAI_API_KEY');
+        if (!apiKey) return false;
+
+        try {
+            const moderation = await this.openai.moderations.create({
+                model: 'omni-moderation-latest',
+                input: clean,
+            });
+            return Boolean(moderation.results?.[0]?.flagged);
+        } catch (error) {
+            this.logger.error(
+                `AI moderation unavailable: ${error instanceof Error ? error.message : String(error)}`,
+            );
+            return false;
+        }
+    }
+
+    private async safeResult(result: AiChatResult | AiSearchResult): Promise<AiChatResult | AiSearchResult> {
+        if (await this.isUnsafe(result.text)) {
+            this.logger.warn('Blocked unsafe MaziuM AI output before returning it to the client');
+            return { text: AI_SAFETY_FALLBACK };
+        }
+        return result;
+    }
+
+    async createReport(dto: AiReportDto) {
+        return this.prisma.aiReport.create({
+            data: {
+                surface: dto.surface,
+                prompt: dto.prompt?.trim() || null,
+                response: dto.response.trim(),
+                reason: dto.reason,
+                details: dto.details?.trim() || null,
+            },
+        });
+    }
+
+    async listReports(page = 1, limit = 30, status?: string) {
+        const safePage = Math.max(1, Number(page) || 1);
+        const safeLimit = Math.min(100, Math.max(1, Number(limit) || 30));
+        const where = status && Object.values(AiReportStatus).includes(status as AiReportStatus)
+            ? { status: status as AiReportStatus }
+            : {};
+
+        const [data, total] = await Promise.all([
+            this.prisma.aiReport.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                skip: (safePage - 1) * safeLimit,
+                take: safeLimit,
+            }),
+            this.prisma.aiReport.count({ where }),
+        ]);
+
+        return {
+            data,
+            pagination: {
+                total,
+                page: safePage,
+                limit: safeLimit,
+                totalPages: Math.max(1, Math.ceil(total / safeLimit)),
+            },
+        };
+    }
+
+    async updateReport(reportId: string, adminId: string, dto: UpdateAiReportDto) {
+        const existing = await this.prisma.aiReport.findUnique({ where: { id: reportId } });
+        if (!existing) {
+            throw new Error('AI report not found');
+        }
+
+        return this.prisma.aiReport.update({
+            where: { id: reportId },
+            data: {
+                status: dto.status,
+                adminNote: dto.adminNote?.trim() || null,
+                reviewedById: adminId,
+                reviewedAt: new Date(),
+            },
+        });
+    }
+
     async searchRecommendation(query: string): Promise<AiSearchResult> {
+        if (await this.isUnsafe(query)) {
+            return { text: AI_SAFETY_FALLBACK };
+        }
+
         const cacheKey = query.trim().toLowerCase();
         const cached = this.searchCache.get(cacheKey);
         if (cached && cached.expiresAt > Date.now()) {
@@ -169,8 +285,9 @@ export class AiService {
 
             const cleanContent = content.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
             const parsed = JSON.parse(cleanContent) as AiSearchResult;
-            this.searchCache.set(cacheKey, { result: parsed, expiresAt: Date.now() + SEARCH_CACHE_TTL_MS });
-            return parsed;
+            const safe = await this.safeResult(parsed) as AiSearchResult;
+            this.searchCache.set(cacheKey, { result: safe, expiresAt: Date.now() + SEARCH_CACHE_TTL_MS });
+            return safe;
         } catch (error) {
             this.logger.error('OpenAI search error:', error);
             return {
@@ -182,6 +299,11 @@ export class AiService {
     async chatCompletion(
         messages: { role: 'user' | 'assistant'; content: string }[],
     ): Promise<AiChatResult> {
+        const latestUser = [...messages].reverse().find((message) => message.role === 'user');
+        if (latestUser && await this.isUnsafe(latestUser.content)) {
+            return { text: AI_SAFETY_FALLBACK };
+        }
+
         try {
             // Build messages array with system prompt + last 10 conversation messages
             const conversationMessages = messages.slice(-10);
@@ -208,7 +330,7 @@ export class AiService {
 
             const cleanContent = content.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
             const parsed = JSON.parse(cleanContent) as AiChatResult;
-            return parsed;
+            return await this.safeResult(parsed) as AiChatResult;
         } catch (error) {
             this.logger.error('OpenAI chat error:', error);
             return {
