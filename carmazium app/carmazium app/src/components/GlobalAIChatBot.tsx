@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, Platform, Text,
   TextInput, ScrollView, Keyboard, Modal, Pressable, Animated, Alert,
-  LayoutAnimation, UIManager, useWindowDimensions,
+  LayoutAnimation, UIManager, useWindowDimensions, ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
