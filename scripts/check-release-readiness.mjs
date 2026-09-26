@@ -912,6 +912,108 @@ if (storeAssetsConfirmed) ok('Release-candidate store screenshots/graphics have 
 else external('Release-candidate screenshots/feature graphics have not been confirmed in both store consoles');
 
 // ---------------------------------------------------------------------------
+// 10. Signed release-candidate and final store certification contract.
+// ---------------------------------------------------------------------------
+requiredFile(
+  'scripts/check-release-candidate-evidence.mjs',
+  'Signed release-candidate evidence checker',
+);
+requiredFile(
+  'docs/native/STORE_FINAL_RELEASE_CERTIFICATION.md',
+  'Final store release certification contract',
+);
+requiredFile(
+  'carmazium app/carmazium app/.eas/workflows/create-store-release-candidate.yml',
+  'EAS signed store-candidate build workflow',
+);
+
+const easConfig = readJson('carmazium app/carmazium app/eas.json');
+const productionBuild = easConfig.build?.production ?? {};
+const productionSubmit = easConfig.submit?.production ?? {};
+const releaseEvidenceScript = read('scripts/check-release-candidate-evidence.mjs');
+const releaseWorkflow = read('.github/workflows/release-certification.yml');
+const easCandidateWorkflow = read(
+  'carmazium app/carmazium app/.eas/workflows/create-store-release-candidate.yml',
+);
+
+if (
+  productionBuild.android?.buildType !== 'app-bundle' ||
+  productionBuild.ios?.simulator === true
+) {
+  fail('Production EAS profile must produce an Android AAB and a physical-device/store iOS archive');
+} else {
+  ok('Production EAS profile produces store-format Android/iOS candidates');
+}
+
+if (
+  productionSubmit.android?.track !== 'internal' ||
+  'serviceAccountKeyPath' in (productionSubmit.android ?? {})
+) {
+  fail('Android EAS Submit must target internal testing and use externally managed Play credentials');
+} else {
+  ok('Android submit profile targets Play internal testing without a repository-local service-account path');
+}
+
+if (
+  !easCandidateWorkflow.includes('platform: android') ||
+  !easCandidateWorkflow.includes('platform: ios') ||
+  !easCandidateWorkflow.includes('profile: production')
+) {
+  fail('EAS release-candidate workflow must build both platforms from the production profile');
+} else {
+  ok('EAS release-candidate workflow builds both signed production candidates');
+}
+
+for (const requiredInput of [
+  'release_sha',
+  'ios_build_id',
+  'ios_artifact_sha256',
+  'ios_xcode_version',
+  'ios_sdk_version',
+  'android_build_id',
+  'android_artifact_sha256',
+  'device_qa_confirmed',
+  'accessibility_qa_confirmed',
+  'push_qa_confirmed',
+  'payment_qa_confirmed',
+  'deep_link_qa_confirmed',
+  'testflight_upload_confirmed',
+  'play_internal_upload_confirmed',
+]) {
+  if (!releaseWorkflow.includes(`${requiredInput}:`)) {
+    fail(`Manual Release Certification workflow is missing final evidence input: ${requiredInput}`);
+  }
+}
+
+if (
+  !releaseWorkflow.includes('node scripts/check-release-candidate-evidence.mjs') ||
+  !releaseEvidenceScript.includes('CARMAZIUM_RELEASE_SHA') ||
+  !releaseEvidenceScript.includes('CARMAZIUM_IOS_ARTIFACT_SHA256') ||
+  !releaseEvidenceScript.includes('CARMAZIUM_ANDROID_ARTIFACT_SHA256') ||
+  !releaseEvidenceScript.includes('CARMAZIUM_TESTFLIGHT_UPLOAD_CONFIRMED') ||
+  !releaseEvidenceScript.includes('CARMAZIUM_PLAY_INTERNAL_UPLOAD_CONFIRMED')
+) {
+  fail('Final strict workflow must bind certification to signed artifact, device-QA and pre-release store-upload evidence');
+} else {
+  ok('Final strict workflow is bound to signed artifact, device-QA and store-upload evidence');
+}
+
+const finalExternalChecks = [
+  ['CARMAZIUM_DEVICE_QA_CONFIRMED', 'Representative physical-device QA is not yet externally confirmed'],
+  ['CARMAZIUM_ACCESSIBILITY_QA_CONFIRMED', 'VoiceOver/TalkBack and large-text QA are not yet externally confirmed'],
+  ['CARMAZIUM_PUSH_QA_CONFIRMED', 'Foreground/background/killed-state push QA is not yet externally confirmed'],
+  ['CARMAZIUM_PAYMENT_QA_CONFIRMED', 'Native payment QA is not yet externally confirmed'],
+  ['CARMAZIUM_DEEP_LINK_QA_CONFIRMED', 'Installed Universal/App Link QA is not yet externally confirmed'],
+  ['CARMAZIUM_TESTFLIGHT_UPLOAD_CONFIRMED', 'TestFlight upload of the exact release candidate is not yet externally confirmed'],
+  ['CARMAZIUM_PLAY_INTERNAL_UPLOAD_CONFIRMED', 'Play internal-test upload of the exact release candidate is not yet externally confirmed'],
+];
+
+for (const [name, message] of finalExternalChecks) {
+  if (process.env[name] === 'true') ok(message.replace(' is not yet externally confirmed', ' confirmed'));
+  else external(message);
+}
+
+// ---------------------------------------------------------------------------
 // Result.
 // ---------------------------------------------------------------------------
 console.log(
