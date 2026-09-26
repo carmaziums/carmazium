@@ -40,9 +40,9 @@ export class AdminBroadcastSchedulerService {
             if (now - this.lastKycReminderCheckAt >= this.kycReminderCheckIntervalMs) {
                 this.lastKycReminderCheckAt = now;
                 const kycReminder = await this.messaging.processDealerKycReminderAutomation();
-                if (kycReminder.due) {
+                if (kycReminder.due && 'requested' in kycReminder) {
                     this.logger.log(
-                        `Automatic dealer KYC reminder delivered to ${kycReminder.requested ?? 0} dealer(s)`,
+                        `Automatic dealer KYC reminder delivered to ${kycReminder.requested} dealer(s)`,
                     );
                 }
             }
