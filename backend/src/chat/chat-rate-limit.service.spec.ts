@@ -29,6 +29,17 @@ describe('ChatRateLimitService', () => {
         }
     });
 
+    it('rate-limits anonymous AI reports by source key', async () => {
+        const limiter = new ChatRateLimitService();
+
+        for (let i = 0; i < 10; i += 1) {
+            await expect(limiter.consumeAiReport('203.0.113.10')).resolves.toBeUndefined();
+        }
+
+        await expect(limiter.consumeAiReport('203.0.113.10')).rejects.toBeInstanceOf(HttpException);
+        await expect(limiter.consumeAiReport('203.0.113.11')).resolves.toBeUndefined();
+    });
+
     it('keeps message limits isolated between users', async () => {
         const limiter = new ChatRateLimitService();
         for (let i = 0; i < 30; i += 1) {
