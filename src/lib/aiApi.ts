@@ -50,7 +50,7 @@ export async function aiChat(
 export async function aiGenerateDescription(data: Record<string, any>): Promise<{ text: string }> {
     const json = await apiClient<{ data: { text: string } }>('/ai/generate-description', {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, aiConsentAcknowledged: true }),
     });
     return json.data;
 }
