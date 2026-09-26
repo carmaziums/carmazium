@@ -673,11 +673,16 @@
         "src/components/features/MaziumWidget.tsx",
         "src/lib/aiApi.ts",
         "src/app/dashboard/admin/ai-reports/page.tsx",
-        "backend/src/ai/ai.service.ts"
+        "backend/src/ai/ai.service.ts",
+        "src/components/listing/ListingWizard.tsx",
+        "src/lib/dvlaApi.ts",
+        "backend/src/dvla/dvla.service.ts"
       ],
       "mobile": [
         "carmazium app/carmazium app/src/components/GlobalAIChatBot.tsx",
-        "carmazium app/carmazium app/src/lib/aiApi.ts"
+        "carmazium app/carmazium app/src/lib/aiApi.ts",
+        "carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx",
+        "carmazium app/carmazium app/src/screens/main/SearchScreen.tsx"
       ],
       "status": "required"
     }
