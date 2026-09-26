@@ -754,6 +754,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     }
 
     const baseKey = [
+      vrm.replace(/\s/g, '').toUpperCase(),
       make.trim().toUpperCase(),
       model.trim().toUpperCase(),
       String(yearNumber),
@@ -807,6 +808,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }, [
     step,
     vehicleType,
+    vrm,
     make,
     model,
     year,
