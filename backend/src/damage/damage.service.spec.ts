@@ -5,13 +5,14 @@ describe('computeExteriorGrade', () => {
 
   it.each([
     [0, 1],
-    [1, 2],
+    [1, 1],
     [2, 2],
-    [3, 3],
+    [3, 2],
     [4, 3],
-    [5, 4],
+    [5, 3],
     [6, 4],
-    [7, 5],
+    [7, 4],
+    [8, 5],
     [12, 5],
   ])('maps %i reported defects to grade %i', (count, expected) => {
     expect(computeExteriorGrade(defects(count))).toBe(expected);
