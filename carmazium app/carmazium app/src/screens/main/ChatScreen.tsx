@@ -779,12 +779,9 @@ export const ChatScreen: React.FC = () => {
     try {
       setUploadingPhoto(true);
 
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        showToast('Photo access is required to send a picture.', 'info');
-        return;
-      }
-
+      // launchImageLibraryAsync uses the system picker. Do not request broad
+      // photo-library access first: CarMazium only needs the specific image(s)
+      // the member chooses for this message.
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
