@@ -385,6 +385,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // Edit mode — detect from URL params
     const searchParams = useSearchParams()
     const draftRestoreAttemptedRef = React.useRef(false)
+    const quickSellModeAppliedRef = React.useRef<string | null>(null)
     const editId = searchParams.get('editId')
     const editSlug = searchParams.get('editSlug')
     const [editLoading, setEditLoading] = React.useState(false)
@@ -516,7 +517,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // should be overwritten by a stale local draft.
     React.useEffect(() => {
         if (draftRestoreAttemptedRef.current) return
-        if (editId || searchParams.get('hpi_success') === 'true') return
+        if (editId || searchParams.get('hpi_success') === 'true' || searchParams.get('sellMode')) return
         draftRestoreAttemptedRef.current = true
 
         const saved = localStorage.getItem('carmazium_listing_draft')
@@ -678,6 +679,60 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const isAuthenticated = !!user
     const isEmailVerified = !!user?.email_confirmed_at
     const isVerifiedDealer = profile?.role === 'DEALER' && !!profile?.dealerProfile?.isVerified
+
+    // Header quick navigation can take a seller straight into the requested
+    // listing channel. Keep edit/HPI flows authoritative and apply the shortcut
+    // only once per requested mode.
+    React.useEffect(() => {
+        if (isDashboard || editId || searchParams.get('hpi_success') === 'true') return
+
+        const sellMode = searchParams.get('sellMode')
+        if (sellMode !== 'retail' && sellMode !== 'auction') return
+        if (quickSellModeAppliedRef.current === sellMode) return
+
+        if (!isAuthenticated) {
+            setShowLoginModal(true)
+            return
+        }
+        if (!isEmailVerified) {
+            router.push('/auth/onboarding')
+            return
+        }
+        if (profile?.role === 'DEALER' && !isVerifiedDealer) {
+            router.push('/dashboard/dealer')
+            return
+        }
+
+        const listingType: FormData['listingType'] = sellMode === 'auction' ? 'AUCTION' : 'CLASSIFIED'
+        quickSellModeAppliedRef.current = sellMode
+        draftRestoreAttemptedRef.current = true
+        setFormData(prev => ({
+            ...prev,
+            listingType,
+            badgeTier: listingType === 'AUCTION' ? 'FREE' : 'BASIC',
+            status: 'ACTIVE',
+        }))
+        setSellingMethod('list')
+        setCurrentStep(1)
+        setHasAttemptedNext(false)
+
+        trackEvent(SELLER_FUNNEL.LISTING_STARTED, {
+            listing_type: sellMode,
+            seller_role: profile?.role || 'UNKNOWN',
+            entry_point: 'header_quick_navigation',
+            valuation_id: valuationJourneyIdRef.current || undefined,
+        })
+    }, [
+        editId,
+        isAuthenticated,
+        isDashboard,
+        isEmailVerified,
+        isVerifiedDealer,
+        profile?.role,
+        router,
+        searchParams,
+        trackEvent,
+    ])
 
     const set = <K extends keyof FormData>(key: K, val: FormData[K]) =>
         setFormData(prev => ({ ...prev, [key]: val }))
