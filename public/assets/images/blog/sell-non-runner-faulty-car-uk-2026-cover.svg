@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="How to Sell a Non-Runner or Faulty Car in the UK">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#061426"/><stop offset="1" stop-color="#173d59"/></linearGradient>
+  <linearGradient id="car" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9aa9b5"/><stop offset=".55" stop-color="#536573"/><stop offset="1" stop-color="#26323c"/></linearGradient>
+</defs>
+<rect width="1600" height="900" fill="url(#bg)"/>
+<circle cx="1350" cy="130" r="250" fill="#2fa8ff" opacity=".08"/>
+<text x="120" y="145" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="70" font-weight="800">Sell a Non-Runner</text>
+<text x="120" y="225" fill="#58b5ff" font-family="Arial,Helvetica,sans-serif" font-size="66" font-weight="800">or Faulty Car</text>
+<text x="120" y="282" fill="#c5d7e4" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="700" letter-spacing="3">UK GUIDE 2026 • PRICE HONESTLY • ARRANGE SAFE COLLECTION</text>
+<g transform="translate(120 365)" font-family="Arial,Helvetica,sans-serif">
+  <circle cx="14" cy="14" r="9" fill="#2fa8ff"/><text x="42" y="21" fill="#eaf2f8" font-size="25">Disclose known faults clearly</text>
+  <circle cx="14" cy="80" r="9" fill="#2fa8ff"/><text x="42" y="87" fill="#eaf2f8" font-size="25">Price the repair risk into the sale</text>
+  <circle cx="14" cy="146" r="9" fill="#2fa8ff"/><text x="42" y="153" fill="#eaf2f8" font-size="25">Use recovery for unroadworthy vehicles</text>
+</g>
+<g transform="translate(850 330)">
+  <rect x="120" y="250" width="500" height="26" rx="13" fill="#24333f"/>
+  <circle cx="170" cy="284" r="52" fill="#10161b" stroke="#a9b6c0" stroke-width="5"/>
+  <circle cx="520" cy="284" r="52" fill="#10161b" stroke="#a9b6c0" stroke-width="5"/>
+  <path d="M90 175 C130 125 190 95 260 82 L402 75 C455 76 500 94 540 130 L585 174 C600 189 604 211 598 228 L585 251 L75 251 L63 224 C60 205 70 188 90 175 Z" fill="url(#car)" stroke="#bcc9d2" stroke-width="3"/>
+  <path d="M220 95 C270 80 344 81 398 87 C432 90 462 101 487 124 L515 150 L197 150 C199 126 205 108 220 95 Z" fill="#31546e" stroke="#abc0ce" stroke-width="3"/>
+  <circle cx="185" cy="251" r="45" fill="#0f151b" stroke="#a3b1bc" stroke-width="4"/>
+  <circle cx="494" cy="251" r="45" fill="#0f151b" stroke="#a3b1bc" stroke-width="4"/>
+  <path d="M600 220 L710 220 L745 270 L660 270 Z" fill="#d9e4eb" opacity=".85"/>
+  <path d="M655 270 L590 244" stroke="#f2b441" stroke-width="10"/>
+  <path d="M545 120 l40 -30 l23 38" fill="none" stroke="#f2b441" stroke-width="8"/>
+  <circle cx="575" cy="103" r="16" fill="#f2b441"/>
+  <text x="575" y="112" text-anchor="middle" fill="#10161b" font-size="24" font-family="Arial" font-weight="800">!</text>
+</g>
+<rect x="118" y="700" width="465" height="92" rx="46" fill="#ed2432"/>
+<text x="350" y="758" text-anchor="middle" fill="#fff" font-family="Arial" font-size="30" font-weight="800">Sell Smarter on CarMazium</text>
+<text x="120" y="842" fill="#fff" font-family="Arial" font-size="28" font-weight="800">CarMazium</text>
+</svg>
