@@ -500,8 +500,33 @@ export default function AdminListingsPage() {
                                             </div>
                                         </div>
                                         <div className="flex flex-col gap-1 shrink-0 ml-1">
-                                            <Link href={`/buy-cars/${l.slug}`} target="_blank" className="p-2.5 bg-blue-500/10 rounded-lg text-blue-400 hover:bg-blue-500/20 transition-colors"><Eye size={16} /></Link>
-                                            <button onClick={() => handleDelete(l.id)} disabled={deleting === l.id || !!l.deletedAt} className="p-2.5 bg-red-500/10 rounded-lg text-red-400 disabled:opacity-30 hover:bg-red-500/20 transition-colors">
+                                            <Link
+                                                href={`/buy-cars/${l.slug}`}
+                                                target="_blank"
+                                                aria-label="View listing"
+                                                title="View Listing"
+                                                className="p-2.5 bg-blue-500/10 rounded-lg text-blue-400 hover:bg-blue-500/20 transition-colors"
+                                            >
+                                                <Eye size={16} />
+                                            </Link>
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditListingId(l.id)}
+                                                disabled={l.status === 'SOLD' || !!l.deletedAt}
+                                                aria-label="Edit listing"
+                                                title={l.status === 'SOLD' ? 'Cannot edit a sold listing' : 'Edit Listing'}
+                                                className="p-2.5 bg-white/5 rounded-lg text-[var(--text-muted)] hover:bg-white/10 hover:text-primary disabled:opacity-30 transition-colors"
+                                            >
+                                                <Pencil size={16} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDelete(l.id)}
+                                                disabled={deleting === l.id || !!l.deletedAt}
+                                                aria-label="Force delete listing"
+                                                title="Force Delete"
+                                                className="p-2.5 bg-red-500/10 rounded-lg text-red-400 disabled:opacity-30 hover:bg-red-500/20 transition-colors"
+                                            >
                                                 {deleting === l.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                                             </button>
                                         </div>
