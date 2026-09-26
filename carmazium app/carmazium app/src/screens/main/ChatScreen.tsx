@@ -912,6 +912,47 @@ export const ChatScreen: React.FC = () => {
     }
   };
 
+
+  const performBlockChange = async (shouldBlock: boolean) => {
+    if (changingBlock) return;
+    try {
+      setChangingBlock(true);
+      if (shouldBlock) {
+        await blockChatRoom(room.id);
+        showToast('Conversation blocked. Messaging is paused for both sides.', 'success');
+      } else {
+        await unblockChatRoom(room.id);
+        showToast('Conversation unblocked.', 'success');
+      }
+      await refreshRooms();
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Could not update this conversation.',
+        'info',
+      );
+    } finally {
+      setChangingBlock(false);
+    }
+  };
+
+  const handleBlockToggle = () => {
+    const unblocking = Boolean(room.blockedByMe);
+    Alert.alert(
+      unblocking ? 'Unblock conversation?' : 'Block conversation?',
+      unblocking
+        ? 'Messaging will be available again if the other participant has not also blocked the conversation.'
+        : 'Messaging will stop for both sides. Existing messages stay available as evidence and can still be reported.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: unblocking ? 'Unblock' : 'Block',
+          style: unblocking ? 'default' : 'destructive',
+          onPress: () => void performBlockChange(!unblocking),
+        },
+      ],
+    );
+  };
+
   const carPrice = room.listing?.price ? parseFloat(String(room.listing.price)) : 0;
   const isDealer = room.otherUser.role === 'DEALER';
 
@@ -959,6 +1000,24 @@ export const ChatScreen: React.FC = () => {
           )}
         </View>
 
+        {(room.canBlockChat || room.canUnblockChat) && (
+          <IconButton
+            style={styles.safetyHeaderButton}
+            icon={
+              changingBlock
+                ? <ActivityIndicator size="small" color={Colors.white} />
+                : <Ionicons
+                    name={room.blockedByMe ? 'lock-open-outline' : 'ban-outline'}
+                    size={19}
+                    color={room.blockedByMe ? Colors.success : Colors.textSecondary}
+                  />
+            }
+            onPress={handleBlockToggle}
+            disabled={changingBlock}
+            accessibilityLabel={room.blockedByMe ? 'Unblock conversation' : 'Block conversation'}
+          />
+        )}
+
       </View>
 
       {/* Listing context banner */}
@@ -986,6 +1045,30 @@ export const ChatScreen: React.FC = () => {
           </View>
           <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
+      )}
+
+      {room.chatBlocked && !shouldBlockChat && (
+        <View style={styles.chatBlockedBanner}>
+          <Ionicons name="ban-outline" size={16} color={Colors.warning} />
+          <View style={styles.chatBlockedCopy}>
+            <Text style={styles.chatBlockedTitle}>Messaging blocked</Text>
+            <Text style={styles.chatBlockedText}>
+              {room.blockedByMe
+                ? 'You blocked this conversation. The transcript remains available and messages can still be reported.'
+                : 'Messaging is paused because this conversation has been blocked. The transcript remains available.'}
+            </Text>
+          </View>
+          {room.blockedByMe && (
+            <TouchableOpacity
+              onPress={handleBlockToggle}
+              disabled={changingBlock}
+              style={styles.unblockInlineButton}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.unblockInlineText}>Unblock</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       )}
 
       {/* Main chat body with conditional overlay blocking */}
@@ -1075,7 +1158,7 @@ export const ChatScreen: React.FC = () => {
       </View>
 
       {/* Sticky action CTAs bar (hide if blocked) */}
-      {!shouldBlockChat && room.listing && (
+      {!shouldBlockChat && !room.chatBlocked && room.listing && (
         <View style={styles.actionsBar}>
           <TouchableOpacity
             style={[styles.actionBtn, styles.actionBtnOutlineRed]}
@@ -1100,7 +1183,7 @@ export const ChatScreen: React.FC = () => {
       )}
 
       {/* Bottom Text bar (hide if blocked) */}
-      {!shouldBlockChat && (
+      {!shouldBlockChat && !room.chatBlocked && (
         <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <IconButton
             style={styles.attachBtn}
@@ -1125,6 +1208,108 @@ export const ChatScreen: React.FC = () => {
           <IconButton style={[styles.sendBtn, (!inputVal.trim() || uploadingPhoto) && styles.sendBtnDisabled]} icon={<Ionicons name="send" size={15} color={Colors.white} />} onPress={handleSend} disabled={!inputVal.trim() || uploadingPhoto} accessibilityLabel="Send message" />
         </View>
       )}
+
+      <Modal
+        visible={Boolean(reportTarget)}
+        transparent
+        animationType="fade"
+        onRequestClose={closeReport}
+      >
+        <View style={styles.reportModalBackdrop}>
+          <View style={styles.reportModalCard}>
+            <View style={styles.reportModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.reportModalEyebrow}>Safety</Text>
+                <Text style={styles.reportModalTitle}>Report message</Text>
+              </View>
+              <IconButton
+                style={styles.reportModalClose}
+                icon={<Ionicons name="close" size={20} color={Colors.white} />}
+                onPress={closeReport}
+                disabled={reporting}
+                accessibilityLabel="Close report"
+              />
+            </View>
+
+            <Text style={styles.reportModalHelp}>
+              CarMazium moderators receive only the reported message and its attachment evidence, not your surrounding private conversation.
+            </Text>
+
+            {reportTarget && (
+              <View style={styles.reportPreview}>
+                <Text style={styles.reportPreviewText} numberOfLines={4}>
+                  {reportTarget.content || (reportTarget.attachmentPath ? 'Photo message' : 'Message')}
+                </Text>
+              </View>
+            )}
+
+            <Text style={styles.reportSectionLabel}>Reason</Text>
+            <View style={styles.reportReasonWrap}>
+              {REPORT_REASONS.map((reason) => {
+                const selected = reportReason === reason.value;
+                return (
+                  <TouchableOpacity
+                    key={reason.value}
+                    style={[
+                      styles.reportReasonChip,
+                      selected && styles.reportReasonChipSelected,
+                    ]}
+                    onPress={() => setReportReason(reason.value)}
+                    activeOpacity={0.75}
+                  >
+                    <Text
+                      style={[
+                        styles.reportReasonText,
+                        selected && styles.reportReasonTextSelected,
+                      ]}
+                    >
+                      {reason.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={styles.reportSectionLabel}>Additional details (optional)</Text>
+            <TextInput
+              style={styles.reportDetailsInput}
+              value={reportDetails}
+              onChangeText={(value) => setReportDetails(value.slice(0, 1000))}
+              placeholder="Tell the moderator what happened"
+              placeholderTextColor={Colors.textMuted}
+              multiline
+              maxLength={1000}
+            />
+
+            <View style={styles.reportModalActions}>
+              <TouchableOpacity
+                style={styles.reportCancelButton}
+                onPress={closeReport}
+                disabled={reporting}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.reportCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.reportSubmitButton,
+                  (!reportReason || reporting) && styles.reportSubmitDisabled,
+                ]}
+                onPress={() => void submitReport()}
+                disabled={!reportReason || reporting}
+                activeOpacity={0.8}
+              >
+                {reporting ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <Ionicons name="flag-outline" size={16} color={Colors.white} />
+                )}
+                <Text style={styles.reportSubmitText}>Submit report</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenWrapper>
   );
 };
