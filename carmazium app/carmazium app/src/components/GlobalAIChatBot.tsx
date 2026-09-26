@@ -190,6 +190,10 @@ export const GlobalAIChatBot: React.FC = () => {
   const [quickReplies] = useState(() => getDailyQuickReplies());
   const [hasAiConsent, setHasAiConsent] = useState<boolean | null>(null);
   const [reportedResponseIds, setReportedResponseIds] = useState<Set<string>>(new Set());
+  const [aiReportTarget, setAiReportTarget] = useState<HistoryItem | null>(null);
+  const [aiReportReason, setAiReportReason] = useState<AiReportReason | null>(null);
+  const [aiReportDetails, setAiReportDetails] = useState('');
+  const [aiReporting, setAiReporting] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -314,40 +318,47 @@ export const GlobalAIChatBot: React.FC = () => {
     }, 180);
   };
 
-  const submitAiReport = async (item: HistoryItem, reason: AiReportReason) => {
+  const closeAiReport = () => {
+    if (aiReporting) return;
+    setAiReportTarget(null);
+    setAiReportReason(null);
+    setAiReportDetails('');
+  };
+
+  const submitAiReport = async () => {
+    if (!aiReportTarget || !aiReportReason || aiReporting) return;
     try {
+      setAiReporting(true);
       await reportAiResponse({
-        prompt: item.prompt,
-        response: item.text,
-        reason,
+        prompt: aiReportTarget.prompt,
+        response: aiReportTarget.text,
+        reason: aiReportReason,
+        details: aiReportDetails.trim() || undefined,
       });
       setReportedResponseIds((prev) => {
         const next = new Set(prev);
-        next.add(item.id);
+        next.add(aiReportTarget.id);
         return next;
       });
+      setAiReportTarget(null);
+      setAiReportReason(null);
+      setAiReportDetails('');
       Alert.alert('Report sent', 'CarMazium will review this AI response.');
     } catch (error) {
       Alert.alert(
         'Could not send report',
         error instanceof Error ? error.message : 'Please try again.',
       );
+    } finally {
+      setAiReporting(false);
     }
   };
 
   const openAiReport = (item: HistoryItem) => {
     if (reportedResponseIds.has(item.id)) return;
-    Alert.alert(
-      'Report AI response',
-      'Why are you reporting this MaziuM AI response?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Unsafe or offensive', onPress: () => void submitAiReport(item, 'UNSAFE_OFFENSIVE') },
-        { text: 'Inaccurate or misleading', onPress: () => void submitAiReport(item, 'INACCURATE_MISLEADING') },
-        { text: 'Scam or dishonest guidance', onPress: () => void submitAiReport(item, 'SCAM_DISHONEST') },
-        { text: 'Other', onPress: () => void submitAiReport(item, 'OTHER') },
-      ],
-    );
+    setAiReportTarget(item);
+    setAiReportReason(null);
+    setAiReportDetails('');
   };
 
   // Chat box sits above the floating button (button at insets.bottom + 70, height 64px)
@@ -513,6 +524,104 @@ export const GlobalAIChatBot: React.FC = () => {
             </ChatErrorBoundary>
           </Pressable>
         </Pressable>
+      </Modal>
+
+      <Modal
+        visible={Boolean(aiReportTarget)}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={closeAiReport}
+      >
+        <View style={styles.aiReportBackdrop}>
+          <View style={styles.aiReportCard}>
+            <View style={styles.aiReportHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.aiReportEyebrow}>MaziuM AI safety</Text>
+                <Text style={styles.aiReportTitle}>Report AI response</Text>
+              </View>
+              <IconButton
+                style={styles.aiReportClose}
+                icon={<Ionicons name="close" size={20} color={Colors.white} />}
+                onPress={closeAiReport}
+                disabled={aiReporting}
+                accessibilityLabel="Close AI report"
+              />
+            </View>
+
+            <Text style={styles.aiReportHelp}>
+              Tell CarMazium why this response needs review. The reported AI response and its related prompt will be sent to the moderation queue.
+            </Text>
+
+            {aiReportTarget && (
+              <View style={styles.aiReportPreview}>
+                <Text style={styles.aiReportPreviewText} numberOfLines={5}>
+                  {aiReportTarget.text}
+                </Text>
+              </View>
+            )}
+
+            <Text style={styles.aiReportSectionLabel}>Reason</Text>
+            <View style={styles.aiReportReasonWrap}>
+              {([
+                ['UNSAFE_OFFENSIVE', 'Unsafe or offensive'],
+                ['INACCURATE_MISLEADING', 'Inaccurate or misleading'],
+                ['SCAM_DISHONEST', 'Scam or dishonest guidance'],
+                ['OTHER', 'Other'],
+              ] as Array<[AiReportReason, string]>).map(([value, label]) => {
+                const selected = aiReportReason === value;
+                return (
+                  <TouchableOpacity
+                    key={value}
+                    style={[styles.aiReportReasonChip, selected && styles.aiReportReasonChipSelected]}
+                    onPress={() => setAiReportReason(value)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.aiReportReasonText, selected && styles.aiReportReasonTextSelected]}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={styles.aiReportSectionLabel}>Additional details (optional)</Text>
+            <TextInput
+              style={styles.aiReportDetailsInput}
+              value={aiReportDetails}
+              onChangeText={(value) => setAiReportDetails(value.slice(0, 1000))}
+              placeholder="What was wrong with this response?"
+              placeholderTextColor={Colors.textMuted}
+              multiline
+              maxLength={1000}
+            />
+
+            <View style={styles.aiReportActions}>
+              <TouchableOpacity
+                style={styles.aiReportCancel}
+                onPress={closeAiReport}
+                disabled={aiReporting}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.aiReportCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.aiReportSubmit,
+                  (!aiReportReason || aiReporting) && styles.aiReportSubmitDisabled,
+                ]}
+                onPress={() => void submitAiReport()}
+                disabled={!aiReportReason || aiReporting}
+                activeOpacity={0.8}
+              >
+                {aiReporting
+                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  : <Ionicons name="flag-outline" size={15} color={Colors.white} />}
+                <Text style={styles.aiReportSubmitText}>Submit report</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Floating bot button */}
