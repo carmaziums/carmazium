@@ -1,4 +1,4 @@
-import { calculateVehicleValuation } from './vehicle-valuation';
+import { applyVehicleSpecificationAdjustments, calculateVehicleValuation } from './vehicle-valuation';
 
 describe('calculateVehicleValuation', () => {
     const vehicle = {
@@ -11,6 +11,67 @@ describe('calculateVehicleValuation', () => {
         condition: 'GOOD',
         writeOffCategory: 'NONE',
     };
+
+    it('keeps one market base while specification changes adjust the result', () => {
+        const base = calculateVehicleValuation({
+            make: vehicle.make,
+            model: vehicle.model,
+            year: vehicle.year,
+            mileage: vehicle.mileage,
+        }, [
+            { price: 7200, year: 2019, mileage: 58000, kind: 'SALE' },
+            { price: 7000, year: 2019, mileage: 64000, kind: 'ACCEPTED_OFFER' },
+            { price: 7600, year: 2020, mileage: 52000, kind: 'ACTIVE_ASK' },
+        ]);
+
+        const clean = applyVehicleSpecificationAdjustments(base, {
+            ...vehicle,
+            transmission: 'AUTOMATIC',
+            condition: 'EXCELLENT',
+            serviceHistory: 'Full Main Dealer',
+            numberOfKeys: 2,
+            ulezCompliant: true,
+            owners: '1',
+        });
+
+        const weaker = applyVehicleSpecificationAdjustments(base, {
+            ...vehicle,
+            transmission: 'MANUAL',
+            condition: 'FAIR',
+            serviceHistory: 'None',
+            numberOfKeys: 1,
+            ulezCompliant: false,
+            owners: '5+',
+        });
+
+        expect(clean.comparables).toBe(base.comparables);
+        expect(weaker.comparables).toBe(base.comparables);
+        expect(clean.source).toBe(base.source);
+        expect(weaker.source).toBe(base.source);
+        expect(clean.auction.marketValue).toBeGreaterThan(weaker.auction.marketValue);
+        expect(clean.auction.marketValue).toBeGreaterThan(0);
+        expect(weaker.auction.marketValue).toBeGreaterThan(0);
+    });
+
+    it('keeps a numeric fallback base even with no market comparables', () => {
+        const base = calculateVehicleValuation({
+            make: vehicle.make,
+            model: vehicle.model,
+            year: vehicle.year,
+            mileage: vehicle.mileage,
+        }, []);
+
+        const adjusted = applyVehicleSpecificationAdjustments(base, {
+            ...vehicle,
+            condition: 'POOR',
+            numberOfKeys: 1,
+            serviceHistory: 'None',
+        });
+
+        expect(base.auction.marketValue).toBeGreaterThan(0);
+        expect(adjusted.auction.marketValue).toBeGreaterThan(0);
+        expect(adjusted.source).toBe('CARMAZIUM_MODEL');
+    });
 
     it('uses real CarMazium transaction evidence when available', () => {
         const result = calculateVehicleValuation(vehicle, [
