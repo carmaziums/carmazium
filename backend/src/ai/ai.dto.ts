@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsArray, ValidateNested, IsIn, IsOptional, IsEnum, MaxLength, ArrayMaxSize } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, ValidateNested, IsIn, IsOptional, IsEnum, MaxLength, ArrayMaxSize, IsBoolean, Equals } from 'class-validator';
 import { Type } from 'class-transformer';
 import { AiReportReason, AiReportStatus } from '@prisma/client';
 
@@ -29,6 +29,10 @@ export class AiChatDto {
 }
 
 export class AiDescriptionDto {
+    @IsBoolean()
+    @Equals(true, { message: 'AI data-sharing consent is required' })
+    aiConsentAcknowledged: boolean;
+
     @IsOptional()
     @IsString()
     make?: string;
