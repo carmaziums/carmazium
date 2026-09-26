@@ -9,7 +9,8 @@
     "lint": "eslint",
     "parity:check": "node scripts/check-product-parity.mjs",
     "release:check": "node scripts/check-release-readiness.mjs",
-    "release:check:strict": "node scripts/check-release-readiness.mjs --strict"
+    "release:check:strict": "node scripts/check-release-readiness.mjs --strict",
+    "release:evidence:strict": "node scripts/check-release-candidate-evidence.mjs"
   },
   "dependencies": {
     "@prisma/client": "^7.3.0",
