@@ -111,6 +111,7 @@ const toolGroups: ToolGroup[] = [
         accentClass: "bg-amber-400",
         tools: [
             { href: "/dashboard/admin/analytics", title: "Analytics", description: "Review platform and traffic performance.", icon: TrendingUp },
+            { href: "/dashboard/admin/ai-reports", title: "AI Reports", description: "Review user-flagged MaziuM AI responses.", icon: Sparkles },
             { href: "/dashboard/admin/marketing-popup", title: "Marketing Popup", description: "Control the website marketing popup.", icon: Megaphone },
             { href: "/dashboard/admin/blog", title: "Blog", description: "Create and manage CarMazium articles.", icon: Newspaper },
         ],
