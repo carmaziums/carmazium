@@ -53,7 +53,9 @@ export default function ProfilePage() {
 
     const dealerKyc = profile?.dealerProfile?.kyc
     const isSoleTraderKyc = dealerKyc?.businessType === "SOLE_PROPRIETORSHIP"
-    const businessTypeLabel = isSoleTraderKyc ? "Sole Trader" : "Registered Company"
+    const businessTypeLabel = dealerKyc
+        ? (isSoleTraderKyc ? "Sole Trader" : "Registered Company")
+        : "Not selected"
     const verificationStatus = dealerKyc?.status || "Not submitted"
 
     const [personalForm, setPersonalForm] = React.useState({
