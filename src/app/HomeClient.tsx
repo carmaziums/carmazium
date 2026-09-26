@@ -353,6 +353,7 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
                   deliveryAvailable={listing.deliveryAvailable ?? false}
                   exteriorGrade={listing.exteriorGrade}
                   writeOffCategory={listing.writeOffCategory}
+                  isImported={listing.isImported ?? false}
                 />
               </motion.div>
             ))}

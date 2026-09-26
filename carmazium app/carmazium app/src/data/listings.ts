@@ -112,6 +112,8 @@ export interface CarListing {
    */
   bodyTypeRaw?: string | null;
   conditionRaw?: string | null;
+  /** True when the vehicle itself is an import (separate from a listing imported from another marketplace). */
+  isImported?: boolean | null;
   importedFromUrl?: string | null;
   importedSource?: string | null;
   linkedListingId?: string | null;

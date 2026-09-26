@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/Button"
-import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck, Star, MapPin, Gavel, Truck } from "lucide-react"
+import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck, Star, MapPin, Gavel, Truck, Globe } from "lucide-react"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { WriteOffCategoryBadge } from "@/components/ui/WriteOffCategoryBadge"
@@ -37,6 +37,7 @@ interface CarCardProps {
     deliveryAvailable?: boolean
     exteriorGrade?: number | null
     writeOffCategory?: string | null
+    isImported?: boolean | null
 }
 
 // Motorway-style exterior grade colors: 1 best → 5 worst
@@ -68,7 +69,7 @@ export function CarCard({
     title, listingId, make, model, price, image, images, href = "#",
     year, mileage, fuelType, bodyType, location, distanceMi,
     sellerId, sellerScore, isFeatured = false, badgeTier, status, bannerLabel, hasLinkedAuction,
-    isDepartedSale, deliveryAvailable, exteriorGrade, writeOffCategory
+    isDepartedSale, deliveryAvailable, exteriorGrade, writeOffCategory, isImported
 }: CarCardProps) {
     const makeModelLine = [make, model].filter(Boolean).join(" ").trim()
     const gradeStyle = exteriorGrade && exteriorGrade >= 1 && exteriorGrade <= 5 ? GRADE_STYLES[exteriorGrade] : null
@@ -121,8 +122,13 @@ export function CarCard({
                 )}
 
                 {/* Trust Badges Corner */}
-                {(badgeTier === 'STANDARD' || badgeTier === 'PREMIUM' || writeOffCategory) && (
+                {(badgeTier === 'STANDARD' || badgeTier === 'PREMIUM' || writeOffCategory || isImported) && (
                     <div className={`absolute right-3 z-30 flex flex-col gap-1.5 items-end drop-shadow-md ${listingId && status !== 'SOLD' ? 'top-16' : 'top-3'}`}>
+                        {isImported && (
+                            <div className="inline-flex items-center gap-1 bg-amber-400/95 backdrop-blur-md text-slate-950 text-[10px] font-black px-2 py-1 rounded shadow-sm border border-amber-100/70 uppercase tracking-wide">
+                                <Globe size={11} /> Imported Vehicle
+                            </div>
+                        )}
                         <WriteOffCategoryBadge category={writeOffCategory} />
                         {(badgeTier === 'STANDARD' || badgeTier === 'PREMIUM') && (
                             <>

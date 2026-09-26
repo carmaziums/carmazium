@@ -8,7 +8,7 @@ import {
     Gavel, Flame, Calendar, Zap, Users, Search, RefreshCw,
     Clock, Trophy, CheckCircle,
     ChevronRight, Timer, Gauge, Fuel, Car, MapPin,
-    BadgeCheck, ShieldCheck, Star, Truck,
+    BadgeCheck, ShieldCheck, Star, Truck, Globe,
     ArrowRight, ChevronDown, FileText, Lock, Handshake, Banknote,
     Eye, TrendingUp, CreditCard, Box, Filter,
     X, Loader2, RotateCcw, EyeOff,
@@ -259,6 +259,11 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
                                 </span>
                             )}
                         </div>
+                        {l.isImported && (
+                            <div className="flex items-center gap-1 bg-amber-400/95 backdrop-blur text-slate-950 text-[10px] font-black px-2 py-1 rounded shadow-sm border border-amber-100/70 uppercase tracking-wide">
+                                <Globe size={11} /> Imported Vehicle
+                            </div>
+                        )}
                         {(l.badgeTier === 'STANDARD' || l.badgeTier === 'PREMIUM') && (
                             <div className="flex flex-col gap-1.5 drop-shadow-md">
                                 <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md text-emerald-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-emerald-500/30">

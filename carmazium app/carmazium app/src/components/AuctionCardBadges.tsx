@@ -42,21 +42,28 @@ interface TrustBadgesProps {
   badgeTier?: string | null;
   isFeatured?: boolean | null;
   isDepartedSale?: boolean | null;
+  isImported?: boolean | null;
 }
 
 // Top-overlay badge stack — featured / verified+VIN report (tier-gated) /
 // tier pill / estate pill. Meant to sit under the existing LIVE/UPCOMING
 // pill each auction card already renders.
 export const AuctionCardTrustBadges: React.FC<TrustBadgesProps> = ({
-  badgeTier, isFeatured, isDepartedSale,
+  badgeTier, isFeatured, isDepartedSale, isImported,
 }) => {
   const trustEligible = badgeTier === 'STANDARD' || badgeTier === 'PREMIUM';
-  if (!isFeatured && !trustEligible && !isDepartedSale) return null;
+  if (!isFeatured && !trustEligible && !isDepartedSale && !isImported) return null;
   return (
     <View style={styles.overlayRow}>
       {!!isFeatured && (
         <View style={styles.featuredBadge}>
           <Text style={styles.featuredText}>⭐ FEATURED</Text>
+        </View>
+      )}
+      {!!isImported && (
+        <View style={styles.importedBadge}>
+          <Ionicons name="globe-outline" size={9} color="#111827" />
+          <Text style={styles.importedText}>IMPORTED VEHICLE</Text>
         </View>
       )}
       {trustEligible && (
@@ -127,6 +134,23 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size8,
     color: Colors.white,
     letterSpacing: 0.5,
+  },
+  importedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FACC15',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 5,
+  },
+  importedText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size8,
+    color: '#111827',
+    letterSpacing: 0.4,
   },
   verifiedBadge: {
     flexDirection: 'row',

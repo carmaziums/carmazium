@@ -301,6 +301,7 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
       : undefined,
     isDepartedSale: l.isDepartedSale  ?? false,
     exteriorGrade:  l.exteriorGrade   ?? null,
+    isImported:       l.isImported      ?? false,
     importedFromUrl:  l.importedFromUrl  ?? null,
     importedSource:   l.importedSource   ?? null,
     linkedListingId:  l.linkedListingId  ?? null,
