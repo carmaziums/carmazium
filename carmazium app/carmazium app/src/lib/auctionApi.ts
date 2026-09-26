@@ -62,6 +62,7 @@ export interface AuctionListingDetail {
   isDepartedSale?: boolean | null;
   badgeTier?: 'FREE' | 'BASIC' | 'STANDARD' | 'PREMIUM' | null;
   isFeatured?: boolean | null;
+  isImported?: boolean | null;
   // Auto-computed server-side from DamageRecord count — never seller-set.
   exteriorGrade?: number | null;
   bhp?: number | null;
@@ -165,8 +166,9 @@ export function auctionToListingParam(a: AuctionDetail): CarListing & { auctionI
       || `${l?.seller?.firstName || ''} ${l?.seller?.lastName || ''}`.trim()
       || 'Private Seller',
     images: l?.images ?? [],
-    isFeatured: false,
+    isFeatured: l?.isFeatured ?? false,
     isNew: false,
+    isImported: l?.isImported ?? false,
     description: l?.description ?? '',
     features: Array.isArray(l?.features) ? l.features : [],
   } as any;
