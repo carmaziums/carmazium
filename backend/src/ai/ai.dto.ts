@@ -1,9 +1,11 @@
-import { IsString, IsNotEmpty, IsArray, ValidateNested, IsIn, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, ValidateNested, IsIn, IsOptional, IsEnum, MaxLength, ArrayMaxSize } from 'class-validator';
 import { Type } from 'class-transformer';
+import { AiReportReason, AiReportStatus } from '@prisma/client';
 
 export class AiSearchDto {
     @IsString()
     @IsNotEmpty()
+    @MaxLength(1000)
     query: string;
 }
 
@@ -14,11 +16,13 @@ class ChatMessageDto {
 
     @IsString()
     @IsNotEmpty()
+    @MaxLength(4000)
     content: string;
 }
 
 export class AiChatDto {
     @IsArray()
+    @ArrayMaxSize(10)
     @ValidateNested({ each: true })
     @Type(() => ChatMessageDto)
     messages: ChatMessageDto[];
@@ -85,4 +89,38 @@ export class AiDescriptionDto {
     @IsOptional()
     @IsString()
     owners?: string;
+}
+
+
+export class AiReportDto {
+    @IsIn(['WEB', 'NATIVE'])
+    surface: 'WEB' | 'NATIVE';
+
+    @IsOptional()
+    @IsString()
+    @MaxLength(4000)
+    prompt?: string;
+
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(6000)
+    response: string;
+
+    @IsEnum(AiReportReason)
+    reason: AiReportReason;
+
+    @IsOptional()
+    @IsString()
+    @MaxLength(1000)
+    details?: string;
+}
+
+export class UpdateAiReportDto {
+    @IsEnum(AiReportStatus)
+    status: AiReportStatus;
+
+    @IsOptional()
+    @IsString()
+    @MaxLength(2000)
+    adminNote?: string;
 }
