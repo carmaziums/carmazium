@@ -1,0 +1,16 @@
+name: Create CarMazium Store Release Candidate
+
+jobs:
+  build_android:
+    name: Build signed Android store AAB
+    type: build
+    params:
+      platform: android
+      profile: production
+
+  build_ios:
+    name: Build signed iOS store archive
+    type: build
+    params:
+      platform: ios
+      profile: production
