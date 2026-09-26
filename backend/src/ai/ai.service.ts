@@ -464,13 +464,14 @@ export class AiService {
 
     async generateDescription(data: Record<string, any>): Promise<{ text: string }> {
         try {
+            const { aiConsentAcknowledged: _consent, ...vehicleData } = data;
             const prompt = `You are a professional automotive copywriter for CarMazium, UK's premium car marketplace.
 Your task is to write a compelling, concise, and sales-optimized vehicle description based on the following details.
 Do NOT use markdown, asterisks, or formatting. Just return the raw text, divided into short, readable paragraphs.
 Make it sound enthusiastic but honest and professional. Highlight key features and condition.
 
 Vehicle Details:
-${JSON.stringify(data, null, 2)}
+${JSON.stringify(vehicleData, null, 2)}
 `;
 
             const completion = await this.openai.chat.completions.create({
