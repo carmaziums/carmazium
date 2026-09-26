@@ -408,7 +408,7 @@ export const GlobalAIChatBot: React.FC = () => {
                       <Text style={styles.aiConsentTitle}>Before you use MaziuM AI</Text>
                     </View>
                     <Text style={styles.aiConsentText}>
-                      Your message and recent MaziuM chat context are sent to OpenAI to generate a response. Do not include passwords, payment credentials or unnecessary sensitive personal information.
+                      Your message and recent MaziuM chat context are sent to OpenAI to generate a response. AI can make mistakes, so verify important vehicle or finance information. Do not include passwords, payment credentials or unnecessary sensitive personal information.
                     </Text>
                     <View style={styles.aiConsentActions}>
                       <TouchableOpacity
