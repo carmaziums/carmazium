@@ -452,10 +452,10 @@ if (!ascAppId) {
 }
 
 const androidSubmit = eas.submit?.production?.android ?? {};
-if (!androidSubmit.serviceAccountKeyPath) {
-  external('EAS Android submit serviceAccountKeyPath is not configured');
-} else {
+if (androidSubmit.serviceAccountKeyPath) {
   ok('EAS Android submit path is declared (credential file remains external by design)');
+} else {
+  warn('EAS Android submit uses managed external credentials; strict certification proves them by requiring a successful Play internal-test upload');
 }
 
 const nextConfigSource = read('next.config.ts');
