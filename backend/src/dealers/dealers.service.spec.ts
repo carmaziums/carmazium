@@ -63,6 +63,9 @@ function buildPrismaMock() {
             create: jest.fn(),
             update: jest.fn(),
         },
+        transaction: {
+            upsert: jest.fn().mockResolvedValue({ id: 'txn-kyc' }),
+        },
         user: {
             findUnique: jest.fn(),
             findMany: jest.fn().mockResolvedValue([]),
@@ -158,6 +161,18 @@ describe('DealersService — KYC: createKycCheckoutSession', () => {
                 data: expect.objectContaining({
                     stripeChargedAt: expect.any(Date),
                     stripePaymentIntentId: 'pi_healed_123',
+                }),
+            }),
+        );
+        expect(prisma.transaction.upsert).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: { stripePaymentId: 'pi_healed_123' },
+                create: expect.objectContaining({
+                    listingId: null,
+                    userId: 'user-1',
+                    amount: 1,
+                    type: 'KYC_VERIFICATION',
+                    status: 'COMPLETED',
                 }),
             }),
         );
