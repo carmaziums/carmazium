@@ -1,5 +1,7 @@
 # Block 10 Release Evidence — 25 September 2026
 
+> Historical note: this document belongs to the earlier One Product parity programme. The current Apple/Google Store Audit final-release contract is `docs/native/STORE_FINAL_RELEASE_CERTIFICATION.md` and supersedes this document for store-release certification.
+
 ## Scope
 
 Certification baseline after the concurrent sole-trader KYC merge:
