@@ -1329,22 +1329,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 const finalListingId = response.data.id
                 const finalSlug = response.data.slug
 
-                if (damageRecords.length > 0) {
-                    try {
-                        const detections = damageRecords.map(r => ({
-                            part: r.zone,
-                            type: r.description,
-                            size: "MEDIUM",
-                            coords: { x: r.x, y: r.y, view: r.view },
-                            imageUrl: r.photoUrl ?? "",
-                        }))
-                        await apiClient(`/damage/${finalListingId}/save`, {
-                            method: 'POST',
-                            body: JSON.stringify({ detections }),
-                        })
-                    } catch (e) {
-                        console.error('Failed to save damage records:', e)
-                    }
+                try {
+                    const detections = damageRecords.map(r => ({
+                        part: r.zone,
+                        type: r.description,
+                        size: "MEDIUM",
+                        coords: { x: r.x, y: r.y, view: r.view },
+                        imageUrl: r.photoUrl ?? "",
+                    }))
+                    await apiClient(`/damage/${finalListingId}/save`, {
+                        method: 'POST',
+                        body: JSON.stringify({ detections }),
+                    })
+                } catch (e) {
+                    console.error('Failed to save damage records:', e)
                 }
 
                 localStorage.removeItem('carmazium_listing_draft')
