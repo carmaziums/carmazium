@@ -268,7 +268,7 @@ export function MaziumWidget() {
                                 <ShieldCheck size={14} className="text-primary" />
                                 Before you use Mazium AI
                             </div>
-                            <p>Your message and recent Mazium chat context are sent to OpenAI to generate a response. Do not include passwords, payment credentials or unnecessary sensitive personal information.</p>
+                            <p>Your message and recent Mazium chat context are sent to OpenAI to generate a response. AI can make mistakes, so verify important vehicle or finance information. Do not include passwords, payment credentials or unnecessary sensitive personal information.</p>
                             <div className="mt-3 flex items-center gap-2">
                                 <button
                                     onClick={acceptAiConsent}
