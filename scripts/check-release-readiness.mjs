@@ -442,12 +442,13 @@ if (Object.values(iosSubmit).some((value) => hasPlaceholder(value))) {
   ok('EAS iOS submit profile contains no fake store identifiers');
 }
 
-if (!iosSubmit.ascAppId) {
-  external('App Store Connect app ID is not configured for non-interactive iOS submission');
-} else if (!/^\d+$/.test(String(iosSubmit.ascAppId))) {
+const ascAppId = iosSubmit.ascAppId ?? process.env.CARMAZIUM_ASC_APP_ID;
+if (!ascAppId) {
+  external('App Store Connect app ID is not supplied for release certification');
+} else if (!/^\d+$/.test(String(ascAppId))) {
   fail('App Store Connect app ID must be numeric');
 } else {
-  ok('App Store Connect app ID is configured');
+  ok('App Store Connect app ID is supplied for release certification');
 }
 
 const androidSubmit = eas.submit?.production?.android ?? {};
