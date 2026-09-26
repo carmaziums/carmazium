@@ -138,7 +138,7 @@ export class ReceiptPdfService {
             txn.listing?.model,
         ].filter(Boolean).join(' ') || txn.listing?.title || 'Vehicle';
 
-        const description = this.buildDescription(txn.type, vehicleLabel, txn.description, txn.stripePaymentId, txn.listing?.vrm);
+        const description = this.buildDescription(txn.type, vehicleLabel, txn.description, txn.stripePaymentId, txn.listing?.vrm ?? null);
 
         const data: ReceiptData = {
             id: txn.id,
