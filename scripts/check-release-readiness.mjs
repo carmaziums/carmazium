@@ -646,6 +646,103 @@ if (
 requiredFile('docs/native/STORE_PRIVACY_PERMISSIONS.md', 'Native store privacy/permission declaration contract');
 
 // ---------------------------------------------------------------------------
+// 8. Accessibility, motion and current Android store compatibility.
+// ---------------------------------------------------------------------------
+const mobileRoot = 'carmazium app/carmazium app/';
+const iconButtonSource = read(`${mobileRoot}src/components/IconButton.tsx`);
+const hamburgerSource = read(`${mobileRoot}src/components/HamburgerButton.tsx`);
+const buttonSource = read(`${mobileRoot}src/components/Button.tsx`);
+const tabSource = read(`${mobileRoot}src/navigation/TabNavigator.tsx`);
+const reduceMotionSource = read(`${mobileRoot}src/hooks/useReduceMotionPreference.ts`);
+const aiChatSource = read(`${mobileRoot}src/components/GlobalAIChatBot.tsx`);
+
+if (
+  !iconButtonSource.includes('accessibilityLabel: string') ||
+  !iconButtonSource.includes('accessibilityRole="button"') ||
+  !iconButtonSource.includes('minWidth: MIN_HIT_TARGET') ||
+  !iconButtonSource.includes('minHeight: MIN_HIT_TARGET')
+) {
+  fail('Shared IconButton must enforce labels, button semantics and a minimum touch target');
+} else {
+  ok('Shared IconButton enforces labels and minimum touch targets');
+}
+
+if (
+  !hamburgerSource.includes('accessibilityLabel="Open navigation menu"') ||
+  !hamburgerSource.includes('accessibilityRole="button"')
+) {
+  fail('Hamburger navigation control must expose screen-reader semantics');
+} else {
+  ok('Hamburger navigation control is screen-reader labelled');
+}
+
+if (
+  !buttonSource.includes('accessibilityRole="button"') ||
+  !buttonSource.includes('busy: loading') ||
+  !buttonSource.includes('hitSlop={expandedHitSlop}')
+) {
+  fail('Shared Button must expose loading/disabled semantics and expanded compact touch targets');
+} else {
+  ok('Shared Button exposes state semantics and compact touch-target expansion');
+}
+
+if (
+  !tabSource.includes('accessibilityRole="tab"') ||
+  !tabSource.includes('accessibilityState={{ selected: isFocused }}') ||
+  !tabSource.includes('minHeight: 48') ||
+  !tabSource.includes('useReduceMotionPreference')
+) {
+  fail('Custom bottom tabs must be accessible, selected-state aware, 48dp high and reduced-motion aware');
+} else {
+  ok('Custom bottom tabs expose accessible tab semantics and reduced-motion support');
+}
+
+if (
+  !reduceMotionSource.includes('AccessibilityInfo.isReduceMotionEnabled') ||
+  !reduceMotionSource.includes("'reduceMotionChanged'")
+) {
+  fail('Shared reduced-motion hook must follow the operating-system accessibility setting');
+} else {
+  ok('Reduced-motion preference follows the operating-system setting');
+}
+
+if (
+  !nativeChatSource.includes('useReduceMotionPreference') ||
+  !nativeChatSource.includes('accessibilityRole="radio"') ||
+  !nativeChatSource.includes('accessibilityLabel="Message seen"')
+) {
+  fail('Native chat must protect reduced motion and expose report/read-state semantics');
+} else {
+  ok('Native chat exposes report/read-state semantics and reduced-motion handling');
+}
+
+if (
+  !aiChatSource.includes('useReduceMotionPreference') ||
+  !aiChatSource.includes("accessibilityLabel={isOpen ? 'Close MaziuM AI assistant' : 'Open MaziuM AI assistant'}") ||
+  !aiChatSource.includes('accessibilityLiveRegion="polite"')
+) {
+  fail('MaziuM AI must expose assistant controls/status and reduced-motion handling');
+} else {
+  ok('MaziuM AI exposes accessible controls/status and reduced-motion handling');
+}
+
+const buildPropertiesPlugin = (app.plugins ?? []).find(
+  (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-build-properties',
+);
+if (
+  !Array.isArray(buildPropertiesPlugin) ||
+  buildPropertiesPlugin[1]?.android?.compileSdkVersion !== 36 ||
+  buildPropertiesPlugin[1]?.android?.targetSdkVersion !== 36
+) {
+  fail('Android production build must compile and target API 36 for the current Google Play submission baseline');
+} else {
+  ok('Android production build explicitly compiles and targets API 36');
+}
+
+requiredFile('docs/native/STORE_ACCESSIBILITY_DEVICE_QA.md', 'Native accessibility/device QA contract');
+warn('Physical VoiceOver/TalkBack, large-text, payment, push and installed-link checks still require a signed build on real devices');
+
+// ---------------------------------------------------------------------------
 // Result.
 // ---------------------------------------------------------------------------
 console.log(

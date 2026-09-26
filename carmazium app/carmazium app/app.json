@@ -273,7 +273,9 @@
           "android": {
             "jvmHeapSize": "2048m",
             "enableProguardInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36
           }
         }
       ],

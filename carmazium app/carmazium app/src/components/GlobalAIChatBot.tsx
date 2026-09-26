@@ -16,6 +16,7 @@ import { Colors } from '../constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { IconButton } from './IconButton';
+import { useReduceMotionPreference } from '../hooks/useReduceMotionPreference';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -64,8 +65,14 @@ function getDailyQuickReplies() {
 
 const TypingDots: React.FC = () => {
   const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
+  const reduceMotion = useReduceMotionPreference();
 
   useEffect(() => {
+    if (reduceMotion) {
+      dots.forEach((dot) => dot.setValue(0));
+      return;
+    }
+
     const anims = dots.map((dot, i) =>
       Animated.loop(
         Animated.sequence([
@@ -79,7 +86,7 @@ const TypingDots: React.FC = () => {
     anims.forEach((a) => a.start());
     return () => anims.forEach((a) => a.stop());
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [reduceMotion]);
 
   return (
     <View style={styles.dotsRow}>
@@ -125,6 +132,8 @@ class ChatErrorBoundary extends React.Component<
               this.setState({ hasError: false });
               this.props.onReset();
             }}
+            accessibilityRole="button"
+            accessibilityLabel="Close MaziuM AI"
           >
             <Text style={styles.errorFallbackBtnText}>Close</Text>
           </TouchableOpacity>
@@ -452,6 +461,8 @@ export const GlobalAIChatBot: React.FC = () => {
                         style={styles.aiConsentPrimary}
                         onPress={() => void acceptAiConsent()}
                         activeOpacity={0.8}
+                        accessibilityRole="button"
+                        accessibilityLabel="Accept MaziuM AI data sharing and continue"
                       >
                         <Text style={styles.aiConsentPrimaryText}>I understand & continue</Text>
                       </TouchableOpacity>
@@ -459,6 +470,8 @@ export const GlobalAIChatBot: React.FC = () => {
                         style={styles.aiConsentSecondary}
                         onPress={openAiPrivacy}
                         activeOpacity={0.8}
+                        accessibilityRole="button"
+                        accessibilityLabel="View MaziuM AI privacy policy"
                       >
                         <Text style={styles.aiConsentSecondaryText}>Privacy</Text>
                       </TouchableOpacity>
@@ -505,6 +518,9 @@ export const GlobalAIChatBot: React.FC = () => {
                         style={styles.filterCard}
                         activeOpacity={0.8}
                         onPress={() => applyFilterCard(msg.filterCard!.params)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Apply filters: ${msg.filterCard.label}`}
+                        accessibilityHint="Opens Search with these suggested filters"
                       >
                         <View style={styles.filterCardIcon}>
                           <Ionicons name="search-outline" size={13} color={Colors.accent} />
@@ -528,6 +544,8 @@ export const GlobalAIChatBot: React.FC = () => {
                         style={styles.quickPromptChip}
                         onPress={() => sendMessage(q.action)}
                         activeOpacity={0.75}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Ask MaziuM: ${q.label}`}
                       >
                         <Text style={styles.quickPromptText}>{q.label}</Text>
                       </TouchableOpacity>
@@ -537,7 +555,11 @@ export const GlobalAIChatBot: React.FC = () => {
 
                 {/* Animated typing indicator */}
                 {isThinking && (
-                  <View style={[styles.msgBubble, styles.msgAI]}>
+                  <View
+                    style={[styles.msgBubble, styles.msgAI]}
+                    accessibilityLiveRegion="polite"
+                    accessibilityLabel="MaziuM is thinking"
+                  >
                     <TypingDots />
                   </View>
                 )}
@@ -554,6 +576,8 @@ export const GlobalAIChatBot: React.FC = () => {
                   onSubmitEditing={() => sendMessage(message)}
                   returnKeyType="send"
                   editable={!isThinking && hasAiConsent === true}
+                  accessibilityLabel="Message MaziuM AI"
+                  accessibilityHint="Enter a question about cars"
                 />
                 <IconButton style={[styles.sendBtn, (isThinking || !message.trim()) && { opacity: 0.4 }]} icon={<Ionicons name="send" size={16} color={Colors.white} />} onPress={() => sendMessage(message)} disabled={isThinking || hasAiConsent !== true || !message.trim()} accessibilityLabel="Send message" />
               </View>
@@ -613,6 +637,9 @@ export const GlobalAIChatBot: React.FC = () => {
                     style={[styles.aiReportReasonChip, selected && styles.aiReportReasonChipSelected]}
                     onPress={() => setAiReportReason(value)}
                     activeOpacity={0.75}
+                    accessibilityRole="radio"
+                    accessibilityLabel={label}
+                    accessibilityState={{ checked: selected }}
                   >
                     <Text style={[styles.aiReportReasonText, selected && styles.aiReportReasonTextSelected]}>
                       {label}
@@ -639,6 +666,9 @@ export const GlobalAIChatBot: React.FC = () => {
                 onPress={closeAiReport}
                 disabled={aiReporting}
                 activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel AI response report"
+                accessibilityState={{ disabled: aiReporting }}
               >
                 <Text style={styles.aiReportCancelText}>Cancel</Text>
               </TouchableOpacity>
@@ -650,6 +680,9 @@ export const GlobalAIChatBot: React.FC = () => {
                 onPress={() => void submitAiReport()}
                 disabled={!aiReportReason || aiReporting}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Submit AI response report"
+                accessibilityState={{ disabled: !aiReportReason || aiReporting, busy: aiReporting }}
               >
                 {aiReporting
                   ? <ActivityIndicator size="small" color={Colors.white} />
@@ -667,6 +700,9 @@ export const GlobalAIChatBot: React.FC = () => {
           activeOpacity={0.85}
           onPress={() => setIsOpen((v) => !v)}
           style={[styles.botButton, isOpen ? styles.botButtonActive : styles.botButtonInactive]}
+          accessibilityRole="button"
+          accessibilityLabel={isOpen ? 'Close MaziuM AI assistant' : 'Open MaziuM AI assistant'}
+          accessibilityState={{ expanded: isOpen }}
         >
           {isOpen && <View style={styles.glowEffect} />}
           <Image

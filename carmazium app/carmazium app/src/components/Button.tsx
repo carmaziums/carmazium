@@ -33,6 +33,8 @@ interface ButtonProps {
   fullWidth?: boolean;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 const SIZE_HEIGHT: Record<ButtonSize, number> = { sm: 40, default: 50, lg: 56, icon: 44 };
@@ -52,9 +54,15 @@ export const Button: React.FC<ButtonProps> = ({
   fullWidth = false,
   style,
   textStyle,
+  accessibilityLabel,
+  accessibilityHint,
 }) => {
   const isDisabled = disabled || loading;
   const height = SIZE_HEIGHT[size];
+  const resolvedAccessibilityLabel = accessibilityLabel ?? label ?? 'Button';
+  const expandedHitSlop = size === 'sm' || size === 'icon'
+    ? { top: 4, bottom: 4, left: 4, right: 4 }
+    : undefined;
 
   const shapeStyle =
     shape === 'pill'
@@ -103,6 +111,11 @@ export const Button: React.FC<ButtonProps> = ({
         disabled={isDisabled}
         activeOpacity={0.85}
         style={[containerStyle, styles.overflowHidden]}
+        accessibilityRole="button"
+        accessibilityLabel={resolvedAccessibilityLabel}
+        accessibilityHint={accessibilityHint}
+        accessibilityState={{ disabled: isDisabled, busy: loading }}
+        hitSlop={expandedHitSlop}
       >
         <LinearGradient
           colors={isDisabled ? [Colors.textDisabled, Colors.textDisabled] : [Colors.accentGlow, Colors.accent]}
@@ -116,7 +129,17 @@ export const Button: React.FC<ButtonProps> = ({
   }
 
   return (
-    <TouchableOpacity onPress={onPress} disabled={isDisabled} activeOpacity={0.7} style={containerStyle}>
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={isDisabled}
+      activeOpacity={0.7}
+      style={containerStyle}
+      accessibilityRole="button"
+      accessibilityLabel={resolvedAccessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      hitSlop={expandedHitSlop}
+    >
       {content}
     </TouchableOpacity>
   );
