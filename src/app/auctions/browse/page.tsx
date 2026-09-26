@@ -642,21 +642,26 @@ export default function AuctionsBrowsePage() {
         })
     }, [sourceAuctions, search, appliedFilters, userLocation])
 
-    // A signed-in buyer or seller is bounced off the WHOLE route, hero included —
-    // not just the grid below. There is nothing on this page for them: they can't
-    // browse the stock, can't bid, and the pitch underneath is aimed at dealers.
+    // The live-auction browser is a trade-only buying surface. Do not render
+    // the hero, auction counts, filters or any stock until AuthContext confirms
+    // that the visitor is a verified dealer (admins retain operational access).
     //
-    // Guests are deliberately NOT blocked here. They still get the hero and How
-    // It Works — that is the dealer-recruitment pitch, it shows no vehicles, and
-    // it is what makes the Trade Exchange findable by the dealers it is for.
-    //
-    // Gated on `!authLoading` on purpose: this page is server-rendered for SEO
-    // and AuthContext always starts unresolved, so blocking during the loading
-    // window would serve crawlers a "Dealers only" panel instead of the pitch.
-    if (!authLoading && user && !canTrade) {
+    // RequireAuth handles each denied state appropriately:
+    // - guest -> sign in / dealer signup
+    // - retail buyer/seller -> switch to Dealer account
+    // - unverified dealer -> finish KYC / verification pending
+    if (authLoading || !user || !canTrade) {
         return (
             <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
-                <RequireAuth allowedRoles={TRADE_EXCHANGE_ROLES} requireVerifiedDealer>{null}</RequireAuth>
+                <RequireAuth
+                    title="Verified Dealer Access Required"
+                    signupRole="DEALER"
+                    allowedRoles={TRADE_EXCHANGE_ROLES}
+                    requireVerifiedDealer
+                    message="Live vehicle auctions are available only to verified, KYC-approved motor dealers."
+                >
+                    {null}
+                </RequireAuth>
             </div>
         )
     }
