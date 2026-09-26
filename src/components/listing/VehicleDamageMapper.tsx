@@ -8,6 +8,7 @@ import { ALL_ZONES } from "./ThreeDVehicleViewer"
 import { uploadImage } from "@/lib/supabase"
 import type { ThreeDVehicleViewerProps } from "./ThreeDVehicleViewer"
 import { ThreeDErrorBoundary } from "./ThreeDErrorBoundary"
+import { computeExteriorGradeFromDefectCount } from "@/lib/exteriorGrade"
 
 // Dynamic import — Three.js must not run on the server
 const ThreeDVehicleViewer = dynamic<ThreeDVehicleViewerProps>(
@@ -177,7 +178,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
     return ALL_ZONES.find(z => z.id === zoneId)?.label ?? zoneId
   }
 
-  const grade = records.length === 0 ? 1 : records.length <= 2 ? 1 : records.length <= 4 ? 2 : records.length <= 6 ? 3 : records.length <= 9 ? 4 : 5
+  const grade = computeExteriorGradeFromDefectCount(records.length)
   const GRADE_META: Record<number, { label: string; desc: string; color: string; bg: string }> = {
     1: { label: 'Excellent', desc: 'Negligible or no cosmetic damage', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
     2: { label: 'Great', desc: 'Minor cosmetic damage only', color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' },
