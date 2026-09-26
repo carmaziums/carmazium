@@ -167,7 +167,7 @@ export class DvlaService {
 
     // ─── Public entry point ───────────────────────────────────────────────────
 
-    async lookupVrm(vrm: string): Promise<DvlaLookupResult> {
+    async lookupVrm(vrm: string, allowAiEnrichment = false): Promise<DvlaLookupResult> {
         const normalised = vrm.replace(/\s+/g, '').toUpperCase();
 
         if (!/^[A-Z0-9]{2,7}$/.test(normalised)) {
@@ -207,20 +207,22 @@ export class DvlaService {
             if (motResult.value.firstUsedDate) combined.firstUsedDate = motResult.value.firstUsedDate;
         }
 
-        // Enrich the registration record with evidence-backed live specification
-        // research. This never replaces trusted DVLA/MOT values. Exact trim is
-        // only auto-filled from strong exact-registration evidence; broader
-        // profile consensus may fill non-identity specs such as gearbox/body.
-        const enrichment = await this.aiService.enrichVehicleSpecification({
-            vrm: normalised,
-            make: combined.make,
-            model: combined.model,
-            year: combined.year,
-            engineSize: combined.engineSize,
-            fuelType: combined.fuelType,
-            colour: combined.primaryColour || combined.colour,
-            firstUsedDate: combined.firstUsedDate,
-        });
+        // Optional AI-backed live specification enrichment. The registration
+        // and vehicle profile are only sent to OpenAI after the client confirms
+        // the seller has explicitly accepted AI data sharing. Core DVLA/MOT
+        // lookup works without this path.
+        const enrichment = allowAiEnrichment
+            ? await this.aiService.enrichVehicleSpecification({
+                vrm: normalised,
+                make: combined.make,
+                model: combined.model,
+                year: combined.year,
+                engineSize: combined.engineSize,
+                fuelType: combined.fuelType,
+                colour: combined.primaryColour || combined.colour,
+                firstUsedDate: combined.firstUsedDate,
+            })
+            : null;
 
         if (enrichment) {
             combined.specEnrichment = {
