@@ -169,6 +169,12 @@ function fallbackMid(input: VehicleValuationInput): { value: number; calibratedM
     if (transmission === 'AUTO') value *= 1.04;
     if (transmission === 'MANUAL') value *= 0.96;
 
+    // Condition/history/automatic exterior grade must affect the valuation even
+    // when no comparable market rows are available. Previously these factors
+    // were only applied while normalising comparables, so the fallback path
+    // ignored the seller's condition and damage grade entirely.
+    value *= vehicleProfileFactor(input);
+
     if (modelProfile) value *= modelProfile.retainedValueAdjustment;
 
     return {
