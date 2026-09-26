@@ -340,6 +340,14 @@ describe('DealersService — KYC: submitKyc', () => {
                 data: expect.objectContaining({ isVerified: false, verificationDate: null }),
             }),
         );
+        expect(prisma.dealerProfile.update).toHaveBeenCalledWith({
+            where: { id: 'profile-1' },
+            data: expect.objectContaining({
+                vatNumber: 'SOLE-TRADER-NOT-VAT-profile-1',
+                registrationNumber: null,
+                website: null,
+            }),
+        });
         expect(emailService.sendKycSubmissionAdminAlert).toHaveBeenCalled();
     });
 
