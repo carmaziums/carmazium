@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, AccessibilityInfo } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -94,7 +94,6 @@ interface AnimatedTabIconProps {
   iconType: 'ionicons' | 'material-community';
   color: string;
   size: number;
-  onPress?: () => void;
 }
 
 const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = React.memo(function AnimatedTabIcon({
@@ -103,18 +102,32 @@ const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = React.memo(function Anim
   iconType,
   color,
   size,
-  onPress,
 }) {
   const scale = useSharedValue(1);
+  const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
-    if (focused) {
+    let mounted = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => { if (mounted) setReduceMotion(enabled); })
+      .catch(() => {});
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (focused && !reduceMotion) {
       scale.value = withSequence(
         withSpring(1.2, { damping: 12, stiffness: 200 }),
         withSpring(1.0, { damping: 12, stiffness: 200 }),
       );
+    } else {
+      scale.value = 1;
     }
-  }, [focused]);
+  }, [focused, reduceMotion]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -127,14 +140,16 @@ const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = React.memo(function Anim
           name={iconName as any}
           size={size}
           color={color}
-          onPress={onPress}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
         />
       ) : (
         <Ionicons
           name={iconName as any}
           size={size}
           color={color}
-          onPress={onPress}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
         />
       )}
     </Animated.View>
@@ -185,7 +200,16 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
           const onPress = pressHandlers[route.key];
 
           return (
-            <View key={route.key} style={styles.tabItem}>
+            <TouchableOpacity
+              key={route.key}
+              style={styles.tabItem}
+              onPress={onPress}
+              activeOpacity={0.75}
+              accessibilityRole="tab"
+              accessibilityLabel={config.label === 'DASHBOARD' ? 'Dashboard' : config.label.toLowerCase()}
+              accessibilityState={{ selected: isFocused }}
+              accessibilityHint={isFocused ? undefined : `Switches to the ${config.label.toLowerCase()} tab`}
+            >
               {/* Active dot above focused tabs */}
               {isFocused && (
                 <View style={styles.activeDot} />
@@ -197,7 +221,6 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                   iconType={config.iconType}
                   color={isFocused ? Colors.accent : Colors.tabInactive}
                   size={config.iconType === 'material-community' ? 22 : 20}
-                  onPress={onPress}
                 />
               </View>
               <Text
@@ -205,14 +228,13 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                   styles.tabLabel,
                   isFocused ? styles.tabLabelActive : styles.tabLabelInactive,
                 ]}
-                onPress={onPress}
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.6}
               >
                 {config.label}
               </Text>
-            </View>
+            </TouchableOpacity>
           );
         })}
       </View>
