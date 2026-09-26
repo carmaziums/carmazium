@@ -1123,6 +1123,82 @@ if (
   ok('All client message transports share the same backend content-safety boundary');
 }
 
+// Store audit Block 4 — MaziuM AI safety/reporting parity. Both clients must
+// require the same first-use acknowledgement, expose in-app response reporting,
+// and rely on one backend moderation/reporting contract.
+const webMaziumSafety = read('src/components/features/MaziumWidget.tsx');
+const mobileMaziumSafety = read('carmazium app/carmazium app/src/components/GlobalAIChatBot.tsx');
+const webAiApiSafety = read('src/lib/aiApi.ts');
+const mobileAiApiSafety = read('carmazium app/carmazium app/src/lib/aiApi.ts');
+const backendAiSafety = read('backend/src/ai/ai.service.ts');
+const backendAiController = read('backend/src/ai/ai.controller.ts');
+const backendAiReportMigration = read('backend/prisma/manual-migrations/20260926_ai_reports.sql');
+const backendAiRateLimit = read('backend/src/chat/chat-rate-limit.service.ts');
+const adminAiReportQueue = read('src/app/dashboard/admin/ai-reports/page.tsx');
+const webListingAiConsent = read('src/components/listing/ListingWizard.tsx');
+const nativeListingAiConsent = read('carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx');
+const nativeSearchAiConsent = read('carmazium app/carmazium app/src/screens/main/SearchScreen.tsx');
+const dvlaControllerAiConsent = read('backend/src/dvla/dvla.controller.ts');
+const dvlaServiceAiConsent = read('backend/src/dvla/dvla.service.ts');
+const aiDtoConsent = read('backend/src/ai/ai.dto.ts');
+
+if (
+  !webMaziumSafety.includes('mazium_ai_consent_v1') ||
+  !webMaziumSafety.includes('I understand & continue') ||
+  !webMaziumSafety.includes('Report AI response') ||
+  !mobileMaziumSafety.includes('mazium_ai_consent_v1') ||
+  !mobileMaziumSafety.includes('I understand & continue') ||
+  !mobileMaziumSafety.includes('Report AI response') ||
+  !webAiApiSafety.includes('reportAiResponse') ||
+  !mobileAiApiSafety.includes('reportAiResponse')
+) {
+  fail('MaziuM AI first-use consent or reporting controls drifted across web/native');
+} else {
+  ok('Web and native MaziuM AI share first-use disclosure and in-app reporting');
+}
+
+if (
+  !backendAiReportMigration.includes('"id" text NOT NULL') ||
+  !backendAiReportMigration.includes('ENABLE ROW LEVEL SECURITY')
+) {
+  fail('AI report database shape or RLS regressed');
+} else {
+  ok('AI report table keeps Prisma-compatible IDs and RLS');
+}
+
+if (
+  !backendAiSafety.includes("model: 'omni-moderation-latest'") ||
+  !backendAiSafety.includes('LOCAL_AI_BLOCK_RULES') ||
+  !backendAiSafety.includes('safeResult') ||
+  !backendAiSafety.includes('createReport') ||
+  !backendAiController.includes("@Post('report')") ||
+  !backendAiController.includes('consumeAiReport(source)') ||
+  !backendAiRateLimit.includes('consumeAiReport(sourceKey') ||
+  !backendAiController.includes("@Get('admin/reports')") ||
+  !adminAiReportQueue.includes('AI response reports') ||
+  !adminAiReportQueue.includes('RESOLVED') ||
+  !adminAiReportQueue.includes('DISMISSED')
+) {
+  fail('MaziuM AI safety/report review backend drifted');
+} else {
+  ok('MaziuM AI input/output moderation and admin report review remain enforced');
+}
+
+if (
+  !webListingAiConsent.includes('ensureAiSharingConsent') ||
+  !webListingAiConsent.includes('dvlaLookup(formData.vrm, hasAiSharingConsent())') ||
+  !nativeListingAiConsent.includes('ensureSellerAiConsent') ||
+  !nativeListingAiConsent.includes('allowAiEnrichment') ||
+  !nativeSearchAiConsent.includes('ensureAiSearchConsent') ||
+  !dvlaControllerAiConsent.includes('dto.allowAiEnrichment === true') ||
+  !dvlaServiceAiConsent.includes('allowAiEnrichment = false') ||
+  !aiDtoConsent.includes("AI data-sharing consent is required")
+) {
+  fail('AI data-sharing consent can drift across MaziuM, AI Search, seller description or vehicle enrichment');
+} else {
+  ok('Interactive and seller AI data sharing remains explicit and fail-closed across clients/backend');
+}
+
 const webPricing = read('src/lib/pricingConfig.ts');
 const mobilePricing = read('carmazium app/carmazium app/src/constants/pricing.ts');
 const payments = read('backend/src/payments/payments.service.ts');

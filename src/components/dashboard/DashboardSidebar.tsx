@@ -33,6 +33,7 @@ import {
     LifeBuoy,
     Loader2,
     Gift,
+    Sparkles,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
@@ -220,6 +221,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/dashboard/admin/services", label: "Trade Services", icon: Briefcase, section: "Accounts & partners" },
 
             { href: "/dashboard/admin/analytics", label: "Analytics", icon: TrendingUp, section: "Content & insights" },
+            { href: "/dashboard/admin/ai-reports", label: "AI Reports", icon: Sparkles, section: "Content & insights" },
             { href: "/dashboard/admin/marketing-popup", label: "Marketing Popup", icon: Megaphone, section: "Content & insights" },
             { href: "/dashboard/admin/blog", label: "Blog", icon: Newspaper, section: "Content & insights" },
         ],

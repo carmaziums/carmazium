@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, Matches } from 'class-validator';
+import { IsString, IsNotEmpty, Matches, IsBoolean, IsOptional } from 'class-validator';
 import { DvlaService, DvlaLookupResult } from './dvla.service';
 
 // ─── Request DTO ──────────────────────────────────────────────────────────────
@@ -20,6 +20,10 @@ class DvlaLookupDto {
     @IsNotEmpty()
     @Matches(/^[A-Za-z0-9 ]{2,8}$/, { message: 'Must be a valid UK registration number' })
     vrm: string;
+
+    @IsOptional()
+    @IsBoolean()
+    allowAiEnrichment?: boolean;
 }
 
 // ─── Controller ───────────────────────────────────────────────────────────────
@@ -35,11 +39,14 @@ export class DvlaController {
     @HttpCode(HttpStatus.OK)
     @UsePipes(new ValidationPipe({ whitelist: true }))
     @ApiOperation({ summary: 'Look up a UK vehicle by registration number via DVLA VES API' })
-    @ApiBody({ schema: { properties: { vrm: { type: 'string', example: 'AB12CDE' } } } })
+    @ApiBody({ schema: { properties: {
+        vrm: { type: 'string', example: 'AB12CDE' },
+        allowAiEnrichment: { type: 'boolean', description: 'Only true after explicit user AI-data-sharing consent' },
+    } } })
     @ApiResponse({ status: 200, description: 'Vehicle data returned successfully' })
     @ApiResponse({ status: 400, description: 'Invalid or unrecognised registration number' })
     @ApiResponse({ status: 503, description: 'DVLA API key not configured or DVLA service unavailable' })
     async lookup(@Body() dto: DvlaLookupDto): Promise<DvlaLookupResult> {
-        return this.dvlaService.lookupVrm(dto.vrm);
+        return this.dvlaService.lookupVrm(dto.vrm, dto.allowAiEnrichment === true);
     }
 }

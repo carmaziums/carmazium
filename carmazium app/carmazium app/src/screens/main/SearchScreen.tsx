@@ -25,6 +25,8 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -513,8 +515,49 @@ export const SearchScreen: React.FC = () => {
 
   const sortLabel = SORT_OPTIONS.find(s => s.id === sortId)?.label ?? 'Sort';
 
+  const searchAiConsentKey = () => {
+    const userId = useAuthStore.getState().user?.id;
+    return userId ? `mazium_ai_consent_v1:${userId}` : 'mazium_ai_consent_v1:anonymous';
+  };
+
+  const ensureAiSearchConsent = async (): Promise<boolean> => {
+    const key = searchAiConsentKey();
+    try {
+      if (await AsyncStorage.getItem(key) === 'accepted') return true;
+    } catch {
+      // Continue to the explicit consent prompt.
+    }
+
+    return new Promise<boolean>((resolve) => {
+      Alert.alert(
+        'AI data sharing',
+        'Your AI search text will be sent to OpenAI to generate search guidance. AI can make mistakes. Do not include passwords, payment credentials or unnecessary sensitive personal information. Do you consent?',
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+          {
+            text: 'Privacy',
+            onPress: () => {
+              try { navigation.navigate('PrivacyPolicy'); } catch {}
+              resolve(false);
+            },
+          },
+          {
+            text: 'I consent',
+            onPress: () => {
+              AsyncStorage.setItem(key, 'accepted')
+                .then(() => resolve(true))
+                .catch(() => resolve(false));
+            },
+          },
+        ],
+        { cancelable: false },
+      );
+    });
+  };
+
   const handleAiSearch = async () => {
     if (!aiQuery.trim() || aiLoading) return;
+    if (!(await ensureAiSearchConsent())) return;
     setAiLoading(true);
     try {
       const result = await naturalLanguageSearch(aiQuery.trim());
@@ -748,6 +791,9 @@ export const SearchScreen: React.FC = () => {
             own sheet style doesn't provide */}
         <View style={{ gap: 12 }}>
           <Text style={s.aiModalSubtitle}>Describe what you're looking for in plain English</Text>
+          <Text style={s.aiPrivacyHint}>
+            AI Search sends your search text to OpenAI. Do not include sensitive information; you will be asked for consent before the first search.
+          </Text>
           <TextInput
             style={s.aiModalInput}
             value={aiQuery}
@@ -1527,6 +1573,7 @@ const s = StyleSheet.create({
 
   // AI modal
   aiModalSubtitle: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.iconMuted, lineHeight: 19 },
+  aiPrivacyHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted, lineHeight: 16 },
   aiModalInput: { backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, paddingVertical: 14, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white, minHeight: 80, textAlignVertical: 'top' },
   aiModalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: Radius.inline, backgroundColor: Colors.warning },
   aiModalBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },

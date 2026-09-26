@@ -166,6 +166,15 @@ export class ChatRateLimitService implements OnModuleDestroy {
         );
     }
 
+    consumeAiReport(sourceKey: string): Promise<void> {
+        return this.consume(
+            `ai-report:${sourceKey}`,
+            10,
+            60 * 60_000,
+            'Too many AI reports were submitted. Please try again later.',
+        );
+    }
+
     consumeBlockChange(userId: string): Promise<void> {
         return this.consume(
             `block:${userId}`,

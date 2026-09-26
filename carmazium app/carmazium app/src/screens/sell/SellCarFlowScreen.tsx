@@ -36,6 +36,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import * as Location from 'expo-location';
 import { getAuctionOpeningBid, getAuctionReserveGuide } from '../../lib/auctionPricing';
 import { getVehicleValuation, type VehicleValuation } from '../../lib/valuationApi';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   encodeVehicleImageCategory,
   parseVehicleImageMetadata,
@@ -1092,6 +1093,56 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // helpers above so the Next button disables through one consistent path.
   const step2HasErrors = (): boolean => allImages.length < MIN_PHOTOS;
 
+  const sellerAiConsentKey = () => {
+    const userId = useAuthStore.getState().user?.id;
+    return userId ? `mazium_ai_consent_v1:${userId}` : '';
+  };
+
+  const hasSellerAiConsent = async (): Promise<boolean> => {
+    const key = sellerAiConsentKey();
+    if (!key) return false;
+    try {
+      return await AsyncStorage.getItem(key) === 'accepted';
+    } catch {
+      return false;
+    }
+  };
+
+  const ensureSellerAiConsent = async (): Promise<boolean> => {
+    if (await hasSellerAiConsent()) return true;
+
+    return new Promise<boolean>((resolve) => {
+      Alert.alert(
+        'AI data sharing',
+        'To generate a description, CarMazium will send the vehicle details you entered, including the registration where available, to OpenAI. AI can make mistakes, so review the result before publishing. Do you consent to this AI processing?',
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+          {
+            text: 'Privacy',
+            onPress: () => {
+              try { navigation?.navigate('PrivacyPolicy'); } catch {}
+              resolve(false);
+            },
+          },
+          {
+            text: 'I consent',
+            onPress: () => {
+              const key = sellerAiConsentKey();
+              if (!key) {
+                resolve(false);
+                return;
+              }
+              AsyncStorage.setItem(key, 'accepted')
+                .then(() => resolve(true))
+                .catch(() => resolve(false));
+            },
+          },
+        ],
+        { cancelable: false },
+      );
+    });
+  };
+
   // ─── DVLA Auto-submit handler ─────────────────────────────────────────────────
 
   const handlePlateChange = (raw: string) => {
@@ -1109,9 +1160,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     if (!clean) return Alert.alert('Enter a registration', 'Please enter a UK registration number.');
     setDvlaLoading(true);
     try {
+      const allowAiEnrichment = await hasSellerAiConsent();
       const data = await apiClient<DvlaData>('/dvla/lookup', {
         method: 'POST',
-        body: JSON.stringify({ vrm: clean }),
+        body: JSON.stringify({ vrm: clean, allowAiEnrichment }),
         timeoutMs: 25_000,
       });
       // Use String() on every field — the backend might return nested objects for some fields
@@ -1227,6 +1279,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   async function handleGenerateDescription() {
     if (!make || !model) return Alert.alert('Incomplete', 'Enter Make & Model first.');
+    if (!(await ensureSellerAiConsent())) return;
     setAiGenerating(true);
     try {
       const res = await apiClient<any>('/ai/generate-description', {
@@ -1234,6 +1287,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         body: JSON.stringify({
           make, model, year, mileage, fuelType, transmission, color: colour, features, vrm, motStatus,
           condition, bodyType, serviceHistory, owners, engineSize,
+          aiConsentAcknowledged: true,
         }),
       });
       // API may return { data: { text: "..." } } or { text: "..." } directly
