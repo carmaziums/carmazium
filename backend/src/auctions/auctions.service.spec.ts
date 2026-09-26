@@ -1192,7 +1192,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
         const notificationCall = notificationsService.create.mock.calls.find(
             ([payload]: any[]) => payload.type === 'AUCTION_ENDED_NO_SALE',
         )?.[0];
-        expect(notificationCall?.message).toContain('CarMazium’s dealer network');
+        expect(notificationCall?.message).toContain('CarMazium’s verified dealer network');
         expect(notificationCall?.message).not.toMatch(/\b\d+[,.]?\d*\s+verified dealers\b/i);
     });
 
