@@ -1123,6 +1123,48 @@ if (
   ok('All client message transports share the same backend content-safety boundary');
 }
 
+// Store audit Block 4 — MaziuM AI safety/reporting parity. Both clients must
+// require the same first-use acknowledgement, expose in-app response reporting,
+// and rely on one backend moderation/reporting contract.
+const webMaziumSafety = read('src/components/features/MaziumWidget.tsx');
+const mobileMaziumSafety = read('carmazium app/carmazium app/src/components/GlobalAIChatBot.tsx');
+const webAiApiSafety = read('src/lib/aiApi.ts');
+const mobileAiApiSafety = read('carmazium app/carmazium app/src/lib/aiApi.ts');
+const backendAiSafety = read('backend/src/ai/ai.service.ts');
+const backendAiController = read('backend/src/ai/ai.controller.ts');
+const adminAiReportQueue = read('src/app/dashboard/admin/ai-reports/page.tsx');
+
+if (
+  !webMaziumSafety.includes('mazium_ai_consent_v1') ||
+  !webMaziumSafety.includes('I understand & continue') ||
+  !webMaziumSafety.includes('Report AI response') ||
+  !mobileMaziumSafety.includes('mazium_ai_consent_v1') ||
+  !mobileMaziumSafety.includes('I understand & continue') ||
+  !mobileMaziumSafety.includes('Report AI response') ||
+  !webAiApiSafety.includes('reportAiResponse') ||
+  !mobileAiApiSafety.includes('reportAiResponse')
+) {
+  fail('MaziuM AI first-use consent or reporting controls drifted across web/native');
+} else {
+  ok('Web and native MaziuM AI share first-use disclosure and in-app reporting');
+}
+
+if (
+  !backendAiSafety.includes("model: 'omni-moderation-latest'") ||
+  !backendAiSafety.includes('LOCAL_AI_BLOCK_RULES') ||
+  !backendAiSafety.includes('safeResult') ||
+  !backendAiSafety.includes('createReport') ||
+  !backendAiController.includes("@Post('report')") ||
+  !backendAiController.includes("@Get('admin/reports')") ||
+  !adminAiReportQueue.includes('AI response reports') ||
+  !adminAiReportQueue.includes('RESOLVED') ||
+  !adminAiReportQueue.includes('DISMISSED')
+) {
+  fail('MaziuM AI safety/report review backend drifted');
+} else {
+  ok('MaziuM AI input/output moderation and admin report review remain enforced');
+}
+
 const webPricing = read('src/lib/pricingConfig.ts');
 const mobilePricing = read('carmazium app/carmazium app/src/constants/pricing.ts');
 const payments = read('backend/src/payments/payments.service.ts');
