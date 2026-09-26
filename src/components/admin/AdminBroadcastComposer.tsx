@@ -36,6 +36,7 @@ const AUDIENCES: Array<{ value: AdminMessageAudience; label: string; description
     { value: "ALL", label: "Everyone", description: "Every active non-admin account" },
     { value: "ROLE", label: "Account role", description: "Everyone with one account role" },
     { value: "DEALERS", label: "Dealers", description: "All dealer accounts" },
+    { value: "UNVERIFIED_DEALERS", label: "Unverified dealers", description: "Dealers who still need to complete or correct KYC verification" },
     { value: "SERVICE_PROVIDERS", label: "Service providers", description: "All contractor/service-provider accounts" },
     { value: "DELIVERY_PROVIDERS", label: "Delivery drivers", description: "Approved delivery/recovery providers" },
     { value: "INSPECTION_PROVIDERS", label: "Inspection teams", description: "Approved vehicle inspection providers" },
