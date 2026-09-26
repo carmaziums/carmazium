@@ -22,9 +22,9 @@ export interface SessionStatus {
 
 export interface PaymentTransaction {
     id: string
-    listingId: string
+    listingId: string | null
     amount: string | number
-    type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'REFUND' | 'HPI_REPORT' | 'LISTING_FEE' | 'BOOST'
+    type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'REFUND' | 'HPI_REPORT' | 'HPI_REPORT_EMAIL' | 'LISTING_FEE' | 'BOOST' | 'KYC_VERIFICATION'
     status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED'
     stripePaymentId: string | null
     description: string | null
