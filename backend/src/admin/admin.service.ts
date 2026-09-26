@@ -1623,8 +1623,8 @@ export class AdminService {
 
     /**
      * "Revenue" here means money CarMazium actually retains, not gross Stripe
-     * throughput. LISTING_FEE, HPI_REPORT (seller's report request) and
-     * HPI_REPORT_EMAIL (buyer's paid emailed copy) are all kept in full.
+     * throughput. LISTING_FEE, HPI_REPORT (seller's report request),
+     * HPI_REPORT_EMAIL (buyer's paid emailed copy) and KYC_VERIFICATION are all kept in full.
      * COMMISSION (the £125 auction buyer fee) is counted per-transaction at
      * the fixed £25 platform cut, not by summing `amount` — the stored
      * amount is the full £125, £100 of which is seller pass-through. DEPOSIT
@@ -1639,7 +1639,7 @@ export class AdminService {
         const createdAt = dateRange ? { createdAt: dateRange } : {};
         const [feeAgg, commissionCount] = await Promise.all([
             this.prisma.transaction.aggregate({
-                where: { status: 'COMPLETED', deletedAt: null, type: { in: ['LISTING_FEE', 'HPI_REPORT', 'HPI_REPORT_EMAIL'] }, ...createdAt },
+                where: { status: 'COMPLETED', deletedAt: null, type: { in: ['LISTING_FEE', 'HPI_REPORT', 'HPI_REPORT_EMAIL', 'KYC_VERIFICATION'] }, ...createdAt },
                 _sum: { amount: true },
             }),
             this.prisma.transaction.count({

@@ -138,7 +138,7 @@ export class ReceiptPdfService {
             txn.listing?.model,
         ].filter(Boolean).join(' ') || txn.listing?.title || 'Vehicle';
 
-        const description = this.buildDescription(txn.type, vehicleLabel, txn.description, txn.stripePaymentId, txn.listing?.vrm);
+        const description = this.buildDescription(txn.type, vehicleLabel, txn.description, txn.stripePaymentId, txn.listing?.vrm ?? null);
 
         const data: ReceiptData = {
             id: txn.id,
@@ -186,8 +186,10 @@ export class ReceiptPdfService {
             COMMISSION: 'Commission — ',
             REFUND: 'Refund — ',
             HPI_REPORT: 'HPI report — ',
+            HPI_REPORT_EMAIL: 'HPI report (emailed) — ',
             LISTING_FEE: 'Listing fee — ',
             BOOST: 'Featured boost — ',
+            KYC_VERIFICATION: 'Dealer KYC verification — ',
         };
         const prefix = typeLabels[type] ?? '';
         const desc = rawDescription || `${prefix}${vehicleLabel}${vrm ? ` (${vrm})` : ''}`;

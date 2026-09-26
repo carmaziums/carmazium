@@ -436,6 +436,31 @@ export class DealersService {
             paymentStatuses.paymentReference?.status === 'APPROVED'
             || paymentStatuses.paymentScreenshot?.status === 'APPROVED';
         if (kyc.stripeChargedAt || previouslyVerifiedFee) {
+            // Stripe-paid KYC is canonical financial activity. Repair the ledger
+            // opportunistically as well as via the deployment backfill/webhook.
+            if (kyc.stripeChargedAt && kyc.stripePaymentIntentId) {
+                await this.prisma.transaction.upsert({
+                    where: { stripePaymentId: kyc.stripePaymentIntentId },
+                    create: {
+                        listingId: null,
+                        userId,
+                        amount: 1,
+                        type: 'KYC_VERIFICATION' as any,
+                        status: 'COMPLETED',
+                        stripePaymentId: kyc.stripePaymentIntentId,
+                        description: 'One-time dealer identity verification fee',
+                        createdAt: kyc.stripeChargedAt,
+                    },
+                    update: {
+                        listingId: null,
+                        userId,
+                        amount: 1,
+                        type: 'KYC_VERIFICATION' as any,
+                        status: 'COMPLETED',
+                        description: 'One-time dealer identity verification fee',
+                    },
+                });
+            }
             return {
                 alreadyPaid: true,
                 ...(kyc.stripeChargedAt ? { chargedAt: kyc.stripeChargedAt } : {}),
@@ -456,19 +481,44 @@ export class DealersService {
                     // (or failed). Heal the record now so we never create a duplicate session
                     // and charge the dealer a second £1.
                     const healedAt = new Date();
+                    const paymentId = (existing.payment_intent as string) ?? existing.id;
                     const existingStatuses = (kyc.documentStatuses as Record<string, any>) || {};
-                    await this.prisma.dealerKyc.update({
-                        where: { id: kyc.id },
-                        data: {
-                            stripeChargedAt: healedAt,
-                            stripePaymentIntentId: (existing.payment_intent as string) ?? existing.id,
-                            documentStatuses: {
-                                ...existingStatuses,
-                                paymentReference: { status: 'APPROVED', note: 'Stripe verified' },
-                                paymentScreenshot: { status: 'APPROVED', note: 'Stripe verified' },
+                    await this.prisma.$transaction([
+                        this.prisma.dealerKyc.update({
+                            where: { id: kyc.id },
+                            data: {
+                                stripeChargedAt: healedAt,
+                                stripePaymentIntentId: paymentId,
+                                documentStatuses: {
+                                    ...existingStatuses,
+                                    paymentReference: { status: 'APPROVED', note: 'Stripe verified' },
+                                    paymentScreenshot: { status: 'APPROVED', note: 'Stripe verified' },
+                                },
+                            } as any,
+                        }),
+                        this.prisma.transaction.upsert({
+                            where: { stripePaymentId: paymentId },
+                            create: {
+                                listingId: null,
+                                userId,
+                                amount: 1,
+                                type: 'KYC_VERIFICATION' as any,
+                                status: 'COMPLETED',
+                                stripePaymentId: paymentId,
+                                description: 'One-time dealer identity verification fee',
+                                createdAt: healedAt,
                             },
-                        } as any,
-                    });
+                            update: {
+                                listingId: null,
+                                userId,
+                                amount: 1,
+                                type: 'KYC_VERIFICATION' as any,
+                                status: 'COMPLETED',
+                                description: 'One-time dealer identity verification fee',
+                            },
+                        }),
+                    ]);
+                    await this.notifyAdminsOfKycPayment(profileResult?.companyName ?? 'A dealer', paymentId);
                     return { alreadyPaid: true, chargedAt: healedAt };
                 }
                 // Expired / completed-unpaid — fall through to create a new session

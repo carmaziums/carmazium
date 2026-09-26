@@ -25,7 +25,7 @@ import { IconButton } from '../../components/IconButton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // ─────────────────────────── interfaces ───────────────────────────
 
-type TransactionType = 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'REFUND' | 'HPI_REPORT' | 'LISTING_FEE' | 'BOOST';
+type TransactionType = 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'REFUND' | 'HPI_REPORT' | 'HPI_REPORT_EMAIL' | 'LISTING_FEE' | 'BOOST' | 'KYC_VERIFICATION';
 type TransactionStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
 
 interface TransactionListing {
@@ -73,8 +73,10 @@ const TYPE_LABELS: Record<TransactionType, string> = {
   COMMISSION: 'Commission',
   REFUND: 'Refund',
   HPI_REPORT: 'HPI Report',
+  HPI_REPORT_EMAIL: 'HPI Report (emailed)',
   LISTING_FEE: 'Listing Fee',
   BOOST: 'Listing Boost',
+  KYC_VERIFICATION: 'Dealer KYC',
 };
 
 const TYPE_ICONS: Record<TransactionType, string> = {
@@ -83,8 +85,10 @@ const TYPE_ICONS: Record<TransactionType, string> = {
   COMMISSION: 'briefcase-outline',
   REFUND: 'arrow-undo-outline',
   HPI_REPORT: 'document-text-outline',
+  HPI_REPORT_EMAIL: 'mail-outline',
   LISTING_FEE: 'pricetag-outline',
   BOOST: 'rocket-outline',
+  KYC_VERIFICATION: 'shield-checkmark-outline',
 };
 
 const STATUS_STYLE: Record<TransactionStatus, { color: string; bg: string; label: string }> = {

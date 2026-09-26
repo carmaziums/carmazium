@@ -23,6 +23,7 @@ const TYPE_LABELS: Record<string, string> = {
     HPI_REPORT_EMAIL: "HPI Report (emailed)",
     LISTING_FEE: "Listing Fee",
     BOOST: "Boost",
+    KYC_VERIFICATION: "Dealer KYC",
 }
 
 const STATUS_STYLES: Record<string, string> = {
