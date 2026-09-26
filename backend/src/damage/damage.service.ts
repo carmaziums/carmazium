@@ -81,34 +81,24 @@ export class DamageAnalysisService {
 }
 
 /**
- * Automatic exterior grading (1 = best, 5 = worst) from a vehicle's reported
- * damage — sellers never choose a grade directly. Mirrors the platform's
- * published grading definitions:
- *   Grade 1 — negligible damage (e.g. 2 small scratches)
- *   Grade 2 — Grade 1 + a few additional minor damages (e.g. 3 items)
- *   Grade 3 — Grade 1-2 + noticeable moderate damage (e.g. 5 items)
- *   Grade 4 — Grade 1-3 + multiple additional moderate damages (e.g. 12 items)
- *   Grade 5 — Grade 1-4 + excessive wear / major damage, regardless of count
+ * Automatic exterior grading (1 = best, 5 = worst) from the number of
+ * seller-reported damage/defect records.
  *
- * Zone *count* is the primary signal (matches how the in-app 3D damage mapper
- * is actually used — sellers mark zones without picking a severity today).
- * Any zone explicitly reported as large/major/severe forces Grade 5 outright,
- * so more detailed damage data (e.g. from AI photo analysis) still ranks a
- * vehicle correctly even when its zone count alone wouldn't.
+ * CarMazium grading rule:
+ *   0 defects   -> Grade 1
+ *   1-2 defects -> Grade 2
+ *   3-4 defects -> Grade 3
+ *   5-6 defects -> Grade 4
+ *   7+ defects  -> Grade 5
+ *
+ * Grade is never seller-selectable. The backend recalculates it from the
+ * complete saved damage set whenever records are replaced.
  */
 export function computeExteriorGrade(records: { size?: string }[]): number {
-  if (!records || records.length === 0) return 1;
-
-  const hasMajorDamage = records.some((r) => {
-    const size = (r.size || '').toUpperCase();
-    return size.includes('LARGE') || size.includes('MAJOR') || size.includes('SEVERE') || size.includes('15CM+') || size.includes('EXTENSIVE');
-  });
-  if (hasMajorDamage) return 5;
-
-  const count = records.length;
-  if (count <= 2) return 1;
-  if (count === 3) return 2;
-  if (count <= 6) return 3;
-  if (count <= 14) return 4;
+  const count = Array.isArray(records) ? records.length : 0;
+  if (count === 0) return 1;
+  if (count <= 2) return 2;
+  if (count <= 4) return 3;
+  if (count <= 6) return 4;
   return 5;
 }
