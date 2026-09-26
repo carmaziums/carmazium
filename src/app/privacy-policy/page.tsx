@@ -37,6 +37,7 @@ const sections = [
           <li>technical and usage information such as session identifiers, device/browser information, page or screen activity, referral information and analytics events; and</li>
           <li>MaziuM AI prompts and recent conversation context when you use the AI assistant.</li>
         </ul>
+        <p>On iPhone and Android, CarMazium uses the system picker when you choose a photo or document, requests foreground location only when you tap “Locate Me”, and requests notification permission for push alerts. The production app does not require camera, microphone, contacts, call-log, SMS, broad photo/video-library access or background-location permission for its current functionality.</p>
       </>
     ),
   },
