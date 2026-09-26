@@ -216,6 +216,7 @@ requiredFile('src/app/dashboard/admin/ai-reports/page.tsx', 'Admin AI report rev
 
 const aiBackend = read('backend/src/ai/ai.service.ts');
 const aiController = read('backend/src/ai/ai.controller.ts');
+const aiReportMigration = read('backend/prisma/manual-migrations/20260926_ai_reports.sql');
 const chatRateLimit = read('backend/src/chat/chat-rate-limit.service.ts');
 const webMazium = read('src/components/features/MaziumWidget.tsx');
 const nativeMazium = read('carmazium app/carmazium app/src/components/GlobalAIChatBot.tsx');
@@ -228,6 +229,15 @@ const nativeSearchAi = read('carmazium app/carmazium app/src/screens/main/Search
 const dvlaControllerAi = read('backend/src/dvla/dvla.controller.ts');
 const dvlaServiceAi = read('backend/src/dvla/dvla.service.ts');
 const aiDto = read('backend/src/ai/ai.dto.ts');
+
+if (
+  !aiReportMigration.includes('"id" text NOT NULL') ||
+  !aiReportMigration.includes('ENABLE ROW LEVEL SECURITY')
+) {
+  fail('AI report migration must use Prisma-compatible text IDs and RLS');
+} else {
+  ok('AI report storage uses Prisma-compatible IDs and RLS');
+}
 
 if (
   !aiBackend.includes("model: 'omni-moderation-latest'") ||
