@@ -10,6 +10,7 @@ import {
     CheckCircle2,
     Loader2,
     Shield,
+    ShieldCheck,
     Star,
     User,
 } from "lucide-react"
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/Button"
 import { ThemeToggle } from "@/components/ui/ThemeToggle"
 import { ProfileImageUploader } from "@/components/profile/ProfileImageUploader"
 import { ServiceBadgePill } from "@/components/profile/ServiceBadgePill"
+import { KycOverlayForm } from "@/components/dashboard/KycOverlayForm"
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const
 
@@ -44,9 +46,17 @@ export default function ProfilePage() {
     const [success, setSuccess] = React.useState<string | null>(null)
     const [roleError, setRoleError] = React.useState<string | null>(null)
     const [businessLoading, setBusinessLoading] = React.useState(false)
+    const [showBusinessVerification, setShowBusinessVerification] = React.useState(false)
     const [publicSummary, setPublicSummary] = React.useState<PublicProfileSummary | null>(null)
     const [receivedReviews, setReceivedReviews] = React.useState<ReviewItem[]>([])
     const [givenReviews, setGivenReviews] = React.useState<ReviewItem[]>([])
+
+    const dealerKyc = profile?.dealerProfile?.kyc
+    const isSoleTraderKyc = dealerKyc?.businessType === "SOLE_PROPRIETORSHIP"
+    const businessTypeLabel = dealerKyc
+        ? (isSoleTraderKyc ? "Sole Trader" : "Registered Company")
+        : "Not selected"
+    const verificationStatus = dealerKyc?.status || "Not submitted"
 
     const [personalForm, setPersonalForm] = React.useState({
         firstName: "",
@@ -80,7 +90,11 @@ export default function ProfilePage() {
         setBusinessForm({
             companyName: dealer?.companyName || "",
             registrationNumber: dealer?.registrationNumber || "",
-            vatNumber: dealer?.vatNumber?.startsWith?.("PENDING-") ? "" : dealer?.vatNumber || "",
+            vatNumber:
+                dealer?.vatNumber?.startsWith?.("PENDING-")
+                || dealer?.vatNumber?.startsWith?.("SOLE-TRADER-NOT-VAT-")
+                    ? ""
+                    : dealer?.vatNumber || "",
             businessAddress: dealer?.businessAddress || "",
             phone: dealer?.phone || "",
             website: dealer?.website || "",
@@ -135,15 +149,15 @@ export default function ProfilePage() {
 
     const businessPayload = React.useCallback((extra?: Record<string, unknown>) => ({
         companyName: businessForm.companyName.trim(),
-        ...(businessForm.registrationNumber.trim() ? { registrationNumber: businessForm.registrationNumber.trim() } : {}),
-        ...(businessForm.vatNumber.trim() ? { vatNumber: businessForm.vatNumber.trim() } : {}),
+        ...(!isSoleTraderKyc && businessForm.registrationNumber.trim() ? { registrationNumber: businessForm.registrationNumber.trim() } : {}),
+        ...(!isSoleTraderKyc && businessForm.vatNumber.trim() ? { vatNumber: businessForm.vatNumber.trim() } : {}),
         ...(businessForm.businessAddress.trim() ? { businessAddress: businessForm.businessAddress.trim() } : {}),
         ...(businessForm.phone.trim() ? { phone: businessForm.phone.trim() } : {}),
         ...(businessForm.website.trim() ? { website: businessForm.website.trim() } : {}),
         description: businessForm.description.trim(),
         openingHours: Object.fromEntries(Object.entries(businessForm.openingHours).filter(([, value]) => value.trim())),
         ...extra,
-    }), [businessForm])
+    }), [businessForm, isSoleTraderKyc])
 
     const handleUpdateBusiness = async () => {
         if (!businessForm.companyName.trim()) {
@@ -211,6 +225,18 @@ export default function ProfilePage() {
 
     if (authLoading) {
         return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="animate-spin text-primary" /></div>
+    }
+
+    if (showBusinessVerification) {
+        return (
+            <KycOverlayForm
+                allowApprovedReverification
+                onExit={async () => {
+                    setShowBusinessVerification(false)
+                    await refreshProfile()
+                }}
+            />
+        )
     }
 
     const currentRole = profile?.role || ""
@@ -291,6 +317,41 @@ export default function ProfilePage() {
                 <section className="mb-12">
                     <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><Building2 className="text-primary" /> Partner Business Profile</h3>
                     <div className="glass-card p-8 space-y-8">
+                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5">
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-start gap-3">
+                                    <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
+                                        <ShieldCheck size={18} className="text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+                                            Business Type
+                                        </p>
+                                        <p className="mt-1 text-lg font-black">{businessTypeLabel}</p>
+                                        <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+                                            Verification status: <span className="font-semibold">{verificationStatus}</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="gap-2 self-start sm:self-auto"
+                                    onClick={() => setShowBusinessVerification(true)}
+                                >
+                                    <ShieldCheck size={16} />
+                                    {dealerKyc?.status === "APPROVED"
+                                        ? "Change Business Type / Re-verify"
+                                        : dealerKyc
+                                            ? "Update Business Verification"
+                                            : "Choose Business Type"}
+                                </Button>
+                            </div>
+                            <p className="mt-4 text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                                You can operate as a Registered Company or a Sole Trader. Changing legal type uses the same dealer account and existing verification payment; approved accounts are re-verified after the new legal type is submitted.
+                            </p>
+                        </div>
+
                         <ProfileImageUploader
                             currentUrl={businessForm.logo || profile?.dealerProfile?.logo}
                             fallback={businessForm.companyName || "CM"}
@@ -300,9 +361,17 @@ export default function ProfilePage() {
                             square
                         />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <Field label="Business / Trading Name *" value={businessForm.companyName} onChange={(value) => setBusinessForm({ ...businessForm, companyName: value })} />
-                            <Field label="Company Registration Number" value={businessForm.registrationNumber} onChange={(value) => setBusinessForm({ ...businessForm, registrationNumber: value })} />
-                            <Field label="VAT Number" value={businessForm.vatNumber} onChange={(value) => setBusinessForm({ ...businessForm, vatNumber: value })} />
+                            <Field
+                                label={isSoleTraderKyc ? "Trading Name *" : "Business / Trading Name *"}
+                                value={businessForm.companyName}
+                                onChange={(value) => setBusinessForm({ ...businessForm, companyName: value })}
+                            />
+                            {!isSoleTraderKyc && (
+                                <>
+                                    <Field label="Company Registration Number" value={businessForm.registrationNumber} onChange={(value) => setBusinessForm({ ...businessForm, registrationNumber: value })} />
+                                    <Field label="VAT Number" value={businessForm.vatNumber} onChange={(value) => setBusinessForm({ ...businessForm, vatNumber: value })} />
+                                </>
+                            )}
                             <Field label="Phone" value={businessForm.phone} onChange={(value) => setBusinessForm({ ...businessForm, phone: value })} />
                             <Field label="Website" type="url" value={businessForm.website} onChange={(value) => setBusinessForm({ ...businessForm, website: value })} />
                             <div className="md:col-span-2"><Field label="Business Address / Service Area" value={businessForm.businessAddress} onChange={(value) => setBusinessForm({ ...businessForm, businessAddress: value })} /></div>
