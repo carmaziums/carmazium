@@ -174,6 +174,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
       onPress={() => onRetry(msg)}
       activeOpacity={0.7}
       style={styles.deliveryStateRow}
+      accessibilityRole="button"
+      accessibilityLabel={msg.deliveryStatus === 'failed' ? 'Message not sent. Retry message' : 'Message sending'}
+      accessibilityState={{ disabled: msg.deliveryStatus !== 'failed', busy: msg.deliveryStatus !== 'failed' }}
     >
       <Text
         style={[
@@ -301,6 +304,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                 size={14}
                 color={msg.isRead ? Colors.lightBlue_4fa8ff : 'rgba(255,255,255,0.45)'}
                 style={styles.readTick}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
               />
             )}
           </View>
@@ -309,7 +314,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
         {deliveryState}
 
         {showSeenIndicator && (
-          <View style={styles.seenRow}>
+          <View style={styles.seenRow} accessible accessibilityLabel="Message seen">
             <View style={[styles.seenAvatar, { backgroundColor: getAvatarBg(initials) }]}>
               <Text style={styles.seenAvatarText}>{initials.slice(0, 1)}</Text>
             </View>
@@ -722,8 +727,8 @@ export const ChatScreen: React.FC = () => {
   if (loading) {
     return (
       <View style={styles.errorContainer}>
-        <ActivityIndicator size="large" color={Colors.accent} />
-        <Text style={[styles.errorText, { marginTop: 12 }]}>Loading conversation...</Text>
+        <ActivityIndicator size="large" color={Colors.accent} accessibilityLabel="Loading conversation" />
+        <Text style={[styles.errorText, { marginTop: 12 }]} accessibilityLiveRegion="polite">Loading conversation...</Text>
       </View>
     );
   }
@@ -732,7 +737,12 @@ export const ChatScreen: React.FC = () => {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Conversation not found</Text>
-        <TouchableOpacity style={styles.backBtnText} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backBtnText}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <Text style={{ color: Colors.accent }}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -1024,6 +1034,9 @@ export const ChatScreen: React.FC = () => {
           activeOpacity={0.8}
           onPress={handleOpenListing}
           disabled={openingListing}
+          accessibilityRole="button"
+          accessibilityLabel={`Open listing: ${room.listing.title}`}
+          accessibilityState={{ disabled: openingListing, busy: openingListing }}
         >
           <Image
             source={{ uri: room.listing.images?.[0] || 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=900&q=80' }}
@@ -1100,6 +1113,9 @@ export const ChatScreen: React.FC = () => {
                   onPress={loadOlderMessages}
                   disabled={loadingOlder}
                   activeOpacity={0.75}
+                  accessibilityRole="button"
+                  accessibilityLabel="Load earlier messages"
+                  accessibilityState={{ disabled: loadingOlder, busy: loadingOlder }}
                 >
                   {loadingOlder ? (
                     <ActivityIndicator size="small" color={Colors.textSecondary} />
@@ -1200,6 +1216,8 @@ export const ChatScreen: React.FC = () => {
             placeholder="Type a message..."
             placeholderTextColor={Colors.textMuted}
             multiline
+            accessibilityLabel="Message"
+            accessibilityHint="Type a message to send in this conversation"
           />
 
           <IconButton style={[styles.sendBtn, (!inputVal.trim() || uploadingPhoto) && styles.sendBtnDisabled]} icon={<Ionicons name="send" size={15} color={Colors.white} />} onPress={handleSend} disabled={!inputVal.trim() || uploadingPhoto} accessibilityLabel="Send message" />
@@ -1253,6 +1271,9 @@ export const ChatScreen: React.FC = () => {
                     ]}
                     onPress={() => setReportReason(reason.value)}
                     activeOpacity={0.75}
+                    accessibilityRole="radio"
+                    accessibilityLabel={reason.label}
+                    accessibilityState={{ checked: selected }}
                   >
                     <Text
                       style={[
@@ -1284,6 +1305,9 @@ export const ChatScreen: React.FC = () => {
                 onPress={closeReport}
                 disabled={reporting}
                 activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel message report"
+                accessibilityState={{ disabled: reporting }}
               >
                 <Text style={styles.reportCancelText}>Cancel</Text>
               </TouchableOpacity>
@@ -1295,6 +1319,9 @@ export const ChatScreen: React.FC = () => {
                 onPress={() => void submitReport()}
                 disabled={!reportReason || reporting}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Submit message report"
+                accessibilityState={{ disabled: !reportReason || reporting, busy: reporting }}
               >
                 {reporting ? (
                   <ActivityIndicator size="small" color={Colors.white} />
