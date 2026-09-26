@@ -64,7 +64,10 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
             sellerProfile: { upsert: jest.fn(), update: jest.fn() },
             chatRoom: { upsert: jest.fn() },
             user: { findUnique: jest.fn().mockResolvedValue(null) },
-            dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerProfile: {
+                findUnique: jest.fn().mockResolvedValue(null),
+                count: jest.fn().mockResolvedValue(742),
+            },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $transaction: jest.fn(),
         };
@@ -104,7 +107,21 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                     },
                 },
                 { provide: EmailService, useValue: { sendAuctionWonEmail: jest.fn(), sendAuctionEndedSellerEmail: jest.fn(), sendAuctionReserveNotMetEmail: jest.fn() } },
-                { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
+                {
+                    provide: ChatService,
+                    useValue: {
+                        findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }),
+                        findOrCreateSupportRoom: jest.fn().mockResolvedValue({
+                            id: 'support-room-1',
+                            initiatorId: 'seller-1',
+                            participantId: 'support-admin-1',
+                        }),
+                        sendMessage: jest.fn().mockResolvedValue({
+                            message: { id: 'message-1' },
+                            created: true,
+                        }),
+                    },
+                },
                 { provide: PaymentsService, useValue: paymentsService },
             ],
         }).compile();
@@ -406,7 +423,10 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             sellerProfile: { upsert: jest.fn() },
             chatRoom: { upsert: jest.fn() },
             user: { findUnique: jest.fn() },
-            dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerProfile: {
+                findUnique: jest.fn().mockResolvedValue(null),
+                count: jest.fn().mockResolvedValue(742),
+            },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $transaction: jest.fn(),
         };
@@ -430,7 +450,21 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
                     },
                 },
                 { provide: EmailService, useValue: {} },
-                { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
+                {
+                    provide: ChatService,
+                    useValue: {
+                        findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }),
+                        findOrCreateSupportRoom: jest.fn().mockResolvedValue({
+                            id: 'support-room-1',
+                            initiatorId: 'seller-1',
+                            participantId: 'support-admin-1',
+                        }),
+                        sendMessage: jest.fn().mockResolvedValue({
+                            message: { id: 'message-1' },
+                            created: true,
+                        }),
+                    },
+                },
                 { provide: PaymentsService, useValue: { issueFullRefundForAuctionInspection: jest.fn().mockResolvedValue(undefined) } },
             ],
         }).compile();
@@ -646,7 +680,10 @@ describe('AuctionsService — create', () => {
             sellerProfile: {
                 update: jest.fn().mockResolvedValue({}),
             },
-            dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerProfile: {
+                findUnique: jest.fn().mockResolvedValue(null),
+                count: jest.fn().mockResolvedValue(742),
+            },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $transaction: jest.fn(async (arg: any) =>
                 typeof arg === 'function' ? arg(prisma) : Promise.all(arg)
@@ -676,7 +713,21 @@ describe('AuctionsService — create', () => {
                     },
                 },
                 { provide: EmailService, useValue: {} },
-                { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
+                {
+                    provide: ChatService,
+                    useValue: {
+                        findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }),
+                        findOrCreateSupportRoom: jest.fn().mockResolvedValue({
+                            id: 'support-room-1',
+                            initiatorId: 'seller-1',
+                            participantId: 'support-admin-1',
+                        }),
+                        sendMessage: jest.fn().mockResolvedValue({
+                            message: { id: 'message-1' },
+                            created: true,
+                        }),
+                    },
+                },
                 { provide: PaymentsService, useValue: paymentsService },
             ],
         }).compile();
@@ -980,7 +1031,10 @@ describe('AuctionsService — final lifecycle consistency', () => {
             user: {
                 findUnique: jest.fn().mockResolvedValue(null),
             },
-            dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerProfile: {
+                findUnique: jest.fn().mockResolvedValue(null),
+                count: jest.fn().mockResolvedValue(742),
+            },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             $transaction: jest.fn(async (arg: any) =>
                 typeof arg === 'function' ? arg(prisma) : Promise.all(arg)
@@ -1020,7 +1074,21 @@ describe('AuctionsService — final lifecycle consistency', () => {
                         sendAuctionReserveNotMetEmail: jest.fn().mockResolvedValue(undefined),
                     },
                 },
-                { provide: ChatService, useValue: { findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }) } },
+                {
+                    provide: ChatService,
+                    useValue: {
+                        findOrCreateRoom: jest.fn().mockResolvedValue({ id: 'room_1' }),
+                        findOrCreateSupportRoom: jest.fn().mockResolvedValue({
+                            id: 'support-room-1',
+                            initiatorId: 'seller-1',
+                            participantId: 'support-admin-1',
+                        }),
+                        sendMessage: jest.fn().mockResolvedValue({
+                            message: { id: 'message-1' },
+                            created: true,
+                        }),
+                    },
+                },
                 { provide: PaymentsService, useValue: paymentsService },
             ],
         }).compile();
@@ -1058,6 +1126,67 @@ describe('AuctionsService — final lifecycle consistency', () => {
         expect(auctionGateway.broadcastAuctionEnd).toHaveBeenCalledWith(
             'auction-1',
             expect.objectContaining({ reserveMet: false, winnerId: null }),
+        );
+    });
+
+    it('sends an unsold-auction retail recommendation through notification, support chat and email', async () => {
+        prisma.auction.findUnique.mockResolvedValue({
+            id: '550e8400-e29b-41d4-a716-446655440000',
+            listingId: 'listing-1',
+            status: 'ACTIVE',
+            reservePrice: 15000,
+            listing: {
+                id: 'listing-1',
+                title: 'BMW M3 2022',
+                sellerId: 'seller-1',
+                linkedListingId: null,
+                year: 2022,
+                make: 'BMW',
+                model: 'M3',
+                bids: [],
+            },
+        });
+        prisma.user.findUnique.mockResolvedValue({
+            email: 'seller@example.com',
+            firstName: 'Sam',
+        });
+
+        await service.closeAuction('550e8400-e29b-41d4-a716-446655440000');
+
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                userId: 'seller-1',
+                type: 'AUCTION_ENDED_NO_SALE',
+                actionType: 'LIST_RETAIL',
+                data: expect.objectContaining({
+                    listingId: 'listing-1',
+                    verifiedDealerCount: 742,
+                    retailAlreadyLive: false,
+                    retailUrl: '/sell?editId=listing-1&sellMode=retail',
+                }),
+            }),
+        );
+
+        const chat = (service as any).chatService;
+        expect(chat.findOrCreateSupportRoom).toHaveBeenCalledWith('seller-1');
+        expect(chat.sendMessage).toHaveBeenCalledWith(
+            'support-room-1',
+            'support-admin-1',
+            expect.objectContaining({
+                clientMessageId: '550e8400-e29b-41d4-a716-446655440000',
+                content: expect.stringContaining('Retail Listing'),
+            }),
+        );
+
+        const email = (service as any).emailService;
+        expect(email.sendAuctionReserveNotMetEmail).toHaveBeenCalledWith(
+            'seller@example.com',
+            'Sam',
+            expect.stringContaining('BMW'),
+            '550e8400-e29b-41d4-a716-446655440000',
+            'listing-1',
+            'more than 700 verified dealers',
+            false,
         );
     });
 
