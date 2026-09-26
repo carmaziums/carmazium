@@ -100,6 +100,8 @@ export interface ApiListing {
   taxDueDate?: string | null;
   owners?: string | number | null;
   serviceHistory?: string | null;
+  mechanicalIssues?: string | null;
+  electricalIssues?: string | null;
   writeOffCategory?: string | null;
   stolenRecovered?: boolean | null;
   hasOutstandingFinance?: boolean | null;
