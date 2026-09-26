@@ -152,6 +152,25 @@ jobs:
         run: node scripts/check-product-parity.mjs
       - name: Check code-controlled release readiness
         run: node scripts/check-release-readiness.mjs
+      - name: Self-test signed-evidence validator
+        env:
+          CARMAZIUM_RELEASE_SHA: ${{ github.sha }}
+          CARMAZIUM_IOS_BUILD_ID: ci-ios-build
+          CARMAZIUM_IOS_ARTIFACT_SHA256: 0000000000000000000000000000000000000000000000000000000000000000
+          CARMAZIUM_IOS_XCODE_VERSION: '26.0'
+          CARMAZIUM_IOS_SDK_VERSION: '26.0'
+          CARMAZIUM_ANDROID_BUILD_ID: ci-android-build
+          CARMAZIUM_ANDROID_ARTIFACT_SHA256: 1111111111111111111111111111111111111111111111111111111111111111
+          CARMAZIUM_ANDROID_SIGNED_AAB_CONFIRMED: 'true'
+          CARMAZIUM_IOS_SIGNED_ARCHIVE_CONFIRMED: 'true'
+          CARMAZIUM_DEVICE_QA_CONFIRMED: 'true'
+          CARMAZIUM_ACCESSIBILITY_QA_CONFIRMED: 'true'
+          CARMAZIUM_PUSH_QA_CONFIRMED: 'true'
+          CARMAZIUM_PAYMENT_QA_CONFIRMED: 'true'
+          CARMAZIUM_DEEP_LINK_QA_CONFIRMED: 'true'
+          CARMAZIUM_TESTFLIGHT_UPLOAD_CONFIRMED: 'true'
+          CARMAZIUM_PLAY_INTERNAL_UPLOAD_CONFIRMED: 'true'
+        run: node scripts/check-release-candidate-evidence.mjs
 
   web:
     name: Web typecheck
