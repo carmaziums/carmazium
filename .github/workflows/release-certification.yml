@@ -34,6 +34,21 @@ on:
         required: false
         type: string
         default: ''
+      review_access_confirmed:
+        description: 'Reviewer/demo access is configured and tested in both store consoles'
+        required: true
+        type: boolean
+        default: false
+      store_console_metadata_confirmed:
+        description: 'Canonical metadata plus privacy/age/content declarations are complete in both consoles'
+        required: true
+        type: boolean
+        default: false
+      store_assets_confirmed:
+        description: 'Release-candidate screenshots/graphics are uploaded in both consoles'
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -115,7 +130,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for path in / /search /auctions /sell /pricing /auth/login /auth/signup; do
+          for path in / /search /auctions /sell /pricing /auth/login /auth/signup /app-support /privacy-policy /delete-account; do
             code="$(curl --retry 3 --retry-all-errors --connect-timeout 10 --max-time 30 -sS -o /dev/null -w '%{http_code}' "https://www.carmazium.com${path}")"
             echo "${path}: HTTP ${code}"
             test "${code}" = "200"
@@ -144,8 +159,14 @@ jobs:
           CARMAZIUM_ASC_APP_ID: ${{ inputs.asc_app_id }}
           APPLE_TEAM_ID: ${{ inputs.apple_team_id }}
           ANDROID_SHA256: ${{ inputs.android_sha256_fingerprint }}
+          CARMAZIUM_REVIEW_ACCESS_CONFIRMED: ${{ inputs.review_access_confirmed }}
+          CARMAZIUM_STORE_CONSOLE_METADATA_CONFIRMED: ${{ inputs.store_console_metadata_confirmed }}
+          CARMAZIUM_STORE_ASSETS_CONFIRMED: ${{ inputs.store_assets_confirmed }}
         run: |
           set -euo pipefail
+          test "$CARMAZIUM_REVIEW_ACCESS_CONFIRMED" = "true"
+          test "$CARMAZIUM_STORE_CONSOLE_METADATA_CONFIRMED" = "true"
+          test "$CARMAZIUM_STORE_ASSETS_CONFIRMED" = "true"
           test -n "$CARMAZIUM_ASC_APP_ID"
           [[ "$CARMAZIUM_ASC_APP_ID" =~ ^[0-9]+$ ]]
           [[ "$APPLE_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]]
