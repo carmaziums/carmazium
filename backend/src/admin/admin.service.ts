@@ -1814,16 +1814,14 @@ export class AdminService {
             };
         }
 
-        // Determine if all are approved, or if any is rejected
-        const allFields = [
+        // Determine if all applicable fields are approved. Sole traders do not
+        // have Companies House / VAT / PSC evidence; registered companies do not
+        // use the sole-trader proof-of-address requirement. Keep this backend
+        // contract aligned with the admin UI's fieldsFor(...) filter.
+        const commonFields = [
             'companyHouseName',
             'representativeName',
             'representativePosition',
-            'vatNumber',
-            'vatProof',
-            'companyRegistrationNumber',
-            'companyRegistrationProof',
-            'personOfSignificantControl',
             'directorName',
             'directorIdProof',
             'businessWebsite',
@@ -1833,6 +1831,16 @@ export class AdminService {
             'paymentReference',
             'paymentScreenshot',
         ];
+        const allFields = kyc.businessType === 'SOLE_PROPRIETORSHIP'
+            ? [...commonFields, 'proofOfAddress']
+            : [
+                ...commonFields,
+                'vatNumber',
+                'vatProof',
+                'companyRegistrationNumber',
+                'companyRegistrationProof',
+                'personOfSignificantControl',
+            ];
 
         let hasRejected = false;
         let hasPending = false;

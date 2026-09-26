@@ -180,6 +180,13 @@ export class DealersService {
         // (see createKycCheckoutSession) and confirmed asynchronously by the webhook —
         // submitKyc only persists the dealer's form fields, it never touches payment state.
         const alreadyStripeVerified = (profile.kyc as any)?.stripeChargedAt != null;
+        const existingPaymentStatuses = ((profile.kyc as any)?.documentStatuses as Record<string, any>) || {};
+        const alreadyLegacyFeeVerified =
+            existingPaymentStatuses.paymentReference?.status === 'APPROVED'
+            || existingPaymentStatuses.paymentScreenshot?.status === 'APPROVED';
+        // A dealer pays the £1 verification fee once per dealer account. A legal
+        // business-type change starts a new KYC review, not a second purchase.
+        const verificationFeeAlreadyPaid = alreadyStripeVerified || alreadyLegacyFeeVerified;
 
         // Uploaded through the private-document endpoint, never through this body.
         const KYC_UPLOAD_FIELDS = new Set([
@@ -235,6 +242,15 @@ export class DealersService {
         // businessType is an enum column with a default — '' is not a legal
         // value for it, so it must never fall into the ''-fallback path above.
         const businessType = dto.businessType ?? 'PRIVATE_LIMITED';
+        const previousBusinessType = ((profile.kyc as any)?.businessType ?? 'PRIVATE_LIMITED') as string;
+        const businessTypeChanged = !!profile.kyc && previousBusinessType !== businessType;
+        const wasVerifiedIdentity = !!profile.isVerified || (profile.kyc as any)?.status === 'APPROVED';
+
+        if ((profile.kyc as any)?.status === 'APPROVED' && !businessTypeChanged) {
+            throw new BadRequestException(
+                'This business is already verified. Choose a different business type to start re-verification.',
+            );
+        }
 
         if (businessType === 'SOLE_PROPRIETORSHIP') {
             const existingKyc = profile.kyc as any;
@@ -243,6 +259,18 @@ export class DealersService {
             if (!hasPhotoId || !hasProofOfAddress) {
                 throw new BadRequestException(
                     'Sole traders must upload photo ID and proof of address before submitting KYC.',
+                );
+            }
+        } else if (businessTypeChanged) {
+            // A sole trader becoming a registered company needs fresh company
+            // evidence before the old verified identity can be replaced.
+            const existingKyc = profile.kyc as any;
+            const hasPhotoId = !!(existingKyc?.directorIdProofPath || existingKyc?.directorIdProof);
+            const hasVatProof = !!(existingKyc?.vatProofPath || existingKyc?.vatProof);
+            const hasCompanyProof = !!(existingKyc?.companyRegistrationProofPath || existingKyc?.companyRegistrationProof);
+            if (!hasPhotoId || !hasVatProof || !hasCompanyProof) {
+                throw new BadRequestException(
+                    'Registered companies must upload director ID, VAT evidence and Companies House evidence before re-verification.',
                 );
             }
         }
@@ -259,8 +287,12 @@ export class DealersService {
                 const existingValue = (profile.kyc as any)[field];
                 const incomingValue = (dto as any)[field];
 
-                if (existingFieldStatus === 'APPROVED') {
-                    // Lock: always use the already-approved DB value
+                const isPaymentField = field === 'paymentReference' || field === 'paymentScreenshot';
+
+                if (existingFieldStatus === 'APPROVED' && (!businessTypeChanged || isPaymentField)) {
+                    // Normal resubmissions keep approved fields locked. A legal
+                    // business-type change deliberately reopens identity fields,
+                    // while preserving the once-only verification payment.
                     updatedFields[field] = existingValue;
                     documentStatuses[field] = existingStatuses[field];
                 } else {
@@ -278,34 +310,58 @@ export class DealersService {
                         ['vatNumber', 'companyRegistrationNumber', 'personOfSignificantControl'].includes(field);
                     const value = field === 'businessType'
                         ? businessType
-                        : soleTraderCompanyOnly
-                            ? ''
-                            : KYC_UPLOAD_FIELDS.has(field)
-                                ? existingValue
-                                : (incomingValue !== null && incomingValue !== undefined)
-                                    ? incomingValue
-                                    : (requiredFields.has(field) ? (existingValue ?? '') : null);
+                        : isPaymentField && verificationFeeAlreadyPaid
+                            ? existingValue
+                            : soleTraderCompanyOnly
+                                ? ''
+                                : KYC_UPLOAD_FIELDS.has(field)
+                                    ? existingValue
+                                    : (incomingValue !== null && incomingValue !== undefined)
+                                        ? incomingValue
+                                        : (requiredFields.has(field) ? (existingValue ?? '') : null);
 
                     updatedFields[field] = value;
                     documentStatuses[field] = { status: 'PENDING', note: '' };
                 }
             }
 
-            // Auto-approve payment fields if the £1 fee was already verified in a prior cycle
-            if (alreadyStripeVerified) {
-                documentStatuses['paymentReference'] = { status: 'APPROVED', note: 'Stripe verified' };
-                documentStatuses['paymentScreenshot'] = { status: 'APPROVED', note: 'Stripe verified' };
+            // Preserve the once-only verification fee across re-verification.
+            if (verificationFeeAlreadyPaid) {
+                const paymentNote = alreadyStripeVerified ? 'Stripe verified' : 'Previously verified';
+                documentStatuses['paymentReference'] = { status: 'APPROVED', note: paymentNote };
+                documentStatuses['paymentScreenshot'] = { status: 'APPROVED', note: paymentNote };
             }
 
-            const updatedKyc = await this.prisma.dealerKyc.update({
+            const kycUpdate = this.prisma.dealerKyc.update({
                 where: { id: profile.kyc.id },
                 data: {
                     ...updatedFields,
                     status: 'PENDING',
                     documentStatuses,
                     submittedAt: new Date(),
+                    reviewedAt: null,
                 } as any,
             });
+
+            let updatedKyc: any;
+            if (businessTypeChanged && wasVerifiedIdentity) {
+                // Legal identity changed: remove the verified badge atomically
+                // with the KYC reset. The dealer account remains intact and the
+                // badge/features return only after the new identity is approved.
+                const [kycResult] = await this.prisma.$transaction([
+                    kycUpdate,
+                    this.prisma.dealerProfile.update({
+                        where: { id: profile.id },
+                        data: {
+                            isVerified: false,
+                            verificationDate: null,
+                        },
+                    }),
+                ]);
+                updatedKyc = kycResult;
+            } else {
+                updatedKyc = await kycUpdate;
+            }
 
             // Sync KYC fields back into DealerProfile so Settings page is pre-filled
             await this.syncProfileFromKyc(profile.id, updatedFields);
@@ -313,7 +369,7 @@ export class DealersService {
             // Only alert admins now if the fee is already paid — otherwise the dealer is about
             // to be redirected to Stripe Checkout, and the webhook fires this notification once
             // payment actually clears (reviewing an unpaid submission isn't actionable).
-            if (alreadyStripeVerified) {
+            if (verificationFeeAlreadyPaid) {
                 await this.notifyAdminsOfKycSubmission(profile.companyName);
             }
             return updatedKyc;
@@ -373,9 +429,17 @@ export class DealersService {
             throw new BadRequestException('Please submit your KYC details before paying the verification fee.');
         }
 
-        // Already paid — return early, no new charge
-        if (kyc.stripeChargedAt) {
-            return { alreadyPaid: true, chargedAt: kyc.stripeChargedAt };
+        // Already paid — return early, no new charge. Legacy KYC approvals used
+        // bank-transfer evidence instead of stripeChargedAt; preserve those too.
+        const paymentStatuses = (kyc.documentStatuses as Record<string, any>) || {};
+        const previouslyVerifiedFee =
+            paymentStatuses.paymentReference?.status === 'APPROVED'
+            || paymentStatuses.paymentScreenshot?.status === 'APPROVED';
+        if (kyc.stripeChargedAt || previouslyVerifiedFee) {
+            return {
+                alreadyPaid: true,
+                ...(kyc.stripeChargedAt ? { chargedAt: kyc.stripeChargedAt } : {}),
+            };
         }
 
         const stripe = await this.getStripe();

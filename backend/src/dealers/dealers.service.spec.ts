@@ -67,6 +67,7 @@ function buildPrismaMock() {
             findUnique: jest.fn(),
             findMany: jest.fn().mockResolvedValue([]),
         },
+        $transaction: jest.fn(async (operations: any[]) => Promise.all(operations)),
     };
 }
 
@@ -285,6 +286,83 @@ describe('DealersService — KYC: submitKyc', () => {
         } as any)).rejects.toThrow(
             'Sole traders must upload photo ID and proof of address before submitting KYC.',
         );
+        expect(prisma.dealerKyc.update).not.toHaveBeenCalled();
+    });
+
+    it('approved company can switch to sole trader without a second fee and loses verified status pending review', async () => {
+        prisma.dealerProfile.findUnique.mockResolvedValue({
+            id: 'profile-1',
+            userId: 'user-1',
+            companyName: 'Test Motors Ltd',
+            isVerified: true,
+            verificationDate: new Date('2026-06-02T12:00:00Z'),
+            kyc: {
+                id: 'kyc-1',
+                status: 'APPROVED',
+                businessType: 'PRIVATE_LIMITED',
+                stripeChargedAt: new Date('2026-06-01T12:00:00Z'),
+                directorIdProofPath: 'profile-1/directorIdProof/id.png',
+                proofOfAddressPath: 'profile-1/proofOfAddress/address.pdf',
+                documentStatuses: {
+                    companyHouseName: { status: 'APPROVED', note: '' },
+                    paymentReference: { status: 'APPROVED', note: 'Stripe verified' },
+                    paymentScreenshot: { status: 'APPROVED', note: 'Stripe verified' },
+                },
+                companyHouseName: 'Test Motors Ltd',
+            },
+            user: { id: 'user-1', role: 'DEALER', firstName: 'John', lastName: 'Doe' },
+        });
+        prisma.dealerKyc.update.mockImplementation(({ data }: any) =>
+            Promise.resolve({ id: 'kyc-1', ...data }),
+        );
+        prisma.dealerProfile.update.mockResolvedValue({});
+        prisma.user.findMany.mockResolvedValue([{ email: 'admin@carmazium.uk' }]);
+
+        const result = await service.submitKyc('user-1', {
+            ...baseDto,
+            businessType: 'SOLE_PROPRIETORSHIP',
+            companyHouseName: 'Test Motors',
+            vatNumber: undefined,
+            companyRegistrationNumber: undefined,
+            personOfSignificantControl: undefined,
+            businessWebsite: undefined,
+        } as any);
+
+        expect(result.status).toBe('PENDING');
+        const updatedData = prisma.dealerKyc.update.mock.calls[0][0].data;
+        expect(updatedData.businessType).toBe('SOLE_PROPRIETORSHIP');
+        expect(updatedData.documentStatuses.companyHouseName.status).toBe('PENDING');
+        expect(updatedData.documentStatuses.paymentReference.status).toBe('APPROVED');
+        expect(prisma.$transaction).toHaveBeenCalled();
+        expect(prisma.dealerProfile.update).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: { id: 'profile-1' },
+                data: expect.objectContaining({ isVerified: false, verificationDate: null }),
+            }),
+        );
+        expect(emailService.sendKycSubmissionAdminAlert).toHaveBeenCalled();
+    });
+
+    it('approved KYC cannot be resubmitted unchanged as a fake re-verification', async () => {
+        prisma.dealerProfile.findUnique.mockResolvedValue({
+            id: 'profile-1',
+            userId: 'user-1',
+            companyName: 'Test Motors Ltd',
+            isVerified: true,
+            kyc: {
+                id: 'kyc-1',
+                status: 'APPROVED',
+                businessType: 'PRIVATE_LIMITED',
+                stripeChargedAt: new Date('2026-06-01T12:00:00Z'),
+                documentStatuses: {},
+            },
+            user: { id: 'user-1', role: 'DEALER', firstName: 'John', lastName: 'Doe' },
+        });
+
+        await expect(service.submitKyc('user-1', {
+            ...baseDto,
+            businessType: 'PRIVATE_LIMITED',
+        } as any)).rejects.toThrow(/different business type/i);
         expect(prisma.dealerKyc.update).not.toHaveBeenCalled();
     });
 

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import {
     Settings, Building2, MapPin, Phone, Globe,
-    Loader2, Save, Bell, UserCog, AlertTriangle, CheckCircle, XCircle
+    Loader2, Save, Bell, UserCog, AlertTriangle, CheckCircle, XCircle, ShieldCheck
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -15,7 +15,7 @@ import { uploadImage } from "@/lib/supabase"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { DeleteAccountSection } from "@/components/dashboard/DeleteAccountSection"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
-import { KYC_SKIP_KEY } from "@/components/dashboard/KycOverlayForm"
+import { KycOverlayForm, KYC_SKIP_KEY } from "@/components/dashboard/KycOverlayForm"
 import { useRouter } from "next/navigation"
 
 export default function DealerSettingsPage() {
@@ -26,6 +26,9 @@ export default function DealerSettingsPage() {
     const [switchingRole, setSwitchingRole] = React.useState(false)
     const [roleError, setRoleError] = React.useState("")
     const [activeTab, setActiveTab] = React.useState("profile")
+    const [kycData, setKycData] = React.useState<any>(null)
+    const [showKycReverify, setShowKycReverify] = React.useState(false)
+    const isSoleTraderKyc = kycData?.businessType === 'SOLE_PROPRIETORSHIP'
     const [form, setForm] = React.useState({
         companyName: "",
         vatNumber: "",
@@ -52,6 +55,7 @@ export default function DealerSettingsPage() {
             const res = await apiClient<{ data: any }>('/users/me')
             const d = res?.data?.dealerProfile
             const kyc = d?.kyc
+            setKycData(kyc ?? null)
             if (d) {
                 setForm(f => ({
                     ...f,
@@ -82,8 +86,10 @@ export default function DealerSettingsPage() {
                 method: 'PATCH',
                 body: JSON.stringify({
                     companyName: form.companyName,
-                    vatNumber: form.vatNumber,
-                    registrationNumber: form.registrationNumber,
+                    ...(!isSoleTraderKyc ? {
+                        vatNumber: form.vatNumber,
+                        registrationNumber: form.registrationNumber,
+                    } : {}),
                     businessAddress: form.businessAddress,
                     phone: form.phone,
                     website: form.website,
@@ -150,9 +156,23 @@ export default function DealerSettingsPage() {
 
     const tabs = [
         { key: "profile", label: "Dealership Profile", icon: Building2 },
+        { key: "verification", label: "Business Verification", icon: ShieldCheck },
         { key: "notifications", label: "Notifications", icon: Bell },
         { key: "account", label: "Account Type", icon: UserCog },
     ]
+
+    if (showKycReverify) {
+        return (
+            <KycOverlayForm
+                allowApprovedReverification
+                onExit={async () => {
+                    setShowKycReverify(false)
+                    await fetchProfile()
+                    await refreshProfile()
+                }}
+            />
+        )
+    }
 
     return (
         <div className="min-h-screen pt-20 pb-12">
@@ -215,33 +235,37 @@ export default function DealerSettingsPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         <div className="space-y-2">
                                             <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2">
-                                                <Building2 size={12} /> Company Name
+                                                <Building2 size={12} /> {isSoleTraderKyc ? 'Trading Name' : 'Company Name'}
                                             </label>
                                             <Input
                                                 value={form.companyName}
                                                 onChange={e => setForm(f => ({ ...f, companyName: e.target.value }))}
-                                                placeholder="Your Dealership Ltd"
+                                                placeholder={isSoleTraderKyc ? 'Your trading name' : 'Your Dealership Ltd'}
                                                 className="bg-[var(--bg-card)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)]"
                                             />
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">VAT Number</label>
-                                            <Input
-                                                value={form.vatNumber}
-                                                onChange={e => setForm(f => ({ ...f, vatNumber: e.target.value }))}
-                                                placeholder="GB123456789"
-                                                className="bg-[var(--bg-card)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)]"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Registration Number</label>
-                                            <Input
-                                                value={form.registrationNumber}
-                                                onChange={e => setForm(f => ({ ...f, registrationNumber: e.target.value }))}
-                                                placeholder="Company house number"
-                                                className="bg-[var(--bg-card)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)]"
-                                            />
-                                        </div>
+                                        {!isSoleTraderKyc && (
+                                            <>
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">VAT Number</label>
+                                                    <Input
+                                                        value={form.vatNumber}
+                                                        onChange={e => setForm(f => ({ ...f, vatNumber: e.target.value }))}
+                                                        placeholder="GB123456789"
+                                                        className="bg-[var(--bg-card)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)]"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Registration Number</label>
+                                                    <Input
+                                                        value={form.registrationNumber}
+                                                        onChange={e => setForm(f => ({ ...f, registrationNumber: e.target.value }))}
+                                                        placeholder="Company house number"
+                                                        className="bg-[var(--bg-card)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)]"
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
                                         <div className="space-y-2">
                                             <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2">
                                                 <Phone size={12} /> Phone
@@ -308,6 +332,64 @@ export default function DealerSettingsPage() {
                                             </Button>
                                         </div>
                                     </div>
+                                </div>
+                            )}
+
+                            {activeTab === "verification" && (
+                                <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-2xl p-8 space-y-6">
+                                    <div className="flex items-start gap-4">
+                                        <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                                            <ShieldCheck size={20} className="text-primary" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-black uppercase tracking-tight">Business Verification</h3>
+                                            <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
+                                                Current legal type: <span className="font-bold text-[var(--text-secondary)]">
+                                                    {kycData?.businessType === 'SOLE_PROPRIETORSHIP' ? 'Sole Trader' : 'Registered Company'}
+                                                </span>
+                                                {' '}• Status: <span className="font-bold text-[var(--text-secondary)]">{kycData?.status || 'Not submitted'}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {kycData?.status === 'APPROVED' ? (
+                                        <>
+                                            <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                                                <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                                                <div>
+                                                    <p className="text-sm font-bold text-amber-300 mb-1">Changing your legal business type requires re-verification</p>
+                                                    <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                                                        Your account remains verified while you prepare the change. Once you submit the new legal type,
+                                                        verified status is temporarily removed until an administrator approves the new identity.
+                                                        Your dealer account, data and existing £1 verification payment are retained.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <Button
+                                                className="gap-2 h-10 shadow-neon"
+                                                shape="default"
+                                                onClick={() => setShowKycReverify(true)}
+                                            >
+                                                <ShieldCheck size={16} />
+                                                Change Business Type / Re-verify
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <div className="p-4 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)]">
+                                            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                                                Your business verification is not currently approved. Open the dealer verification flow to update your
+                                                Registered Company or Sole Trader details. If your £1 verification fee has already been paid, it will not be charged again.
+                                            </p>
+                                            <Button
+                                                className="gap-2 h-10 mt-4"
+                                                shape="default"
+                                                onClick={() => router.push('/dashboard/dealer')}
+                                            >
+                                                <ShieldCheck size={16} />
+                                                Open Business Verification
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

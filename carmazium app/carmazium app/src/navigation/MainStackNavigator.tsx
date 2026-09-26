@@ -107,7 +107,10 @@ export type MainStackParamList = {
   DealerAnalytics: undefined;
   DealerInventory: undefined;
   DealerLeads: undefined;
-  DealerKYC: undefined;
+  DealerKYC: {
+    businessType?: 'PRIVATE_LIMITED' | 'SOLE_PROPRIETORSHIP';
+    reverify?: boolean;
+  } | undefined;
   DealerTeam: undefined;
   DealerOnboarding: undefined;
   DealerOffers: undefined;
