@@ -56,6 +56,20 @@ describe('DvlaService AI specification enrichment', () => {
         });
     });
 
+    it('does not send registration data to AI enrichment without explicit consent', async () => {
+        const aiService = {
+            enrichVehicleSpecification: jest.fn().mockResolvedValue(null),
+        };
+
+        const service = new DvlaService(config as any, aiService as any);
+        const result = await service.lookupVrm('XGZ5459');
+
+        expect(result.make).toBe('TOYOTA');
+        expect(result.model).toBe('LAND CRUISER');
+        expect(aiService.enrichVehicleSpecification).not.toHaveBeenCalled();
+        expect(result.specEnrichment).toBeUndefined();
+    });
+
     it('auto-fills exact trim and technical specs only from strong exact-registration evidence', async () => {
         const aiService = {
             enrichVehicleSpecification: jest.fn().mockResolvedValue({
@@ -74,7 +88,7 @@ describe('DvlaService AI specification enrichment', () => {
         };
 
         const service = new DvlaService(config as any, aiService as any);
-        const result = await service.lookupVrm('XGZ5459');
+        const result = await service.lookupVrm('XGZ5459', true);
 
         expect(aiService.enrichVehicleSpecification).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -125,7 +139,7 @@ describe('DvlaService AI specification enrichment', () => {
         };
 
         const service = new DvlaService(config as any, aiService as any);
-        const result = await service.lookupVrm('XGZ5459');
+        const result = await service.lookupVrm('XGZ5459', true);
 
         expect(result.variant).toBeUndefined();
         expect(result.transmission).toBe('AUTOMATIC');
@@ -153,7 +167,7 @@ describe('DvlaService AI specification enrichment', () => {
         };
 
         const service = new DvlaService(config as any, aiService as any);
-        const result = await service.lookupVrm('XGZ5459');
+        const result = await service.lookupVrm('XGZ5459', true);
 
         expect(result.variant).toBeUndefined();
         expect(result.transmission).toBeUndefined();
@@ -201,7 +215,7 @@ describe('DvlaService AI specification enrichment', () => {
         };
 
         const service = new DvlaService(config as any, aiService as any);
-        const result = await service.lookupVrm('AB14XYZ');
+        const result = await service.lookupVrm('AB14XYZ', true);
 
         expect(result.model).toBeUndefined();
         expect(aiService.enrichVehicleSpecification).toHaveBeenCalledWith(
