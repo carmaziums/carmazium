@@ -395,7 +395,7 @@ export function AdminBroadcastHistory() {
                             </div>
                         </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-2 text-center sm:grid-cols-6">
+                        <div className={`mt-4 grid grid-cols-2 gap-2 text-center ${selected.audience === "UNVERIFIED_DEALERS" ? "sm:grid-cols-4 lg:grid-cols-8" : "sm:grid-cols-6"}`}>
                             <div className="rounded-xl bg-[var(--bg-input)] px-2 py-2">
                                 <p className="text-lg font-black">{selected.requested}</p>
                                 <p className="text-[10px] uppercase text-[var(--text-muted)]">Locked</p>
@@ -420,6 +420,18 @@ export function AdminBroadcastHistory() {
                                 <p className="text-lg font-black text-slate-400">{selected.emailSkipped}</p>
                                 <p className="text-[10px] uppercase text-[var(--text-muted)]">Email skipped</p>
                             </div>
+                            {selected.audience === "UNVERIFIED_DEALERS" && (
+                                <>
+                                    <div className="rounded-xl bg-[var(--bg-input)] px-2 py-2">
+                                        <p className="text-lg font-black text-emerald-400">{selected.kycConversions ?? 0}</p>
+                                        <p className="text-[10px] uppercase text-[var(--text-muted)]">Verified after reminder</p>
+                                    </div>
+                                    <div className="rounded-xl bg-[var(--bg-input)] px-2 py-2">
+                                        <p className="text-lg font-black text-sky-400">{selected.kycCurrentlyVerified ?? 0}</p>
+                                        <p className="text-[10px] uppercase text-[var(--text-muted)]">Verified now</p>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         <div className="mt-4 max-h-[420px] space-y-2 overflow-y-auto">
@@ -437,6 +449,13 @@ export function AdminBroadcastHistory() {
                                             <p className="truncate text-xs text-[var(--text-muted)]">
                                                 {delivery.user.email} · {delivery.user.role.replaceAll("_", " ")}
                                             </p>
+                                            {selected.audience === "UNVERIFIED_DEALERS" && delivery.user.dealerProfile && (
+                                                <p className={`mt-1 text-[10px] font-black uppercase tracking-wide ${delivery.user.dealerProfile.isVerified ? "text-emerald-400" : "text-amber-400"}`}>
+                                                    {delivery.user.dealerProfile.isVerified
+                                                        ? `KYC verified${delivery.user.dealerProfile.verificationDate ? ` · ${new Date(delivery.user.dealerProfile.verificationDate).toLocaleDateString()}` : ""}`
+                                                        : "KYC still unverified"}
+                                                </p>
+                                            )}
                                             {delivery.error && <p className="mt-1 break-words text-xs text-red-300">Chat: {delivery.error}</p>}
                                             {delivery.emailError && <p className="mt-1 break-words text-xs text-red-300">Email: {delivery.emailError}</p>}
                                         </div>

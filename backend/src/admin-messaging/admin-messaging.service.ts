@@ -5,6 +5,7 @@ import {
     BroadcastEmailStatus,
     CapabilityStatus,
     ChatContext,
+    KycStatus,
     Prisma,
     ServiceType,
     UserRole,
@@ -28,6 +29,23 @@ import {
 const ADMIN_MEDIA_PREFIX = '__CARMAZIUM_ADMIN_MEDIA_V1__:';
 const MAX_RECIPIENTS = 10000;
 const SEND_BATCH_SIZE = 20;
+const DEALER_KYC_REMINDER_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+const DEALER_KYC_REMINDER_TEXT = `Your CarMazium dealer account is not yet verified.
+
+Complete or update your dealer KYC to unlock the full dealer experience:
+
+• Access dealer-only live vehicle auctions
+• Place bids and buy vehicles through CarMazium
+• Build trust with verified dealer status
+• Manage bidding, purchases and stock from your dealer dashboard
+• Access CarMazium TradeXchange services where available
+• List vehicles in auction free of charge, with the eligible £100 seller reward after a successful completed sale
+• Advertise vehicles to retail buyers from only £1 per listing
+
+Verification helps keep CarMazium secure and ensures sellers are dealing with genuine motor-trade businesses.
+
+Complete your verification here:
+https://www.carmazium.com/dashboard/dealer`;
 
 type Recipient = {
     id: string;
@@ -198,6 +216,83 @@ export class AdminMessagingService {
         };
     }
 
+    async processDealerKycReminderAutomation() {
+        const recentCutoff = new Date(Date.now() - DEALER_KYC_REMINDER_INTERVAL_MS);
+        const recentCampaign = await this.prisma.broadcastCampaign.findFirst({
+            where: {
+                audience: AdminMessageAudience.UNVERIFIED_DEALERS,
+                createdAt: { gte: recentCutoff },
+                status: { not: BroadcastCampaignStatus.CANCELLED },
+            },
+            select: { id: true, createdAt: true, status: true },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        if (recentCampaign) {
+            return {
+                due: false,
+                reason: 'recent_campaign',
+                campaignId: recentCampaign.id,
+                lastSentAt: recentCampaign.createdAt,
+            };
+        }
+
+        const admin = await this.prisma.user.findFirst({
+            where: {
+                role: UserRole.ADMIN,
+                deletedAt: null,
+            },
+            select: { id: true },
+            orderBy: { createdAt: 'asc' },
+        });
+
+        if (!admin) {
+            this.logger.warn('Dealer KYC reminder automation skipped: no active admin account exists.');
+            return { due: false, reason: 'no_admin' };
+        }
+
+        const recipients = await this.resolveRecipients({
+            audience: AdminMessageAudience.UNVERIFIED_DEALERS,
+        });
+
+        if (recipients.length === 0) {
+            return { due: false, reason: 'no_eligible_dealers' };
+        }
+
+        const campaign = await this.prisma.broadcastCampaign.create({
+            data: {
+                adminId: admin.id,
+                audience: AdminMessageAudience.UNVERIFIED_DEALERS,
+                text: DEALER_KYC_REMINDER_TEXT,
+                requested: recipients.length,
+                status: BroadcastCampaignStatus.SENDING,
+                startedAt: new Date(),
+            },
+        });
+
+        await this.prisma.broadcastDelivery.createMany({
+            data: recipients.map((recipient) => ({
+                id: randomUUID(),
+                campaignId: campaign.id,
+                userId: recipient.id,
+                status: BroadcastDeliveryStatus.PENDING,
+            })),
+        });
+
+        this.logger.log(
+            `Automatic dealer KYC reminder campaign ${campaign.id} created for ${recipients.length} eligible dealer(s)`,
+        );
+
+        return {
+            due: true,
+            ...(await this.deliverCampaign(
+                campaign.id,
+                [BroadcastDeliveryStatus.PENDING],
+                admin.id,
+            )),
+        };
+    }
+
     private async deliverCampaign(
         campaignId: string,
         targetStatuses: BroadcastDeliveryStatus[],
@@ -292,6 +387,7 @@ export class AdminMessagingService {
                             text: campaign.text,
                             mediaUrl: campaign.mediaUrl,
                             mediaKind: campaign.mediaKind,
+                            audience: campaign.audience,
                         });
                     } catch (error: any) {
                         email = {
@@ -727,15 +823,24 @@ export class AdminMessagingService {
 
     private async deliverEmailOne(
         recipient: Recipient,
-        campaign: { text?: string | null; mediaUrl?: string | null; mediaKind?: string | null },
+        campaign: {
+            text?: string | null;
+            mediaUrl?: string | null;
+            mediaKind?: string | null;
+            audience?: string | null;
+        },
     ): Promise<{
         status: BroadcastEmailStatus;
         messageId: string | null;
     }> {
-        const shouldSend = await this.notificationsService.shouldSendEmail(
-            recipient.id,
-            'MESSAGE_RECEIVED',
-        );
+        const isDealerKycReminder =
+            campaign.audience === AdminMessageAudience.UNVERIFIED_DEALERS;
+        const shouldSend = isDealerKycReminder
+            ? true
+            : await this.notificationsService.shouldSendEmail(
+                recipient.id,
+                'MESSAGE_RECEIVED',
+            );
         if (!shouldSend) {
             return {
                 status: BroadcastEmailStatus.SKIPPED,
@@ -754,6 +859,14 @@ export class AdminMessagingService {
             text: campaign.text,
             mediaUrl: campaign.mediaUrl,
             mediaKind: campaign.mediaKind,
+            ...(isDealerKycReminder
+                ? {
+                    subject: 'Complete your CarMazium dealer verification',
+                    eyebrow: 'Dealer verification required',
+                    ctaLabel: 'Complete Dealer Verification',
+                    ctaUrl: '/dashboard/dealer',
+                }
+                : {}),
         });
 
         if (!result?.id) {
@@ -1196,6 +1309,12 @@ export class AdminMessagingService {
                                 firstName: true,
                                 lastName: true,
                                 role: true,
+                                dealerProfile: {
+                                    select: {
+                                        isVerified: true,
+                                        verificationDate: true,
+                                    },
+                                },
                             },
                         },
                     },
@@ -1206,6 +1325,26 @@ export class AdminMessagingService {
         if (!campaign) {
             throw new NotFoundException('Broadcast campaign not found.');
         }
+
+        if (campaign.audience === AdminMessageAudience.UNVERIFIED_DEALERS) {
+            const kycConversions = campaign.deliveries.filter((delivery) => {
+                const verificationDate = delivery.user.dealerProfile?.verificationDate;
+                if (!delivery.user.dealerProfile?.isVerified || !verificationDate) return false;
+                const reminderAt = delivery.emailSentAt
+                    || campaign.startedAt
+                    || campaign.createdAt;
+                return verificationDate.getTime() >= reminderAt.getTime();
+            }).length;
+
+            return {
+                ...campaign,
+                kycConversions,
+                kycCurrentlyVerified: campaign.deliveries.filter(
+                    (delivery) => delivery.user.dealerProfile?.isVerified,
+                ).length,
+            };
+        }
+
         return campaign;
     }
 
@@ -1279,6 +1418,23 @@ export class AdminMessagingService {
 
             case AdminMessageAudience.DEALERS:
                 where = { ...base, role: UserRole.DEALER };
+                break;
+
+            case AdminMessageAudience.UNVERIFIED_DEALERS:
+                where = {
+                    ...base,
+                    role: UserRole.DEALER,
+                    dealerProfile: {
+                        is: {
+                            isVerified: false,
+                            deletedAt: null,
+                            OR: [
+                                { kyc: null },
+                                { kyc: { is: { status: KycStatus.REJECTED } } },
+                            ],
+                        },
+                    },
+                };
                 break;
 
             case AdminMessageAudience.SERVICE_PROVIDERS:

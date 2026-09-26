@@ -285,6 +285,7 @@ export type AdminMessageAudience =
   | 'ALL'
   | 'ROLE'
   | 'DEALERS'
+  | 'UNVERIFIED_DEALERS'
   | 'SERVICE_PROVIDERS'
   | 'DELIVERY_PROVIDERS'
   | 'INSPECTION_PROVIDERS'
@@ -560,11 +561,17 @@ export interface AdminBroadcastDelivery {
     firstName: string | null;
     lastName: string | null;
     role: string;
+    dealerProfile?: {
+      isVerified: boolean;
+      verificationDate?: string | null;
+    } | null;
   };
 }
 
 export interface AdminBroadcastCampaignDetail extends AdminBroadcastCampaign {
   deliveries: AdminBroadcastDelivery[];
+  kycConversions?: number;
+  kycCurrentlyVerified?: number;
 }
 
 export interface AdminBroadcastHistoryFilters {

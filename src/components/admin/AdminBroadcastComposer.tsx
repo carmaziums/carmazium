@@ -36,6 +36,7 @@ const AUDIENCES: Array<{ value: AdminMessageAudience; label: string; description
     { value: "ALL", label: "Everyone", description: "Every active non-admin account" },
     { value: "ROLE", label: "Account role", description: "Everyone with one account role" },
     { value: "DEALERS", label: "Dealers", description: "All dealer accounts" },
+    { value: "UNVERIFIED_DEALERS", label: "Unverified dealers", description: "Dealers who still need to complete or correct KYC verification" },
     { value: "SERVICE_PROVIDERS", label: "Service providers", description: "All contractor/service-provider accounts" },
     { value: "DELIVERY_PROVIDERS", label: "Delivery drivers", description: "Approved delivery/recovery providers" },
     { value: "INSPECTION_PROVIDERS", label: "Inspection teams", description: "Approved vehicle inspection providers" },
@@ -249,6 +250,12 @@ export function AdminBroadcastComposer() {
                             </button>
                         ))}
                     </div>
+
+                    {audience === "UNVERIFIED_DEALERS" && (
+                        <div className="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+                            CarMazium automatically reminds eligible unverified dealers every 7 days. Dealers drop out as soon as they submit KYC for review or become verified. Sending a manual reminder here also resets the 7-day reminder window.
+                        </div>
+                    )}
 
                     {audience === "ROLE" && (
                         <div className="mt-4">
