@@ -512,6 +512,140 @@ if (strict) {
 }
 
 // ---------------------------------------------------------------------------
+// 7. Native privacy manifest and least-privilege permission contract.
+// ---------------------------------------------------------------------------
+const iosInfoPlist = app.ios?.infoPlist ?? {};
+const privacyManifest = app.ios?.privacyManifests ?? {};
+const androidBlockedPermissions = new Set(app.android?.blockedPermissions ?? []);
+
+if ('NSCameraUsageDescription' in iosInfoPlist) {
+  fail('iOS camera usage description must not be present while CarMazium has no camera-capture flow');
+} else {
+  ok('iOS does not advertise unused camera access');
+}
+
+if (
+  typeof iosInfoPlist.NSPhotoLibraryUsageDescription !== 'string' ||
+  !iosInfoPlist.NSPhotoLibraryUsageDescription.includes('choose photos')
+) {
+  fail('iOS photo permission copy must explain user-selected uploads');
+} else {
+  ok('iOS photo permission copy is purpose-specific');
+}
+
+if (
+  typeof iosInfoPlist.NSLocationWhenInUseUsageDescription !== 'string' ||
+  !iosInfoPlist.NSLocationWhenInUseUsageDescription.includes('Locate Me')
+) {
+  fail('iOS foreground-location permission copy must identify the user-triggered Locate Me action');
+} else {
+  ok('iOS foreground-location permission copy is contextual');
+}
+
+if (privacyManifest.NSPrivacyTracking !== false) {
+  fail('Native privacy manifest must explicitly declare tracking=false while no native tracking SDK is integrated');
+} else {
+  ok('Native privacy manifest explicitly declares tracking=false');
+}
+
+if (
+  !Array.isArray(privacyManifest.NSPrivacyTrackingDomains) ||
+  privacyManifest.NSPrivacyTrackingDomains.length !== 0
+) {
+  fail('Native privacy manifest must not declare tracking domains while tracking=false');
+} else {
+  ok('Native privacy manifest has no tracking domains');
+}
+
+const requiredReasonCategories = new Set(
+  (privacyManifest.NSPrivacyAccessedAPITypes ?? []).map((entry) => entry.NSPrivacyAccessedAPIType),
+);
+for (const category of [
+  'NSPrivacyAccessedAPICategoryUserDefaults',
+  'NSPrivacyAccessedAPICategoryFileTimestamp',
+  'NSPrivacyAccessedAPICategoryDiskSpace',
+]) {
+  if (!requiredReasonCategories.has(category)) {
+    fail(`Native privacy manifest is missing required-reason coverage for ${category}`);
+  }
+}
+if (
+  requiredReasonCategories.has('NSPrivacyAccessedAPICategoryUserDefaults') &&
+  requiredReasonCategories.has('NSPrivacyAccessedAPICategoryFileTimestamp') &&
+  requiredReasonCategories.has('NSPrivacyAccessedAPICategoryDiskSpace')
+) {
+  ok('Native privacy manifest covers current Expo required-reason API categories');
+}
+
+const imagePickerPlugin = (app.plugins ?? []).find(
+  (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-image-picker',
+);
+if (
+  !Array.isArray(imagePickerPlugin) ||
+  imagePickerPlugin[1]?.cameraPermission !== false ||
+  imagePickerPlugin[1]?.microphonePermission !== false
+) {
+  fail('expo-image-picker must explicitly disable unused camera and microphone permissions');
+} else {
+  ok('expo-image-picker disables unused camera and microphone permissions');
+}
+
+for (const permission of [
+  'android.permission.CAMERA',
+  'android.permission.RECORD_AUDIO',
+  'android.permission.READ_MEDIA_IMAGES',
+  'android.permission.READ_MEDIA_VIDEO',
+]) {
+  if (!androidBlockedPermissions.has(permission)) {
+    fail(`Android blockedPermissions is missing ${permission}`);
+  }
+}
+if (
+  androidBlockedPermissions.has('android.permission.CAMERA') &&
+  androidBlockedPermissions.has('android.permission.RECORD_AUDIO') &&
+  androidBlockedPermissions.has('android.permission.READ_MEDIA_IMAGES') &&
+  androidBlockedPermissions.has('android.permission.READ_MEDIA_VIDEO')
+) {
+  ok('Android blocks unused camera/microphone and broad photo/video permissions');
+}
+
+const locationPlugin = (app.plugins ?? []).find(
+  (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-location',
+);
+if (
+  !Array.isArray(locationPlugin) ||
+  locationPlugin[1]?.isIosBackgroundLocationEnabled !== false ||
+  locationPlugin[1]?.isAndroidBackgroundLocationEnabled !== false ||
+  locationPlugin[1]?.isAndroidForegroundServiceEnabled !== false
+) {
+  fail('expo-location must remain foreground-only with all background/foreground-service modes disabled');
+} else {
+  ok('Location permission is configured as foreground-only');
+}
+
+const nativeChatSource = read('carmazium app/carmazium app/src/screens/main/ChatScreen.tsx');
+if (nativeChatSource.includes('requestMediaLibraryPermissionsAsync')) {
+  fail('Native chat must use the system picker without requesting broad media-library access');
+} else if (!nativeChatSource.includes('launchImageLibraryAsync')) {
+  fail('Native chat photo attachment picker is missing');
+} else {
+  ok('Native chat uses the system image picker without a broad media-library permission request');
+}
+
+const publicPrivacyPolicy = read('src/app/privacy-policy/page.tsx');
+if (
+  !publicPrivacyPolicy.includes('system picker') ||
+  !publicPrivacyPolicy.includes('background-location permission') ||
+  !publicPrivacyPolicy.includes('microphone')
+) {
+  fail('Public privacy policy must describe native permission boundaries');
+} else {
+  ok('Public privacy policy describes native permission boundaries');
+}
+
+requiredFile('docs/native/STORE_PRIVACY_PERMISSIONS.md', 'Native store privacy/permission declaration contract');
+
+// ---------------------------------------------------------------------------
 // Result.
 // ---------------------------------------------------------------------------
 console.log(
