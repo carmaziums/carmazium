@@ -194,7 +194,7 @@ export default function AdminHandoversPage() {
                                             {p.stripePayoutError && (
                                                 <p className="text-xs text-amber-400 mt-0.5">{p.stripePayoutError}</p>
                                             )}
-                                            {p.listing?.seller?.stripeConnectOnboardingComplete === false && p.listing?.seller?.bankAccountNumber && (
+                                            {!(p.listing?.seller?.stripeConnectAccountId && p.listing?.seller?.stripeConnectOnboardingComplete) && p.listing?.seller?.bankAccountNumber && (
                                                 <p className="text-xs font-mono text-blue-300 mt-1">
                                                     {p.listing.seller.bankAccountName || '—'} · {p.listing.seller.bankSortCode || '—'} · {p.listing.seller.bankAccountNumber}
                                                 </p>
@@ -202,7 +202,7 @@ export default function AdminHandoversPage() {
                                         </div>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-2 shrink-0">
-                                        {p.listing?.seller?.stripeConnectOnboardingComplete === false && (
+                                        {!(p.listing?.seller?.stripeConnectAccountId && p.listing?.seller?.stripeConnectOnboardingComplete) && (
                                             <Button
                                                 onClick={() => handleSendStripeSetup(p.id, p.listing?.seller?.email)}
                                                 disabled={reminderProcessing === p.id}
@@ -221,7 +221,7 @@ export default function AdminHandoversPage() {
                                                         : 'Send Stripe Setup Link'}
                                             </Button>
                                         )}
-                                        {p.listing?.seller?.stripeConnectOnboardingComplete && (
+                                        {p.listing?.seller?.stripeConnectAccountId && p.listing?.seller?.stripeConnectOnboardingComplete && (
                                             <Button
                                                 onClick={() => handleRetryPayout(p.id)}
                                                 disabled={payoutProcessing === p.id}
