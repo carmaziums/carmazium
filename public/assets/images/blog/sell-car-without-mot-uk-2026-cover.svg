@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Can You Sell a Car Without an MOT UK Guide 2026">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#061426"/><stop offset="1" stop-color="#173d59"/></linearGradient>
+  <linearGradient id="car" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a2b0bc"/><stop offset=".52" stop-color="#596a78"/><stop offset="1" stop-color="#27343e"/></linearGradient>
+</defs>
+<rect width="1600" height="900" fill="url(#bg)"/>
+<circle cx="1360" cy="120" r="245" fill="#2fa8ff" opacity=".08"/>
+<text x="120" y="140" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="70" font-weight="800">Can You Sell a Car</text>
+<text x="120" y="222" fill="#58b5ff" font-family="Arial,Helvetica,sans-serif" font-size="68" font-weight="800">Without an MOT?</text>
+<text x="120" y="281" fill="#c5d7e4" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="700" letter-spacing="3">UK GUIDE 2026 • PRICE • DISCLOSE • TRANSPORT</text>
+
+<g transform="translate(120 370)" font-family="Arial,Helvetica,sans-serif">
+  <circle cx="14" cy="14" r="9" fill="#2fa8ff"/><text x="42" y="21" fill="#eaf2f8" font-size="25">You can sell it — but the buyer may not be able to drive it away</text>
+  <circle cx="14" cy="82" r="9" fill="#2fa8ff"/><text x="42" y="89" fill="#eaf2f8" font-size="25">Expired MOT changes tax, insurance and collection planning</text>
+  <circle cx="14" cy="150" r="9" fill="#2fa8ff"/><text x="42" y="157" fill="#eaf2f8" font-size="25">Price the MOT risk honestly and show the history clearly</text>
+</g>
+
+<g transform="translate(900 300)">
+  <rect x="86" y="220" width="530" height="28" rx="14" fill="#24333f"/>
+  <path d="M65 155 C105 108 160 80 226 69 L366 63 C420 65 467 83 506 117 L552 158 C566 171 570 190 566 204 L554 226 L52 226 L42 202 C39 186 48 169 65 155 Z" fill="url(#car)" stroke="#bcc9d2" stroke-width="3"/>
+  <path d="M200 84 C245 70 315 70 368 76 C401 79 430 91 455 112 L482 136 L178 136 C180 115 187 98 200 84 Z" fill="#31546e" stroke="#abc0ce" stroke-width="3"/>
+  <circle cx="164" cy="226" r="44" fill="#0f151b" stroke="#a3b1bc" stroke-width="4"/>
+  <circle cx="470" cy="226" r="44" fill="#0f151b" stroke="#a3b1bc" stroke-width="4"/>
+  <rect x="447" y="156" width="55" height="12" rx="5" fill="#d6eefc"/>
+  <circle cx="585" cy="85" r="58" fill="#ed2432"/>
+  <text x="585" y="75" text-anchor="middle" fill="#fff" font-family="Arial" font-size="18" font-weight="800">MOT</text>
+  <text x="585" y="105" text-anchor="middle" fill="#fff" font-family="Arial" font-size="24" font-weight="800">EXPIRED</text>
+  <path d="M530 286 h150 l30 45 h-205 z" fill="#d8e5ed" opacity=".9"/>
+  <circle cx="560" cy="345" r="26" fill="#111820"/><circle cx="656" cy="345" r="26" fill="#111820"/>
+</g>
+
+<rect x="118" y="704" width="430" height="90" rx="45" fill="#ed2432"/>
+<text x="333" y="760" text-anchor="middle" fill="#fff" font-family="Arial" font-size="29" font-weight="800">Sell Smarter on CarMazium</text>
+<text x="120" y="846" fill="#fff" font-family="Arial" font-size="28" font-weight="800">CarMazium</text>
+</svg>
