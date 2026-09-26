@@ -1134,6 +1134,12 @@ const backendAiSafety = read('backend/src/ai/ai.service.ts');
 const backendAiController = read('backend/src/ai/ai.controller.ts');
 const backendAiRateLimit = read('backend/src/chat/chat-rate-limit.service.ts');
 const adminAiReportQueue = read('src/app/dashboard/admin/ai-reports/page.tsx');
+const webListingAiConsent = read('src/components/listing/ListingWizard.tsx');
+const nativeListingAiConsent = read('carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx');
+const nativeSearchAiConsent = read('carmazium app/carmazium app/src/screens/main/SearchScreen.tsx');
+const dvlaControllerAiConsent = read('backend/src/dvla/dvla.controller.ts');
+const dvlaServiceAiConsent = read('backend/src/dvla/dvla.service.ts');
+const aiDtoConsent = read('backend/src/ai/ai.dto.ts');
 
 if (
   !webMaziumSafety.includes('mazium_ai_consent_v1') ||
@@ -1166,6 +1172,21 @@ if (
   fail('MaziuM AI safety/report review backend drifted');
 } else {
   ok('MaziuM AI input/output moderation and admin report review remain enforced');
+}
+
+if (
+  !webListingAiConsent.includes('ensureAiSharingConsent') ||
+  !webListingAiConsent.includes('dvlaLookup(formData.vrm, hasAiSharingConsent())') ||
+  !nativeListingAiConsent.includes('ensureSellerAiConsent') ||
+  !nativeListingAiConsent.includes('allowAiEnrichment') ||
+  !nativeSearchAiConsent.includes('ensureAiSearchConsent') ||
+  !dvlaControllerAiConsent.includes('dto.allowAiEnrichment === true') ||
+  !dvlaServiceAiConsent.includes('allowAiEnrichment = false') ||
+  !aiDtoConsent.includes("AI data-sharing consent is required")
+) {
+  fail('AI data-sharing consent can drift across MaziuM, AI Search, seller description or vehicle enrichment');
+} else {
+  ok('Interactive and seller AI data sharing remains explicit and fail-closed across clients/backend');
 }
 
 const webPricing = read('src/lib/pricingConfig.ts');
