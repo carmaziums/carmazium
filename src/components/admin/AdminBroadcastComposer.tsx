@@ -251,6 +251,12 @@ export function AdminBroadcastComposer() {
                         ))}
                     </div>
 
+                    {audience === "UNVERIFIED_DEALERS" && (
+                        <div className="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+                            CarMazium automatically reminds eligible unverified dealers every 7 days. Dealers drop out as soon as they submit KYC for review or become verified. Sending a manual reminder here also resets the 7-day reminder window.
+                        </div>
+                    )}
+
                     {audience === "ROLE" && (
                         <div className="mt-4">
                             <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Account role</label>
