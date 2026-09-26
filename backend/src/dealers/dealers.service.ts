@@ -541,13 +541,26 @@ export class DealersService {
     private async syncProfileFromKyc(profileId: string, kycFields: Record<string, any>) {
         const updates: Record<string, any> = {};
 
-        if (kycFields.companyHouseName) updates.companyName = kycFields.companyHouseName;
-        if (kycFields.companyRegistrationNumber) updates.registrationNumber = kycFields.companyRegistrationNumber;
-        if (kycFields.businessRegisteredAddress) updates.businessAddress = kycFields.businessRegisteredAddress;
-        if (kycFields.businessWebsite) updates.website = kycFields.businessWebsite;
+        const isSoleTrader = kycFields.businessType === 'SOLE_PROPRIETORSHIP';
 
-        if (kycFields.vatNumber && !kycFields.vatNumber.startsWith('PENDING-')) {
-            updates.vatNumber = kycFields.vatNumber;
+        if (kycFields.companyHouseName) updates.companyName = kycFields.companyHouseName;
+        if (kycFields.businessRegisteredAddress) updates.businessAddress = kycFields.businessRegisteredAddress;
+
+        if (isSoleTrader) {
+            // DealerProfile predates sole-trader support and still requires a
+            // unique non-null vatNumber. Never retain the previous company's VAT
+            // or Companies House identity after a legal-type change. Use a
+            // clearly non-VAT internal sentinel until that legacy column can be
+            // made nullable in a dedicated schema migration.
+            updates.vatNumber = `SOLE-TRADER-NOT-VAT-${profileId}`;
+            updates.registrationNumber = null;
+            updates.website = kycFields.businessWebsite?.trim() || null;
+        } else {
+            if (kycFields.companyRegistrationNumber) updates.registrationNumber = kycFields.companyRegistrationNumber;
+            if (kycFields.businessWebsite) updates.website = kycFields.businessWebsite;
+            if (kycFields.vatNumber && !kycFields.vatNumber.startsWith('PENDING-')) {
+                updates.vatNumber = kycFields.vatNumber;
+            }
         }
 
         if (Object.keys(updates).length > 0) {
