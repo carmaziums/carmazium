@@ -1819,6 +1819,7 @@ export class AdminService {
 
         const currentDocStatuses = (kyc.documentStatuses as Record<string, any>) || {};
         const updatedDocStatuses = { ...currentDocStatuses };
+        const effectiveBusinessType = dto.businessType ?? kyc.businessType;
 
         // Process the reviews granularly
         for (const review of dto.fields) {
@@ -1845,7 +1846,7 @@ export class AdminService {
             'paymentReference',
             'paymentScreenshot',
         ];
-        const allFields = kyc.businessType === 'SOLE_PROPRIETORSHIP'
+        const allFields = effectiveBusinessType === 'SOLE_PROPRIETORSHIP'
             ? [...commonFields, 'proofOfAddress']
             : [
                 ...commonFields,
@@ -1884,6 +1885,7 @@ export class AdminService {
         const updatedKyc = await this.prisma.dealerKyc.update({
             where: { id: kycId },
             data: {
+                businessType: effectiveBusinessType,
                 status: overallStatus,
                 documentStatuses: updatedDocStatuses,
                 reviewedAt: new Date(),
