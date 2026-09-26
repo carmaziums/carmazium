@@ -13,6 +13,7 @@ export interface VehicleValuationInput {
     fuelType?: string;
     transmission?: string;
     condition?: string;
+    exteriorGrade?: number;
     serviceHistory?: string;
     owners?: string;
     writeOffCategory?: string;
@@ -28,6 +29,7 @@ export interface VehicleValuationComparable {
     transmission?: string | null;
     writeOffCategory?: string | null;
     condition?: string | null;
+    exteriorGrade?: number | null;
     serviceHistory?: string | null;
     owners?: string | null;
     isImported?: boolean | null;
@@ -177,6 +179,7 @@ function fallbackMid(input: VehicleValuationInput): { value: number; calibratedM
 
 function vehicleProfileFactor(input: {
     condition?: string | null;
+    exteriorGrade?: number | null;
     serviceHistory?: string | null;
     owners?: string | null;
     writeOffCategory?: string | null;
@@ -189,6 +192,16 @@ function vehicleProfileFactor(input: {
     if (condition === 'EXCELLENT') factor *= 1.03;
     if (condition === 'FAIR') factor *= 0.93;
     if (condition === 'POOR') factor *= 0.84;
+
+    // Exterior grade is computed from seller-marked defects, not chosen by the
+    // seller. Keep this adjustment deliberately modest because the separate
+    // condition field also influences value; this avoids double-penalising a
+    // vehicle while still making higher defect grades materially affect price.
+    const grade = Number(input.exteriorGrade);
+    if (grade === 2) factor *= 0.99;
+    if (grade === 3) factor *= 0.97;
+    if (grade === 4) factor *= 0.94;
+    if (grade >= 5) factor *= 0.90;
 
     if (writeOff === 'CAT_N') factor *= 0.82;
     if (writeOff === 'CAT_S') factor *= 0.75;
