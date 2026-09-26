@@ -375,4 +375,77 @@ describe('AdminService dealer KYC review', () => {
         });
         expect(emailService.sendKycApprovedDealerAlert).toHaveBeenCalled();
     });
+
+    it('lets an admin correct a registered-company submission to sole trader during review', async () => {
+        const user = { id: 'dealer-user-2', email: 'owner@example.com', firstName: 'Alex', lastName: 'Owner' };
+        const kyc = {
+            id: 'kyc-company-1',
+            dealerProfileId: 'profile-company-1',
+            businessType: 'PRIVATE_LIMITED',
+            documentStatuses: {},
+            dealerProfile: {
+                id: 'profile-company-1',
+                companyName: 'Alex Autos',
+                user,
+            },
+        };
+        const prisma: any = {
+            dealerKyc: {
+                findUnique: jest.fn().mockResolvedValue(kyc),
+                update: jest.fn().mockImplementation(({ data }: any) =>
+                    Promise.resolve({ ...kyc, ...data }),
+                ),
+            },
+            dealerProfile: {
+                update: jest.fn().mockResolvedValue({ id: 'profile-company-1', isVerified: true }),
+            },
+        };
+        const emailService = {
+            sendKycApprovedDealerAlert: jest.fn().mockResolvedValue(undefined),
+            sendKycRejectedDealerAlert: jest.fn().mockResolvedValue(undefined),
+        };
+        const notificationsService = {
+            create: jest.fn().mockResolvedValue(null),
+        };
+        const service = new AdminService(
+            prisma,
+            {} as any,
+            emailService as any,
+            { sendNotification: jest.fn() } as any,
+            notificationsService as any,
+            {} as any,
+            {} as any,
+            {} as any,
+        );
+
+        const soleTraderFields = [
+            'companyHouseName',
+            'representativeName',
+            'representativePosition',
+            'directorName',
+            'directorIdProof',
+            'businessWebsite',
+            'businessRegisteredAddress',
+            'tradingAddress',
+            'googleReviewsLink',
+            'paymentReference',
+            'paymentScreenshot',
+            'proofOfAddress',
+        ].map((field) => ({ field, status: 'APPROVED' as const, note: '' }));
+
+        const result = await service.reviewKyc('kyc-company-1', {
+            businessType: 'SOLE_PROPRIETORSHIP',
+            fields: soleTraderFields,
+        } as any);
+
+        expect(result.status).toBe('APPROVED');
+        expect(result.businessType).toBe('SOLE_PROPRIETORSHIP');
+        expect(prisma.dealerKyc.update).toHaveBeenCalledWith({
+            where: { id: 'kyc-company-1' },
+            data: expect.objectContaining({
+                businessType: 'SOLE_PROPRIETORSHIP',
+                status: 'APPROVED',
+            }),
+        });
+    });
 });
