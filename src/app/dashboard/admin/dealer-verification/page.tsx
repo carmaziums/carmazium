@@ -28,6 +28,7 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { useAuth } from "@/context/AuthContext";
 import { getPendingKycList, reviewKyc } from "@/lib/adminApi";
+import { normalizeExternalUrl } from "@/lib/externalUrl";
 import { Button } from "@/components/ui/Button";
 
 // ─── KYC Field Definitions ────────────────────────────────────────────────────
@@ -592,6 +593,7 @@ export default function AdminDealerVerificationPage() {
                   const isApproved = decision.status === "APPROVED";
                   const isRejected = decision.status === "REJECTED";
                   const hasValue = val && val !== "";
+                  const linkUrl = field.isLink && hasValue ? normalizeExternalUrl(String(val)) : null;
 
                   return (
                     <div
@@ -624,15 +626,19 @@ export default function AdminDealerVerificationPage() {
                               </div>
                             )
                           ) : field.isLink && hasValue ? (
-                            <a
-                              href={val}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-primary font-bold hover:underline flex items-center gap-1 inline-flex break-all"
-                            >
-                              <span className="truncate max-w-[200px] sm:max-w-none">{val}</span>
-                              <ExternalLink size={11} className="shrink-0" />
-                            </a>
+                            linkUrl ? (
+                              <a
+                                href={linkUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-primary font-bold hover:underline flex items-center gap-1 inline-flex break-all"
+                              >
+                                <span className="truncate max-w-[200px] sm:max-w-none">{val}</span>
+                                <ExternalLink size={11} className="shrink-0" />
+                              </a>
+                            ) : (
+                              <p className="text-xs font-semibold text-[var(--text-secondary)] break-all">{val}</p>
+                            )
                           ) : field.isTextarea ? (
                             <p className="text-xs font-semibold text-[var(--text-secondary)] leading-relaxed whitespace-pre-line">
                               {val || "—"}
