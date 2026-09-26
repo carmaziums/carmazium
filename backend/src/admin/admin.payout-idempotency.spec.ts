@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, ConflictException } from '@nestjs/common';
 import { AdminService } from './admin.service';
 
 function makeAuction(overrides: Record<string, any> = {}) {
@@ -37,6 +37,7 @@ function makeHarness() {
     };
     const emailService = {
         sendHandoverApprovedEmail: jest.fn().mockResolvedValue(undefined),
+        sendStripePayoutSetupReminderEmail: jest.fn().mockResolvedValue(undefined),
     };
     const notificationsGateway = {
         sendNotification: jest.fn(),
@@ -62,6 +63,7 @@ function makeHarness() {
         paymentsService,
         emailService,
         notificationsGateway,
+        notificationsService,
     };
 }
 
@@ -187,7 +189,7 @@ describe('AdminService — seller bonus payout idempotency', () => {
         paymentsService.issueSellerPayout.mockRejectedValue(new Error('Stripe unavailable'));
 
         await expect(service.retryPayout('auction-1'))
-            .rejects.toThrow(/Stripe unavailable/i);
+            .rejects.toBeInstanceOf(BadGatewayException);
 
         expect(prisma.auction.updateMany).toHaveBeenLastCalledWith({
             where: {
@@ -197,6 +199,59 @@ describe('AdminService — seller bonus payout idempotency', () => {
             },
             data: { stripePayoutTransferId: null },
         });
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where: { id: 'auction-1' },
+            data: {
+                stripePayoutError: 'Stripe payout could not be completed. The seller bonus remains unpaid. Verify the seller\'s Stripe payout setup and try again.',
+            },
+        });
+    });
+
+    it('does not retry Stripe when onboarding is marked complete but the Connect account id is missing', async () => {
+        const { service, prisma, paymentsService } = makeHarness();
+        const before = makeAuction({ sellerBonusReleased: true });
+
+        prisma.auction.findUnique.mockResolvedValueOnce(before);
+        prisma.user.findUnique.mockResolvedValue({
+            stripeConnectAccountId: null,
+            stripeConnectOnboardingComplete: true,
+        });
+
+        await expect(service.retryPayout('auction-1'))
+            .rejects.toBeInstanceOf(BadRequestException);
+
+        expect(paymentsService.issueSellerPayout).not.toHaveBeenCalled();
+    });
+
+    it('allows a payout setup reminder when onboarding is stale-complete but no Connect account id exists', async () => {
+        const { service, prisma, notificationsService, emailService } = makeHarness();
+        const before = makeAuction({ sellerBonusReleased: true });
+
+        prisma.auction.findUnique.mockResolvedValueOnce({
+            ...before,
+            listing: {
+                ...before.listing,
+                seller: {
+                    id: 'seller-1',
+                    email: 'seller@example.com',
+                    firstName: 'Sam',
+                    stripeConnectAccountId: null,
+                    stripeConnectOnboardingComplete: true,
+                },
+            },
+        });
+
+        await expect(service.sendStripePayoutSetupReminder('auction-1')).resolves.toEqual(
+            expect.objectContaining({ sent: true, emailSent: true }),
+        );
+
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                userId: 'seller-1',
+                link: '/dashboard/seller/settings#payouts',
+            }),
+        );
+        expect(emailService.sendStripePayoutSetupReminderEmail).toHaveBeenCalled();
     });
 
     it('blocks manual payment while a Stripe payout claim is active or awaiting retry', async () => {

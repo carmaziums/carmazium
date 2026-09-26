@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, BadGatewayException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { UserRole } from '@prisma/client';
@@ -1340,6 +1340,7 @@ export class AdminService {
                                 email: true,
                                 firstName: true,
                                 stripeConnectOnboardingComplete: true,
+                                stripeConnectAccountId: true,
                             },
                         },
                     },
@@ -1357,7 +1358,7 @@ export class AdminService {
 
         const seller = auction.listing?.seller;
         if (!seller) throw new NotFoundException('Seller not found');
-        if (seller.stripeConnectOnboardingComplete) {
+        if (seller.stripeConnectAccountId && seller.stripeConnectOnboardingComplete) {
             throw new BadRequestException('Seller already has Stripe payouts connected. Use "Retry via Stripe" instead.');
         }
 
@@ -1437,10 +1438,23 @@ export class AdminService {
             throw new BadRequestException('Seller still has no connected Stripe payout method.');
         }
 
-        await this.settleSellerBonusViaStripe(
-            auctionId,
-            seller.stripeConnectAccountId,
-        );
+        try {
+            await this.settleSellerBonusViaStripe(
+                auctionId,
+                seller.stripeConnectAccountId,
+            );
+        } catch (err: any) {
+            const stripeMessage = err?.message || 'Unknown Stripe error';
+            console.error(`[Admin] Stripe payout retry failed for auction ${auctionId}:`, stripeMessage);
+
+            const safeMessage = 'Stripe payout could not be completed. The seller bonus remains unpaid. Verify the seller\'s Stripe payout setup and try again.';
+            await this.prisma.auction.update({
+                where: { id: auctionId },
+                data: { stripePayoutError: safeMessage },
+            });
+
+            throw new BadGatewayException(safeMessage);
+        }
 
         return this.prisma.auction.findUnique({ where: { id: auctionId } });
     }
