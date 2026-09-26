@@ -12,6 +12,12 @@ export interface VehicleValuationRequest {
     exteriorGrade?: number
     serviceHistory?: string
     owners?: string
+    numberOfKeys?: number
+    ulezCompliant?: boolean
+    euroStandard?: string
+    doors?: number
+    seats?: number
+    features?: string[]
     writeOffCategory?: string
     isImported?: boolean
     excludeListingId?: string
@@ -139,6 +145,35 @@ function quantile(values: number[], q: number): number {
     return sorted[index]
 }
 
+function featureValueFactor(features?: string[]): number {
+    if (!features?.length) return 1
+    const values = features.map((feature) => feature.trim().toUpperCase())
+    const has = (...needles: string[]) =>
+        values.some((feature) => needles.some((needle) => feature.includes(needle)))
+
+    let uplift = 0
+    if (has('PANORAMIC', 'PAN ROOF', 'SUNROOF')) uplift += 0.005
+    if (has('LEATHER')) uplift += 0.004
+    if (has('HEATED SEAT')) uplift += 0.003
+    if (has('360 CAMERA', 'REVERSE CAMERA', 'REVERSING CAMERA')) uplift += 0.003
+    if (has('NAVIGATION', 'SAT NAV')) uplift += 0.002
+    if (has('APPLE CARPLAY', 'ANDROID AUTO')) uplift += 0.002
+    if (has('PARKING SENSOR')) uplift += 0.002
+    if (has('LED HEADLIGHT', 'MATRIX LED')) uplift += 0.0015
+    return 1 + Math.min(0.018, uplift)
+}
+
+function complianceFactor(request: VehicleValuationRequest): number {
+    if (request.ulezCompliant === true) return 1.01
+    if (request.ulezCompliant === false) return 0.96
+
+    const euro = normalise(request.euroStandard)
+    if (euro === 'EURO6D' || euro === 'EURO6') return 1.01
+    if (euro === 'EURO5') return 0.995
+    if (euro === 'EURO4') return 0.985
+    return 1
+}
+
 function profileFactor(request: VehicleValuationRequest): number {
     let factor = 1
     const condition = (request.condition ?? '').toUpperCase()
@@ -160,11 +195,19 @@ function profileFactor(request: VehicleValuationRequest): number {
 
     const service = (request.serviceHistory ?? '').toUpperCase()
     if (service.includes('FULL')) factor *= 1.02
-    if (service === 'NONE') factor *= 0.96
+    if (service.includes('PARTIAL')) factor *= 0.99
+    if (service === 'NONE' || service.includes('NO SERVICE')) factor *= 0.96
 
-    if (request.owners === '1') factor *= 1.02
-    if (request.owners === '4') factor *= 0.98
-    if (request.owners === '5' || request.owners === '5+') factor *= 0.96
+    const ownerNumber = Number.parseInt((request.owners ?? '').replace(/[^0-9]/g, ''), 10)
+    if (ownerNumber === 1) factor *= 1.02
+    if (ownerNumber === 2) factor *= 1.01
+    if (ownerNumber === 4) factor *= 0.98
+    if (ownerNumber >= 5) factor *= 0.96
+
+    if (request.numberOfKeys === 1) factor *= 0.985
+    factor *= complianceFactor(request)
+    factor *= featureValueFactor(request.features)
+
     if (request.isImported) factor *= 0.92
     return factor
 }
@@ -372,6 +415,12 @@ export async function getVehicleValuation(
         if (request.exteriorGrade) params.set('exteriorGrade', String(request.exteriorGrade))
         if (request.serviceHistory) params.set('serviceHistory', request.serviceHistory)
         if (request.owners) params.set('owners', request.owners)
+        if (request.numberOfKeys) params.set('numberOfKeys', String(request.numberOfKeys))
+        if (request.ulezCompliant !== undefined) params.set('ulezCompliant', String(request.ulezCompliant))
+        if (request.euroStandard) params.set('euroStandard', request.euroStandard)
+        if (request.doors) params.set('doors', String(request.doors))
+        if (request.seats) params.set('seats', String(request.seats))
+        if (request.features?.length) params.set('features', request.features.join('|'))
         if (request.writeOffCategory) params.set('writeOffCategory', request.writeOffCategory)
         if (request.isImported !== undefined) params.set('isImported', String(request.isImported))
         if (request.excludeListingId) params.set('excludeListingId', request.excludeListingId)

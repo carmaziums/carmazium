@@ -166,6 +166,12 @@ export class ListingsService {
             exteriorGrade: true,
             serviceHistory: true,
             owners: true,
+            numberOfKeys: true,
+            ulezCompliant: true,
+            euroStandard: true,
+            doors: true,
+            seats: true,
+            features: true,
             isImported: true,
             sale: {
                 select: {
@@ -231,6 +237,29 @@ export class ListingsService {
             });
         }
 
+        // Exact trim and powertrain evidence is more valuable than a generic
+        // same-model advert. Narrow the comparable pool only when at least three
+        // rows remain so sparse vehicles are never stranded by over-filtering.
+        if (dto.variant) {
+            const targetVariant = dto.variant.trim().toUpperCase();
+            const sameVariantRows = rows.filter(
+                (row) => row.variant && row.variant.trim().toUpperCase() === targetVariant,
+            );
+            if (sameVariantRows.length >= 3) {
+                rows = sameVariantRows;
+            }
+        }
+
+        if (dto.fuelType) {
+            const targetFuel = String(dto.fuelType).toUpperCase();
+            const sameFuelRows = rows.filter(
+                (row) => row.fuelType && String(row.fuelType).toUpperCase() === targetFuel,
+            );
+            if (sameFuelRows.length >= 3) {
+                rows = sameFuelRows;
+            }
+        }
+
         // If we have enough same-transmission vehicles, value the target
         // primarily against those. This prevents automatic asking prices from
         // inflating a manual valuation (and vice versa). Sparse cases still
@@ -259,6 +288,14 @@ export class ListingsService {
                 exteriorGrade: row.exteriorGrade,
                 serviceHistory: row.serviceHistory ? String(row.serviceHistory) : null,
                 owners: row.owners != null ? String(row.owners) : null,
+                numberOfKeys: row.numberOfKeys,
+                ulezCompliant: row.ulezCompliant,
+                euroStandard: row.euroStandard ? String(row.euroStandard) : null,
+                doors: row.doors,
+                seats: row.seats,
+                features: Array.isArray(row.features)
+                    ? row.features.filter((feature): feature is string => typeof feature === 'string')
+                    : null,
                 isImported: row.isImported,
             };
 
@@ -320,6 +357,12 @@ export class ListingsService {
             exteriorGrade: dto.exteriorGrade,
             serviceHistory: dto.serviceHistory,
             owners: dto.owners,
+            numberOfKeys: dto.numberOfKeys,
+            ulezCompliant: dto.ulezCompliant,
+            euroStandard: dto.euroStandard,
+            doors: dto.doors,
+            seats: dto.seats,
+            features: dto.features,
             writeOffCategory: dto.writeOffCategory,
             isImported: dto.isImported,
         };

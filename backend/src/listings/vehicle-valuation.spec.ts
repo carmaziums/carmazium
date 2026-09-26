@@ -100,6 +100,67 @@ describe('calculateVehicleValuation', () => {
         expect(grade5.auction.marketValue).toBeLessThan(grade1.auction.marketValue);
     });
 
+    it('adjusts gradually for the number of keepers', () => {
+        const oneKeeper = calculateVehicleValuation({ ...vehicle, owners: '1' }, []);
+        const twoKeepers = calculateVehicleValuation({ ...vehicle, owners: '2' }, []);
+        const threeKeepers = calculateVehicleValuation({ ...vehicle, owners: '3' }, []);
+        const fiveKeepers = calculateVehicleValuation({ ...vehicle, owners: '5+' }, []);
+
+        expect(oneKeeper.mid).toBeGreaterThan(twoKeepers.mid);
+        expect(twoKeepers.mid).toBeGreaterThanOrEqual(threeKeepers.mid);
+        expect(threeKeepers.mid).toBeGreaterThan(fiveKeepers.mid);
+    });
+
+    it('reduces value modestly when only one key is supplied', () => {
+        const oneKey = calculateVehicleValuation({ ...vehicle, numberOfKeys: 1 }, []);
+        const twoKeys = calculateVehicleValuation({ ...vehicle, numberOfKeys: 2 }, []);
+
+        expect(oneKey.mid).toBeLessThan(twoKeys.mid);
+    });
+
+    it('distinguishes full, partial and no service history', () => {
+        const full = calculateVehicleValuation({ ...vehicle, serviceHistory: 'Full Main Dealer' }, []);
+        const partial = calculateVehicleValuation({ ...vehicle, serviceHistory: 'Partial' }, []);
+        const none = calculateVehicleValuation({ ...vehicle, serviceHistory: 'None' }, []);
+
+        expect(full.mid).toBeGreaterThan(partial.mid);
+        expect(partial.mid).toBeGreaterThan(none.mid);
+    });
+
+    it('uses ULEZ status as a stronger UK compliance signal than Euro level', () => {
+        const compliant = calculateVehicleValuation({ ...vehicle, ulezCompliant: true, euroStandard: 'EURO_4' }, []);
+        const nonCompliant = calculateVehicleValuation({ ...vehicle, ulezCompliant: false, euroStandard: 'EURO_6' }, []);
+
+        expect(compliant.mid).toBeGreaterThan(nonCompliant.mid);
+    });
+
+    it('uses Euro standard when explicit ULEZ status is not known', () => {
+        const euro6 = calculateVehicleValuation({ ...vehicle, euroStandard: 'EURO_6' }, []);
+        const euro4 = calculateVehicleValuation({ ...vehicle, euroStandard: 'EURO_4' }, []);
+
+        expect(euro6.mid).toBeGreaterThan(euro4.mid);
+    });
+
+    it('allows desirable equipment to add a small capped uplift', () => {
+        const standard = calculateVehicleValuation({ ...vehicle, features: [] }, []);
+        const equipped = calculateVehicleValuation({
+            ...vehicle,
+            features: [
+                'Navigation',
+                'Leather Seats',
+                'Heated Seats',
+                'Sunroof',
+                'Reverse Camera',
+                'Apple CarPlay',
+                'Parking Sensors',
+                'LED Headlights',
+            ],
+        }, []);
+
+        expect(equipped.mid).toBeGreaterThan(standard.mid);
+        expect(equipped.mid).toBeLessThanOrEqual(standard.mid * 1.03);
+    });
+
     it('discounts write-off vehicles relative to an otherwise identical clean vehicle', () => {
         const comps = [
             { price: 10000, year: 2019, mileage: 60000, kind: 'SALE' as const },
