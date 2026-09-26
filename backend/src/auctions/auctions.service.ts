@@ -1645,21 +1645,98 @@ export class AuctionsService {
                 this.emailService.sendAuctionEndedSellerEmail(seller.email, seller.firstName || 'there', vehicle || listing.title, winningAmount, auction.id).catch(console.error);
             }
         } else {
-            // No winner — notify seller only, persisted + push delivered
+            // No winner — give the seller a clear next step instead of simply
+            // telling them to re-auction. The dealer-audience statement is
+            // generated from the actual verified dealer count so customer
+            // communications never make an unsupported reach claim.
             if (listing.sellerId) {
+                const [seller, verifiedDealerCount] = await Promise.all([
+                    this.prisma.user.findUnique({
+                        where: { id: listing.sellerId },
+                        select: { email: true, firstName: true },
+                    }),
+                    this.prisma.dealerProfile.count({
+                        where: { isVerified: true },
+                    }),
+                ]);
+
+                const dealerAudienceLabel =
+                    verifiedDealerCount >= 700
+                        ? 'more than 700 verified dealers'
+                        : verifiedDealerCount > 0
+                            ? `${verifiedDealerCount.toLocaleString('en-GB')} verified dealers`
+                            : 'CarMazium’s verified dealer network';
+
+                const linkedRetailListingId = (listing as any).linkedListingId as string | null;
+                const retailAlreadyLive = Boolean(linkedRetailListingId);
+                const retailUrl = retailAlreadyLive
+                    ? '/dashboard/seller/listings'
+                    : `/sell?editId=${auction.listingId}&sellMode=retail`;
+
+                const recommendation = retailAlreadyLive
+                    ? `Your auction for ${vehicle || listing.title} has ended without a sale. The vehicle was made available across ${dealerAudienceLabel}, but the auction did not convert into a sale at the reserve. Your Retail Listing is already in place, so it can continue reaching the wider retail audience on CarMazium.`
+                    : `Your auction for ${vehicle || listing.title} has ended without a sale. The vehicle was made available across ${dealerAudienceLabel}, but the auction did not generate enough interest to complete a sale at the reserve. We recommend moving it to a Retail Listing, which opens the vehicle to a much wider audience and can potentially put it in front of thousands of retail shoppers. Your existing vehicle details can be reused, and a CarMazium Retail Listing costs £1 until sold.`;
+
                 await this.notificationsService.create({
                     userId: listing.sellerId,
-                    type: 'AUCTION_ENDED',
-                    title: 'Auction ended — reserve not met',
-                    message: `Your auction for ${vehicle} ended without meeting the reserve price. You can relist or adjust the reserve.`,
+                    type: 'AUCTION_ENDED_NO_SALE',
+                    title: retailAlreadyLive
+                        ? 'Auction ended — your Retail Listing stays live'
+                        : 'Auction ended — reach more buyers with Retail',
+                    message: recommendation,
                     entityType: 'AUCTION',
                     entityId: auction.id,
-                    link: `/dashboard/seller/auctions`,
+                    actionType: retailAlreadyLive ? 'VIEW_RETAIL' : 'LIST_RETAIL',
+                    link: retailUrl,
+                    data: {
+                        auctionId: auction.id,
+                        listingId: auction.listingId,
+                        linkedRetailListingId,
+                        retailAlreadyLive,
+                        retailUrl,
+                        verifiedDealerCount,
+                        vehicleTitle: vehicle || listing.title,
+                    },
                 });
 
-                const seller = await this.prisma.user.findUnique({ where: { id: listing.sellerId }, select: { email: true, firstName: true } });
+                // Send the same recommendation into the seller's official
+                // CarMazium support conversation. Auction ID is used as the
+                // idempotency key, so a retry cannot create a duplicate message.
+                try {
+                    const supportRoom: any = await this.chatService.findOrCreateSupportRoom(listing.sellerId);
+                    const supportSenderId =
+                        supportRoom.initiatorId === listing.sellerId
+                            ? supportRoom.participantId
+                            : supportRoom.initiatorId;
+
+                    if (supportSenderId) {
+                        await this.chatService.sendMessage(
+                            supportRoom.id,
+                            supportSenderId,
+                            {
+                                content: recommendation + (retailAlreadyLive
+                                    ? ' Open your seller dashboard to manage the Retail Listing.'
+                                    : ' Open your seller dashboard and choose “List in Retail” when you are ready.'),
+                                clientMessageId: auction.id,
+                            },
+                        );
+                    }
+                } catch (error: any) {
+                    this.logger.error(
+                        `Auction ${auction.id}: failed to send unsold-auction support message — ${error?.message}`,
+                    );
+                }
+
                 if (seller?.email) {
-                    this.emailService.sendAuctionReserveNotMetEmail(seller.email, seller.firstName || 'there', vehicle || listing.title, auction.id).catch(console.error);
+                    this.emailService.sendAuctionReserveNotMetEmail(
+                        seller.email,
+                        seller.firstName || 'there',
+                        vehicle || listing.title,
+                        auction.id,
+                        auction.listingId,
+                        dealerAudienceLabel,
+                        retailAlreadyLive,
+                    ).catch(console.error);
                 }
             }
         }
