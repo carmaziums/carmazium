@@ -216,6 +216,7 @@ requiredFile('src/app/dashboard/admin/ai-reports/page.tsx', 'Admin AI report rev
 
 const aiBackend = read('backend/src/ai/ai.service.ts');
 const aiController = read('backend/src/ai/ai.controller.ts');
+const chatRateLimit = read('backend/src/chat/chat-rate-limit.service.ts');
 const webMazium = read('src/components/features/MaziumWidget.tsx');
 const nativeMazium = read('carmazium app/carmazium app/src/components/GlobalAIChatBot.tsx');
 const webAiApi = read('src/lib/aiApi.ts');
@@ -228,6 +229,8 @@ if (
   !aiBackend.includes('safeResult') ||
   !aiBackend.includes('createReport') ||
   !aiController.includes("@Post('report')") ||
+  !aiController.includes('consumeAiReport(source)') ||
+  !chatRateLimit.includes('consumeAiReport(sourceKey') ||
   !aiController.includes("@Get('admin/reports')") ||
   !aiController.includes("@Patch('admin/reports/:id')")
 ) {
