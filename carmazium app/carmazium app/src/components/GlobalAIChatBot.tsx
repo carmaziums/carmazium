@@ -1,18 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, Platform, Text,
-  TextInput, ScrollView, Keyboard, Modal, Pressable, Animated,
-  LayoutAnimation, UIManager, useWindowDimensions,
+  TextInput, ScrollView, Keyboard, Modal, Pressable, Animated, Alert,
+  LayoutAnimation, UIManager, useWindowDimensions, ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import {FontFamily, FontSize } from '../constants/typography';
 import { useAuthStore } from '../store/authStore';
-import { sendAiChatMessage, AiChatMessage } from '../lib/aiApi';
+import { sendAiChatMessage, reportAiResponse, AiChatMessage, type AiReportReason } from '../lib/aiApi';
 import { navigationRef } from '../lib/navigationRef';
 import { CommonActions } from '@react-navigation/native';
 import { Colors } from '../constants/colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { IconButton } from './IconButton';
 
@@ -31,6 +32,8 @@ interface HistoryItem {
   id: string;
   text: string;
   isUser: boolean;
+  prompt?: string;
+  reportable?: boolean;
   filterCard?: FilterCard | null;
 }
 
@@ -185,7 +188,19 @@ export const GlobalAIChatBot: React.FC = () => {
     { id: '1', text: "Hi! I'm MaziuM, your CarMazium AI. Tell me what you're looking for and I'll help you find it!", isUser: false },
   ]);
   const [quickReplies] = useState(() => getDailyQuickReplies());
+  const [hasAiConsent, setHasAiConsent] = useState<boolean | null>(null);
+  const [reportedResponseIds, setReportedResponseIds] = useState<Set<string>>(new Set());
+  const [aiReportTarget, setAiReportTarget] = useState<HistoryItem | null>(null);
+  const [aiReportReason, setAiReportReason] = useState<AiReportReason | null>(null);
+  const [aiReportDetails, setAiReportDetails] = useState('');
+  const [aiReporting, setAiReporting] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem('mazium_ai_consent_v1')
+      .then((value) => setHasAiConsent(value === 'accepted'))
+      .catch(() => setHasAiConsent(false));
+  }, []);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -246,7 +261,7 @@ export const GlobalAIChatBot: React.FC = () => {
   // ── Send a message ────────────────────────────────────────────────────────
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || isThinking) return;
+    if (!trimmed || isThinking || hasAiConsent !== true) return;
 
     const userItem: HistoryItem = { id: Date.now().toString(), text: trimmed, isUser: true };
     const updated = [...chatHistory, userItem];
@@ -267,6 +282,8 @@ export const GlobalAIChatBot: React.FC = () => {
         id: (Date.now() + 1).toString(),
         text: result.text,
         isUser: false,
+        prompt: trimmed,
+        reportable: true,
         filterCard: result.filterCard ?? null,
       };
       setChatHistory((prev) => [...prev, botItem]);
@@ -278,6 +295,91 @@ export const GlobalAIChatBot: React.FC = () => {
     } finally {
       setIsThinking(false);
     }
+  };
+
+  const acceptAiConsent = async () => {
+    try {
+      await AsyncStorage.setItem('mazium_ai_consent_v1', 'accepted');
+      setHasAiConsent(true);
+    } catch {
+      setHasAiConsent(false);
+    }
+  };
+
+  const openAiPrivacy = () => {
+    setIsOpen(false);
+    setTimeout(() => {
+      try {
+        (navigationRef as any).navigate('Main', { screen: 'PrivacyPolicy' });
+      } catch {
+        // Navigation may still be hydrating; the privacy policy remains
+        // available from the signed-in drawer as a fallback.
+      }
+    }, 180);
+  };
+
+  const withdrawAiConsent = async () => {
+    try {
+      await AsyncStorage.removeItem('mazium_ai_consent_v1');
+    } finally {
+      setHasAiConsent(false);
+      setMessage('');
+    }
+  };
+
+  const showAiPrivacyOptions = () => {
+    Alert.alert(
+      'MaziuM AI privacy',
+      'You can view the privacy policy or stop sending prompts to OpenAI. You can opt in again later.',
+      [
+        { text: 'View privacy', onPress: openAiPrivacy },
+        { text: 'Stop AI sharing', style: 'destructive', onPress: () => void withdrawAiConsent() },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
+  };
+
+  const closeAiReport = () => {
+    if (aiReporting) return;
+    setAiReportTarget(null);
+    setAiReportReason(null);
+    setAiReportDetails('');
+  };
+
+  const submitAiReport = async () => {
+    if (!aiReportTarget || !aiReportReason || aiReporting) return;
+    try {
+      setAiReporting(true);
+      await reportAiResponse({
+        prompt: aiReportTarget.prompt,
+        response: aiReportTarget.text,
+        reason: aiReportReason,
+        details: aiReportDetails.trim() || undefined,
+      });
+      setReportedResponseIds((prev) => {
+        const next = new Set(prev);
+        next.add(aiReportTarget.id);
+        return next;
+      });
+      setAiReportTarget(null);
+      setAiReportReason(null);
+      setAiReportDetails('');
+      Alert.alert('Report sent', 'CarMazium will review this AI response.');
+    } catch (error) {
+      Alert.alert(
+        'Could not send report',
+        error instanceof Error ? error.message : 'Please try again.',
+      );
+    } finally {
+      setAiReporting(false);
+    }
+  };
+
+  const openAiReport = (item: HistoryItem) => {
+    if (reportedResponseIds.has(item.id)) return;
+    setAiReportTarget(item);
+    setAiReportReason(null);
+    setAiReportDetails('');
   };
 
   // Chat box sits above the floating button (button at insets.bottom + 70, height 64px)
@@ -314,11 +416,47 @@ export const GlobalAIChatBot: React.FC = () => {
                     <Text style={styles.chatStatus}>Always online</Text>
                   </View>
                 </View>
-                <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setIsOpen(false)} accessibilityLabel="Close" />
+                <View style={styles.chatHeaderActions}>
+                  <IconButton
+                    style={styles.closeBtn}
+                    icon={<Ionicons name="shield-checkmark-outline" size={18} color={Colors.textSecondary} />}
+                    onPress={showAiPrivacyOptions}
+                    accessibilityLabel="MaziuM AI privacy options"
+                  />
+                  <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setIsOpen(false)} accessibilityLabel="Close" />
+                </View>
               </View>
 
               {/* Messages */}
               <ScrollView ref={scrollRef} style={styles.chatScroll} contentContainerStyle={styles.chatScrollContent} showsVerticalScrollIndicator={false}>
+
+                {hasAiConsent === false && (
+                  <View style={styles.aiConsentCard}>
+                    <View style={styles.aiConsentTitleRow}>
+                      <Ionicons name="shield-checkmark-outline" size={16} color={Colors.accent} />
+                      <Text style={styles.aiConsentTitle}>Before you use MaziuM AI</Text>
+                    </View>
+                    <Text style={styles.aiConsentText}>
+                      Your message and recent MaziuM chat context are sent to OpenAI to generate a response. AI can make mistakes, so verify important vehicle or finance information. Do not include passwords, payment credentials or unnecessary sensitive personal information.
+                    </Text>
+                    <View style={styles.aiConsentActions}>
+                      <TouchableOpacity
+                        style={styles.aiConsentPrimary}
+                        onPress={() => void acceptAiConsent()}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.aiConsentPrimaryText}>I understand & continue</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.aiConsentSecondary}
+                        onPress={openAiPrivacy}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.aiConsentSecondaryText}>Privacy</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
 
                 {chatHistory.map((msg) => (
                   <View key={msg.id}>
@@ -327,6 +465,31 @@ export const GlobalAIChatBot: React.FC = () => {
                         {msg.text}
                       </Text>
                     </View>
+
+                    {!msg.isUser && msg.reportable && (
+                      <TouchableOpacity
+                        style={styles.aiReportButton}
+                        onPress={() => openAiReport(msg)}
+                        disabled={reportedResponseIds.has(msg.id)}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel="Report AI response"
+                      >
+                        <Ionicons
+                          name="flag-outline"
+                          size={12}
+                          color={reportedResponseIds.has(msg.id) ? Colors.success : Colors.textMuted}
+                        />
+                        <Text
+                          style={[
+                            styles.aiReportText,
+                            reportedResponseIds.has(msg.id) && styles.aiReportTextDone,
+                          ]}
+                        >
+                          {reportedResponseIds.has(msg.id) ? 'Reported' : 'Report AI response'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
 
                     {/* Filter card — tapping navigates to Search with the AI-suggested filters */}
                     {!msg.isUser && msg.filterCard && (
@@ -349,7 +512,7 @@ export const GlobalAIChatBot: React.FC = () => {
                 ))}
 
                 {/* Daily rotating quick replies — shown only before user sends anything */}
-                {chatHistory.length === 1 && !isThinking && (
+                {chatHistory.length === 1 && !isThinking && hasAiConsent === true && (
                   <View style={styles.quickPromptsWrap}>
                     {quickReplies.map((q) => (
                       <TouchableOpacity
@@ -382,14 +545,112 @@ export const GlobalAIChatBot: React.FC = () => {
                   onChangeText={setMessage}
                   onSubmitEditing={() => sendMessage(message)}
                   returnKeyType="send"
-                  editable={!isThinking}
+                  editable={!isThinking && hasAiConsent === true}
                 />
-                <IconButton style={[styles.sendBtn, (isThinking || !message.trim()) && { opacity: 0.4 }]} icon={<Ionicons name="send" size={16} color={Colors.white} />} onPress={() => sendMessage(message)} disabled={isThinking || !message.trim()} accessibilityLabel="Send message" />
+                <IconButton style={[styles.sendBtn, (isThinking || !message.trim()) && { opacity: 0.4 }]} icon={<Ionicons name="send" size={16} color={Colors.white} />} onPress={() => sendMessage(message)} disabled={isThinking || hasAiConsent !== true || !message.trim()} accessibilityLabel="Send message" />
               </View>
 
             </ChatErrorBoundary>
           </Pressable>
         </Pressable>
+      </Modal>
+
+      <Modal
+        visible={Boolean(aiReportTarget)}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={closeAiReport}
+      >
+        <View style={styles.aiReportBackdrop}>
+          <View style={styles.aiReportCard}>
+            <View style={styles.aiReportHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.aiReportEyebrow}>MaziuM AI safety</Text>
+                <Text style={styles.aiReportTitle}>Report AI response</Text>
+              </View>
+              <IconButton
+                style={styles.aiReportClose}
+                icon={<Ionicons name="close" size={20} color={Colors.white} />}
+                onPress={closeAiReport}
+                disabled={aiReporting}
+                accessibilityLabel="Close AI report"
+              />
+            </View>
+
+            <Text style={styles.aiReportHelp}>
+              Tell CarMazium why this response needs review. The reported AI response and its related prompt will be sent to the moderation queue.
+            </Text>
+
+            {aiReportTarget && (
+              <View style={styles.aiReportPreview}>
+                <Text style={styles.aiReportPreviewText} numberOfLines={5}>
+                  {aiReportTarget.text}
+                </Text>
+              </View>
+            )}
+
+            <Text style={styles.aiReportSectionLabel}>Reason</Text>
+            <View style={styles.aiReportReasonWrap}>
+              {([
+                ['UNSAFE_OFFENSIVE', 'Unsafe or offensive'],
+                ['INACCURATE_MISLEADING', 'Inaccurate or misleading'],
+                ['SCAM_DISHONEST', 'Scam or dishonest guidance'],
+                ['OTHER', 'Other'],
+              ] as Array<[AiReportReason, string]>).map(([value, label]) => {
+                const selected = aiReportReason === value;
+                return (
+                  <TouchableOpacity
+                    key={value}
+                    style={[styles.aiReportReasonChip, selected && styles.aiReportReasonChipSelected]}
+                    onPress={() => setAiReportReason(value)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.aiReportReasonText, selected && styles.aiReportReasonTextSelected]}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={styles.aiReportSectionLabel}>Additional details (optional)</Text>
+            <TextInput
+              style={styles.aiReportDetailsInput}
+              value={aiReportDetails}
+              onChangeText={(value) => setAiReportDetails(value.slice(0, 1000))}
+              placeholder="What was wrong with this response?"
+              placeholderTextColor={Colors.textMuted}
+              multiline
+              maxLength={1000}
+            />
+
+            <View style={styles.aiReportActions}>
+              <TouchableOpacity
+                style={styles.aiReportCancel}
+                onPress={closeAiReport}
+                disabled={aiReporting}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.aiReportCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.aiReportSubmit,
+                  (!aiReportReason || aiReporting) && styles.aiReportSubmitDisabled,
+                ]}
+                onPress={() => void submitAiReport()}
+                disabled={!aiReportReason || aiReporting}
+                activeOpacity={0.8}
+              >
+                {aiReporting
+                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  : <Ionicons name="flag-outline" size={15} color={Colors.white} />}
+                <Text style={styles.aiReportSubmitText}>Submit report</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Floating bot button */}
@@ -458,6 +719,7 @@ const styles = StyleSheet.create({
   chatAvatarText: { fontFamily: FontFamily.black, fontSize: FontSize.base, color: Colors.white },
   chatTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
   chatStatus: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.accentGreen },
+  chatHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   closeBtn: { padding: 4 },
 
   chatScroll: { flex: 1, backgroundColor: Colors.bgPrimary },
@@ -469,6 +731,225 @@ const styles = StyleSheet.create({
   msgText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, lineHeight: 18 },
   msgTextAI: { color: Colors.paleNearWhite_e0e0e0 },
   msgTextUser: { color: Colors.white },
+
+  aiConsentCard: {
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: Colors.deepBlue_1e1e28,
+    borderWidth: 1,
+    borderColor: Colors.accentAlpha25,
+  },
+  aiConsentTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginBottom: 7,
+  },
+  aiConsentTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.white,
+  },
+  aiConsentText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size10,
+    lineHeight: 16,
+    color: Colors.textSecondary,
+  },
+  aiConsentActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  aiConsentPrimary: {
+    flex: 1,
+    minHeight: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 10,
+  },
+  aiConsentPrimaryText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size10,
+    color: Colors.white,
+    textAlign: 'center',
+  },
+  aiConsentSecondary: {
+    minHeight: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    paddingHorizontal: 12,
+  },
+  aiConsentSecondaryText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size10,
+    color: Colors.textSecondary,
+  },
+  aiReportButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 4,
+    paddingVertical: 4,
+  },
+  aiReportText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: Colors.textMuted,
+  },
+  aiReportTextDone: {
+    color: Colors.success,
+  },
+  aiReportBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(0,0,0,0.74)',
+  },
+  aiReportCard: {
+    width: '100%',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    backgroundColor: Colors.deepBlue_16161c,
+    padding: 20,
+  },
+  aiReportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  aiReportEyebrow: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: Colors.accent,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  aiReportTitle: {
+    marginTop: 2,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xl,
+    color: Colors.white,
+  },
+  aiReportClose: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.whiteAlpha06,
+  },
+  aiReportHelp: {
+    marginTop: 12,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size12,
+    lineHeight: 18,
+    color: Colors.textSecondary,
+  },
+  aiReportPreview: {
+    marginTop: 14,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.bgSecondary,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha05,
+  },
+  aiReportPreviewText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size12,
+    lineHeight: 18,
+    color: Colors.white,
+  },
+  aiReportSectionLabel: {
+    marginTop: 16,
+    marginBottom: 8,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size10,
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  aiReportReasonWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  aiReportReasonChip: {
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    backgroundColor: Colors.bgSecondary,
+  },
+  aiReportReasonChipSelected: {
+    borderColor: Colors.accent,
+    backgroundColor: Colors.darkRed_3b2424,
+  },
+  aiReportReasonText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size10,
+    color: Colors.textSecondary,
+  },
+  aiReportReasonTextSelected: {
+    color: Colors.white,
+  },
+  aiReportDetailsInput: {
+    minHeight: 88,
+    maxHeight: 130,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    backgroundColor: Colors.bgSecondary,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size12,
+    lineHeight: 18,
+    color: Colors.white,
+    textAlignVertical: 'top',
+  },
+  aiReportActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 18,
+  },
+  aiReportCancel: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+  },
+  aiReportCancelText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.textSecondary,
+  },
+  aiReportSubmit: {
+    flex: 1.4,
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    borderRadius: 12,
+    backgroundColor: Colors.accent,
+  },
+  aiReportSubmitDisabled: {
+    opacity: 0.45,
+  },
+  aiReportSubmitText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.white,
+  },
 
   // Filter card
   filterCard: {
