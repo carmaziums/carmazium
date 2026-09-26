@@ -3013,11 +3013,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               >
                 <Text style={s.valuationCardLabel}>CURRENT MARKET VALUE</Text>
                 <Text style={s.valuationAuctionPrice}>£{valuation.auction.marketValue.toLocaleString('en-GB')}</Text>
-                <Text style={s.valuationCardHint}>Based on the age, mileage and condition information provided for your vehicle.</Text>
+                <Text style={s.valuationCardHint}>Base market value from the vehicle model, year and mileage, adjusted by the condition and specification you provide.</Text>
                 <Text style={s.valuationApplyText}>Use this value</Text>
               </TouchableOpacity>
               <Text style={s.valuationEvidenceText}>
-                Guide only. Vehicle condition, specification and current market demand can affect the final selling price.
+                Guide only. Changing condition or specification adjusts this saved base value; it does not start another market search.
               </Text>
             </>
           ) : (
