@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, Platform, Text,
-  TextInput, ScrollView, Keyboard, Modal, Pressable, Animated,
+  TextInput, ScrollView, Keyboard, Modal, Pressable, Animated, Alert,
   LayoutAnimation, UIManager, useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -9,10 +9,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import {FontFamily, FontSize } from '../constants/typography';
 import { useAuthStore } from '../store/authStore';
-import { sendAiChatMessage, AiChatMessage } from '../lib/aiApi';
+import { sendAiChatMessage, reportAiResponse, AiChatMessage, type AiReportReason } from '../lib/aiApi';
 import { navigationRef } from '../lib/navigationRef';
 import { CommonActions } from '@react-navigation/native';
 import { Colors } from '../constants/colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { IconButton } from './IconButton';
 
@@ -31,6 +32,8 @@ interface HistoryItem {
   id: string;
   text: string;
   isUser: boolean;
+  prompt?: string;
+  reportable?: boolean;
   filterCard?: FilterCard | null;
 }
 
@@ -185,7 +188,15 @@ export const GlobalAIChatBot: React.FC = () => {
     { id: '1', text: "Hi! I'm MaziuM, your CarMazium AI. Tell me what you're looking for and I'll help you find it!", isUser: false },
   ]);
   const [quickReplies] = useState(() => getDailyQuickReplies());
+  const [hasAiConsent, setHasAiConsent] = useState<boolean | null>(null);
+  const [reportedResponseIds, setReportedResponseIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem('mazium_ai_consent_v1')
+      .then((value) => setHasAiConsent(value === 'accepted'))
+      .catch(() => setHasAiConsent(false));
+  }, []);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -246,7 +257,7 @@ export const GlobalAIChatBot: React.FC = () => {
   // ── Send a message ────────────────────────────────────────────────────────
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || isThinking) return;
+    if (!trimmed || isThinking || hasAiConsent !== true) return;
 
     const userItem: HistoryItem = { id: Date.now().toString(), text: trimmed, isUser: true };
     const updated = [...chatHistory, userItem];
@@ -267,6 +278,8 @@ export const GlobalAIChatBot: React.FC = () => {
         id: (Date.now() + 1).toString(),
         text: result.text,
         isUser: false,
+        prompt: trimmed,
+        reportable: true,
         filterCard: result.filterCard ?? null,
       };
       setChatHistory((prev) => [...prev, botItem]);
@@ -278,6 +291,63 @@ export const GlobalAIChatBot: React.FC = () => {
     } finally {
       setIsThinking(false);
     }
+  };
+
+  const acceptAiConsent = async () => {
+    try {
+      await AsyncStorage.setItem('mazium_ai_consent_v1', 'accepted');
+      setHasAiConsent(true);
+    } catch {
+      setHasAiConsent(false);
+    }
+  };
+
+  const openAiPrivacy = () => {
+    setIsOpen(false);
+    setTimeout(() => {
+      try {
+        (navigationRef as any).navigate('Main', { screen: 'PrivacyPolicy' });
+      } catch {
+        // Navigation may still be hydrating; the privacy policy remains
+        // available from the signed-in drawer as a fallback.
+      }
+    }, 180);
+  };
+
+  const submitAiReport = async (item: HistoryItem, reason: AiReportReason) => {
+    try {
+      await reportAiResponse({
+        prompt: item.prompt,
+        response: item.text,
+        reason,
+      });
+      setReportedResponseIds((prev) => {
+        const next = new Set(prev);
+        next.add(item.id);
+        return next;
+      });
+      Alert.alert('Report sent', 'CarMazium will review this AI response.');
+    } catch (error) {
+      Alert.alert(
+        'Could not send report',
+        error instanceof Error ? error.message : 'Please try again.',
+      );
+    }
+  };
+
+  const openAiReport = (item: HistoryItem) => {
+    if (reportedResponseIds.has(item.id)) return;
+    Alert.alert(
+      'Report AI response',
+      'Why are you reporting this MaziuM AI response?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Unsafe or offensive', onPress: () => void submitAiReport(item, 'UNSAFE_OFFENSIVE') },
+        { text: 'Inaccurate or misleading', onPress: () => void submitAiReport(item, 'INACCURATE_MISLEADING') },
+        { text: 'Scam or dishonest guidance', onPress: () => void submitAiReport(item, 'SCAM_DISHONEST') },
+        { text: 'Other', onPress: () => void submitAiReport(item, 'OTHER') },
+      ],
+    );
   };
 
   // Chat box sits above the floating button (button at insets.bottom + 70, height 64px)
@@ -320,6 +390,34 @@ export const GlobalAIChatBot: React.FC = () => {
               {/* Messages */}
               <ScrollView ref={scrollRef} style={styles.chatScroll} contentContainerStyle={styles.chatScrollContent} showsVerticalScrollIndicator={false}>
 
+                {hasAiConsent === false && (
+                  <View style={styles.aiConsentCard}>
+                    <View style={styles.aiConsentTitleRow}>
+                      <Ionicons name="shield-checkmark-outline" size={16} color={Colors.accent} />
+                      <Text style={styles.aiConsentTitle}>Before you use MaziuM AI</Text>
+                    </View>
+                    <Text style={styles.aiConsentText}>
+                      Your message and recent MaziuM chat context are sent to OpenAI to generate a response. Do not include passwords, payment credentials or unnecessary sensitive personal information.
+                    </Text>
+                    <View style={styles.aiConsentActions}>
+                      <TouchableOpacity
+                        style={styles.aiConsentPrimary}
+                        onPress={() => void acceptAiConsent()}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.aiConsentPrimaryText}>I understand & continue</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.aiConsentSecondary}
+                        onPress={openAiPrivacy}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.aiConsentSecondaryText}>Privacy</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
                 {chatHistory.map((msg) => (
                   <View key={msg.id}>
                     <View style={[styles.msgBubble, msg.isUser ? styles.msgUser : styles.msgAI]}>
@@ -327,6 +425,31 @@ export const GlobalAIChatBot: React.FC = () => {
                         {msg.text}
                       </Text>
                     </View>
+
+                    {!msg.isUser && msg.reportable && (
+                      <TouchableOpacity
+                        style={styles.aiReportButton}
+                        onPress={() => openAiReport(msg)}
+                        disabled={reportedResponseIds.has(msg.id)}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel="Report AI response"
+                      >
+                        <Ionicons
+                          name="flag-outline"
+                          size={12}
+                          color={reportedResponseIds.has(msg.id) ? Colors.success : Colors.textMuted}
+                        />
+                        <Text
+                          style={[
+                            styles.aiReportText,
+                            reportedResponseIds.has(msg.id) && styles.aiReportTextDone,
+                          ]}
+                        >
+                          {reportedResponseIds.has(msg.id) ? 'Reported' : 'Report AI response'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
 
                     {/* Filter card — tapping navigates to Search with the AI-suggested filters */}
                     {!msg.isUser && msg.filterCard && (
@@ -349,7 +472,7 @@ export const GlobalAIChatBot: React.FC = () => {
                 ))}
 
                 {/* Daily rotating quick replies — shown only before user sends anything */}
-                {chatHistory.length === 1 && !isThinking && (
+                {chatHistory.length === 1 && !isThinking && hasAiConsent === true && (
                   <View style={styles.quickPromptsWrap}>
                     {quickReplies.map((q) => (
                       <TouchableOpacity
@@ -382,9 +505,9 @@ export const GlobalAIChatBot: React.FC = () => {
                   onChangeText={setMessage}
                   onSubmitEditing={() => sendMessage(message)}
                   returnKeyType="send"
-                  editable={!isThinking}
+                  editable={!isThinking && hasAiConsent === true}
                 />
-                <IconButton style={[styles.sendBtn, (isThinking || !message.trim()) && { opacity: 0.4 }]} icon={<Ionicons name="send" size={16} color={Colors.white} />} onPress={() => sendMessage(message)} disabled={isThinking || !message.trim()} accessibilityLabel="Send message" />
+                <IconButton style={[styles.sendBtn, (isThinking || !message.trim()) && { opacity: 0.4 }]} icon={<Ionicons name="send" size={16} color={Colors.white} />} onPress={() => sendMessage(message)} disabled={isThinking || hasAiConsent !== true || !message.trim()} accessibilityLabel="Send message" />
               </View>
 
             </ChatErrorBoundary>
