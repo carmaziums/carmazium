@@ -1132,6 +1132,7 @@ const webAiApiSafety = read('src/lib/aiApi.ts');
 const mobileAiApiSafety = read('carmazium app/carmazium app/src/lib/aiApi.ts');
 const backendAiSafety = read('backend/src/ai/ai.service.ts');
 const backendAiController = read('backend/src/ai/ai.controller.ts');
+const backendAiReportMigration = read('backend/prisma/manual-migrations/20260926_ai_reports.sql');
 const backendAiRateLimit = read('backend/src/chat/chat-rate-limit.service.ts');
 const adminAiReportQueue = read('src/app/dashboard/admin/ai-reports/page.tsx');
 const webListingAiConsent = read('src/components/listing/ListingWizard.tsx');
@@ -1154,6 +1155,15 @@ if (
   fail('MaziuM AI first-use consent or reporting controls drifted across web/native');
 } else {
   ok('Web and native MaziuM AI share first-use disclosure and in-app reporting');
+}
+
+if (
+  !backendAiReportMigration.includes('"id" text NOT NULL') ||
+  !backendAiReportMigration.includes('ENABLE ROW LEVEL SECURITY')
+) {
+  fail('AI report database shape or RLS regressed');
+} else {
+  ok('AI report table keeps Prisma-compatible IDs and RLS');
 }
 
 if (
