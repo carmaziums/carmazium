@@ -68,6 +68,8 @@ export interface CreateListingRequest {
     driveType?: string
     numberOfKeys?: number
     serviceHistory?: string
+    mechanicalIssues?: string
+    electricalIssues?: string
     owners?: string
     torqueNm?: number
     topSpeedMph?: number
@@ -212,6 +214,8 @@ export interface Listing {
     driveType: string | null
     numberOfKeys: number | null
     serviceHistory: string | null
+    mechanicalIssues?: string | null
+    electricalIssues?: string | null
     owners: string | null
     torqueNm: number | null
     topSpeedMph: number | null
