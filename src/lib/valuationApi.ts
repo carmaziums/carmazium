@@ -372,8 +372,8 @@ function finishEstimate(
         explanation: values.length
             ? `Based on ${values.length} similar live CarMazium asking price${values.length === 1 ? '' : 's'}. Completed transaction evidence will be added when available.`
             : fallbackResult.calibratedModelProfile
-                ? 'CarMazium has limited live marketplace evidence for this exact vehicle, so this uses a calibrated model-specific depreciation profile with age, mileage and transmission.'
-                : 'Exact-model market evidence is limited, so this LOW-confidence guide uses the vehicle age, mileage, transmission and a conservative make-level depreciation model. Use it as a starting point rather than a guaranteed sale price.',
+                ? 'CarMazium has limited live marketplace evidence for this exact vehicle, so this uses a calibrated model-specific depreciation profile with age and mileage.'
+                : 'Exact-model market evidence is limited, so this LOW-confidence guide uses the vehicle age and mileage and a conservative make-level depreciation model. Use it as a starting point rather than a guaranteed sale price.',
         retail: {
             // Retail uses the upper market guide.
             suggestedAsking: high,
