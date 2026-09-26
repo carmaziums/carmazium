@@ -91,7 +91,7 @@ export function VehicleValuationCard({
                                 Vehicle Valuation
                             </p>
                             <p className="mt-1 text-xs text-[var(--text-muted)]">
-                                Based on the age and mileage of your vehicle.
+                                Based on the age, mileage and condition information provided for your vehicle.
                             </p>
                         </div>
                     </div>
@@ -108,7 +108,7 @@ export function VehicleValuationCard({
                         {formatPrice(primaryValue)}
                     </p>
                     <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
-                        Based on the age and mileage of your vehicle.
+                        Based on the age, mileage and condition information provided for your vehicle.
                     </p>
                 </div>
 
