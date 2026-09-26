@@ -346,7 +346,7 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
                             <div className="mb-5 flex items-center justify-between">
                                 <h2 className="text-lg font-bold">Active Listings</h2>
                                 {totalListings > 6 && (
-                                    <Link href={`/buy-cars?seller=${id}`} className="flex items-center gap-1 text-sm text-primary hover:underline">
+                                    <Link href={`/seller/${id}/listings`} className="flex items-center gap-1 text-sm text-primary hover:underline">
                                         View all {totalListings} <ChevronRight size={14} />
                                     </Link>
                                 )}
