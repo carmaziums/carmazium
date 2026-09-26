@@ -979,6 +979,12 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 </div>
                             )}
 
+                            {auction.listing.isImported && (
+                                <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-amber-400/95 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-full border border-amber-100/70 shadow-lg z-20 pointer-events-none uppercase tracking-wider">
+                                    <Globe size={11} /> Imported Vehicle
+                                </div>
+                            )}
+
                             {/* Bottom overlay */}
                             <div className="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between z-10 pointer-events-none">
                                 <div>
@@ -1151,6 +1157,14 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             </div>
                                         )}
 
+                                        {/* ── Import disclosure ───────────────────────────── */}
+                                        {auction.listing.isImported && (
+                                            <div className="flex items-start gap-2.5 p-3 bg-amber-500/8 border border-amber-500/25 rounded-xl text-amber-300 text-xs">
+                                                <Globe size={13} className="shrink-0 mt-0.5" />
+                                                <p><span className="font-bold">Imported vehicle</span> — This listing is marked as an import so buyers can take that into account before bidding.</p>
+                                            </div>
+                                        )}
+
                                         {/* ── Write-off warning ────────────────────────────── */}
                                         {auction.listing.writeOffCategory && auction.listing.writeOffCategory !== "NONE" && (
                                             <div className="flex items-start gap-2.5 p-3 bg-amber-500/8 border border-amber-500/25 rounded-xl text-amber-400 text-xs">
@@ -1179,6 +1193,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                             ["Registration",auction.listing.vrm],
                                                             ["Reg. Date",   auction.listing.monthOfFirstRegistration],
                                                             ["Location",    auction.listing.location],
+                                                            ["Vehicle origin", auction.listing.isImported ? "Imported vehicle" : null],
                                                         ].filter(([, v]) => v != null && v !== "").map(([k, v]) => (
                                                             <div key={k as string} className="flex justify-between gap-2 text-xs">
                                                                 <span className="text-[var(--text-muted)] shrink-0">{k}</span>
