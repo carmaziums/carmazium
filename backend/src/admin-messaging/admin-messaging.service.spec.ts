@@ -64,6 +64,7 @@ describe('AdminMessagingService', () => {
                 update: jest.fn().mockResolvedValue({}),
                 updateMany: jest.fn(),
                 findMany: jest.fn(),
+                findFirst: jest.fn(),
                 findUnique: jest.fn().mockResolvedValue({
                     id: 'campaign-1',
                     adminId: 'admin-1',
@@ -132,6 +133,49 @@ describe('AdminMessagingService', () => {
 
         return { service, prisma, chatService, chatGateway, socketRoom, notificationsService, notificationsGateway, emailService };
     };
+
+    it('targets unverified dealers who still need to submit or correct KYC', async () => {
+        const { service, prisma } = makeService();
+
+        const result = await service.previewAudience({
+            audience: AdminMessageAudience.UNVERIFIED_DEALERS,
+        });
+
+        expect(result.count).toBe(1);
+        expect(prisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: expect.objectContaining({
+                role: UserRole.DEALER,
+                dealerProfile: {
+                    is: expect.objectContaining({
+                        isVerified: false,
+                        deletedAt: null,
+                        OR: expect.arrayContaining([
+                            { kyc: null },
+                            { kyc: { is: { status: 'REJECTED' } } },
+                        ]),
+                    }),
+                },
+            }),
+        }));
+    });
+
+    it('does not create another automatic KYC reminder within seven days', async () => {
+        const { service, prisma } = makeService();
+        prisma.broadcastCampaign.findFirst.mockResolvedValue({
+            id: 'recent-kyc-campaign',
+            createdAt: new Date(),
+            status: BroadcastCampaignStatus.COMPLETED,
+        });
+
+        const result = await service.processDealerKycReminderAutomation();
+
+        expect(result).toEqual(expect.objectContaining({
+            due: false,
+            reason: 'recent_campaign',
+            campaignId: 'recent-kyc-campaign',
+        }));
+        expect(prisma.broadcastCampaign.create).not.toHaveBeenCalled();
+    });
 
     it('targets delivery drivers through an APPROVED DELIVERY capability', async () => {
         const { service, prisma } = makeService();
