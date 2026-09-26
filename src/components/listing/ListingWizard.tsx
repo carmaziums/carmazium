@@ -1238,6 +1238,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 driveType: formData.driveType || undefined,
                 numberOfKeys: formData.numberOfKeys ? parseInt(formData.numberOfKeys) : undefined,
                 serviceHistory: formData.serviceHistory || undefined,
+                mechanicalIssues: formData.mechanicalIssues.trim() || undefined,
+                electricalIssues: formData.electricalIssues.trim() || undefined,
                 owners: formData.owners || undefined,
                 torqueNm: formData.torqueNm ? parseInt(formData.torqueNm) : undefined,
                 topSpeedMph: formData.topSpeedMph ? parseInt(formData.topSpeedMph) : undefined,
