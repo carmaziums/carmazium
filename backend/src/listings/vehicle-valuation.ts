@@ -16,6 +16,12 @@ export interface VehicleValuationInput {
     exteriorGrade?: number;
     serviceHistory?: string;
     owners?: string;
+    numberOfKeys?: number;
+    ulezCompliant?: boolean;
+    euroStandard?: string;
+    doors?: number;
+    seats?: number;
+    features?: string[];
     writeOffCategory?: string;
     isImported?: boolean;
 }
@@ -32,6 +38,12 @@ export interface VehicleValuationComparable {
     exteriorGrade?: number | null;
     serviceHistory?: string | null;
     owners?: string | null;
+    numberOfKeys?: number | null;
+    ulezCompliant?: boolean | null;
+    euroStandard?: string | null;
+    doors?: number | null;
+    seats?: number | null;
+    features?: string[] | null;
     isImported?: boolean | null;
     kind: ValuationEvidenceKind;
 }
@@ -147,6 +159,64 @@ function transmissionFamily(value?: string | null): 'MANUAL' | 'AUTO' | null {
     return null;
 }
 
+function featureValueFactor(features?: string[] | null): number {
+    if (!Array.isArray(features) || features.length === 0) return 1;
+
+    const values = features.map((feature) => normalizeText(feature));
+    let uplift = 0;
+
+    const has = (...needles: string[]) =>
+        values.some((feature) => needles.some((needle) => feature.includes(needle)));
+
+    // Equipment has a real but secondary effect on used-car value. Keep the
+    // combined uplift capped so specification never overwhelms age, mileage or
+    // actual market evidence.
+    if (has('PANORAMIC', 'PAN ROOF', 'SUNROOF')) uplift += 0.005;
+    if (has('LEATHER')) uplift += 0.004;
+    if (has('HEATED SEAT')) uplift += 0.003;
+    if (has('360 CAMERA', 'REVERSE CAMERA', 'REVERSING CAMERA')) uplift += 0.003;
+    if (has('NAVIGATION', 'SAT NAV')) uplift += 0.002;
+    if (has('APPLE CARPLAY', 'ANDROID AUTO')) uplift += 0.002;
+    if (has('PARKING SENSOR')) uplift += 0.002;
+    if (has('LED HEADLIGHT', 'MATRIX LED')) uplift += 0.0015;
+
+    return 1 + Math.min(0.018, uplift);
+}
+
+function complianceFactor(input: {
+    ulezCompliant?: boolean | null;
+    euroStandard?: string | null;
+}): number {
+    // Explicit ULEZ status is more useful to a UK buyer than Euro level alone,
+    // so when it is known do not stack a second Euro penalty/premium.
+    if (input.ulezCompliant === true) return 1.01;
+    if (input.ulezCompliant === false) return 0.96;
+
+    const euro = normalizeText(input.euroStandard).replace(/[^A-Z0-9]/g, '');
+    if (euro === 'EURO6D' || euro === 'EURO6') return 1.01;
+    if (euro === 'EURO5') return 0.995;
+    if (euro === 'EURO4') return 0.985;
+    if (euro && /^EURO[123]$/.test(euro)) return 0.96;
+    return 1;
+}
+
+function featureSimilarity(target?: string[] | null, comparable?: string[] | null): number | null {
+    if (!Array.isArray(target) || target.length === 0 || !Array.isArray(comparable) || comparable.length === 0) {
+        return null;
+    }
+
+    const targetSet = new Set(target.map((value) => normalizeText(value)).filter(Boolean));
+    const comparableSet = new Set(comparable.map((value) => normalizeText(value)).filter(Boolean));
+    if (targetSet.size === 0 || comparableSet.size === 0) return null;
+
+    let intersection = 0;
+    for (const value of targetSet) {
+        if (comparableSet.has(value)) intersection += 1;
+    }
+    const union = new Set([...targetSet, ...comparableSet]).size;
+    return union > 0 ? intersection / union : null;
+}
+
 function fallbackMid(input: VehicleValuationInput): { value: number; calibratedModelProfile: boolean } {
     const currentYear = new Date().getFullYear();
     const age = Math.max(0, currentYear - input.year);
@@ -188,6 +258,10 @@ function vehicleProfileFactor(input: {
     exteriorGrade?: number | null;
     serviceHistory?: string | null;
     owners?: string | null;
+    numberOfKeys?: number | null;
+    ulezCompliant?: boolean | null;
+    euroStandard?: string | null;
+    features?: string[] | null;
     writeOffCategory?: string | null;
     isImported?: boolean | null;
 }): number {
@@ -216,12 +290,24 @@ function vehicleProfileFactor(input: {
 
     const service = normalizeText(input.serviceHistory);
     if (service === 'FULL' || service.includes('FULL')) factor *= 1.02;
-    if (service === 'NONE') factor *= 0.96;
+    if (service.includes('PARTIAL')) factor *= 0.99;
+    if (service === 'NONE' || service.includes('NO SERVICE')) factor *= 0.96;
 
-    const owners = normalizeText(input.owners);
-    if (owners === '1') factor *= 1.02;
-    if (owners === '4') factor *= 0.98;
-    if (owners === '5' || owners === '5+') factor *= 0.96;
+    // Keepers are deliberately gradual: moving from 2 to 3 keepers should not
+    // suddenly be worth the same as moving from 3 to 5+.
+    const ownerNumber = Number.parseInt(normalizeText(input.owners).replace(/[^0-9]/g, ''), 10);
+    if (ownerNumber === 1) factor *= 1.02;
+    if (ownerNumber === 2) factor *= 1.01;
+    if (ownerNumber === 4) factor *= 0.98;
+    if (ownerNumber >= 5) factor *= 0.96;
+
+    // One missing spare key affects replacement cost and resale desirability,
+    // but it should remain a small adjustment rather than dominate valuation.
+    const keys = Number(input.numberOfKeys);
+    if (Number.isFinite(keys) && keys === 1) factor *= 0.985;
+
+    factor *= complianceFactor(input);
+    factor *= featureValueFactor(input.features);
 
     if (input.isImported) factor *= 0.92;
 
@@ -299,6 +385,29 @@ function normalizeComparable(
     const compVariant = normalizeText(comparable.variant);
     if (targetVariant && compVariant) {
         weight *= targetVariant === compVariant ? 1.15 : 0.82;
+    }
+
+    if (input.doors != null && comparable.doors != null) {
+        weight *= input.doors === comparable.doors ? 1.05 : 0.92;
+    }
+
+    if (input.seats != null && comparable.seats != null) {
+        weight *= input.seats === comparable.seats ? 1.04 : 0.94;
+    }
+
+    if (input.ulezCompliant != null && comparable.ulezCompliant != null) {
+        weight *= input.ulezCompliant === comparable.ulezCompliant ? 1.06 : 0.86;
+    }
+
+    const targetEuro = normalizeText(input.euroStandard);
+    const compEuro = normalizeText(comparable.euroStandard);
+    if (targetEuro && compEuro) {
+        weight *= targetEuro === compEuro ? 1.04 : 0.94;
+    }
+
+    const similarity = featureSimilarity(input.features, comparable.features);
+    if (similarity != null) {
+        weight *= 0.94 + (similarity * 0.12);
     }
 
     const targetWriteOff = normalizeText(input.writeOffCategory || 'NONE');
