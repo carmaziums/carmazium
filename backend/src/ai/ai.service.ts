@@ -138,7 +138,7 @@ const SEARCH_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const AI_SAFETY_FALLBACK = 'I can help with safe car buying, selling and ownership questions, but I can\'t help with that request.';
 const LOCAL_AI_BLOCK_RULES = [
     /\b(?:child\s+porn(?:ography)?|sexual\s+(?:image|images|photo|photos)\s+of\s+(?:a\s+)?(?:child|minor)|underage\s+sexual)\b/i,
-    /\b(?:steal|phish|harvest)\s+(?:a\s+)?(?:password|login|credential|one[-\s]?time\s+code|otp)\b/i,
+    /\b(?:steal|phish|harvest)\b.{0,48}\b(?:password|login|credential|one[-\s]?time\s+code|otp|banking\s+details)\b/i,
     /\b(?:fake|forge)\s+(?:a\s+)?(?:driving\s+licen[cs]e|passport|bank\s+statement|insurance\s+certificate|vehicle\s+document|v5c)\b/i,
 ];
 
