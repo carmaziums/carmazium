@@ -11,7 +11,8 @@
     "privacyPolicyUrl": "https://www.carmazium.com/privacy-policy",
     "accountDeletionUrl": "https://www.carmazium.com/delete-account",
     "supportEmail": "info@carmazium.com",
-    "supportPhone": "+44 121 838 5040"
+    "supportPhone": "+44 121 838 5040",
+    "accessibilityUrl": "https://www.carmazium.com/app-support#accessibility"
   },
   "apple": {
     "name": "CarMazium",
