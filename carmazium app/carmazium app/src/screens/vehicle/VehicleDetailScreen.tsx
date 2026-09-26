@@ -956,6 +956,14 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             );
           })()}
 
+          {/* Vehicle-origin import badge — separate from "imported listing from another platform". */}
+          {listing.isImported ? (
+            <View style={styles.vehicleImportBadge}>
+              <Ionicons name="globe-outline" size={12} color="#111827" />
+              <Text style={styles.vehicleImportBadgeText}>IMPORTED VEHICLE</Text>
+            </View>
+          ) : null}
+
           {/* Imported-from badge — links to the original listing on the external platform */}
           {listing.importedFromUrl ? (
             <TouchableOpacity
@@ -2522,6 +2530,25 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size12,
     color: Colors.warning,
     flexShrink: 0,
+  },
+  vehicleImportBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FACC15',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  vehicleImportBadgeText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: '#111827',
+    letterSpacing: 0.6,
   },
   importedBadge: {
     flexDirection: 'row',
