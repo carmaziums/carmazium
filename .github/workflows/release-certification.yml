@@ -96,6 +96,11 @@ on:
         required: true
         type: boolean
         default: false
+      android_16kb_page_size_confirmed:
+        description: 'Final Android AAB/native libraries support 16 KB memory page sizes'
+        required: true
+        type: boolean
+        default: false
       device_qa_confirmed:
         description: 'Representative real-device QA is complete'
         required: true
@@ -162,6 +167,7 @@ jobs:
           CARMAZIUM_ANDROID_BUILD_ID: ci-android-build
           CARMAZIUM_ANDROID_ARTIFACT_SHA256: 1111111111111111111111111111111111111111111111111111111111111111
           CARMAZIUM_ANDROID_SIGNED_AAB_CONFIRMED: 'true'
+          CARMAZIUM_ANDROID_16KB_PAGE_SIZE_CONFIRMED: 'true'
           CARMAZIUM_IOS_SIGNED_ARCHIVE_CONFIRMED: 'true'
           CARMAZIUM_DEVICE_QA_CONFIRMED: 'true'
           CARMAZIUM_ACCESSIBILITY_QA_CONFIRMED: 'true'
@@ -272,6 +278,7 @@ jobs:
           CARMAZIUM_ANDROID_ARTIFACT_SHA256: ${{ inputs.android_artifact_sha256 }}
           CARMAZIUM_IOS_SIGNED_ARCHIVE_CONFIRMED: ${{ inputs.ios_signed_archive_confirmed }}
           CARMAZIUM_ANDROID_SIGNED_AAB_CONFIRMED: ${{ inputs.android_signed_aab_confirmed }}
+          CARMAZIUM_ANDROID_16KB_PAGE_SIZE_CONFIRMED: ${{ inputs.android_16kb_page_size_confirmed }}
           CARMAZIUM_DEVICE_QA_CONFIRMED: ${{ inputs.device_qa_confirmed }}
           CARMAZIUM_ACCESSIBILITY_QA_CONFIRMED: ${{ inputs.accessibility_qa_confirmed }}
           CARMAZIUM_PUSH_QA_CONFIRMED: ${{ inputs.push_qa_confirmed }}
