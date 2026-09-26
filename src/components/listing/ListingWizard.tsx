@@ -296,6 +296,22 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const { trackEvent } = useAnalytics()
     const router = useRouter()
 
+    const hasAiSharingConsent = React.useCallback(() => {
+        if (typeof window === "undefined") return false
+        return window.localStorage.getItem("mazium_ai_consent_v1") === "accepted"
+    }, [])
+
+    const ensureAiSharingConsent = React.useCallback(() => {
+        if (hasAiSharingConsent()) return true
+        const accepted = window.confirm(
+            "AI data sharing\n\nTo generate the description, CarMazium will send the vehicle details you entered, including the registration where available, to OpenAI. AI can make mistakes, so review the result before publishing.\n\nDo you consent to this AI processing?"
+        )
+        if (accepted) {
+            window.localStorage.setItem("mazium_ai_consent_v1", "accepted")
+        }
+        return accepted
+    }, [hasAiSharingConsent])
+
     const [currentStep, setCurrentStep] = React.useState(1)
     const [formData, setFormData] = React.useState<FormData>(INITIAL_FORM)
     // Tracks "the user explicitly chose Other" independently of whether the
@@ -2038,7 +2054,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         onClick={async () => {
                                             setDvlaLoading(true); setDvlaError(null); setDvlaSuccess(false)
                                             try {
-                                                const r = await dvlaLookup(formData.vrm)
+                                                const r = await dvlaLookup(formData.vrm, hasAiSharingConsent())
                                                 // Core vehicle fields — normalize make/model to canonical casing
                                                 if (r.make) {
                                                     const canonical = CAR_MAKES.find(m => m.toLowerCase() === r.make!.toLowerCase())
@@ -2905,6 +2921,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <Button
                                     type="button"
                                     onClick={async () => {
+                                        if (!ensureAiSharingConsent()) return
                                         setIsGeneratingDesc(true)
                                         try {
                                             const res = await aiGenerateDescription({
@@ -2941,7 +2958,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             {isGeneratingDesc ? "Generating magical description..." : "Auto-generate with AI"}
                                         </p>
                                         <p className="text-[10px] text-indigo-400/70">
-                                            Click to draft a compelling description based on your vehicle details.
+                                            Click to draft a description using OpenAI. Your vehicle details are shared only after you consent.
                                         </p>
                                     </div>
                                 </Button>
