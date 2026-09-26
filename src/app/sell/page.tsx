@@ -275,14 +275,15 @@ function QuickValuationForm() {
             }
 
             const valuationId = beginValuationJourney()
+            // Capture one stable base market value from vehicle identity and
+            // mileage. Fuel, gearbox, trim, condition and other seller answers
+            // adjust this base later in the listing wizard without another
+            // market search.
             const valuation = await getVehicleValuation({
                 make: vehicle.make,
                 model: resolvedModel,
                 year: vehicle.year,
                 mileage: mileageNumber,
-                fuelType: vehicle.fuelType,
-                transmission: vehicle.transmission,
-                variant: vehicle.variant,
             })
 
             const hasFigures = valuationHasFigures(valuation)
