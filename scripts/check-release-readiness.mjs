@@ -304,6 +304,25 @@ const eas = readJson('carmazium app/carmazium app/eas.json');
 const mobilePackage = readJson('carmazium app/carmazium app/package.json');
 
 const expectedBundleId = 'uk.carmazium.app';
+
+if (app.name !== 'CarMazium') {
+  fail(`Native display name must be CarMazium, got ${app.name ?? 'missing'}`);
+} else {
+  ok('Native display name uses canonical CarMazium branding');
+}
+
+if (app.runtimeVersion?.policy !== 'appVersion') {
+  fail('EAS Update runtimeVersion must use appVersion so native compatibility changes are separated by store release');
+} else {
+  ok('EAS Update runtimeVersion is tied to the user-facing app version');
+}
+
+if (eas.cli?.appVersionSource !== 'remote') {
+  fail('EAS appVersionSource must be remote for authoritative store build numbers');
+} else {
+  ok('EAS developer-facing build versions are managed remotely');
+}
+
 if (app.ios?.bundleIdentifier !== expectedBundleId) {
   fail(`iOS bundleIdentifier must be ${expectedBundleId}, got ${app.ios?.bundleIdentifier ?? 'missing'}`);
 } else {
@@ -333,6 +352,12 @@ if (!production) {
 } else {
   if (production.channel !== 'production') fail('EAS production profile must use the production update channel');
   else ok('EAS production update channel is production');
+
+  if (production.autoIncrement !== true) {
+    fail('EAS production profile must auto-increment developer-facing build numbers');
+  } else {
+    ok('EAS production build numbers auto-increment');
+  }
 
   if (production.android?.buildType !== 'app-bundle') {
     fail('EAS production Android build must produce an app-bundle');
@@ -371,6 +396,17 @@ if (androidIntentJson.includes('"autoVerify":true') && androidIntentJson.include
 
 requiredFile('carmazium app/carmazium app/scripts/release-android.mjs', 'Android signed-release script');
 requiredFile('carmazium app/carmazium app/plugins/withAndroidReleaseSigning.js', 'Android release-signing config plugin');
+
+const androidReleaseScript = read('carmazium app/carmazium app/scripts/release-android.mjs');
+if (
+  !androidReleaseScript.includes("'bundleRelease'") ||
+  !androidReleaseScript.includes("'bundle', 'release', 'app-release.aab'") ||
+  androidReleaseScript.includes("['assembleRelease'")
+) {
+  fail('Guarded Android release command must produce a signed Play Store AAB, not an APK');
+} else {
+  ok('Guarded Android release command produces a signed Play Store AAB');
+}
 
 const appPlugins = JSON.stringify(app.plugins ?? []);
 if (!appPlugins.includes('./plugins/withAndroidReleaseSigning')) {
