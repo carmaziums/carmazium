@@ -274,7 +274,13 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     const mobileLinks = primaryMobileHrefs
         .map(href => currentLinks.find(link => link.href === href))
         .filter((link): link is LinkObj => Boolean(link))
-    const mobileOverflowLinks = currentLinks.filter(link => !primaryMobileHrefs.includes(link.href))
+    // Dealer mobile navigation must expose the same permitted destinations as
+    // the desktop sidebar. Keep the four primary destinations as bottom tabs,
+    // but repeat them inside More so the panel is a complete dealer menu rather
+    // than a partial overflow list that can look like missing functionality.
+    const mobileOverflowLinks = role === 'dealer'
+        ? currentLinks
+        : currentLinks.filter(link => !primaryMobileHrefs.includes(link.href))
 
     const isAdmin = profile?.role === 'ADMIN'
 
