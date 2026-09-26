@@ -118,8 +118,6 @@ async function exportUserDetailPdf(detail: any) {
 
     const name = [detail.firstName, detail.lastName].filter(Boolean).join(" ") || detail.email || "User"
     const kyc = detail?.dealerProfile?.kyc
-    const dealerWebsiteUrl = normalizeExternalUrl(detail?.dealerProfile?.website)
-    const kycBusinessWebsiteUrl = normalizeExternalUrl(kyc?.businessWebsite)
     const documentStatuses: Record<string, { status: string; note?: string }> = kyc?.documentStatuses || {}
 
     doc.setFont("helvetica", "bold")
@@ -300,6 +298,8 @@ export function UserDetailModal({ userId, onClose, onChanged, onMessage }: { use
     }
 
     const kyc = detail?.dealerProfile?.kyc
+    const dealerWebsiteUrl = normalizeExternalUrl(detail?.dealerProfile?.website)
+    const kycBusinessWebsiteUrl = normalizeExternalUrl(kyc?.businessWebsite)
     const documentStatuses: Record<string, { status: string; note?: string }> = kyc?.documentStatuses || {}
     const name = [detail?.firstName, detail?.lastName].filter(Boolean).join(" ") || detail?.email || "User"
 
