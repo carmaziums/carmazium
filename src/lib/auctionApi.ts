@@ -148,7 +148,7 @@ export interface CreateAuctionRequest {
     reservePrice: number;
     startingBid?: number;    // legacy client field; server calculates 70% of Estimated Market Value
     minIncrement?: number;   // default 100
-    buyItNowPrice?: number;  // optional, omit or 0 to disable BIN
+    buyItNowPrice?: number;  // optional; when set must be >= reservePrice
 }
 
 export interface UpdateAuctionRequest {
@@ -156,6 +156,7 @@ export interface UpdateAuctionRequest {
     reservePrice?: number;
     startingBid?: number;
     minIncrement?: number;
+    buyItNowPrice?: number | null; // null disables BIN; non-null must be >= resultant reserve
 }
 
 export interface BidBroadcastPayload {
