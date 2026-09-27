@@ -85,7 +85,7 @@ const SECTIONS = [
 
 const fieldInputClass = "w-full mt-1.5 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2.5 text-sm placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-colors"
 
-function Field({ label, value, onChange, type = 'text', options, mono, span }: {
+function Field({ label, value, onChange, type = 'text', options, mono, span, disabled = false }: {
     label: string
     value: string
     onChange: (v: string) => void
@@ -93,29 +93,31 @@ function Field({ label, value, onChange, type = 'text', options, mono, span }: {
     options?: readonly string[]
     mono?: boolean
     span?: boolean
+    disabled?: boolean
 }) {
     return (
         <div className={span ? "col-span-2 md:col-span-3" : undefined}>
             <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">{label}</label>
             {type === 'select' ? (
-                <select value={value} onChange={(e) => onChange(e.target.value)} className={fieldInputClass}>
+                <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} className={`${fieldInputClass} disabled:cursor-not-allowed disabled:opacity-60`}>
                     <option value="">—</option>
                     {options?.map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
             ) : type === 'boolean' ? (
-                <select value={value} onChange={(e) => onChange(e.target.value)} className={fieldInputClass}>
+                <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} className={`${fieldInputClass} disabled:cursor-not-allowed disabled:opacity-60`}>
                     <option value="">—</option>
                     <option value="true">Yes</option>
                     <option value="false">No</option>
                 </select>
             ) : type === 'textarea' ? (
-                <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={8} className={`${fieldInputClass} resize-y`} />
+                <textarea value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} rows={8} className={`${fieldInputClass} resize-y disabled:cursor-not-allowed disabled:opacity-60`} />
             ) : (
                 <input
                     type={type}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
-                    className={`${fieldInputClass} ${mono ? 'font-mono tracking-wider' : ''}`}
+                    disabled={disabled}
+                    className={`${fieldInputClass} ${mono ? 'font-mono tracking-wider' : ''} disabled:cursor-not-allowed disabled:opacity-60`}
                 />
             )}
         </div>
@@ -462,7 +464,12 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
         try {
             setSaving(true)
             const fields: Record<string, unknown> = {}
-            for (const [key, value] of Object.entries(editForm)) {
+            // Only submit fields the admin actually changed. Sending the full
+            // populated form made an ACTIVE auction look as though its locked
+            // starting bid/increment/BIN/timing were being edited whenever an
+            // admin only corrected the reserve price.
+            for (const key of changedFieldKeys) {
+                const value = editForm[key]
                 if (value === '') continue
                 if (key === 'startTime') {
                     fields[key] = new Date(value).toISOString()
@@ -476,7 +483,13 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                     fields[key] = value
                 }
             }
-            fields.images = editImages
+            if (imagesChanged) fields.images = editImages
+
+            if (Object.keys(fields).length === 0) {
+                setSavedMsg('No changes to save.')
+                return
+            }
+
             const result = await updateListingAsAdmin(listingId, fields)
             const updated = result?.data ?? result
             setListing((prev: any) => ({ ...prev, ...updated }))
@@ -717,16 +730,24 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                         {(!listing.auction || listing.auction.status !== 'SCHEDULED') && (
                                             <p className="col-span-2 md:col-span-3 text-xs text-[var(--text-muted)] bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2.5">
-                                                {listing.auction
-                                                    ? `Auction is ${listing.auction.status} — schedule/pricing can only be edited while SCHEDULED.`
-                                                    : 'No auction has been scheduled for this listing yet.'}
+                                                {!listing.auction
+                                                    ? 'No auction has been scheduled for this listing yet.'
+                                                    : listing.auction.status === 'ACTIVE'
+                                                        ? 'Auction is ACTIVE — the reserve price can still be corrected. Starting bid, increment, Buy It Now and timing are locked.'
+                                                        : `Auction is ${listing.auction.status} — auction pricing and timing are locked.`}
                                             </p>
                                         )}
-                                        <Field label="Reserve Price (£)" value={editForm.reservePrice} onChange={set('reservePrice')} type="number" />
-                                        <Field label="Starting Bid (£)" value={editForm.startingBid} onChange={set('startingBid')} type="number" />
-                                        <Field label="Min Increment (£)" value={editForm.minIncrement} onChange={set('minIncrement')} type="number" />
-                                        <Field label="Buy It Now (£)" value={editForm.buyItNowPrice} onChange={set('buyItNowPrice')} type="number" />
-                                        <Field label="Start Time" value={editForm.startTime} onChange={set('startTime')} type="datetime-local" />
+                                        <Field
+                                            label="Reserve Price (£)"
+                                            value={editForm.reservePrice}
+                                            onChange={set('reservePrice')}
+                                            type="number"
+                                            disabled={!listing.auction || !['SCHEDULED', 'ACTIVE'].includes(listing.auction.status)}
+                                        />
+                                        <Field label="Starting Bid (£)" value={editForm.startingBid} onChange={set('startingBid')} type="number" disabled={listing.auction?.status !== 'SCHEDULED'} />
+                                        <Field label="Min Increment (£)" value={editForm.minIncrement} onChange={set('minIncrement')} type="number" disabled={listing.auction?.status !== 'SCHEDULED'} />
+                                        <Field label="Buy It Now (£)" value={editForm.buyItNowPrice} onChange={set('buyItNowPrice')} type="number" disabled={listing.auction?.status !== 'SCHEDULED'} />
+                                        <Field label="Start Time" value={editForm.startTime} onChange={set('startTime')} type="datetime-local" disabled={listing.auction?.status !== 'SCHEDULED'} />
                                     </div>
                                 )}
 
