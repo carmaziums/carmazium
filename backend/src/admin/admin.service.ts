@@ -1086,14 +1086,41 @@ export class AdminService {
     ): Promise<string> {
         const claimToken = this.sellerPayoutClaimToken(auctionId);
 
+        // Never let a stale sellerBonusReleased flag become authority for money
+        // movement. Re-check the full ended-auction / winner / £125 fee /
+        // proof / refusal / cancellation invariant immediately before claiming
+        // the Stripe payout.
+        await this.auctionsService.assertHandoverBusinessRules(auctionId, {
+            requireProof: true,
+            requireApproved: true,
+        });
+
         const claimed = await this.prisma.auction.updateMany({
             where: {
                 id: auctionId,
+                deletedAt: null,
+                status: 'ENDED',
+                winnerId: { not: null },
+                buyerFeePaid: true,
+                buyerFeeTransactionId: { not: null },
+                buyerRefusedAt: null,
+                handoverSubmittedAt: { not: null },
                 sellerBonusReleased: true,
+                sellerBonusReleasedAt: { not: null },
                 manualPayoutConfirmedAt: null,
-                OR: [
-                    { stripePayoutTransferId: null },
-                    { stripePayoutTransferId: claimToken },
+                AND: [
+                    {
+                        OR: [
+                            { handoverProofPath: { not: null } },
+                            { handoverProofUrl: { not: null } },
+                        ],
+                    },
+                    {
+                        OR: [
+                            { stripePayoutTransferId: null },
+                            { stripePayoutTransferId: claimToken },
+                        ],
+                    },
                 ],
             },
             data: { stripePayoutTransferId: claimToken },
@@ -1174,22 +1201,33 @@ export class AdminService {
     }
 
     async approveHandover(auctionId: string) {
-        const auction = await this.prisma.auction.findUnique({
-            where: { id: auctionId },
-            include: { listing: { select: { sellerId: true, title: true } } },
+        const auction = await this.auctionsService.assertHandoverBusinessRules(auctionId, {
+            requireProof: true,
+            requireUnapproved: true,
         });
-        if (!auction) throw new NotFoundException('Auction not found');
-        if (auction.sellerBonusReleased) {
-            return auction;
-        }
 
-        // Atomic approval claim. Two admins can click Approve at the same time,
-        // but only one request may transition false -> true and enter payout.
+        // Atomic approval claim. The eligibility predicate is repeated in the
+        // write so a refusal/cancellation/fee/proof change between validation
+        // and this update cannot flip the auction into a payout-ready state.
         const releasedAt = new Date();
         const approved = await this.prisma.auction.updateMany({
             where: {
                 id: auctionId,
+                deletedAt: null,
+                status: 'ENDED',
+                winnerId: auction.winnerId,
+                buyerFeePaid: true,
+                buyerFeeTransactionId: auction.buyerFeeTransactionId,
+                buyerRefusedAt: null,
+                handoverSubmittedAt: { not: null },
                 sellerBonusReleased: false,
+                sellerBonusReleasedAt: null,
+                stripePayoutTransferId: null,
+                manualPayoutConfirmedAt: null,
+                OR: [
+                    { handoverProofPath: { not: null } },
+                    { handoverProofUrl: { not: null } },
+                ],
             },
             data: {
                 sellerBonusReleased: true,
@@ -1198,7 +1236,14 @@ export class AdminService {
         });
 
         if (approved.count !== 1) {
-            return this.prisma.auction.findUnique({ where: { id: auctionId } });
+            const current = await this.prisma.auction.findUnique({ where: { id: auctionId } });
+            if (current?.sellerBonusReleased) {
+                // Another admin won the approval claim. No second payout path.
+                return current;
+            }
+            throw new ConflictException(
+                'Handover eligibility changed while it was being approved. Refresh and review the auction again.',
+            );
         }
 
         const sellerId = auction.listing?.sellerId;
@@ -1489,6 +1534,11 @@ export class AdminService {
             throw new BadRequestException('This handover has not been approved yet.');
         }
 
+        await this.auctionsService.assertHandoverBusinessRules(auctionId, {
+            requireProof: true,
+            requireApproved: true,
+        });
+
         if (auction.manualPayoutConfirmedAt) return auction;
         const claimToken = this.sellerPayoutClaimToken(auctionId);
         if (
@@ -1502,9 +1552,21 @@ export class AdminService {
         const marked = await this.prisma.auction.updateMany({
             where: {
                 id: auctionId,
+                deletedAt: null,
+                status: 'ENDED',
+                winnerId: { not: null },
+                buyerFeePaid: true,
+                buyerFeeTransactionId: { not: null },
+                buyerRefusedAt: null,
+                handoverSubmittedAt: { not: null },
                 sellerBonusReleased: true,
+                sellerBonusReleasedAt: { not: null },
                 stripePayoutTransferId: null,
                 manualPayoutConfirmedAt: null,
+                OR: [
+                    { handoverProofPath: { not: null } },
+                    { handoverProofUrl: { not: null } },
+                ],
             },
             data: {
                 manualPayoutConfirmedAt: paidAt,
