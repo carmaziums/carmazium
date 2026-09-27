@@ -4,7 +4,7 @@ import { IsNumber, IsOptional, IsPositive, IsString, MaxLength } from 'class-val
 
 export class AdminCorrectAuctionPriceDto {
     @ApiProperty({
-        description: 'Corrected auction reserve price in GBP',
+        description: 'Corrected auction reserve price in GBP. It cannot exceed an existing Buy It Now price.',
         example: 8500,
     })
     @Type(() => Number)
