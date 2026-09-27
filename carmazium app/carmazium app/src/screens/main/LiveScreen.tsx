@@ -37,6 +37,7 @@ import { ImageCarousel } from '../../components/ImageCarousel';
 import { GradeChip } from '../../components/GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/AuctionCardBadges';
 import { WishlistHeart } from '../../components/WishlistHeart';
+import { getAuctionFirstOfferFloor } from '../../lib/auctionPricing';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -107,8 +108,10 @@ export const LiveScreen: React.FC = () => {
 
       // Map dynamic active auctions to UI component-friendly shapes
       const mappedActive = activeData.map((a) => {
-        const latestBid = a.listing.bids && a.listing.bids.length > 0 ? Number(a.listing.bids[0].amount) : Number(a.startingBid);
         const totalBidsCount = a.listing._count?.bids ?? a.listing.bids?.length ?? 0;
+        const latestBid = totalBidsCount > 0 && a.listing.bids && a.listing.bids.length > 0
+          ? Number(a.listing.bids[0].amount)
+          : 0;
         const seller = a.listing.seller;
         const sellerName = seller ? `${seller.firstName ?? ''} ${seller.lastName ?? ''}`.trim() : '';
 
@@ -145,7 +148,7 @@ export const LiveScreen: React.FC = () => {
           isLive: a.status === 'ACTIVE',
           viewers: a.listing.viewCount || 0,
           reserve: Number(a.reservePrice),
-          reserveMet: latestBid >= Number(a.reservePrice),
+          reserveMet: totalBidsCount > 0 && latestBid >= Number(a.reservePrice),
           buyItNowPrice: a.buyItNowPrice ?? null,
           // Carried through purely so the "Newest listed" sort has something to
           // order by — the mapper dropped it, which would have made that option
@@ -450,8 +453,17 @@ export const LiveScreen: React.FC = () => {
               {/* Stats Row */}
               <View style={styles.statsRow}>
                 <View style={styles.statsLeft}>
-                  <Text style={styles.statsLabel}>CURRENT BID</Text>
-                  <Text style={styles.statsPrice}>{formatPrice(auction.currentBid)}</Text>
+                  <Text style={styles.statsLabel}>{auction.totalBids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
+                  <Text style={styles.statsPrice}>
+                    {formatPrice(auction.totalBids > 0 ? auction.currentBid : auction.startingBid)}
+                  </Text>
+                  {auction.totalBids === 0 && (
+                    <View style={styles.statsSubRow}>
+                      <Text style={[styles.statsAboveReserve, { color: Colors.warning }]}>
+                        First offer from {formatPrice(getAuctionFirstOfferFloor(auction.startingBid, auction.reserve))}
+                      </Text>
+                    </View>
+                  )}
                   {!!auction.buyItNowPrice && (
                     <View style={styles.statsSubRow}>
                       <Text style={styles.statsAboveReserve}>Buy it now: {formatPrice(auction.buyItNowPrice)}</Text>
@@ -604,9 +616,18 @@ export const LiveScreen: React.FC = () => {
               <Text style={styles.marketAiText}>
                 {/* Reserve status is seller-only info — never surfaced here
                     (Ground Rules: reserve is enforced server-side, display-only). */}
-                {topActiveAuction.make} {topActiveAuction.model} is currently leading at{' '}
-                {formatPrice(topActiveAuction.currentBid)}
-                {' '}— {topActiveAuction.totalBids} bid{topActiveAuction.totalBids === 1 ? '' : 's'} so far.
+                {topActiveAuction.totalBids > 0 ? (
+                  <>
+                    {topActiveAuction.make} {topActiveAuction.model} is currently leading at{' '}
+                    {formatPrice(topActiveAuction.currentBid)}
+                    {' '}— {topActiveAuction.totalBids} bid{topActiveAuction.totalBids === 1 ? '' : 's'} so far.
+                  </>
+                ) : (
+                  <>
+                    {topActiveAuction.make} {topActiveAuction.model} has no dealer bids yet. First offers are accepted from{' '}
+                    {formatPrice(getAuctionFirstOfferFloor(topActiveAuction.startingBid, topActiveAuction.reserve))}.
+                  </>
+                )}
               </Text>
             </View>
           </View>
