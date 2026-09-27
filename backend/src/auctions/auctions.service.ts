@@ -1644,8 +1644,8 @@ export class AuctionsService {
      * amount is always the Buy It Now price if one was set, otherwise the
      * reserve price — never the current top bid, since the assigned dealer
      * may not have placed one. The dealer still goes through the normal
-     * £125 buyer-fee flow afterward (unchanged — endAuctionWithWinner doesn't
-     * touch buyerFeePaid), same as any other winner.
+     * £125 buyer-fee flow afterward; admin assignment does not mark that fee
+     * paid, so the chosen dealer follows the same payment gate as any winner.
      */
     async adminAssignWinner(auctionId: string, dealerId: string): Promise<void> {
         const lookup = await this.prisma.auction.findUnique({
