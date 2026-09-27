@@ -160,6 +160,18 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         ).rejects.toBeInstanceOf(BadRequestException);
     });
 
+    it('triggerBuyItNow: rejects after the auction deadline even before lifecycle finalisation', async () => {
+        const auction = makeActiveAuction({ endTime: new Date(Date.now() - 1000) });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+
+        await expect(
+            service.triggerBuyItNow('auction-1', 'buyer-1'),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastBinPending).not.toHaveBeenCalled();
+    });
+
     it('triggerBuyItNow: throws BadRequestException when buyItNowPrice is null', async () => {
         const auction = makeActiveAuction({ buyItNowPrice: null });
         prisma.auction.findUnique.mockResolvedValue(auction);
@@ -268,6 +280,23 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
             'auction-1',
             expect.objectContaining({ auctionId: 'auction-1', winnerId: 'buyer-1' }),
         );
+    });
+
+    it('confirmBuyItNow: rejects after the auction deadline before lifecycle finalisation', async () => {
+        const auction = makeActiveAuction({
+            endTime: new Date(Date.now() - 1000),
+            buyItNowPendingBuyerId: 'buyer-1',
+            buyItNowPendingAt: new Date(),
+            buyItNowPrice: 25000,
+        });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+
+        await expect(
+            service.confirmBuyItNow('auction-1', 'seller-1'),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+
+        expect(prisma.sale.create).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastAuctionEnd).not.toHaveBeenCalled();
     });
 
     it('confirmBuyItNow: refuses a stale confirmation when a locked bid has already met reserve', async () => {
