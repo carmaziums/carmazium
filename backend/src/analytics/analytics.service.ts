@@ -695,6 +695,8 @@ export class AnalyticsService {
                 first_offer_cancellations: string;
                 seller_accepted_sales: string;
                 reserve_met_sales: string;
+                buy_it_now_sales: string;
+                admin_assigned_sales: string;
                 unsold_auctions: string;
                 pending_auctions: string;
                 zero_bid_unsold: string;
@@ -756,8 +758,16 @@ export class AnalyticsService {
                     COUNT(*) FILTER (WHERE first_offer_cancelled)::TEXT AS first_offer_cancellations,
                     COUNT(DISTINCT auction_id) FILTER (WHERE outcome = 'SELLER_ACCEPTED_BELOW_RESERVE')::TEXT AS seller_accepted_sales,
                     COUNT(DISTINCT auction_id) FILTER (WHERE outcome = 'RESERVE_MET_SALE')::TEXT AS reserve_met_sales,
+                    COUNT(DISTINCT auction_id) FILTER (WHERE outcome = 'BUY_IT_NOW_SALE')::TEXT AS buy_it_now_sales,
+                    COUNT(DISTINCT auction_id) FILTER (WHERE outcome = 'ADMIN_ASSIGNED_SALE')::TEXT AS admin_assigned_sales,
                     COUNT(DISTINCT auction_id) FILTER (
-                        WHERE outcome IN ('BELOW_RESERVE_UNSOLD', 'SELLER_EARLY_CLOSE_UNSOLD', 'NO_BIDS_UNSOLD')
+                        WHERE outcome IN (
+                            'BELOW_RESERVE_UNSOLD',
+                            'SELLER_EARLY_CLOSE_UNSOLD',
+                            'NO_BIDS_UNSOLD',
+                            'WIN_REVERTED_UNPAID',
+                            'BUYER_REFUSED_AFTER_INSPECTION'
+                        )
                     )::TEXT AS unsold_auctions,
                     COUNT(DISTINCT auction_id) FILTER (WHERE outcome IS NULL)::TEXT AS pending_auctions,
                     (
@@ -855,6 +865,8 @@ export class AnalyticsService {
             first_offer_cancellations: '0',
             seller_accepted_sales: '0',
             reserve_met_sales: '0',
+            buy_it_now_sales: '0',
+            admin_assigned_sales: '0',
             unsold_auctions: '0',
             pending_auctions: '0',
             zero_bid_unsold: '0',
@@ -869,7 +881,9 @@ export class AnalyticsService {
         const competitionAuctions = Number(summary.competition_auctions ?? 0);
         const sellerAcceptedSales = Number(summary.seller_accepted_sales ?? 0);
         const reserveMetSales = Number(summary.reserve_met_sales ?? 0);
-        const completedSales = sellerAcceptedSales + reserveMetSales;
+        const buyItNowSales = Number(summary.buy_it_now_sales ?? 0);
+        const adminAssignedSales = Number(summary.admin_assigned_sales ?? 0);
+        const completedSales = sellerAcceptedSales + reserveMetSales + buyItNowSales + adminAssignedSales;
 
         const asNumber = (value: string | null | undefined) => {
             if (value == null || value === '') return null;
@@ -891,6 +905,8 @@ export class AnalyticsService {
                 firstOfferCancellations: Number(summary.first_offer_cancellations ?? 0),
                 sellerAcceptedSales,
                 reserveMetSales,
+                buyItNowSales,
+                adminAssignedSales,
                 completedSales,
                 saleRate: rate(completedSales, uniqueAuctions),
                 unsoldAuctions: Number(summary.unsold_auctions ?? 0),
