@@ -251,7 +251,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             setLoadError(null)
             setLoading(true)
         }
-        getAuction(params.id)
+        return getAuction(params.id)
             .then(data => {
                 setAuction(data)
                 setEndTime(new Date(data.endTime))
@@ -469,10 +469,19 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     React.useEffect(() => {
         if (!auction?.id || connected || auction.status === "ENDED" || auction.status === "CANCELLED") return
 
-        const refresh = () => loadAuction({ silent: true })
-        refresh()
-        const intervalId = window.setInterval(refresh, 5000)
-        return () => window.clearInterval(intervalId)
+        let cancelled = false
+        let timerId: number | null = null
+
+        const poll = async () => {
+            await loadAuction({ silent: true })
+            if (!cancelled) timerId = window.setTimeout(poll, 5000)
+        }
+
+        void poll()
+        return () => {
+            cancelled = true
+            if (timerId !== null) window.clearTimeout(timerId)
+        }
     }, [auction?.id, auction?.status, connected, loadAuction])
 
     // ── Anti-snipe activation ─────────────────────────────────────────────────
