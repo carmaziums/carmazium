@@ -504,6 +504,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         if (payload.auctionId !== auctionId) return;
         setEndedPayload(payload);
         setAuction(p => p ? { ...p, status: 'ENDED', winnerId: payload.winnerId, winningBidAmount: payload.winningBidAmount } : p);
+        setBinPendingBuyerId(null);
+        setBinResponseDeadline(null);
 
         // Route winners to AuctionComplete screen
         if (payload.winnerId && businessUserId && payload.winnerId === businessUserId) {
