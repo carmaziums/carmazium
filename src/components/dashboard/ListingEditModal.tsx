@@ -461,6 +461,23 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
         if (!listingId) return
         setError(null)
         setSavedMsg(null)
+
+        if (listing?.auction && ['SCHEDULED', 'ACTIVE'].includes(listing.auction.status)) {
+            const reservePrice = Number(editForm.reservePrice)
+            const buyItNowPrice = editForm.buyItNowPrice.trim() === ''
+                ? null
+                : Number(editForm.buyItNowPrice)
+            if (
+                Number.isFinite(reservePrice)
+                && buyItNowPrice !== null
+                && Number.isFinite(buyItNowPrice)
+                && buyItNowPrice < reservePrice
+            ) {
+                setError('Buy It Now price must be equal to or higher than the reserve price.')
+                return
+            }
+        }
+
         try {
             setSaving(true)
             const fields: Record<string, unknown> = {}
@@ -470,7 +487,12 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
             // admin only corrected the reserve price.
             for (const key of changedFieldKeys) {
                 const value = editForm[key]
-                if (value === '') continue
+                // A blank BIN value explicitly disables Buy It Now on a
+                // scheduled auction. Other blank values remain omitted.
+                if (value === '') {
+                    if (key === 'buyItNowPrice') fields[key] = null
+                    continue
+                }
                 if (key === 'startTime') {
                     fields[key] = new Date(value).toISOString()
                 } else if (EDIT_NUMERIC_FIELDS.includes(key)) {
@@ -748,6 +770,9 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                                         <Field label="Min Increment (£)" value={editForm.minIncrement} onChange={set('minIncrement')} type="number" disabled={listing.auction?.status !== 'SCHEDULED'} />
                                         <Field label="Buy It Now (£)" value={editForm.buyItNowPrice} onChange={set('buyItNowPrice')} type="number" disabled={listing.auction?.status !== 'SCHEDULED'} />
                                         <Field label="Start Time" value={editForm.startTime} onChange={set('startTime')} type="datetime-local" disabled={listing.auction?.status !== 'SCHEDULED'} />
+                                        <p className="col-span-2 md:col-span-3 text-[11px] text-[var(--text-muted)]">
+                                            Buy It Now is optional. When set, it must be equal to or higher than the reserve price. Clear it to disable Buy It Now on a scheduled auction.
+                                        </p>
                                     </div>
                                 )}
 
