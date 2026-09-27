@@ -81,6 +81,16 @@ function formatCancelWindowRemaining(ms: number): string {
   return `${hours}h ${minutes}m`;
 }
 
+function formatBinWindowRemaining(ms: number): string {
+  if (ms <= 0) return 'Expired';
+  const totalSeconds = Math.ceil(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  return `${minutes}m ${seconds}s`;
+}
+
 const { width: SW } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
 
@@ -282,6 +292,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // ── BIN state ──
   const [binPendingBuyerId, setBinPendingBuyerId] = useState<string | null>(null);
+  const [binResponseDeadline, setBinResponseDeadline] = useState<string | null>(null);
+  const [binNowMs, setBinNowMs] = useState(Date.now());
   const [binBannerDismissed, setBinBannerDismissed] = useState(false);
   const [binLoading, setBinLoading] = useState(false);
 
@@ -381,8 +393,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           });
         }
         setAntiSnipeActive(et.getTime() - Date.now() <= 3 * 60 * 1000 && data.status === 'ACTIVE');
-        // Seed BIN pending state from initial fetch (in case BIN was triggered before this screen mounted)
+        // Seed BIN pending state from initial fetch (in case BIN was triggered before this screen mounted).
+        // The response deadline is server-owned; mobile never derives it.
         setBinPendingBuyerId(data.buyItNowPendingBuyerId ?? null);
+        setBinResponseDeadline(data.buyItNowResponseDeadline ?? null);
       })
       .catch(() => { if (!opts?.silent) setLoadError('Failed to load auction. Please try again.'); })
       .finally(() => { if (!opts?.silent) setLoading(false); });
@@ -479,6 +493,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         }
         if (payload.buyItNowCancelled) {
           setBinPendingBuyerId(null);
+          setBinResponseDeadline(null);
+        } else if (payload.buyItNowResponseDeadline) {
+          setBinResponseDeadline(payload.buyItNowResponseDeadline);
         }
         setBidError(null);
       });
@@ -487,6 +504,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         if (payload.auctionId !== auctionId) return;
         setEndedPayload(payload);
         setAuction(p => p ? { ...p, status: 'ENDED', winnerId: payload.winnerId, winningBidAmount: payload.winningBidAmount } : p);
+        setBinPendingBuyerId(null);
+        setBinResponseDeadline(null);
 
         // Route winners to AuctionComplete screen
         if (payload.winnerId && businessUserId && payload.winnerId === businessUserId) {
@@ -556,9 +575,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         loadAuctionRef.current({ silent: true });
       });
 
-      socket.on('bin:pending', (d: { auctionId: string; buyerId: string }) => {
+      socket.on('bin:pending', (d: { auctionId: string; buyerId: string; responseDeadline: string }) => {
         if (d.auctionId !== auctionId) return;
         setBinPendingBuyerId(d.buyerId);
+        setBinResponseDeadline(d.responseDeadline);
         setBinBannerDismissed(false); // reset so the banner reappears for each new BIN request
       });
     })();
@@ -569,6 +589,22 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // mid-auction — dropping live bid updates for the duration of the
   // handshake, on the one screen where that matters most.
   }, [auctionId, businessUserId]);
+
+  // BIN response countdown uses the exact server-provided deadline.
+  useEffect(() => {
+    if (!binPendingBuyerId || !binResponseDeadline) return;
+    const tick = () => {
+      const now = Date.now();
+      setBinNowMs(now);
+      if (now >= new Date(binResponseDeadline).getTime()) {
+        setBinPendingBuyerId(null);
+        setBinResponseDeadline(null);
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [binPendingBuyerId, binResponseDeadline]);
 
   // ─── Cancel bid countdown — 24h window, ticks every 30s (no need for
   // per-second precision over a day-long window). ─────────────────────────
@@ -748,7 +784,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
     Alert.alert(
       'Buy It Now?',
-      `The seller must confirm within 24 hours. The auction continues until they respond.\n\nBuy It Now price: ${fmt(Number(auction.buyItNowPrice))}`,
+      `The seller can respond for up to 24 hours, but never after the auction closes.\n\nBuy It Now price: ${fmt(Number(auction.buyItNowPrice))}`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -756,8 +792,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           onPress: async () => {
             setBinLoading(true);
             try {
-              await triggerBuyItNow(auction.id);
+              const result = await triggerBuyItNow(auction.id);
               setBinPendingBuyerId(businessUserId ?? 'pending');
+              setBinResponseDeadline(result.responseDeadline);
               setBinBannerDismissed(false);
             } catch (err: any) {
               Alert.alert('Failed', err?.message ?? 'Could not request Buy It Now. Please try again.');
@@ -772,8 +809,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const handleConfirmBin = useCallback(() => {
     if (!auction || !canManageSellerAuction) return;
-    if (endTime && Date.now() >= endTime.getTime()) {
-      Alert.alert('Auction ended', 'This Buy It Now request can no longer be confirmed while the result is being finalised.');
+    if (binResponseDeadline && Date.now() >= new Date(binResponseDeadline).getTime()) {
+      setBinPendingBuyerId(null);
+      setBinResponseDeadline(null);
+      Alert.alert('Request expired', 'This Buy It Now request has expired.');
       return;
     }
     Alert.alert(
@@ -787,6 +826,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             setBinLoading(true);
             try {
               await confirmBuyItNow(auction.id);
+              setBinResponseDeadline(null);
               // The auction:ended socket event will fire and update the UI
             } catch (err: any) {
               Alert.alert('Failed', err?.message ?? 'Could not confirm sale. Please try again.');
@@ -797,7 +837,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, [auction, canManageSellerAuction, endTime]);
+  }, [auction, canManageSellerAuction, binResponseDeadline]);
 
   const handleDeclineBin = useCallback(async () => {
     if (!auction || !canManageSellerAuction) return;
@@ -805,6 +845,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     try {
       await declineBuyItNow(auction.id);
       setBinPendingBuyerId(null);
+      setBinResponseDeadline(null);
     } catch (err: any) {
       Alert.alert('Failed', err?.message ?? 'Could not decline. Please try again.');
     } finally {
@@ -1132,6 +1173,11 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={{ fontFamily: FontFamily.mono, color: Colors.white }}>{fmt(Number(auction.buyItNowPrice))}</Text>.
             {'\n'}Confirm to end the auction immediately, or decline to continue bidding.
           </Text>
+          {binResponseDeadline ? (
+            <Text style={[s.binSellerBody, { marginTop: 6, fontFamily: FontFamily.mono }]}>
+              Respond within {formatBinWindowRemaining(new Date(binResponseDeadline).getTime() - binNowMs)}
+            </Text>
+          ) : null}
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
             <TouchableOpacity
               style={[s.binSellerDeclineBtn, binLoading && { opacity: 0.5 }]}
@@ -1160,6 +1206,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <Ionicons name="pricetag-outline" size={14} color={Colors.warning} />
           <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
             A buyer has requested to Buy It Now — seller is reviewing.
+            {binResponseDeadline
+              ? ` Response time left: ${formatBinWindowRemaining(new Date(binResponseDeadline).getTime() - binNowMs)}.`
+              : ''}
           </Text>
           <IconButton icon={<Ionicons name="close" size={16} color={Colors.warning} />} onPress={() => setBinBannerDismissed(true)} accessibilityLabel="Close" />
         </View>
@@ -1758,6 +1807,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <Ionicons name="time-outline" size={14} color={Colors.warning} />
               <Text style={s.binPendingText}>
                 Buy It Now requested — awaiting seller confirmation
+                {binResponseDeadline
+                  ? ` · ${formatBinWindowRemaining(new Date(binResponseDeadline).getTime() - binNowMs)} left`
+                  : ''}
               </Text>
             </View>
           ) : (

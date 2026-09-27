@@ -23,6 +23,9 @@ export interface BidBroadcastPayload {
     timestamp: string;
     newEndTime?: string;
     buyItNowCancelled?: boolean;
+    // Recalculated by the backend when anti-sniping extends endTime while a
+    // BIN request remains pending. Clients display this value directly.
+    buyItNowResponseDeadline?: string;
 }
 
 export interface AuctionEndPayload {
@@ -182,8 +185,16 @@ export class AuctionGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     }
 
     // Called by AuctionsService.triggerBuyItNow() — notifies all viewers a BIN request is pending
-    broadcastBinPending(auctionId: string, buyerId: string): void {
-        this.server.to(`auction:${auctionId}`).emit('bin:pending', { auctionId, buyerId });
+    broadcastBinPending(
+        auctionId: string,
+        buyerId: string,
+        responseDeadline: string,
+    ): void {
+        this.server.to(`auction:${auctionId}`).emit('bin:pending', {
+            auctionId,
+            buyerId,
+            responseDeadline,
+        });
     }
 
     // Called by BidsService.cancelBid() after the cancellation commits.

@@ -240,13 +240,16 @@ export class AuctionsController {
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Buyer triggers a Buy It Now request — enters BIN pending state (seller has 24h to respond)' })
+    @ApiOperation({ summary: 'Buyer triggers Buy It Now — seller response expires at the earlier of 24h or auction close' })
     @ApiResponse({ status: 200, description: 'BIN request sent to seller (same-dealership retries are idempotent)' })
     @ApiResponse({ status: 400, description: 'Auction not ACTIVE, no BIN price set, or reserve already met' })
     @ApiResponse({ status: 409, description: 'Another dealership already has an unexpired BIN request awaiting seller response' })
     async binTrigger(@Param('id') id: string, @CurrentUser() user: any) {
-        await this.auctionsService.triggerBuyItNow(id, user.id);
-        return new StandardResponse({ triggered: true });
+        const result = await this.auctionsService.triggerBuyItNow(id, user.id);
+        return new StandardResponse({
+            triggered: true,
+            ...result,
+        });
     }
 
     @Post(':id/bin-confirm')

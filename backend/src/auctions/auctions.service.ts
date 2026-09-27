@@ -18,7 +18,12 @@ import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
 import { Auction, Prisma, ServiceType, ServiceJobStatus, InspectionOutcome } from '@prisma/client';
-import { AUCTION_DURATION_MS, calculateFirstOfferFloor, calculatePlatformOpeningBid } from './auction-pricing';
+import {
+    AUCTION_DURATION_MS,
+    calculateBuyItNowResponseDeadline,
+    calculateFirstOfferFloor,
+    calculatePlatformOpeningBid,
+} from './auction-pricing';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
 import { PaymentsService } from '../payments/payments.service';
 import {
@@ -2409,7 +2414,10 @@ export class AuctionsService {
     /**
      * Buyer triggers a Buy It Now request. Sets pending state, notifies seller, broadcasts to viewers.
      */
-    async triggerBuyItNow(auctionId: string, buyerId: string): Promise<void> {
+    async triggerBuyItNow(
+        auctionId: string,
+        buyerId: string,
+    ): Promise<{ created: boolean; pendingAt: string; responseDeadline: string }> {
         // Buy It Now is an auction purchase commitment and must obey the exact
         // same verified-dealer / dealership-permission boundary as bidding.
         const user = await this.prisma.user.findUnique({
@@ -2496,10 +2504,14 @@ export class AuctionsService {
             const now = Date.now();
             const existingPendingAt = auction.buyItNowPendingAt;
             const existingPendingBuyerId = auction.buyItNowPendingBuyerId;
+            const existingResponseDeadline = existingPendingAt
+                ? calculateBuyItNowResponseDeadline(existingPendingAt, auction.endTime)
+                : null;
             const existingPendingIsUnexpired = Boolean(
                 existingPendingBuyerId
                 && existingPendingAt
-                && existingPendingAt.getTime() + 24 * 60 * 60 * 1000 >= now,
+                && existingResponseDeadline
+                && existingResponseDeadline.getTime() > now,
             );
 
             if (existingPendingIsUnexpired) {
@@ -2511,6 +2523,7 @@ export class AuctionsService {
                     return {
                         auction,
                         pendingAt: existingPendingAt!,
+                        responseDeadline: existingResponseDeadline!,
                         created: false,
                     };
                 }
@@ -2521,6 +2534,10 @@ export class AuctionsService {
             }
 
             const pendingAt = new Date();
+            const responseDeadline = calculateBuyItNowResponseDeadline(
+                pendingAt,
+                auction.endTime,
+            );
             await tx.auction.update({
                 where: { id: auctionId },
                 data: {
@@ -2532,27 +2549,54 @@ export class AuctionsService {
             return {
                 auction,
                 pendingAt,
+                responseDeadline,
                 created: true,
             };
         });
 
         if (!requested.created) {
-            return;
+            return {
+                created: false,
+                pendingAt: requested.pendingAt.toISOString(),
+                responseDeadline: requested.responseDeadline.toISOString(),
+            };
         }
 
         if (requested.auction.listing.sellerId) {
+            const deadlineLabel = new Intl.DateTimeFormat('en-GB', {
+                timeZone: 'Europe/London',
+                day: '2-digit',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+            }).format(requested.responseDeadline);
+
             await this.notificationsService.create({
                 userId: requested.auction.listing.sellerId,
                 type: 'AUCTION_ENDED',
                 title: 'Buy It Now request received',
-                message: `A buyer wants to buy your ${requested.auction.listing.make} ${requested.auction.listing.model} for £${Number(requested.auction.buyItNowPrice).toLocaleString()}.`,
+                message: `A buyer wants to buy your ${requested.auction.listing.make} ${requested.auction.listing.model} for £${Number(requested.auction.buyItNowPrice).toLocaleString()}. Respond by ${deadlineLabel}; the request expires at the earlier of 24 hours or auction close.`,
                 entityType: 'AUCTION',
                 entityId: auctionId,
                 link: `/auctions/live/${auctionId}`,
+                data: {
+                    responseDeadline: requested.responseDeadline.toISOString(),
+                },
             });
         }
 
-        this.auctionGateway.broadcastBinPending(auctionId, businessBuyerId);
+        this.auctionGateway.broadcastBinPending(
+            auctionId,
+            businessBuyerId,
+            requested.responseDeadline.toISOString(),
+        );
+
+        return {
+            created: requested.created,
+            pendingAt: requested.pendingAt.toISOString(),
+            responseDeadline: requested.responseDeadline.toISOString(),
+        };
     }
 
     /**
@@ -2600,13 +2644,14 @@ export class AuctionsService {
             if (auction.listing.status !== 'ACTIVE') {
                 throw new BadRequestException('This auction vehicle is no longer active');
             }
-            if (Date.now() >= auction.endTime.getTime()) {
-                throw new BadRequestException('This auction has ended and the Buy It Now request can no longer be confirmed');
-            }
             if (!auction.buyItNowPendingBuyerId || !auction.buyItNowPendingAt) {
                 throw new BadRequestException('No Buy It Now request is pending on this auction');
             }
-            if (auction.buyItNowPendingAt.getTime() + 24 * 60 * 60 * 1000 < Date.now()) {
+            const responseDeadline = calculateBuyItNowResponseDeadline(
+                auction.buyItNowPendingAt,
+                auction.endTime,
+            );
+            if (responseDeadline.getTime() <= Date.now()) {
                 throw new BadRequestException('The Buy It Now request has expired');
             }
             if (!auction.buyItNowPrice) {
@@ -2776,22 +2821,44 @@ export class AuctionsService {
     }
 
     /**
-     * Lazily clears expired BIN pending state. Called at the top of findOne() and findBySlug()
-     * return paths. Fire-and-forget DB update if 24h has elapsed.
+     * Lazily clears expired BIN pending state on read. The canonical deadline is
+     * server-owned: the earlier of request + 24 hours or auction endTime.
+     * Fire-and-forget DB cleanup keeps the response fast while returning the
+     * canonical cleared state immediately.
      */
     private clearExpiredBin(auction: any): any {
-        if (
-            auction.buyItNowPendingAt &&
-            new Date(auction.buyItNowPendingAt).getTime() + 24 * 60 * 60 * 1000 < Date.now()
-        ) {
-            // Fire-and-forget — do not block the response
+        if (!auction.buyItNowPendingAt || !auction.buyItNowPendingBuyerId) {
+            return {
+                ...auction,
+                buyItNowResponseDeadline: null,
+            };
+        }
+
+        const responseDeadline = calculateBuyItNowResponseDeadline(
+            auction.buyItNowPendingAt,
+            auction.endTime,
+        );
+
+        if (responseDeadline.getTime() <= Date.now()) {
+            // Fire-and-forget — do not block the response. The returned payload
+            // is already canonical for the client, while the DB cleanup makes
+            // the same state durable for later requests.
             this.prisma.auction.update({
                 where: { id: auction.id },
                 data: { buyItNowPendingBuyerId: null, buyItNowPendingAt: null },
             }).catch(() => { /* non-blocking */ });
 
-            return { ...auction, buyItNowPendingBuyerId: null, buyItNowPendingAt: null };
+            return {
+                ...auction,
+                buyItNowPendingBuyerId: null,
+                buyItNowPendingAt: null,
+                buyItNowResponseDeadline: null,
+            };
         }
-        return auction;
+
+        return {
+            ...auction,
+            buyItNowResponseDeadline: responseDeadline.toISOString(),
+        };
     }
 }

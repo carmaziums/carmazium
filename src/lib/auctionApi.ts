@@ -134,6 +134,9 @@ export interface Auction {
     buyItNowPrice?: number | null;
     buyItNowPendingBuyerId?: string | null;
     buyItNowPendingAt?: string | null;  // ISO string from API
+    // Canonical deadline calculated by the backend: earlier of request+24h or
+    // the auction end time. Clients must count down from this exact value.
+    buyItNowResponseDeadline?: string | null;
     // Digest — seller-authored custom tags/batch labels and self-rating
     customTags?: string[];
     sellerSelfRating?: number | null;
@@ -165,6 +168,7 @@ export interface BidBroadcastPayload {
     timestamp: string;
     newEndTime?: string;
     buyItNowCancelled?: boolean;
+    buyItNowResponseDeadline?: string;
 }
 
 export interface AuctionEndPayload {
@@ -294,8 +298,19 @@ export function isAntiSnipeActive(auction: Auction): boolean {
 
 // ─── Buy It Now & Cancel Bid API Functions ────────────────────────────────────
 
-export async function triggerBuyItNow(auctionId: string): Promise<void> {
-    await apiClient(`/auctions/${auctionId}/bin-trigger`, { method: 'POST' });
+export interface BuyItNowRequestResult {
+    triggered: boolean;
+    created: boolean;
+    pendingAt: string;
+    responseDeadline: string;
+}
+
+export async function triggerBuyItNow(auctionId: string): Promise<BuyItNowRequestResult> {
+    const res = await apiClient<{ data: BuyItNowRequestResult }>(
+        `/auctions/${auctionId}/bin-trigger`,
+        { method: 'POST' },
+    );
+    return res.data;
 }
 
 export async function confirmBuyItNow(auctionId: string): Promise<void> {
@@ -326,5 +341,5 @@ export async function updateAuctionDigest(auctionId: string, data: UpdateAuction
 }
 
 // Socket events consumed by live auction page (no API function needed — socket.on() directly):
-// 'bin:pending' → { auctionId: string; buyerId: string }
+// 'bin:pending' → { auctionId: string; buyerId: string; responseDeadline: string }
 // 'bid:cancelled' → canonical post-cancellation bid position (leader/count/reserve state)
