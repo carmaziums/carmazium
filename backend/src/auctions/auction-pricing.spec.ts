@@ -1,5 +1,6 @@
 import {
     BUY_IT_NOW_RESPONSE_WINDOW_MS,
+    buyItNowViolatesReserve,
     calculateBuyItNowResponseDeadline,
 } from './auction-pricing';
 
@@ -36,4 +37,25 @@ describe('Buy It Now response deadline', () => {
             pendingAt.getTime() + BUY_IT_NOW_RESPONSE_WINDOW_MS,
         );
     });
+});
+
+
+describe('Buy It Now / reserve price invariant', () => {
+    it.each([
+        [9000, null, false],
+        [9000, undefined, false],
+        [9000, 9000, false],
+        [9000, 12000, false],
+        [9000, 8999.99, true],
+    ])(
+        'reserve %s with BIN %s => violation=%s',
+        (reservePrice, buyItNowPrice, expected) => {
+            expect(
+                buyItNowViolatesReserve(
+                    reservePrice as number,
+                    buyItNowPrice as number | null | undefined,
+                ),
+            ).toBe(expected);
+        },
+    );
 });
