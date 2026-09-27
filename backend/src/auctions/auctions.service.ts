@@ -1077,16 +1077,26 @@ export class AuctionsService {
                 throw new BadRequestException('Reserve price cannot be higher than the Buy It Now price');
             }
 
-            const topBid = await tx.bid.findFirst({
-                where: {
-                    listingId: auction.listingId,
-                    deletedAt: null,
-                    cancelledAt: null,
-                    archivedAt: null,
-                },
-                orderBy: { amount: 'desc' },
-                select: { amount: true },
-            });
+            const [topBid, activeBidCount] = await Promise.all([
+                tx.bid.findFirst({
+                    where: {
+                        listingId: auction.listingId,
+                        deletedAt: null,
+                        cancelledAt: null,
+                        archivedAt: null,
+                    },
+                    orderBy: { amount: 'desc' },
+                    select: { amount: true },
+                }),
+                tx.bid.count({
+                    where: {
+                        listingId: auction.listingId,
+                        deletedAt: null,
+                        cancelledAt: null,
+                        archivedAt: null,
+                    },
+                }),
+            ]);
 
             const oldReserve = Number(auction.reservePrice);
             const topBidAmount = topBid ? Number(topBid.amount) : null;
@@ -1122,6 +1132,7 @@ export class AuctionsService {
                 minIncrement: Number(auction.minIncrement),
                 oldReserve,
                 topBidAmount,
+                activeBidCount,
                 reserveWillBeMet,
                 firstOfferFloor,
             };
@@ -1163,7 +1174,7 @@ export class AuctionsService {
             new_reserve: reservePrice,
             starting_bid: correction.startingBid,
             top_bid_amount: correction.topBidAmount,
-            active_bid_count: correction.topBidAmount === null ? 0 : 1,
+            active_bid_count: correction.activeBidCount,
             reserve_met_after: correction.reserveWillBeMet,
             first_offer_floor_after: correction.firstOfferFloor,
             reason: reason?.trim() || null,
