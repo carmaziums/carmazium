@@ -351,13 +351,13 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // ─── Load auction ─────────────────────────────────────────────────────────
 
   const loadAuction = useCallback((opts?: { silent?: boolean }) => {
-    if (!auctionId) { setLoading(false); return; }
+    if (!auctionId) { setLoading(false); return Promise.resolve(); }
     setLoadError(null);
     // A silent load is a resync behind a live screen (socket reconnect, AUC-017).
     // Showing the full-screen loader there would blank out the auction the user
     // is watching, which is worse than the stale state it is fixing.
     if (!opts?.silent) setLoading(true);
-    getAuction(auctionId)
+    return getAuction(auctionId)
       .then(data => {
         setAuction(data);
         const et = new Date(data.endTime);
@@ -603,10 +603,19 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   useEffect(() => {
     if (!auctionId || connected || auction?.status === 'ENDED' || auction?.status === 'CANCELLED') return;
 
-    const refresh = () => loadAuctionRef.current({ silent: true });
-    refresh();
-    const id = setInterval(refresh, 5000);
-    return () => clearInterval(id);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const poll = async () => {
+      await loadAuctionRef.current({ silent: true });
+      if (!cancelled) timer = setTimeout(poll, 5000);
+    };
+
+    void poll();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [auctionId, auction?.status, connected]);
 
   // BIN response countdown uses the exact server-provided deadline.
