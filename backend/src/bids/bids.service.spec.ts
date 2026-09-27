@@ -175,6 +175,7 @@ describe('BidsService — incremental bidding', () => {
                 reserve_price: auction?.reservePrice ?? null,
                 min_increment: auction?.minIncrement ?? null,
                 buy_it_now_pending_buyer_id: auction?.buyItNowPendingBuyerId ?? null,
+                buy_it_now_pending_at: auction?.buyItNowPendingAt ?? null,
                 highest_bid_id: highestBid?.id ?? null,
                 highest_bidder_id: highestBid?.bidderId ?? null,
                 highest_bid_amount: highestBid?.amount ?? null,
@@ -512,13 +513,16 @@ describe('BidsService — incremental bidding', () => {
         expect(prisma.bid.create).not.toHaveBeenCalled();
     });
 
-    it('extends the end time inside the same locked transaction for an anti-snipe bid', async () => {
+    it('extends the end time inside the same locked transaction and rebroadcasts the server BIN deadline', async () => {
         const endTime = new Date(Date.now() + 2 * 60 * 1000);
+        const pendingAt = new Date(Date.now() - 5 * 60 * 1000);
         prisma.listing.findUnique.mockResolvedValue({
             ...auctionListing,
             auction: {
                 ...auctionListing.auction,
                 endTime,
+                buyItNowPendingBuyerId: 'bin-buyer',
+                buyItNowPendingAt: pendingAt,
             },
         });
         prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User' });
@@ -534,12 +538,22 @@ describe('BidsService — incremental bidding', () => {
 
         await service.create('bidder-A', { listingId: 'listing-1', amount: 3500 } as any);
 
+        const extendedEnd = new Date(endTime.getTime() + 3 * 60 * 1000);
         expect(prisma.auction.update).toHaveBeenCalledWith({
             where: { id: 'auction-1' },
             data: expect.objectContaining({
-                endTime: new Date(endTime.getTime() + 3 * 60 * 1000),
+                endTime: extendedEnd,
             }),
         });
+        expect((service as any).auctionGateway.broadcastBid).toHaveBeenCalledWith(
+            'auction-1',
+            expect.objectContaining({
+                bidId: 'bid-anti-snipe',
+                newEndTime: extendedEnd.toISOString(),
+                buyItNowCancelled: false,
+                buyItNowResponseDeadline: extendedEnd.toISOString(),
+            }),
+        );
     });
 
     it('clears a pending Buy It Now request when a bid reaches reserve even below the BIN price', async () => {
