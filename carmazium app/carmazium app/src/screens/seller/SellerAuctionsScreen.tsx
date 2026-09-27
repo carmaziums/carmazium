@@ -37,6 +37,8 @@ import { createPaymentSheet } from '../../lib/paymentsApi';
 import { submitHandoverProof } from '../../lib/auctionApi';
 import { getAuctionOpeningBid, getAuctionReserveGuide } from '../../lib/auctionPricing';
 import { useStripe } from '@stripe/stripe-react-native';
+import { useDealerAccess } from '../../hooks/useDealerAccess';
+import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -141,6 +143,15 @@ function fmtDate(iso: string) {
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const accountRole = useAuthStore((s) => s.accountRole);
+  const isDealerStaff = useAuthStore((s) => !!s.user?.isDealerStaff);
+  const dealerIdentity = accountRole === 'dealer' || isDealerStaff;
+  const {
+    hasPermission: hasDealerPermission,
+    loading: dealerAccessLoading,
+  } = useDealerAccess(dealerIdentity);
+  const canManageHandover = !dealerIdentity
+    || (!dealerAccessLoading && hasDealerPermission('MANAGE_INVENTORY'));
   const insets = useSafeAreaInsets();
   const route = useRoute<any>();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
@@ -323,6 +334,14 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   // ── Handover proof upload ──
   async function handleHandoverUpload(auctionId: string) {
+    if (!canManageHandover) {
+      setHandoverError(prev => ({
+        ...prev,
+        [auctionId]: 'Your dealership role can view this auction but does not allow handover submission.',
+      }));
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images' as any,
       allowsEditing: false,
@@ -1119,10 +1138,22 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 <Ionicons name="checkmark-circle" size={13} color={Colors.lightGreen_4ade80} />
                 <Text style={styles.handoverDone}>£100 payout released</Text>
               </View>
-            ) : handoverUploaded[item.id] || item.handoverProofUrl ? (
+            ) : handoverUploaded[item.id] || item.handoverSubmittedAt || item.handoverProofUrl ? (
               <View style={styles.payoutOkPill}>
                 <Ionicons name="hourglass-outline" size={13} color={Colors.lightGreen_4ade80} />
                 <Text style={styles.handoverDone}>Awaiting admin approval</Text>
+              </View>
+            ) : dealerIdentity && dealerAccessLoading ? (
+              <View style={styles.payoutOkPill}>
+                <ActivityIndicator size="small" color={Colors.lightGreen_4ade80} />
+                <Text style={styles.handoverDone}>Checking dealership permissions</Text>
+              </View>
+            ) : !canManageHandover ? (
+              <View style={styles.payoutFailPill}>
+                <Ionicons name="lock-closed-outline" size={13} color={Colors.paleRed_fca5a5} />
+                <Text style={styles.payoutFailText}>
+                  Your dealership role can view this auction but cannot submit handover proof.
+                </Text>
               </View>
             ) : handoverError[item.id] ? (
               <ErrorBanner
