@@ -63,6 +63,10 @@ describe('ListingsService', () => {
             dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             user: { findUnique: jest.fn() },
+            analyticsEvent: {
+                findUnique: jest.fn().mockResolvedValue(null),
+                create: jest.fn().mockResolvedValue({}),
+            },
             transaction: { findMany: jest.fn(), update: jest.fn() },
             hpiReport: { findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }) },
             auction: {
@@ -1090,6 +1094,236 @@ describe('ListingsService', () => {
 
             expect(result).toEqual({ linkedListingId: 'retail-winner' });
             expect(prisma.listing.create).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('stable valuation journey base', () => {
+        const valuationId = '11111111-1111-4111-8111-111111111111';
+
+        it('persists the first market base against the valuation journey ID', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            jest.spyOn(service as any, 'getLiveUkMarketComparables').mockResolvedValue({
+                checkedAt: '2026-09-27T10:00:00.000Z',
+                rawComparableCount: 1,
+                comparables: [
+                    { price: 4200, year: 2010, mileage: 138734, kind: 'ACTIVE_ASK' },
+                ],
+            });
+
+            const result = await service.estimateVehicleValue({
+                make: 'VOLKSWAGEN',
+                model: 'Golf',
+                year: 2010,
+                mileage: 138734,
+                registration: 'BF10 XYP',
+                valuationId,
+            } as any);
+
+            expect(result.auction.marketValue).toBeGreaterThan(0);
+            expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+                data: expect.objectContaining({
+                    id: valuationId,
+                    type: 'valuation_base_snapshot',
+                    payload: expect.objectContaining({
+                        valuation_id: valuationId,
+                        identity: {
+                            registration: 'BF10XYP',
+                            make: 'VOLKSWAGEN',
+                            model: 'GOLF',
+                            year: 2010,
+                            mileage: 138734,
+                        },
+                        baseValuation: expect.objectContaining({
+                            auction: expect.objectContaining({
+                                marketValue: expect.any(Number),
+                            }),
+                        }),
+                    }),
+                }),
+            });
+        });
+
+        it('reuses the frozen base and does not search the live market again', async () => {
+            const frozenBase = {
+                low: 4200,
+                mid: 4750,
+                high: 5300,
+                confidence: 'LOW',
+                confidenceScore: 0.28,
+                comparables: 1,
+                evidence: {
+                    completedSales: 0,
+                    acceptedOffers: 0,
+                    auctionResults: 0,
+                    activeAsks: 1,
+                },
+                source: 'CARMAZIUM_MARKET',
+                explanation: 'Frozen base',
+                retail: {
+                    suggestedAsking: 5300,
+                    suggestedMinimum: 4750,
+                },
+                auction: {
+                    marketValue: 4200,
+                    openingBid: 2940,
+                    reserveLow: 3780,
+                    reserveHigh: 4200,
+                    suggestedReserve: 4000,
+                },
+                marketEvidence: {
+                    carmaziumComparables: 1,
+                    liveUkComparables: 0,
+                    liveUkSearchStatus: 'INSUFFICIENT',
+                    rawLiveUkComparables: 0,
+                },
+            };
+
+            prisma.analyticsEvent.findUnique.mockResolvedValue({
+                id: valuationId,
+                type: 'valuation_base_snapshot',
+                payload: {
+                    identity: {
+                        registration: 'BF10XYP',
+                        make: 'VOLKSWAGEN',
+                        model: 'GOLF',
+                        year: 2010,
+                        mileage: 138734,
+                    },
+                    baseValuation: frozenBase,
+                },
+            });
+
+            const liveSearch = jest.spyOn(service as any, 'getLiveUkMarketComparables');
+
+            const result = await service.estimateVehicleValue({
+                make: 'Volkswagen',
+                model: 'Golf',
+                year: 2010,
+                mileage: 138734,
+                registration: 'BF10 XYP',
+                valuationId,
+                condition: 'POOR',
+            } as any);
+
+            expect(liveSearch).not.toHaveBeenCalled();
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+            expect(result.source).toBe('CARMAZIUM_MARKET');
+            expect(result.marketEvidence).toEqual(frozenBase.marketEvidence);
+            expect(result.auction.marketValue).toBeLessThan(4200);
+        });
+
+        it('rejects reusing a valuation journey after registration or mileage changes', async () => {
+            prisma.analyticsEvent.findUnique.mockResolvedValue({
+                id: valuationId,
+                type: 'valuation_base_snapshot',
+                payload: {
+                    identity: {
+                        registration: 'BF10XYP',
+                        make: 'VOLKSWAGEN',
+                        model: 'GOLF',
+                        year: 2010,
+                        mileage: 138734,
+                    },
+                    baseValuation: {
+                        low: 4200,
+                        mid: 4750,
+                        high: 5300,
+                        confidence: 'LOW',
+                        confidenceScore: 0.28,
+                        comparables: 1,
+                        evidence: {
+                            completedSales: 0,
+                            acceptedOffers: 0,
+                            auctionResults: 0,
+                            activeAsks: 1,
+                        },
+                        source: 'CARMAZIUM_MARKET',
+                        explanation: 'Frozen base',
+                        retail: {
+                            suggestedAsking: 5300,
+                            suggestedMinimum: 4750,
+                        },
+                        auction: {
+                            marketValue: 4200,
+                            openingBid: 2940,
+                            reserveLow: 3780,
+                            reserveHigh: 4200,
+                            suggestedReserve: 4000,
+                        },
+                    },
+                },
+            });
+
+            await expect(service.estimateVehicleValue({
+                make: 'VOLKSWAGEN',
+                model: 'Golf',
+                year: 2010,
+                mileage: 140000,
+                registration: 'BF10XYP',
+                valuationId,
+            } as any)).rejects.toThrow(/registration or mileage changed/i);
+        });
+
+        it('returns the winning frozen base when two requests race to create the same journey', async () => {
+            const winnerBase = {
+                low: 2650,
+                mid: 3100,
+                high: 3300,
+                confidence: 'LOW',
+                confidenceScore: 0.42,
+                comparables: 6,
+                evidence: {
+                    completedSales: 0,
+                    acceptedOffers: 0,
+                    auctionResults: 0,
+                    activeAsks: 6,
+                },
+                source: 'BLENDED_MARKET',
+                explanation: 'Winning base',
+                retail: {
+                    suggestedAsking: 3300,
+                    suggestedMinimum: 3100,
+                },
+                auction: {
+                    marketValue: 2650,
+                    openingBid: 1855,
+                    reserveLow: 2385,
+                    reserveHigh: 2650,
+                    suggestedReserve: 2500,
+                },
+            };
+
+            prisma.listing.findMany.mockResolvedValue([]);
+            jest.spyOn(service as any, 'getLiveUkMarketComparables').mockResolvedValue(null);
+            prisma.analyticsEvent.create.mockRejectedValueOnce({ code: 'P2002' });
+            prisma.analyticsEvent.findUnique
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce({
+                    id: valuationId,
+                    type: 'valuation_base_snapshot',
+                    payload: {
+                        identity: {
+                            registration: 'BF10XYP',
+                            make: 'VOLKSWAGEN',
+                            model: 'GOLF',
+                            year: 2010,
+                            mileage: 138734,
+                        },
+                        baseValuation: winnerBase,
+                    },
+                });
+
+            const result = await service.estimateVehicleValue({
+                make: 'VOLKSWAGEN',
+                model: 'Golf',
+                year: 2010,
+                mileage: 138734,
+                registration: 'BF10XYP',
+                valuationId,
+            } as any);
+
+            expect(result.auction.marketValue).toBe(2650);
+            expect(result.source).toBe('BLENDED_MARKET');
         });
     });
 
