@@ -334,6 +334,51 @@ describe('BidsService — incremental bidding', () => {
         });
     });
 
+    it('clears a pending Buy It Now request when a bid reaches reserve even below the BIN price', async () => {
+        prisma.listing.findUnique.mockResolvedValue({
+            ...auctionListing,
+            auction: {
+                ...auctionListing.auction,
+                reservePrice: 9000,
+                buyItNowPrice: 12000,
+                buyItNowPendingBuyerId: 'bin-buyer',
+                buyItNowPendingAt: new Date(),
+            },
+        });
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User' });
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.bid.create.mockResolvedValue({
+            id: 'bid-reserve',
+            amount: 9000,
+            timestamp: new Date(),
+            listingId: 'listing-1',
+            bidderId: 'bidder-A',
+        });
+
+        await service.create('bidder-A', { listingId: 'listing-1', amount: 9000 } as any);
+
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where: { id: 'auction-1' },
+            data: expect.objectContaining({
+                buyItNowPendingBuyerId: null,
+                buyItNowPendingAt: null,
+            }),
+        });
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                userId: 'bin-buyer',
+                title: 'Buy It Now request cancelled',
+            }),
+        );
+        expect((service as any).auctionGateway.broadcastBid).toHaveBeenCalledWith(
+            'auction-1',
+            expect.objectContaining({
+                bidId: 'bid-reserve',
+                buyItNowCancelled: true,
+            }),
+        );
+    });
+
     it('notifies the seller when the new highest bid is below reserve and can be accepted', async () => {
         prisma.listing.findUnique.mockResolvedValue(auctionListing);
         prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
