@@ -706,8 +706,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             try {
               await apiClient(`/bids/${bidId}/cancel`, { method: 'PATCH' });
               haptics.light();
-              // bid:cancelled socket event removes it from bidHistory, which
-              // in turn drops it from the derived cancelableBids list.
+              // Do not rely on the websocket echo for our own cancellation.
+              // A silent canonical refresh also repairs the screen when the
+              // device temporarily lost its auction socket connection.
+              loadAuctionRef.current({ silent: true });
             } catch (err: any) {
               Alert.alert('Failed', err?.message ?? 'Could not cancel bid. Please try again.');
             } finally {
