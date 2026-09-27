@@ -6,6 +6,15 @@ export const AUCTION_DURATION_HOURS = 24;
 export const AUCTION_DURATION_MS = AUCTION_DURATION_HOURS * 60 * 60 * 1000;
 export const BUY_IT_NOW_RESPONSE_WINDOW_HOURS = 24;
 export const BUY_IT_NOW_RESPONSE_WINDOW_MS = BUY_IT_NOW_RESPONSE_WINDOW_HOURS * 60 * 60 * 1000;
+export const BUY_IT_NOW_BELOW_RESERVE_MESSAGE =
+    'Buy It Now price must be equal to or higher than the reserve price.';
+
+export function buyItNowViolatesReserve(
+    reservePrice: number,
+    buyItNowPrice?: number | null,
+): boolean {
+    return buyItNowPrice != null && buyItNowPrice < reservePrice;
+}
 
 export function calculateBuyItNowResponseDeadline(
     pendingAt: Date | string,
