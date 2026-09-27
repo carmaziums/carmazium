@@ -19,6 +19,8 @@ export interface VehicleValuationRequest {
   writeOffCategory?: string;
   isImported?: boolean;
   excludeListingId?: string;
+  valuationId?: string;
+  registration?: string;
 }
 
 export interface VehicleValuation {
@@ -333,6 +335,8 @@ export async function getVehicleValuation(
   if (request.writeOffCategory) params.set('writeOffCategory', request.writeOffCategory);
   if (request.isImported !== undefined) params.set('isImported', String(request.isImported));
   if (request.excludeListingId) params.set('excludeListingId', request.excludeListingId);
+  if (request.valuationId) params.set('valuationId', request.valuationId);
+  if (request.registration) params.set('registration', request.registration);
 
   // A sparse vehicle may trigger a live UK market search on the server. Give it
   // longer than the app-wide 10s request budget so useful valuations do not
