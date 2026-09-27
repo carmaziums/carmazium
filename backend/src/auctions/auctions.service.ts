@@ -100,6 +100,174 @@ export class AuctionsService {
         return actor.ownerUserId;
     }
 
+    private isStructurallyValidHandoverProof(auction: any): boolean {
+        const privatePath = typeof auction?.handoverProofPath === 'string'
+            ? auction.handoverProofPath.trim()
+            : '';
+        const privatePathValid = Boolean(
+            privatePath
+            && privatePath.startsWith(`${auction.id}/`)
+            && !privatePath.includes('..'),
+        );
+
+        const legacyUrl = typeof auction?.handoverProofUrl === 'string'
+            ? auction.handoverProofUrl.trim()
+            : '';
+        let legacyUrlValid = false;
+        if (legacyUrl) {
+            const marker = '/storage/v1/object/public/listings/';
+            const at = legacyUrl.indexOf(marker);
+            if (at !== -1) {
+                const key = decodeURIComponent(legacyUrl.slice(at + marker.length).split('?')[0] || '');
+                legacyUrlValid = key.startsWith('handover/') || key.includes('/handover/');
+            }
+        }
+
+        // Historic migrated rows intentionally keep both the legacy URL and the
+        // private path until public cleanup is complete. Either structurally
+        // valid representation is sufficient; readers still prefer the private
+        // path and never expose that key.
+        return privatePathValid || legacyUrlValid;
+    }
+
+    /**
+     * Authoritative backend gate for the seller-handover / £100 bonus lifecycle.
+     *
+     * This intentionally validates the £125 fee transaction itself instead of
+     * trusting buyerFeePaid alone: an old/corrupt boolean must never unlock a
+     * seller payout. Cancellation/refusal state is checked here too so every
+     * caller uses the same business rule.
+     */
+    async assertHandoverBusinessRules(
+        auctionId: string,
+        options: {
+            expectedSellerId?: string;
+            requireProof?: boolean;
+            requireUnapproved?: boolean;
+            requireApproved?: boolean;
+        } = {},
+    ): Promise<any> {
+        const auction: any = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            include: {
+                listing: {
+                    select: {
+                        id: true,
+                        sellerId: true,
+                        title: true,
+                        deletedAt: true,
+                        seller: { select: { id: true, deletedAt: true } },
+                    },
+                },
+                winner: { select: { id: true, deletedAt: true } },
+            },
+        });
+
+        if (!auction || auction.deletedAt || !auction.listing || auction.listing.deletedAt) {
+            throw new NotFoundException('Auction not found');
+        }
+        if (
+            options.expectedSellerId
+            && auction.listing.sellerId !== options.expectedSellerId
+        ) {
+            throw new ForbiddenException('You do not own this auction');
+        }
+        if (!auction.listing.seller || auction.listing.seller.deletedAt) {
+            throw new BadRequestException('This auction no longer has a valid seller account');
+        }
+        if (auction.status !== 'ENDED') {
+            throw new BadRequestException('Handover is only available for a valid ended auction');
+        }
+        if (
+            !auction.winnerId
+            || !auction.winner
+            || auction.winner.deletedAt
+            || auction.winner.id !== auction.winnerId
+        ) {
+            throw new BadRequestException('This auction does not have a valid winner');
+        }
+        if (auction.winnerId === auction.listing.sellerId) {
+            throw new BadRequestException('Seller and auction winner cannot be the same account');
+        }
+        if (!auction.buyerFeePaid || !auction.buyerFeeTransactionId) {
+            throw new BadRequestException('The £125 auction buyer fee must be paid before handover');
+        }
+
+        const feeTransaction: any = await this.prisma.transaction.findUnique({
+            where: { id: auction.buyerFeeTransactionId },
+        });
+        const validFeeTransaction = Boolean(
+            feeTransaction
+            && !feeTransaction.deletedAt
+            && feeTransaction.status === 'COMPLETED'
+            && feeTransaction.type === 'COMMISSION'
+            && feeTransaction.listingId === auction.listingId
+            && feeTransaction.userId === auction.winnerId
+            && Number(feeTransaction.amount) === 125,
+        );
+        if (!validFeeTransaction) {
+            throw new BadRequestException('The £125 auction buyer fee payment record is invalid or incomplete');
+        }
+
+        if (auction.buyerRefusedAt) {
+            throw new BadRequestException('This purchase was refused after inspection and cannot proceed to handover');
+        }
+
+        const cancellation = await this.prisma.saleCancellationRequest.findFirst({
+            where: {
+                auctionId,
+                status: {
+                    in: ['PENDING_COUNTERPARTY', 'PENDING_ADMIN', 'APPROVED'] as any,
+                },
+            },
+            select: { id: true, status: true },
+        });
+        if (cancellation) {
+            throw new BadRequestException(
+                cancellation.status === 'APPROVED'
+                    ? 'This auction sale has been cancelled'
+                    : 'This auction sale has a cancellation request in progress',
+            );
+        }
+
+        if (options.requireProof) {
+            if (!auction.handoverSubmittedAt || !this.isStructurallyValidHandoverProof(auction)) {
+                throw new BadRequestException('A valid handover proof must be submitted before approval or payout');
+            }
+        }
+
+        if (options.requireUnapproved) {
+            if (
+                auction.sellerBonusReleased
+                || auction.sellerBonusReleasedAt
+                || auction.stripePayoutTransferId
+                || auction.manualPayoutConfirmedAt
+            ) {
+                throw new BadRequestException('This handover has already been completed or entered payout');
+            }
+        }
+
+        if (options.requireApproved) {
+            if (!auction.sellerBonusReleased || !auction.sellerBonusReleasedAt) {
+                throw new BadRequestException('This handover has not been validly approved');
+            }
+        }
+
+        return auction;
+    }
+
+    async assertHandoverSubmissionEligibility(auctionId: string, userId: string): Promise<any> {
+        const sellerId = await this.resolveSellerBusinessId(userId, 'MANAGE_INVENTORY');
+        const auction = await this.assertHandoverBusinessRules(auctionId, {
+            expectedSellerId: sellerId,
+            requireUnapproved: true,
+        });
+        if (auction.handoverProofUrl || auction.handoverProofPath || auction.handoverSubmittedAt) {
+            throw new BadRequestException('Handover proof has already been submitted');
+        }
+        return auction;
+    }
+
     private async resolveBuyerBusinessId(
         userId: string,
         permission?: Extract<
@@ -1716,35 +1884,45 @@ export class AuctionsService {
         userId: string,
         proof: { proofUrl?: string; proofPath?: string },
     ): Promise<any> {
-        const sellerId = await this.resolveSellerBusinessId(userId, 'MANAGE_INVENTORY');
-        const auction = await this.prisma.auction.findUnique({
-            where: { id: auctionId },
-            include: { listing: { select: { sellerId: true, title: true } } },
-        });
+        const auction = await this.assertHandoverSubmissionEligibility(auctionId, userId);
+        const sellerId = auction.listing.sellerId;
 
-        if (!auction || auction.deletedAt) {
-            throw new NotFoundException('Auction not found');
+        const proofPath = typeof proof.proofPath === 'string' ? proof.proofPath.trim() : '';
+        const proofUrl = typeof proof.proofUrl === 'string' ? proof.proofUrl.trim() : '';
+        if (Boolean(proofPath) === Boolean(proofUrl)) {
+            throw new BadRequestException('Submit exactly one handover proof');
         }
-        if (auction.listing.sellerId !== sellerId) {
-            throw new ForbiddenException('You do not own this auction');
+        if (proofPath && (!proofPath.startsWith(`${auctionId}/`) || proofPath.includes('..'))) {
+            throw new BadRequestException('Invalid private handover proof path');
         }
-        if (auction.status !== 'ENDED') {
-            throw new BadRequestException('Handover proof can only be submitted for ended auctions');
-        }
-        if (!auction.winnerId) {
-            throw new BadRequestException('This auction has no winner');
-        }
-        if (auction.handoverProofUrl || (auction as any).handoverProofPath) {
-            throw new BadRequestException('Handover proof has already been submitted');
+        if (proofUrl) {
+            const marker = '/storage/v1/object/public/listings/';
+            const at = proofUrl.indexOf(marker);
+            const key = at === -1
+                ? ''
+                : decodeURIComponent(proofUrl.slice(at + marker.length).split('?')[0] || '');
+            if (!(key.startsWith('handover/') || key.includes('/handover/'))) {
+                throw new BadRequestException('Invalid legacy handover proof URL');
+            }
         }
 
         const updated = await this.prisma.auction.update({
+            where: {
+                id: auctionId,
+                status: 'ENDED',
+                winnerId: auction.winnerId,
+                buyerFeePaid: true,
+                buyerFeeTransactionId: auction.buyerFeeTransactionId,
+                buyerRefusedAt: null,
+                sellerBonusReleased: false,
+                handoverSubmittedAt: null,
+            },
             where: { id: auctionId },
             data: {
                 // Exactly one of these is set. A private upload leaves the
                 // legacy column null so nothing public is ever recorded for it.
-                handoverProofUrl: proof.proofPath ? null : proof.proofUrl,
-                handoverProofPath: proof.proofPath ?? null,
+                handoverProofUrl: proofPath ? null : proofUrl,
+                handoverProofPath: proofPath || null,
                 handoverSubmittedAt: new Date(),
             } as any,
         });
