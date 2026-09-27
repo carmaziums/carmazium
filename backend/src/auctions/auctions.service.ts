@@ -2414,7 +2414,10 @@ export class AuctionsService {
     /**
      * Buyer triggers a Buy It Now request. Sets pending state, notifies seller, broadcasts to viewers.
      */
-    async triggerBuyItNow(auctionId: string, buyerId: string): Promise<void> {
+    async triggerBuyItNow(
+        auctionId: string,
+        buyerId: string,
+    ): Promise<{ created: boolean; pendingAt: string; responseDeadline: string }> {
         // Buy It Now is an auction purchase commitment and must obey the exact
         // same verified-dealer / dealership-permission boundary as bidding.
         const user = await this.prisma.user.findUnique({
