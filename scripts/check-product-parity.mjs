@@ -1287,14 +1287,17 @@ if (!feeRateMatch) {
   ok('TradeXchange service fee rate = 9% / provider share = 91%');
 }
 
+const backendAuctionPricing = read('backend/src/auctions/auction-pricing.ts');
 const webAuctionPricing = read('src/lib/auctionPricing.ts');
 const mobileAuctionPricing = read('carmazium app/carmazium app/src/lib/auctionPricing.ts');
 for (const constant of [
   'AUCTION_OPENING_BID_RATIO',
   'AUCTION_RESERVE_GUIDE_LOW_RATIO',
   'AUCTION_RESERVE_GUIDE_HIGH_RATIO',
+  'AUCTION_FIRST_OFFER_RATIO',
 ]) {
   same(constant, {
+    backend: numberConst(backendAuctionPricing, constant),
     web: numberConst(webAuctionPricing, constant),
     mobile: numberConst(mobileAuctionPricing, constant),
   });
