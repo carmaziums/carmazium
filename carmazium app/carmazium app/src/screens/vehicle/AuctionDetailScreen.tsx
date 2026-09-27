@@ -43,6 +43,7 @@ import { haptics } from '../../lib/haptics';
 import { BuyerDamageViewer } from '../../components/damage/BuyerDamageViewer';
 import { GradeChip } from '../../components/GradeChip';
 import { Button } from '../../components/Button';
+import { getMinimumAuctionBid } from '../../lib/auctionPricing';
 
 import { IconButton } from '../../components/IconButton';
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -243,7 +244,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     && (role !== 'dealer' || canManageDealerInventory);
 
   // ── Bid state ──
-  const [currentBid, setCurrentBid] = useState<number>(listingObj.currentBid ?? listingObj.startingBid ?? 0);
+  const [currentBid, setCurrentBid] = useState<number>(0);
   const [bidHistory, setBidHistory] = useState<BidEntry[]>([]);
   const [isWinning, setIsWinning] = useState(false);
   const [bidAmount, setBidAmount] = useState('');
@@ -352,7 +353,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         setEndTime(et);
         setStartTime(st);
         const bids = data.listing.bids ?? [];
-        const topBid = bids[0] ? Number(bids[0].amount) : Number(data.startingBid);
+        const topBid = bids[0] ? Number(bids[0].amount) : 0;
         setCurrentBid(topBid);
         setIsWinning(!!businessUserId && bids[0]?.bidderId === businessUserId);
         setBidHistory(bids.map(b => {
@@ -534,8 +535,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         if (d.auctionId !== auctionId) return;
         setBidHistory(prev => {
           const next = prev.filter(b => b.id !== d.bidId);
-          // Recalculate current bid: top remaining bid, or fall back to starting bid
-          const topAmount = next.length > 0 ? next[0].amount : Number(auction?.startingBid ?? 0);
+          // Recalculate from real dealer bids only. If none remain, return to
+          // zero-bid mode; the platform starting bid is a guide, not a bid.
+          const topAmount = next.length > 0 ? next[0].amount : 0;
           setCurrentBid(topAmount);
           // Recalculate winning status from the new top bidder
           setIsWinning(!!businessUserId && next.length > 0 && next[0].bidderId === businessUserId);
@@ -626,9 +628,27 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     if (!auction || !currentUser) return;
     const parsed = Number(amount);
     if (!parsed || parsed <= 0) { setBidError('Enter a valid bid amount.'); return; }
-    if (parsed <= currentBid) { setBidError(`Bid must exceed current bid of ${fmt(currentBid)}.`); return; }
-    const minNext = currentBid + Number(auction.minIncrement);
-    if (parsed < minNext) { setBidError(`Minimum next bid is ${fmt(minNext)}.`); return; }
+
+    const highestRealBid = bidHistory[0]?.amount ?? null;
+    const minAllowed = getMinimumAuctionBid({
+      startingBid: Number(auction.startingBid),
+      reservePrice: Number(auction.reservePrice),
+      minIncrement: Number(auction.minIncrement),
+      highestActiveBid: highestRealBid,
+    });
+
+    if (minAllowed <= 0) {
+      setBidError('This auction does not have valid bidding prices.');
+      return;
+    }
+    if (parsed < minAllowed) {
+      setBidError(
+        highestRealBid != null
+          ? `Minimum next bid is ${fmt(minAllowed)}.`
+          : `First offers are accepted from ${fmt(minAllowed)}.`,
+      );
+      return;
+    }
     setBidLoading(true);
     setBidError(null);
     try {
@@ -643,7 +663,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     } finally {
       setBidLoading(false);
     }
-  }, [auction, currentUser, currentBid, role, canPlaceBid, isDealerVerified, dealerAccess?.isOwner, navigation]);
+  }, [auction, currentUser, bidHistory, role, canPlaceBid, isDealerVerified, dealerAccess?.isOwner, navigation]);
 
   // ─── Cancel bid ──────────────────────────────────────────────────────────────
 
@@ -836,9 +856,22 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     || (auction?.winnerId && auction.winnerId === businessUserId)
   );
   const reservePrice = auction ? Number(auction.reservePrice) : 0;
-  const reserveMet = currentBid > 0 && reservePrice > 0 && currentBid >= reservePrice;
   const minIncrement = auction ? Number(auction.minIncrement) : 100;
-  const quickBids = [minIncrement, minIncrement * 2, minIncrement * 5, minIncrement * 10];
+  const hasRealBids = bidHistory.length > 0;
+  const startingBidAmount = auction ? Number(auction.startingBid) : Number(listingObj.startingBid ?? 0);
+  const minimumAllowedBid = auction
+    ? getMinimumAuctionBid({
+        startingBid: startingBidAmount,
+        reservePrice,
+        minIncrement,
+        highestActiveBid: hasRealBids ? currentBid : null,
+      })
+    : 0;
+  const displayBidAmount = hasRealBids ? currentBid : startingBidAmount;
+  const reserveMet = hasRealBids && currentBid > 0 && reservePrice > 0 && currentBid >= reservePrice;
+  const quickBidAmounts = hasRealBids
+    ? [minIncrement, minIncrement * 2, minIncrement * 5, minIncrement * 10].map(inc => currentBid + inc)
+    : [0, minIncrement, minIncrement * 2, minIncrement * 5].map(inc => minimumAllowedBid + inc);
   const image = String(
     (auction && auction.listing && auction.listing.images && auction.listing.images[0])
     || (listing.images && listing.images[0])
@@ -1246,8 +1279,17 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           <View style={s.heroBottom}>
             <View style={{ flex: 1 }}>
-              <Text style={s.heroBidLabel}>{isEnded ? 'FINAL BID' : isScheduled ? 'STARTING BID' : 'CURRENT BID'}</Text>
-              <Text style={[s.heroBid, { fontFamily: FontFamily.mono }]}>{fmt(currentBid)}</Text>
+              <Text style={s.heroBidLabel}>
+                {isEnded ? (hasRealBids ? 'FINAL BID' : 'NO BIDS') : isScheduled || !hasRealBids ? 'STARTING BID' : 'CURRENT BID'}
+              </Text>
+              <Text style={[s.heroBid, { fontFamily: FontFamily.mono }]}>
+                {isEnded && !hasRealBids ? '—' : fmt(displayBidAmount)}
+              </Text>
+              {isActive && !hasRealBids && minimumAllowedBid > 0 && (
+                <Text style={{ color: Colors.warning, fontFamily: FontFamily.bold, fontSize: FontSize.size10, marginTop: 4 }}>
+                  First offer from {fmt(minimumAllowedBid)}
+                </Text>
+              )}
               {/* Reserve status is never shown to buyers — enforced
                   server-side (Ground Rules). The seller-only reserve panel
                   further down (isSeller branch) still shows it to sellers. */}
@@ -1913,29 +1955,43 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         ) : (
           <View style={{ gap: 10 }}>
-            {/* Current bid info */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <View>
-                <Text style={s.specKey}>CURRENT BID</Text>
-                <Text style={[s.currentBidVal, { fontFamily: FontFamily.mono }]}>{fmt(currentBid)}</Text>
+            {/* Current bid / zero-bid first-offer info */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.specKey}>{hasRealBids ? 'CURRENT BID' : 'NO BIDS YET'}</Text>
+                <Text style={[s.currentBidVal, { fontFamily: FontFamily.mono }]}>
+                  {hasRealBids ? fmt(currentBid) : `Starting ${fmt(startingBidAmount)}`}
+                </Text>
               </View>
-              <Text style={s.minNextBid}>Min next: <Text style={{ color: Colors.white, fontFamily: FontFamily.mono }}>{fmt(currentBid + minIncrement)}</Text></Text>
+              <Text style={[s.minNextBid, !hasRealBids && { color: Colors.warning }]}>
+                {hasRealBids ? 'Min next: ' : 'First offer from: '}
+                <Text style={{ color: hasRealBids ? Colors.white : Colors.warning, fontFamily: FontFamily.mono }}>
+                  {fmt(minimumAllowedBid)}
+                </Text>
+              </Text>
             </View>
 
             {/* Quick bid buttons */}
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              {quickBids.map(inc => (
-                <TouchableOpacity
-                  key={inc}
-                  style={s.quickBidBtn}
-                  onPress={() => handleBid(currentBid + inc)}
-                  disabled={bidLoading}
-                  activeOpacity={0.7}
-                >
-                  <Text style={s.quickBidLabel}>+{inc >= 1000 ? `£${inc / 1000}k` : `£${inc}`}</Text>
-                  <Text style={[s.quickBidAmt, { fontFamily: FontFamily.mono }]}>{fmt(currentBid + inc)}</Text>
-                </TouchableOpacity>
-              ))}
+              {quickBidAmounts.map((targetAmount, index) => {
+                const delta = hasRealBids ? targetAmount - currentBid : targetAmount - minimumAllowedBid;
+                return (
+                  <TouchableOpacity
+                    key={targetAmount}
+                    style={s.quickBidBtn}
+                    onPress={() => handleBid(targetAmount)}
+                    disabled={bidLoading || targetAmount < minimumAllowedBid}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={s.quickBidLabel}>
+                      {!hasRealBids && index === 0
+                        ? 'MIN'
+                        : `+${delta >= 1000 ? `£${delta / 1000}k` : `£${delta}`}`}
+                    </Text>
+                    <Text style={[s.quickBidAmt, { fontFamily: FontFamily.mono }]}>{fmt(targetAmount)}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             {/* Custom + bid button */}
@@ -1954,7 +2010,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
               <TouchableOpacity
                 style={[s.bidBtn, bidLoading && { opacity: 0.6 }]}
-                onPress={() => handleBid(Number(bidAmount) || currentBid + minIncrement)}
+                onPress={() => handleBid(Number(bidAmount) || minimumAllowedBid)}
                 disabled={bidLoading}
                 activeOpacity={0.8}
               >
