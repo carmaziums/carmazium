@@ -1303,31 +1303,38 @@ for (const constant of [
   });
 }
 
-// Auction first-offer live-state regression guard. Socket.IO room events are
-// not replayed after a connection drop, so both clients must canonical-resync
-// on every successful connect. The web socket must also stay mounted when the
-// local winning flag changes during normal bidding.
+// Live-auction transport regression guard. Socket.IO room events are not
+// replayed after a connection drop, so both clients must canonical-resync on
+// every successful connect. They must also keep reconnecting through a backend
+// deploy and use canonical REST fallback reads while the socket is unavailable.
+// The web socket must stay mounted when the local winning flag changes.
 const webLiveAuction = read('src/app/auctions/live/[id]/page.tsx');
 const mobileLiveAuction = read('carmazium app/carmazium app/src/screens/vehicle/AuctionDetailScreen.tsx');
 
 if (
-  !webLiveAuction.includes('syncCanonicalAuctionState()') ||
   !webLiveAuction.includes('socket.on("connect", () => {') ||
+  !webLiveAuction.includes('loadAuction({ silent: true })') ||
+  !webLiveAuction.includes('reconnectionAttempts: Infinity') ||
+  !webLiveAuction.includes('connected || auction.status === "ENDED" || auction.status === "CANCELLED"') ||
+  !webLiveAuction.includes('window.setTimeout(poll, 5000)') ||
   webLiveAuction.includes('[auction?.id, businessUserId, isWinning]')
 ) {
-  fail('Web live auction can miss canonical bid state or reconnect during winner-state changes');
+  fail('Web live auction can miss canonical state during socket/Fly interruptions');
 } else {
-  ok('Web live auction preserves one socket and canonical-resyncs after reconnect');
+  ok('Web live auction preserves one socket, reconnects durably and canonical-resyncs during outages');
 }
 
 if (
   !mobileLiveAuction.includes("socket.on('connect', () => {") ||
   !mobileLiveAuction.includes('loadAuctionRef.current({ silent: true });') ||
+  !mobileLiveAuction.includes('reconnectionAttempts: Infinity') ||
+  !mobileLiveAuction.includes("connected || auction?.status === 'ENDED' || auction?.status === 'CANCELLED'") ||
+  !mobileLiveAuction.includes('setTimeout(poll, 5000)') ||
   mobileLiveAuction.includes("socket.on('reconnect', () => {")
 ) {
-  fail('Native live auction can miss canonical state after reconnect');
+  fail('Native live auction can miss canonical state during socket/backend interruptions');
 } else {
-  ok('Native live auction canonical-resyncs after every successful connect');
+  ok('Native live auction reconnects durably and canonical-resyncs during outages');
 }
 
 const webApi = read('src/lib/apiClient.ts');
