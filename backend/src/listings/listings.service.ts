@@ -51,6 +51,7 @@ import {
     calculateVehicleValuation,
     VehicleValuationComparable,
     VehicleValuationInput,
+    VehicleValuationResult,
 } from './vehicle-valuation';
 import {
     searchLiveUkVehicleMarket,
@@ -144,9 +145,48 @@ export class ListingsService {
      * engine falls back to CarMazium evidence and finally to the conservative
      * age/mileage/transmission model with LOW confidence.
      */
-    async estimateVehicleValue(dto: VehicleValuationDto) {
+    async estimateVehicleValue(dto: VehicleValuationDto): Promise<VehicleValuationResult> {
         const make = dto.make.trim();
         const model = dto.model.trim();
+
+        const baseValuationInput: VehicleValuationInput = {
+            make,
+            model,
+            year: dto.year,
+            mileage: dto.mileage,
+        };
+
+        const specificationInput: VehicleValuationInput = {
+            ...baseValuationInput,
+            variant: dto.variant,
+            fuelType: dto.fuelType,
+            transmission: dto.transmission,
+            condition: dto.condition,
+            exteriorGrade: dto.exteriorGrade,
+            serviceHistory: dto.serviceHistory,
+            owners: dto.owners,
+            numberOfKeys: dto.numberOfKeys,
+            ulezCompliant: dto.ulezCompliant,
+            euroStandard: dto.euroStandard,
+            doors: dto.doors,
+            seats: dto.seats,
+            features: dto.features,
+            writeOffCategory: dto.writeOffCategory,
+            isImported: dto.isImported,
+        };
+
+        // The browser/app supplies one valuationId for a registration+mileage
+        // journey. If the first market lookup for that journey has already been
+        // frozen, never run the live market again: only deterministic
+        // condition/specification adjustments may change the customer figure.
+        const frozenBase = await this.findFrozenValuationBase(dto);
+        if (frozenBase) {
+            return applyVehicleSpecificationAdjustments(
+                frozenBase,
+                specificationInput,
+            );
+        }
+
         const mileageFloor = Math.max(0, dto.mileage - 50_000);
         const mileageCeiling = dto.mileage + 50_000;
 
@@ -238,11 +278,6 @@ export class ListingsService {
             });
         }
 
-        // Establish one stable market base from make/model/year/mileage only.
-        // Seller-entered specification is applied after this lookup so changing
-        // fuel, gearbox, keys, service history, condition, ULEZ or features
-        // never causes the market search itself to disappear or return empty.
-
         const comparables: VehicleValuationComparable[] = [];
 
         for (const row of rows) {
@@ -268,9 +303,6 @@ export class ListingsService {
                 isImported: row.isImported,
             };
 
-            // Auction outcome is the strongest evidence for an auction listing.
-            // Prefer it over Sale.soldPrice on the same listing to avoid counting
-            // one transaction twice.
             if (row.type === 'AUCTION' && row.auction?.winningBidAmount != null) {
                 comparables.push({
                     ...common,
@@ -280,10 +312,6 @@ export class ListingsService {
                 continue;
             }
 
-            // Prefer an accepted negotiated price over Sale.soldPrice. The
-            // generic "mark sold" path historically records the advert asking
-            // price when no explicit sold price was supplied, whereas an
-            // accepted offer is a directly observed agreed price.
             const acceptedOffer = row.offers?.[0];
             if (acceptedOffer) {
                 comparables.push({
@@ -303,8 +331,6 @@ export class ListingsService {
                 continue;
             }
 
-            // Asking prices are useful for early-market context but deliberately
-            // carry much less statistical weight than an actual transaction.
             if (row.type === 'CLASSIFIED' && row.status === 'ACTIVE') {
                 comparables.push({
                     ...common,
@@ -314,62 +340,27 @@ export class ListingsService {
             }
         }
 
-        const baseValuationInput: VehicleValuationInput = {
-            make,
-            model,
-            year: dto.year,
-            mileage: dto.mileage,
-        };
-
-        const specificationInput: VehicleValuationInput = {
-            ...baseValuationInput,
-            variant: dto.variant,
-            fuelType: dto.fuelType,
-            transmission: dto.transmission,
-            condition: dto.condition,
-            exteriorGrade: dto.exteriorGrade,
-            serviceHistory: dto.serviceHistory,
-            owners: dto.owners,
-            numberOfKeys: dto.numberOfKeys,
-            ulezCompliant: dto.ulezCompliant,
-            euroStandard: dto.euroStandard,
-            doors: dto.doors,
-            seats: dto.seats,
-            features: dto.features,
-            writeOffCategory: dto.writeOffCategory,
-            isImported: dto.isImported,
-        };
-
         const carmaziumComparableCount = comparables.length;
 
-        // Live UK market research improves precision, but it must never be a
-        // customer-facing availability dependency. A timeout, provider outage,
-        // missing key or zero usable rows falls through to first-party evidence
-        // and then to the deterministic LOW-confidence model estimate.
+        // Live UK market research is performed only while establishing a new
+        // journey base. Once frozen, later calls never reach this branch.
         const liveMarket = await this.getLiveUkMarketComparables(baseValuationInput);
-
-        // The live-market sanitizer has already rejected invalid, mismatched,
-        // damaged/salvage and duplicate adverts. Keep 1-2 credible live rows
-        // instead of discarding them: calculateVehicleValuation deliberately
-        // blends sparse evidence back toward the conservative fallback.
         const usableLiveComparables = liveMarket?.comparables ?? [];
 
-        const baseValuation = calculateVehicleValuation(
+        const calculatedBase = calculateVehicleValuation(
             baseValuationInput,
             [...comparables, ...usableLiveComparables],
         );
-        const valuation = applyVehicleSpecificationAdjustments(
-            baseValuation,
-            specificationInput,
-        );
 
+        // Source/explanation/evidence are properties of the market base itself,
+        // so freeze them BEFORE seller condition/specification adjustments.
         if (usableLiveComparables.length > 0) {
             const blended = carmaziumComparableCount > 0;
-            valuation.source = blended ? 'BLENDED_MARKET' : 'LIVE_UK_MARKET';
-            valuation.explanation = blended
+            calculatedBase.source = blended ? 'BLENDED_MARKET' : 'LIVE_UK_MARKET';
+            calculatedBase.explanation = blended
                 ? `Based on ${carmaziumComparableCount} CarMazium market signal${carmaziumComparableCount === 1 ? '' : 's'} plus ${usableLiveComparables.length} similar vehicles currently advertised in the UK.`
                 : `Based on ${usableLiveComparables.length} similar vehicles currently advertised in the UK.`;
-            valuation.marketEvidence = {
+            calculatedBase.marketEvidence = {
                 carmaziumComparables: carmaziumComparableCount,
                 liveUkComparables: usableLiveComparables.length,
                 checkedAt: liveMarket?.checkedAt,
@@ -377,7 +368,7 @@ export class ListingsService {
                 rawLiveUkComparables: liveMarket?.rawComparableCount ?? usableLiveComparables.length,
             };
         } else {
-            valuation.marketEvidence = {
+            calculatedBase.marketEvidence = {
                 carmaziumComparables: carmaziumComparableCount,
                 liveUkComparables: 0,
                 checkedAt: liveMarket?.checkedAt,
@@ -386,7 +377,130 @@ export class ListingsService {
             };
         }
 
-        return valuation;
+        // A concurrent duplicate request can finish a different live search.
+        // The valuationId is also the AnalyticsEvent primary key, so exactly one
+        // base wins. Losers read the winning snapshot and return that same base.
+        const stableBase = await this.freezeValuationBase(dto, calculatedBase);
+
+        return applyVehicleSpecificationAdjustments(
+            stableBase,
+            specificationInput,
+        );
+    }
+
+    private valuationIdentity(dto: VehicleValuationDto) {
+        return {
+            registration: (dto.registration ?? '').replace(/\s+/g, '').trim().toUpperCase(),
+            make: dto.make.trim().toUpperCase(),
+            model: dto.model.trim().toUpperCase(),
+            year: dto.year,
+            mileage: dto.mileage,
+        };
+    }
+
+    private parseFrozenValuationBase(
+        event: { id: string; type: string; payload: unknown } | null,
+        dto: VehicleValuationDto,
+    ): VehicleValuationResult | null {
+        if (!event) return null;
+
+        if (event.type !== 'valuation_base_snapshot') {
+            throw new BadRequestException(
+                'This valuation journey ID is already in use. Start a new valuation.',
+            );
+        }
+
+        const payload = (event.payload ?? {}) as any;
+        const identity = payload.identity ?? {};
+        const expected = this.valuationIdentity(dto);
+
+        const sameIdentity =
+            String(identity.registration ?? '') === expected.registration
+            && String(identity.make ?? '') === expected.make
+            && String(identity.model ?? '') === expected.model
+            && Number(identity.year) === expected.year
+            && Number(identity.mileage) === expected.mileage;
+
+        if (!sameIdentity) {
+            throw new BadRequestException(
+                'Vehicle registration or mileage changed. Start a new valuation journey.',
+            );
+        }
+
+        const baseValuation = payload.baseValuation as VehicleValuationResult | undefined;
+        if (
+            !baseValuation
+            || !Number.isFinite(Number(baseValuation?.auction?.marketValue))
+            || Number(baseValuation.auction.marketValue) <= 0
+        ) {
+            throw new BadRequestException(
+                'The saved valuation base is invalid. Start a new valuation journey.',
+            );
+        }
+
+        return baseValuation;
+    }
+
+    private async findFrozenValuationBase(
+        dto: VehicleValuationDto,
+    ): Promise<VehicleValuationResult | null> {
+        if (!dto.valuationId) return null;
+
+        const event = await this.prisma.analyticsEvent.findUnique({
+            where: { id: dto.valuationId },
+            select: {
+                id: true,
+                type: true,
+                payload: true,
+            },
+        });
+
+        return this.parseFrozenValuationBase(event, dto);
+    }
+
+    private async freezeValuationBase(
+        dto: VehicleValuationDto,
+        calculatedBase: VehicleValuationResult,
+    ): Promise<VehicleValuationResult> {
+        if (!dto.valuationId) return calculatedBase;
+
+        const data = {
+            id: dto.valuationId,
+            type: 'valuation_base_snapshot',
+            payload: {
+                valuation_id: dto.valuationId,
+                identity: this.valuationIdentity(dto),
+                baseValuation: calculatedBase,
+                lockedAt: new Date().toISOString(),
+            } as any,
+        };
+
+        try {
+            await this.prisma.analyticsEvent.create({ data });
+            return calculatedBase;
+        } catch (error: any) {
+            // P2002 means another request with the same valuationId won the
+            // race. Never return our independently-calculated result; re-read
+            // the winner so both callers see the exact same market base.
+            if (error?.code !== 'P2002') throw error;
+
+            const winner = await this.prisma.analyticsEvent.findUnique({
+                where: { id: dto.valuationId },
+                select: {
+                    id: true,
+                    type: true,
+                    payload: true,
+                },
+            });
+
+            const frozen = this.parseFrozenValuationBase(winner, dto);
+            if (!frozen) {
+                throw new BadRequestException(
+                    'The valuation base could not be locked. Start a new valuation.',
+                );
+            }
+            return frozen;
+        }
     }
 
     private async getLiveUkMarketComparables(
