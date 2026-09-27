@@ -352,7 +352,7 @@ describe('BidsService — incremental bidding', () => {
         ).rejects.toMatchObject({ message: expect.stringMatching(/at least £4,600/i) });
     });
 
-    it('places validation and bid creation inside a transaction-scoped auction lock', async () => {
+    it('places validation and bid creation in one atomic SQL statement under the auction lock', async () => {
         prisma.listing.findUnique.mockResolvedValue(auctionListing);
         prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
         prisma.bid.findFirst.mockResolvedValue(null);
@@ -366,7 +366,7 @@ describe('BidsService — incremental bidding', () => {
 
         await service.create('bidder-A', { listingId: 'listing-1', amount: 3500 } as any);
 
-        expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+        expect(prisma.$transaction).not.toHaveBeenCalled();
         expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
         expect(prisma.bid.findFirst).toHaveBeenCalledTimes(1);
         expect(prisma.bid.create).toHaveBeenCalledTimes(1);
@@ -402,16 +402,18 @@ describe('BidsService — incremental bidding', () => {
             return bid;
         });
 
-        // Unit-test mutex emulates the PostgreSQL per-listing advisory lock:
-        // only one interactive transaction can evaluate/create at a time.
+        // Unit-test mutex emulates the PostgreSQL advisory lock embedded
+        // in the single raw statement: the second statement re-reads the first
+        // committed bid before evaluating its own minimum.
+        const baseAtomicPlacementMock = atomicPlacementMock;
         let lockTail = Promise.resolve();
-        prisma.$transaction.mockImplementation(async (callback: any) => {
+        prisma.$queryRaw.mockImplementation(async (...args: any[]) => {
             const previous = lockTail;
             let release!: () => void;
             lockTail = new Promise<void>((resolve) => { release = resolve; });
             await previous;
             try {
-                return await callback(prisma);
+                return await baseAtomicPlacementMock(...args);
             } finally {
                 release();
             }
