@@ -54,6 +54,15 @@ export class AuctionsService {
         private readonly paymentsService: PaymentsService,
     ) { }
 
+    private auctionRunKey(auction: { id: string; startTime?: Date | string | null }): string {
+        const raw = auction?.startTime;
+        const parsed = raw ? new Date(raw) : null;
+        const runStart = parsed && Number.isFinite(parsed.getTime())
+            ? parsed.toISOString()
+            : 'unknown';
+        return `${auction.id}:${runStart}`;
+    }
+
     private trackAuctionEvent(
         type: string,
         payload: Record<string, unknown>,
@@ -977,6 +986,7 @@ export class AuctionsService {
         const acceptedStartingBid = Number(accepted.auction.startingBid);
         this.trackAuctionEvent('auction_offer_accepted', {
             auction_id: auctionId,
+            auction_run_key: this.auctionRunKey(accepted.auction),
             listing_id: accepted.auction.listingId,
             winner_id: accepted.winnerId,
             amount: accepted.winningAmount,
@@ -992,6 +1002,7 @@ export class AuctionsService {
         }, businessSellerId);
         this.trackAuctionEvent('auction_outcome', {
             auction_id: auctionId,
+            auction_run_key: this.auctionRunKey(accepted.auction),
             listing_id: accepted.auction.listingId,
             outcome: 'SELLER_ACCEPTED_BELOW_RESERVE',
             winner_id: accepted.winnerId,
@@ -1126,6 +1137,7 @@ export class AuctionsService {
 
             return {
                 updated,
+                auctionRunKey: this.auctionRunKey(auction),
                 listingTitle: auction.listing.title,
                 sellerId: auction.listing.sellerId,
                 startingBid: Number(auction.startingBid),
@@ -1169,6 +1181,7 @@ export class AuctionsService {
 
         this.trackAuctionEvent('auction_reserve_corrected', {
             auction_id: auctionId,
+            auction_run_key: correction.auctionRunKey,
             listing_id: lookup.listingId,
             old_reserve: correction.oldReserve,
             new_reserve: reservePrice,
@@ -1225,6 +1238,7 @@ export class AuctionsService {
         await this.endAuctionWithWinner(auctionId, dealerId, amount, sellerId, linkedListingId);
         this.trackAuctionEvent('auction_outcome', {
             auction_id: auctionId,
+            auction_run_key: this.auctionRunKey(auction),
             listing_id: auction.listingId,
             outcome: 'ADMIN_ASSIGNED_SALE',
             winner_id: dealerId,
@@ -1303,6 +1317,7 @@ export class AuctionsService {
 
             this.trackAuctionEvent('auction_outcome', {
                 auction_id: auction.id,
+                auction_run_key: this.auctionRunKey(auction),
                 listing_id: listing.id,
                 outcome: 'WIN_REVERTED_UNPAID',
                 former_winner_id: winnerId,
@@ -1489,6 +1504,7 @@ export class AuctionsService {
 
         this.trackAuctionEvent('auction_outcome', {
             auction_id: auction.id,
+            auction_run_key: this.auctionRunKey(auction),
             listing_id: auction.listing.id,
             outcome: 'BUYER_REFUSED_AFTER_INSPECTION',
             former_winner_id: buyerId,
@@ -1815,6 +1831,7 @@ export class AuctionsService {
 
         this.trackAuctionEvent('auction_outcome', {
             auction_id: auctionId,
+            auction_run_key: this.auctionRunKey(outcome.auction),
             listing_id: outcome.auction.listingId,
             outcome: outcome.outcomeType,
             winner_id: outcome.winnerId,
@@ -2138,6 +2155,7 @@ export class AuctionsService {
 
         this.trackAuctionEvent('auction_outcome', {
             auction_id: auctionId,
+            auction_run_key: this.auctionRunKey(auction),
             listing_id: auction.listingId,
             outcome: 'BUY_IT_NOW_SALE',
             winner_id: pendingBuyerId,
