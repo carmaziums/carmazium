@@ -304,6 +304,8 @@ describe('AnalyticsService auction first-offer analytics', () => {
         }));
         expect(result.trackingNote).toMatch(/historical auctions are not reconstructed/i);
         expect(prisma.$queryRawUnsafe).toHaveBeenCalledTimes(2);
+        expect(prisma.$queryRawUnsafe.mock.calls[0][0]).toContain("auction_run_key");
+        expect(prisma.$queryRawUnsafe.mock.calls[1][0]).toContain("auction_run_key");
     });
 
     it('clamps the reporting window to a safe range', async () => {
