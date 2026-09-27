@@ -141,8 +141,8 @@ export class AuctionsController {
     @Patch(':id')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
-    @ApiOperation({ summary: 'Update a SCHEDULED auction (startTime, reserve, increments)' })
-    @ApiResponse({ status: 400, description: 'Cannot update an ACTIVE or ENDED auction' })
+    @ApiOperation({ summary: 'Update a SCHEDULED auction (timing/pricing; Buy It Now must be >= reserve when enabled)' })
+    @ApiResponse({ status: 400, description: 'Invalid pricing combination or auction is not SCHEDULED' })
     async update(
         @Param('id') id: string,
         @Body() updateAuctionDto: UpdateAuctionDto,
