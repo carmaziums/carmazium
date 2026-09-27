@@ -883,6 +883,7 @@ export class AuctionsService {
                             id: true,
                             title: true,
                             sellerId: true,
+                            status: true,
                             linkedListingId: true,
                             year: true,
                             make: true,
@@ -900,6 +901,14 @@ export class AuctionsService {
             }
             if (auction.status !== 'ACTIVE') {
                 throw new BadRequestException('Only ACTIVE auctions can have a bid accepted');
+            }
+            if (auction.listing.status !== 'ACTIVE') {
+                throw new BadRequestException('This auction vehicle is no longer active');
+            }
+            if (Date.now() >= auction.endTime.getTime()) {
+                throw new BadRequestException(
+                    'This auction has ended. The offer can no longer be accepted while the result is being finalised',
+                );
             }
 
             const [bid, highestBid] = await Promise.all([
@@ -1073,6 +1082,7 @@ export class AuctionsService {
                             id: true,
                             title: true,
                             sellerId: true,
+                            status: true,
                         },
                     },
                 },
@@ -1083,6 +1093,16 @@ export class AuctionsService {
             }
             if (auction.status !== 'SCHEDULED' && auction.status !== 'ACTIVE') {
                 throw new BadRequestException('Only SCHEDULED or ACTIVE auctions can have their reserve corrected');
+            }
+            if (auction.status === 'ACTIVE') {
+                if (auction.listing.status !== 'ACTIVE') {
+                    throw new BadRequestException('This auction vehicle is no longer active');
+                }
+                if (Date.now() >= auction.endTime.getTime()) {
+                    throw new BadRequestException(
+                        'This auction has ended. Its reserve can no longer be changed while the result is being finalised',
+                    );
+                }
             }
             if (auction.buyItNowPrice != null && reservePrice > Number(auction.buyItNowPrice)) {
                 throw new BadRequestException('Reserve price cannot be higher than the Buy It Now price');
@@ -1719,6 +1739,14 @@ export class AuctionsService {
             if (sellerEarlyClose) {
                 if (!options?.sellerId || auction.listing.sellerId !== options.sellerId) {
                     throw new ForbiddenException('You do not own this auction');
+                }
+                if (auction.listing.status !== 'ACTIVE') {
+                    throw new BadRequestException('This auction vehicle is no longer active');
+                }
+                if (Date.now() >= auction.endTime.getTime()) {
+                    throw new BadRequestException(
+                        'This auction has ended and is being finalised. It can no longer be closed early',
+                    );
                 }
             } else {
                 // A lifecycle close that lost a race to an anti-snipe extension
