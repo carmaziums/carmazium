@@ -15,6 +15,7 @@ interface UserProfile {
     profileImage?: string
     location?: string
     postcode?: string
+    preferences?: Record<string, any>
     dealerProfile?: any
     contractorProfile?: any
     dealerStaffMemberships?: Array<{
