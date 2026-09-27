@@ -799,7 +799,7 @@ export default function AdminAnalyticsPage() {
                                             </p>
                                         </div>
                                         <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                                            {firstOfferAnalytics.summary.pendingAuctions} pending · {firstOfferAnalytics.summary.unsoldAuctions} unsold
+                                            {firstOfferAnalytics.summary.pendingAuctions} pending · {firstOfferAnalytics.summary.unsoldAuctions} unsold · {firstOfferAnalytics.summary.buyItNowSales} BIN sales · {firstOfferAnalytics.summary.adminAssignedSales} admin-assigned
                                         </p>
                                     </div>
 
@@ -829,6 +829,10 @@ export default function AdminAnalyticsPage() {
                                                             : item.outcome === "BELOW_RESERVE_UNSOLD" ? "Ended below reserve"
                                                             : item.outcome === "SELLER_EARLY_CLOSE_UNSOLD" ? "Seller closed — unsold"
                                                             : item.outcome === "NO_BIDS_UNSOLD" ? "Ended with no bids"
+                                                            : item.outcome === "BUY_IT_NOW_SALE" ? "Buy It Now sale"
+                                                            : item.outcome === "ADMIN_ASSIGNED_SALE" ? "Admin-assigned sale"
+                                                            : item.outcome === "WIN_REVERTED_UNPAID" ? "Sale reverted — fee unpaid"
+                                                            : item.outcome === "BUYER_REFUSED_AFTER_INSPECTION" ? "Sale cancelled after inspection"
                                                             : "Auction still running / no outcome yet"
                                                         return (
                                                             <tr key={item.id} className="hover:bg-[var(--bg-card-hover)]">
@@ -847,7 +851,7 @@ export default function AdminAnalyticsPage() {
                                                                 <td className="px-4 py-3 text-right font-black">{item.subsequentBidCount}</td>
                                                                 <td className="px-4 py-3">
                                                                     <span className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase ${
-                                                                        item.outcome === "SELLER_ACCEPTED_BELOW_RESERVE" || item.outcome === "RESERVE_MET_SALE"
+                                                                        item.outcome === "SELLER_ACCEPTED_BELOW_RESERVE" || item.outcome === "RESERVE_MET_SALE" || item.outcome === "BUY_IT_NOW_SALE" || item.outcome === "ADMIN_ASSIGNED_SALE"
                                                                             ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
                                                                             : item.outcome
                                                                                 ? "border-amber-500/30 bg-amber-500/10 text-amber-500"
