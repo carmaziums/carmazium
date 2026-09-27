@@ -1648,51 +1648,170 @@ export class AuctionsService {
      * touch buyerFeePaid), same as any other winner.
      */
     async adminAssignWinner(auctionId: string, dealerId: string): Promise<void> {
-        const auction = await this.findOne(auctionId);
-        if (auction.status !== 'ACTIVE') {
-            throw new BadRequestException('Only ACTIVE (live) auctions can have a winner assigned');
-        }
-
-        const dealer = await this.prisma.user.findUnique({
-            where: { id: dealerId },
-            include: { dealerProfile: { select: { isVerified: true, deletedAt: true } } },
+        const lookup = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            select: { listingId: true, deletedAt: true },
         });
-        if (!dealer || dealer.deletedAt) {
-            throw new NotFoundException('Dealer not found');
-        }
-        if (
-            dealer.role !== 'DEALER'
-            || !dealer.dealerProfile
-            || dealer.dealerProfile.deletedAt
-            || !dealer.dealerProfile.isVerified
-        ) {
-            throw new BadRequestException('Only verified dealer accounts can be assigned as an auction winner');
+        if (!lookup || lookup.deletedAt) {
+            throw new NotFoundException('Auction not found');
         }
 
-        const sellerId = auction.listing.sellerId;
-        if (!sellerId) {
-            throw new BadRequestException('This listing has no seller on record');
-        }
-        if (sellerId === dealerId) {
-            throw new BadRequestException('Cannot assign the listing\'s own seller as the winning buyer');
-        }
+        const assigned = await this.prisma.$transaction(async (tx) => {
+            // Admin assignment must serialize with bidding, reserve/BIN changes,
+            // seller acceptance, BIN confirmation and lifecycle close. The old
+            // flow calculated the winning price from a pre-lock snapshot, so a
+            // concurrent reserve correction could commit first and the admin
+            // assignment could still sell at the stale price.
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
 
-        const amount = auction.buyItNowPrice != null ? Number(auction.buyItNowPrice) : Number(auction.reservePrice);
-        const linkedListingId = (auction.listing as any).linkedListingId as string | null;
+            const auction = await tx.auction.findUnique({
+                where: { id: auctionId },
+                include: {
+                    listing: {
+                        select: {
+                            id: true,
+                            sellerId: true,
+                            status: true,
+                            linkedListingId: true,
+                            year: true,
+                            make: true,
+                            model: true,
+                            title: true,
+                        },
+                    },
+                },
+            });
+            if (!auction || auction.deletedAt) {
+                throw new NotFoundException('Auction not found');
+            }
+            if (auction.status !== 'ACTIVE') {
+                throw new BadRequestException('Only ACTIVE (live) auctions can have a winner assigned');
+            }
+            if (auction.listing.status !== 'ACTIVE') {
+                throw new BadRequestException('This auction vehicle is no longer active');
+            }
+            if (Date.now() >= auction.endTime.getTime()) {
+                throw new BadRequestException(
+                    'This auction has ended and is being finalised. A winner can no longer be assigned from the live-auction flow',
+                );
+            }
 
-        await this.endAuctionWithWinner(auctionId, dealerId, amount, sellerId, linkedListingId);
+            // Dealer eligibility is re-read inside the same transaction after
+            // the auction lock. This prevents the final assignment from relying
+            // on the admin page's earlier dealer snapshot.
+            const dealer = await tx.user.findUnique({
+                where: { id: dealerId },
+                include: { dealerProfile: { select: { isVerified: true, deletedAt: true } } },
+            });
+            if (!dealer || dealer.deletedAt) {
+                throw new NotFoundException('Dealer not found');
+            }
+            if (
+                dealer.role !== 'DEALER'
+                || !dealer.dealerProfile
+                || dealer.dealerProfile.deletedAt
+                || !dealer.dealerProfile.isVerified
+            ) {
+                throw new BadRequestException('Only verified dealer accounts can be assigned as an auction winner');
+            }
+
+            const sellerId = auction.listing.sellerId;
+            if (!sellerId) {
+                throw new BadRequestException('This listing has no seller on record');
+            }
+            if (sellerId === dealerId) {
+                throw new BadRequestException('Cannot assign the listing\'s own seller as the winning buyer');
+            }
+
+            // The business rule is unchanged: admin assignment uses the current
+            // BIN price when enabled, otherwise the current reserve. Crucially,
+            // "current" now means the authoritative value re-read after this
+            // transaction owns the same per-listing lock as all other auction
+            // mutations.
+            const amount = auction.buyItNowPrice != null
+                ? Number(auction.buyItNowPrice)
+                : Number(auction.reservePrice);
+            if (!Number.isFinite(amount) || amount <= 0) {
+                throw new BadRequestException('Winning amount must be greater than £0');
+            }
+
+            const activeBidCount = await tx.bid.count({
+                where: {
+                    listingId: auction.listingId,
+                    deletedAt: null,
+                    cancelledAt: null,
+                    archivedAt: null,
+                },
+            });
+
+            const wonAt = new Date();
+            await tx.auction.update({
+                where: { id: auctionId },
+                data: {
+                    status: 'ENDED',
+                    winnerId: dealerId,
+                    winningBidAmount: amount,
+                    wonAt,
+                    buyItNowPendingBuyerId: null,
+                    buyItNowPendingAt: null,
+                },
+            });
+            await tx.listing.update({
+                where: { id: auction.listingId },
+                data: { status: 'SOLD' },
+            });
+            if (auction.listing.linkedListingId) {
+                await tx.listing.update({
+                    where: { id: auction.listing.linkedListingId },
+                    data: { status: 'SOLD' },
+                });
+            }
+            await tx.sale.create({
+                data: {
+                    listingId: auction.listingId,
+                    sellerId,
+                    buyerId: dealerId,
+                    soldPrice: amount,
+                },
+            });
+            await tx.sellerProfile.upsert({
+                where: { userId: sellerId },
+                create: { userId: sellerId, totalSales: 1 },
+                update: { totalSales: { increment: 1 } },
+            });
+
+            return {
+                auction,
+                amount,
+                activeBidCount,
+            };
+        });
+
+        const endPayload: AuctionEndPayload = {
+            auctionId,
+            winnerId: dealerId,
+            winningBidAmount: assigned.amount,
+            reserveMet: true,
+        };
+        this.auctionGateway.broadcastAuctionEnd(auctionId, endPayload);
+
         this.trackAuctionEvent('auction_outcome', {
             auction_id: auctionId,
-            auction_run_key: this.auctionRunKey(auction),
-            listing_id: auction.listingId,
+            auction_run_key: this.auctionRunKey(assigned.auction),
+            listing_id: assigned.auction.listingId,
             outcome: 'ADMIN_ASSIGNED_SALE',
             winner_id: dealerId,
-            winning_amount: amount,
-            reserve_price: Number(auction.reservePrice),
-            starting_bid: Number(auction.startingBid),
-            had_real_bids: (auction.listing.bids?.length ?? 0) > 0,
+            winning_amount: assigned.amount,
+            reserve_price: Number(assigned.auction.reservePrice),
+            starting_bid: Number(assigned.auction.startingBid),
+            had_real_bids: assigned.activeBidCount > 0,
         });
-        await this.notifyAuctionEnd(auction, dealerId, amount, true);
+        await this.notifyAuctionEnd(
+            assigned.auction,
+            dealerId,
+            assigned.amount,
+            true,
+        );
     }
 
     /**
@@ -2462,114 +2581,6 @@ export class AuctionsService {
 
     // ── Buy It Now Lifecycle ─────────────────────────────────────────────────
 
-    /**
-     * Private helper: ends an auction with a winner — creates Sale record, marks listing SOLD,
-     * upserts SellerProfile, broadcasts auction:ended, sends notifications.
-     * Called by confirmBuyItNow(), acceptBid(), and closeAuction() to avoid duplication.
-     */
-    private async endAuctionWithWinner(
-        auctionId: string,
-        winnerId: string,
-        amount: number,
-        sellerId: string,
-        linkedListingId: string | null = null,
-    ): Promise<void> {
-        if (!Number.isFinite(amount) || amount <= 0) {
-            throw new BadRequestException('Winning amount must be greater than £0');
-        }
-
-        const lookup = await this.prisma.auction.findUnique({
-            where: { id: auctionId },
-            select: { listingId: true, deletedAt: true },
-        });
-        if (!lookup || lookup.deletedAt) {
-            throw new NotFoundException('Auction not found');
-        }
-
-        await this.prisma.$transaction(async (tx) => {
-            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
-
-            const auction = await tx.auction.findUnique({
-                where: { id: auctionId },
-                include: {
-                    listing: {
-                        select: {
-                            id: true,
-                            sellerId: true,
-                            status: true,
-                            linkedListingId: true,
-                        },
-                    },
-                },
-            });
-            if (!auction || auction.deletedAt) {
-                throw new NotFoundException('Auction not found');
-            }
-            if (auction.status !== 'ACTIVE') {
-                throw new BadRequestException('Only ACTIVE auctions can have a winner assigned');
-            }
-            if (auction.listing.status !== 'ACTIVE') {
-                throw new BadRequestException('This auction vehicle is no longer active');
-            }
-            if (Date.now() >= auction.endTime.getTime()) {
-                throw new BadRequestException(
-                    'This auction has ended and is being finalised. A winner can no longer be assigned from the live-auction flow',
-                );
-            }
-            if (auction.listing.sellerId !== sellerId) {
-                throw new BadRequestException('Auction seller changed while assigning the winner');
-            }
-            if (sellerId === winnerId) {
-                throw new BadRequestException('Cannot assign the listing seller as the winning buyer');
-            }
-
-            const canonicalLinkedListingId = auction.listing.linkedListingId ?? linkedListingId;
-            const wonAt = new Date();
-
-            await tx.auction.update({
-                where: { id: auctionId },
-                data: {
-                    status: 'ENDED',
-                    winnerId,
-                    winningBidAmount: amount,
-                    wonAt,
-                    buyItNowPendingBuyerId: null,
-                    buyItNowPendingAt: null,
-                },
-            });
-            await tx.listing.update({
-                where: { id: auction.listingId },
-                data: { status: 'SOLD' },
-            });
-            if (canonicalLinkedListingId) {
-                await tx.listing.update({
-                    where: { id: canonicalLinkedListingId },
-                    data: { status: 'SOLD' },
-                });
-            }
-            await tx.sale.create({
-                data: {
-                    listingId: auction.listingId,
-                    sellerId,
-                    buyerId: winnerId,
-                    soldPrice: amount,
-                },
-            });
-            await tx.sellerProfile.upsert({
-                where: { userId: sellerId },
-                create: { userId: sellerId, totalSales: 1 },
-                update: { totalSales: { increment: 1 } },
-            });
-        });
-
-        const endPayload: AuctionEndPayload = {
-            auctionId,
-            winnerId,
-            winningBidAmount: amount,
-            reserveMet: true,
-        };
-        this.auctionGateway.broadcastAuctionEnd(auctionId, endPayload);
-    }
 
     /**
      * Buyer triggers a Buy It Now request. Sets pending state, notifies seller, broadcasts to viewers.
