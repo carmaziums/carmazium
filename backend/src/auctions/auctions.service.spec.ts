@@ -533,6 +533,22 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         expect(auctionGateway.broadcastPriceUpdated).not.toHaveBeenCalled();
     });
 
+    it('adminCorrectReservePrice: refuses a live reserve change after the auction deadline', async () => {
+        const auction = makeActiveAuction({
+            reservePrice: 9000,
+            startingBid: 7000,
+            endTime: new Date(Date.now() - 1000),
+        });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+
+        await expect(
+            service.adminCorrectReservePrice('auction-1', 6000),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastPriceUpdated).not.toHaveBeenCalled();
+    });
+
     it('adminCorrectReservePrice: refuses to raise a reserve above the top bid after reserve was already met', async () => {
         const auction = makeActiveAuction({ reservePrice: 15000, buyItNowPrice: 25000 });
         prisma.auction.findUnique.mockResolvedValue(auction);
@@ -682,6 +698,30 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
 
         expect(prisma.$transaction).toHaveBeenCalledTimes(1);
         expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
+    it('does not let the seller close an expired auction before lifecycle finalisation', async () => {
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1',
+            listingId: 'listing-1',
+            status: 'ACTIVE',
+            endTime: new Date(Date.now() - 1000),
+            reservePrice: 10000,
+            listing: {
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                status: 'ACTIVE',
+                price: 10000,
+                linkedListingId: null,
+                bids: [],
+            },
+        });
+
+        await expect(
+            service.sellerClose('auction-1', 'seller-1'),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+
         expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
