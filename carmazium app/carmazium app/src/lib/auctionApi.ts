@@ -187,6 +187,7 @@ export interface BidBroadcastPayload {
   timestamp: string;
   newEndTime?: string;
   buyItNowCancelled?: boolean;
+  buyItNowResponseDeadline?: string;
 }
 
 export interface AuctionEndPayload {
