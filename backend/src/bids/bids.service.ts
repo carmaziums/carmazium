@@ -27,6 +27,25 @@ export class BidsService {
         private readonly notificationsService: NotificationsService,
     ) { }
 
+    private trackAuctionEvent(
+        type: string,
+        payload: Record<string, unknown>,
+        userId?: string,
+    ): void {
+        const analyticsEvent = (this.prisma as any).analyticsEvent;
+        if (!analyticsEvent?.create) return;
+
+        analyticsEvent.create({
+            data: {
+                type,
+                payload,
+                userId: userId ?? null,
+            },
+        }).catch(() => {
+            // Analytics must never block a bid or cancellation.
+        });
+    }
+
     async create(bidderId: string, createBidDto: CreateBidDto): Promise<Bid> {
         const listing = await this.prisma.listing.findUnique({
             where: { id: createBidDto.listingId },
@@ -219,6 +238,42 @@ export class BidsService {
             newEndTime,
         } = placement;
 
+        const bidAmount = Number(bid.amount);
+        const startingBid = Number(lockedAuction.startingBid);
+        const isFirstOffer = !highestBid;
+        const firstOfferFloor = isFirstOffer
+            ? calculateFirstOfferFloor(startingBid, reservePrice)
+            : null;
+        const percentBelowReserve = reservePrice > 0
+            ? Math.max(0, Math.round(((reservePrice - bidAmount) / reservePrice) * 1000) / 10)
+            : 0;
+        const percentBelowStartingBid = startingBid > 0
+            ? Math.max(0, Math.round(((startingBid - bidAmount) / startingBid) * 1000) / 10)
+            : 0;
+
+        this.trackAuctionEvent('auction_bid_placed', {
+            auction_id: lockedAuction.id,
+            listing_id: lockedListing.id,
+            bid_id: bid.id,
+            registration: lockedListing.vrm ?? null,
+            vehicle: [lockedListing.year, lockedListing.make, lockedListing.model].filter(Boolean).join(' ') || lockedListing.title,
+            amount: bidAmount,
+            previous_highest_bid: highestBid ? Number(highestBid.amount) : null,
+            starting_bid: startingBid,
+            reserve_price: reservePrice,
+            min_increment: Number(lockedAuction.minIncrement),
+            first_offer_floor: firstOfferFloor,
+            is_first_offer: isFirstOffer,
+            below_starting_bid: bidAmount < startingBid,
+            below_reserve: bidAmount < reservePrice,
+            reserve_met_after: bidAmount >= reservePrice,
+            percent_below_reserve: percentBelowReserve,
+            percent_below_starting_bid: percentBelowStartingBid,
+            market_value: Number(lockedListing.price) || null,
+            anti_snipe_extended: Boolean(newEndTime),
+            new_end_time: newEndTime?.toISOString() ?? null,
+        }, businessBidderId);
+
         if (pendingBuyerId) {
             this.notificationsService.create({
                 userId: pendingBuyerId,
@@ -234,7 +289,6 @@ export class BidsService {
         // Every new highest bid below reserve is a real provisional offer.
         // Notify the seller immediately so they can accept the current highest
         // offer or simply leave the auction running for more competition.
-        const bidAmount = Number(bid.amount);
         if (lockedListing.sellerId && bidAmount < reservePrice) {
             const vehicle = [lockedListing.year, lockedListing.make, lockedListing.model].filter(Boolean).join(' ') || lockedListing.title;
             this.notificationsService.create({
@@ -390,6 +444,22 @@ export class BidsService {
                 reserveWasMet,
             };
         });
+
+        this.trackAuctionEvent('auction_bid_cancelled', {
+            auction_id: result.listing.auction!.id,
+            listing_id: result.listing.id,
+            cancelled_bid_id: bidId,
+            cancelled_amount: Number(result.bid.amount),
+            cancelled_was_highest: result.cancelledWasHighest,
+            reserve_was_met: result.reserveWasMet,
+            reserve_met_after: result.reserveMet,
+            active_bid_count_after: result.activeBidCount,
+            highest_active_bid_after: result.highestActiveBid,
+            highest_active_bid_id_after: result.afterHighest?.id ?? null,
+            first_offer_floor_after: result.firstOfferFloor,
+            starting_bid: Number(result.listing.auction!.startingBid),
+            reserve_price: Number(result.listing.auction!.reservePrice),
+        }, businessBidderId);
 
         // Tell every connected viewer the canonical position after the
         // cancellation. This makes zero-bid recovery deterministic across web
