@@ -35,6 +35,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         listing: {
             id: 'listing-1',
             sellerId: 'seller-1',
+            status: 'ACTIVE',
             make: 'BMW',
             model: 'M3',
             year: 2022,
@@ -617,10 +618,12 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             id: 'auction-1',
             listingId: 'listing-1',
             status: 'ACTIVE',
+            endTime: new Date(Date.now() + 60 * 60 * 1000),
             reservePrice: 10000,
             listing: {
                 id: 'listing-1',
                 sellerId: 'seller-1',
+                status: 'ACTIVE',
                 price: 10000,
                 linkedListingId: null,
                 bids: [],
@@ -656,10 +659,12 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             id: 'auction-1',
             listingId: 'listing-1',
             status: 'ACTIVE',
+            endTime: new Date(Date.now() + 60 * 60 * 1000),
             reservePrice: 10000,
             listing: {
                 id: 'listing-1',
                 sellerId: 'seller-1',
+                status: 'ACTIVE',
                 price: 10000,
                 linkedListingId: null,
                 bids: [{
@@ -685,10 +690,12 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             id: 'auction-1',
             listingId: 'listing-1',
             status: 'ACTIVE',
+            endTime: new Date(Date.now() + 60 * 60 * 1000),
             reservePrice: 10000,
             listing: {
                 id: 'listing-1',
                 sellerId: 'seller-1',
+                status: 'ACTIVE',
                 price: 10000,
                 linkedListingId: null,
                 year: 2020,
@@ -720,15 +727,46 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
         expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
+    it('rejects accepting a below-reserve offer after the auction deadline before cron finalises it', async () => {
+        const auction = {
+            id: 'auction-1',
+            listingId: 'listing-1',
+            status: 'ACTIVE',
+            endTime: new Date(Date.now() - 1000),
+            reservePrice: 10000,
+            listing: {
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                status: 'ACTIVE',
+                price: 10000,
+                linkedListingId: null,
+                year: 2020,
+                make: 'Test',
+                model: 'Car',
+                bids: [],
+            },
+        };
+        prisma.auction.findUnique.mockResolvedValue(auction);
+
+        await expect(
+            service.acceptBid('auction-1', 'bid-current', 'seller-1'),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+
+        expect(prisma.bid.findUnique).not.toHaveBeenCalled();
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
     it('allows the seller to accept the current highest offer even when it is below reserve', async () => {
         const auction = {
             id: 'auction-1',
             listingId: 'listing-1',
             status: 'ACTIVE',
+            endTime: new Date(Date.now() + 60 * 60 * 1000),
             reservePrice: 10000,
             listing: {
                 id: 'listing-1',
                 sellerId: 'seller-1',
+                status: 'ACTIVE',
                 price: 10000,
                 linkedListingId: null,
                 year: 2020,
