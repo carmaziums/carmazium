@@ -375,14 +375,14 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             auctionId: data.id,
             winnerId: data.winnerId ?? null,
             winningBidAmount: data.winningBidAmount ? Number(data.winningBidAmount) : wb,
-            reserveMet: wb !== null && wb >= Number(data.reservePrice),
+            reserveMet: !!data.winnerId && data.winningBidAmount != null
+              ? true
+              : wb !== null && wb >= Number(data.reservePrice),
           });
         }
         setAntiSnipeActive(et.getTime() - Date.now() <= 3 * 60 * 1000 && data.status === 'ACTIVE');
         // Seed BIN pending state from initial fetch (in case BIN was triggered before this screen mounted)
-        if (data.buyItNowPendingBuyerId) {
-          setBinPendingBuyerId(data.buyItNowPendingBuyerId);
-        }
+        setBinPendingBuyerId(data.buyItNowPendingBuyerId ?? null);
       })
       .catch(() => { if (!opts?.silent) setLoadError('Failed to load auction. Please try again.'); })
       .finally(() => { if (!opts?.silent) setLoading(false); });
@@ -534,18 +534,28 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         loadAuctionRef.current({ silent: true });
       });
 
-      socket.on('bid:cancelled', (d: { auctionId: string; bidId: string }) => {
+      socket.on('bid:cancelled', (d: {
+        auctionId: string;
+        bidId: string;
+        highestActiveBid: number | null;
+        highestActiveBidId: string | null;
+        highestActiveBidderId: string | null;
+        activeBidCount: number;
+        reserveMet: boolean;
+        firstOfferFloor: number | null;
+      }) => {
         if (d.auctionId !== auctionId) return;
+
         setBidHistory(prev => {
           const next = prev.filter(b => b.id !== d.bidId);
-          // Recalculate from real dealer bids only. If none remain, return to
-          // zero-bid mode; the platform starting bid is a guide, not a bid.
-          const topAmount = next.length > 0 ? next[0].amount : 0;
-          setCurrentBid(topAmount);
-          // Recalculate winning status from the new top bidder
-          setIsWinning(!!businessUserId && next.length > 0 && next[0].bidderId === businessUserId);
-          return next;
+          return d.activeBidCount === 0 ? [] : next;
         });
+        setCurrentBid(d.highestActiveBid ?? 0);
+        setIsWinning(!!businessUserId && d.highestActiveBidderId === businessUserId);
+
+        // Immediate payload keeps the screen correct; silent canonical resync
+        // recovers any lower bids this device may have missed while offline.
+        loadAuctionRef.current({ silent: true });
       });
 
       socket.on('bin:pending', (d: { auctionId: string; buyerId: string }) => {
