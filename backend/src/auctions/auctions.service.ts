@@ -20,6 +20,8 @@ import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
 import { Auction, Prisma, ServiceType, ServiceJobStatus, InspectionOutcome } from '@prisma/client';
 import {
     AUCTION_DURATION_MS,
+    BUY_IT_NOW_BELOW_RESERVE_MESSAGE,
+    buyItNowViolatesReserve,
     calculateBuyItNowResponseDeadline,
     calculateFirstOfferFloor,
     calculatePlatformOpeningBid,
@@ -304,6 +306,13 @@ export class AuctionsService {
         }
 
         const endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
+
+        if (buyItNowViolatesReserve(
+            createAuctionDto.reservePrice,
+            createAuctionDto.buyItNowPrice,
+        )) {
+            throw new BadRequestException(BUY_IT_NOW_BELOW_RESERVE_MESSAGE);
+        }
 
         const listing = await this.prisma.listing.findUnique({
             where: { id: createAuctionDto.listingId },
@@ -831,6 +840,18 @@ export class AuctionsService {
 
         const endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
         const platformStartingBid = calculatePlatformOpeningBid(Number(auction.listing.price));
+        const nextReservePrice = updateAuctionDto.reservePrice !== undefined
+            ? updateAuctionDto.reservePrice
+            : Number(auction.reservePrice);
+        const nextBuyItNowPrice = updateAuctionDto.buyItNowPrice !== undefined
+            ? updateAuctionDto.buyItNowPrice
+            : auction.buyItNowPrice == null
+                ? null
+                : Number(auction.buyItNowPrice);
+
+        if (buyItNowViolatesReserve(nextReservePrice, nextBuyItNowPrice)) {
+            throw new BadRequestException(BUY_IT_NOW_BELOW_RESERVE_MESSAGE);
+        }
 
         return this.prisma.auction.update({
             where: { id },
@@ -1381,7 +1402,7 @@ export class AuctionsService {
                     'This auction has ended. Its reserve can no longer be changed while the result is being finalised',
                 );
             case 'ABOVE_BIN':
-                throw new BadRequestException('Reserve price cannot be higher than the Buy It Now price');
+                throw new BadRequestException(BUY_IT_NOW_BELOW_RESERVE_MESSAGE);
             case 'RESERVE_ALREADY_MET':
                 throw new BadRequestException(
                     'The reserve has already been met. It cannot be raised above the current highest bid.',
