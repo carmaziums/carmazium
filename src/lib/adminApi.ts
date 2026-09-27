@@ -1070,6 +1070,54 @@ export async function getLiveValuationAnalytics(): Promise<ValuationLiveAnalytic
   return apiClient<ValuationLiveAnalytics>('/analytics/valuations/live');
 }
 
+export interface AuctionFirstOfferAnalytics {
+  generatedAt: string;
+  windowDays: number;
+  trackingNote: string;
+  summary: {
+    firstOffers: number;
+    uniqueAuctions: number;
+    competitionAuctions: number;
+    competitionRate: number;
+    firstOfferCancellations: number;
+    sellerAcceptedSales: number;
+    reserveMetSales: number;
+    completedSales: number;
+    saleRate: number;
+    unsoldAuctions: number;
+    pendingAuctions: number;
+    zeroBidUnsold: number;
+    zeroBidReserveCorrections: number;
+    averageFirstOffer: number | null;
+    averageReserveAtFirstOffer: number | null;
+    averagePercentBelowReserve: number | null;
+    averagePercentBelowStartingBid: number | null;
+  };
+  recent: Array<{
+    id: string;
+    createdAt: string;
+    auctionId: string | null;
+    listingId: string | null;
+    bidId: string | null;
+    registration: string | null;
+    vehicle: string | null;
+    amount: number | null;
+    startingBid: number | null;
+    reservePrice: number | null;
+    firstOfferFloor: number | null;
+    percentBelowReserve: number | null;
+    percentBelowStartingBid: number | null;
+    subsequentBidCount: number;
+    firstOfferCancelled: boolean;
+    outcome: string | null;
+    outcomeAt: string | null;
+  }>;
+}
+
+export async function getAuctionFirstOfferAnalytics(days = 30): Promise<AuctionFirstOfferAnalytics> {
+  return apiClient<AuctionFirstOfferAnalytics>(`/analytics/auctions/first-offers?days=${days}`);
+}
+
 export async function getTrafficAnalytics(from?: string, to?: string): Promise<TrafficAnalytics> {
   const params = new URLSearchParams();
   if (from) params.set('from', from);
