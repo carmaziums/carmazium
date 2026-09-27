@@ -110,11 +110,29 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const [antiSnipeToast, setAntiSnipeToast] = React.useState(false)
     const [endTime, setEndTime] = React.useState<Date | null>(null)
     const [startTime, setStartTime] = React.useState<Date | null>(null)
+    const [auctionClockExpired, setAuctionClockExpired] = React.useState(false)
     const [copied, setCopied] = React.useState(false)
     const [connectingChat, setConnectingChat] = React.useState(false)
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
     const [selectedDamageZone, setSelectedDamageZone] = React.useState<string | null>(null)
     const [showHpiModal, setShowHpiModal] = React.useState(false)
+
+    React.useEffect(() => {
+        if (auction?.status !== "ACTIVE" || !endTime) {
+            setAuctionClockExpired(false)
+            return
+        }
+
+        const remaining = endTime.getTime() - Date.now()
+        if (remaining <= 0) {
+            setAuctionClockExpired(true)
+            return
+        }
+
+        setAuctionClockExpired(false)
+        const timeout = window.setTimeout(() => setAuctionClockExpired(true), remaining + 50)
+        return () => window.clearTimeout(timeout)
+    }, [auction?.status, endTime])
 
     React.useEffect(() => {
         if (!user || profile?.role !== 'DEALER') {
@@ -441,6 +459,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             return
         }
 
+        if (endTime && Date.now() >= endTime.getTime()) {
+            setBidError("This auction has ended and is being finalised.")
+            return
+        }
+
         // Validate
         const parsed = Number(amount)
         if (isNaN(parsed) || parsed <= 0) {
@@ -477,11 +500,15 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         } finally {
             setBidLoading(false)
         }
-    }, [auction, user, bidHistory, canPlaceBid])
+    }, [auction, user, bidHistory, canPlaceBid, endTime])
 
     // ── Accept bid (seller) ───────────────────────────────────────────────────
     const handleConfirmAccept = React.useCallback(async () => {
         if (!auction || !acceptingBid?.bidId) return
+        if (endTime && Date.now() >= endTime.getTime()) {
+            setAcceptError("This auction has ended and is being finalised.")
+            return
+        }
         setAcceptLoading(true)
         setAcceptError(null)
         try {
@@ -492,7 +519,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         } finally {
             setAcceptLoading(false)
         }
-    }, [auction, acceptingBid])
+    }, [auction, acceptingBid, endTime])
 
     // ── Share ─────────────────────────────────────────────────────────────────
     const handleShare = React.useCallback(() => {
@@ -504,6 +531,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     // ── Buy It Now ────────────────────────────────────────────────────────────
     async function handleBinTrigger() {
         if (!auction?.id || !canPlaceBid) return
+        if (endTime && Date.now() >= endTime.getTime()) {
+            setBidError("This auction has ended and Buy It Now is no longer available.")
+            return
+        }
         setBinLoading(true)
         try {
             await triggerBuyItNow(auction.id)
@@ -520,6 +551,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     async function handleCancelBid(bidId: string) {
         if (!canPlaceBid) {
             setCancelError("Your dealership role does not allow auction bidding.")
+            return
+        }
+        if (endTime && Date.now() >= endTime.getTime()) {
+            setCancelError("This auction has ended. Bids can no longer be cancelled while the result is being finalised.")
             return
         }
         setCancellingBidId(bidId)
@@ -543,6 +578,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     // ── Seller BIN Confirm / Decline ──────────────────────────────────────────
     const handleBinConfirm = React.useCallback(async () => {
         if (!auction) return
+        if (endTime && Date.now() >= endTime.getTime()) {
+            setBinPending(false)
+            return
+        }
         setBinLoading(true)
         try {
             await confirmBuyItNow(auction.id)
@@ -552,7 +591,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         } finally {
             setBinLoading(false)
         }
-    }, [auction])
+    }, [auction, endTime])
 
     const handleBinDecline = React.useCallback(async () => {
         if (!auction) return
@@ -616,6 +655,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
     const isScheduled = auction.status === "SCHEDULED"
     const isLive = auction.status === "ACTIVE"
+    const isBiddingOpen = isLive && !auctionClockExpired
     const isEnded = auction.status === "ENDED"
     const isCancelled = auction.status === "CANCELLED"
     const isSeller = !!businessUserId && auction.listing.sellerId === businessUserId
@@ -998,7 +1038,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             </AnimatePresence>
 
             {/* ── Mobile Sticky Bid Bar ─────────────────────────────────────── */}
-            {isLive && !isSeller && user && canPlaceBid && !isEnded && (
+            {isBiddingOpen && !isSeller && user && canPlaceBid && !isEnded && (
                 <div className="lg:hidden sticky top-[80px] z-40 bg-[var(--bg-dropdown)] backdrop-blur-md border-b border-[var(--border-default)] px-4 py-2.5 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
                         <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-widest font-bold">{hasRealBids ? "Current Bid" : "Starting Bid"}</p>
@@ -1696,8 +1736,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         <motion.div
                                             initial={bid.isNew ? { opacity: 0, y: -8 } : false}
                                             animate={{ opacity: 1, y: 0 }}
-                                            className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${i === 0 ? "bg-primary/5 border border-primary/15" : "hover:bg-[var(--bg-card)]"} ${canManageSellerAuction && isLive && !reserveMet && i === 0 && bid.bidId ? "cursor-pointer" : ""}`}
-                                            onClick={canManageSellerAuction && isLive && !reserveMet && i === 0 && bid.bidId ? () => { setAcceptingBid(bid); setAcceptError(null) } : undefined}
+                                            className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${i === 0 ? "bg-primary/5 border border-primary/15" : "hover:bg-[var(--bg-card)]"} ${canManageSellerAuction && isBiddingOpen && !reserveMet && i === 0 && bid.bidId ? "cursor-pointer" : ""}`}
+                                            onClick={canManageSellerAuction && isBiddingOpen && !reserveMet && i === 0 && bid.bidId ? () => { setAcceptingBid(bid); setAcceptError(null) } : undefined}
                                         >
                                             <div className="w-6 h-6 rounded-full bg-[var(--bg-card)] flex items-center justify-center shrink-0">
                                                 <span className="text-[9px] font-black text-[var(--text-muted)]">{bid.initials}</span>
@@ -1706,14 +1746,14 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             <span className="font-mono font-black text-[var(--text-primary)] text-xs">£{bid.amount.toLocaleString()}</span>
                                             {i === 0 && <TrendingUp size={10} className="text-emerald-400 shrink-0" />}
                                             <span className="ml-auto text-[9px] text-[var(--text-muted)] shrink-0">{bid.time}</span>
-                                            {canManageSellerAuction && isLive && !reserveMet && i === 0 && bid.bidId && (
+                                            {canManageSellerAuction && isBiddingOpen && !reserveMet && i === 0 && bid.bidId && (
                                                 <span className="hidden group-hover:flex items-center gap-1 absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[9px] font-black px-1.5 py-0.5 rounded-lg pointer-events-none">
                                                     <CheckCircle size={9} /> Accept
                                                 </span>
                                             )}
                                         </motion.div>
                                         {/* Cancel countdown — only visible to the bid owner, not sellers */}
-                                        {canPlaceBid && bid.bidId && cancelableBids.has(bid.bidId) && !isSeller && (() => {
+                                        {isBiddingOpen && canPlaceBid && bid.bidId && cancelableBids.has(bid.bidId) && !isSeller && (() => {
                                             const expiresAt = cancelableBids.get(bid.bidId)!
                                             const remainingMs = Math.max(0, expiresAt - cancelNowTick)
                                             const isCancelling = cancellingBidId === bid.bidId
@@ -1784,6 +1824,14 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         {startTime.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                                     </p>
                                 )}
+                            </div>
+                        ) : auctionClockExpired ? (
+                            <div className="text-center py-4 space-y-2">
+                                <Clock size={20} className="text-amber-400 mx-auto" />
+                                <p className="text-amber-300 text-xs font-bold uppercase tracking-widest">Auction time ended</p>
+                                <p className="text-[var(--text-muted)] text-xs leading-relaxed">
+                                    Bidding is closed. CarMazium is finalising the auction result.
+                                </p>
                             </div>
                         ) : isSeller ? (
                             <div className="text-center py-4 space-y-2">
@@ -1924,7 +1972,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     </div>
 
                     {/* Highest below-reserve bid is a live offer the seller can accept */}
-                    {canManageSellerAuction && isLive && !reserveMet && bidHistory[0]?.bidId && (
+                    {canManageSellerAuction && isBiddingOpen && !reserveMet && bidHistory[0]?.bidId && (
                         <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 p-4 space-y-3">
                             <div className="flex items-start gap-3">
                                 <div className="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
@@ -2007,7 +2055,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     )}
 
                     {/* Buyer fee notice */}
-                    {!isCancelled && !isSeller && isLive && (
+                    {!isCancelled && !isSeller && isBiddingOpen && (
                         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 space-y-2">
                             <p className="text-[10px] font-black uppercase tracking-widest text-amber-400 flex items-center gap-1.5">
                                 <CreditCard size={11} /> Buyer Fee
