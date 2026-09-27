@@ -728,6 +728,7 @@ export class AnalyticsService {
                             FROM analytics_events b
                             WHERE b.type = 'auction_bid_placed'
                               AND b.payload->>'auction_id' = f.auction_id
+                              AND LOWER(COALESCE(b.payload->>'is_first_offer', 'false')) = 'false'
                               AND b."createdAt" > f."createdAt"
                         ) AS had_competition,
                         EXISTS (
@@ -817,6 +818,7 @@ export class AnalyticsService {
                         FROM analytics_events b
                         WHERE b.type = 'auction_bid_placed'
                           AND b.payload->>'auction_id' = f.payload->>'auction_id'
+                          AND LOWER(COALESCE(b.payload->>'is_first_offer', 'false')) = 'false'
                           AND b."createdAt" > f."createdAt"
                     ) AS subsequent_bid_count,
                     EXISTS (
