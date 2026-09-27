@@ -1,5 +1,7 @@
 app = 'carmazium-hjoh9w'
 primary_region = 'lhr'
+kill_signal = 'SIGTERM'
+kill_timeout = 30
 
 [build]
 
@@ -42,7 +44,7 @@ primary_region = 'lhr'
     grace_period = '30s'
     interval = '15s'
     method = 'GET'
-    path = '/health'
+    path = '/health/ready'
     timeout = '10s'
 
 [[vm]]

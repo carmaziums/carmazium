@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { HealthCheckService, HttpHealthIndicator, HealthCheck, PrismaHealthIndicator } from '@nestjs/terminus';
+import { HealthCheckService, HealthCheck, PrismaHealthIndicator } from '@nestjs/terminus';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -7,24 +7,55 @@ import { PrismaService } from '../prisma/prisma.service';
 @Controller('health')
 export class HealthController {
     constructor(
-        private health: HealthCheckService,
-        private http: HttpHealthIndicator,
-        private prisma: PrismaHealthIndicator,
-        private prismaService: PrismaService,
+        private readonly health: HealthCheckService,
+        private readonly prisma: PrismaHealthIndicator,
+        private readonly prismaService: PrismaService,
     ) { }
 
+    /**
+     * Lightweight process liveness probe.
+     *
+     * This deliberately performs no outbound/self HTTP call and no database
+     * work. It answers only whether the Nest process is alive and able to
+     * serve HTTP, which is useful for diagnostics without creating a recursive
+     * dependency on the public Fly route.
+     */
+    @Get('live')
+    @ApiOperation({ summary: 'Check API process liveness' })
+    live() {
+        return {
+            status: 'ok',
+            service: 'carmazium-api',
+            timestamp: new Date().toISOString(),
+        };
+    }
+
+    /**
+     * Readiness probe used by Fly.
+     *
+     * The old /health implementation pinged the database and then made an HTTP
+     * request back into this same API. Under a deploy or short connection
+     * stall, that self-call could time out and mark the only Fly machine
+     * unhealthy even while the process itself was fine. Readiness now checks
+     * the one dependency every auction request actually needs: PostgreSQL.
+     */
+    @Get('ready')
+    @HealthCheck()
+    @ApiOperation({ summary: 'Check API readiness and database connectivity' })
+    ready() {
+        return this.health.check([
+            () => this.prisma.pingCheck('database', this.prismaService),
+        ]);
+    }
+
+    /**
+     * Keep /health as a backwards-compatible readiness alias for monitors and
+     * existing operational links.
+     */
     @Get()
     @HealthCheck()
-    @ApiOperation({ summary: 'Check system health' })
+    @ApiOperation({ summary: 'Check system readiness' })
     check() {
-        return this.health.check([
-            // Check database connection
-            () => this.prisma.pingCheck('database', this.prismaService),
-            // Check if the API itself is responding (self-check). Use HEALTH_SELF_URL in containers/proxy.
-            () => this.http.pingCheck(
-                'api',
-                process.env.HEALTH_SELF_URL || `http://localhost:${process.env.PORT || 3001}/api`,
-            ),
-        ]);
+        return this.ready();
     }
 }

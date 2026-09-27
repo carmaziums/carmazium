@@ -4,33 +4,7 @@ import { BadgeCheck, Building2, CalendarDays, MapPin, ShieldCheck, Star } from "
 import { ProfileReviewForm } from "@/components/profile/ProfileReviewForm"
 import { ServiceBadgePill } from "@/components/profile/ServiceBadgePill"
 import { profileImageStyle, type ProfileImageFit } from "@/lib/profileImagePresentation"
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
-
-const TRANSIENT_BACKEND_STATUS = new Set([502, 503, 504])
-
-function retryUrl(url: string, attempt: number) {
-    const separator = url.includes("?") ? "&" : "?"
-    return `${url}${separator}_ssrRetry=${attempt}`
-}
-
-async function fetchBackend(url: string) {
-    let lastError: unknown = null
-
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-        try {
-            const target = attempt === 0 ? url : retryUrl(url, attempt)
-            const response = await fetch(target, { next: { revalidate: 60 } })
-            if (!TRANSIENT_BACKEND_STATUS.has(response.status) || attempt === 2) return response
-        } catch (error) {
-            lastError = error
-            if (attempt === 2) throw error
-        }
-    }
-
-    if (lastError instanceof Error) throw lastError
-    throw new Error("Backend request failed")
-}
+import { serverBackendFetch } from "@/lib/serverBackendFetch"
 
 type ServiceBadge = { key: string; label: string; verified: boolean }
 type PublicProfile = {
@@ -80,7 +54,7 @@ type GivenReview = {
 
 async function getProfile(id: string): Promise<PublicProfile | null> {
     try {
-        const response = await fetchBackend(`${API_BASE}/profiles/${id}`)
+        const response = await serverBackendFetch(`/profiles/${id}`, { next: { revalidate: 60 } })
         if (response.status === 404) return null
         if (!response.ok) return null
         const json = await response.json()
@@ -92,7 +66,7 @@ async function getProfile(id: string): Promise<PublicProfile | null> {
 
 async function getReceivedReviews(id: string): Promise<{ data: ReceivedReview[]; total: number }> {
     try {
-        const response = await fetchBackend(`${API_BASE}/profiles/${id}/reviews?limit=20`)
+        const response = await serverBackendFetch(`/profiles/${id}/reviews?limit=20`, { next: { revalidate: 60 } })
         if (!response.ok) return { data: [], total: 0 }
         const json = await response.json()
         return json.data ?? { data: [], total: 0 }
@@ -103,7 +77,7 @@ async function getReceivedReviews(id: string): Promise<{ data: ReceivedReview[];
 
 async function getGivenReviews(id: string): Promise<{ data: GivenReview[]; total: number }> {
     try {
-        const response = await fetchBackend(`${API_BASE}/profiles/${id}/reviews/given?limit=20`)
+        const response = await serverBackendFetch(`/profiles/${id}/reviews/given?limit=20`, { next: { revalidate: 60 } })
         if (!response.ok) return { data: [], total: 0 }
         const json = await response.json()
         return json.data ?? { data: [], total: 0 }

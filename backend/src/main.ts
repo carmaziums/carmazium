@@ -156,15 +156,40 @@ async function bootstrap() {
   const port = process.env.PORT ?? 8080;
   await app.listen(port, '0.0.0.0');
 
-  // Graceful shutdown: close Redis adapter connections when present
-  const shutdown = async () => {
-    if (typeof redisIoAdapter.close === 'function') {
-      await redisIoAdapter.close();
+  // Graceful shutdown for Fly deploys/restarts.
+  //
+  // The previous handler closed Redis and immediately called process.exit(0).
+  // That could sever an in-flight auction GET/POST or websocket at the exact
+  // moment Fly replaced the machine, surfacing upstream as ECONNRESET /
+  // UND_ERR_SOCKET / ETIMEDOUT. Stop accepting new work through Nest first and
+  // let active HTTP/socket resources drain. fly.toml gives this process up to
+  // 30 seconds before a forced kill.
+  let shuttingDown = false;
+  const shutdown = async (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`Received ${signal}; draining CarMazium API connections...`);
+
+    const hardStop = setTimeout(() => {
+      console.error('Graceful shutdown exceeded 25 seconds; exiting before Fly force-kills the machine.');
+      process.exit(1);
+    }, 25_000);
+    hardStop.unref();
+
+    try {
+      await app.close();
+      await redisIoAdapter.closeRedisConnections();
+      clearTimeout(hardStop);
+      console.log('CarMazium API shutdown completed cleanly.');
+    } catch (error) {
+      clearTimeout(hardStop);
+      console.error('Graceful shutdown failed', error);
+      process.exitCode = 1;
     }
-    process.exit(0);
   };
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
+
+  process.once('SIGTERM', () => { void shutdown('SIGTERM'); });
+  process.once('SIGINT', () => { void shutdown('SIGINT'); });
 
   console.log(`🚀 Server running on http://localhost:${port}`);
   console.log(`📚 Swagger docs available at http://localhost:${port}/api`);
