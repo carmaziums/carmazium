@@ -83,67 +83,129 @@ export class BidsService {
             throw new BadRequestException('You cannot bid on your own auction');
         }
 
-        const minIncrement = Number(auction.minIncrement);
-        const startingBid = Number(auction.startingBid);
-        const reservePrice = Number(auction.reservePrice);
+        // Serialize the critical bid-validation + insert path per listing.
+        //
+        // Without this lock, two dealers can both read "no active bids" at the
+        // same time and both pass the first-offer floor before either insert is
+        // visible to the other. PostgreSQL transaction-scoped advisory locks
+        // make one bidder wait, then force the second bidder to re-read the
+        // current highest bid and obey the normal increment rule.
+        const placement = await this.prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${createBidDto.listingId}, 0))`;
 
-        const highestBid = await this.prisma.bid.findFirst({
-            where: { listingId: createBidDto.listingId, deletedAt: null, cancelledAt: null, archivedAt: null },
-            orderBy: { amount: 'desc' },
-        });
-
-        let minAllowed: number;
-        try {
-            minAllowed = calculateMinimumAuctionBid({
-                startingBid,
-                reservePrice,
-                minIncrement,
-                highestActiveBid: highestBid ? Number(highestBid.amount) : null,
+            // Re-read inside the lock. The auction may have been cancelled,
+            // activated, or repriced after the initial request validation.
+            const lockedListing = await tx.listing.findUnique({
+                where: { id: createBidDto.listingId },
+                include: { auction: true },
             });
-        } catch {
-            throw new BadRequestException('This auction does not have valid bidding prices');
-        }
 
-        if (createBidDto.amount < minAllowed) {
-            if (highestBid) {
+            if (!lockedListing || lockedListing.deletedAt) {
+                throw new NotFoundException('Listing not found');
+            }
+            if (lockedListing.type !== 'AUCTION') {
+                throw new BadRequestException('This listing is not an auction');
+            }
+
+            const lockedAuction = lockedListing.auction;
+            if (!lockedAuction) {
+                throw new BadRequestException('No auction has been created for this listing');
+            }
+            if (lockedAuction.status !== 'ACTIVE') {
+                throw new BadRequestException('This auction is not currently active');
+            }
+            if (lockedListing.sellerId === businessBidderId) {
+                throw new BadRequestException('You cannot bid on your own auction');
+            }
+
+            const minIncrement = Number(lockedAuction.minIncrement);
+            const startingBid = Number(lockedAuction.startingBid);
+            const reservePrice = Number(lockedAuction.reservePrice);
+
+            const highestBid = await tx.bid.findFirst({
+                where: {
+                    listingId: createBidDto.listingId,
+                    deletedAt: null,
+                    cancelledAt: null,
+                    archivedAt: null,
+                },
+                orderBy: { amount: 'desc' },
+            });
+
+            let minAllowed: number;
+            try {
+                minAllowed = calculateMinimumAuctionBid({
+                    startingBid,
+                    reservePrice,
+                    minIncrement,
+                    highestActiveBid: highestBid ? Number(highestBid.amount) : null,
+                });
+            } catch {
+                throw new BadRequestException('This auction does not have valid bidding prices');
+            }
+
+            if (createBidDto.amount < minAllowed) {
+                if (highestBid) {
+                    throw new BadRequestException(
+                        `Bid must be at least £${minAllowed.toLocaleString()} (current: £${Number(highestBid.amount).toLocaleString()} + £${minIncrement.toLocaleString()} increment)`,
+                    );
+                }
+
+                const referencePrice = Math.min(startingBid, reservePrice);
                 throw new BadRequestException(
-                    `Bid must be at least £${minAllowed.toLocaleString()} (current: £${Number(highestBid.amount).toLocaleString()} + £${minIncrement.toLocaleString()} increment)`,
+                    `First offer must be at least £${minAllowed.toLocaleString()} (30% below the lower of the £${startingBid.toLocaleString()} starting bid and £${reservePrice.toLocaleString()} reserve; reference £${referencePrice.toLocaleString()})`,
                 );
             }
 
-            const referencePrice = Math.min(startingBid, reservePrice);
-            throw new BadRequestException(
-                `First offer must be at least £${minAllowed.toLocaleString()} (30% below the lower of the £${startingBid.toLocaleString()} starting bid and £${reservePrice.toLocaleString()} reserve; reference £${referencePrice.toLocaleString()})`,
-            );
-        }
+            const bid = await tx.bid.create({
+                data: {
+                    listingId: createBidDto.listingId,
+                    bidderId: businessBidderId,
+                    amount: createBidDto.amount,
+                },
+            });
 
-        const bid = await this.prisma.bid.create({
-            data: {
-                listingId: createBidDto.listingId,
-                bidderId: businessBidderId,
-                amount: createBidDto.amount,
-            },
+            let pendingBuyerId: string | null = null;
+            if (
+                lockedAuction.buyItNowPrice &&
+                (lockedAuction as any).buyItNowPendingBuyerId &&
+                createBidDto.amount >= Number(lockedAuction.buyItNowPrice)
+            ) {
+                pendingBuyerId = (lockedAuction as any).buyItNowPendingBuyerId as string;
+                await tx.auction.update({
+                    where: { id: lockedAuction.id },
+                    data: { buyItNowPendingBuyerId: null, buyItNowPendingAt: null },
+                });
+            }
+
+            return {
+                bid,
+                highestBid,
+                lockedListing,
+                lockedAuction,
+                reservePrice,
+                pendingBuyerId,
+            };
         });
 
-        // BIN auto-cancel: if new bid amount >= BIN price AND there's a pending BIN request, clear it
-        if (
-            auction.buyItNowPrice &&
-            (auction as any).buyItNowPendingBuyerId &&
-            createBidDto.amount >= Number(auction.buyItNowPrice)
-        ) {
-            const pendingBuyerId = (auction as any).buyItNowPendingBuyerId as string;
-            await this.prisma.auction.update({
-                where: { id: auction.id },
-                data: { buyItNowPendingBuyerId: null, buyItNowPendingAt: null },
-            });
+        const {
+            bid,
+            highestBid,
+            lockedListing,
+            lockedAuction,
+            reservePrice,
+            pendingBuyerId,
+        } = placement;
+
+        if (pendingBuyerId) {
             this.notificationsService.create({
                 userId: pendingBuyerId,
                 type: 'AUCTION_ENDED',
                 title: 'Buy It Now request cancelled',
-                message: `A new bid cancelled your Buy It Now request on ${listing.make} ${listing.model}.`,
+                message: `A new bid cancelled your Buy It Now request on ${lockedListing.make} ${lockedListing.model}.`,
                 entityType: 'AUCTION',
-                entityId: auction.id,
-                link: `/auctions/live/${auction.id}`,
+                entityId: lockedAuction.id,
+                link: `/auctions/live/${lockedAuction.id}`,
             }).catch(() => { /* notification failure must not fail the bid */ });
         }
 
@@ -151,19 +213,19 @@ export class BidsService {
         // Notify the seller immediately so they can accept the current highest
         // offer or simply leave the auction running for more competition.
         const bidAmount = Number(bid.amount);
-        if (listing.sellerId && bidAmount < reservePrice) {
-            const vehicle = [listing.year, listing.make, listing.model].filter(Boolean).join(' ') || listing.title;
+        if (lockedListing.sellerId && bidAmount < reservePrice) {
+            const vehicle = [lockedListing.year, lockedListing.make, lockedListing.model].filter(Boolean).join(' ') || lockedListing.title;
             this.notificationsService.create({
-                userId: listing.sellerId,
+                userId: lockedListing.sellerId,
                 type: 'AUCTION_OFFER_RECEIVED',
                 title: 'New auction offer received',
                 message: `Highest offer: £${bidAmount.toLocaleString('en-GB')} on ${vehicle}. Your reserve is £${reservePrice.toLocaleString('en-GB')}. Accept it now or keep the auction running.`,
                 entityType: 'AUCTION',
-                entityId: auction.id,
+                entityId: lockedAuction.id,
                 actionType: 'ACCEPT_OR_WAIT',
-                link: `/auctions/live/${auction.id}?sellerOffer=${bid.id}`,
+                link: `/auctions/live/${lockedAuction.id}?sellerOffer=${bid.id}`,
                 data: {
-                    listingId: listing.id,
+                    listingId: lockedListing.id,
                     bidId: bid.id,
                     amount: bidAmount,
                     reservePrice,
@@ -186,14 +248,14 @@ export class BidsService {
         }
 
         // Anti-snipe: extend auction if bid placed in the final window
-        const updatedAuction = await this.auctionsService.maybeExtend(auction.id, bid.timestamp);
+        const updatedAuction = await this.auctionsService.maybeExtend(lockedAuction.id, bid.timestamp);
 
         const initials = `${bidder?.firstName?.[0] ?? '?'}${bidder?.lastName?.[0] ?? ''}`.toUpperCase();
 
         // Broadcast to all viewers of this auction via WebSocket
-        this.auctionGateway.broadcastBid(auction.id, {
+        this.auctionGateway.broadcastBid(lockedAuction.id, {
             bidId: bid.id,
-            auctionId: auction.id,
+            auctionId: lockedAuction.id,
             listingId: bid.listingId,
             amount: Number(bid.amount),
             bidderInitials: initials,
