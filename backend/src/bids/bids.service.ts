@@ -445,7 +445,7 @@ export class BidsService {
         const pendingAt = row.buy_it_now_pending_at
             ? toDate(row.buy_it_now_pending_at)
             : null;
-        const effectiveEndTime = newEndTime ?? toDate(row.end_time);
+        const effectiveEndTime = newEndTime ?? toDate(row.end_time!);
         const buyItNowResponseDeadline = (
             row.buy_it_now_pending_buyer_id
             && !pendingBuyerId
