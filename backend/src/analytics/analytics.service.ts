@@ -401,6 +401,26 @@ export class AnalyticsService {
                 approved_live: boolean;
                 rejected: boolean;
             }>>(`
+                WITH valuation_requests AS (
+                    SELECT
+                        e.*,
+                        COALESCE(
+                            NULLIF(e.payload->>'valuation_id', ''),
+                            CASE WHEN e."sessionId" IS NOT NULL THEN 'session:' || e."sessionId" END,
+                            'event:' || e.id
+                        ) AS journey_key
+                    FROM analytics_events e
+                    WHERE e.type = 'valuation_requested'
+                ),
+                recent_valuations AS (
+                    -- The audit is a journey audit, not a raw HTTP-request log.
+                    -- Keep the newest customer-facing valuation result for each
+                    -- journey while preserving every historical event underneath.
+                    SELECT DISTINCT ON (journey_key)
+                        *
+                    FROM valuation_requests
+                    ORDER BY journey_key, "createdAt" DESC
+                )
                 SELECT
                     v.id,
                     v."createdAt" AS created_at,
@@ -422,7 +442,7 @@ export class AnalyticsService {
                         OR (listing.status::TEXT = 'WITHDRAWN' AND listing."reviewedAt" IS NOT NULL)
                     ) AS approved_live,
                     (listing.status::TEXT = 'REJECTED') AS rejected
-                FROM analytics_events v
+                FROM recent_valuations v
                 LEFT JOIN LATERAL (
                     SELECT e.id
                     FROM analytics_events e
@@ -486,7 +506,6 @@ export class AnalyticsService {
                     ORDER BY e."createdAt" ASC
                     LIMIT 1
                 ) approval ON TRUE
-                WHERE v.type = 'valuation_requested'
                 ORDER BY v."createdAt" DESC
                 LIMIT 100
             `),
