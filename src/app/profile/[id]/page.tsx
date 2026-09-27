@@ -54,7 +54,7 @@ type GivenReview = {
 
 async function getProfile(id: string): Promise<PublicProfile | null> {
     try {
-        const response = await serverBackendFetch(`/profiles/${id}`)
+        const response = await serverBackendFetch(`/profiles/${id}`, { next: { revalidate: 60 } })
         if (response.status === 404) return null
         if (!response.ok) return null
         const json = await response.json()
@@ -66,7 +66,7 @@ async function getProfile(id: string): Promise<PublicProfile | null> {
 
 async function getReceivedReviews(id: string): Promise<{ data: ReceivedReview[]; total: number }> {
     try {
-        const response = await serverBackendFetch(`/profiles/${id}/reviews?limit=20`)
+        const response = await serverBackendFetch(`/profiles/${id}/reviews?limit=20`, { next: { revalidate: 60 } })
         if (!response.ok) return { data: [], total: 0 }
         const json = await response.json()
         return json.data ?? { data: [], total: 0 }
@@ -77,7 +77,7 @@ async function getReceivedReviews(id: string): Promise<{ data: ReceivedReview[];
 
 async function getGivenReviews(id: string): Promise<{ data: GivenReview[]; total: number }> {
     try {
-        const response = await serverBackendFetch(`/profiles/${id}/reviews/given?limit=20`)
+        const response = await serverBackendFetch(`/profiles/${id}/reviews/given?limit=20`, { next: { revalidate: 60 } })
         if (!response.ok) return { data: [], total: 0 }
         const json = await response.json()
         return json.data ?? { data: [], total: 0 }
