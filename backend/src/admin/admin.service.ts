@@ -545,7 +545,13 @@ export class AdminService {
             }
         }
 
-        const updated = await this.prisma.listing.update({ where: { id }, data });
+        // A reserve-only live-auction correction produces no Listing-row
+        // mutations. Skip the no-op Prisma update instead of sending data: {},
+        // which can fail at runtime before the dedicated auction correction
+        // path gets a chance to run.
+        const updated = Object.keys(data).length > 0
+            ? await this.prisma.listing.update({ where: { id }, data })
+            : listing;
 
         // Auction schedule lives on the related Auction row. Before the auction
         // starts, admins retain the full schedule editor. Once ACTIVE, route the
