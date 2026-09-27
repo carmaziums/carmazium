@@ -30,10 +30,10 @@ export class CreateAuctionDto {
     @Min(1)
     minIncrement: number = 100;
 
-    @ApiPropertyOptional({ description: 'Buy It Now price in GBP. Optional. Locked once auction goes ACTIVE.' })
+    @ApiPropertyOptional({ description: 'Buy It Now price in GBP. Optional; when set it must be equal to or higher than reservePrice. Locked once auction goes ACTIVE.' })
     @IsOptional()
     @Type(() => Number)
     @IsNumber({ maxDecimalPlaces: 2 })
     @IsPositive()
-    buyItNowPrice?: number;
+    buyItNowPrice?: number | null;
 }
