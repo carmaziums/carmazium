@@ -83,6 +83,7 @@ export function sanitizeLiveUkComparables(
             owners: null,
             isImported: null,
             kind: 'ACTIVE_ASK',
+            observedAt: new Date().toISOString(),
         });
     }
 
