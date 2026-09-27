@@ -320,13 +320,19 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 const expiresAt = new Date(payload.timestamp).getTime() + BID_CANCEL_WINDOW_MS
                 setCancelableBids(prev => new Map(prev).set(payload.bidId, expiresAt))
             }
-            // Hide BIN if reserve is now met (clears pending BIN)
-            setAuction(p => {
-                if (p?.reservePrice && Number(payload.amount) >= Number(p.reservePrice)) {
-                    setBinPending(false)
-                }
-                return p
-            })
+            // Backend clears an outstanding BIN request atomically
+            // when this bid reaches reserve. Apply that committed state
+            // immediately instead of waiting for a later refetch.
+            if (payload.buyItNowCancelled) {
+                setBinPending(false)
+            } else {
+                setAuction(p => {
+                    if (p?.reservePrice && Number(payload.amount) >= Number(p.reservePrice)) {
+                        setBinPending(false)
+                    }
+                    return p
+                })
+            }
         })
 
         socket.on("bin:pending", ({ auctionId: evtId }: { auctionId: string; buyerId: string }) => {
