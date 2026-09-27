@@ -639,6 +639,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       return;
     }
     if (!auction || !currentUser) return;
+    if (endTime && Date.now() >= endTime.getTime()) {
+      setBidError('This auction has ended and is being finalised.');
+      return;
+    }
     const parsed = Number(amount);
     if (!parsed || parsed <= 0) { setBidError('Enter a valid bid amount.'); return; }
 
@@ -676,13 +680,17 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     } finally {
       setBidLoading(false);
     }
-  }, [auction, currentUser, bidHistory, role, canPlaceBid, isDealerVerified, dealerAccess?.isOwner, navigation]);
+  }, [auction, currentUser, bidHistory, role, canPlaceBid, isDealerVerified, dealerAccess?.isOwner, navigation, endTime]);
 
   // ─── Cancel bid ──────────────────────────────────────────────────────────────
 
   const handleCancelBid = useCallback((bidId: string) => {
     if (!canPlaceBid) {
       Alert.alert('View-only access', 'Your dealership role does not allow auction bidding.');
+      return;
+    }
+    if (endTime && Date.now() >= endTime.getTime()) {
+      Alert.alert('Auction ended', 'Bids can no longer be cancelled while the result is being finalised.');
       return;
     }
     Alert.alert(
@@ -709,7 +717,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, [canPlaceBid]);
+  }, [canPlaceBid, endTime]);
 
   // ─── Buy It Now handlers ──────────────────────────────────────────────────────
 
@@ -734,6 +742,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       Alert.alert('View-only access', 'Your dealership role does not allow Buy It Now requests.');
       return;
     }
+    if (endTime && Date.now() >= endTime.getTime()) {
+      Alert.alert('Auction ended', 'Buy It Now is no longer available while the result is being finalised.');
+      return;
+    }
     Alert.alert(
       'Buy It Now?',
       `The seller must confirm within 24 hours. The auction continues until they respond.\n\nBuy It Now price: ${fmt(Number(auction.buyItNowPrice))}`,
@@ -756,10 +768,14 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, [auction, canPlaceBid, businessUserId]);
+  }, [auction, canPlaceBid, businessUserId, endTime]);
 
   const handleConfirmBin = useCallback(() => {
     if (!auction || !canManageSellerAuction) return;
+    if (endTime && Date.now() >= endTime.getTime()) {
+      Alert.alert('Auction ended', 'This Buy It Now request can no longer be confirmed while the result is being finalised.');
+      return;
+    }
     Alert.alert(
       'Confirm Buy It Now?',
       `This ends the auction immediately at ${fmt(Number(auction.buyItNowPrice))}.`,
@@ -781,7 +797,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, [auction, canManageSellerAuction]);
+  }, [auction, canManageSellerAuction, endTime]);
 
   const handleDeclineBin = useCallback(async () => {
     if (!auction || !canManageSellerAuction) return;
@@ -794,12 +810,16 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     } finally {
       setBinLoading(false);
     }
-  }, [auction, canManageSellerAuction]);
+  }, [auction, canManageSellerAuction, endTime]);
 
   // ─── Seller: accept a specific bid early ─────────────────────────────────────
 
   const handleAcceptBid = useCallback((bid: BidEntry) => {
     if (!auction || !canManageSellerAuction) return;
+    if (endTime && Date.now() >= endTime.getTime()) {
+      Alert.alert('Auction ended', 'This offer can no longer be accepted while the result is being finalised.');
+      return;
+    }
     Alert.alert(
       'Accept current highest offer?',
       `Accepting ${fmt(bid.amount)} will end the auction immediately, even if it is below your reserve. The bidder becomes the winner and this cannot be undone.`,
@@ -831,6 +851,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const handleCloseEarly = useCallback(() => {
     if (!auction || !canManageSellerAuction) return;
+    if (endTime && Date.now() >= endTime.getTime()) {
+      Alert.alert('Auction ended', 'The auction is being finalised and can no longer be closed early.');
+      return;
+    }
     Alert.alert(
       'End auction without a sale?',
       'This closes the auction without accepting the current below-reserve offer. To sell at the current offer, use Accept Offer instead.',
@@ -854,7 +878,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, [auction, canManageSellerAuction]);
+  }, [auction, canManageSellerAuction, endTime]);
 
   // ─── Derived values ───────────────────────────────────────────────────────
 
@@ -862,6 +886,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const isActive = status === 'ACTIVE';
   const isScheduled = status === 'SCHEDULED';
   const isEnded = status === 'ENDED';
+  const auctionClockExpired = isActive && !!endTime && endTime.getTime() <= Date.now() && secondsLeft <= 0;
+  const isBiddingOpen = isActive && !auctionClockExpired;
   const isCancelled = status === 'CANCELLED';
   const isSeller = isBusinessSeller;
   const userWon = isEnded && !!(
@@ -1034,7 +1060,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
       )}
       {/* Seller quick-close control — only when auction is actively running */}
-      {canManageSellerAuction && isActive && !reserveMet && (
+      {canManageSellerAuction && isBiddingOpen && !reserveMet && (
         <View style={s.sellerToolsRow}>
           <Ionicons name="settings-outline" size={13} color={Colors.warning} />
           <Text style={s.sellerToolsLabel}>Seller Tools</Text>
@@ -1051,7 +1077,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       )}
-      {canManageSellerAuction && isActive && !reserveMet && bidHistory[0]?.id && (
+      {canManageSellerAuction && isBiddingOpen && !reserveMet && bidHistory[0]?.id && (
         <View style={[s.binSellerPanel, { borderColor: Colors.accentGreenAlpha30, backgroundColor: Colors.accentGreenAlpha08 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="cash-outline" size={16} color={Colors.accentGreen} />
@@ -1095,7 +1121,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
       )}
       {/* ── Seller BIN confirmation panel ── */}
-      {canManageSellerAuction && isActive && binPendingBuyerId && auction?.buyItNowPrice && (
+      {canManageSellerAuction && isBiddingOpen && binPendingBuyerId && auction?.buyItNowPrice && (
         <View style={s.binSellerPanel}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <Ionicons name="pricetag" size={16} color={Colors.warning} />
@@ -1606,7 +1632,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                         <Text style={[s.bidAmt, { fontFamily: FontFamily.mono }]}>{fmt(bid.amount)}</Text>
                         <Text style={s.bidTime}>{bid.time}</Text>
                         {/* Seller-only "Accept" button — ends the auction at this bid */}
-                        {canManageSellerAuction && isActive && !reserveMet && i === 0 && (
+                        {canManageSellerAuction && isBiddingOpen && !reserveMet && i === 0 && (
                           <TouchableOpacity
                             style={[s.acceptBidBtn, acceptingBidId === bid.id && { opacity: 0.6 }]}
                             onPress={() => handleAcceptBid(bid)}
@@ -1725,7 +1751,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         )}
 
         {/* ── Buy It Now panel (buyer) — hidden when reserve met or auction not active ── */}
-        {isActive && !isSeller && canPlaceBid && !isEnded && !isCancelled && auction?.buyItNowPrice && !reserveMet && (
+        {isBiddingOpen && !isSeller && canPlaceBid && !isEnded && !isCancelled && auction?.buyItNowPrice && !reserveMet && (
           binPendingBuyerId ? (
             // BIN is pending — show waiting state
             <View style={s.binPendingBanner}>
@@ -1867,6 +1893,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Ionicons name="calendar-outline" size={20} color={Colors.infoBlue} />
             <Text style={[s.bidStateText, { color: Colors.infoBlueLight }]}>Bidding Opens Soon</Text>
             {startTime && <Text style={s.muted}>{fmtDate(startTime.toISOString())}</Text>}
+          </View>
+        ) : auctionClockExpired ? (
+          <View style={s.bidStateBox}>
+            <Ionicons name="time-outline" size={20} color={Colors.warning} />
+            <Text style={[s.bidStateText, { color: Colors.warning }]}>Auction time ended</Text>
+            <Text style={s.muted}>Bidding is closed while CarMazium finalises the auction result.</Text>
           </View>
         ) : isSeller ? (
           <View style={{ gap: 10 }}>
@@ -2064,7 +2096,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {/* Cancel bid countdown banners — one per own bid still within the
                 24h cancel window (there can be more than one, since being
                 outbid no longer clears eligibility). */}
-            {cancelableBids.map(bid => {
+            {isBiddingOpen && cancelableBids.map(bid => {
               const remaining = BID_CANCEL_WINDOW_MS - (nowMs - new Date(bid.createdAt).getTime());
               return (
                 <View key={bid.id} style={[s.banner, s.bannerRed, s.cancelBidBanner]}>
