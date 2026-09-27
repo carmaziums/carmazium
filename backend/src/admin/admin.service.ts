@@ -999,8 +999,11 @@ export class AdminService {
             where: {
                 deletedAt: null,
                 status: 'ENDED',
-                handoverProofUrl: { not: null },
                 sellerBonusReleased: false,
+                OR: [
+                    { handoverProofPath: { not: null } },
+                    { handoverProofUrl: { not: null } },
+                ],
             },
             orderBy: { handoverSubmittedAt: 'asc' },
             include: {
