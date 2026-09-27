@@ -335,16 +335,25 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             triggerNotificationRefresh()
         })
 
-        socket.on("auction:price-updated", ({ auctionId: evtId }: { auctionId: string; reservePrice: number }) => {
+        socket.on("auction:price-updated", ({ auctionId: evtId, reservePrice }: { auctionId: string; reservePrice: number }) => {
             if (evtId !== auction.id) return
+
+            // Apply the committed reserve immediately so zero-bid viewers see
+            // the recalculated first-offer floor without waiting for a round
+            // trip, then refetch the canonical auction as a consistency check.
+            setAuction(p => p ? { ...p, reservePrice } : p)
+
             getAuction(auction.id)
                 .then(fresh => {
                     setAuction(fresh)
-                    if (Number(currentBid ?? 0) >= Number(fresh.reservePrice)) {
+                    const freshTopBid = fresh.listing.bids?.[0]
+                        ? Number(fresh.listing.bids[0].amount)
+                        : null
+                    if (freshTopBid !== null && freshTopBid >= Number(fresh.reservePrice)) {
                         setBinPending(false)
                     }
                 })
-                .catch(() => { /* next bid/reconnect will refresh state */ })
+                .catch(() => { /* direct event update already keeps reserve-dependent UI current */ })
         })
 
         return () => { socket.disconnect() }
