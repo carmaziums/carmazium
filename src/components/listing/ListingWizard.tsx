@@ -809,10 +809,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             model: formData.model || undefined,
                             year: Number(formData.year) || undefined,
                             valuation_source: result.source,
-                            valuation_result: (
-                                Number.isFinite(result.auction?.marketValue)
-                                && result.auction.marketValue > 0
-                            ) ? "figures_returned" : "no_figures",
                             valuation_comparables: result.comparables,
                             valuation_confidence: result.confidence,
                             valuation_confidence_score: result.confidenceScore,
