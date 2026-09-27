@@ -714,6 +714,7 @@ export class AnalyticsService {
                         e.payload->>'auction_id' AS auction_id,
                         COALESCE(NULLIF(e.payload->>'auction_run_key', ''), e.payload->>'auction_id') AS auction_run_key,
                         e.payload->>'bid_id' AS bid_id,
+                        e."userId" AS first_bidder_id,
                         NULLIF(e.payload->>'amount', '')::NUMERIC AS amount,
                         NULLIF(e.payload->>'reserve_price', '')::NUMERIC AS reserve_price,
                         NULLIF(e.payload->>'percent_below_reserve', '')::NUMERIC AS percent_below_reserve,
@@ -732,6 +733,7 @@ export class AnalyticsService {
                             WHERE b.type = 'auction_bid_placed'
                               AND COALESCE(NULLIF(b.payload->>'auction_run_key', ''), b.payload->>'auction_id') = f.auction_run_key
                               AND LOWER(COALESCE(b.payload->>'is_first_offer', 'false')) = 'false'
+                              AND (f.first_bidder_id IS NULL OR b."userId" IS DISTINCT FROM f.first_bidder_id)
                               AND b."createdAt" > f."createdAt"
                         ) AS had_competition,
                         EXISTS (
@@ -754,14 +756,14 @@ export class AnalyticsService {
                 )
                 SELECT
                     COUNT(*)::TEXT AS first_offers,
-                    COUNT(DISTINCT auction_id)::TEXT AS unique_auctions,
-                    COUNT(DISTINCT auction_id) FILTER (WHERE had_competition)::TEXT AS competition_auctions,
+                    COUNT(DISTINCT auction_run_key)::TEXT AS unique_auctions,
+                    COUNT(DISTINCT auction_run_key) FILTER (WHERE had_competition)::TEXT AS competition_auctions,
                     COUNT(*) FILTER (WHERE first_offer_cancelled)::TEXT AS first_offer_cancellations,
-                    COUNT(DISTINCT auction_id) FILTER (WHERE outcome = 'SELLER_ACCEPTED_BELOW_RESERVE')::TEXT AS seller_accepted_sales,
-                    COUNT(DISTINCT auction_id) FILTER (WHERE outcome = 'RESERVE_MET_SALE')::TEXT AS reserve_met_sales,
-                    COUNT(DISTINCT auction_id) FILTER (WHERE outcome = 'BUY_IT_NOW_SALE')::TEXT AS buy_it_now_sales,
-                    COUNT(DISTINCT auction_id) FILTER (WHERE outcome = 'ADMIN_ASSIGNED_SALE')::TEXT AS admin_assigned_sales,
-                    COUNT(DISTINCT auction_id) FILTER (
+                    COUNT(DISTINCT auction_run_key) FILTER (WHERE outcome = 'SELLER_ACCEPTED_BELOW_RESERVE')::TEXT AS seller_accepted_sales,
+                    COUNT(DISTINCT auction_run_key) FILTER (WHERE outcome = 'RESERVE_MET_SALE')::TEXT AS reserve_met_sales,
+                    COUNT(DISTINCT auction_run_key) FILTER (WHERE outcome = 'BUY_IT_NOW_SALE')::TEXT AS buy_it_now_sales,
+                    COUNT(DISTINCT auction_run_key) FILTER (WHERE outcome = 'ADMIN_ASSIGNED_SALE')::TEXT AS admin_assigned_sales,
+                    COUNT(DISTINCT auction_run_key) FILTER (
                         WHERE outcome IN (
                             'BELOW_RESERVE_UNSOLD',
                             'SELLER_EARLY_CLOSE_UNSOLD',
@@ -770,7 +772,7 @@ export class AnalyticsService {
                             'BUYER_REFUSED_AFTER_INSPECTION'
                         )
                     )::TEXT AS unsold_auctions,
-                    COUNT(DISTINCT auction_id) FILTER (WHERE outcome IS NULL)::TEXT AS pending_auctions,
+                    COUNT(DISTINCT auction_run_key) FILTER (WHERE outcome IS NULL)::TEXT AS pending_auctions,
                     (
                         SELECT COUNT(*)::TEXT
                         FROM analytics_events o
