@@ -2488,6 +2488,38 @@ export class AuctionsService {
                 throw new BadRequestException('Reserve is met — Buy It Now is no longer available');
             }
 
+            // The pending BIN slot belongs to one dealership at a time.
+            // This check deliberately happens AFTER acquiring the same
+            // per-listing advisory lock used by bids / BIN confirm / decline,
+            // so two buyers cannot both observe an empty slot and overwrite
+            // each other.
+            const now = Date.now();
+            const existingPendingAt = auction.buyItNowPendingAt;
+            const existingPendingBuyerId = auction.buyItNowPendingBuyerId;
+            const existingPendingIsUnexpired = Boolean(
+                existingPendingBuyerId
+                && existingPendingAt
+                && existingPendingAt.getTime() + 24 * 60 * 60 * 1000 >= now,
+            );
+
+            if (existingPendingIsUnexpired) {
+                if (existingPendingBuyerId === businessBuyerId) {
+                    // Same dealership retry (including another authorised staff
+                    // user acting for the same dealer owner): idempotent no-op.
+                    // Do not reset the response clock and do not send duplicate
+                    // seller notifications / websocket events.
+                    return {
+                        auction,
+                        pendingAt: existingPendingAt!,
+                        created: false,
+                    };
+                }
+
+                throw new ConflictException(
+                    'Another dealership already has a Buy It Now request awaiting the seller response.',
+                );
+            }
+
             const pendingAt = new Date();
             await tx.auction.update({
                 where: { id: auctionId },
@@ -2500,8 +2532,13 @@ export class AuctionsService {
             return {
                 auction,
                 pendingAt,
+                created: true,
             };
         });
+
+        if (!requested.created) {
+            return;
+        }
 
         if (requested.auction.listing.sellerId) {
             await this.notificationsService.create({
