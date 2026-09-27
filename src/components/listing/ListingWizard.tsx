@@ -355,7 +355,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // A non-PII journey key links a valuation to a later listing submission.
     // Keep it outside FormData so it never becomes vehicle/listing data.
     const valuationJourneyIdRef = React.useRef<string | null>(null)
-    const valuationJourneyVrmRef = React.useRef<string | null>(null)
+    // The server freezes the market base against this journey + identity key.
+    // Changing mileage, registration, model or edit target starts a new base.
+    const valuationJourneyBaseKeyRef = React.useRef<string | null>(null)
     const [retailConversion, setRetailConversion] = React.useState<{
         candidate: RetailConversionCandidate
         payload: CreateListingRequest
@@ -667,7 +669,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         setValuationLoading(false)
         setValuationError(null)
         valuationJourneyIdRef.current = null
-        valuationJourneyVrmRef.current = null
+        valuationJourneyBaseKeyRef.current = null
         setSubmitError(null)
 
         // Strip HPI/edit/query parameters so a stale URL cannot repopulate the
@@ -780,27 +782,35 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             setValuationLoading(true)
             setValuationError(null)
 
+            const normalizedVrm = formData.vrm.replace(/\s/g, "").toUpperCase()
+            const startsNewJourney =
+                !valuationJourneyIdRef.current
+                || valuationJourneyBaseKeyRef.current !== currentValuationBaseKey
+
+            if (startsNewJourney) {
+                valuationJourneyIdRef.current = crypto.randomUUID()
+                valuationJourneyBaseKeyRef.current = currentValuationBaseKey
+            }
+
+            const valuationId = valuationJourneyIdRef.current!
+
             getVehicleValuation({
                 make: formData.make,
                 model: formData.model,
                 year: Number(formData.year),
                 mileage: Number(formData.mileage),
                 excludeListingId: editId || undefined,
+                valuationId,
+                registration: normalizedVrm || undefined,
             })
                 .then((result) => {
                     if (cancelled) return
                     valuationBaseKeyRef.current = currentValuationBaseKey
                     setBaseValuation(result)
 
-                    const normalizedVrm = formData.vrm.replace(/\s/g, "").toUpperCase()
-                    if (
-                        !valuationJourneyIdRef.current
-                        || valuationJourneyVrmRef.current !== normalizedVrm
-                    ) {
-                        valuationJourneyIdRef.current = crypto.randomUUID()
-                        valuationJourneyVrmRef.current = normalizedVrm
+                    if (startsNewJourney) {
                         trackEvent(SELLER_FUNNEL.VALUATION_REQUESTED, {
-                            valuation_id: valuationJourneyIdRef.current,
+                            valuation_id: valuationId,
                             entry_point: isDashboard ? "dashboard_listing_wizard" : "listing_wizard",
                             listing_type: listingTypeLabel(formData.listingType),
                             registration: normalizedVrm || undefined,
@@ -1213,7 +1223,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             setValuationError(null)
             if (detail.valuationId) {
                 valuationJourneyIdRef.current = detail.valuationId
-                valuationJourneyVrmRef.current = String(detail.vehicle.vrm || "").replace(/\s/g, "").toUpperCase()
+                valuationJourneyBaseKeyRef.current = getValuationBaseKey(detail.vehicle, editId)
             }
             const verifiedByDvla = detail.dvlaVerified !== false
             setDvlaSuccess(verifiedByDvla)
