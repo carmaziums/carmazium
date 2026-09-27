@@ -30,6 +30,7 @@ import { ImageLightbox } from '../../components/ImageLightbox';
 import { GradeChip } from '../../components/GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/AuctionCardBadges';
 import { WishlistHeart } from '../../components/WishlistHeart';
+import { getAuctionFirstOfferFloor } from '../../lib/auctionPricing';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -61,8 +62,10 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
   const timeLeft = useCountdown(auction.endTime);
   const l = auction.listing as any;
   const images: string[] = l?.images ?? [];
-  const currentBid = Number(auction.winningBidAmount ?? auction.startingBid ?? 0);
   const bids = l?._count?.bids ?? l?.bids?.length ?? 0;
+  const currentBid = bids > 0 && l?.bids?.[0] ? Number(l.bids[0].amount) : 0;
+  const startingBid = Number(auction.startingBid ?? 0);
+  const firstOfferFloor = getAuctionFirstOfferFloor(startingBid, Number(auction.reservePrice ?? 0));
 
   return (
     <TouchableOpacity style={s.auctionCard} onPress={onPress} activeOpacity={0.9}>
@@ -80,8 +83,13 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
         <WishlistHeart listing={auctionToListingParam(auction)} />
         <View style={s.bidOverlay} pointerEvents="none">
           <View style={{ flex: 1 }}>
-            <Text style={s.overlayLabel}>CURRENT BID</Text>
-            <Text style={s.overlayVal}>{formatPrice(currentBid)}</Text>
+            <Text style={s.overlayLabel}>{bids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
+            <Text style={s.overlayVal}>{formatPrice(bids > 0 ? currentBid : startingBid)}</Text>
+            {bids === 0 && firstOfferFloor > 0 && (
+              <Text style={[s.overlayLabel, { color: Colors.warning, marginTop: 2 }]}>
+                FIRST OFFER {formatPrice(firstOfferFloor)}
+              </Text>
+            )}
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
             <Text style={s.overlayLabel}>ENDS IN</Text>
