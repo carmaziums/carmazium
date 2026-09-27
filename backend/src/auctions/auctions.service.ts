@@ -1059,116 +1059,196 @@ export class AuctionsService {
             throw new BadRequestException('Reserve price must be greater than £0');
         }
 
-        // Read only the listing key up front. The actual validation and update
-        // are repeated inside the same per-listing advisory lock used by bid
-        // placement, so a dealer's first offer cannot race an admin reserve
-        // correction and be validated against stale pricing.
-        const lookup = await this.prisma.auction.findUnique({
-            where: { id: auctionId },
-            select: { listingId: true, deletedAt: true },
-        });
-        if (!lookup || lookup.deletedAt) {
+        type AtomicReserveCorrectionRow = {
+            id: string;
+            listingId: string;
+            auction_status: string;
+            old_reserve: unknown;
+            starting_bid: unknown;
+            min_increment: unknown;
+            buy_it_now_price: unknown | null;
+            start_time: Date | string;
+            end_time: Date | string;
+            deleted_at: Date | string | null;
+            listing_title: string;
+            seller_id: string | null;
+            listing_status: string;
+            top_bid: unknown | null;
+            active_bid_count: number;
+            decision_code:
+                | 'OK'
+                | 'NOT_FOUND'
+                | 'INVALID_STATUS'
+                | 'LISTING_INACTIVE'
+                | 'ENDED'
+                | 'ABOVE_BIN'
+                | 'RESERVE_ALREADY_MET';
+            updated_auction: Record<string, unknown> | null;
+        };
+
+        /*
+         * Keep the reserve correction atomic without Prisma's interactive
+         * transaction connection. Production showed the underlying PostgreSQL
+         * lock/read/update sequence is healthy, while the interactive Prisma
+         * transaction path could fail before the UPDATE reached Postgres.
+         *
+         * This single statement:
+         *  1. resolves the auction/listing;
+         *  2. takes the SAME per-listing advisory xact lock used by bidding;
+         *  3. snapshots the active top bid/count only after the lock is held;
+         *  4. applies every existing business-rule guard;
+         *  5. updates the reserve (and clears pending BIN when reserve becomes
+         *     met) before the statement-level transaction releases the lock.
+         */
+        const rows = await this.prisma.$queryRaw<AtomicReserveCorrectionRow[]>`
+            WITH target AS MATERIALIZED (
+                SELECT
+                    a.id,
+                    a."listingId",
+                    a.status::text AS auction_status,
+                    a."reservePrice" AS old_reserve,
+                    a."startingBid" AS starting_bid,
+                    a."minIncrement" AS min_increment,
+                    a."buyItNowPrice" AS buy_it_now_price,
+                    a."startTime" AS start_time,
+                    a."endTime" AS end_time,
+                    a."deletedAt" AS deleted_at,
+                    l.title AS listing_title,
+                    l."sellerId" AS seller_id,
+                    l.status::text AS listing_status
+                FROM "auctions" a
+                JOIN "listings" l ON l.id = a."listingId"
+                WHERE a.id = ${auctionId}
+            ),
+            lock_row AS MATERIALIZED (
+                SELECT pg_advisory_xact_lock(hashtextextended(t."listingId", 0)) AS locked
+                FROM target t
+            ),
+            snapshot AS MATERIALIZED (
+                SELECT
+                    t.*,
+                    (
+                        SELECT MAX(b.amount)
+                        FROM "bids" b
+                        WHERE b."listingId" = t."listingId"
+                          AND b."deletedAt" IS NULL
+                          AND b."cancelledAt" IS NULL
+                          AND b."archivedAt" IS NULL
+                    ) AS top_bid,
+                    (
+                        SELECT COUNT(*)::int
+                        FROM "bids" b
+                        WHERE b."listingId" = t."listingId"
+                          AND b."deletedAt" IS NULL
+                          AND b."cancelledAt" IS NULL
+                          AND b."archivedAt" IS NULL
+                    ) AS active_bid_count
+                FROM target t
+                CROSS JOIN lock_row
+            ),
+            decision AS MATERIALIZED (
+                SELECT
+                    s.*,
+                    CASE
+                        WHEN s.deleted_at IS NOT NULL THEN 'NOT_FOUND'
+                        WHEN s.auction_status NOT IN ('SCHEDULED', 'ACTIVE') THEN 'INVALID_STATUS'
+                        WHEN s.auction_status = 'ACTIVE' AND s.listing_status <> 'ACTIVE' THEN 'LISTING_INACTIVE'
+                        WHEN s.auction_status = 'ACTIVE' AND NOW() >= s.end_time THEN 'ENDED'
+                        WHEN s.buy_it_now_price IS NOT NULL
+                             AND ${reservePrice}::numeric > s.buy_it_now_price THEN 'ABOVE_BIN'
+                        WHEN s.auction_status = 'ACTIVE'
+                             AND s.top_bid IS NOT NULL
+                             AND s.top_bid >= s.old_reserve
+                             AND s.top_bid < ${reservePrice}::numeric THEN 'RESERVE_ALREADY_MET'
+                        ELSE 'OK'
+                    END AS decision_code
+                FROM snapshot s
+            ),
+            updated AS (
+                UPDATE "auctions" a
+                SET
+                    "reservePrice" = ${reservePrice}::numeric,
+                    "buyItNowPendingBuyerId" = CASE
+                        WHEN d.top_bid IS NOT NULL AND d.top_bid >= ${reservePrice}::numeric
+                            THEN NULL
+                        ELSE a."buyItNowPendingBuyerId"
+                    END,
+                    "buyItNowPendingAt" = CASE
+                        WHEN d.top_bid IS NOT NULL AND d.top_bid >= ${reservePrice}::numeric
+                            THEN NULL
+                        ELSE a."buyItNowPendingAt"
+                    END,
+                    "updatedAt" = NOW()
+                FROM decision d
+                WHERE a.id = d.id
+                  AND d.decision_code = 'OK'
+                RETURNING to_jsonb(a) AS updated_auction
+            )
+            SELECT
+                d.*,
+                (SELECT updated_auction FROM updated LIMIT 1) AS updated_auction
+            FROM decision d
+        `;
+
+        const row = rows[0];
+        if (!row) {
             throw new NotFoundException('Auction not found');
         }
 
-        const correction = await this.prisma.$transaction(async (tx) => {
-            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
-
-            const auction = await tx.auction.findUnique({
-                where: { id: auctionId },
-                include: {
-                    listing: {
-                        select: {
-                            id: true,
-                            title: true,
-                            sellerId: true,
-                            status: true,
-                        },
-                    },
-                },
-            });
-
-            if (!auction || auction.deletedAt) {
+        switch (row.decision_code) {
+            case 'NOT_FOUND':
                 throw new NotFoundException('Auction not found');
-            }
-            if (auction.status !== 'SCHEDULED' && auction.status !== 'ACTIVE') {
+            case 'INVALID_STATUS':
                 throw new BadRequestException('Only SCHEDULED or ACTIVE auctions can have their reserve corrected');
-            }
-            if (auction.status === 'ACTIVE') {
-                if (auction.listing.status !== 'ACTIVE') {
-                    throw new BadRequestException('This auction vehicle is no longer active');
-                }
-                if (Date.now() >= auction.endTime.getTime()) {
-                    throw new BadRequestException(
-                        'This auction has ended. Its reserve can no longer be changed while the result is being finalised',
-                    );
-                }
-            }
-            if (auction.buyItNowPrice != null && reservePrice > Number(auction.buyItNowPrice)) {
+            case 'LISTING_INACTIVE':
+                throw new BadRequestException('This auction vehicle is no longer active');
+            case 'ENDED':
+                throw new BadRequestException(
+                    'This auction has ended. Its reserve can no longer be changed while the result is being finalised',
+                );
+            case 'ABOVE_BIN':
                 throw new BadRequestException('Reserve price cannot be higher than the Buy It Now price');
-            }
-
-            const [topBid, activeBidCount] = await Promise.all([
-                tx.bid.findFirst({
-                    where: {
-                        listingId: auction.listingId,
-                        deletedAt: null,
-                        cancelledAt: null,
-                        archivedAt: null,
-                    },
-                    orderBy: { amount: 'desc' },
-                    select: { amount: true },
-                }),
-                tx.bid.count({
-                    where: {
-                        listingId: auction.listingId,
-                        deletedAt: null,
-                        cancelledAt: null,
-                        archivedAt: null,
-                    },
-                }),
-            ]);
-
-            const oldReserve = Number(auction.reservePrice);
-            const topBidAmount = topBid ? Number(topBid.amount) : null;
-            const reserveWasMet = topBidAmount !== null && topBidAmount >= oldReserve;
-            const reserveWillBeMet = topBidAmount !== null && topBidAmount >= reservePrice;
-
-            if (auction.status === 'ACTIVE' && reserveWasMet && !reserveWillBeMet) {
+            case 'RESERVE_ALREADY_MET':
                 throw new BadRequestException(
                     'The reserve has already been met. It cannot be raised above the current highest bid.',
                 );
-            }
+            case 'OK':
+                break;
+        }
 
-            const updated = await tx.auction.update({
-                where: { id: auctionId },
-                data: {
-                    reservePrice,
-                    ...(reserveWillBeMet && {
-                        buyItNowPendingBuyerId: null,
-                        buyItNowPendingAt: null,
-                    }),
-                },
-            });
+        if (!row.updated_auction) {
+            throw new ConflictException(
+                'The auction changed while the reserve correction was being applied. Refresh and try again.',
+            );
+        }
 
-            const firstOfferFloor = topBidAmount === null
-                ? calculateFirstOfferFloor(Number(auction.startingBid), reservePrice)
-                : null;
-
-            return {
-                updated,
-                auctionRunKey: this.auctionRunKey(auction),
-                listingTitle: auction.listing.title,
-                sellerId: auction.listing.sellerId,
-                startingBid: Number(auction.startingBid),
-                minIncrement: Number(auction.minIncrement),
-                oldReserve,
-                topBidAmount,
-                activeBidCount,
-                reserveWillBeMet,
-                firstOfferFloor,
-            };
-        });
+        const oldReserve = Number(row.old_reserve);
+        const startingBid = Number(row.starting_bid);
+        const minIncrement = Number(row.min_increment);
+        const topBidAmount = row.top_bid == null ? null : Number(row.top_bid);
+        const activeBidCount = Number(row.active_bid_count || 0);
+        const reserveWillBeMet = topBidAmount !== null && topBidAmount >= reservePrice;
+        const firstOfferFloor = topBidAmount === null
+            ? calculateFirstOfferFloor(startingBid, reservePrice)
+            : null;
+        const updated = row.updated_auction as unknown as Auction;
+        const correction = {
+            updated,
+            auctionRunKey: this.auctionRunKey({
+                id: auctionId,
+                startTime: (row.updated_auction as any).startTime ?? row.start_time,
+            }),
+            listingId: row.listingId,
+            listingTitle: row.listing_title,
+            sellerId: row.seller_id,
+            startingBid,
+            minIncrement,
+            oldReserve,
+            topBidAmount,
+            activeBidCount,
+            reserveWillBeMet,
+            firstOfferFloor,
+        };
 
         if (correction.sellerId) {
             const reasonText = reason?.trim() ? ` Reason: ${reason.trim()}` : '';
@@ -1202,7 +1282,7 @@ export class AuctionsService {
         this.trackAuctionEvent('auction_reserve_corrected', {
             auction_id: auctionId,
             auction_run_key: correction.auctionRunKey,
-            listing_id: lookup.listingId,
+            listing_id: correction.listingId,
             old_reserve: correction.oldReserve,
             new_reserve: reservePrice,
             starting_bid: correction.startingBid,
@@ -1213,11 +1293,14 @@ export class AuctionsService {
             reason: reason?.trim() || null,
         });
 
-        // Live viewers already listen for this event and refetch the canonical
-        // auction. Because the correction committed before this broadcast, web
-        // and native recompute the first-offer floor from the new reserve without
-        // ever observing a half-written price state.
-        this.auctionGateway.broadcastPriceUpdated(auctionId, reservePrice);
+        try {
+            this.auctionGateway.broadcastPriceUpdated(auctionId, reservePrice);
+        } catch (error) {
+            this.logger.warn(
+                `Reserve corrected for auction ${auctionId}, but live price broadcast failed: ${error instanceof Error ? error.message : String(error)}`,
+            );
+        }
+
         return correction.updated;
     }
 
