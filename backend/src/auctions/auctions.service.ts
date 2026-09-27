@@ -31,6 +31,7 @@ import { PaymentsService } from '../payments/payments.service';
 import {
     assertDealerPermission,
     DealerPermission,
+    hasDealerPermission,
     resolveBusinessBuyerId,
     resolveDealerActor,
 } from '../dealers/dealer-access';
@@ -676,7 +677,24 @@ export class AuctionsService {
     }
 
     async findMyAuctions(userId: string, page = 1, limit = 20): Promise<{ data: any[]; total: number }> {
-        const sellerId = await this.resolveSellerBusinessId(userId, 'VIEW_INVENTORY');
+        // VIEW_INVENTORY is enough to inspect dealership auctions, but handover
+        // evidence can contain signatures, names and addresses. Only roles that
+        // may manage inventory can receive the signed proof URL or submit a new
+        // proof. Read-only dealership staff still receive handoverSubmittedAt so
+        // their UI can show the correct lifecycle state without exposing proof.
+        const actor = await resolveDealerActor(this.prisma, userId);
+        let sellerId = userId;
+        let canManageHandover = true;
+        if (actor) {
+            assertDealerPermission(
+                actor,
+                'VIEW_INVENTORY',
+                'Your dealership role does not allow auction inventory access.',
+            );
+            sellerId = actor.ownerUserId;
+            canManageHandover = hasDealerPermission(actor, 'MANAGE_INVENTORY');
+        }
+
         const skip = (page - 1) * limit;
         const where = { deletedAt: null, listing: { sellerId } };
         const [data, total] = await Promise.all([
@@ -703,7 +721,21 @@ export class AuctionsService {
             }),
             this.prisma.auction.count({ where }),
         ]);
-        return { data, total };
+
+        if (canManageHandover) {
+            return { data: await this.handoverDocuments.hydrateMany(data), total };
+        }
+
+        const redacted = data.map((auction: any) => {
+            const safe = {
+                ...auction,
+                handoverProofUrl: null,
+                handoverProofIsPrivate: Boolean(auction.handoverProofPath),
+            };
+            delete safe.handoverProofPath;
+            return safe;
+        });
+        return { data: redacted, total };
     }
 
     /**
