@@ -528,6 +528,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
       socket.on('auction:price-updated', (d: { auctionId: string; reservePrice: number }) => {
         if (d.auctionId !== auctionId) return;
+        // Update the committed reserve immediately so the native first-offer
+        // floor changes in place for viewers, then silently resync everything.
+        setAuction(p => p ? { ...p, reservePrice: d.reservePrice } : p);
         loadAuctionRef.current({ silent: true });
       });
 
