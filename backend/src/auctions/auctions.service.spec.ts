@@ -55,6 +55,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                 findFirst: jest.fn().mockResolvedValue(null),
                 findUnique: jest.fn(),
                 findMany: jest.fn(),
+                count: jest.fn().mockResolvedValue(0),
             },
             listing: {
                 findUnique: jest.fn(),
@@ -69,6 +70,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                 count: jest.fn().mockResolvedValue(742),
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
+            analyticsEvent: { create: jest.fn().mockResolvedValue({}) },
             $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
             $transaction: jest.fn(async (arg: any) => {
                 if (typeof arg === 'function') return arg(prisma);
@@ -378,6 +380,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         });
         prisma.auction.findUnique.mockResolvedValue(auction);
         prisma.bid.findFirst.mockResolvedValue({ amount: 18000 });
+        prisma.bid.count.mockResolvedValue(3);
         prisma.auction.update.mockResolvedValue({ ...auction, reservePrice: 17500 });
 
         await service.adminCorrectReservePrice('auction-1', 17500, 'Seller entered the wrong reserve');
@@ -393,6 +396,17 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         expect(prisma.$transaction).toHaveBeenCalledTimes(1);
         expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
         expect(auctionGateway.broadcastPriceUpdated).toHaveBeenCalledWith('auction-1', 17500);
+        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                type: 'auction_reserve_corrected',
+                payload: expect.objectContaining({
+                    old_reserve: 20000,
+                    new_reserve: 17500,
+                    active_bid_count: 3,
+                    reserve_met_after: true,
+                }),
+            }),
+        });
         expect(notificationsService.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 userId: 'seller-1',
@@ -486,6 +500,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
                 count: jest.fn().mockResolvedValue(742),
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
+            analyticsEvent: { create: jest.fn().mockResolvedValue({}) },
             $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
             $transaction: jest.fn(async (arg: any) =>
                 typeof arg === 'function' ? arg(prisma) : Promise.all(arg)
@@ -694,6 +709,26 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
                 buyerId: 'dealer-1',
                 soldPrice: 8200,
             },
+        });
+        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                type: 'auction_offer_accepted',
+                userId: 'seller-1',
+                payload: expect.objectContaining({
+                    auction_id: 'auction-1',
+                    amount: 8200,
+                    outcome: 'SELLER_ACCEPTED_BELOW_RESERVE',
+                }),
+            }),
+        });
+        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                type: 'auction_outcome',
+                payload: expect.objectContaining({
+                    auction_id: 'auction-1',
+                    outcome: 'SELLER_ACCEPTED_BELOW_RESERVE',
+                }),
+            }),
         });
         expect((service as any).chatService.findOrCreateRoom).not.toHaveBeenCalled();
     });
@@ -1121,6 +1156,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
                 count: jest.fn().mockResolvedValue(742),
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
+            analyticsEvent: { create: jest.fn().mockResolvedValue({}) },
             $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
             $transaction: jest.fn(async (arg: any) =>
                 typeof arg === 'function' ? arg(prisma) : Promise.all(arg)
@@ -1281,6 +1317,16 @@ describe('AuctionsService — final lifecycle consistency', () => {
                 reserveMet: false,
             }),
         );
+        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                type: 'auction_outcome',
+                payload: expect.objectContaining({
+                    auction_id: 'auction-below-reserve',
+                    outcome: 'BELOW_RESERVE_UNSOLD',
+                    highest_bid_amount: 7000,
+                }),
+            }),
+        });
     });
 
     it('creates the normal winner and sale when the final real bid meets reserve', async () => {
