@@ -2,13 +2,13 @@ import type { Metadata } from "next"
 import { VehicleDetailPageClient } from "./VehicleDetailPageClient"
 import { formatPrice } from "@/lib/listingApi"
 import { VehicleViewTracker } from "@/components/analytics/VehicleViewTracker"
+import { serverBackendFetch } from "@/lib/serverBackendFetch"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com"
 
 async function getListingBySlug(slug: string) {
     try {
-        const res = await fetch(`${API_BASE}/listings/${slug}`, { next: { revalidate: 60 } })
+        const res = await serverBackendFetch(`/listings/${slug}`, { next: { revalidate: 60 } })
         if (!res.ok) return null
         const json = await res.json()
         return json.data ?? null
