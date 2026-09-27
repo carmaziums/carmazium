@@ -325,4 +325,59 @@ describe('calculateVehicleValuation', () => {
         expect(result.mid).toBeLessThan(9000);
         expect(result.high).toBeLessThan(12000);
     });
+
+
+    it('fits age and mileage depreciation to the current comparable market', () => {
+        const target = {
+            make: 'Example',
+            model: 'Curve',
+            year: 2019,
+            mileage: 60000,
+        };
+        const observedAt = new Date().toISOString();
+        const yearSlope = Math.log(1.05);
+        const mileageSlope = Math.log(0.99);
+
+        const comparables = [
+            [2018, 20000], [2018, 30000], [2018, 40000], [2018, 50000],
+            [2019, 20000], [2019, 30000], [2019, 40000], [2019, 50000],
+            [2020, 20000], [2020, 30000], [2020, 40000], [2020, 50000],
+        ].map(([year, mileage]) => ({
+            price: Math.round(
+                10000
+                * Math.exp(yearSlope * (year - target.year))
+                * Math.exp(mileageSlope * ((mileage - target.mileage) / 1000)),
+            ),
+            year,
+            mileage,
+            observedAt,
+            kind: 'ACTIVE_ASK' as const,
+        }));
+
+        const result = calculateVehicleValuation(target, comparables);
+
+        // Current asks are conservatively normalised below asking price, but a
+        // market-fitted curve should still recover the target's ~£10k level.
+        expect(result.mid).toBeGreaterThanOrEqual(9000);
+        expect(result.mid).toBeLessThanOrEqual(10500);
+        expect(result.comparables).toBeGreaterThanOrEqual(8);
+    });
+
+    it('uses the fresh 28-day market before older completed evidence when enough current data exists', () => {
+        const oldDate = new Date(Date.now() - 60 * 86_400_000).toISOString();
+        const now = new Date().toISOString();
+
+        const result = calculateVehicleValuation(vehicle, [
+            { price: 9800, year: 2019, mileage: 60000, kind: 'ACTIVE_ASK', observedAt: now },
+            { price: 9950, year: 2019, mileage: 61000, kind: 'ACTIVE_ASK', observedAt: now },
+            { price: 10100, year: 2020, mileage: 56000, kind: 'ACTIVE_ASK', observedAt: now },
+            { price: 10250, year: 2018, mileage: 65000, kind: 'ACTIVE_ASK', observedAt: now },
+            { price: 14500, year: 2019, mileage: 60000, kind: 'ACCEPTED_OFFER', observedAt: oldDate },
+        ]);
+
+        expect(result.comparables).toBe(4);
+        expect(result.mid).toBeLessThan(11000);
+        expect(result.evidence.acceptedOffers).toBe(0);
+        expect(result.evidence.activeAsks).toBe(4);
+    });
 });
