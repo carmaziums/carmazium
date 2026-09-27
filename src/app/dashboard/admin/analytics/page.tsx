@@ -13,9 +13,9 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import {
     getAdminAnalytics, getAdminStats, getTrafficAnalytics, getAccountVerificationStats,
-    getLiveValuationAnalytics,
+    getLiveValuationAnalytics, getAuctionFirstOfferAnalytics,
     type AnalyticsMonth, type AdminStats, type TrafficAnalytics, type AccountVerificationStats,
-    type ValuationLiveAnalytics,
+    type ValuationLiveAnalytics, type AuctionFirstOfferAnalytics,
 } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
 import { DateRangeFilter } from "@/components/dealer"
@@ -134,6 +134,12 @@ export default function AdminAnalyticsPage() {
     const [valuationLoading, setValuationLoading] = React.useState(true)
     const [valuationError, setValuationError] = React.useState<string | null>(null)
 
+    // Auction zero-bid / discounted first-offer analytics
+    const [firstOfferAnalytics, setFirstOfferAnalytics] = React.useState<AuctionFirstOfferAnalytics | null>(null)
+    const [firstOfferLoading, setFirstOfferLoading] = React.useState(true)
+    const [firstOfferError, setFirstOfferError] = React.useState<string | null>(null)
+    const [firstOfferDays, setFirstOfferDays] = React.useState(30)
+
     React.useEffect(() => {
         if (!authLoading) {
             if (!user) { router.replace("/auth/login"); return }
@@ -181,6 +187,16 @@ export default function AdminAnalyticsPage() {
             .finally(() => setValuationLoading(false))
     }, [profile])
 
+    const fetchFirstOfferData = React.useCallback((showSpinner = false) => {
+        if (profile?.role !== "ADMIN") return
+        if (showSpinner) setFirstOfferLoading(true)
+        setFirstOfferError(null)
+        getAuctionFirstOfferAnalytics(firstOfferDays)
+            .then(setFirstOfferAnalytics)
+            .catch(err => setFirstOfferError(err.message || "Failed to load auction first-offer analytics"))
+            .finally(() => setFirstOfferLoading(false))
+    }, [profile, firstOfferDays])
+
     React.useEffect(() => { fetchPlatformData() }, [fetchPlatformData])
     React.useEffect(() => { fetchTrafficData() }, [fetchTrafficData])
     React.useEffect(() => {
@@ -189,6 +205,11 @@ export default function AdminAnalyticsPage() {
         const timer = window.setInterval(() => fetchValuationData(false), 15_000)
         return () => window.clearInterval(timer)
     }, [profile, fetchValuationData])
+
+    React.useEffect(() => {
+        if (profile?.role !== "ADMIN") return
+        fetchFirstOfferData(true)
+    }, [profile, fetchFirstOfferData])
 
     if (authLoading || (user && !profile) || platformLoading) {
         return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
@@ -331,8 +352,8 @@ export default function AdminAnalyticsPage() {
                                 Platform Analytics
                             </h1>
                         </div>
-                        <Button onClick={() => { fetchPlatformData(); fetchTrafficData(); fetchValuationData(true) }} disabled={platformLoading || trafficLoading || valuationLoading} variant="outline" className="flex items-center gap-2 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] border-[var(--border-default)]">
-                            <RefreshCw size={16} className={(platformLoading || trafficLoading || valuationLoading) ? "animate-spin" : ""} /> Refresh
+                        <Button onClick={() => { fetchPlatformData(); fetchTrafficData(); fetchValuationData(true); fetchFirstOfferData(true) }} disabled={platformLoading || trafficLoading || valuationLoading || firstOfferLoading} variant="outline" className="flex items-center gap-2 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] border-[var(--border-default)]">
+                            <RefreshCw size={16} className={(platformLoading || trafficLoading || valuationLoading || firstOfferLoading) ? "animate-spin" : ""} /> Refresh
                         </Button>
                     </div>
 
@@ -694,6 +715,158 @@ export default function AdminAnalyticsPage() {
 
                                 <p className="px-1 text-[11px] leading-5 text-[var(--text-muted)]">
                                     New valuation journeys now retain the vehicle registration, mileage and exact CarMazium guide figures shown at valuation time for internal pricing QA. Older rows may show “Legacy” because those values were not historically stored; where a legacy valuation later became a listing, registration and mileage are recovered from that listing when available. The funnel still attributes a listing to a valuation for up to 30 days.
+                                </p>
+                            </>
+                        ) : null}
+                    </div>
+
+                    {/* ── Auction zero-bid / discounted first-offer analytics ── */}
+                    <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 px-1">
+                            <div>
+                                <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-secondary)]">Auction First-Offer Performance</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                    Server-side audit of the zero-bid rule: discounted first offers, competition, cancellations and eventual auction outcome.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {[7, 30, 90].map(days => (
+                                    <button
+                                        key={days}
+                                        onClick={() => setFirstOfferDays(days)}
+                                        className={`rounded-lg border px-3 py-1.5 text-xs font-black transition-colors ${
+                                            firstOfferDays === days
+                                                ? "border-primary bg-primary/10 text-primary"
+                                                : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                                        }`}
+                                    >
+                                        {days}d
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {firstOfferError && (
+                            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-700 dark:text-red-300">
+                                {firstOfferError}
+                            </div>
+                        )}
+
+                        {firstOfferLoading && !firstOfferAnalytics ? (
+                            <div className="h-28 flex items-center justify-center rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)]">
+                                <Loader2 className="h-7 w-7 animate-spin text-primary" />
+                            </div>
+                        ) : firstOfferAnalytics ? (
+                            <>
+                                <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3">
+                                    {([
+                                        { label: "First Offers", value: firstOfferAnalytics.summary.firstOffers, icon: BarChart3, color: "bg-blue-500/20" },
+                                        { label: "Auctions", value: firstOfferAnalytics.summary.uniqueAuctions, icon: Car, color: "bg-cyan-500/20" },
+                                        { label: "Got Competition", value: `${firstOfferAnalytics.summary.competitionRate.toFixed(1)}%`, icon: TrendingUp, color: "bg-violet-500/20" },
+                                        { label: "Seller Accepted", value: firstOfferAnalytics.summary.sellerAcceptedSales, icon: CheckCircle2, color: "bg-emerald-500/20" },
+                                        { label: "Reached Reserve", value: firstOfferAnalytics.summary.reserveMetSales, icon: ShieldCheck, color: "bg-teal-500/20" },
+                                        { label: "Sale Rate", value: `${firstOfferAnalytics.summary.saleRate.toFixed(1)}%`, icon: DollarSign, color: "bg-yellow-500/20" },
+                                        { label: "First Offer Cancelled", value: firstOfferAnalytics.summary.firstOfferCancellations, icon: AlertTriangle, color: "bg-orange-500/20" },
+                                        { label: "Zero-Bid Unsold", value: firstOfferAnalytics.summary.zeroBidUnsold, icon: UserX, color: "bg-rose-500/20" },
+                                    ] as StatCardProps[]).map(card => <StatCard key={card.label} {...card} />)}
+                                </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+                                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Average First Offer</p>
+                                        <p className="mt-1 text-xl font-black">{firstOfferAnalytics.summary.averageFirstOffer == null ? "—" : formatPrice(firstOfferAnalytics.summary.averageFirstOffer)}</p>
+                                    </div>
+                                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Average Reserve</p>
+                                        <p className="mt-1 text-xl font-black">{firstOfferAnalytics.summary.averageReserveAtFirstOffer == null ? "—" : formatPrice(firstOfferAnalytics.summary.averageReserveAtFirstOffer)}</p>
+                                    </div>
+                                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Avg Below Reserve</p>
+                                        <p className="mt-1 text-xl font-black">{firstOfferAnalytics.summary.averagePercentBelowReserve == null ? "—" : `${firstOfferAnalytics.summary.averagePercentBelowReserve.toFixed(1)}%`}</p>
+                                    </div>
+                                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Zero-Bid Reserve Changes</p>
+                                        <p className="mt-1 text-xl font-black">{firstOfferAnalytics.summary.zeroBidReserveCorrections.toLocaleString()}</p>
+                                    </div>
+                                </div>
+
+                                <div className="glass-card border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl overflow-hidden">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 border-b border-[var(--border-default)]">
+                                        <div>
+                                            <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Recent Discounted First Offers</p>
+                                            <p className="text-[10px] text-[var(--text-secondary)] mt-1">
+                                                Up to 100 first-offer attempts in the selected window. A cancelled first offer can be followed by another first offer on the same auction.
+                                            </p>
+                                        </div>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                                            {firstOfferAnalytics.summary.pendingAuctions} pending · {firstOfferAnalytics.summary.unsoldAuctions} unsold
+                                        </p>
+                                    </div>
+
+                                    {firstOfferAnalytics.recent.length === 0 ? (
+                                        <p className="p-8 text-center text-sm text-[var(--text-muted)]">No tracked first offers in this period yet.</p>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full min-w-[1180px] text-xs">
+                                                <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] uppercase tracking-wider">
+                                                    <tr>
+                                                        <th className="px-4 py-3 text-left">Time</th>
+                                                        <th className="px-4 py-3 text-left">Vehicle</th>
+                                                        <th className="px-4 py-3 text-right">First Offer</th>
+                                                        <th className="px-4 py-3 text-right">Reserve</th>
+                                                        <th className="px-4 py-3 text-right">Starting Bid</th>
+                                                        <th className="px-4 py-3 text-right">Floor</th>
+                                                        <th className="px-4 py-3 text-right">Below Reserve</th>
+                                                        <th className="px-4 py-3 text-right">Later Bids</th>
+                                                        <th className="px-4 py-3 text-left">Outcome</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-[var(--border-default)]">
+                                                    {firstOfferAnalytics.recent.map(item => {
+                                                        const outcomeLabel =
+                                                            item.outcome === "SELLER_ACCEPTED_BELOW_RESERVE" ? "Seller accepted"
+                                                            : item.outcome === "RESERVE_MET_SALE" ? "Reached reserve / sold"
+                                                            : item.outcome === "BELOW_RESERVE_UNSOLD" ? "Ended below reserve"
+                                                            : item.outcome === "SELLER_EARLY_CLOSE_UNSOLD" ? "Seller closed — unsold"
+                                                            : item.outcome === "NO_BIDS_UNSOLD" ? "Ended with no bids"
+                                                            : "Auction still running / no outcome yet"
+                                                        return (
+                                                            <tr key={item.id} className="hover:bg-[var(--bg-card-hover)]">
+                                                                <td className="px-4 py-3 whitespace-nowrap text-[var(--text-muted)]">
+                                                                    {new Date(item.createdAt).toLocaleString("en-GB")}
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    <div className="font-black text-[var(--text-primary)]">{item.vehicle || "Vehicle"}</div>
+                                                                    <div className="text-[10px] text-[var(--text-secondary)]">{item.registration || "No registration"}{item.firstOfferCancelled ? " · first offer cancelled" : ""}</div>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-right font-black">{item.amount == null ? "—" : formatPrice(item.amount)}</td>
+                                                                <td className="px-4 py-3 text-right">{item.reservePrice == null ? "—" : formatPrice(item.reservePrice)}</td>
+                                                                <td className="px-4 py-3 text-right">{item.startingBid == null ? "—" : formatPrice(item.startingBid)}</td>
+                                                                <td className="px-4 py-3 text-right">{item.firstOfferFloor == null ? "—" : formatPrice(item.firstOfferFloor)}</td>
+                                                                <td className="px-4 py-3 text-right font-bold">{item.percentBelowReserve == null ? "—" : `${item.percentBelowReserve.toFixed(1)}%`}</td>
+                                                                <td className="px-4 py-3 text-right font-black">{item.subsequentBidCount}</td>
+                                                                <td className="px-4 py-3">
+                                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase ${
+                                                                        item.outcome === "SELLER_ACCEPTED_BELOW_RESERVE" || item.outcome === "RESERVE_MET_SALE"
+                                                                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+                                                                            : item.outcome
+                                                                                ? "border-amber-500/30 bg-amber-500/10 text-amber-500"
+                                                                                : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)]"
+                                                                    }`}>
+                                                                        {outcomeLabel}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        )
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <p className="px-1 text-[11px] leading-5 text-[var(--text-muted)]">
+                                    {firstOfferAnalytics.trackingNote} “Sale rate” is based on tracked auctions that received at least one first offer; active auctions without an outcome remain pending rather than being counted as unsold.
                                 </p>
                             </>
                         ) : null}
