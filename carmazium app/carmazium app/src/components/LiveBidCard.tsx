@@ -16,6 +16,7 @@ import { ImageCarousel } from './ImageCarousel';
 import { GradeChip } from './GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from './AuctionCardBadges';
 import { WishlistHeart } from './WishlistHeart';
+import { getAuctionFirstOfferFloor } from '../lib/auctionPricing';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // This card renders full-width inside its parent's own horizontal padding —
@@ -90,6 +91,9 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
   onBid,
 }) => {
   const countdown = useCountdown(auction.endsAt);
+  const hasRealBids = auction.totalBids > 0;
+  const displayBid = hasRealBids ? auction.currentBid : auction.startingBid;
+  const firstOfferFloor = getAuctionFirstOfferFloor(auction.startingBid, auction.reserve);
 
   return (
     <TouchableOpacity
@@ -159,11 +163,16 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
         {/* Bid section */}
         <View style={styles.bidSection}>
           <View>
-            <Text style={styles.bidLabel}>CURRENT BID</Text>
-            <Text style={styles.bidAmount}>{formatPrice(auction.currentBid)}</Text>
+            <Text style={styles.bidLabel}>{hasRealBids ? 'CURRENT BID' : 'STARTING BID'}</Text>
+            <Text style={styles.bidAmount}>{formatPrice(displayBid)}</Text>
             <View style={styles.bidMeta}>
               <Ionicons name="people-outline" size={11} color={Colors.textMuted} />
               <Text style={styles.bidCount}>{auction.totalBids} bids</Text>
+              {!hasRealBids && firstOfferFloor > 0 && (
+                <Text style={[styles.bidCount, { color: Colors.warning }]}>
+                  First offer {formatPrice(firstOfferFloor)}
+                </Text>
+              )}
               {/* Reserve status is never shown to buyers (Ground Rules: reserve
                   is enforced server-side, display-only shows "Buy it now"). */}
               {!!auction.buyItNowPrice && (
