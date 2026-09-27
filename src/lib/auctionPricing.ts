@@ -2,6 +2,7 @@ export const AUCTION_OPENING_BID_RATIO = 0.70
 export const AUCTION_RESERVE_GUIDE_LOW_RATIO = 0.90
 export const AUCTION_RESERVE_GUIDE_HIGH_RATIO = 1.00
 export const AUCTION_FIRST_OFFER_RATIO = 0.70
+// Block 10 release gate: this shared first-offer contract is parity-checked against backend and native CI.
 
 export function getAuctionOpeningBid(marketValue: number): number {
     if (!Number.isFinite(marketValue) || marketValue <= 0) return 0
