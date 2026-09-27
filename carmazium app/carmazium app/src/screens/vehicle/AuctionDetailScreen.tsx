@@ -447,8 +447,14 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         auth: (cb) => getAccessToken().then((t) => cb(t ? { token: t } : {})),
         transports: ['websocket'],
         reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 2000,
+        // A backend deploy/restart can outlast five short attempts. Keep
+        // reconnecting while this screen is mounted; silent REST polling below
+        // maintains canonical auction state until the socket returns.
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 10000,
+        randomizationFactor: 0.5,
+        timeout: 10000,
       });
       socketRef.current = socket;
 
@@ -461,6 +467,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         loadAuctionRef.current({ silent: true });
       });
       socket.on('disconnect', () => setConnected(false));
+      socket.on('connect_error', () => setConnected(false));
 
       socket.on('auction:viewers', (d: { count: number }) => setWatchers(d.count));
 
@@ -589,6 +596,18 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // mid-auction — dropping live bid updates for the duration of the
   // handshake, on the one screen where that matters most.
   }, [auctionId, businessUserId]);
+
+  // Socket delivery is the fast path. During a Fly deploy, mobile network
+  // handover, or temporary websocket failure, poll the canonical auction until
+  // Socket.IO reconnects so bids/end-state/BIN state cannot freeze on screen.
+  useEffect(() => {
+    if (!auctionId || connected || auction?.status === 'ENDED' || auction?.status === 'CANCELLED') return;
+
+    const refresh = () => loadAuctionRef.current({ silent: true });
+    refresh();
+    const id = setInterval(refresh, 5000);
+    return () => clearInterval(id);
+  }, [auctionId, auction?.status, connected]);
 
   // BIN response countdown uses the exact server-provided deadline.
   useEffect(() => {
