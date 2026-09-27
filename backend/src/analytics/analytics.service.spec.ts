@@ -304,6 +304,9 @@ describe('AnalyticsService auction first-offer analytics', () => {
         }));
         expect(result.trackingNote).toMatch(/historical auctions are not reconstructed/i);
         expect(prisma.$queryRawUnsafe).toHaveBeenCalledTimes(2);
+        const summarySql = prisma.$queryRawUnsafe.mock.calls[0][0] as string;
+        expect(summarySql).toMatch(/COUNT\(DISTINCT auction_run_key\)/);
+        expect(summarySql).toMatch(/b\."userId" IS DISTINCT FROM f\.first_bidder_id/);
         expect(prisma.$queryRawUnsafe.mock.calls[0][0]).toContain("auction_run_key");
         expect(prisma.$queryRawUnsafe.mock.calls[1][0]).toContain("auction_run_key");
     });
