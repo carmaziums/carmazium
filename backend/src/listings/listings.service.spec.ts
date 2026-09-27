@@ -65,6 +65,7 @@ describe('ListingsService', () => {
             user: { findUnique: jest.fn() },
             analyticsEvent: {
                 findUnique: jest.fn().mockResolvedValue(null),
+                findFirst: jest.fn().mockResolvedValue(null),
                 create: jest.fn().mockResolvedValue({}),
             },
             transaction: { findMany: jest.fn(), update: jest.fn() },
@@ -1124,6 +1125,7 @@ describe('ListingsService', () => {
                 data: expect.objectContaining({
                     id: valuationId,
                     type: 'valuation_base_snapshot',
+                    sessionId: expect.stringMatching(/^valuation-base:[a-f0-9]{64}$/),
                     payload: expect.objectContaining({
                         valuation_id: valuationId,
                         identity: {
@@ -1264,6 +1266,75 @@ describe('ListingsService', () => {
             } as any)).rejects.toThrow(/registration or mileage changed/i);
         });
 
+        it('reuses the same vehicle base across a new journey for 24 hours', async () => {
+            const previousJourneyBase = {
+                low: 2650,
+                mid: 3100,
+                high: 3300,
+                confidence: 'LOW',
+                confidenceScore: 0.42,
+                comparables: 6,
+                evidence: {
+                    completedSales: 0,
+                    acceptedOffers: 0,
+                    auctionResults: 0,
+                    activeAsks: 6,
+                },
+                source: 'BLENDED_MARKET',
+                explanation: 'Frozen same-vehicle base',
+                retail: {
+                    suggestedAsking: 3300,
+                    suggestedMinimum: 3100,
+                },
+                auction: {
+                    marketValue: 2650,
+                    openingBid: 1855,
+                    reserveLow: 2385,
+                    reserveHigh: 2650,
+                    suggestedReserve: 2500,
+                },
+            };
+
+            prisma.analyticsEvent.findUnique.mockResolvedValueOnce(null);
+            prisma.analyticsEvent.findFirst.mockResolvedValueOnce({
+                id: '22222222-2222-4222-8222-222222222222',
+                type: 'valuation_base_snapshot',
+                payload: {
+                    identity: {
+                        registration: 'BF10XYP',
+                        make: 'VOLKSWAGEN',
+                        model: 'GOLF',
+                        year: 2010,
+                        mileage: 138734,
+                    },
+                    baseValuation: previousJourneyBase,
+                },
+            });
+
+            const liveSearch = jest.spyOn(service as any, 'getLiveUkMarketComparables');
+
+            const result = await service.estimateVehicleValue({
+                make: 'Volkswagen',
+                model: 'Golf',
+                year: 2010,
+                mileage: 138734,
+                registration: 'BF10 XYP',
+                valuationId: '33333333-3333-4333-8333-333333333333',
+            } as any);
+
+            expect(result.auction.marketValue).toBe(2650);
+            expect(liveSearch).not.toHaveBeenCalled();
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+            expect(prisma.analyticsEvent.findFirst).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: expect.objectContaining({
+                        type: 'valuation_base_snapshot',
+                        sessionId: expect.stringMatching(/^valuation-base:[a-f0-9]{64}$/),
+                    }),
+                }),
+            );
+        });
+
         it('returns the winning frozen base when two requests race to create the same journey', async () => {
             const winnerBase = {
                 low: 2650,
@@ -1296,6 +1367,7 @@ describe('ListingsService', () => {
             prisma.listing.findMany.mockResolvedValue([]);
             jest.spyOn(service as any, 'getLiveUkMarketComparables').mockResolvedValue(null);
             prisma.analyticsEvent.create.mockRejectedValueOnce({ code: 'P2002' });
+            prisma.analyticsEvent.findFirst.mockResolvedValue(null);
             prisma.analyticsEvent.findUnique
                 .mockResolvedValueOnce(null)
                 .mockResolvedValueOnce({
