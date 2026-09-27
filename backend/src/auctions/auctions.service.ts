@@ -2281,6 +2281,7 @@ export class AuctionsService {
                         select: {
                             id: true,
                             sellerId: true,
+                            status: true,
                             linkedListingId: true,
                             make: true,
                             model: true,
