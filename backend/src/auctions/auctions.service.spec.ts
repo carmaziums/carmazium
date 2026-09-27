@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { AuctionsService } from './auctions.service';
 import { HandoverDocumentsService } from './handover-documents.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -367,21 +367,69 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
     // The actual auto-cancel logic lives in bids.service.ts; tested here via the
     // shared pattern to confirm the service method surfaces the correct fields.
 
-    it('triggerBuyItNow: allows re-trigger (replaces existing pending BIN with new buyer)', async () => {
+    it('triggerBuyItNow: blocks a different dealership from replacing an unexpired pending request under the auction lock', async () => {
+        const pendingAt = new Date(Date.now() - 5 * 60 * 1000);
         const auction = makeActiveAuction({
             buyItNowPendingBuyerId: 'buyer-old',
-            buyItNowPendingAt: new Date(),
+            buyItNowPendingAt: pendingAt,
+        });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.bid.findFirst.mockResolvedValue(null);
+
+        await expect(
+            service.triggerBuyItNow('auction-1', 'buyer-new'),
+        ).rejects.toBeInstanceOf(ConflictException);
+
+        expect(prisma.$queryRaw).toHaveBeenCalled();
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+        expect(notificationsService.create).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastBinPending).not.toHaveBeenCalled();
+    });
+
+    it('triggerBuyItNow: same dealership retry is idempotent and does not reset the pending clock or duplicate notifications', async () => {
+        const pendingAt = new Date(Date.now() - 5 * 60 * 1000);
+        const auction = makeActiveAuction({
+            buyItNowPendingBuyerId: 'buyer-old',
+            buyItNowPendingAt: pendingAt,
+        });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.bid.findFirst.mockResolvedValue(null);
+
+        await service.triggerBuyItNow('auction-1', 'buyer-old');
+
+        expect(prisma.$queryRaw).toHaveBeenCalled();
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+        expect(notificationsService.create).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastBinPending).not.toHaveBeenCalled();
+        expect(auction.buyItNowPendingAt).toBe(pendingAt);
+    });
+
+    it('triggerBuyItNow: allows a new dealership after the existing pending request has expired', async () => {
+        const auction = makeActiveAuction({
+            buyItNowPendingBuyerId: 'buyer-old',
+            buyItNowPendingAt: new Date(Date.now() - 25 * 60 * 60 * 1000),
         });
         prisma.auction.findUnique.mockResolvedValue(auction);
         prisma.bid.findFirst.mockResolvedValue(null); // Reserve not met
-        prisma.auction.update.mockResolvedValue({ ...auction, buyItNowPendingBuyerId: 'buyer-new' });
+        prisma.auction.update.mockResolvedValue({
+            ...auction,
+            buyItNowPendingBuyerId: 'buyer-new',
+        });
 
         await service.triggerBuyItNow('auction-1', 'buyer-new');
 
         expect(prisma.auction.update).toHaveBeenCalledWith(
             expect.objectContaining({
-                data: expect.objectContaining({ buyItNowPendingBuyerId: 'buyer-new' }),
+                data: expect.objectContaining({
+                    buyItNowPendingBuyerId: 'buyer-new',
+                    buyItNowPendingAt: expect.any(Date),
+                }),
             }),
+        );
+        expect(notificationsService.create).toHaveBeenCalledTimes(1);
+        expect(auctionGateway.broadcastBinPending).toHaveBeenCalledWith(
+            'auction-1',
+            'buyer-new',
         );
     });
 
