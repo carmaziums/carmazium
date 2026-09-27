@@ -12,7 +12,7 @@ import { AuctionGateway } from '../auctions/auction.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { Bid } from '@prisma/client';
-import { calculatePlatformOpeningBid } from '../auctions/auction-pricing';
+import { calculateMinimumAuctionBid } from '../auctions/auction-pricing';
 import {
     assertDealerPermission,
     resolveBusinessBuyerId,
@@ -84,33 +84,37 @@ export class BidsService {
         }
 
         const minIncrement = Number(auction.minIncrement);
-        // Enforce the 70% market-value floor server-side as well. This protects
-        // legacy auctions whose stored startingBid may pre-date the new rule.
-        const marketValue = Number(listing.price);
-        if (!Number.isFinite(marketValue) || marketValue <= 0) {
-            throw new BadRequestException('This auction does not have a valid Estimated Market Value');
-        }
-        const marketValueFloor = calculatePlatformOpeningBid(marketValue);
-        const startingBid = Math.max(Number(auction.startingBid), marketValueFloor);
+        const startingBid = Number(auction.startingBid);
+        const reservePrice = Number(auction.reservePrice);
 
         const highestBid = await this.prisma.bid.findFirst({
             where: { listingId: createBidDto.listingId, deletedAt: null, cancelledAt: null, archivedAt: null },
             orderBy: { amount: 'desc' },
         });
 
-        if (highestBid) {
-            const minAllowed = Number(highestBid.amount) + minIncrement;
-            if (createBidDto.amount < minAllowed) {
+        let minAllowed: number;
+        try {
+            minAllowed = calculateMinimumAuctionBid({
+                startingBid,
+                reservePrice,
+                minIncrement,
+                highestActiveBid: highestBid ? Number(highestBid.amount) : null,
+            });
+        } catch {
+            throw new BadRequestException('This auction does not have valid bidding prices');
+        }
+
+        if (createBidDto.amount < minAllowed) {
+            if (highestBid) {
                 throw new BadRequestException(
                     `Bid must be at least £${minAllowed.toLocaleString()} (current: £${Number(highestBid.amount).toLocaleString()} + £${minIncrement.toLocaleString()} increment)`,
                 );
             }
-        } else {
-            if (createBidDto.amount < startingBid) {
-                throw new BadRequestException(
-                    `Bid must be at least the starting bid of £${startingBid.toLocaleString()}`,
-                );
-            }
+
+            const referencePrice = Math.min(startingBid, reservePrice);
+            throw new BadRequestException(
+                `First offer must be at least £${minAllowed.toLocaleString()} (30% below the lower of the £${startingBid.toLocaleString()} starting bid and £${reservePrice.toLocaleString()} reserve; reference £${referencePrice.toLocaleString()})`,
+            );
         }
 
         const bid = await this.prisma.bid.create({
@@ -147,7 +151,6 @@ export class BidsService {
         // Notify the seller immediately so they can accept the current highest
         // offer or simply leave the auction running for more competition.
         const bidAmount = Number(bid.amount);
-        const reservePrice = Number(auction.reservePrice);
         if (listing.sellerId && bidAmount < reservePrice) {
             const vehicle = [listing.year, listing.make, listing.model].filter(Boolean).join(' ') || listing.title;
             this.notificationsService.create({
