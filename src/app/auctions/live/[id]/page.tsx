@@ -671,7 +671,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const topBidAmount = bidHistory[0]?.amount ?? (auction.listing.bids?.[0] ? Number(auction.listing.bids[0].amount) : null)
     const reserveMet = !!(topBidAmount !== null && topBidAmount >= Number(auction.reservePrice))
     // BIN card visibility: live + buyer + BIN price set + reserve not met + no pending BIN
-    const showBin = isLive && !isSeller && canPlaceBid && !!auction.buyItNowPrice && !reserveMet && !binPending
+    const showBin = isBiddingOpen && !isSeller && canPlaceBid && !!auction.buyItNowPrice && !reserveMet && !binPending
     const images = auction.listing.images?.length ? auction.listing.images : ["/assets/images/hero-bg.png"]
     const bidCount = bidHistory.length
 
