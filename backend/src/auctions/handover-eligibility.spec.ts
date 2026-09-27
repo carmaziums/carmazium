@@ -47,6 +47,8 @@ function makeHarness() {
     const prisma: any = {
         auction: {
             findUnique: jest.fn().mockResolvedValue(makeAuction()),
+            findMany: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
             update: jest.fn().mockResolvedValue(makeAuction()),
         },
         transaction: {
@@ -67,17 +69,32 @@ function makeHarness() {
         create: jest.fn().mockResolvedValue({ id: 'notification-1' }),
     };
 
+    const handoverDocuments = {
+        hydrateProof: jest.fn(async (auction: any) => auction),
+        hydrateMany: jest.fn(async (auctions: any[]) =>
+            auctions.map((auction) => ({
+                ...auction,
+                handoverProofUrl: auction.handoverProofPath
+                    ? 'https://signed.example/handover'
+                    : auction.handoverProofUrl,
+                handoverProofIsPrivate: !!auction.handoverProofPath,
+            })),
+        ),
+        signPath: jest.fn(),
+        deleteProof: jest.fn(),
+    };
+
     const service = new AuctionsService(
         prisma,
         notificationsService as any,
         {} as any,
         {} as any,
         {} as any,
-        {} as any,
+        handoverDocuments as any,
         {} as any,
     );
 
-    return { service, prisma, notificationsService };
+    return { service, prisma, notificationsService, handoverDocuments };
 }
 
 describe('AuctionsService handover and seller-bonus eligibility', () => {
@@ -198,6 +215,122 @@ describe('AuctionsService handover and seller-bonus eligibility', () => {
             requireProof: true,
             requireApproved: true,
         })).rejects.toThrow(/not been validly approved/i);
+    });
+
+    it('allows dealer ADMIN staff to submit handover as the canonical dealership seller', async () => {
+        const { service, prisma } = makeHarness();
+        const preSubmission = makeAuction({
+            handoverProofPath: null,
+            handoverProofUrl: null,
+            handoverSubmittedAt: null,
+        });
+        prisma.auction.findUnique.mockResolvedValue(preSubmission);
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'ADMIN',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'seller-1',
+                isVerified: true,
+            },
+        });
+
+        await expect(
+            service.assertHandoverSubmissionEligibility('auction-1', 'admin-staff-1'),
+        ).resolves.toEqual(expect.objectContaining({
+            id: 'auction-1',
+            listing: expect.objectContaining({ sellerId: 'seller-1' }),
+        }));
+    });
+
+    it('blocks dealer FINANCE_MANAGER staff from handover submission', async () => {
+        const { service, prisma } = makeHarness();
+        const preSubmission = makeAuction({
+            handoverProofPath: null,
+            handoverProofUrl: null,
+            handoverSubmittedAt: null,
+        });
+        prisma.auction.findUnique.mockResolvedValue(preSubmission);
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'FINANCE_MANAGER',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'seller-1',
+                isVerified: true,
+            },
+        });
+
+        await expect(
+            service.assertHandoverSubmissionEligibility('auction-1', 'finance-staff-1'),
+        ).rejects.toThrow(/does not allow auction changes/i);
+    });
+
+    it('hydrates private handover proof for dealership staff who can manage inventory', async () => {
+        const { service, prisma, handoverDocuments } = makeHarness();
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'SALES_AGENT',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'seller-1',
+                isVerified: true,
+            },
+        });
+        prisma.auction.findMany.mockResolvedValue([
+            makeAuction({
+                handoverProofPath: 'auction-1/private-proof.jpg',
+                handoverProofUrl: null,
+            }),
+        ]);
+        prisma.auction.count.mockResolvedValue(1);
+
+        const result = await service.findMyAuctions('sales-staff-1', 1, 20);
+
+        expect(prisma.auction.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: {
+                    deletedAt: null,
+                    listing: { sellerId: 'seller-1' },
+                },
+            }),
+        );
+        expect(handoverDocuments.hydrateMany).toHaveBeenCalledTimes(1);
+        expect(result.data[0]).toEqual(expect.objectContaining({
+            handoverProofUrl: 'https://signed.example/handover',
+            handoverProofIsPrivate: true,
+        }));
+    });
+
+    it('lets finance staff view dealership auction state without exposing private handover proof', async () => {
+        const { service, prisma, handoverDocuments } = makeHarness();
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'FINANCE_MANAGER',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'seller-1',
+                isVerified: true,
+            },
+        });
+        prisma.auction.findMany.mockResolvedValue([
+            makeAuction({
+                handoverProofPath: 'auction-1/private-proof.jpg',
+                handoverProofUrl: null,
+                handoverSubmittedAt: new Date('2026-09-27T12:00:00.000Z'),
+            }),
+        ]);
+        prisma.auction.count.mockResolvedValue(1);
+
+        const result = await service.findMyAuctions('finance-staff-1', 1, 20);
+
+        expect(handoverDocuments.hydrateMany).not.toHaveBeenCalled();
+        expect(result.data[0].handoverSubmittedAt).toEqual(
+            new Date('2026-09-27T12:00:00.000Z'),
+        );
+        expect(result.data[0].handoverProofUrl).toBeNull();
+        expect(result.data[0].handoverProofPath).toBeUndefined();
+        expect(result.data[0].handoverProofIsPrivate).toBe(true);
     });
 
     it('revalidates submission and writes proof only after the complete fee/winner/seller gate passes', async () => {
