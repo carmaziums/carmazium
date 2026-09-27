@@ -427,7 +427,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
 
         await expect(
             service.triggerBuyItNow('auction-1', 'finance-1'),
-        ).rejects.toThrow(/does not allow this auction purchase action/i);
+        ).rejects.toThrow(/does not allow auction purchase commitments/i);
 
         expect(prisma.auction.update).not.toHaveBeenCalled();
     });
