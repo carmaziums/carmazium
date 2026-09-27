@@ -25,6 +25,7 @@ import { apiClient } from "@/lib/apiClient"
 import { createChatRoom } from "@/lib/chatApi"
 import { AuctionResultsModal } from "@/components/auctions/AuctionResultsModal"
 import { getStripeConnectStatus, type StripeConnectStatus, type Listing } from "@/lib/listingApi"
+import { getAuctionFirstOfferFloor } from "@/lib/auctionPricing"
 
 const STATUS_STYLES: Record<string, string> = {
     SCHEDULED: "bg-blue-500/10 text-blue-400 border-blue-500/20",
@@ -639,6 +640,9 @@ function DealerAuctionsPage() {
                                 auctions.map(auction => {
                                     const bidCount = getBidCount(auction)
                                     const currentBid = getCurrentBid(auction)
+                                    const firstOfferFloor = bidCount === 0
+                                        ? getAuctionFirstOfferFloor(Number(auction.startingBid), Number(auction.reservePrice))
+                                        : 0
                                     return (
                                         <div key={auction.id} className="p-4">
                                             <div className="flex items-center gap-3">
@@ -687,11 +691,19 @@ function DealerAuctionsPage() {
                                                 </div>
 
                                                 <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 min-w-0">
-                                                    <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Current Bid</p>
-                                                    <p className="text-lg font-black mt-1">£{currentBid.toLocaleString()}</p>
-                                                    <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest">
-                                                        {bidCount === 0 ? "Starting bid" : "Current bid"}
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">
+                                                        {bidCount === 0 ? "Starting Bid" : "Current Bid"}
                                                     </p>
+                                                    <p className="text-lg font-black mt-1">£{currentBid.toLocaleString()}</p>
+                                                    {auction.status === "ACTIVE" && bidCount === 0 && firstOfferFloor > 0 ? (
+                                                        <p className="text-[10px] text-amber-400 font-black">
+                                                            First offer from £{firstOfferFloor.toLocaleString()}
+                                                        </p>
+                                                    ) : (
+                                                        <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest">
+                                                            {bidCount === 0 ? "Starting bid" : "Current bid"}
+                                                        </p>
+                                                    )}
                                                 </div>
 
                                                 <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 min-w-0">
