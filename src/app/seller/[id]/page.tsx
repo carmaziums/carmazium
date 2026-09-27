@@ -10,6 +10,7 @@ import { notFound } from "next/navigation"
 import Image from "next/image"
 import { Star, ShieldCheck, Car, MessageCircle, TrendingUp, Clock, ChevronRight, AlertCircle, BadgeCheck } from "lucide-react"
 import type { Metadata } from "next"
+import { serverBackendFetch } from "@/lib/serverBackendFetch"
 import { SellerContactPhone } from "@/components/seller/SellerContactPhone"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -74,11 +75,9 @@ interface Review {
 
 // ─── Data Fetching ────────────────────────────────────────────────────────────
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
-
 async function getSellerProfile(userId: string): Promise<SellerData | null> {
     try {
-        const res = await fetch(`${API_BASE}/sellers/${userId}`, { next: { revalidate: 60 } })
+        const res = await serverBackendFetch(`/sellers/${userId}`, { next: { revalidate: 60 } })
         if (res.status === 404) return null
         if (!res.ok) throw new Error("Failed to fetch seller profile")
         const json = await res.json()
@@ -91,7 +90,7 @@ async function getSellerProfile(userId: string): Promise<SellerData | null> {
 async function getSellerListings(userId: string): Promise<{ data: Listing[]; total: number }> {
     try {
         // Fetch up to 6 listings for the grid display
-        const res = await fetch(`${API_BASE}/sellers/${userId}/listings?limit=6`, { next: { revalidate: 60 } })
+        const res = await serverBackendFetch(`/sellers/${userId}/listings?limit=6`, { next: { revalidate: 60 } })
         if (!res.ok) return { data: [], total: 0 }
         const json = await res.json()
         // API may return pagination.total or just total at root level
@@ -109,7 +108,7 @@ async function getSellerListings(userId: string): Promise<{ data: Listing[]; tot
 async function getSellerActiveCount(userId: string): Promise<number> {
     try {
         // limit=1 is enough — we only care about pagination.total
-        const res = await fetch(`${API_BASE}/sellers/${userId}/listings?limit=1&status=ACTIVE`, { next: { revalidate: 60 } })
+        const res = await serverBackendFetch(`/sellers/${userId}/listings?limit=1&status=ACTIVE`, { next: { revalidate: 60 } })
         if (!res.ok) return 0
         const json = await res.json()
         return json.pagination?.total ?? json.total ?? 0
@@ -121,7 +120,7 @@ async function getSellerActiveCount(userId: string): Promise<number> {
 /** Fetch the count of SOLD listings for this seller */
 async function getSellerSoldCount(userId: string): Promise<number> {
     try {
-        const res = await fetch(`${API_BASE}/sellers/${userId}/listings?limit=1&status=SOLD`, { next: { revalidate: 60 } })
+        const res = await serverBackendFetch(`/sellers/${userId}/listings?limit=1&status=SOLD`, { next: { revalidate: 60 } })
         if (!res.ok) return 0
         const json = await res.json()
         return json.pagination?.total ?? json.total ?? 0
@@ -132,7 +131,7 @@ async function getSellerSoldCount(userId: string): Promise<number> {
 
 async function getSellerReviews(sellerProfileId: string): Promise<{ data: Review[]; total: number }> {
     try {
-        const res = await fetch(`${API_BASE}/sellers/${sellerProfileId}/reviews?limit=5`, { next: { revalidate: 60 } })
+        const res = await serverBackendFetch(`/sellers/${sellerProfileId}/reviews?limit=5`, { next: { revalidate: 60 } })
         if (!res.ok) return { data: [], total: 0 }
         const json = await res.json()
         return { data: json.data ?? [], total: json.pagination?.total ?? 0 }
