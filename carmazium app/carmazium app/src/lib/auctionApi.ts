@@ -116,6 +116,9 @@ export interface AuctionDetail {
   winningBidAmount?: number | null;
   buyItNowPrice?: number | null;
   buyItNowPendingBuyerId?: string | null;
+  buyItNowPendingAt?: string | null;
+  // Canonical backend deadline: earlier of request+24h or auction endTime.
+  buyItNowResponseDeadline?: string | null;
   buyerFeePaid?: boolean;
   handoverProofUrl?: string | null;
   handoverSubmittedAt?: string | null;
@@ -238,8 +241,19 @@ export async function placeBid(listingId: string, amount: number): Promise<any> 
 
 // ─── Buy It Now ───────────────────────────────────────────────────────────────
 
-export async function triggerBuyItNow(auctionId: string): Promise<void> {
-  await apiClient(`/auctions/${auctionId}/bin-trigger`, { method: 'POST' });
+export interface BuyItNowRequestResult {
+  triggered: boolean;
+  created: boolean;
+  pendingAt: string;
+  responseDeadline: string;
+}
+
+export async function triggerBuyItNow(auctionId: string): Promise<BuyItNowRequestResult> {
+  const res = await apiClient<{ success: boolean; data: BuyItNowRequestResult }>(
+    `/auctions/${auctionId}/bin-trigger`,
+    { method: 'POST' },
+  );
+  return res.data;
 }
 
 export async function confirmBuyItNow(auctionId: string): Promise<void> {
