@@ -802,6 +802,199 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
 
         expect(auctionGateway.broadcastPriceUpdated).not.toHaveBeenCalled();
     });
+
+
+    it('adminAssignWinner: acquires the per-listing lock before the authoritative auction read and uses the locked BIN price', async () => {
+        const canonicalAuction = makeActiveAuction({
+            reservePrice: 21000,
+            buyItNowPrice: 27000,
+        });
+        prisma.auction.findUnique
+            .mockResolvedValueOnce({ listingId: 'listing-1', deletedAt: null })
+            .mockResolvedValueOnce(canonicalAuction);
+        prisma.user.findUnique.mockResolvedValue({
+            id: 'dealer-1',
+            role: 'DEALER',
+            deletedAt: null,
+            dealerProfile: { isVerified: true, deletedAt: null },
+        });
+        prisma.bid.count.mockResolvedValue(2);
+
+        await service.adminAssignWinner('auction-1', 'dealer-1');
+
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.$queryRaw.mock.invocationCallOrder[0])
+            .toBeLessThan(prisma.auction.findUnique.mock.invocationCallOrder[1]);
+
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where: { id: 'auction-1' },
+            data: expect.objectContaining({
+                status: 'ENDED',
+                winnerId: 'dealer-1',
+                winningBidAmount: 27000,
+                buyItNowPendingBuyerId: null,
+                buyItNowPendingAt: null,
+                wonAt: expect.any(Date),
+            }),
+        });
+        expect(prisma.sale.create).toHaveBeenCalledWith({
+            data: {
+                listingId: 'listing-1',
+                sellerId: 'seller-1',
+                buyerId: 'dealer-1',
+                soldPrice: 27000,
+            },
+        });
+        expect(auctionGateway.broadcastAuctionEnd).toHaveBeenCalledWith(
+            'auction-1',
+            expect.objectContaining({
+                winnerId: 'dealer-1',
+                winningBidAmount: 27000,
+                reserveMet: true,
+            }),
+        );
+        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                type: 'auction_outcome',
+                payload: expect.objectContaining({
+                    outcome: 'ADMIN_ASSIGNED_SALE',
+                    winner_id: 'dealer-1',
+                    winning_amount: 27000,
+                    reserve_price: 21000,
+                    had_real_bids: true,
+                }),
+            }),
+        });
+    });
+
+    it('adminAssignWinner: uses the current locked reserve when Buy It Now is disabled', async () => {
+        const canonicalAuction = makeActiveAuction({
+            reservePrice: 13500,
+            buyItNowPrice: null,
+        });
+        prisma.auction.findUnique
+            .mockResolvedValueOnce({ listingId: 'listing-1', deletedAt: null })
+            .mockResolvedValueOnce(canonicalAuction);
+        prisma.user.findUnique.mockResolvedValue({
+            id: 'dealer-1',
+            role: 'DEALER',
+            deletedAt: null,
+            dealerProfile: { isVerified: true, deletedAt: null },
+        });
+
+        await service.adminAssignWinner('auction-1', 'dealer-1');
+
+        expect(prisma.sale.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                listingId: 'listing-1',
+                buyerId: 'dealer-1',
+                soldPrice: 13500,
+            }),
+        });
+    });
+
+    it('adminAssignWinner: loses cleanly when another locked path has already ended the auction', async () => {
+        prisma.auction.findUnique
+            .mockResolvedValueOnce({ listingId: 'listing-1', deletedAt: null })
+            .mockResolvedValueOnce(makeActiveAuction({
+                status: 'ENDED',
+                listing: {
+                    ...makeActiveAuction().listing,
+                    status: 'SOLD',
+                },
+            }));
+
+        await expect(
+            service.adminAssignWinner('auction-1', 'dealer-1'),
+        ).rejects.toMatchObject({
+            message: 'Only ACTIVE (live) auctions can have a winner assigned',
+        });
+
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+        expect(prisma.sale.create).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastAuctionEnd).not.toHaveBeenCalled();
+    });
+
+    it('adminAssignWinner: refuses assignment after the canonical end time while holding the auction lock', async () => {
+        prisma.auction.findUnique
+            .mockResolvedValueOnce({ listingId: 'listing-1', deletedAt: null })
+            .mockResolvedValueOnce(makeActiveAuction({
+                endTime: new Date(Date.now() - 1000),
+            }));
+
+        await expect(
+            service.adminAssignWinner('auction-1', 'dealer-1'),
+        ).rejects.toMatchObject({
+            message: expect.stringMatching(/auction has ended and is being finalised/i),
+        });
+
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+        expect(prisma.sale.create).not.toHaveBeenCalled();
+    });
+
+    it('adminAssignWinner: revalidates dealer eligibility after acquiring the auction lock', async () => {
+        prisma.auction.findUnique
+            .mockResolvedValueOnce({ listingId: 'listing-1', deletedAt: null })
+            .mockResolvedValueOnce(makeActiveAuction());
+        prisma.user.findUnique.mockResolvedValue({
+            id: 'dealer-1',
+            role: 'DEALER',
+            deletedAt: null,
+            dealerProfile: { isVerified: false, deletedAt: null },
+        });
+
+        await expect(
+            service.adminAssignWinner('auction-1', 'dealer-1'),
+        ).rejects.toMatchObject({
+            message: 'Only verified dealer accounts can be assigned as an auction winner',
+        });
+
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+        expect(prisma.sale.create).not.toHaveBeenCalled();
+    });
+
+    it('adminAssignWinner: serialised repeat requests cannot create a second Sale', async () => {
+        const activeAuction = makeActiveAuction({
+            reservePrice: 12000,
+            buyItNowPrice: null,
+        });
+        const endedAuction = makeActiveAuction({
+            status: 'ENDED',
+            reservePrice: 12000,
+            buyItNowPrice: null,
+            winnerId: 'dealer-1',
+            winningBidAmount: 12000,
+            listing: {
+                ...makeActiveAuction().listing,
+                status: 'SOLD',
+            },
+        });
+
+        prisma.auction.findUnique
+            .mockResolvedValueOnce({ listingId: 'listing-1', deletedAt: null })
+            .mockResolvedValueOnce(activeAuction)
+            .mockResolvedValueOnce({ listingId: 'listing-1', deletedAt: null })
+            .mockResolvedValueOnce(endedAuction);
+        prisma.user.findUnique.mockResolvedValue({
+            id: 'dealer-1',
+            role: 'DEALER',
+            deletedAt: null,
+            dealerProfile: { isVerified: true, deletedAt: null },
+        });
+
+        await service.adminAssignWinner('auction-1', 'dealer-1');
+
+        await expect(
+            service.adminAssignWinner('auction-1', 'dealer-1'),
+        ).rejects.toMatchObject({
+            message: 'Only ACTIVE (live) auctions can have a winner assigned',
+        });
+
+        expect(prisma.sale.create).toHaveBeenCalledTimes(1);
+        expect(prisma.sellerProfile.upsert).toHaveBeenCalledTimes(1);
+        expect(auctionGateway.broadcastAuctionEnd).toHaveBeenCalledTimes(1);
+    });
 });
 
 describe('AuctionsService — seller accepts current highest offer only', () => {
