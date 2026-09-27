@@ -845,7 +845,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, [auction, canManageSellerAuction]);
+  }, [auction, canManageSellerAuction, endTime]);
 
   // ─── Seller: close auction early (uses current highest bid) ──────────────────
 
