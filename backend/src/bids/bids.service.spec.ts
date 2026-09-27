@@ -46,7 +46,9 @@ describe('BidsService — incremental bidding', () => {
                 })),
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
-            $queryRaw: jest.fn(),
+            auction: { update: jest.fn() },
+            $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
+            $transaction: jest.fn(async (callback: any) => callback(prisma)),
         };
         notificationsService = { create: jest.fn().mockResolvedValue(null) };
 
@@ -188,6 +190,83 @@ describe('BidsService — incremental bidding', () => {
         await expect(
             service.create('bidder-B', { listingId: 'listing-1', amount: 4599 } as any),
         ).rejects.toMatchObject({ message: expect.stringMatching(/at least £4,600/i) });
+    });
+
+    it('places validation and bid creation inside a transaction-scoped auction lock', async () => {
+        prisma.listing.findUnique.mockResolvedValue(auctionListing);
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.bid.create.mockResolvedValue({
+            id: 'bid-locked',
+            amount: 3500,
+            timestamp: new Date(),
+            listingId: 'listing-1',
+            bidderId: 'bidder-A',
+        });
+
+        await service.create('bidder-A', { listingId: 'listing-1', amount: 3500 } as any);
+
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.bid.findFirst).toHaveBeenCalledTimes(1);
+        expect(prisma.bid.create).toHaveBeenCalledTimes(1);
+        expect(prisma.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+            prisma.bid.findFirst.mock.invocationCallOrder[0],
+        );
+        expect(prisma.bid.findFirst.mock.invocationCallOrder[0]).toBeLessThan(
+            prisma.bid.create.mock.invocationCallOrder[0],
+        );
+    });
+
+    it('forces a simultaneous second first-offer attempt onto the normal increment rule', async () => {
+        prisma.listing.findUnique.mockResolvedValue(auctionListing);
+        prisma.user.findUnique.mockImplementation(({ where }: any) => Promise.resolve({
+            role: 'DEALER',
+            firstName: where.id === 'bidder-A' ? 'Alice' : 'Bob',
+            lastName: 'Dealer',
+        }));
+
+        const storedBids: any[] = [];
+        prisma.bid.findFirst.mockImplementation(async () => {
+            return storedBids.length
+                ? [...storedBids].sort((a, b) => Number(b.amount) - Number(a.amount))[0]
+                : null;
+        });
+        prisma.bid.create.mockImplementation(async ({ data }: any) => {
+            const bid = {
+                id: `bid-${storedBids.length + 1}`,
+                ...data,
+                timestamp: new Date(),
+            };
+            storedBids.push(bid);
+            return bid;
+        });
+
+        // Unit-test mutex emulates the PostgreSQL per-listing advisory lock:
+        // only one interactive transaction can evaluate/create at a time.
+        let lockTail = Promise.resolve();
+        prisma.$transaction.mockImplementation(async (callback: any) => {
+            const previous = lockTail;
+            let release!: () => void;
+            lockTail = new Promise<void>((resolve) => { release = resolve; });
+            await previous;
+            try {
+                return await callback(prisma);
+            } finally {
+                release();
+            }
+        });
+
+        const results = await Promise.allSettled([
+            service.create('bidder-A', { listingId: 'listing-1', amount: 3500 } as any),
+            service.create('bidder-B', { listingId: 'listing-1', amount: 3500 } as any),
+        ]);
+
+        expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+        expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
+        expect(storedBids).toHaveLength(1);
+        expect((results.find((result) => result.status === 'rejected') as PromiseRejectedResult).reason.message)
+            .toMatch(/at least £3,600/i);
     });
 
     it('notifies the seller when the new highest bid is below reserve and can be accepted', async () => {
