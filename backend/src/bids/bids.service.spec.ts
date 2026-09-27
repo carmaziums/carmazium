@@ -476,10 +476,6 @@ describe('BidsService — cancelBid', () => {
                 BidsService,
                 { provide: PrismaService, useValue: prisma },
                 {
-                    provide: AuctionsService,
-                    useValue: { maybeExtend: jest.fn().mockResolvedValue(null) },
-                },
-                {
                     provide: AuctionGateway,
                     useValue: { broadcastBid: jest.fn(), broadcastBidCancelled: jest.fn() },
                 },
@@ -632,7 +628,6 @@ describe('BidsService — current auction positions', () => {
             providers: [
                 BidsService,
                 { provide: PrismaService, useValue: prisma },
-                { provide: AuctionsService, useValue: { maybeExtend: jest.fn().mockResolvedValue(null) } },
                 { provide: AuctionGateway, useValue: { broadcastBid: jest.fn(), broadcastBidCancelled: jest.fn() } },
                 { provide: NotificationsService, useValue: { create: jest.fn().mockResolvedValue(null) } },
             ],
