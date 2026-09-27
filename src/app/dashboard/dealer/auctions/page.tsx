@@ -14,6 +14,7 @@ import { PageHeader } from "@/components/dashboard/PageHeader"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { useAuth } from "@/context/AuthContext"
+import { useDealerAccess } from "@/context/DealerAccessContext"
 import { useSearchParams } from "next/navigation"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import {
@@ -108,6 +109,13 @@ export default function DealerAuctionsPageWrapper() {
 
 function DealerAuctionsPage() {
     const { user, profile, loading: authLoading } = useAuth()
+    const {
+        loading: dealerAccessLoading,
+        hasPermission,
+    } = useDealerAccess()
+    const isDealerStaff = !!profile?.dealerStaffMemberships?.length
+    const canManageInventory = !isDealerStaff
+        || (!dealerAccessLoading && hasPermission("MANAGE_INVENTORY"))
     const searchParams = useSearchParams()
     const preselectedListingId = searchParams.get("listingId") ?? ""
     const [auctions, setAuctions] = React.useState<Auction[]>([])
@@ -156,7 +164,7 @@ function DealerAuctionsPage() {
     // Seed handoverDone from API data whenever auctions load
     React.useEffect(() => {
         const submittedIds = auctions
-            .filter(a => a.handoverProofUrl && !a.sellerBonusReleased)
+            .filter(a => (a.handoverSubmittedAt || a.handoverProofUrl) && !a.sellerBonusReleased)
             .map(a => a.id)
         if (submittedIds.length > 0) {
             setHandoverDone(prev => new Set([...prev, ...submittedIds]))
@@ -164,6 +172,13 @@ function DealerAuctionsPage() {
     }, [auctions])
 
     async function handleHandoverUpload(auctionId: string, file: File) {
+        if (!canManageInventory) {
+            setHandoverError(prev => ({
+                ...prev,
+                [auctionId]: "Your dealership role can view this auction but does not allow handover submission.",
+            }))
+            return
+        }
         setHandoverUploading(auctionId)
         setHandoverError(prev => ({ ...prev, [auctionId]: "" }))
         try {
@@ -1019,12 +1034,27 @@ function DealerAuctionsPage() {
                                             <p className="text-[var(--text-secondary)] text-xs">after handover verified</p>
                                         </div>
 
-                                        {isDone ? (
+                                        {isDone || !!auction.handoverSubmittedAt ? (
                                             <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
                                                 <CheckCircle size={16} className="shrink-0" />
                                                 <div>
                                                     <p className="text-sm font-bold">Handover proof submitted</p>
                                                     <p className="text-xs text-emerald-400/70">Your £100 bonus is pending verification — we&apos;ll notify you once released.</p>
+                                                </div>
+                                            </div>
+                                        ) : isDealerStaff && dealerAccessLoading ? (
+                                            <div className="flex items-center gap-3 p-4 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] text-[var(--text-muted)]">
+                                                <Loader2 size={15} className="shrink-0 animate-spin" />
+                                                <p className="text-xs font-semibold">Checking dealership handover permission…</p>
+                                            </div>
+                                        ) : !canManageInventory ? (
+                                            <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300">
+                                                <Info size={15} className="shrink-0 mt-0.5" />
+                                                <div>
+                                                    <p className="text-sm font-bold">Handover submission is restricted</p>
+                                                    <p className="text-xs text-amber-300/70 mt-0.5">
+                                                        Your dealership role can view auction inventory, but only staff with inventory-management permission can upload handover proof.
+                                                    </p>
                                                 </div>
                                             </div>
                                         ) : (
