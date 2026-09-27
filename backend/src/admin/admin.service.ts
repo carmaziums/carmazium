@@ -13,7 +13,11 @@ import { AuctionsService } from '../auctions/auctions.service';
 import { HandoverDocumentsService } from '../auctions/handover-documents.service';
 import { buildListingActivationData } from '../listings/listing-activation';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
-import { AUCTION_DURATION_MS } from '../auctions/auction-pricing';
+import {
+    AUCTION_DURATION_MS,
+    BUY_IT_NOW_BELOW_RESERVE_MESSAGE,
+    buyItNowViolatesReserve,
+} from '../auctions/auction-pricing';
 
 @Injectable()
 export class AdminService {
@@ -542,6 +546,26 @@ export class AdminService {
                 throw new BadRequestException(
                     'For a live auction, only the reserve price can be corrected. Opening bid, increment, Buy It Now and timing are locked.',
                 );
+            }
+        }
+
+        // Fail obvious SCHEDULED reserve/BIN conflicts before writing any
+        // ordinary Listing fields from the same admin request. The locked
+        // auction-domain method below repeats this check against canonical
+        // state after acquiring the advisory lock, which remains authoritative
+        // for concurrent edits.
+        if (hasAuctionFields && listing.auction?.status === 'SCHEDULED') {
+            const proposedReserve = dto.reservePrice !== undefined
+                ? dto.reservePrice
+                : Number(listing.auction.reservePrice);
+            const proposedBin = dto.buyItNowPrice !== undefined
+                ? dto.buyItNowPrice
+                : listing.auction.buyItNowPrice == null
+                    ? null
+                    : Number(listing.auction.buyItNowPrice);
+
+            if (buyItNowViolatesReserve(proposedReserve, proposedBin)) {
+                throw new BadRequestException(BUY_IT_NOW_BELOW_RESERVE_MESSAGE);
             }
         }
 
