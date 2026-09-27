@@ -169,6 +169,7 @@ export default function AdminDashboard() {
     const kpiCards = [
         {
             label: "Users",
+            href: "/dashboard/admin/users",
             value: stats?.totalUsers?.toLocaleString() ?? "0",
             icon: Users,
             cardClass: "from-cyan-500/16 via-sky-500/8 to-transparent border-cyan-300/30 dark:border-cyan-500/20",
@@ -177,6 +178,7 @@ export default function AdminDashboard() {
         },
         {
             label: "Listings",
+            href: "/dashboard/admin/listings",
             value: stats?.totalListings?.toLocaleString() ?? "0",
             icon: Car,
             cardClass: "from-blue-500/16 via-indigo-500/8 to-transparent border-blue-300/30 dark:border-blue-500/20",
@@ -185,6 +187,7 @@ export default function AdminDashboard() {
         },
         {
             label: "Sold",
+            href: "/dashboard/admin/listings",
             value: stats?.soldListings?.toLocaleString() ?? "0",
             icon: CheckCircle2,
             cardClass: "from-emerald-500/16 via-teal-500/8 to-transparent border-emerald-300/30 dark:border-emerald-500/20",
@@ -193,6 +196,7 @@ export default function AdminDashboard() {
         },
         {
             label: "Auctions",
+            href: "/dashboard/admin/auctions",
             value: stats?.totalAuctions?.toLocaleString() ?? "0",
             icon: Gavel,
             cardClass: "from-violet-500/16 via-purple-500/8 to-transparent border-violet-300/30 dark:border-violet-500/20",
@@ -201,6 +205,7 @@ export default function AdminDashboard() {
         },
         {
             label: "Bids",
+            href: "/dashboard/admin/auctions",
             value: stats?.totalBids?.toLocaleString() ?? "0",
             icon: Activity,
             cardClass: "from-fuchsia-500/16 via-pink-500/8 to-transparent border-fuchsia-300/30 dark:border-fuchsia-500/20",
@@ -209,6 +214,7 @@ export default function AdminDashboard() {
         },
         {
             label: "Revenue",
+            href: "/dashboard/admin/transactions",
             value: formatPrice(stats?.totalRevenue ?? 0),
             icon: DollarSign,
             cardClass: "from-amber-500/18 via-orange-500/8 to-transparent border-amber-300/35 dark:border-amber-500/20",
@@ -365,16 +371,18 @@ export default function AdminDashboard() {
                             {kpiCards.map((card) => {
                                 const Icon = card.icon
                                 return (
-                                    <div
+                                    <Link
                                         key={card.label}
-                                        className={`group relative overflow-hidden rounded-[22px] border bg-gradient-to-br ${card.cardClass} bg-[var(--bg-card)] p-4 sm:p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)] hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(15,23,42,0.14)] transition-all duration-300`}
+                                        href={card.href}
+                                        aria-label={`Open ${card.label} admin page`}
+                                        className={`group relative overflow-hidden rounded-[22px] border bg-gradient-to-br ${card.cardClass} bg-[var(--bg-card)] p-4 sm:p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)] hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(15,23,42,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-page)] transition-all duration-300 cursor-pointer`}
                                     >
                                         <div className={`pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full ${card.glowClass} blur-2xl group-hover:scale-125 transition-transform duration-500`} />
                                         <div className="relative flex items-start justify-between gap-2 mb-4">
                                             <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${card.iconClass} text-white flex items-center justify-center border border-white/30`}>
                                                 <Icon size={18} />
                                             </div>
-                                            <Zap size={14} className="text-[var(--text-muted)] opacity-50" />
+                                            <ChevronRight size={16} className="text-[var(--text-muted)] opacity-60 group-hover:translate-x-0.5 group-hover:text-[var(--text-primary)] transition-all" />
                                         </div>
                                         <div className="relative">
                                             <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.16em] font-black text-[var(--text-muted)] mb-1">{card.label}</p>
@@ -382,7 +390,7 @@ export default function AdminDashboard() {
                                                 {loading ? "..." : card.value}
                                             </p>
                                         </div>
-                                    </div>
+                                    </Link>
                                 )
                             })}
                         </div>
