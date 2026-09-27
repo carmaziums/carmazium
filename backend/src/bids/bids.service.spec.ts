@@ -13,6 +13,7 @@ describe('BidsService — incremental bidding', () => {
     const auctionListing = {
         id: 'listing-1',
         type: 'AUCTION',
+        status: 'ACTIVE',
         deletedAt: null,
         price: 10000,
         sellerId: 'seller-1',
