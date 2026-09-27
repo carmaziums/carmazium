@@ -823,103 +823,150 @@ export class AuctionsService {
 
     async sellerClose(auctionId: string, userId: string): Promise<void> {
         const sellerId = await this.resolveSellerBusinessId(userId, 'MANAGE_INVENTORY');
-        const auction = await this.findOne(auctionId);
-        if (auction.listing.sellerId !== sellerId) {
-            throw new ForbiddenException('You do not own this auction');
-        }
-        if (auction.status !== 'ACTIVE') {
-            throw new BadRequestException('Only ACTIVE auctions can be closed early');
-        }
 
-        const highestBid = await this.prisma.bid.findFirst({
-            where: {
-                listingId: auction.listingId,
-                deletedAt: null,
-                cancelledAt: null,
-                archivedAt: null,
-            },
-            orderBy: { amount: 'desc' },
+        // Ownership, ACTIVE state and reserve status are revalidated under the
+        // same per-listing lock used by bidding. A seller therefore cannot close
+        // "without sale" while a simultaneous dealer bid has just met reserve.
+        await this.closeAuction(auctionId, {
+            sellerEarlyClose: true,
+            sellerId,
         });
-        if (highestBid && Number(highestBid.amount) >= Number(auction.reservePrice)) {
-            throw new BadRequestException(
-                'The reserve has been met. The auction must continue normally until it ends.',
-            );
-        }
-
-        await this.closeAuction(auctionId);
     }
 
     async acceptBid(auctionId: string, bidId: string, sellerId: string): Promise<void> {
         const businessSellerId = await this.resolveSellerBusinessId(sellerId, 'MANAGE_INVENTORY');
-        const auction = await this.findOne(auctionId);
-        if (auction.listing.sellerId !== businessSellerId) {
-            throw new ForbiddenException('You do not own this auction');
-        }
-        if (auction.status !== 'ACTIVE') {
-            throw new BadRequestException('Only ACTIVE auctions can have a bid accepted');
+
+        const lookup = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            select: { listingId: true, deletedAt: true },
+        });
+        if (!lookup || lookup.deletedAt) {
+            throw new NotFoundException('Auction not found');
         }
 
-        const [bid, highestBid] = await Promise.all([
-            this.prisma.bid.findUnique({ where: { id: bidId } }),
-            this.prisma.bid.findFirst({
-                where: {
-                    listingId: auction.listingId,
-                    deletedAt: null,
-                    cancelledAt: null,
-                    archivedAt: null,
-                },
-                orderBy: { amount: 'desc' },
-            }),
-        ]);
-        if (!bid || bid.listingId !== auction.listingId || bid.deletedAt || bid.cancelledAt || bid.archivedAt) {
-            throw new NotFoundException('Bid not found in this auction');
-        }
-        if (!highestBid || highestBid.id !== bid.id) {
-            throw new BadRequestException(
-                'Only the current highest bid can be accepted. Refresh the auction and accept the latest offer.',
-            );
-        }
+        const accepted = await this.prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
 
-        const winningAmount = Number(bid.amount);
-        const reservePrice = Number(auction.reservePrice);
-        if (winningAmount >= reservePrice) {
-            throw new BadRequestException(
-                'The reserve has been met. The auction must continue normally until it ends.',
-            );
-        }
-
-        const winnerId = bid.bidderId;
-        const linkedListingId = (auction.listing as any).linkedListingId as string | null;
-
-        await this.prisma.$transaction([
-            this.prisma.auction.update({
+            const auction = await tx.auction.findUnique({
                 where: { id: auctionId },
-                data: { status: 'ENDED', winnerId, winningBidAmount: bid.amount, wonAt: new Date() },
-            }),
-            this.prisma.listing.update({
+                include: {
+                    listing: {
+                        select: {
+                            id: true,
+                            title: true,
+                            sellerId: true,
+                            linkedListingId: true,
+                            year: true,
+                            make: true,
+                            model: true,
+                        },
+                    },
+                },
+            });
+
+            if (!auction || auction.deletedAt) {
+                throw new NotFoundException('Auction not found');
+            }
+            if (auction.listing.sellerId !== businessSellerId) {
+                throw new ForbiddenException('You do not own this auction');
+            }
+            if (auction.status !== 'ACTIVE') {
+                throw new BadRequestException('Only ACTIVE auctions can have a bid accepted');
+            }
+
+            const [bid, highestBid] = await Promise.all([
+                tx.bid.findUnique({ where: { id: bidId } }),
+                tx.bid.findFirst({
+                    where: {
+                        listingId: auction.listingId,
+                        deletedAt: null,
+                        cancelledAt: null,
+                        archivedAt: null,
+                    },
+                    orderBy: { amount: 'desc' },
+                }),
+            ]);
+
+            if (!bid || bid.listingId !== auction.listingId || bid.deletedAt || bid.cancelledAt || bid.archivedAt) {
+                throw new NotFoundException('Bid not found in this auction');
+            }
+            if (!highestBid || highestBid.id !== bid.id) {
+                throw new BadRequestException(
+                    'Only the current highest bid can be accepted. Refresh the auction and accept the latest offer.',
+                );
+            }
+
+            const winningAmount = Number(bid.amount);
+            const reservePrice = Number(auction.reservePrice);
+            if (winningAmount >= reservePrice) {
+                throw new BadRequestException(
+                    'The reserve has been met. The auction must continue normally until it ends.',
+                );
+            }
+
+            const winnerId = bid.bidderId;
+            const linkedListingId = auction.listing.linkedListingId;
+            const wonAt = new Date();
+
+            await tx.auction.update({
+                where: { id: auctionId },
+                data: {
+                    status: 'ENDED',
+                    winnerId,
+                    winningBidAmount: bid.amount,
+                    wonAt,
+                    buyItNowPendingBuyerId: null,
+                    buyItNowPendingAt: null,
+                },
+            });
+            await tx.listing.update({
                 where: { id: auction.listingId },
                 data: { status: 'SOLD' },
-            }),
-            // Auto-close the linked retail listing if this auction listing had one
-            ...(linkedListingId ? [
-                this.prisma.listing.update({
+            });
+            if (linkedListingId) {
+                await tx.listing.update({
                     where: { id: linkedListingId },
                     data: { status: 'SOLD' },
-                }),
-            ] : []),
-            this.prisma.sale.create({
-                data: { listingId: auction.listingId, sellerId: businessSellerId, buyerId: winnerId, soldPrice: bid.amount },
-            }),
-            this.prisma.sellerProfile.upsert({
+                });
+            }
+            await tx.sale.create({
+                data: {
+                    listingId: auction.listingId,
+                    sellerId: businessSellerId,
+                    buyerId: winnerId,
+                    soldPrice: bid.amount,
+                },
+            });
+            await tx.sellerProfile.upsert({
                 where: { userId: businessSellerId },
                 create: { userId: businessSellerId, totalSales: 1 },
                 update: { totalSales: { increment: 1 } },
-            }),
-        ]);
+            });
 
-        const endPayload: AuctionEndPayload = { auctionId, winnerId, winningBidAmount: winningAmount, reserveMet: true };
+            return {
+                auction,
+                winnerId,
+                winningAmount,
+            };
+        });
+
+        // The existing reserveMet=true payload is also the successful-sale
+        // signal consumed by the web/native end banners. Here the seller has
+        // explicitly accepted a below-reserve offer, so there is a valid winner
+        // even though the numerical reserve itself was not reached.
+        const endPayload: AuctionEndPayload = {
+            auctionId,
+            winnerId: accepted.winnerId,
+            winningBidAmount: accepted.winningAmount,
+            reserveMet: true,
+        };
         this.auctionGateway.broadcastAuctionEnd(auctionId, endPayload);
-        await this.notifyAuctionEnd(auction, winnerId, winningAmount, true);
+        await this.notifyAuctionEnd(
+            accepted.auction,
+            accepted.winnerId,
+            accepted.winningAmount,
+            true,
+        );
     }
 
     /**
