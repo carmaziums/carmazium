@@ -1216,12 +1216,20 @@ export class AuctionsService {
             throw new BadRequestException('Only ACTIVE (live) auctions can have a winner assigned');
         }
 
-        const dealer = await this.prisma.user.findUnique({ where: { id: dealerId } });
+        const dealer = await this.prisma.user.findUnique({
+            where: { id: dealerId },
+            include: { dealerProfile: { select: { isVerified: true, deletedAt: true } } },
+        });
         if (!dealer || dealer.deletedAt) {
             throw new NotFoundException('Dealer not found');
         }
-        if (dealer.role !== 'DEALER') {
-            throw new BadRequestException('Only dealer accounts can be assigned as an auction winner');
+        if (
+            dealer.role !== 'DEALER'
+            || !dealer.dealerProfile
+            || dealer.dealerProfile.deletedAt
+            || !dealer.dealerProfile.isVerified
+        ) {
+            throw new BadRequestException('Only verified dealer accounts can be assigned as an auction winner');
         }
 
         const sellerId = auction.listing.sellerId;
@@ -2012,44 +2020,91 @@ export class AuctionsService {
         sellerId: string,
         linkedListingId: string | null = null,
     ): Promise<void> {
-        await this.prisma.$transaction([
-            this.prisma.auction.update({
+        if (!Number.isFinite(amount) || amount <= 0) {
+            throw new BadRequestException('Winning amount must be greater than £0');
+        }
+
+        const lookup = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            select: { listingId: true, deletedAt: true },
+        });
+        if (!lookup || lookup.deletedAt) {
+            throw new NotFoundException('Auction not found');
+        }
+
+        await this.prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
+
+            const auction = await tx.auction.findUnique({
+                where: { id: auctionId },
+                include: {
+                    listing: {
+                        select: {
+                            id: true,
+                            sellerId: true,
+                            linkedListingId: true,
+                        },
+                    },
+                },
+            });
+            if (!auction || auction.deletedAt) {
+                throw new NotFoundException('Auction not found');
+            }
+            if (auction.status !== 'ACTIVE') {
+                throw new BadRequestException('Only ACTIVE auctions can have a winner assigned');
+            }
+            if (auction.listing.sellerId !== sellerId) {
+                throw new BadRequestException('Auction seller changed while assigning the winner');
+            }
+            if (sellerId === winnerId) {
+                throw new BadRequestException('Cannot assign the listing seller as the winning buyer');
+            }
+
+            const canonicalLinkedListingId = auction.listing.linkedListingId ?? linkedListingId;
+            const wonAt = new Date();
+
+            await tx.auction.update({
                 where: { id: auctionId },
                 data: {
                     status: 'ENDED',
                     winnerId,
                     winningBidAmount: amount,
-                    wonAt: new Date(),
+                    wonAt,
                     buyItNowPendingBuyerId: null,
                     buyItNowPendingAt: null,
                 },
-            }),
-            this.prisma.listing.update({
-                where: { id: (await this.prisma.auction.findUnique({ where: { id: auctionId }, select: { listingId: true } }))!.listingId },
+            });
+            await tx.listing.update({
+                where: { id: auction.listingId },
                 data: { status: 'SOLD' },
-            }),
-            ...(linkedListingId ? [
-                this.prisma.listing.update({
-                    where: { id: linkedListingId },
+            });
+            if (canonicalLinkedListingId) {
+                await tx.listing.update({
+                    where: { id: canonicalLinkedListingId },
                     data: { status: 'SOLD' },
-                }),
-            ] : []),
-            this.prisma.sale.create({
+                });
+            }
+            await tx.sale.create({
                 data: {
-                    listingId: (await this.prisma.auction.findUnique({ where: { id: auctionId }, select: { listingId: true } }))!.listingId,
+                    listingId: auction.listingId,
                     sellerId,
                     buyerId: winnerId,
                     soldPrice: amount,
                 },
-            }),
-            this.prisma.sellerProfile.upsert({
+            });
+            await tx.sellerProfile.upsert({
                 where: { userId: sellerId },
                 create: { userId: sellerId, totalSales: 1 },
                 update: { totalSales: { increment: 1 } },
-            }),
-        ]);
+            });
+        });
 
-        const endPayload: AuctionEndPayload = { auctionId, winnerId, winningBidAmount: amount, reserveMet: true };
+        const endPayload: AuctionEndPayload = {
+            auctionId,
+            winnerId,
+            winningBidAmount: amount,
+            reserveMet: true,
+        };
         this.auctionGateway.broadcastAuctionEnd(auctionId, endPayload);
     }
 
