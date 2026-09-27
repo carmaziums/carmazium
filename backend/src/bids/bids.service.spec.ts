@@ -112,24 +112,82 @@ describe('BidsService — incremental bidding', () => {
         expect(result.id).toBe('bid-B');
     });
 
-    it('rejects the first bid if it is below the auction starting bid', async () => {
+    it('allows the first real dealer offer below the displayed starting bid', async () => {
         prisma.listing.findUnique.mockResolvedValue(auctionListing);
         prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
         prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.bid.create.mockResolvedValue({
+            id: 'bid-first-offer',
+            amount: 4500,
+            timestamp: new Date(),
+            listingId: 'listing-1',
+            bidderId: 'bidder-A',
+        });
 
-        await expect(
-            service.create('bidder-A', { listingId: 'listing-1', amount: 4500 } as any),
-        ).rejects.toMatchObject({ message: expect.stringMatching(/starting bid/i) });
+        const result = await service.create('bidder-A', {
+            listingId: 'listing-1',
+            amount: 4500,
+        } as any);
+
+        expect(result.id).toBe('bid-first-offer');
+        expect(prisma.bid.create).toHaveBeenCalledWith({
+            data: {
+                listingId: 'listing-1',
+                bidderId: 'bidder-A',
+                amount: 4500,
+            },
+        });
     });
 
-    it('enforces the 70% market-value floor even on a legacy auction with a lower stored starting bid', async () => {
+    it('rejects a first offer more than 30% below the lower of starting bid and reserve', async () => {
         prisma.listing.findUnique.mockResolvedValue(auctionListing);
         prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
         prisma.bid.findFirst.mockResolvedValue(null);
 
         await expect(
-            service.create('bidder-A', { listingId: 'listing-1', amount: 6900 } as any),
-        ).rejects.toMatchObject({ message: expect.stringMatching(/starting bid/i) });
+            service.create('bidder-A', { listingId: 'listing-1', amount: 3499 } as any),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/first offer must be at least £3,500/i) });
+    });
+
+    it('uses a lowered reserve instead of the higher starting bid when there are no real bids', async () => {
+        prisma.listing.findUnique.mockResolvedValue({
+            ...auctionListing,
+            auction: {
+                ...auctionListing.auction,
+                startingBid: 5000,
+                reservePrice: 4000,
+            },
+        });
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.bid.create.mockResolvedValue({
+            id: 'bid-low-reserve',
+            amount: 2800,
+            timestamp: new Date(),
+            listingId: 'listing-1',
+            bidderId: 'bidder-A',
+        });
+
+        await expect(
+            service.create('bidder-A', { listingId: 'listing-1', amount: 2799 } as any),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/first offer must be at least £2,800/i) });
+
+        const result = await service.create('bidder-A', {
+            listingId: 'listing-1',
+            amount: 2800,
+        } as any);
+
+        expect(result.id).toBe('bid-low-reserve');
+    });
+
+    it('returns to normal increment bidding after the first real bid exists', async () => {
+        prisma.listing.findUnique.mockResolvedValue(auctionListing);
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
+        prisma.bid.findFirst.mockResolvedValue({ id: 'bid-A', amount: 4500 });
+
+        await expect(
+            service.create('bidder-B', { listingId: 'listing-1', amount: 4599 } as any),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/at least £4,600/i) });
     });
 
     it('notifies the seller when the new highest bid is below reserve and can be accepted', async () => {
