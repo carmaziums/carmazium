@@ -32,6 +32,7 @@ import { getSessionStatus, applyHpiEmailFee } from "@/lib/paymentApi"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { TRADE_EXCHANGE_ROLES } from "@/lib/tradeAccess"
 import { DealerAccess, getDealerAccess } from "@/lib/dealerAccess"
+import { getMinimumAuctionBid } from "@/lib/auctionPricing"
 
 const ThreeDVehicleViewer = dynamic(
     () => import("@/components/listing/ThreeDVehicleViewer").then(m => m.ThreeDVehicleViewer),
@@ -45,6 +46,7 @@ interface BidEntry {
     amount: number
     time: string
     bidId?: string
+    bidderId?: string
     isNew?: boolean
 }
 
@@ -197,7 +199,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 setEndTime(new Date(data.endTime))
                 setStartTime(new Date(data.startTime))
                 const bids = data.listing.bids ?? []
-                const top = bids[0] ? Number(bids[0].amount) : Number(data.startingBid)
+                const top = bids[0] ? Number(bids[0].amount) : 0
                 setCurrentBid(top)
                 setIsWinning(!!businessUserId && bids[0]?.bidderId === businessUserId)
                 setBidHistory(bids.map(b => ({
@@ -205,6 +207,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     amount: Number(b.amount),
                     time: new Date(b.timestamp).toLocaleTimeString("en-GB"),
                     bidId: b.id,
+                    bidderId: b.bidderId,
                 })))
                 setAntiSnipeActive(new Date(data.endTime).getTime() - Date.now() <= 3 * 60 * 1000)
                 setBinPending(!!data.buyItNowPendingBuyerId)
@@ -271,7 +274,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             setCurrentBid(payload.amount)
             setIsWinning(!!businessUserId && payload.bidderId === businessUserId)
             setBidHistory(prev => [
-                { initials: payload.bidderInitials, amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString("en-GB"), bidId: payload.bidId, isNew: true },
+                { initials: payload.bidderInitials, amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString("en-GB"), bidId: payload.bidId, bidderId: payload.bidderId, isNew: true },
                 ...prev.map(b => ({ ...b, isNew: false })),
             ])
             if (payload.newEndTime) {
@@ -305,7 +308,13 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         })
 
         socket.on("bid:cancelled", ({ bidId }: { auctionId: string; bidId: string }) => {
-            setBidHistory(prev => prev.filter(b => b.bidId !== bidId))
+            setBidHistory(prev => {
+                const next = prev.filter(b => b.bidId !== bidId)
+                const nextHighest = next[0] ?? null
+                setCurrentBid(nextHighest?.amount ?? 0)
+                setIsWinning(!!businessUserId && nextHighest?.bidderId === businessUserId)
+                return next
+            })
             setCancelableBids(prev => {
                 if (!prev.has(bidId)) return prev
                 const next = new Map(prev)
@@ -391,13 +400,23 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             setBidError("Please enter a valid bid amount.")
             return
         }
-        if (parsed <= currentBid) {
-            setBidError(`Bid must exceed the current bid of £${currentBid.toLocaleString()}.`)
+        const highestRealBid = bidHistory[0]?.amount ?? null
+        const minAllowed = getMinimumAuctionBid({
+            startingBid: Number(auction.startingBid),
+            reservePrice: Number(auction.reservePrice),
+            minIncrement: Number(auction.minIncrement),
+            highestActiveBid: highestRealBid,
+        })
+        if (minAllowed <= 0) {
+            setBidError("This auction does not have valid bidding prices.")
             return
         }
-        const startingBid = Number(auction.startingBid)
-        if (parsed < startingBid) {
-            setBidError(`Bid must be at least the starting bid of £${startingBid.toLocaleString()}.`)
+        if (parsed < minAllowed) {
+            if (highestRealBid != null) {
+                setBidError(`Minimum next bid is £${minAllowed.toLocaleString()}.`)
+            } else {
+                setBidError(`First offers are accepted from £${minAllowed.toLocaleString()}.`)
+            }
             return
         }
 
@@ -411,7 +430,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         } finally {
             setBidLoading(false)
         }
-    }, [auction, user, currentBid, canPlaceBid])
+    }, [auction, user, bidHistory, canPlaceBid])
 
     // ── Accept bid (seller) ───────────────────────────────────────────────────
     const handleConfirmAccept = React.useCallback(async () => {
@@ -502,7 +521,21 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     }, [auction])
 
     const minIncrement = auction ? Number(auction.minIncrement) : 100
-    const quickBids = [minIncrement, minIncrement * 2, minIncrement * 5, minIncrement * 10]
+    const hasRealBids = bidHistory.length > 0
+    const startingBidAmount = auction ? Number(auction.startingBid) : 0
+    const reservePriceAmount = auction ? Number(auction.reservePrice) : 0
+    const minimumAllowedBid = auction
+        ? getMinimumAuctionBid({
+            startingBid: startingBidAmount,
+            reservePrice: reservePriceAmount,
+            minIncrement,
+            highestActiveBid: hasRealBids ? currentBid : null,
+        })
+        : 0
+    const displayBidAmount = hasRealBids ? currentBid : startingBidAmount
+    const quickBidAmounts = hasRealBids
+        ? [minIncrement, minIncrement * 2, minIncrement * 5, minIncrement * 10].map(inc => currentBid + inc)
+        : [0, minIncrement, minIncrement * 2, minIncrement * 5].map(inc => minimumAllowedBid + inc)
 
     // ── Loading / Error ───────────────────────────────────────────────────────
     if (loading) return (
@@ -921,8 +954,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             {isLive && !isSeller && user && canPlaceBid && !isEnded && (
                 <div className="lg:hidden sticky top-[80px] z-40 bg-[var(--bg-dropdown)] backdrop-blur-md border-b border-[var(--border-default)] px-4 py-2.5 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
-                        <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-widest font-bold">Current Bid</p>
-                        <p className="text-xl font-black text-[var(--text-primary)] font-mono leading-none">£{currentBid.toLocaleString()}</p>
+                        <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-widest font-bold">{hasRealBids ? "Current Bid" : "Starting Bid"}</p>
+                        <p className="text-xl font-black text-[var(--text-primary)] font-mono leading-none">£{displayBidAmount.toLocaleString()}</p>
+                        {!hasRealBids && minimumAllowedBid > 0 && (
+                            <p className="text-[9px] text-amber-400 font-bold mt-1">First offer from £{minimumAllowedBid.toLocaleString()}</p>
+                        )}
                     </div>
                     {isWinning ? (
                         <span className="flex items-center gap-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-black px-3 py-1.5 rounded-full">
@@ -930,11 +966,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                         </span>
                     ) : (
                         <button
-                            onClick={() => handleBid(currentBid + minIncrement)}
+                            onClick={() => handleBid(minimumAllowedBid)}
                             disabled={bidLoading}
                             className="flex items-center gap-1.5 bg-primary hover:bg-red-600 disabled:opacity-50 text-white text-xs font-black px-4 py-2.5 rounded-xl transition-colors shadow-neon"
                         >
-                            <Gavel size={13} /> +£{minIncrement >= 1000 ? `${minIncrement / 1000}k` : minIncrement}
+                            <Gavel size={13} /> {hasRealBids ? `+£${minIncrement >= 1000 ? `${minIncrement / 1000}k` : minIncrement}` : `Offer £${minimumAllowedBid.toLocaleString()}`}
                         </button>
                     )}
                     {endTime && (
@@ -989,10 +1025,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             <div className="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between z-10 pointer-events-none">
                                 <div>
                                     <p className="text-white/50 text-[10px] uppercase tracking-widest font-bold mb-1">
-                                        {isEnded ? "Final Bid" : isScheduled ? "Starting Bid" : "Current Bid"}
+                                        {isEnded ? (hasRealBids ? "Final Bid" : "No Bids") : isScheduled || !hasRealBids ? "Starting Bid" : "Current Bid"}
                                     </p>
                                     <p className="text-4xl md:text-5xl font-black text-white font-mono leading-none drop-shadow-2xl">
-                                        £{currentBid.toLocaleString()}
+                                        {isEnded && !hasRealBids ? "—" : `£${displayBidAmount.toLocaleString()}`}
                                     </p>
                                 </div>
 
@@ -1756,26 +1792,38 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             <>
                                 {/* Status */}
                                 <div className="text-center pb-3 border-b border-[var(--border-default)]">
-                                    <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold mb-1">Current Bid</p>
-                                    <p className="text-2xl font-black text-[var(--text-primary)] font-mono">£{currentBid.toLocaleString()}</p>
-                                    <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                                        Min next bid: <span className="text-[var(--text-primary)] font-bold">£{(currentBid + minIncrement).toLocaleString()}</span>
+                                    <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold mb-1">
+                                        {hasRealBids ? "Current Bid" : "No bids yet"}
+                                    </p>
+                                    <p className="text-2xl font-black text-[var(--text-primary)] font-mono">
+                                        {hasRealBids ? `£${currentBid.toLocaleString()}` : `Starting £${startingBidAmount.toLocaleString()}`}
+                                    </p>
+                                    <p className={`text-[10px] mt-1 ${hasRealBids ? "text-[var(--text-muted)]" : "text-amber-400"}`}>
+                                        {hasRealBids ? (
+                                            <>Min next bid: <span className="text-[var(--text-primary)] font-bold">£{minimumAllowedBid.toLocaleString()}</span></>
+                                        ) : (
+                                            <>Be the first to make an offer · <span className="font-black">Offers from £{minimumAllowedBid.toLocaleString()}</span></>
+                                        )}
                                     </p>
                                 </div>
 
                                 {/* Quick bids */}
                                 <div className="grid grid-cols-2 gap-2">
-                                    {quickBids.map(inc => (
+                                    {quickBidAmounts.map((amount, index) => (
                                         <button
-                                            key={inc}
-                                            onClick={() => handleBid(currentBid + inc)}
-                                            disabled={bidLoading}
+                                            key={amount}
+                                            onClick={() => handleBid(amount)}
+                                            disabled={bidLoading || amount < minimumAllowedBid}
                                             className="bg-[var(--bg-input)] hover:bg-primary/10 hover:border-primary/30 border border-[var(--border-default)] rounded-xl py-3 flex flex-col items-center gap-0.5 transition-all active:scale-95 disabled:opacity-40 group"
                                         >
                                             <span className="text-[9px] text-[var(--text-muted)] group-hover:text-[var(--text-muted)] font-bold transition-colors">
-                                                +£{inc >= 1000 ? `${inc / 1000}k` : inc}
+                                                {!hasRealBids && index === 0
+                                                    ? "Minimum offer"
+                                                    : hasRealBids
+                                                        ? `+£${(amount - currentBid) >= 1000 ? `${(amount - currentBid) / 1000}k` : amount - currentBid}`
+                                                        : `+£${(amount - minimumAllowedBid) >= 1000 ? `${(amount - minimumAllowedBid) / 1000}k` : amount - minimumAllowedBid}`}
                                             </span>
-                                            <span className="text-sm text-[var(--text-primary)] font-black font-mono">£{(currentBid + inc).toLocaleString()}</span>
+                                            <span className="text-sm text-[var(--text-primary)] font-black font-mono">£{amount.toLocaleString()}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -1791,11 +1839,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             value={bidAmount}
                                             onChange={e => { setBidAmount(e.target.value); setBidError(null) }}
                                             onKeyDown={e => { if (e.key === "Enter" && bidAmount) handleBid(Number(bidAmount)) }}
-                                            min={currentBid + minIncrement}
+                                            min={minimumAllowedBid}
                                         />
                                     </div>
                                     <Button
-                                        onClick={() => handleBid(Number(bidAmount) || currentBid + minIncrement)}
+                                        onClick={() => handleBid(Number(bidAmount) || minimumAllowedBid)}
                                         disabled={bidLoading}
                                         className="h-11 px-5 bg-gradient-to-br from-primary to-red-700 hover:from-red-500 hover:to-primary disabled:opacity-50 text-white font-black text-xs uppercase tracking-widest shadow-neon transition-all"
                                     >
