@@ -16,5 +16,8 @@
       "destination": "/",
       "permanent": true
     }
+  ],
+  "regions": [
+    "lhr1"
   ]
 }

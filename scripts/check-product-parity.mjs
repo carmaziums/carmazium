@@ -1348,6 +1348,18 @@ if (!webUrl || !mobileUrl) {
   same('Fallback backend API URL', { web: webUrl, mobile: mobileUrl });
 }
 
+const vercelConfig = JSON.parse(read('vercel.json'));
+const flyConfig = read('backend/fly.toml');
+if (
+  !Array.isArray(vercelConfig.regions) ||
+  !vercelConfig.regions.includes('lhr1') ||
+  !flyConfig.includes("primary_region = 'lhr'")
+) {
+  fail('Vercel server functions and Fly backend must remain co-located in London');
+} else {
+  ok('Vercel lhr1 and Fly lhr keep server-side auction traffic in London');
+}
+
 if (process.exitCode) {
   console.error('\nOne-product parity guard failed.');
   process.exit(process.exitCode);
