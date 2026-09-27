@@ -137,6 +137,9 @@ export class BidsService {
             if (lockedAuction.status !== 'ACTIVE') {
                 throw new BadRequestException('This auction is not currently active');
             }
+            if (lockedListing.status !== 'ACTIVE') {
+                throw new BadRequestException('This vehicle is not currently available for auction bidding');
+            }
 
             const bidReceivedAt = new Date();
             if (bidReceivedAt.getTime() >= lockedAuction.endTime.getTime()) {
@@ -395,6 +398,16 @@ export class BidsService {
             if (!listing?.auction || listing.auction.status !== 'ACTIVE') {
                 throw new BadRequestException('Cannot cancel a bid on an auction that is not ACTIVE');
             }
+            if (listing.status !== 'ACTIVE') {
+                throw new BadRequestException('Cannot cancel a bid after the auction vehicle is no longer active');
+            }
+
+            const cancellationTime = new Date();
+            if (cancellationTime.getTime() >= listing.auction.endTime.getTime()) {
+                throw new BadRequestException(
+                    'This auction has ended. Bids can no longer be cancelled while the result is being finalised',
+                );
+            }
 
             const beforeHighest = await tx.bid.findFirst({
                 where: {
@@ -408,7 +421,7 @@ export class BidsService {
 
             await tx.bid.update({
                 where: { id: bidId },
-                data: { cancelledAt: new Date() },
+                data: { cancelledAt: cancellationTime },
             });
 
             const [afterHighest, activeBidCount] = await Promise.all([
