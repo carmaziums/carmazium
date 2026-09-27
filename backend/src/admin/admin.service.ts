@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, BadGatewayException, ConflictException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, BadGatewayException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { UserRole } from '@prisma/client';
@@ -21,6 +21,8 @@ import {
 
 @Injectable()
 export class AdminService {
+    private readonly logger = new Logger(AdminService.name);
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly paymentsService: PaymentsService,
@@ -1369,14 +1371,31 @@ export class AdminService {
      * persistent home anywhere in the system once it left the pending queue.
      */
     async getPendingPayouts() {
-        return this.prisma.auction.findMany({
+        const rows = await this.prisma.auction.findMany({
             where: {
                 deletedAt: null,
+                status: 'ENDED',
+                winnerId: { not: null },
+                buyerFeePaid: true,
+                buyerFeeTransactionId: { not: null },
+                buyerRefusedAt: null,
+                handoverSubmittedAt: { not: null },
                 sellerBonusReleased: true,
+                sellerBonusReleasedAt: { not: null },
                 manualPayoutConfirmedAt: null,
-                OR: [
-                    { stripePayoutTransferId: null },
-                    { stripePayoutTransferId: { startsWith: 'claim:seller-bonus:' } },
+                AND: [
+                    {
+                        OR: [
+                            { handoverProofPath: { not: null } },
+                            { handoverProofUrl: { not: null } },
+                        ],
+                    },
+                    {
+                        OR: [
+                            { stripePayoutTransferId: null },
+                            { stripePayoutTransferId: { startsWith: 'claim:seller-bonus:' } },
+                        ],
+                    },
                 ],
             },
             orderBy: { sellerBonusReleasedAt: 'asc' },
@@ -1409,6 +1428,29 @@ export class AdminService {
                 winner: { select: { id: true, firstName: true, lastName: true, email: true } },
             },
         });
+
+        // The queue must never be a weaker source of truth than the payout
+        // operation itself. Historical rows can carry sellerBonusReleased=true
+        // from pre-hardening workflows even though they are now cancelled or
+        // lack a valid £125 fee transaction. Re-run the authoritative rule for
+        // every small admin-queue candidate so pending/approved cancellations,
+        // malformed fee records and other legacy inconsistencies are hidden
+        // rather than presented as money that should still be paid.
+        const eligible: typeof rows = [];
+        for (const row of rows) {
+            try {
+                await this.auctionsService.assertHandoverBusinessRules(row.id, {
+                    requireProof: true,
+                    requireApproved: true,
+                });
+                eligible.push(row);
+            } catch (error) {
+                this.logger.warn(
+                    `Excluded auction ${row.id} from pending seller payouts because its current lifecycle is no longer payout-eligible: ${error instanceof Error ? error.message : String(error)}`,
+                );
+            }
+        }
+        return eligible;
     }
 
     /**
@@ -1447,6 +1489,11 @@ export class AdminService {
         if (auction.stripePayoutTransferId || auction.manualPayoutConfirmedAt) {
             throw new BadRequestException('This seller bonus has already been paid.');
         }
+
+        await this.auctionsService.assertHandoverBusinessRules(auctionId, {
+            requireProof: true,
+            requireApproved: true,
+        });
 
         const seller = auction.listing?.seller;
         if (!seller) throw new NotFoundException('Seller not found');
@@ -1514,6 +1561,11 @@ export class AdminService {
         ) {
             return auction;
         }
+
+        await this.auctionsService.assertHandoverBusinessRules(auctionId, {
+            requireProof: true,
+            requireApproved: true,
+        });
 
         const sellerId = auction.listing?.sellerId;
         const seller = sellerId
