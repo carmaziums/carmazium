@@ -229,7 +229,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                         auctionId: data.id,
                         winnerId: data.winnerId,
                         winningBidAmount: data.winningBidAmount ? Number(data.winningBidAmount) : winningBid,
-                        reserveMet: winningBid !== null && winningBid >= Number(data.reservePrice),
+                        reserveMet: !!data.winnerId && data.winningBidAmount != null
+                            ? true
+                            : winningBid !== null && winningBid >= Number(data.reservePrice),
                     })
                 }
             })
@@ -307,20 +309,56 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             if (evtId === auction.id) setBinPending(true)
         })
 
-        socket.on("bid:cancelled", ({ bidId }: { auctionId: string; bidId: string }) => {
+        socket.on("bid:cancelled", (payload: {
+            auctionId: string
+            bidId: string
+            highestActiveBid: number | null
+            highestActiveBidId: string | null
+            highestActiveBidderId: string | null
+            activeBidCount: number
+            reserveMet: boolean
+            firstOfferFloor: number | null
+        }) => {
+            if (payload.auctionId !== auction.id) return
+
             setBidHistory(prev => {
-                const next = prev.filter(b => b.bidId !== bidId)
-                const nextHighest = next[0] ?? null
-                setCurrentBid(nextHighest?.amount ?? 0)
-                setIsWinning(!!businessUserId && nextHighest?.bidderId === businessUserId)
-                return next
+                const filtered = prev.filter(b => b.bidId !== payload.bidId)
+                // If the backend says there are no active bids, force a clean
+                // zero-bid state even if this client missed an earlier cancel.
+                if (payload.activeBidCount === 0) return []
+                return filtered
             })
+            setCurrentBid(payload.highestActiveBid ?? 0)
+            setIsWinning(
+                !!businessUserId
+                && payload.highestActiveBidderId === businessUserId
+            )
             setCancelableBids(prev => {
-                if (!prev.has(bidId)) return prev
+                if (!prev.has(payload.bidId)) return prev
                 const next = new Map(prev)
-                next.delete(bidId)
+                next.delete(payload.bidId)
                 return next
             })
+
+            // Re-read the canonical active bid list in the background. The
+            // event contains enough data for immediate UI recovery, while this
+            // resync fixes any local history gap from a missed websocket event.
+            getAuction(auction.id)
+                .then(fresh => {
+                    setAuction(fresh)
+                    const bids = fresh.listing.bids ?? []
+                    setBidHistory(bids.map(b => ({
+                        initials: `${b.bidder?.firstName?.[0] ?? "?"}${b.bidder?.lastName?.[0] ?? ""}`.toUpperCase(),
+                        amount: Number(b.amount),
+                        time: new Date(b.timestamp).toLocaleTimeString("en-GB"),
+                        bidId: b.id,
+                        bidderId: b.bidderId,
+                    })))
+                    setCurrentBid(bids[0] ? Number(bids[0].amount) : 0)
+                    setIsWinning(!!businessUserId && bids[0]?.bidderId === businessUserId)
+                    setBinPending(!!fresh.buyItNowPendingBuyerId)
+                })
+                .catch(() => { /* event payload already restored the critical state */ })
         })
 
         socket.on("auction:ended", (payload: AuctionEndPayload) => {
