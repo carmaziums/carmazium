@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import {
     TrendingUp, Loader2, ArrowLeft, Users, Car, DollarSign, RefreshCw,
     Eye, Search, Globe, Monitor, Smartphone, Tablet, MousePointerClick,
-    Clock, BarChart3, Calendar, ShieldCheck, UserX, Building2, CheckCircle2, CreditCard, AlertTriangle,
+    Clock, BarChart3, Calendar, ShieldCheck, UserX, Building2, CheckCircle2, CreditCard, AlertTriangle, Download,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -242,6 +242,77 @@ export default function AdminAnalyticsPage() {
         approvedLive: 0,
         rejected: 0,
     }) ?? null
+
+    const exportValuationAuditCsv = () => {
+        if (!valuationLive?.recent.length) return
+
+        const escapeCsv = (value: unknown) => {
+            const text = value == null ? "" : String(value)
+            return `"${text.replace(/"/g, '""')}"`
+        }
+        const rows = valuationLive.recent.map((item) => [
+            new Date(item.createdAt).toLocaleString("en-GB"),
+            item.registration || "",
+            item.year || "",
+            item.make || "",
+            item.model || "",
+            item.mileage ?? "",
+            item.marketValue ?? "",
+            item.valuationLow ?? "",
+            item.valuationMid ?? "",
+            item.valuationHigh ?? "",
+            item.auctionOpeningBid ?? "",
+            item.auctionReserveLow ?? "",
+            item.auctionReserveHigh ?? "",
+            item.auctionSuggestedReserve ?? "",
+            item.retailSuggestedAsking ?? "",
+            item.retailSuggestedMinimum ?? "",
+            item.valuationSource || "",
+            item.valuationConfidence || "",
+            item.valuationConfidenceScore ?? "",
+            item.valuationComparables,
+            item.liveMarketStatus || "",
+            item.valuationResult || "",
+            item.listingType || "",
+            item.listingStatus || "",
+        ])
+        const header = [
+            "Date / time",
+            "Registration",
+            "Year",
+            "Make",
+            "Model",
+            "Mileage",
+            "Market value shown",
+            "Valuation low",
+            "Valuation mid",
+            "Valuation high",
+            "Auction opening bid",
+            "Auction reserve low",
+            "Auction reserve high",
+            "Auction suggested reserve",
+            "Retail suggested asking",
+            "Retail suggested minimum",
+            "Valuation source",
+            "Confidence",
+            "Confidence score",
+            "Comparables",
+            "Live market status",
+            "Valuation result",
+            "Listing route",
+            "Listing status",
+        ]
+        const csv = [header, ...rows].map(row => row.map(escapeCsv).join(",")).join("\n")
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement("a")
+        link.href = url
+        link.download = `carmazium-valuation-audit-${fmtDate(new Date())}.csv`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(url)
+    }
 
     return (
         <div className="min-h-screen pt-20 pb-12">
@@ -494,62 +565,117 @@ export default function AdminAnalyticsPage() {
                                 </div>
 
                                 <div className="glass-card border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl overflow-hidden">
-                                    <div className="p-4 border-b border-[var(--border-default)] flex items-center justify-between gap-3">
-                                        <div className="flex items-center gap-2">
-                                            <Car size={14} className="text-primary" />
-                                            <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Latest Valuation Activity</p>
+                                    <div className="p-4 border-b border-[var(--border-default)] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <Car size={14} className="text-primary" />
+                                                <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Valuation Price Audit</p>
+                                            </div>
+                                            <p className="mt-1 text-[11px] text-[var(--text-secondary)]">
+                                                Latest 100 valuation journeys. New valuations record the registration, mileage and exact guide figures shown to the seller so CarMazium pricing can be benchmarked against the market.
+                                            </p>
                                         </div>
-                                        <span className="text-[10px] font-bold text-[var(--text-secondary)]">No personal identifiers shown</span>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={exportValuationAuditCsv}
+                                            disabled={!valuationLive.recent.length}
+                                            className="shrink-0"
+                                        >
+                                            <Download size={14} /> Export CSV
+                                        </Button>
                                     </div>
                                     {valuationLive.recent.length === 0 ? (
                                         <p className="text-xs text-[var(--text-secondary)] font-bold p-6 text-center">No recent valuations</p>
                                     ) : (
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-xs">
-                                                <thead>
+                                        <div className="max-h-[620px] overflow-auto">
+                                            <table className="w-full min-w-[1450px] text-xs">
+                                                <thead className="sticky top-0 z-10 bg-[var(--bg-card)]">
                                                     <tr className="border-b border-[var(--border-default)] text-left text-[var(--text-muted)]">
                                                         <th className="px-4 py-3 font-bold">Time</th>
+                                                        <th className="px-4 py-3 font-bold">Reg</th>
                                                         <th className="px-4 py-3 font-bold">Vehicle</th>
-                                                        <th className="px-4 py-3 font-bold">Valuation</th>
-                                                        <th className="px-4 py-3 font-bold">Route</th>
+                                                        <th className="px-4 py-3 font-bold text-right">Mileage</th>
+                                                        <th className="px-4 py-3 font-bold text-right">Market Value Shown</th>
+                                                        <th className="px-4 py-3 font-bold">Valuation Range</th>
+                                                        <th className="px-4 py-3 font-bold text-right">Auction Reserve</th>
+                                                        <th className="px-4 py-3 font-bold text-right">Retail Asking</th>
+                                                        <th className="px-4 py-3 font-bold">Source</th>
                                                         <th className="px-4 py-3 font-bold">Outcome</th>
-                                                        <th className="px-4 py-3 font-bold">Fuel</th>
-                                                        <th className="px-4 py-3 font-bold">Device</th>
-                                                        <th className="px-4 py-3 font-bold">Location</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {valuationLive.recent.map(item => (
                                                         <tr key={item.id} className="border-b border-[var(--border-default)]/60 hover:bg-[var(--bg-card-hover)]">
                                                             <td className="px-4 py-3 whitespace-nowrap font-bold">
-                                                                {new Date(item.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                                                                <div>{new Date(item.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</div>
+                                                                <div className="text-[10px] text-[var(--text-muted)]">
+                                                                    {new Date(item.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                                                                </div>
                                                             </td>
                                                             <td className="px-4 py-3 whitespace-nowrap">
-                                                                {[item.year, item.make, item.model].filter(Boolean).join(" ") || "Unknown"}
-                                                            </td>
-                                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                                {item.valuationResult === "figures_returned" ? (
-                                                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-black uppercase text-emerald-500">Figures</span>
-                                                                ) : item.valuationResult === "no_figures" ? (
-                                                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-1 font-black uppercase text-rose-500" title={item.noFigureReason || undefined}>No Figures</span>
+                                                                {item.registration ? (
+                                                                    <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 font-mono font-black tracking-wider text-amber-500">
+                                                                        {item.registration}
+                                                                    </span>
                                                                 ) : (
-                                                                    <span className="text-[var(--text-muted)]">—</span>
+                                                                    <span className="text-[var(--text-muted)]" title="This older valuation was recorded before registration capture was enabled">Legacy —</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                                <div className="font-bold">{[item.year, item.make, item.model].filter(Boolean).join(" ") || "Unknown"}</div>
+                                                                <div className="mt-1 text-[10px] uppercase text-[var(--text-muted)]">{item.fuelType || "—"}</div>
+                                                            </td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">
+                                                                {item.mileage != null ? `${item.mileage.toLocaleString("en-GB")} mi` : "—"}
+                                                            </td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-right">
+                                                                {item.marketValue != null ? (
+                                                                    <span className="text-base font-black tabular-nums text-emerald-500">{formatPrice(item.marketValue)}</span>
+                                                                ) : item.valuationResult === "figures_returned" ? (
+                                                                    <span className="text-[var(--text-muted)]" title="Exact price was not stored for this legacy valuation">Legacy —</span>
+                                                                ) : (
+                                                                    <span className="font-bold text-rose-500">No figures</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-3 whitespace-nowrap tabular-nums">
+                                                                {item.valuationLow != null && item.valuationHigh != null
+                                                                    ? `${formatPrice(item.valuationLow)} – ${formatPrice(item.valuationHigh)}`
+                                                                    : "—"}
+                                                                {item.valuationMid != null && (
+                                                                    <div className="mt-1 text-[10px] text-[var(--text-muted)]">Mid {formatPrice(item.valuationMid)}</div>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">
+                                                                {item.auctionSuggestedReserve != null ? formatPrice(item.auctionSuggestedReserve) : "—"}
+                                                                {item.auctionReserveLow != null && item.auctionReserveHigh != null && (
+                                                                    <div className="mt-1 text-[10px] text-[var(--text-muted)]">
+                                                                        {formatPrice(item.auctionReserveLow)}–{formatPrice(item.auctionReserveHigh)}
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">
+                                                                {item.retailSuggestedAsking != null ? formatPrice(item.retailSuggestedAsking) : "—"}
+                                                                {item.retailSuggestedMinimum != null && (
+                                                                    <div className="mt-1 text-[10px] text-[var(--text-muted)]">Min {formatPrice(item.retailSuggestedMinimum)}</div>
                                                                 )}
                                                             </td>
                                                             <td className="px-4 py-3">
-                                                                <span className="rounded-full bg-primary/10 px-2 py-1 font-bold uppercase text-primary">
-                                                                    {item.listingType || "—"}
-                                                                </span>
+                                                                <div className="font-bold">{item.valuationSource?.replaceAll("_", " ") || "—"}</div>
+                                                                <div className="mt-1 text-[10px] text-[var(--text-muted)]">
+                                                                    {item.valuationComparables} comps
+                                                                    {item.valuationConfidence ? ` · ${item.valuationConfidence}` : ""}
+                                                                    {item.liveMarketStatus ? ` · ${item.liveMarketStatus}` : ""}
+                                                                </div>
                                                             </td>
-                                                            <td className="px-4 py-3">
+                                                            <td className="px-4 py-3 whitespace-nowrap">
                                                                 {item.approvedLive ? (
                                                                     <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-black uppercase text-emerald-400">Approved & Live</span>
                                                                 ) : item.rejected ? (
                                                                     <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-1 font-black uppercase text-rose-400">Rejected</span>
                                                                 ) : item.reachedReview ? (
                                                                     <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 font-black uppercase text-cyan-400">In Review</span>
-                                                                ) : item.feePaid ? (
-                                                                    <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-1 font-black uppercase text-purple-400">Fee Paid</span>
                                                                 ) : item.createdListing ? (
                                                                     <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-1 font-black uppercase text-blue-400">Listing Created</span>
                                                                 ) : item.startedListing ? (
@@ -558,9 +684,6 @@ export default function AdminAnalyticsPage() {
                                                                     <span className="rounded-full border border-[var(--border-default)] bg-[var(--bg-input)] px-2 py-1 font-bold uppercase text-[var(--text-muted)]">Valuation Only</span>
                                                                 )}
                                                             </td>
-                                                            <td className="px-4 py-3 text-[var(--text-muted)]">{item.fuelType || "—"}</td>
-                                                            <td className="px-4 py-3 capitalize text-[var(--text-muted)]">{item.device || "—"}</td>
-                                                            <td className="px-4 py-3 text-[var(--text-muted)]">{[item.city, item.country].filter(Boolean).join(", ") || "—"}</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -570,7 +693,7 @@ export default function AdminAnalyticsPage() {
                                 </div>
 
                                 <p className="px-1 text-[11px] leading-5 text-[var(--text-muted)]">
-                                    The funnel attributes a listing to a valuation for up to 30 days. New journeys use an exact non-personal valuation ID; older history falls back to same-session matching. Retail payment comes from completed transaction records, and approval/live status comes from the listing lifecycle plus server-side approval telemetry. The valuation denominator still covers first-party analytics-consented journeys, so use these figures as conversion telemetry rather than a census of every visitor.
+                                    New valuation journeys now retain the vehicle registration, mileage and exact CarMazium guide figures shown at valuation time for internal pricing QA. Older rows may show “Legacy” because those values were not historically stored; where a legacy valuation later became a listing, registration and mileage are recovered from that listing when available. The funnel still attributes a listing to a valuation for up to 30 days.
                                 </p>
                             </>
                         ) : null}

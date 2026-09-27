@@ -803,10 +803,26 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             valuation_id: valuationJourneyIdRef.current,
                             entry_point: isDashboard ? "dashboard_listing_wizard" : "listing_wizard",
                             listing_type: listingTypeLabel(formData.listingType),
+                            registration: normalizedVrm || undefined,
+                            mileage: Number(formData.mileage) || undefined,
                             make: formData.make || undefined,
                             model: formData.model || undefined,
                             year: Number(formData.year) || undefined,
                             valuation_source: result.source,
+                            valuation_comparables: result.comparables,
+                            valuation_confidence: result.confidence,
+                            valuation_confidence_score: result.confidenceScore,
+                            valuation_low: result.low,
+                            valuation_mid: result.mid,
+                            valuation_high: result.high,
+                            market_value: result.auction.marketValue,
+                            auction_opening_bid: result.auction.openingBid,
+                            auction_reserve_low: result.auction.reserveLow,
+                            auction_reserve_high: result.auction.reserveHigh,
+                            auction_suggested_reserve: result.auction.suggestedReserve,
+                            retail_suggested_asking: result.retail.suggestedAsking,
+                            retail_suggested_minimum: result.retail.suggestedMinimum,
+                            live_market_status: result.marketEvidence?.liveUkSearchStatus,
                         })
                     }
                 })
@@ -2278,6 +2294,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 // endpoint returns successfully (see valuation effect above).
                                                 trackEvent('vehicle_lookup_completed', {
                                                     listing_type: listingTypeLabel(formData.listingType),
+                                                    registration: formData.vrm.replace(/\s/g, "").toUpperCase() || undefined,
+                                                    mileage: Number(formData.mileage) || undefined,
                                                     make: r.make || undefined,
                                                     model: r.model || undefined,
                                                     year: r.year || undefined,
@@ -2287,6 +2305,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 setDvlaError(err.message || "Lookup failed")
                                                 trackEvent('valuation_failed', {
                                                     listing_type: listingTypeLabel(formData.listingType),
+                                                    registration: formData.vrm.replace(/\s/g, "").toUpperCase() || undefined,
+                                                    mileage: Number(formData.mileage) || undefined,
                                                     reason: err?.message || 'lookup_failed',
                                                 })
                                             } finally { setDvlaLoading(false) }

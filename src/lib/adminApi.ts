@@ -1027,6 +1027,8 @@ export interface ValuationLiveAnalytics {
   recent: Array<{
     id: string;
     createdAt: string;
+    registration: string | null;
+    mileage: number | null;
     make: string | null;
     model: string | null;
     year: number | null;
@@ -1038,9 +1040,21 @@ export interface ValuationLiveAnalytics {
     entryPoint: string | null;
     valuationResult: string | null;
     valuationSource: string | null;
+    valuationConfidence: string | null;
+    valuationConfidenceScore: number | null;
     noFigureReason: string | null;
     valuationComparables: number;
     liveMarketStatus: string | null;
+    valuationLow: number | null;
+    valuationMid: number | null;
+    valuationHigh: number | null;
+    marketValue: number | null;
+    auctionOpeningBid: number | null;
+    auctionReserveLow: number | null;
+    auctionReserveHigh: number | null;
+    auctionSuggestedReserve: number | null;
+    retailSuggestedAsking: number | null;
+    retailSuggestedMinimum: number | null;
     startedListing: boolean;
     createdListing: boolean;
     listingId: string | null;

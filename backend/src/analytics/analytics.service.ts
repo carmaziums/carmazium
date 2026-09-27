@@ -394,6 +394,8 @@ export class AnalyticsService {
                 listing_id: string | null;
                 converted_listing_type: string | null;
                 listing_status: string | null;
+                listing_vrm: string | null;
+                listing_mileage: number | null;
                 fee_paid: boolean;
                 reached_review: boolean;
                 approved_live: boolean;
@@ -408,6 +410,8 @@ export class AnalyticsService {
                     submitted.payload->>'listing_id' AS listing_id,
                     LOWER(NULLIF(submitted.payload->>'listing_type', '')) AS converted_listing_type,
                     listing.status::TEXT AS listing_status,
+                    listing.vrm AS listing_vrm,
+                    listing.mileage AS listing_mileage,
                     (fee.id IS NOT NULL) AS fee_paid,
                     (
                         listing.status::TEXT IN ('PENDING_REVIEW', 'ACTIVE', 'OFFER_ACCEPTED', 'SOLD', 'WITHDRAWN', 'REJECTED')
@@ -484,7 +488,7 @@ export class AnalyticsService {
                 ) approval ON TRUE
                 WHERE v.type = 'valuation_requested'
                 ORDER BY v."createdAt" DESC
-                LIMIT 15
+                LIMIT 100
             `),
         ]);
 
@@ -611,9 +615,25 @@ export class AnalyticsService {
             }),
             recent: recentRaw.map((event) => {
                 const payload = (event.payload ?? {}) as Record<string, unknown>;
+                const numberFromPayload = (key: string) => {
+                    const raw = payload[key];
+                    if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+                    if (typeof raw === 'string' && raw.trim()) {
+                        const parsed = Number(raw);
+                        return Number.isFinite(parsed) ? parsed : null;
+                    }
+                    return null;
+                };
+                const registration = typeof payload.registration === 'string' && payload.registration.trim()
+                    ? payload.registration.trim().replace(/\s+/g, '').toUpperCase()
+                    : event.listing_vrm?.replace(/\s+/g, '').toUpperCase() || null;
+                const mileage = numberFromPayload('mileage') ?? event.listing_mileage ?? null;
+
                 return {
                     id: event.id,
                     createdAt: event.created_at,
+                    registration,
+                    mileage,
                     make: typeof payload.make === 'string' ? payload.make : null,
                     model: typeof payload.model === 'string' ? payload.model : null,
                     year: typeof payload.year === 'number' ? payload.year : Number(payload.year) || null,
@@ -626,11 +646,21 @@ export class AnalyticsService {
                     entryPoint: typeof payload.entry_point === 'string' ? payload.entry_point : null,
                     valuationResult: typeof payload.valuation_result === 'string' ? payload.valuation_result : null,
                     valuationSource: typeof payload.valuation_source === 'string' ? payload.valuation_source : null,
+                    valuationConfidence: typeof payload.valuation_confidence === 'string' ? payload.valuation_confidence : null,
+                    valuationConfidenceScore: numberFromPayload('valuation_confidence_score'),
                     noFigureReason: typeof payload.no_figure_reason === 'string' ? payload.no_figure_reason : null,
-                    valuationComparables: typeof payload.valuation_comparables === 'number'
-                        ? payload.valuation_comparables
-                        : Number(payload.valuation_comparables) || 0,
+                    valuationComparables: numberFromPayload('valuation_comparables') ?? 0,
                     liveMarketStatus: typeof payload.live_market_status === 'string' ? payload.live_market_status : null,
+                    valuationLow: numberFromPayload('valuation_low'),
+                    valuationMid: numberFromPayload('valuation_mid'),
+                    valuationHigh: numberFromPayload('valuation_high'),
+                    marketValue: numberFromPayload('market_value'),
+                    auctionOpeningBid: numberFromPayload('auction_opening_bid'),
+                    auctionReserveLow: numberFromPayload('auction_reserve_low'),
+                    auctionReserveHigh: numberFromPayload('auction_reserve_high'),
+                    auctionSuggestedReserve: numberFromPayload('auction_suggested_reserve'),
+                    retailSuggestedAsking: numberFromPayload('retail_suggested_asking'),
+                    retailSuggestedMinimum: numberFromPayload('retail_suggested_minimum'),
                     startedListing: Boolean(event.started),
                     createdListing: Boolean(event.converted),
                     listingId: event.listing_id,
