@@ -46,6 +46,10 @@ function makeHarness() {
         create: jest.fn().mockResolvedValue(null),
     };
 
+    const auctionsService = {
+        assertHandoverBusinessRules: jest.fn().mockResolvedValue(undefined),
+    };
+
     const service = new AdminService(
         prisma,
         paymentsService as any,
@@ -53,7 +57,7 @@ function makeHarness() {
         notificationsGateway as any,
         notificationsService as any,
         {} as any,
-        {} as any,
+        auctionsService as any,
         { deleteProof: jest.fn(), hydrateMany: jest.fn(async (rows: any) => rows) } as any,
     );
 
@@ -64,10 +68,24 @@ function makeHarness() {
         emailService,
         notificationsGateway,
         notificationsService,
+        auctionsService,
     };
 }
 
 describe('AdminService — seller bonus payout idempotency', () => {
+    it('blocks approval before changing payout state when the handover business-rule gate fails', async () => {
+        const { service, prisma, paymentsService, auctionsService } = makeHarness();
+        auctionsService.assertHandoverBusinessRules.mockRejectedValueOnce(
+            new BadRequestException('The £125 auction buyer fee must be paid before handover'),
+        );
+
+        await expect(service.approveHandover('auction-1'))
+            .rejects.toBeInstanceOf(BadRequestException);
+
+        expect(prisma.auction.updateMany).not.toHaveBeenCalled();
+        expect(paymentsService.issueSellerPayout).not.toHaveBeenCalled();
+    });
+
     it('atomically approves once and uses one stable Stripe idempotency key', async () => {
         const {
             service,

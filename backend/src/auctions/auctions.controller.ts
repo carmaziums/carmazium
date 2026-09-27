@@ -309,10 +309,23 @@ export class AuctionsController {
         if (!file) {
             throw new BadRequestException('No document was uploaded.');
         }
+
+        // Validate the complete auction/fee/winner/seller lifecycle before
+        // writing a private object. submitHandoverProof validates again after
+        // upload so a concurrent state change cannot sneak through.
+        await this.auctionsService.assertHandoverSubmissionEligibility(id, user.id);
+
         const proofPath = await this.handoverDocuments.storeProof(user.id, id, file);
-        const result = await this.auctionsService.submitHandoverProof(id, user.id, { proofPath });
-        return new StandardResponse(
-            await this.handoverDocuments.hydrateProof(result as any),
-        );
+        try {
+            const result = await this.auctionsService.submitHandoverProof(id, user.id, { proofPath });
+            return new StandardResponse(
+                await this.handoverDocuments.hydrateProof(result as any),
+            );
+        } catch (error) {
+            // If the auction became ineligible after the pre-check, do not
+            // leave an unattached private proof object behind.
+            await this.handoverDocuments.deleteProof(proofPath, null);
+            throw error;
+        }
     }
 }
