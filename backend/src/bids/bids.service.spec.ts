@@ -724,18 +724,41 @@ describe('BidsService — cancelBid', () => {
     let auctionGateway: any;
     let notificationsService: any;
 
+    const cancellationRow = (overrides: Record<string, any> = {}) => ({
+        bid_id: 'bid-high',
+        listing_id: 'listing-1',
+        bidder_id: 'owner-user',
+        cancelled_amount: 6666,
+        bid_created_at: new Date(),
+        bid_cancelled_at: null,
+        bid_deleted_at: null,
+        bid_archived_at: null,
+        listing_status: 'ACTIVE',
+        seller_id: 'seller-1',
+        listing_title: 'Ford Fiesta ST 2021',
+        listing_year: 2021,
+        listing_make: 'Ford',
+        listing_model: 'Fiesta ST',
+        auction_id: 'auction-1',
+        auction_status: 'ACTIVE',
+        auction_start_time: new Date('2026-09-27T10:00:00.000Z'),
+        auction_end_time: new Date(Date.now() + 60 * 60 * 1000),
+        reserve_price: 8500,
+        starting_bid: 6650,
+        before_highest_id: 'bid-high',
+        before_highest_amount: 6666,
+        after_highest_id: 'bid-low',
+        after_highest_bidder_id: 'owner-user',
+        after_highest_amount: 5000,
+        active_bid_count_after: 1,
+        decision_code: 'OK',
+        cancelled_bid_id: 'bid-high',
+        ...overrides,
+    });
+
     beforeEach(async () => {
         prisma = {
-            listing: { findUnique: jest.fn() },
-            bid: {
-                findFirst: jest.fn(),
-                findMany: jest.fn(),
-                findUnique: jest.fn(),
-                count: jest.fn(),
-                create: jest.fn(),
-                update: jest.fn(),
-            },
-            user: { findUnique: jest.fn().mockResolvedValue({ firstName: 'Test', lastName: 'User' }) },
+            user: { findUnique: jest.fn().mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User' }) },
             dealerProfile: {
                 findUnique: jest.fn().mockImplementation(({ where }: any) => Promise.resolve({
                     id: `dealer-${where.userId}`,
@@ -745,8 +768,8 @@ describe('BidsService — cancelBid', () => {
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             analyticsEvent: { create: jest.fn().mockResolvedValue({}) },
-            $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
-            $transaction: jest.fn(async (callback: any) => callback(prisma)),
+            $queryRaw: jest.fn(),
+            $transaction: jest.fn(),
         };
         auctionGateway = {
             broadcastBid: jest.fn(),
@@ -758,142 +781,63 @@ describe('BidsService — cancelBid', () => {
             providers: [
                 BidsService,
                 { provide: PrismaService, useValue: prisma },
-                {
-                    provide: AuctionGateway,
-                    useValue: auctionGateway,
-                },
-                {
-                    provide: NotificationsService,
-                    useValue: notificationsService,
-                },
+                { provide: AuctionGateway, useValue: auctionGateway },
+                { provide: NotificationsService, useValue: notificationsService },
             ],
         }).compile();
 
         service = module.get<BidsService>(BidsService);
     });
 
-    it('throws ForbiddenException when caller is not the bid owner', async () => {
-        const mockBid = {
-            id: 'bid-1',
-            bidderId: 'owner-user',
-            listingId: 'listing-1',
-            amount: 7000,
-            cancelledAt: null,
-            deletedAt: null,
-            createdAt: new Date(),
-        };
-        prisma.bid.findUnique.mockResolvedValue(mockBid);
+    it('cancels the production £6,666 bid atomically and restores £5,000 as the leader', async () => {
+        prisma.$queryRaw.mockResolvedValueOnce([cancellationRow()]);
 
-        await expect(
-            (service as any).cancelBid('bid-1', 'different-user'),
-        ).rejects.toBeInstanceOf(ForbiddenException);
-    });
+        await expect(service.cancelBid('bid-high', 'owner-user')).resolves.toBeUndefined();
 
-    it('throws BadRequestException when the 24-hour cancel window has expired', async () => {
-        const mockBid = {
-            id: 'bid-1',
-            bidderId: 'owner-user',
-            listingId: 'listing-1',
-            amount: 7000,
-            cancelledAt: null,
-            deletedAt: null,
-            createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000), // 25 hours ago
-        };
-        prisma.bid.findUnique.mockResolvedValue(mockBid);
-
-        await expect(
-            (service as any).cancelBid('bid-1', 'owner-user'),
-        ).rejects.toBeInstanceOf(BadRequestException);
-    });
-
-    it('succeeds even when the caller is no longer the current high bidder', async () => {
-        const mockBid = {
-            id: 'bid-1',
-            bidderId: 'owner-user',
-            listingId: 'listing-1',
-            amount: 7000,
-            cancelledAt: null,
-            deletedAt: null,
-            createdAt: new Date(), // within window
-        };
-        prisma.bid.findUnique.mockResolvedValue(mockBid);
-
-        // Listing with ACTIVE auction
-        prisma.listing.findUnique.mockResolvedValue({
-            id: 'listing-1',
-            title: 'Test vehicle',
-            sellerId: 'seller-1',
-            status: 'ACTIVE',
-            auction: {
-                id: 'auction-1',
-                status: 'ACTIVE',
-                endTime: new Date(Date.now() + 60 * 60 * 1000),
-                startingBid: 7000,
-                reservePrice: 6000,
-            },
-        });
-        prisma.bid.findFirst
-            .mockResolvedValueOnce(mockBid)
-            .mockResolvedValueOnce(null);
-        prisma.bid.count.mockResolvedValue(0);
-        prisma.bid.update.mockResolvedValue({ ...mockBid, cancelledAt: new Date() });
-
-        await expect(
-            (service as any).cancelBid('bid-1', 'owner-user'),
-        ).resolves.toBeUndefined();
-
-        expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+        expect(prisma.$transaction).not.toHaveBeenCalled();
         expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
-        expect(prisma.bid.update).toHaveBeenCalledWith({
-            where: { id: 'bid-1' },
-            data: { cancelledAt: expect.any(Date) },
-        });
         expect(auctionGateway.broadcastBidCancelled).toHaveBeenCalledWith(
             'auction-1',
             expect.objectContaining({
                 auctionId: 'auction-1',
-                bidId: 'bid-1',
-                highestActiveBid: null,
-                highestActiveBidId: null,
-                highestActiveBidderId: null,
-                activeBidCount: 0,
+                bidId: 'bid-high',
+                highestActiveBid: 5000,
+                highestActiveBidId: 'bid-low',
+                highestActiveBidderId: 'owner-user',
+                activeBidCount: 1,
                 reserveMet: false,
+                firstOfferFloor: null,
             }),
         );
+        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                type: 'auction_bid_cancelled',
+                userId: 'owner-user',
+                payload: expect.objectContaining({
+                    cancelled_bid_id: 'bid-high',
+                    cancelled_amount: 6666,
+                    active_bid_count_after: 1,
+                    highest_active_bid_after: 5000,
+                    reserve_met_after: false,
+                }),
+            }),
+        });
     });
 
     it('returns to the 30% zero-bid floor when the final active bid is cancelled', async () => {
-        const mockBid = {
-            id: 'bid-only',
-            bidderId: 'owner-user',
-            listingId: 'listing-1',
-            amount: 7000,
-            cancelledAt: null,
-            deletedAt: null,
-            archivedAt: null,
-            createdAt: new Date(),
-        };
-        prisma.bid.findUnique.mockResolvedValue(mockBid);
-        prisma.listing.findUnique.mockResolvedValue({
-            id: 'listing-1',
-            title: 'BMW M3',
-            year: 2022,
-            make: 'BMW',
-            model: 'M3',
-            sellerId: 'seller-1',
-            status: 'ACTIVE',
-            auction: {
-                id: 'auction-1',
-                status: 'ACTIVE',
-                endTime: new Date(Date.now() + 60 * 60 * 1000),
-                startingBid: 7000,
-                reservePrice: 6000,
-            },
-        });
-        prisma.bid.findFirst
-            .mockResolvedValueOnce(mockBid)
-            .mockResolvedValueOnce(null);
-        prisma.bid.count.mockResolvedValue(0);
+        prisma.$queryRaw.mockResolvedValueOnce([cancellationRow({
+            bid_id: 'bid-only',
+            cancelled_bid_id: 'bid-only',
+            cancelled_amount: 7000,
+            before_highest_id: 'bid-only',
+            before_highest_amount: 7000,
+            after_highest_id: null,
+            after_highest_bidder_id: null,
+            after_highest_amount: null,
+            active_bid_count_after: 0,
+            starting_bid: 7000,
+            reserve_price: 6000,
+        })]);
 
         await service.cancelBid('bid-only', 'owner-user');
 
@@ -913,63 +857,19 @@ describe('BidsService — cancelBid', () => {
                 message: expect.stringMatching(/first offers can be made from £4,200/i),
             }),
         );
-        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
-            data: expect.objectContaining({
-                type: 'auction_bid_cancelled',
-                userId: 'owner-user',
-                payload: expect.objectContaining({
-                    auction_id: 'auction-1',
-                    cancelled_bid_id: 'bid-only',
-                    active_bid_count_after: 0,
-                    first_offer_floor_after: 4200,
-                    reserve_met_after: false,
-                }),
-            }),
-        });
     });
 
     it('drops reserve-met state to the next real bid when the highest bid is cancelled', async () => {
-        const cancelledBid = {
-            id: 'bid-high',
-            bidderId: 'owner-user',
-            listingId: 'listing-1',
-            amount: 10000,
-            cancelledAt: null,
-            deletedAt: null,
-            archivedAt: null,
-            createdAt: new Date(),
-        };
-        const nextBid = {
-            id: 'bid-next',
-            bidderId: 'dealer-2',
-            listingId: 'listing-1',
-            amount: 8500,
-            cancelledAt: null,
-            deletedAt: null,
-            archivedAt: null,
-            createdAt: new Date(),
-        };
-        prisma.bid.findUnique.mockResolvedValue(cancelledBid);
-        prisma.listing.findUnique.mockResolvedValue({
-            id: 'listing-1',
-            title: 'BMW M3',
-            year: 2022,
-            make: 'BMW',
-            model: 'M3',
-            sellerId: 'seller-1',
-            status: 'ACTIVE',
-            auction: {
-                id: 'auction-1',
-                status: 'ACTIVE',
-                endTime: new Date(Date.now() + 60 * 60 * 1000),
-                startingBid: 7000,
-                reservePrice: 9000,
-            },
-        });
-        prisma.bid.findFirst
-            .mockResolvedValueOnce(cancelledBid)
-            .mockResolvedValueOnce(nextBid);
-        prisma.bid.count.mockResolvedValue(1);
+        prisma.$queryRaw.mockResolvedValueOnce([cancellationRow({
+            cancelled_amount: 10000,
+            before_highest_amount: 10000,
+            after_highest_id: 'bid-next',
+            after_highest_bidder_id: 'dealer-2',
+            after_highest_amount: 8500,
+            active_bid_count_after: 1,
+            reserve_price: 9000,
+            starting_bid: 7000,
+        })]);
 
         await service.cancelBid('bid-high', 'owner-user');
 
@@ -997,44 +897,19 @@ describe('BidsService — cancelBid', () => {
         );
     });
 
-    it('does not change the current leader when a lower historical bid is cancelled', async () => {
-        const lowerBid = {
-            id: 'bid-lower',
-            bidderId: 'owner-user',
-            listingId: 'listing-1',
-            amount: 7000,
-            cancelledAt: null,
-            deletedAt: null,
-            archivedAt: null,
-            createdAt: new Date(),
-        };
-        const highestBid = {
-            id: 'bid-high',
-            bidderId: 'dealer-2',
-            listingId: 'listing-1',
-            amount: 9500,
-            cancelledAt: null,
-            deletedAt: null,
-            archivedAt: null,
-            createdAt: new Date(),
-        };
-        prisma.bid.findUnique.mockResolvedValue(lowerBid);
-        prisma.listing.findUnique.mockResolvedValue({
-            id: 'listing-1',
-            sellerId: 'seller-1',
-            status: 'ACTIVE',
-            auction: {
-                id: 'auction-1',
-                status: 'ACTIVE',
-                endTime: new Date(Date.now() + 60 * 60 * 1000),
-                startingBid: 7000,
-                reservePrice: 9000,
-            },
-        });
-        prisma.bid.findFirst
-            .mockResolvedValueOnce(highestBid)
-            .mockResolvedValueOnce(highestBid);
-        prisma.bid.count.mockResolvedValue(1);
+    it('does not change the leader when a lower historical bid is cancelled', async () => {
+        prisma.$queryRaw.mockResolvedValueOnce([cancellationRow({
+            bid_id: 'bid-lower',
+            cancelled_bid_id: 'bid-lower',
+            cancelled_amount: 7000,
+            before_highest_id: 'bid-high',
+            before_highest_amount: 9500,
+            after_highest_id: 'bid-high',
+            after_highest_bidder_id: 'dealer-2',
+            after_highest_amount: 9500,
+            active_bid_count_after: 1,
+            reserve_price: 9000,
+        })]);
 
         await service.cancelBid('bid-lower', 'owner-user');
 
@@ -1050,82 +925,72 @@ describe('BidsService — cancelBid', () => {
         expect(notificationsService.create).not.toHaveBeenCalled();
     });
 
-    it('rejects cancelling a bid after the auction deadline even before lifecycle finalisation', async () => {
-        const bid = {
-            id: 'bid-ended',
-            bidderId: 'owner-user',
-            listingId: 'listing-1',
-            amount: 7000,
-            cancelledAt: null,
-            deletedAt: null,
-            archivedAt: null,
-            createdAt: new Date(),
-        };
-        prisma.bid.findUnique.mockResolvedValue(bid);
-        prisma.listing.findUnique.mockResolvedValue({
-            id: 'listing-1',
-            sellerId: 'seller-1',
-            status: 'ACTIVE',
-            auction: {
-                id: 'auction-1',
-                status: 'ACTIVE',
-                endTime: new Date(Date.now() - 1000),
-                startingBid: 7000,
-                reservePrice: 9000,
-            },
-        });
+    it('rejects a cancellation when the caller is not the bid owner', async () => {
+        prisma.$queryRaw.mockResolvedValueOnce([cancellationRow({
+            bidder_id: 'owner-user',
+            decision_code: 'NOT_YOURS',
+            cancelled_bid_id: null,
+        })]);
 
-        await expect(service.cancelBid('bid-ended', 'owner-user'))
-            .rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+        await expect(service.cancelBid('bid-high', 'different-user'))
+            .rejects.toBeInstanceOf(ForbiddenException);
 
-        expect(prisma.bid.update).not.toHaveBeenCalled();
         expect(auctionGateway.broadcastBidCancelled).not.toHaveBeenCalled();
     });
 
-    it('rejects cancelling a bid archived from a previous auction run', async () => {
-        prisma.bid.findUnique.mockResolvedValue({
-            id: 'bid-old',
-            bidderId: 'owner-user',
-            listingId: 'listing-1',
-            amount: 7000,
-            cancelledAt: null,
-            deletedAt: null,
-            archivedAt: new Date(),
-            createdAt: new Date(),
-        });
+    it('rejects a cancellation after the 24-hour window', async () => {
+        prisma.$queryRaw.mockResolvedValueOnce([cancellationRow({
+            decision_code: 'WINDOW_EXPIRED',
+            cancelled_bid_id: null,
+        })]);
 
-        await expect(
-            service.cancelBid('bid-old', 'owner-user'),
-        ).rejects.toMatchObject({ message: expect.stringMatching(/previous auction/i) });
-
-        expect(prisma.listing.findUnique).not.toHaveBeenCalled();
-        expect(prisma.bid.update).not.toHaveBeenCalled();
+        await expect(service.cancelBid('bid-high', 'owner-user'))
+            .rejects.toMatchObject({ message: expect.stringMatching(/24 hours/i) });
     });
 
-    it('throws BadRequestException when auction status is not ACTIVE', async () => {
-        const mockBid = {
-            id: 'bid-1',
-            bidderId: 'owner-user',
-            listingId: 'listing-1',
-            amount: 7000,
-            cancelledAt: null,
-            deletedAt: null,
-            createdAt: new Date(), // within window
-        };
-        prisma.bid.findUnique.mockResolvedValue(mockBid);
+    it('rejects a cancellation after the auction deadline', async () => {
+        prisma.$queryRaw.mockResolvedValueOnce([cancellationRow({
+            decision_code: 'ENDED',
+            cancelled_bid_id: null,
+        })]);
 
-        // Listing with ENDED auction
-        prisma.listing.findUnique.mockResolvedValue({
-            id: 'listing-1',
-            auction: { id: 'auction-1', status: 'ENDED' },
+        await expect(service.cancelBid('bid-high', 'owner-user'))
+            .rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+
+        expect(auctionGateway.broadcastBidCancelled).not.toHaveBeenCalled();
+    });
+
+    it('rejects a bid archived from a previous auction run', async () => {
+        prisma.$queryRaw.mockResolvedValueOnce([cancellationRow({
+            decision_code: 'PREVIOUS_RUN',
+            cancelled_bid_id: null,
+        })]);
+
+        await expect(service.cancelBid('bid-high', 'owner-user'))
+            .rejects.toMatchObject({ message: expect.stringMatching(/previous auction/i) });
+    });
+
+    it('rejects cancellation when the auction is no longer ACTIVE', async () => {
+        prisma.$queryRaw.mockResolvedValueOnce([cancellationRow({
+            decision_code: 'AUCTION_NOT_ACTIVE',
+            cancelled_bid_id: null,
+        })]);
+
+        await expect(service.cancelBid('bid-high', 'owner-user'))
+            .rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('does not turn a committed cancellation into HTTP 500 when realtime broadcast fails', async () => {
+        prisma.$queryRaw.mockResolvedValueOnce([cancellationRow()]);
+        auctionGateway.broadcastBidCancelled.mockImplementation(() => {
+            throw new Error('socket unavailable');
         });
 
-        await expect(
-            (service as any).cancelBid('bid-1', 'owner-user'),
-        ).rejects.toBeInstanceOf(BadRequestException);
+        await expect(service.cancelBid('bid-high', 'owner-user')).resolves.toBeUndefined();
+
+        expect(prisma.analyticsEvent.create).toHaveBeenCalled();
     });
 });
-
 
 describe('BidsService — current auction positions', () => {
     let service: BidsService;
