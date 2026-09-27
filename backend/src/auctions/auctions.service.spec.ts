@@ -465,30 +465,76 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         );
     });
 
+    const atomicReserveRow = ({
+        decision = 'OK',
+        oldReserve,
+        newReserve,
+        startingBid = 10000,
+        minIncrement = 100,
+        topBid = null,
+        activeBidCount = 0,
+        buyItNowPrice = 25000,
+        auctionStatus = 'ACTIVE',
+        listingStatus = 'ACTIVE',
+    }: {
+        decision?: string;
+        oldReserve: number;
+        newReserve: number;
+        startingBid?: number;
+        minIncrement?: number;
+        topBid?: number | null;
+        activeBidCount?: number;
+        buyItNowPrice?: number | null;
+        auctionStatus?: string;
+        listingStatus?: string;
+    }) => [{
+        id: 'auction-1',
+        listingId: 'listing-1',
+        auction_status: auctionStatus,
+        old_reserve: oldReserve,
+        starting_bid: startingBid,
+        min_increment: minIncrement,
+        buy_it_now_price: buyItNowPrice,
+        start_time: new Date(Date.now() - 60 * 60 * 1000),
+        end_time: new Date(Date.now() + 60 * 60 * 1000),
+        deleted_at: null,
+        listing_title: 'BMW M3',
+        seller_id: 'seller-1',
+        listing_status: listingStatus,
+        top_bid: topBid,
+        active_bid_count: activeBidCount,
+        decision_code: decision,
+        updated_auction: decision === 'OK'
+            ? {
+                ...makeActiveAuction({
+                    reservePrice: newReserve,
+                    startingBid,
+                    minIncrement,
+                    buyItNowPrice,
+                }),
+                reservePrice: newReserve,
+            }
+            : null,
+    }];
+
     it('adminCorrectReservePrice: lowers a live reserve without changing bids and clears pending BIN when reserve becomes met', async () => {
-        const auction = makeActiveAuction({
-            reservePrice: 20000,
+        prisma.$queryRaw.mockResolvedValueOnce(atomicReserveRow({
+            oldReserve: 20000,
+            newReserve: 17500,
+            topBid: 18000,
+            activeBidCount: 3,
             buyItNowPrice: 25000,
-            buyItNowPendingBuyerId: 'buyer-bin',
-            buyItNowPendingAt: new Date(),
-        });
-        prisma.auction.findUnique.mockResolvedValue(auction);
-        prisma.bid.findFirst.mockResolvedValue({ amount: 18000 });
-        prisma.bid.count.mockResolvedValue(3);
-        prisma.auction.update.mockResolvedValue({ ...auction, reservePrice: 17500 });
+        }));
 
-        await service.adminCorrectReservePrice('auction-1', 17500, 'Seller entered the wrong reserve');
+        const result = await service.adminCorrectReservePrice(
+            'auction-1',
+            17500,
+            'Seller entered the wrong reserve',
+        );
 
-        expect(prisma.auction.update).toHaveBeenCalledWith({
-            where: { id: 'auction-1' },
-            data: expect.objectContaining({
-                reservePrice: 17500,
-                buyItNowPendingBuyerId: null,
-                buyItNowPendingAt: null,
-            }),
-        });
-        expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+        expect(Number((result as any).reservePrice)).toBe(17500);
         expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.$transaction).not.toHaveBeenCalled();
         expect(auctionGateway.broadcastPriceUpdated).toHaveBeenCalledWith('auction-1', 17500);
         expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
             data: expect.objectContaining({
@@ -518,16 +564,20 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
     });
 
     it('adminCorrectReservePrice: recalculates the zero-bid first-offer floor after lowering reserve', async () => {
-        const auction = makeActiveAuction({
-            reservePrice: 9000,
+        prisma.$queryRaw.mockResolvedValueOnce(atomicReserveRow({
+            oldReserve: 9000,
+            newReserve: 6000,
             startingBid: 7000,
+            topBid: null,
+            activeBidCount: 0,
             buyItNowPrice: 12000,
-        });
-        prisma.auction.findUnique.mockResolvedValue(auction);
-        prisma.bid.findFirst.mockResolvedValue(null);
-        prisma.auction.update.mockResolvedValue({ ...auction, reservePrice: 6000 });
+        }));
 
-        await service.adminCorrectReservePrice('auction-1', 6000, 'Seller requested a lower reserve');
+        await service.adminCorrectReservePrice(
+            'auction-1',
+            6000,
+            'Seller requested a lower reserve',
+        );
 
         expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
         expect(notificationsService.create).toHaveBeenCalledWith(
@@ -547,47 +597,80 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         expect(auctionGateway.broadcastPriceUpdated).toHaveBeenCalledWith('auction-1', 6000);
     });
 
+    it('adminCorrectReservePrice: covers the production zero-bid £12,400 -> £8,500 case', async () => {
+        prisma.$queryRaw.mockResolvedValueOnce(atomicReserveRow({
+            oldReserve: 12400,
+            newReserve: 8500,
+            startingBid: 6650,
+            minIncrement: 100,
+            topBid: null,
+            activeBidCount: 0,
+            buyItNowPrice: null,
+        }));
+
+        const result = await service.adminCorrectReservePrice('auction-1', 8500);
+
+        expect(Number((result as any).reservePrice)).toBe(8500);
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.objectContaining({
+                    oldReserve: 12400,
+                    newReserve: 8500,
+                    firstOfferFloor: 4655,
+                    startingBid: 6650,
+                    reserveMet: false,
+                }),
+            }),
+        );
+        expect(auctionGateway.broadcastPriceUpdated).toHaveBeenCalledWith('auction-1', 8500);
+    });
+
     it('adminCorrectReservePrice: revalidates auction state after acquiring the bid lock', async () => {
-        const auction = makeActiveAuction({ reservePrice: 9000, startingBid: 7000 });
-        prisma.auction.findUnique
-            .mockResolvedValueOnce({ listingId: 'listing-1', deletedAt: null })
-            .mockResolvedValueOnce({ ...auction, status: 'ENDED' });
+        prisma.$queryRaw.mockResolvedValueOnce(atomicReserveRow({
+            decision: 'INVALID_STATUS',
+            oldReserve: 9000,
+            newReserve: 6000,
+            startingBid: 7000,
+            auctionStatus: 'ENDED',
+        }));
 
         await expect(
             service.adminCorrectReservePrice('auction-1', 6000),
         ).rejects.toBeInstanceOf(BadRequestException);
 
         expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
-        expect(prisma.auction.update).not.toHaveBeenCalled();
         expect(auctionGateway.broadcastPriceUpdated).not.toHaveBeenCalled();
     });
 
     it('adminCorrectReservePrice: refuses a live reserve change after the auction deadline', async () => {
-        const auction = makeActiveAuction({
-            reservePrice: 9000,
+        prisma.$queryRaw.mockResolvedValueOnce(atomicReserveRow({
+            decision: 'ENDED',
+            oldReserve: 9000,
+            newReserve: 6000,
             startingBid: 7000,
-            endTime: new Date(Date.now() - 1000),
-        });
-        prisma.auction.findUnique.mockResolvedValue(auction);
+        }));
 
         await expect(
             service.adminCorrectReservePrice('auction-1', 6000),
         ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
 
-        expect(prisma.auction.update).not.toHaveBeenCalled();
         expect(auctionGateway.broadcastPriceUpdated).not.toHaveBeenCalled();
     });
 
     it('adminCorrectReservePrice: refuses to raise a reserve above the top bid after reserve was already met', async () => {
-        const auction = makeActiveAuction({ reservePrice: 15000, buyItNowPrice: 25000 });
-        prisma.auction.findUnique.mockResolvedValue(auction);
-        prisma.bid.findFirst.mockResolvedValue({ amount: 16000 });
+        prisma.$queryRaw.mockResolvedValueOnce(atomicReserveRow({
+            decision: 'RESERVE_ALREADY_MET',
+            oldReserve: 15000,
+            newReserve: 17000,
+            topBid: 16000,
+            activeBidCount: 1,
+            buyItNowPrice: 25000,
+        }));
 
         await expect(
             service.adminCorrectReservePrice('auction-1', 17000),
         ).rejects.toBeInstanceOf(BadRequestException);
 
-        expect(prisma.auction.update).not.toHaveBeenCalled();
         expect(auctionGateway.broadcastPriceUpdated).not.toHaveBeenCalled();
     });
 });
