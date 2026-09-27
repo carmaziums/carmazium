@@ -29,7 +29,7 @@ import {
     ListingType,
     ListingStatus,
 } from '@prisma/client';
-import { randomBytes, randomUUID } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { SellersService } from '../sellers/sellers.service';
 import { ScraperService } from '../scraper/scraper.service';
@@ -398,6 +398,25 @@ export class ListingsService {
         };
     }
 
+    /**
+     * Same physical vehicle + same mileage gets one market base for 24 hours.
+     * The hash is stored in AnalyticsEvent.sessionId only for snapshot rows;
+     * valuation analytics queries are type-scoped, so this never counts as a
+     * customer browsing session.
+     */
+    private valuationIdentityKey(dto: VehicleValuationDto): string {
+        const identity = this.valuationIdentity(dto);
+        const raw = [
+            identity.registration,
+            identity.make,
+            identity.model,
+            identity.year,
+            identity.mileage,
+        ].join('|');
+
+        return `valuation-base:${createHash('sha256').update(raw).digest('hex')}`;
+    }
+
     private parseFrozenValuationBase(
         event: { id: string; type: string; payload: unknown } | null,
         dto: VehicleValuationDto,
@@ -446,16 +465,39 @@ export class ListingsService {
     ): Promise<VehicleValuationResult | null> {
         if (!dto.valuationId) return null;
 
-        const event = await this.prisma.analyticsEvent.findUnique({
+        const select = {
+            id: true,
+            type: true,
+            payload: true,
+        } as const;
+
+        // Exact journey lookup is authoritative and has no TTL: once a journey
+        // receives a base it remains stable for its lifetime.
+        const exactJourney = await this.prisma.analyticsEvent.findUnique({
             where: { id: dto.valuationId },
-            select: {
-                id: true,
-                type: true,
-                payload: true,
-            },
+            select,
         });
 
-        return this.parseFrozenValuationBase(event, dto);
+        const exact = this.parseFrozenValuationBase(exactJourney, dto);
+        if (exact) return exact;
+
+        // A new journey for the same unchanged vehicle should not get a wildly
+        // different answer five minutes later merely because a live search
+        // returned a different advert set. Reuse the latest vehicle base for
+        // 24 hours, after which market evidence is allowed to refresh.
+        const recentVehicleBase = await this.prisma.analyticsEvent.findFirst({
+            where: {
+                type: 'valuation_base_snapshot',
+                sessionId: this.valuationIdentityKey(dto),
+                createdAt: {
+                    gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+            select,
+        });
+
+        return this.parseFrozenValuationBase(recentVehicleBase, dto);
     }
 
     private async freezeValuationBase(
@@ -464,20 +506,48 @@ export class ListingsService {
     ): Promise<VehicleValuationResult> {
         if (!dto.valuationId) return calculatedBase;
 
+        // A different journey for this same unchanged vehicle may have
+        // completed while our live search was running. Prefer that already-
+        // frozen 24-hour identity base rather than publishing a second value.
+        const recentVehicleBase = await this.prisma.analyticsEvent.findFirst({
+            where: {
+                type: 'valuation_base_snapshot',
+                sessionId: this.valuationIdentityKey(dto),
+                createdAt: {
+                    gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+            select: {
+                id: true,
+                type: true,
+                payload: true,
+            },
+        });
+        const recent = this.parseFrozenValuationBase(recentVehicleBase, dto);
+        if (recent) return recent;
+
+        // Prisma JSON fields must contain plain JSON values; strip optional
+        // undefined properties before persisting the immutable base snapshot.
+        const serializableBase = JSON.parse(
+            JSON.stringify(calculatedBase),
+        ) as VehicleValuationResult;
+
         const data = {
             id: dto.valuationId,
             type: 'valuation_base_snapshot',
+            sessionId: this.valuationIdentityKey(dto),
             payload: {
                 valuation_id: dto.valuationId,
                 identity: this.valuationIdentity(dto),
-                baseValuation: calculatedBase,
+                baseValuation: serializableBase,
                 lockedAt: new Date().toISOString(),
             } as any,
         };
 
         try {
             await this.prisma.analyticsEvent.create({ data });
-            return calculatedBase;
+            return serializableBase;
         } catch (error: any) {
             // P2002 means another request with the same valuationId won the
             // race. Never return our independently-calculated result; re-read
