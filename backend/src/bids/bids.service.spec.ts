@@ -301,6 +301,69 @@ describe('BidsService — incremental bidding', () => {
         });
     });
 
+    it.each([5000, 6700, 13000])(
+        'accepts £%s on the production first-offer shape (start £6,650 / reserve £8,500 / floor £4,655)',
+        async (amount) => {
+            prisma.listing.findUnique.mockResolvedValue({
+                ...auctionListing,
+                auction: {
+                    ...auctionListing.auction,
+                    startingBid: 6650,
+                    reservePrice: 8500,
+                    minIncrement: 100,
+                },
+            });
+            prisma.user.findUnique.mockResolvedValue({
+                role: 'DEALER',
+                firstName: 'Test',
+                lastName: 'Dealer',
+            });
+            prisma.bid.findFirst.mockResolvedValue(null);
+            prisma.bid.create.mockImplementation(({ data }: any) => Promise.resolve({
+                id: `bid-${amount}`,
+                ...data,
+                timestamp: new Date(),
+            }));
+
+            const result = await service.create('bidder-A', {
+                listingId: 'listing-1',
+                amount,
+            } as any);
+
+            expect(result.id).toBe(`bid-${amount}`);
+            expect(Number(result.amount)).toBe(amount);
+        },
+    );
+
+    it('rejects £4,654 on the production first-offer shape because the floor is £4,655', async () => {
+        prisma.listing.findUnique.mockResolvedValue({
+            ...auctionListing,
+            auction: {
+                ...auctionListing.auction,
+                startingBid: 6650,
+                reservePrice: 8500,
+                minIncrement: 100,
+            },
+        });
+        prisma.user.findUnique.mockResolvedValue({
+            role: 'DEALER',
+            firstName: 'Test',
+            lastName: 'Dealer',
+        });
+        prisma.bid.findFirst.mockResolvedValue(null);
+
+        await expect(
+            service.create('bidder-A', {
+                listingId: 'listing-1',
+                amount: 4654,
+            } as any),
+        ).rejects.toMatchObject({
+            message: expect.stringMatching(/first offer must be at least £4,655/i),
+        });
+
+        expect(prisma.bid.create).not.toHaveBeenCalled();
+    });
+
     it('rejects a first offer more than 30% below the lower of starting bid and reserve', async () => {
         prisma.listing.findUnique.mockResolvedValue(auctionListing);
         prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
