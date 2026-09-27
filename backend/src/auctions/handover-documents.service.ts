@@ -13,6 +13,10 @@ import {
     assertValidPrivateDocument,
     extensionForPrivateDocumentMime,
 } from '../core/private-documents';
+import {
+    assertDealerPermission,
+    resolveDealerActor,
+} from '../dealers/dealer-access';
 
 export const HANDOVER_BUCKET = 'auction-handover-documents';
 
@@ -85,6 +89,22 @@ export class HandoverDocumentsService {
     async storeProof(userId: string, auctionId: string, file: any): Promise<string> {
         const mime = assertValidPrivateDocument(file);
 
+        // Dealer staff act as the canonical dealership owner for inventory
+        // operations. The auction service already applies this rule before the
+        // upload, but this storage layer must enforce the same identity itself:
+        // it writes the private object before the final submission mutation.
+        const actor = await resolveDealerActor(this.prisma, userId);
+        const sellerId = actor
+            ? (() => {
+                assertDealerPermission(
+                    actor,
+                    'MANAGE_INVENTORY',
+                    'Your dealership role does not allow handover submission.',
+                );
+                return actor.ownerUserId;
+            })()
+            : userId;
+
         const auction = await this.prisma.auction.findUnique({
             where: { id: auctionId },
             select: { id: true, deletedAt: true, listing: { select: { sellerId: true } } },
@@ -92,7 +112,7 @@ export class HandoverDocumentsService {
         if (!auction || auction.deletedAt) {
             throw new NotFoundException('Auction not found');
         }
-        if (auction.listing.sellerId !== userId) {
+        if (auction.listing.sellerId !== sellerId) {
             throw new ForbiddenException('You do not own this auction');
         }
 
