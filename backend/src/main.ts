@@ -178,9 +178,7 @@ async function bootstrap() {
 
     try {
       await app.close();
-      if (typeof redisIoAdapter.close === 'function') {
-        await redisIoAdapter.close();
-      }
+      await redisIoAdapter.closeRedisConnections();
       clearTimeout(hardStop);
       console.log('CarMazium API shutdown completed cleanly.');
     } catch (error) {
