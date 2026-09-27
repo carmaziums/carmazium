@@ -36,6 +36,16 @@ export interface AuctionPriceUpdatedPayload {
     reservePrice: number;
 }
 
+export interface BidCancelledPayload {
+    auctionId: string;
+    bidId: string;
+    highestActiveBid: number | null;
+    highestActiveBidId: string | null;
+    activeBidCount: number;
+    reserveMet: boolean;
+    firstOfferFloor: number | null;
+}
+
 @WebSocketGateway({
     cors: WS_CORS,
     namespace: '/auctions',
@@ -174,9 +184,11 @@ export class AuctionGateway implements OnGatewayInit, OnGatewayConnection, OnGat
         this.server.to(`auction:${auctionId}`).emit('bin:pending', { auctionId, buyerId });
     }
 
-    // Called by BidsService.cancelBid() — removes a cancelled bid from all viewers' feed
-    broadcastBidCancelled(auctionId: string, bidId: string): void {
-        this.server.to(`auction:${auctionId}`).emit('bid:cancelled', { auctionId, bidId });
+    // Called by BidsService.cancelBid() after the cancellation commits.
+    // The canonical post-cancellation position is included so every viewer can
+    // recover immediately even if its local bid history is incomplete.
+    broadcastBidCancelled(auctionId: string, payload: BidCancelledPayload): void {
+        this.server.to(`auction:${auctionId}`).emit('bid:cancelled', payload);
     }
 
     // Called when an admin corrects a live/scheduled reserve price. Viewers
