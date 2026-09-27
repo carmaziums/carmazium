@@ -1223,6 +1223,16 @@ export class AuctionsService {
         const linkedListingId = (auction.listing as any).linkedListingId as string | null;
 
         await this.endAuctionWithWinner(auctionId, dealerId, amount, sellerId, linkedListingId);
+        this.trackAuctionEvent('auction_outcome', {
+            auction_id: auctionId,
+            listing_id: auction.listingId,
+            outcome: 'ADMIN_ASSIGNED_SALE',
+            winner_id: dealerId,
+            winning_amount: amount,
+            reserve_price: Number(auction.reservePrice),
+            starting_bid: Number(auction.startingBid),
+            had_real_bids: (auction.listing.bids?.length ?? 0) > 0,
+        });
         await this.notifyAuctionEnd(auction, dealerId, amount, true);
     }
 
@@ -1290,6 +1300,16 @@ export class AuctionsService {
                     }),
                 ] : []),
             ]);
+
+            this.trackAuctionEvent('auction_outcome', {
+                auction_id: auction.id,
+                listing_id: listing.id,
+                outcome: 'WIN_REVERTED_UNPAID',
+                former_winner_id: winnerId,
+                reserve_price: Number(auction.reservePrice),
+                starting_bid: Number(auction.startingBid),
+                linked_retail_restored: Boolean(linkedRetailId),
+            });
 
             await this.notificationsService.create({
                 userId: winnerId,
@@ -1466,6 +1486,17 @@ export class AuctionsService {
             auction.handoverProofPath,
             auction.handoverProofUrl,
         ).catch(() => {});
+
+        this.trackAuctionEvent('auction_outcome', {
+            auction_id: auction.id,
+            listing_id: auction.listing.id,
+            outcome: 'BUYER_REFUSED_AFTER_INSPECTION',
+            former_winner_id: buyerId,
+            reserve_price: Number(auction.reservePrice),
+            starting_bid: Number(auction.startingBid),
+            inspection_job_id: inspection.id,
+            linked_retail_restored: Boolean(linkedRetailId),
+        });
 
         await this.notificationsService.create({
             userId: buyerId,
@@ -2104,6 +2135,17 @@ export class AuctionsService {
                 update: { totalSales: { increment: 1 } },
             }),
         ]);
+
+        this.trackAuctionEvent('auction_outcome', {
+            auction_id: auctionId,
+            listing_id: auction.listingId,
+            outcome: 'BUY_IT_NOW_SALE',
+            winner_id: pendingBuyerId,
+            winning_amount: binPrice,
+            reserve_price: Number(auction.reservePrice),
+            starting_bid: Number(auction.startingBid),
+            had_real_bids: (auction.listing.bids?.length ?? 0) > 0,
+        }, businessSellerId);
 
         const endPayload: AuctionEndPayload = {
             auctionId,
