@@ -555,6 +555,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
     // ── Cancel Bid ────────────────────────────────────────────────────────────
     async function handleCancelBid(bidId: string) {
+        if (!auction) return
         if (!canPlaceBid) {
             setCancelError("Your dealership role does not allow auction bidding.")
             return
