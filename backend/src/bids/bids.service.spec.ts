@@ -9,6 +9,7 @@ describe('BidsService — incremental bidding', () => {
     let service: BidsService;
     let prisma: any;
     let notificationsService: any;
+    let atomicPlacementMock: (...args: any[]) => Promise<any>;
 
     const auctionListing = {
         id: 'listing-1',
@@ -50,9 +51,151 @@ describe('BidsService — incremental bidding', () => {
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             auction: { update: jest.fn() },
             analyticsEvent: { create: jest.fn().mockResolvedValue({}) },
-            $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
+            $queryRaw: jest.fn(),
             $transaction: jest.fn(async (callback: any) => callback(prisma)),
         };
+
+        atomicPlacementMock = async (...rawArgs: any[]) => {
+            // Prisma tagged-template call shape: [strings, listingId, amount,
+            // businessBidderId, amount, generatedBidId, businessBidderId, amount].
+            const listingId = String(rawArgs[1]);
+            const amount = Number(rawArgs[2]);
+            const businessBidderId = String(rawArgs[3]);
+            const generatedBidId = String(rawArgs[5]);
+
+            const lockedListing = await prisma.listing.findUnique({
+                where: { id: listingId },
+                include: { auction: true },
+            });
+            if (!lockedListing) return [];
+
+            const auction = lockedListing.auction;
+            const highestBid = auction
+                ? await prisma.bid.findFirst({
+                    where: {
+                        listingId,
+                        deletedAt: null,
+                        cancelledAt: null,
+                        archivedAt: null,
+                    },
+                    orderBy: { amount: 'desc' },
+                })
+                : null;
+
+            const startingBid = auction ? Number(auction.startingBid) : 0;
+            const reservePrice = auction ? Number(auction.reservePrice) : 0;
+            const minIncrement = auction ? Number(auction.minIncrement) : 0;
+            const highestAmount = highestBid ? Number(highestBid.amount) : null;
+            const minAllowed = highestAmount == null
+                ? Math.round(Math.min(startingBid, reservePrice) * 0.70 * 100) / 100
+                : Math.round((highestAmount + minIncrement) * 100) / 100;
+
+            let decision = 'OK';
+            if (lockedListing.deletedAt) decision = 'NOT_FOUND';
+            else if (lockedListing.type !== 'AUCTION') decision = 'NOT_AUCTION';
+            else if (!auction) decision = 'NO_AUCTION';
+            else if (auction.status !== 'ACTIVE') decision = 'AUCTION_NOT_ACTIVE';
+            else if (lockedListing.status !== 'ACTIVE') decision = 'LISTING_NOT_ACTIVE';
+            else if (Date.now() >= auction.endTime.getTime()) decision = 'ENDED';
+            else if (lockedListing.sellerId === businessBidderId) decision = 'OWN_AUCTION';
+            else if (
+                highestAmount == null
+                && (startingBid <= 0 || reservePrice <= 0)
+            ) decision = 'INVALID_PRICES';
+            else if (
+                highestAmount != null
+                && (highestAmount <= 0 || minIncrement <= 0)
+            ) decision = 'INVALID_PRICES';
+            else if (amount < minAllowed) decision = 'BID_TOO_LOW';
+
+            let bid: any = null;
+            let pendingBuyerToCancel: string | null = null;
+            let newEndTime: Date | null = null;
+
+            if (decision === 'OK') {
+                bid = await prisma.bid.create({
+                    data: {
+                        listingId,
+                        bidderId: businessBidderId,
+                        amount,
+                    },
+                });
+                const timestamp = bid.timestamp instanceof Date ? bid.timestamp : new Date(bid.timestamp ?? Date.now());
+                bid = {
+                    id: bid.id ?? generatedBidId,
+                    listingId: bid.listingId ?? listingId,
+                    bidderId: bid.bidderId ?? businessBidderId,
+                    amount: bid.amount ?? amount,
+                    timestamp,
+                    createdAt: bid.createdAt ?? timestamp,
+                    updatedAt: bid.updatedAt ?? timestamp,
+                    deletedAt: bid.deletedAt ?? null,
+                    cancelledAt: bid.cancelledAt ?? null,
+                    archivedAt: bid.archivedAt ?? null,
+                };
+
+                pendingBuyerToCancel = auction.buyItNowPendingBuyerId && amount >= reservePrice
+                    ? auction.buyItNowPendingBuyerId
+                    : null;
+                const timeLeft = auction.endTime.getTime() - timestamp.getTime();
+                if (timeLeft > 0 && timeLeft <= 3 * 60 * 1000) {
+                    newEndTime = new Date(auction.endTime.getTime() + 3 * 60 * 1000);
+                }
+                if (pendingBuyerToCancel || newEndTime) {
+                    await prisma.auction.update({
+                        where: { id: auction.id },
+                        data: {
+                            ...(pendingBuyerToCancel && {
+                                buyItNowPendingBuyerId: null,
+                                buyItNowPendingAt: null,
+                            }),
+                            ...(newEndTime && { endTime: newEndTime }),
+                        },
+                    });
+                }
+            }
+
+            return [{
+                listing_id: lockedListing.id,
+                listing_type: lockedListing.type,
+                listing_status: lockedListing.status,
+                listing_deleted_at: lockedListing.deletedAt ?? null,
+                seller_id: lockedListing.sellerId ?? null,
+                listing_title: lockedListing.title ?? '',
+                listing_make: lockedListing.make ?? null,
+                listing_model: lockedListing.model ?? null,
+                listing_year: lockedListing.year ?? null,
+                listing_vrm: lockedListing.vrm ?? null,
+                listing_price: lockedListing.price ?? 0,
+                auction_id: auction?.id ?? null,
+                auction_status: auction?.status ?? null,
+                start_time: auction?.startTime ?? null,
+                end_time: auction?.endTime ?? null,
+                starting_bid: auction?.startingBid ?? null,
+                reserve_price: auction?.reservePrice ?? null,
+                min_increment: auction?.minIncrement ?? null,
+                buy_it_now_pending_buyer_id: auction?.buyItNowPendingBuyerId ?? null,
+                highest_bid_id: highestBid?.id ?? null,
+                highest_bidder_id: highestBid?.bidderId ?? null,
+                highest_bid_amount: highestBid?.amount ?? null,
+                min_allowed: minAllowed,
+                pending_buyer_to_cancel: pendingBuyerToCancel,
+                should_extend: Boolean(newEndTime),
+                decision_code: decision,
+                bid_id: bid?.id ?? null,
+                bid_listing_id: bid?.listingId ?? null,
+                bid_bidder_id: bid?.bidderId ?? null,
+                bid_amount: bid?.amount ?? null,
+                bid_timestamp: bid?.timestamp ?? null,
+                bid_created_at: bid?.createdAt ?? null,
+                bid_updated_at: bid?.updatedAt ?? null,
+                bid_deleted_at: bid?.deletedAt ?? null,
+                bid_cancelled_at: bid?.cancelledAt ?? null,
+                bid_archived_at: bid?.archivedAt ?? null,
+                new_end_time: newEndTime,
+            }];
+        };
+        prisma.$queryRaw.mockImplementation(atomicPlacementMock);
         notificationsService = { create: jest.fn().mockResolvedValue(null) };
 
         const module: TestingModule = await Test.createTestingModule({
