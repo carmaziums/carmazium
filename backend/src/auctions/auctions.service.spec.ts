@@ -69,7 +69,11 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                 count: jest.fn().mockResolvedValue(742),
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
-            $transaction: jest.fn(),
+            $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
+            $transaction: jest.fn(async (arg: any) => {
+                if (typeof arg === 'function') return arg(prisma);
+                return Promise.all(arg);
+            }),
         };
 
         notificationsService = {
@@ -386,14 +390,68 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                 buyItNowPendingAt: null,
             }),
         });
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
         expect(auctionGateway.broadcastPriceUpdated).toHaveBeenCalledWith('auction-1', 17500);
         expect(notificationsService.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 userId: 'seller-1',
                 type: 'AUCTION_UPDATED',
                 actionType: 'PRICE_CORRECTED',
+                message: expect.stringMatching(/current highest bid of £18,000 now meets the reserve/i),
+                data: expect.objectContaining({
+                    oldReserve: 20000,
+                    newReserve: 17500,
+                    topBidAmount: 18000,
+                    reserveMet: true,
+                }),
             }),
         );
+    });
+
+    it('adminCorrectReservePrice: recalculates the zero-bid first-offer floor after lowering reserve', async () => {
+        const auction = makeActiveAuction({
+            reservePrice: 9000,
+            startingBid: 7000,
+            buyItNowPrice: 12000,
+        });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.auction.update.mockResolvedValue({ ...auction, reservePrice: 6000 });
+
+        await service.adminCorrectReservePrice('auction-1', 6000, 'Seller requested a lower reserve');
+
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                userId: 'seller-1',
+                message: expect.stringMatching(/first offers can now be made from £4,200/i),
+                data: expect.objectContaining({
+                    oldReserve: 9000,
+                    newReserve: 6000,
+                    topBidAmount: null,
+                    firstOfferFloor: 4200,
+                    startingBid: 7000,
+                    reserveMet: false,
+                }),
+            }),
+        );
+        expect(auctionGateway.broadcastPriceUpdated).toHaveBeenCalledWith('auction-1', 6000);
+    });
+
+    it('adminCorrectReservePrice: revalidates auction state after acquiring the bid lock', async () => {
+        const auction = makeActiveAuction({ reservePrice: 9000, startingBid: 7000 });
+        prisma.auction.findUnique
+            .mockResolvedValueOnce({ listingId: 'listing-1', deletedAt: null })
+            .mockResolvedValueOnce({ ...auction, status: 'ENDED' });
+
+        await expect(
+            service.adminCorrectReservePrice('auction-1', 6000),
+        ).rejects.toBeInstanceOf(BadRequestException);
+
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastPriceUpdated).not.toHaveBeenCalled();
     });
 
     it('adminCorrectReservePrice: refuses to raise a reserve above the top bid after reserve was already met', async () => {
