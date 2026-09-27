@@ -672,8 +672,6 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
         prisma.auction.findUnique.mockResolvedValue(auction);
         prisma.bid.findUnique.mockResolvedValue(bid);
         prisma.bid.findFirst.mockResolvedValue(bid);
-        prisma.$transaction.mockResolvedValue([]);
-
         await expect(
             service.acceptBid('auction-1', 'bid-current', 'seller-1'),
         ).resolves.toBeUndefined();
@@ -698,6 +696,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
                 soldPrice: 8200,
             },
         });
+        expect((service as any).chatService.findOrCreateRoom).not.toHaveBeenCalled();
     });
 });
 
