@@ -2057,44 +2057,108 @@ export class AuctionsService {
      * Buyer triggers a Buy It Now request. Sets pending state, notifies seller, broadcasts to viewers.
      */
     async triggerBuyItNow(auctionId: string, buyerId: string): Promise<void> {
-        buyerId = await this.resolveBuyerBusinessId(buyerId, 'PLACE_BID');
-        const auction = await this.findOne(auctionId);
-
-        if (auction.status !== 'ACTIVE') {
-            throw new BadRequestException('Auction is not ACTIVE');
-        }
-        if (!auction.buyItNowPrice) {
-            throw new BadRequestException('No Buy It Now price set on this auction');
-        }
-
-        // Check reserve not already met by existing top bid
-        const topBid = await this.prisma.bid.findFirst({
-            where: { listingId: auction.listingId, deletedAt: null, cancelledAt: null, archivedAt: null },
-            orderBy: { amount: 'desc' },
+        // Buy It Now is an auction purchase commitment and must obey the exact
+        // same verified-dealer / dealership-permission boundary as bidding.
+        const user = await this.prisma.user.findUnique({
+            where: { id: buyerId },
+            select: { role: true },
         });
-        if (topBid && Number(topBid.amount) >= Number(auction.reservePrice)) {
-            throw new BadRequestException('Reserve is met — Buy It Now is no longer available');
+        if (user?.role !== 'DEALER') {
+            throw new ForbiddenException('Only verified dealers can use Buy It Now on auctions.');
         }
 
-        // Allow re-trigger by any buyer (replaces existing pending)
-        await this.prisma.auction.update({
+        const dealerActor = await resolveDealerActor(this.prisma, buyerId);
+        if (!dealerActor?.isVerified) {
+            throw new ForbiddenException('Only verified dealers can use Buy It Now on auctions.');
+        }
+        assertDealerPermission(
+            dealerActor,
+            'PLACE_BID',
+            'Your dealership role does not allow auction purchase commitments.',
+        );
+        const businessBuyerId = dealerActor.ownerUserId;
+
+        const lookup = await this.prisma.auction.findUnique({
             where: { id: auctionId },
-            data: { buyItNowPendingBuyerId: buyerId, buyItNowPendingAt: new Date() },
+            select: { listingId: true, deletedAt: true },
+        });
+        if (!lookup || lookup.deletedAt) {
+            throw new NotFoundException('Auction not found');
+        }
+
+        const requested = await this.prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
+
+            const auction = await tx.auction.findUnique({
+                where: { id: auctionId },
+                include: {
+                    listing: {
+                        select: {
+                            id: true,
+                            sellerId: true,
+                            make: true,
+                            model: true,
+                        },
+                    },
+                },
+            });
+            if (!auction || auction.deletedAt) {
+                throw new NotFoundException('Auction not found');
+            }
+            if (auction.status !== 'ACTIVE') {
+                throw new BadRequestException('Auction is not ACTIVE');
+            }
+            if (Date.now() >= auction.endTime.getTime()) {
+                throw new BadRequestException('This auction has ended and is no longer accepting Buy It Now requests');
+            }
+            if (!auction.buyItNowPrice) {
+                throw new BadRequestException('No Buy It Now price set on this auction');
+            }
+            if (auction.listing.sellerId === businessBuyerId) {
+                throw new BadRequestException('You cannot buy your own auction');
+            }
+
+            const topBid = await tx.bid.findFirst({
+                where: {
+                    listingId: auction.listingId,
+                    deletedAt: null,
+                    cancelledAt: null,
+                    archivedAt: null,
+                },
+                orderBy: { amount: 'desc' },
+            });
+            if (topBid && Number(topBid.amount) >= Number(auction.reservePrice)) {
+                throw new BadRequestException('Reserve is met — Buy It Now is no longer available');
+            }
+
+            const pendingAt = new Date();
+            await tx.auction.update({
+                where: { id: auctionId },
+                data: {
+                    buyItNowPendingBuyerId: businessBuyerId,
+                    buyItNowPendingAt: pendingAt,
+                },
+            });
+
+            return {
+                auction,
+                pendingAt,
+            };
         });
 
-        // Notify seller
-        await this.notificationsService.create({
-            userId: auction.listing.sellerId,
-            type: 'AUCTION_ENDED',
-            title: 'Buy It Now request received',
-            message: `A buyer wants to buy your ${auction.listing.make} ${auction.listing.model} for £${Number(auction.buyItNowPrice).toLocaleString()}.`,
-            entityType: 'AUCTION',
-            entityId: auctionId,
-            link: `/auctions/live/${auctionId}`,
-        });
+        if (requested.auction.listing.sellerId) {
+            await this.notificationsService.create({
+                userId: requested.auction.listing.sellerId,
+                type: 'AUCTION_ENDED',
+                title: 'Buy It Now request received',
+                message: `A buyer wants to buy your ${requested.auction.listing.make} ${requested.auction.listing.model} for £${Number(requested.auction.buyItNowPrice).toLocaleString()}.`,
+                entityType: 'AUCTION',
+                entityId: auctionId,
+                link: `/auctions/live/${auctionId}`,
+            });
+        }
 
-        // Broadcast BIN pending state to all viewers
-        this.auctionGateway.broadcastBinPending(auctionId, buyerId);
+        this.auctionGateway.broadcastBinPending(auctionId, businessBuyerId);
     }
 
     /**
@@ -2102,77 +2166,152 @@ export class AuctionsService {
      */
     async confirmBuyItNow(auctionId: string, sellerId: string): Promise<void> {
         const businessSellerId = await this.resolveSellerBusinessId(sellerId, 'MANAGE_INVENTORY');
-        const auction = await this.findOne(auctionId);
 
-        if (auction.listing.sellerId !== businessSellerId) {
-            throw new ForbiddenException('You do not own this auction');
+        const lookup = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            select: { listingId: true, deletedAt: true },
+        });
+        if (!lookup || lookup.deletedAt) {
+            throw new NotFoundException('Auction not found');
         }
-        if (!auction.buyItNowPendingBuyerId) {
-            throw new BadRequestException('No Buy It Now request is pending on this auction');
-        }
 
-        const pendingBuyerId = auction.buyItNowPendingBuyerId;
-        const binPrice = Number(auction.buyItNowPrice);
-        const linkedListingId = (auction.listing as any).linkedListingId as string | null;
+        const confirmed = await this.prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
 
-        // Run the full winner-close transaction
-        await this.prisma.$transaction([
-            this.prisma.auction.update({
+            const auction = await tx.auction.findUnique({
+                where: { id: auctionId },
+                include: {
+                    listing: {
+                        select: {
+                            id: true,
+                            sellerId: true,
+                            linkedListingId: true,
+                            make: true,
+                            model: true,
+                            title: true,
+                        },
+                    },
+                },
+            });
+            if (!auction || auction.deletedAt) {
+                throw new NotFoundException('Auction not found');
+            }
+            if (auction.listing.sellerId !== businessSellerId) {
+                throw new ForbiddenException('You do not own this auction');
+            }
+            if (auction.status !== 'ACTIVE') {
+                throw new BadRequestException('Auction is not ACTIVE');
+            }
+            if (Date.now() >= auction.endTime.getTime()) {
+                throw new BadRequestException('This auction has ended and the Buy It Now request can no longer be confirmed');
+            }
+            if (!auction.buyItNowPendingBuyerId || !auction.buyItNowPendingAt) {
+                throw new BadRequestException('No Buy It Now request is pending on this auction');
+            }
+            if (auction.buyItNowPendingAt.getTime() + 24 * 60 * 60 * 1000 < Date.now()) {
+                throw new BadRequestException('The Buy It Now request has expired');
+            }
+            if (!auction.buyItNowPrice) {
+                throw new BadRequestException('No Buy It Now price set on this auction');
+            }
+
+            // A bid that reached reserve wins the race over a stale BIN confirm.
+            // Both paths share this advisory lock, so this check is authoritative.
+            const [topBid, activeBidCount] = await Promise.all([
+                tx.bid.findFirst({
+                    where: {
+                        listingId: auction.listingId,
+                        deletedAt: null,
+                        cancelledAt: null,
+                        archivedAt: null,
+                    },
+                    orderBy: { amount: 'desc' },
+                }),
+                tx.bid.count({
+                    where: {
+                        listingId: auction.listingId,
+                        deletedAt: null,
+                        cancelledAt: null,
+                        archivedAt: null,
+                    },
+                }),
+            ]);
+            if (topBid && Number(topBid.amount) >= Number(auction.reservePrice)) {
+                throw new BadRequestException('Reserve is met — Buy It Now can no longer be confirmed');
+            }
+
+            const pendingBuyerId = auction.buyItNowPendingBuyerId;
+            const binPrice = Number(auction.buyItNowPrice);
+            const wonAt = new Date();
+
+            await tx.auction.update({
                 where: { id: auctionId },
                 data: {
                     status: 'ENDED',
                     winnerId: pendingBuyerId,
                     winningBidAmount: binPrice,
-                    wonAt: new Date(),
+                    wonAt,
                     buyItNowPendingBuyerId: null,
                     buyItNowPendingAt: null,
                 },
-            }),
-            this.prisma.listing.update({
+            });
+            await tx.listing.update({
                 where: { id: auction.listingId },
                 data: { status: 'SOLD' },
-            }),
-            ...(linkedListingId ? [
-                this.prisma.listing.update({
-                    where: { id: linkedListingId },
+            });
+            if (auction.listing.linkedListingId) {
+                await tx.listing.update({
+                    where: { id: auction.listing.linkedListingId },
                     data: { status: 'SOLD' },
-                }),
-            ] : []),
-            this.prisma.sale.create({
+                });
+            }
+            await tx.sale.create({
                 data: {
                     listingId: auction.listingId,
                     sellerId: businessSellerId,
                     buyerId: pendingBuyerId,
                     soldPrice: binPrice,
                 },
-            }),
-            this.prisma.sellerProfile.upsert({
+            });
+            await tx.sellerProfile.upsert({
                 where: { userId: businessSellerId },
                 create: { userId: businessSellerId, totalSales: 1 },
                 update: { totalSales: { increment: 1 } },
-            }),
-        ]);
+            });
+
+            return {
+                auction,
+                pendingBuyerId,
+                binPrice,
+                activeBidCount,
+            };
+        });
 
         this.trackAuctionEvent('auction_outcome', {
             auction_id: auctionId,
-            auction_run_key: this.auctionRunKey(auction),
-            listing_id: auction.listingId,
+            auction_run_key: this.auctionRunKey(confirmed.auction),
+            listing_id: confirmed.auction.listingId,
             outcome: 'BUY_IT_NOW_SALE',
-            winner_id: pendingBuyerId,
-            winning_amount: binPrice,
-            reserve_price: Number(auction.reservePrice),
-            starting_bid: Number(auction.startingBid),
-            had_real_bids: (auction.listing.bids?.length ?? 0) > 0,
+            winner_id: confirmed.pendingBuyerId,
+            winning_amount: confirmed.binPrice,
+            reserve_price: Number(confirmed.auction.reservePrice),
+            starting_bid: Number(confirmed.auction.startingBid),
+            had_real_bids: confirmed.activeBidCount > 0,
         }, businessSellerId);
 
         const endPayload: AuctionEndPayload = {
             auctionId,
-            winnerId: pendingBuyerId,
-            winningBidAmount: binPrice,
+            winnerId: confirmed.pendingBuyerId,
+            winningBidAmount: confirmed.binPrice,
             reserveMet: true,
         };
         this.auctionGateway.broadcastAuctionEnd(auctionId, endPayload);
-        await this.notifyAuctionEnd({ ...auction, id: auctionId }, pendingBuyerId, binPrice, true);
+        await this.notifyAuctionEnd(
+            { ...confirmed.auction, id: auctionId },
+            confirmed.pendingBuyerId,
+            confirmed.binPrice,
+            true,
+        );
     }
 
     /**
@@ -2180,31 +2319,62 @@ export class AuctionsService {
      */
     async declineBuyItNow(auctionId: string, sellerId: string): Promise<void> {
         const businessSellerId = await this.resolveSellerBusinessId(sellerId, 'MANAGE_INVENTORY');
-        const auction = await this.findOne(auctionId);
 
-        if (auction.listing.sellerId !== businessSellerId) {
-            throw new ForbiddenException('You do not own this auction');
+        const lookup = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            select: { listingId: true, deletedAt: true },
+        });
+        if (!lookup || lookup.deletedAt) {
+            throw new NotFoundException('Auction not found');
         }
 
-        const pendingBuyerId = auction.buyItNowPendingBuyerId;
+        const declined = await this.prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
 
-        await this.prisma.auction.update({
-            where: { id: auctionId },
-            data: { buyItNowPendingBuyerId: null, buyItNowPendingAt: null },
+            const auction = await tx.auction.findUnique({
+                where: { id: auctionId },
+                include: {
+                    listing: {
+                        select: {
+                            sellerId: true,
+                            make: true,
+                            model: true,
+                        },
+                    },
+                },
+            });
+            if (!auction || auction.deletedAt) {
+                throw new NotFoundException('Auction not found');
+            }
+            if (auction.listing.sellerId !== businessSellerId) {
+                throw new ForbiddenException('You do not own this auction');
+            }
+            if (auction.status !== 'ACTIVE') {
+                throw new BadRequestException('Auction is not ACTIVE');
+            }
+
+            const pendingBuyerId = auction.buyItNowPendingBuyerId;
+            if (!pendingBuyerId) {
+                throw new BadRequestException('No Buy It Now request is pending on this auction');
+            }
+
+            await tx.auction.update({
+                where: { id: auctionId },
+                data: { buyItNowPendingBuyerId: null, buyItNowPendingAt: null },
+            });
+
+            return { auction, pendingBuyerId };
         });
 
-        // Notify buyer their BIN request was declined
-        if (pendingBuyerId) {
-            await this.notificationsService.create({
-                userId: pendingBuyerId,
-                type: 'AUCTION_ENDED',
-                title: 'Buy It Now request declined',
-                message: `The seller declined your Buy It Now request on ${auction.listing.make} ${auction.listing.model}. You can continue bidding.`,
-                entityType: 'AUCTION',
-                entityId: auctionId,
-                link: `/auctions/live/${auctionId}`,
-            });
-        }
+        await this.notificationsService.create({
+            userId: declined.pendingBuyerId,
+            type: 'AUCTION_ENDED',
+            title: 'Buy It Now request declined',
+            message: `The seller declined your Buy It Now request on ${declined.auction.listing.make} ${declined.auction.listing.model}. You can continue bidding.`,
+            entityType: 'AUCTION',
+            entityId: auctionId,
+            link: `/auctions/live/${auctionId}`,
+        });
     }
 
     /**
