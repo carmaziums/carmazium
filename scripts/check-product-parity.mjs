@@ -1303,6 +1303,33 @@ for (const constant of [
   });
 }
 
+// Auction first-offer live-state regression guard. Socket.IO room events are
+// not replayed after a connection drop, so both clients must canonical-resync
+// on every successful connect. The web socket must also stay mounted when the
+// local winning flag changes during normal bidding.
+const webLiveAuction = read('src/app/auctions/live/[id]/page.tsx');
+const mobileLiveAuction = read('carmazium app/carmazium app/src/screens/vehicle/AuctionDetailScreen.tsx');
+
+if (
+  !webLiveAuction.includes('syncCanonicalAuctionState()') ||
+  !webLiveAuction.includes('socket.on("connect", () => {') ||
+  webLiveAuction.includes('[auction?.id, businessUserId, isWinning]')
+) {
+  fail('Web live auction can miss canonical bid state or reconnect during winner-state changes');
+} else {
+  ok('Web live auction preserves one socket and canonical-resyncs after reconnect');
+}
+
+if (
+  !mobileLiveAuction.includes("socket.on('connect', () => {") ||
+  !mobileLiveAuction.includes('loadAuctionRef.current({ silent: true });') ||
+  mobileLiveAuction.includes("socket.on('reconnect', () => {")
+) {
+  fail('Native live auction can miss canonical state after reconnect');
+} else {
+  ok('Native live auction canonical-resyncs after every successful connect');
+}
+
 const webApi = read('src/lib/apiClient.ts');
 const mobileApi = read('carmazium app/carmazium app/src/lib/apiClient.ts');
 const apiUrl = /https:\/\/carmazium-[a-z0-9-]+\.fly\.dev/;
