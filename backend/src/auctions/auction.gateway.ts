@@ -41,6 +41,7 @@ export interface BidCancelledPayload {
     bidId: string;
     highestActiveBid: number | null;
     highestActiveBidId: string | null;
+    highestActiveBidderId: string | null;
     activeBidCount: number;
     reserveMet: boolean;
     firstOfferFloor: number | null;
