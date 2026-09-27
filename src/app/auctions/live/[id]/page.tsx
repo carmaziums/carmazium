@@ -246,9 +246,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     }, [isWinning])
 
     // ── Load ──────────────────────────────────────────────────────────────────
-    const loadAuction = React.useCallback(() => {
-        setLoadError(null)
-        setLoading(true)
+    const loadAuction = React.useCallback((options?: { silent?: boolean }) => {
+        if (!options?.silent) {
+            setLoadError(null)
+            setLoading(true)
+        }
         getAuction(params.id)
             .then(data => {
                 setAuction(data)
@@ -257,7 +259,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 const bids = data.listing.bids ?? []
                 const top = bids[0] ? Number(bids[0].amount) : 0
                 setCurrentBid(top)
-                setIsWinning(!!businessUserId && bids[0]?.bidderId === businessUserId)
+                const nextWinning = !!businessUserId && bids[0]?.bidderId === businessUserId
+                isWinningRef.current = nextWinning
+                setIsWinning(nextWinning)
                 setBidHistory(bids.map(b => ({
                     initials: `${b.bidder?.firstName?.[0] ?? "?"}${b.bidder?.lastName?.[0] ?? ""}`.toUpperCase(),
                     amount: Number(b.amount),
@@ -292,8 +296,12 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     })
                 }
             })
-            .catch(() => setLoadError("Failed to load auction. Please refresh."))
-            .finally(() => setLoading(false))
+            .catch(() => {
+                if (!options?.silent) setLoadError("Failed to load auction. Please refresh.")
+            })
+            .finally(() => {
+                if (!options?.silent) setLoading(false)
+            })
     }, [params.id, businessUserId])
 
     React.useEffect(() => { loadAuction() }, [loadAuction])
@@ -313,60 +321,16 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             },
             withCredentials: true,
             transports: ["websocket"],
-            reconnectionAttempts: 5,
-            reconnectionDelay: 2000,
+            // A Fly deploy/restart can exceed five short reconnect attempts.
+            // Keep trying while the user remains on the live auction; the
+            // canonical GET resync below repairs anything missed meanwhile.
+            reconnectionAttempts: Infinity,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 10000,
+            randomizationFactor: 0.5,
+            timeout: 10000,
         })
         socketRef.current = socket
-
-        const syncCanonicalAuctionState = () => {
-            getAuction(auction.id)
-                .then(fresh => {
-                    setAuction(fresh)
-                    setEndTime(new Date(fresh.endTime))
-                    setStartTime(new Date(fresh.startTime))
-
-                    const bids = fresh.listing.bids ?? []
-                    const topBid = bids[0] ? Number(bids[0].amount) : 0
-                    const nextWinning = !!businessUserId && bids[0]?.bidderId === businessUserId
-
-                    setBidHistory(bids.map(b => ({
-                        initials: `${b.bidder?.firstName?.[0] ?? "?"}${b.bidder?.lastName?.[0] ?? ""}`.toUpperCase(),
-                        amount: Number(b.amount),
-                        time: new Date(b.timestamp).toLocaleTimeString("en-GB"),
-                        bidId: b.id,
-                        bidderId: b.bidderId,
-                    })))
-                    setCurrentBid(topBid)
-                    isWinningRef.current = nextWinning
-                    setIsWinning(nextWinning)
-                    setBinPending(!!fresh.buyItNowPendingBuyerId)
-                    setBinResponseDeadline(fresh.buyItNowResponseDeadline ?? null)
-
-                    if (businessUserId) {
-                        const now = Date.now()
-                        const ownCancelable = new Map<string, number>()
-                        for (const b of bids) {
-                            if (b.bidderId !== businessUserId) continue
-                            const expiresAt = new Date(b.createdAt).getTime() + BID_CANCEL_WINDOW_MS
-                            if (expiresAt > now) ownCancelable.set(b.id, expiresAt)
-                        }
-                        setCancelableBids(ownCancelable)
-                    }
-
-                    if (fresh.status === "ENDED") {
-                        const winningBid = bids[0] ? Number(bids[0].amount) : null
-                        setEndedPayload({
-                            auctionId: fresh.id,
-                            winnerId: fresh.winnerId,
-                            winningBidAmount: fresh.winningBidAmount ? Number(fresh.winningBidAmount) : winningBid,
-                            reserveMet: !!fresh.winnerId && fresh.winningBidAmount != null
-                                ? true
-                                : winningBid !== null && winningBid >= Number(fresh.reservePrice),
-                        })
-                    }
-                })
-                .catch(() => { /* live event state remains usable if the resync fails */ })
-        }
 
         socket.on("connect", () => {
             setConnected(true)
@@ -374,9 +338,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             // Socket.IO fires "connect" after both the initial connection and
             // successful reconnections. Re-read canonical state every time so a
             // bid/cancel/end event missed while offline cannot leave stale UI.
-            syncCanonicalAuctionState()
+            loadAuction({ silent: true })
         })
         socket.on("disconnect", () => setConnected(false))
+        socket.on("connect_error", () => setConnected(false))
         socket.on("auction:viewers", ({ count }: { count: number }) => setWatchers(count))
 
         socket.on("bid:new", (payload: BidBroadcastPayload) => {
@@ -466,7 +431,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             // Re-read the canonical active bid list in the background. The
             // event contains enough data for immediate UI recovery, while this
             // resync fixes any local history gap from a missed websocket event.
-            syncCanonicalAuctionState()
+            loadAuction({ silent: true })
         })
 
         socket.on("auction:ended", (payload: AuctionEndPayload) => {
@@ -491,11 +456,24 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             // trip, then refetch the canonical auction as a consistency check.
             setAuction(p => p ? { ...p, reservePrice } : p)
 
-            syncCanonicalAuctionState()
+            loadAuction({ silent: true })
         })
 
         return () => { socket.disconnect() }
-    }, [auction?.id, businessUserId])
+    }, [auction?.id, businessUserId, loadAuction])
+
+    // WebSocket is the fast path, not the only path. If Fly is deploying or a
+    // proxy/socket route is temporarily unavailable, poll canonical auction
+    // state until the socket reconnects. This prevents a live page from
+    // freezing after Socket.IO exhausts/loses a connection.
+    React.useEffect(() => {
+        if (!auction?.id || connected || auction.status === "ENDED" || auction.status === "CANCELLED") return
+
+        const refresh = () => loadAuction({ silent: true })
+        refresh()
+        const intervalId = window.setInterval(refresh, 5000)
+        return () => window.clearInterval(intervalId)
+    }, [auction?.id, auction?.status, connected, loadAuction])
 
     // ── Anti-snipe activation ─────────────────────────────────────────────────
     // Schedule a single timeout to fire exactly when we enter the anti-snipe window,
