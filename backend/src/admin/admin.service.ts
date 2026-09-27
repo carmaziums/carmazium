@@ -1201,10 +1201,16 @@ export class AdminService {
     }
 
     async approveHandover(auctionId: string) {
-        const auction = await this.auctionsService.assertHandoverBusinessRules(auctionId, {
+        await this.auctionsService.assertHandoverBusinessRules(auctionId, {
             requireProof: true,
             requireUnapproved: true,
         });
+
+        const auction = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            include: { listing: { select: { sellerId: true, title: true } } },
+        });
+        if (!auction) throw new NotFoundException('Auction not found');
 
         // Atomic approval claim. The eligibility predicate is repeated in the
         // write so a refusal/cancellation/fee/proof change between validation
