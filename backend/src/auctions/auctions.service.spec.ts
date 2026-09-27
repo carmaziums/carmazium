@@ -23,6 +23,8 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         id: 'auction-1',
         listingId: 'listing-1',
         status: 'ACTIVE',
+        startTime: new Date(Date.now() - 60 * 60 * 1000),
+        endTime: new Date(Date.now() + 60 * 60 * 1000),
         reservePrice: 20000,
         startingBid: 10000,
         winningBidAmount: null,
@@ -64,9 +66,19 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
             sale: { create: jest.fn(), deleteMany: jest.fn() },
             sellerProfile: { upsert: jest.fn(), update: jest.fn() },
             chatRoom: { upsert: jest.fn() },
-            user: { findUnique: jest.fn().mockResolvedValue(null) },
+            user: {
+                findUnique: jest.fn().mockImplementation(({ where }: any) => Promise.resolve({
+                    id: where.id,
+                    role: 'DEALER',
+                    deletedAt: null,
+                })),
+            },
             dealerProfile: {
-                findUnique: jest.fn().mockResolvedValue(null),
+                findUnique: jest.fn().mockImplementation(({ where }: any) => Promise.resolve({
+                    id: `dealer-${where.userId}`,
+                    userId: where.userId,
+                    isVerified: true,
+                })),
                 count: jest.fn().mockResolvedValue(742),
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
@@ -190,6 +202,44 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         );
     });
 
+    it('triggerBuyItNow: blocks non-dealer and unverified accounts before any auction mutation', async () => {
+        prisma.user.findUnique.mockResolvedValueOnce({ role: 'BUYER' });
+
+        await expect(
+            service.triggerBuyItNow('auction-1', 'retail-buyer'),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+
+        prisma.user.findUnique.mockResolvedValueOnce({ role: 'DEALER' });
+        prisma.dealerProfile.findUnique.mockResolvedValueOnce({
+            id: 'dealer-unverified',
+            userId: 'dealer-unverified',
+            isVerified: false,
+        });
+
+        await expect(
+            service.triggerBuyItNow('auction-1', 'dealer-unverified'),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
+    it('triggerBuyItNow: blocks the seller dealership from buying its own auction', async () => {
+        const auction = makeActiveAuction();
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER' });
+        prisma.dealerProfile.findUnique.mockResolvedValue({
+            id: 'dealer-seller',
+            userId: 'seller-1',
+            isVerified: true,
+        });
+
+        await expect(
+            service.triggerBuyItNow('auction-1', 'seller-1'),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/own auction/i) });
+
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
     // ── confirmBuyItNow ───────────────────────────────────────────────────────
 
     it('confirmBuyItNow: throws BadRequestException when buyItNowPendingBuyerId is null', async () => {
@@ -210,8 +260,6 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         });
         prisma.auction.findUnique.mockResolvedValue(auction);
         prisma.bid.findFirst.mockResolvedValue(null);
-        prisma.$transaction.mockResolvedValue([]);
-
         await service.confirmBuyItNow('auction-1', 'seller-1');
 
         expect(prisma.$transaction).toHaveBeenCalled();
@@ -219,6 +267,24 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
             'auction-1',
             expect.objectContaining({ auctionId: 'auction-1', winnerId: 'buyer-1' }),
         );
+    });
+
+    it('confirmBuyItNow: refuses a stale confirmation when a locked bid has already met reserve', async () => {
+        const auction = makeActiveAuction({
+            buyItNowPendingBuyerId: 'buyer-1',
+            buyItNowPendingAt: new Date(),
+            buyItNowPrice: 25000,
+        });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.bid.findFirst.mockResolvedValue({ id: 'bid-reserve', amount: 20000 });
+        prisma.bid.count.mockResolvedValue(1);
+
+        await expect(
+            service.confirmBuyItNow('auction-1', 'seller-1'),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/reserve is met/i) });
+
+        expect(prisma.sale.create).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastAuctionEnd).not.toHaveBeenCalled();
     });
 
     // ── declineBuyItNow ───────────────────────────────────────────────────────
@@ -353,8 +419,6 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                 isVerified: true,
             },
         });
-        prisma.$transaction.mockResolvedValue([]);
-
         await service.confirmBuyItNow('auction-1', 'admin-staff-1');
 
         expect(prisma.sale.create).toHaveBeenCalledWith({
