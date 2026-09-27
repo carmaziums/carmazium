@@ -212,6 +212,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
     const feedRef = React.useRef<HTMLDivElement>(null)
     const socketRef = React.useRef<Socket | null>(null)
+    const isWinningRef = React.useRef(false)
+
+    React.useEffect(() => {
+        isWinningRef.current = isWinning
+    }, [isWinning])
 
     // ── Load ──────────────────────────────────────────────────────────────────
     const loadAuction = React.useCallback(() => {
@@ -285,20 +290,72 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         })
         socketRef.current = socket
 
+        const syncCanonicalAuctionState = () => {
+            getAuction(auction.id)
+                .then(fresh => {
+                    setAuction(fresh)
+                    setEndTime(new Date(fresh.endTime))
+                    setStartTime(new Date(fresh.startTime))
+
+                    const bids = fresh.listing.bids ?? []
+                    const topBid = bids[0] ? Number(bids[0].amount) : 0
+                    const nextWinning = !!businessUserId && bids[0]?.bidderId === businessUserId
+
+                    setBidHistory(bids.map(b => ({
+                        initials: `${b.bidder?.firstName?.[0] ?? "?"}${b.bidder?.lastName?.[0] ?? ""}`.toUpperCase(),
+                        amount: Number(b.amount),
+                        time: new Date(b.timestamp).toLocaleTimeString("en-GB"),
+                        bidId: b.id,
+                        bidderId: b.bidderId,
+                    })))
+                    setCurrentBid(topBid)
+                    isWinningRef.current = nextWinning
+                    setIsWinning(nextWinning)
+                    setBinPending(!!fresh.buyItNowPendingBuyerId)
+
+                    if (businessUserId) {
+                        const now = Date.now()
+                        const ownCancelable = new Map<string, number>()
+                        for (const b of bids) {
+                            if (b.bidderId !== businessUserId) continue
+                            const expiresAt = new Date(b.createdAt).getTime() + BID_CANCEL_WINDOW_MS
+                            if (expiresAt > now) ownCancelable.set(b.id, expiresAt)
+                        }
+                        setCancelableBids(ownCancelable)
+                    }
+
+                    if (fresh.status === "ENDED") {
+                        const winningBid = bids[0] ? Number(bids[0].amount) : null
+                        setEndedPayload({
+                            auctionId: fresh.id,
+                            winnerId: fresh.winnerId,
+                            winningBidAmount: fresh.winningBidAmount ? Number(fresh.winningBidAmount) : winningBid,
+                            reserveMet: !!fresh.winnerId && fresh.winningBidAmount != null
+                                ? true
+                                : winningBid !== null && winningBid >= Number(fresh.reservePrice),
+                        })
+                    }
+                })
+                .catch(() => { /* live event state remains usable if the resync fails */ })
+        }
+
         socket.on("connect", () => {
             setConnected(true)
             socket.emit("auction:join", { auctionId: auction.id })
+            // Socket.IO fires "connect" after both the initial connection and
+            // successful reconnections. Re-read canonical state every time so a
+            // bid/cancel/end event missed while offline cannot leave stale UI.
+            syncCanonicalAuctionState()
         })
         socket.on("disconnect", () => setConnected(false))
-        socket.on("reconnect", () => {
-            socket.emit("auction:join", { auctionId: auction.id })
-        })
         socket.on("auction:viewers", ({ count }: { count: number }) => setWatchers(count))
 
         socket.on("bid:new", (payload: BidBroadcastPayload) => {
-            const wasWinning = !!businessUserId && isWinning && payload.bidderId !== businessUserId
+            const nextWinning = !!businessUserId && payload.bidderId === businessUserId
+            const wasWinning = !!businessUserId && isWinningRef.current && !nextWinning
             setCurrentBid(payload.amount)
-            setIsWinning(!!businessUserId && payload.bidderId === businessUserId)
+            isWinningRef.current = nextWinning
+            setIsWinning(nextWinning)
             setBidHistory(prev => [
                 { initials: payload.bidderInitials, amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString("en-GB"), bidId: payload.bidId, bidderId: payload.bidderId, isNew: true },
                 ...prev.map(b => ({ ...b, isNew: false })),
@@ -359,10 +416,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 return filtered
             })
             setCurrentBid(payload.highestActiveBid ?? 0)
-            setIsWinning(
-                !!businessUserId
+            const nextWinning = !!businessUserId
                 && payload.highestActiveBidderId === businessUserId
-            )
+            isWinningRef.current = nextWinning
+            setIsWinning(nextWinning)
             setCancelableBids(prev => {
                 if (!prev.has(payload.bidId)) return prev
                 const next = new Map(prev)
@@ -373,22 +430,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             // Re-read the canonical active bid list in the background. The
             // event contains enough data for immediate UI recovery, while this
             // resync fixes any local history gap from a missed websocket event.
-            getAuction(auction.id)
-                .then(fresh => {
-                    setAuction(fresh)
-                    const bids = fresh.listing.bids ?? []
-                    setBidHistory(bids.map(b => ({
-                        initials: `${b.bidder?.firstName?.[0] ?? "?"}${b.bidder?.lastName?.[0] ?? ""}`.toUpperCase(),
-                        amount: Number(b.amount),
-                        time: new Date(b.timestamp).toLocaleTimeString("en-GB"),
-                        bidId: b.id,
-                        bidderId: b.bidderId,
-                    })))
-                    setCurrentBid(bids[0] ? Number(bids[0].amount) : 0)
-                    setIsWinning(!!businessUserId && bids[0]?.bidderId === businessUserId)
-                    setBinPending(!!fresh.buyItNowPendingBuyerId)
-                })
-                .catch(() => { /* event payload already restored the critical state */ })
+            syncCanonicalAuctionState()
         })
 
         socket.on("auction:ended", (payload: AuctionEndPayload) => {
@@ -411,21 +453,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             // trip, then refetch the canonical auction as a consistency check.
             setAuction(p => p ? { ...p, reservePrice } : p)
 
-            getAuction(auction.id)
-                .then(fresh => {
-                    setAuction(fresh)
-                    const freshTopBid = fresh.listing.bids?.[0]
-                        ? Number(fresh.listing.bids[0].amount)
-                        : null
-                    if (freshTopBid !== null && freshTopBid >= Number(fresh.reservePrice)) {
-                        setBinPending(false)
-                    }
-                })
-                .catch(() => { /* direct event update already keeps reserve-dependent UI current */ })
+            syncCanonicalAuctionState()
         })
 
         return () => { socket.disconnect() }
-    }, [auction?.id, businessUserId, isWinning])
+    }, [auction?.id, businessUserId])
 
     // ── Anti-snipe activation ─────────────────────────────────────────────────
     // Schedule a single timeout to fire exactly when we enter the anti-snipe window,
